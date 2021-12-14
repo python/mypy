@@ -118,3 +118,8 @@ class ContextManager(Generic[T]):
     def __enter__(self) -> T: pass
     # Use Any because not all the precise types are in the fixtures.
     def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Any: pass
+
+class AsyncContextManager(Generic[T]):
+    def __aenter__(self) -> Awaitable[T]: pass
+    # Use Any because not all the precise types are in the fixtures.
+    def __aexit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> Awaitable[Any]: pass

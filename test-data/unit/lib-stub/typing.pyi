@@ -24,6 +24,7 @@ ClassVar = 0
 Final = 0
 NoReturn = 0
 NewType = 0
+ParamSpec = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)
@@ -42,6 +43,7 @@ class Generator(Iterator[T], Generic[T, U, V]):
 class Sequence(Iterable[T_co]):
     def __getitem__(self, n: Any) -> T_co: pass
 
-class Mapping(Generic[T, T_co]): pass
+# Mapping type is oversimplified intentionally.
+class Mapping(Iterable[T], Generic[T, T_co]): pass
 
 def final(meth: T) -> T: pass

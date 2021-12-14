@@ -53,13 +53,6 @@ f(b=[], a=A())
 class A: pass
 [builtins fixtures/list.pyi]
 
-[case testGivingSameKeywordArgumentTwice]
-import typing
-def f(a: 'A', b: 'B') -> None: pass
-f(a=A(), b=B(), a=A()) # E: keyword argument repeated
-class A: pass
-class B: pass
-
 [case testGivingArgumentAsPositionalAndKeywordArg]
 import typing
 def f(a: 'A', b: 'B' = None) -> None: pass
@@ -259,7 +252,7 @@ class B: pass
 
 [case testCallingDynamicallyTypedFunctionWithKeywordArgs]
 import typing
-def f(x, y=A()): pass
+def f(x, y=A()): pass  # N: "f" defined here
 f(x=A(), y=A())
 f(y=A(), x=A())
 f(y=A())      # E: Missing positional argument "x" in call to "f"
@@ -306,8 +299,9 @@ d = None # type: Dict[str, A]
 f(**d)
 f(x=A(), **d)
 d2 = None # type: Dict[str, B]
-f(**d2)        # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
-f(x=A(), **d2) # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(**d2)         # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(x=A(), **d2)  # E: Argument 2 to "f" has incompatible type "**Dict[str, B]"; expected "A"
+f(**{'x': B()}) # E: Argument 1 to "f" has incompatible type "**Dict[str, B]"; expected "A"
 class A: pass
 class B: pass
 [builtins fixtures/dict.pyi]
@@ -319,7 +313,7 @@ class Formatter:
 
 formatter = Formatter()
 formatter("test", bold=True)
-reveal_type(formatter.__call__)  # N: Revealed type is 'def (message: builtins.str, bold: builtins.bool =) -> builtins.str'
+reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.str, bold: builtins.bool =) -> builtins.str"
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -330,7 +324,7 @@ class Formatter:
 
 formatter = Formatter()
 formatter("test", bold=True)
-reveal_type(formatter.__call__)  # N: Revealed type is 'def (message: builtins.str, *, bold: builtins.bool =) -> builtins.str'
+reveal_type(formatter.__call__)  # N: Revealed type is "def (message: builtins.str, *, bold: builtins.bool =) -> builtins.str"
 [builtins fixtures/bool.pyi]
 [out]
 
@@ -381,6 +375,29 @@ def f(a: 'A', b: 'A') -> None: pass
 l = None # type: List[Any]
 d = None # type: Dict[Any, Any]
 f(*l, **d)
+class A: pass
+[builtins fixtures/dict.pyi]
+
+[case testPassingMultipleKeywordVarArgs]
+from typing import Any, Dict
+def f1(a: 'A', b: 'A') -> None: pass
+def f2(a: 'A') -> None: pass
+def f3(a: 'A', **kwargs: 'A') -> None: pass
+def f4(**kwargs: 'A') -> None: pass
+d = None # type: Dict[Any, Any]
+d2 = None # type: Dict[Any, Any]
+f1(**d, **d2)
+f2(**d, **d2)
+f3(**d, **d2)
+f4(**d, **d2)
+class A: pass
+[builtins fixtures/dict.pyi]
+
+[case testPassingKeywordVarArgsToVarArgsOnlyFunction]
+from typing import Any, Dict
+def f(*args: 'A') -> None: pass
+d = None # type: Dict[Any, Any]
+f(**d)
 class A: pass
 [builtins fixtures/dict.pyi]
 
@@ -473,5 +490,67 @@ g(**d)  # E: Argument 1 to "g" has incompatible type "**Dict[str, object]"; expe
 
 m = {} # type: Mapping[str, object]
 f(**m)
-g(**m)  # TODO: Should be an error
+g(**m)  # E: Argument 1 to "g" has incompatible type "**Mapping[str, object]"; expected "int"
+[builtins fixtures/dict.pyi]
+
+[case testPassingEmptyDictWithStars]
+def f(): pass
+def g(x=1): pass
+
+f(**{})
+g(**{})
+[builtins fixtures/dict.pyi]
+
+[case testKeywordUnpackWithDifferentTypes]
+# https://github.com/python/mypy/issues/11144
+from typing import Dict, Generic, TypeVar, Mapping
+
+T = TypeVar("T")
+T2 = TypeVar("T2")
+
+class A(Dict[T, T2]):
+    ...
+
+class B(Mapping[T, T2]):
+    ...
+
+class C(Generic[T, T2]):
+    ...
+
+class D:
+    ...
+
+def foo(**i: float) -> float:
+    ...
+
+a: A[str, str]
+b: B[str, str]
+c: C[str, float]
+d: D
+e = {"a": "b"}
+
+foo(k=1.5)
+foo(**a)
+foo(**b)
+foo(**c)
+foo(**d)
+foo(**e)
+
+# Correct:
+
+class Good(Mapping[str, float]):
+    ...
+
+good1: Good
+good2: A[str, float]
+good3: B[str, float]
+foo(**good1)
+foo(**good2)
+foo(**good3)
+[out]
+main:29: error: Argument 1 to "foo" has incompatible type "**A[str, str]"; expected "float"
+main:30: error: Argument 1 to "foo" has incompatible type "**B[str, str]"; expected "float"
+main:31: error: Argument after ** must be a mapping, not "C[str, float]"
+main:32: error: Argument after ** must be a mapping, not "D"
+main:33: error: Argument 1 to "foo" has incompatible type "**Dict[str, str]"; expected "float"
 [builtins fixtures/dict.pyi]

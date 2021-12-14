@@ -1,26 +1,28 @@
-from collections import OrderedDict
+from mypy.backports import OrderedDict
 import re
 import pprint
 import sys
 
-from typing_extensions import Final
+from typing_extensions import Final, TYPE_CHECKING
 from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, Any
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
 
+if TYPE_CHECKING:
+    from mypy.errors import ErrorCode
+
 
 class BuildType:
-    STANDARD = 0  # type: Final[int]
-    MODULE = 1  # type: Final[int]
-    PROGRAM_TEXT = 2  # type: Final[int]
+    STANDARD: Final = 0
+    MODULE: Final = 1
+    PROGRAM_TEXT: Final = 2
 
 
-PER_MODULE_OPTIONS = {
+PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
-    "allow_untyped_globals",
     "allow_redefinition",
-    "strict_equality",
+    "allow_untyped_globals",
     "always_false",
     "always_true",
     "check_untyped_defs",
@@ -39,22 +41,23 @@ PER_MODULE_OPTIONS = {
     "follow_imports_for_stubs",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_reexport",
     "local_partial_types",
     "mypyc",
     "no_implicit_optional",
-    "implicit_reexport",
     "show_none_errors",
+    "strict_equality",
     "strict_optional",
     "strict_optional_whitelist",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
     "warn_unused_ignores",
-}  # type: Final
+}
 
-OPTIONS_AFFECTING_CACHE = ((PER_MODULE_OPTIONS |
-                            {"platform", "bazel", "plugins"})
-                           - {"debug_cache"})  # type: Final
+OPTIONS_AFFECTING_CACHE: Final = (PER_MODULE_OPTIONS | {"platform", "bazel", "plugins"}) - {
+    "debug_cache"
+}
 
 
 class Options:
@@ -62,29 +65,42 @@ class Options:
 
     def __init__(self) -> None:
         # Cache for clone_for_module()
-        self._per_module_cache = None  # type: Optional[Dict[str, Options]]
+        self._per_module_cache: Optional[Dict[str, Options]] = None
 
         # -- build options --
         self.build_type = BuildType.STANDARD
-        self.python_version = sys.version_info[:2]  # type: Tuple[int, int]
+        self.python_version: Tuple[int, int] = sys.version_info[:2]
         # The executable used to search for PEP 561 packages. If this is None,
         # then mypy does not search for PEP 561 packages.
-        self.python_executable = sys.executable  # type: Optional[str]
+        self.python_executable: Optional[str] = sys.executable
         self.platform = sys.platform
-        self.custom_typing_module = None  # type: Optional[str]
-        self.custom_typeshed_dir = None  # type: Optional[str]
-        self.mypy_path = []  # type: List[str]
-        self.report_dirs = {}  # type: Dict[str, str]
+        self.custom_typing_module: Optional[str] = None
+        self.custom_typeshed_dir: Optional[str] = None
+        self.mypy_path: List[str] = []
+        self.report_dirs: Dict[str, str] = {}
         # Show errors in PEP 561 packages/site-packages modules
         self.no_silence_site_packages = False
         self.no_site_packages = False
         self.ignore_missing_imports = False
+        # Is ignore_missing_imports set in a per-module section
+        self.ignore_missing_imports_per_module = False
         self.follow_imports = 'normal'  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
         self.follow_imports_for_stubs = False
         # PEP 420 namespace packages
+        # This allows definitions of packages without __init__.py and allows packages to span
+        # multiple directories. This flag affects both import discovery and the association of
+        # input files/modules/packages to the relevant file and fully qualified module name.
         self.namespace_packages = False
+        # Use current directory and MYPYPATH to determine fully qualified module names of files
+        # passed by automatically considering their subdirectories as packages. This is only
+        # relevant if namespace packages are enabled, since otherwise examining __init__.py's is
+        # sufficient to determine module names for files. As a possible alternative, add a single
+        # top-level __init__.py to your packages.
+        self.explicit_package_bases = False
+        # File names, directory names or subpaths to avoid checking
+        self.exclude: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -127,7 +143,7 @@ class Options:
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
 
-        # Warn about unused '[mypy-<pattern>] config sections
+        # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
 
         # Files in which to ignore all non-fatal errors
@@ -145,7 +161,7 @@ class Options:
 
         # Files in which to allow strict-Optional related errors
         # TODO: Kill this in favor of show_none_errors
-        self.strict_optional_whitelist = None   # type: Optional[List[str]]
+        self.strict_optional_whitelist: Optional[List[str]] = None
 
         # Alternate way to show/hide strict-None-checking related errors
         self.show_none_errors = True
@@ -172,28 +188,36 @@ class Options:
         self.warn_unreachable = False
 
         # Variable names considered True
-        self.always_true = []  # type: List[str]
+        self.always_true: List[str] = []
 
         # Variable names considered False
-        self.always_false = []  # type: List[str]
+        self.always_false: List[str] = []
+
+        # Error codes to disable
+        self.disable_error_code: List[str] = []
+        self.disabled_error_codes: Set[ErrorCode] = set()
+
+        # Error codes to enable
+        self.enable_error_code: List[str] = []
+        self.enabled_error_codes: Set[ErrorCode] = set()
 
         # Use script name instead of __main__
         self.scripts_are_modules = False
 
         # Config file name
-        self.config_file = None  # type: Optional[str]
+        self.config_file: Optional[str] = None
 
         # A filename containing a JSON mapping from filenames to
         # mtime/size/hash arrays, used to avoid having to recalculate
         # source hashes as often.
-        self.quickstart_file = None  # type: Optional[str]
+        self.quickstart_file: Optional[str] = None
 
         # A comma-separated list of files/directories for mypy to type check;
         # supports globbing
-        self.files = None  # type: Optional[List[str]]
+        self.files: Optional[List[str]] = None
 
         # Write junit.xml to given file
-        self.junit_xml = None  # type: Optional[str]
+        self.junit_xml: Optional[str] = None
 
         # Caching and incremental checking options
         self.incremental = True
@@ -219,12 +243,12 @@ class Options:
         self.preserve_asts = False
 
         # Paths of user plugins
-        self.plugins = []  # type: List[str]
+        self.plugins: List[str] = []
 
         # Per-module options (raw)
-        self.per_module_options = OrderedDict()  # type: OrderedDict[str, Dict[str, object]]
-        self._glob_options = []  # type: List[Tuple[str, Pattern[str]]]
-        self.unused_configs = set()  # type: Set[str]
+        self.per_module_options: OrderedDict[str, Dict[str, object]] = OrderedDict()
+        self._glob_options: List[Tuple[str, Pattern[str]]] = []
+        self.unused_configs: Set[str] = set()
 
         # -- development options --
         self.verbosity = 0  # More verbose messages (for troubleshooting)
@@ -243,8 +267,8 @@ class Options:
         self.use_builtins_fixtures = False
 
         # -- experimental options --
-        self.shadow_file = None  # type: Optional[List[List[str]]]
-        self.show_column_numbers = False  # type: bool
+        self.shadow_file: Optional[List[List[str]]] = None
+        self.show_column_numbers: bool = False
         self.show_error_codes = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False
@@ -259,15 +283,24 @@ class Options:
         self.export_types = False
         # List of package roots -- directories under these are packages even
         # if they don't have __init__.py.
-        self.package_root = []  # type: List[str]
-        self.cache_map = {}  # type: Dict[str, Tuple[str, str]]
+        self.package_root: List[str] = []
+        self.cache_map: Dict[str, Tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
-        self.fast_exit = False
+        self.fast_exit = True
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
-        self.transform_source = None  # type: Optional[Callable[[Any], Any]]
+        self.transform_source: Optional[Callable[[Any], Any]] = None
         # Print full path to each file in the report.
-        self.show_absolute_path = False  # type: bool
+        self.show_absolute_path: bool = False
+        # Install missing stub packages if True
+        self.install_types = False
+        # Install missing stub packages in non-interactive mode (don't prompt for
+        # confirmation, and don't show any errors)
+        self.non_interactive = False
+        # When we encounter errors that may cause many additional errors,
+        # skip most errors after this many messages have been reported.
+        # -1 means unlimited.
+        self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
@@ -294,6 +327,10 @@ class Options:
         replace_object_state(new_options, self, copy_dict=True)
         for key, value in changes.items():
             setattr(new_options, key, value)
+        if changes.get("ignore_missing_imports"):
+            # This is the only option for which a per-module and a global
+            # option sometimes beheave differently.
+            new_options.ignore_missing_imports_per_module = True
         return new_options
 
     def build_per_module_cache(self) -> None:

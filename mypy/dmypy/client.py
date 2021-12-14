@@ -390,6 +390,7 @@ def check_output(response: Dict[str, Any], verbose: bool,
     except KeyError:
         fail("Response: %s" % str(response))
     sys.stdout.write(out)
+    sys.stdout.flush()
     sys.stderr.write(err)
     if verbose:
         show_stats(response)
@@ -468,14 +469,13 @@ def request(status_file: str, command: str, *, timeout: Optional[int] = None,
     raised OSError.  This covers cases such as connection refused or
     closed prematurely as well as invalid JSON received.
     """
-    response = {}  # type: Dict[str, str]
+    response: Dict[str, str] = {}
     args = dict(kwds)
     args['command'] = command
     # Tell the server whether this request was initiated from a human-facing terminal,
     # so that it can format the type checking output accordingly.
     args['is_tty'] = sys.stdout.isatty() or int(os.getenv('MYPY_FORCE_COLOR', '0')) > 0
-    args['terminal_width'] = (int(os.getenv('MYPY_FORCE_TERMINAL_WIDTH', '0')) or
-                              get_terminal_width())
+    args['terminal_width'] = get_terminal_width()
     bdata = json.dumps(args).encode('utf8')
     _, name = get_status(status_file)
     try:
@@ -533,8 +533,8 @@ def read_status(status_file: str) -> Dict[str, object]:
     with open(status_file) as f:
         try:
             data = json.load(f)
-        except Exception:
-            raise BadStatus("Malformed status file (not JSON)")
+        except Exception as e:
+            raise BadStatus("Malformed status file (not JSON)") from e
     if not isinstance(data, dict):
         raise BadStatus("Invalid status file (not a dict)")
     return data

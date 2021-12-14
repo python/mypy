@@ -4,63 +4,65 @@ Note: Varying-length tuples are represented as boxed Python tuple
 objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
-from typing import List
-
-from mypyc.ir.ops import (
-    EmitterInterface, ERR_NEVER, ERR_MAGIC
+from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
+from mypyc.ir.rtypes import (
+    tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive,
+    c_pyssize_t_rprimitive, bit_rprimitive
 )
-from mypyc.ir.rtypes import tuple_rprimitive, int_rprimitive, list_rprimitive, object_rprimitive
-from mypyc.primitives.registry import func_op, method_op, custom_op, call_emit, simple_emit
+from mypyc.primitives.registry import method_op, function_op, custom_op
 
 
 # tuple[index] (for an int index)
 tuple_get_item_op = method_op(
     name='__getitem__',
     arg_types=[tuple_rprimitive, int_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPySequenceTuple_GetItem'))
-
+    return_type=object_rprimitive,
+    c_function_name='CPySequenceTuple_GetItem',
+    error_kind=ERR_MAGIC)
 
 # Construct a boxed tuple from items: (item1, item2, ...)
 new_tuple_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=tuple_rprimitive,
-    is_var_arg=True,
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_Pack',
     error_kind=ERR_MAGIC,
-    steals=False,
-    format_str='{dest} = ({comma_args}) :: tuple',
-    emit=simple_emit('{dest} = PyTuple_Pack({num_args}{comma_if_args}{comma_args});'))
+    var_arg_type=object_rprimitive)
 
+new_tuple_with_length_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=tuple_rprimitive,
+    c_function_name='PyTuple_New',
+    error_kind=ERR_MAGIC)
 
-def emit_len(emitter: EmitterInterface, args: List[str], dest: str) -> None:
-    temp = emitter.temp_name()
-    emitter.emit_declaration('Py_ssize_t %s;' % temp)
-    emitter.emit_line('%s = PyTuple_GET_SIZE(%s);' % (temp, args[0]))
-    emitter.emit_line('%s = CPyTagged_ShortFromSsize_t(%s);' % (dest, temp))
-
-
-# len(tuple)
-tuple_len_op = func_op(
-    name='builtins.len',
-    arg_types=[tuple_rprimitive],
-    result_type=int_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=emit_len)
+# PyTuple_SET_ITEM does no error checking,
+# and should only be used to fill in brand new tuples.
+new_tuple_set_item_op = custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPySequenceTuple_SetItemUnsafe',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
 
 # Construct tuple from a list.
-list_tuple_op = func_op(
+list_tuple_op = function_op(
     name='builtins.tuple',
     arg_types=[list_rprimitive],
-    result_type=tuple_rprimitive,
+    return_type=tuple_rprimitive,
+    c_function_name='PyList_AsTuple',
     error_kind=ERR_MAGIC,
-    emit=call_emit('PyList_AsTuple'),
     priority=2)
 
 # Construct tuple from an arbitrary (iterable) object.
-func_op(
+function_op(
     name='builtins.tuple',
     arg_types=[object_rprimitive],
-    result_type=tuple_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PySequence_Tuple'))
+    return_type=tuple_rprimitive,
+    c_function_name='PySequence_Tuple',
+    error_kind=ERR_MAGIC)
+
+# tuple[begin:end]
+tuple_slice_op = custom_op(
+    arg_types=[tuple_rprimitive, int_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPySequenceTuple_GetSlice',
+    error_kind=ERR_MAGIC)

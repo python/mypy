@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <Python.h>
+#include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
 #include "mypyc_util.h"
@@ -220,7 +221,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
     */
     if (allocated >= newsize && newsize >= (allocated >> 1)) {
         assert(self->ob_item != NULL || newsize == 0);
-        Py_SIZE(self) = newsize;
+        Py_SET_SIZE(self, newsize);
         return 0;
     }
 
@@ -248,7 +249,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
         return -1;
     }
     self->ob_item = items;
-    Py_SIZE(self) = newsize;
+    Py_SET_SIZE(self, newsize);
     self->allocated = new_allocated;
     return 0;
 }
@@ -322,7 +323,7 @@ _PyDict_GetItemStringWithError(PyObject *v, const char *key)
 
 #if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 6
 /* _PyUnicode_EqualToASCIIString got added in 3.5.3 (argh!) so we can't actually know
- * whether it will be precent at runtime, so we just assume we don't have it in 3.5. */
+ * whether it will be present at runtime, so we just assume we don't have it in 3.5. */
 #define CPyUnicode_EqualToASCIIString(x, y) (PyUnicode_CompareWithASCIIString((x), (y)) == 0)
 #elif PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >= 6
 #define CPyUnicode_EqualToASCIIString(x, y) _PyUnicode_EqualToASCIIString(x, y)
@@ -366,8 +367,53 @@ CPyGen_SetStopIterationValue(PyObject *value)
     return 0;
 }
 
+// Copied from dictobject.c and dictobject.h, these are not Public before
+// Python 3.8. Also remove some error checks that we do in the callers.
+typedef struct {
+    PyObject_HEAD
+    PyDictObject *dv_dict;
+} _CPyDictViewObject;
+
+static PyObject *
+_CPyDictView_New(PyObject *dict, PyTypeObject *type)
+{
+    _CPyDictViewObject *dv = PyObject_GC_New(_CPyDictViewObject, type);
+    if (dv == NULL)
+        return NULL;
+    Py_INCREF(dict);
+    dv->dv_dict = (PyDictObject *)dict;
+    PyObject_GC_Track(dv);
+    return (PyObject *)dv;
+}
+
 #ifdef __cplusplus
 }
+#endif
+
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION >=10
+static int
+_CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
+    PyObject *tmp = NULL;
+    int result = _PyObject_LookupAttrId(v, name, &tmp);
+    if (tmp) {
+        Py_DECREF(tmp);
+    }
+    return result;
+}
+#else
+#define _CPyObject_HasAttrId _PyObject_HasAttrId
+#endif
+
+#if PY_MAJOR_VERSION >= 3 && PY_MINOR_VERSION < 9
+// OneArgs and NoArgs functions got added in 3.9
+#define _PyObject_CallMethodIdNoArgs(self, name) \
+    _PyObject_CallMethodIdObjArgs((self), (name), NULL)
+#define _PyObject_CallMethodIdOneArg(self, name, arg) \
+    _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
+#define PyObject_CallNoArgs(callable) \
+    PyObject_CallFunctionObjArgs((callable), NULL)
+#define PyObject_CallOneArg(callable, arg) \
+    PyObject_CallFunctionObjArgs((callable), (arg), NULL)
 #endif
 
 #endif

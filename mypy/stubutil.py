@@ -91,7 +91,7 @@ def find_module_path_and_all_py2(module: str,
     except subprocess.CalledProcessError as e:
         path = find_module_path_using_py2_sys_path(module, interpreter)
         if path is None:
-            raise CantImport(module, str(e))
+            raise CantImport(module, str(e)) from e
         return path, None
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
@@ -153,7 +153,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
         # Fall back to finding the module using sys.path.
         path = find_module_path_using_sys_path(module, sys.path)
         if path is None:
-            raise CantImport(module, str(e))
+            raise CantImport(module, str(e)) from e
         return path, None
     if mod.is_c_module:
         return None
@@ -247,11 +247,11 @@ def remove_misplaced_type_comments(source: Union[str, bytes]) -> Union[str, byte
 def common_dir_prefix(paths: List[str]) -> str:
     if not paths:
         return '.'
-    cur = os.path.dirname(paths[0])
+    cur = os.path.dirname(os.path.normpath(paths[0]))
     for path in paths[1:]:
         while True:
-            path = os.path.dirname(path)
-            if (cur + '/').startswith(path + '/'):
+            path = os.path.dirname(os.path.normpath(path))
+            if (cur + os.sep).startswith(path + os.sep):
                 cur = path
                 break
     return cur or '.'

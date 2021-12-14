@@ -26,8 +26,8 @@ from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile, DeleteFile
 )
 from mypy.test.helpers import (
-    assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
-    assert_target_equivalence
+    assert_string_arrays_equal, parse_options, assert_module_equivalence,
+    assert_target_equivalence, perform_file_operations,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -35,7 +35,7 @@ from mypy.dmypy_server import Server
 from mypy.config_parser import parse_config_file
 from mypy.find_sources import create_source_list
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False
@@ -158,7 +158,7 @@ class FineGrainedSuite(DataSuite):
             options.follow_imports = 'error'
 
         for name, _ in testcase.files:
-            if 'mypy.ini' in name:
+            if 'mypy.ini' in name or 'pyproject.toml' in name:
                 parse_config_file(options, lambda: None, name)
                 break
 
@@ -210,13 +210,7 @@ class FineGrainedSuite(DataSuite):
 
         Return (mypy output, triggered targets).
         """
-        for op in operations:
-            if isinstance(op, UpdateFile):
-                # Modify/create file
-                copy_and_fudge_mtime(op.source_path, op.target_path)
-            else:
-                # Delete file
-                os.remove(op.path)
+        perform_file_operations(operations)
         sources = self.parse_sources(main_src, step, options)
 
         if step <= num_regular_incremental_steps:
@@ -224,9 +218,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated = []  # type: List[str]
-        changed = []  # type: List[str]
-        targets = []  # type: List[str]
+        updated: List[str] = []
+        changed: List[str] = []
+        targets: List[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -303,7 +297,7 @@ class FineGrainedSuite(DataSuite):
                                                allow_empty_dir=True)
 
     def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output = []  # type: List[str]
+        output: List[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = '--json' in flags

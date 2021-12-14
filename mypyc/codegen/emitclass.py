@@ -1,19 +1,20 @@
 """Code generation for native classes and related wrappers."""
 
-
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
-from collections import OrderedDict
 
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX
-from mypyc.codegen.emit import Emitter, HeaderDeclaration
-from mypyc.codegen.emitfunc import native_function_header, native_getter_name, native_setter_name
+from mypy.backports import OrderedDict
+
+from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
+from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
+from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
     generate_dunder_wrapper, generate_hash_wrapper, generate_richcompare_wrapper,
-    generate_bool_wrapper, generate_get_wrapper,
+    generate_bool_wrapper, generate_get_wrapper, generate_len_wrapper,
+    generate_set_del_item_wrapper, generate_contains_wrapper, generate_bin_op_wrapper
 )
 from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
-from mypyc.ir.class_ir import ClassIR, VTableMethod, VTableEntries
+from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 
@@ -33,33 +34,81 @@ def wrapper_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 SlotGenerator = Callable[[ClassIR, FuncIR, Emitter], str]
 SlotTable = Mapping[str, Tuple[str, SlotGenerator]]
 
-SLOT_DEFS = {
+SLOT_DEFS: SlotTable = {
     '__init__': ('tp_init', lambda c, t, e: generate_init_for_class(c, t, e)),
-    '__call__': ('tp_call', wrapper_slot),
+    '__call__': ('tp_call', lambda c, t, e: generate_call_wrapper(c, t, e)),
     '__str__': ('tp_str', native_slot),
     '__repr__': ('tp_repr', native_slot),
     '__next__': ('tp_iternext', native_slot),
     '__iter__': ('tp_iter', native_slot),
     '__hash__': ('tp_hash', generate_hash_wrapper),
     '__get__': ('tp_descr_get', generate_get_wrapper),
-}  # type: SlotTable
+}
 
-AS_MAPPING_SLOT_DEFS = {
+AS_MAPPING_SLOT_DEFS: SlotTable = {
     '__getitem__': ('mp_subscript', generate_dunder_wrapper),
-}  # type: SlotTable
+    '__setitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__delitem__': ('mp_ass_subscript', generate_set_del_item_wrapper),
+    '__len__': ('mp_length', generate_len_wrapper),
+}
 
-AS_NUMBER_SLOT_DEFS = {
+AS_SEQUENCE_SLOT_DEFS: SlotTable = {
+    '__contains__': ('sq_contains', generate_contains_wrapper),
+}
+
+AS_NUMBER_SLOT_DEFS: SlotTable = {
     '__bool__': ('nb_bool', generate_bool_wrapper),
-}  # type: SlotTable
+    '__neg__': ('nb_negative', generate_dunder_wrapper),
+    '__invert__': ('nb_invert', generate_dunder_wrapper),
+    '__int__': ('nb_int', generate_dunder_wrapper),
+    '__float__': ('nb_float', generate_dunder_wrapper),
+    '__add__': ('nb_add', generate_bin_op_wrapper),
+    '__radd__': ('nb_add', generate_bin_op_wrapper),
+    '__sub__': ('nb_subtract', generate_bin_op_wrapper),
+    '__rsub__': ('nb_subtract', generate_bin_op_wrapper),
+    '__mul__': ('nb_multiply', generate_bin_op_wrapper),
+    '__rmul__': ('nb_multiply', generate_bin_op_wrapper),
+    '__mod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__rmod__': ('nb_remainder', generate_bin_op_wrapper),
+    '__truediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__rtruediv__': ('nb_true_divide', generate_bin_op_wrapper),
+    '__floordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
+    '__rfloordiv__': ('nb_floor_divide', generate_bin_op_wrapper),
+    '__lshift__': ('nb_lshift', generate_bin_op_wrapper),
+    '__rlshift__': ('nb_lshift', generate_bin_op_wrapper),
+    '__rshift__': ('nb_rshift', generate_bin_op_wrapper),
+    '__rrshift__': ('nb_rshift', generate_bin_op_wrapper),
+    '__and__': ('nb_and', generate_bin_op_wrapper),
+    '__rand__': ('nb_and', generate_bin_op_wrapper),
+    '__or__': ('nb_or', generate_bin_op_wrapper),
+    '__ror__': ('nb_or', generate_bin_op_wrapper),
+    '__xor__': ('nb_xor', generate_bin_op_wrapper),
+    '__rxor__': ('nb_xor', generate_bin_op_wrapper),
+    '__matmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
+    '__rmatmul__': ('nb_matrix_multiply', generate_bin_op_wrapper),
+    '__iadd__': ('nb_inplace_add', generate_dunder_wrapper),
+    '__isub__': ('nb_inplace_subtract', generate_dunder_wrapper),
+    '__imul__': ('nb_inplace_multiply', generate_dunder_wrapper),
+    '__imod__': ('nb_inplace_remainder', generate_dunder_wrapper),
+    '__itruediv__': ('nb_inplace_true_divide', generate_dunder_wrapper),
+    '__ifloordiv__': ('nb_inplace_floor_divide', generate_dunder_wrapper),
+    '__ilshift__': ('nb_inplace_lshift', generate_dunder_wrapper),
+    '__irshift__': ('nb_inplace_rshift', generate_dunder_wrapper),
+    '__iand__': ('nb_inplace_and', generate_dunder_wrapper),
+    '__ior__': ('nb_inplace_or', generate_dunder_wrapper),
+    '__ixor__': ('nb_inplace_xor', generate_dunder_wrapper),
+    '__imatmul__': ('nb_inplace_matrix_multiply', generate_dunder_wrapper),
+}
 
-AS_ASYNC_SLOT_DEFS = {
+AS_ASYNC_SLOT_DEFS: SlotTable = {
     '__await__': ('am_await', native_slot),
     '__aiter__': ('am_aiter', native_slot),
     '__anext__': ('am_anext', native_slot),
-}  # type: SlotTable
+}
 
 SIDE_TABLES = [
     ('as_mapping', 'PyMappingMethods', AS_MAPPING_SLOT_DEFS),
+    ('as_sequence', 'PySequenceMethods', AS_SEQUENCE_SLOT_DEFS),
     ('as_number', 'PyNumberMethods', AS_NUMBER_SLOT_DEFS),
     ('as_async', 'PyAsyncMethods', AS_ASYNC_SLOT_DEFS),
 ]
@@ -71,13 +120,40 @@ ALWAYS_FILL = {
 }
 
 
+def generate_call_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
+    if emitter.use_vectorcall():
+        # Use vectorcall wrapper if supported (PEP 590).
+        return 'PyVectorcall_Call'
+    else:
+        # On older Pythons use the legacy wrapper.
+        return wrapper_slot(cl, fn, emitter)
+
+
+def slot_key(attr: str) -> str:
+    """Map dunder method name to sort key.
+
+    Sort reverse operator methods and __delitem__ after others ('x' > '_').
+    """
+    if (attr.startswith('__r') and attr != '__rshift__') or attr == '__delitem__':
+        return 'x' + attr
+    return attr
+
+
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields = OrderedDict()  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
+    generated: Dict[str, str] = {}
     # Sort for determinism on Python 3.5
-    for name, (slot, generator) in sorted(table.items()):
+    for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
         method_cls = cl.get_method_and_class(name)
         if method_cls and (method_cls[1] == cl or name in ALWAYS_FILL):
-            fields[slot] = generator(cl, method_cls[0], emitter)
+            if slot in generated:
+                # Reuse previously generated wrapper.
+                fields[slot] = generated[slot]
+            else:
+                # Generate new wrapper.
+                name = generator(cl, method_cls[0], emitter)
+                fields[slot] = name
+                generated[slot] = name
 
     return fields
 
@@ -98,8 +174,6 @@ def generate_class_type_decl(cl: ClassIR, c_emitter: Emitter,
     generate_object_struct(cl, external_emitter)
     generate_full = not cl.is_trait and not cl.builtin_base
     if generate_full:
-        declare_native_getters_and_setters(cl, emitter)
-
         context.declarations[emitter.native_function_name(cl.ctor)] = HeaderDeclaration(
             '{};'.format(native_function_header(cl.ctor, emitter)),
             needs_export=True,
@@ -125,14 +199,16 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = '{}_methods'.format(name_prefix)
     vtable_setup_name = '{}_trait_vtable_setup'.format(name_prefix)
 
-    fields = OrderedDict()  # type: Dict[str, str]
+    fields: Dict[str, str] = OrderedDict()
     fields['tp_name'] = '"{}"'.format(name)
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated
+
+    if not cl.builtin_base:
+        fields['tp_new'] = new_name
 
     if generate_full:
-        fields['tp_new'] = new_name
         fields['tp_dealloc'] = '(destructor){}_dealloc'.format(name_prefix)
         fields['tp_traverse'] = '(traverseproc){}_traverse'.format(name_prefix)
         fields['tp_clear'] = '(inquiry){}_clear'.format(name_prefix)
@@ -216,12 +292,11 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_dealloc_for_class(cl, dealloc_name, clear_name, emitter)
         emit_line()
-        generate_native_getters_and_setters(cl, emitter)
 
         if cl.allow_interpreted_subclasses:
-            shadow_vtable_name = generate_vtables(
+            shadow_vtable_name: Optional[str] = generate_vtables(
                 cl, vtable_setup_name + "_shadow", vtable_name + "_shadow", emitter, shadow=True
-            )  # type: Optional[str]
+            )
             emit_line()
         else:
             shadow_vtable_name = None
@@ -232,12 +307,20 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emit_line()
         generate_getseters_table(cl, getseters_name, emitter)
         emit_line()
+
+    if cl.is_trait:
+        generate_new_for_trait(cl, new_name, emitter)
+
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
     flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
     if generate_full:
         flags.append('Py_TPFLAGS_HAVE_GC')
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        fields['tp_vectorcall_offset'] = 'offsetof({}, vectorcall)'.format(
+            cl.struct_name(emitter.names))
+        flags.append('_Py_TPFLAGS_HAVE_VECTORCALL')
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line("static PyTypeObject {}_template_ = {{".format(emitter.type_struct_name(cl)))
@@ -269,11 +352,13 @@ def setter_name(cl: ClassIR, attribute: str, names: NameGenerator) -> str:
 
 
 def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
-    seen_attrs = set()  # type: Set[Tuple[str, RType]]
-    lines = []  # type: List[str]
+    seen_attrs: Set[Tuple[str, RType]] = set()
+    lines: List[str] = []
     lines += ['typedef struct {',
               'PyObject_HEAD',
               'CPyVTableItem *vtable;']
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        lines.append('vectorcallfunc vectorcall;')
     for base in reversed(cl.base_mro):
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
@@ -293,64 +378,6 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
     )
 
 
-def declare_native_getters_and_setters(cl: ClassIR,
-                                       emitter: Emitter) -> None:
-    decls = emitter.context.declarations
-    for attr, rtype in cl.attributes.items():
-        getter_name = native_getter_name(cl, attr, emitter.names)
-        setter_name = native_setter_name(cl, attr, emitter.names)
-        decls[getter_name] = HeaderDeclaration(
-            '{}{}({} *self);'.format(emitter.ctype_spaced(rtype),
-                                     getter_name,
-                                     cl.struct_name(emitter.names)),
-            needs_export=True,
-        )
-        decls[setter_name] = HeaderDeclaration(
-            'bool {}({} *self, {}value);'.format(native_setter_name(cl, attr, emitter.names),
-                                                 cl.struct_name(emitter.names),
-                                                 emitter.ctype_spaced(rtype)),
-            needs_export=True,
-        )
-
-
-def generate_native_getters_and_setters(cl: ClassIR,
-                                        emitter: Emitter) -> None:
-    for attr, rtype in cl.attributes.items():
-        attr_field = emitter.attr(attr)
-
-        # Native getter
-        emitter.emit_line('{}{}({} *self)'.format(emitter.ctype_spaced(rtype),
-                                                  native_getter_name(cl, attr, emitter.names),
-                                                  cl.struct_name(emitter.names)))
-        emitter.emit_line('{')
-        if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr_field, '==')
-            emitter.emit_lines(
-                'PyErr_SetString(PyExc_AttributeError, "attribute {} of {} undefined");'.format(
-                    repr(attr), repr(cl.name)),
-                '} else {')
-            emitter.emit_inc_ref('self->{}'.format(attr_field), rtype)
-            emitter.emit_line('}')
-        emitter.emit_line('return self->{};'.format(attr_field))
-        emitter.emit_line('}')
-        emitter.emit_line()
-        # Native setter
-        emitter.emit_line(
-            'bool {}({} *self, {}value)'.format(native_setter_name(cl, attr, emitter.names),
-                                                cl.struct_name(emitter.names),
-                                                emitter.ctype_spaced(rtype)))
-        emitter.emit_line('{')
-        if rtype.is_refcounted:
-            emit_undefined_check(rtype, emitter, attr_field, '!=')
-            emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
-            emitter.emit_line('}')
-        # This steal the reference to src, so we don't need to increment the arg
-        emitter.emit_lines('self->{} = value;'.format(attr_field),
-                           'return 1;',
-                           '}')
-        emitter.emit_line()
-
-
 def generate_vtables(base: ClassIR,
                      vtable_setup_name: str,
                      vtable_name: str,
@@ -359,6 +386,18 @@ def generate_vtables(base: ClassIR,
     """Emit the vtables and vtable setup functions for a class.
 
     This includes both the primary vtable and any trait implementation vtables.
+    The trait vtables go before the main vtable, and have the following layout:
+        {
+            CPyType_T1,         // pointer to type object
+            C_T1_trait_vtable,  // pointer to array of method pointers
+            C_T1_offset_table,  // pointer to array of attribute offsets
+            CPyType_T2,
+            C_T2_trait_vtable,
+            C_T2_offset_table,
+            ...
+        }
+    The method implementations are calculated at the end of IR pass, attribute
+    offsets are {offsetof(native__C, _x1), offsetof(native__C, _y1), ...}.
 
     To account for both dynamic loading and dynamic class creation,
     vtables are populated dynamically at class creation time, so we
@@ -370,7 +409,6 @@ def generate_vtables(base: ClassIR,
 
     Returns the expression to use to refer to the vtable, which might be
     different than the name, if there are trait vtables.
-
     """
 
     def trait_vtable_name(trait: ClassIR) -> str:
@@ -378,14 +416,26 @@ def generate_vtables(base: ClassIR,
             base.name_prefix(emitter.names), trait.name_prefix(emitter.names),
             '_shadow' if shadow else '')
 
+    def trait_offset_table_name(trait: ClassIR) -> str:
+        return '{}_{}_offset_table'.format(
+            base.name_prefix(emitter.names), trait.name_prefix(emitter.names)
+        )
+
     # Emit array definitions with enough space for all the entries
     emitter.emit_line('static CPyVTableItem {}[{}];'.format(
         vtable_name,
-        max(1, len(base.vtable_entries) + 2 * len(base.trait_vtables))))
+        max(1, len(base.vtable_entries) + 3 * len(base.trait_vtables))))
+
     for trait, vtable in base.trait_vtables.items():
+        # Trait methods entry (vtable index -> method implementation).
         emitter.emit_line('static CPyVTableItem {}[{}];'.format(
             trait_vtable_name(trait),
             max(1, len(vtable))))
+        # Trait attributes entry (attribute number in trait -> offset in actual struct).
+        emitter.emit_line('static size_t {}[{}];'.format(
+            trait_offset_table_name(trait),
+            max(1, len(trait.attributes)))
+        )
 
     # Emit vtable setup function
     emitter.emit_line('static bool')
@@ -398,43 +448,59 @@ def generate_vtables(base: ClassIR,
     subtables = []
     for trait, vtable in base.trait_vtables.items():
         name = trait_vtable_name(trait)
+        offset_name = trait_offset_table_name(trait)
         generate_vtable(vtable, name, emitter, [], shadow)
-        subtables.append((trait, name))
+        generate_offset_table(offset_name, emitter, trait, base)
+        subtables.append((trait, name, offset_name))
 
     generate_vtable(base.vtable_entries, vtable_name, emitter, subtables, shadow)
 
     emitter.emit_line('return 1;')
     emitter.emit_line('}')
 
-    return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 2)
+    return vtable_name if not subtables else "{} + {}".format(vtable_name, len(subtables) * 3)
+
+
+def generate_offset_table(trait_offset_table_name: str,
+                          emitter: Emitter,
+                          trait: ClassIR,
+                          cl: ClassIR) -> None:
+    """Generate attribute offset row of a trait vtable."""
+    emitter.emit_line('size_t {}_scratch[] = {{'.format(trait_offset_table_name))
+    for attr in trait.attributes:
+        emitter.emit_line('offsetof({}, {}),'.format(
+            cl.struct_name(emitter.names), emitter.attr(attr)
+        ))
+    if not trait.attributes:
+        # This is for msvc.
+        emitter.emit_line('0')
+    emitter.emit_line('};')
+    emitter.emit_line('memcpy({name}, {name}_scratch, sizeof({name}));'.format(
+        name=trait_offset_table_name)
+    )
 
 
 def generate_vtable(entries: VTableEntries,
                     vtable_name: str,
                     emitter: Emitter,
-                    subtables: List[Tuple[ClassIR, str]],
+                    subtables: List[Tuple[ClassIR, str, str]],
                     shadow: bool) -> None:
     emitter.emit_line('CPyVTableItem {}_scratch[] = {{'.format(vtable_name))
     if subtables:
         emitter.emit_line('/* Array of trait vtables */')
-        for trait, table in subtables:
-            emitter.emit_line('(CPyVTableItem){}, (CPyVTableItem){},'.format(
-                emitter.type_struct_name(trait), table))
+        for trait, table, offset_table in subtables:
+            emitter.emit_line(
+                '(CPyVTableItem){}, (CPyVTableItem){}, (CPyVTableItem){},'.format(
+                    emitter.type_struct_name(trait), table, offset_table))
         emitter.emit_line('/* Start of real vtable */')
 
     for entry in entries:
-        if isinstance(entry, VTableMethod):
-            method = entry.shadow_method if shadow and entry.shadow_method else entry.method
-            emitter.emit_line('(CPyVTableItem){}{}{},'.format(
-                emitter.get_group_prefix(entry.method.decl),
-                NATIVE_PREFIX,
-                method.cname(emitter.names)))
-        else:
-            cl, attr, is_setter = entry
-            namer = native_setter_name if is_setter else native_getter_name
-            emitter.emit_line('(CPyVTableItem){}{},'.format(
-                emitter.get_group_prefix(cl),
-                namer(cl, attr, emitter.names)))
+        method = entry.shadow_method if shadow and entry.shadow_method else entry.method
+        emitter.emit_line('(CPyVTableItem){}{}{},'.format(
+            emitter.get_group_prefix(entry.method.decl),
+            NATIVE_PREFIX,
+            method.cname(emitter.names)))
+
     # msvc doesn't allow empty arrays; maybe allowing them at all is an extension?
     if not entries:
         emitter.emit_line('NULL')
@@ -466,6 +532,10 @@ def generate_setup_for_class(cl: ClassIR,
         emitter.emit_line('}')
     else:
         emitter.emit_line('self->vtable = {};'.format(vtable_name))
+
+    if cl.has_method('__call__') and emitter.use_vectorcall():
+        name = cl.method_decl('__call__').cname(emitter.names)
+        emitter.emit_line('self->vectorcall = {}{};'.format(PREFIX, name))
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
@@ -567,6 +637,27 @@ def generate_new_for_class(cl: ClassIR,
     emitter.emit_line('}')
 
 
+def generate_new_for_trait(cl: ClassIR,
+                           func_name: str,
+                           emitter: Emitter) -> None:
+    emitter.emit_line('static PyObject *')
+    emitter.emit_line(
+        '{}(PyTypeObject *type, PyObject *args, PyObject *kwds)'.format(func_name))
+    emitter.emit_line('{')
+    emitter.emit_line('if (type != {}) {{'.format(emitter.type_struct_name(cl)))
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, '
+        '"interpreted classes cannot inherit from compiled traits");'
+    )
+    emitter.emit_line('} else {')
+    emitter.emit_line(
+        'PyErr_SetString(PyExc_TypeError, "traits may not be directly created");'
+    )
+    emitter.emit_line('}')
+    emitter.emit_line('return NULL;')
+    emitter.emit_line('}')
+
+
 def generate_traverse_for_class(cl: ClassIR,
                                 func_name: str,
                                 emitter: Emitter) -> None:
@@ -622,8 +713,11 @@ def generate_dealloc_for_class(cl: ClassIR,
     emitter.emit_line('{}({} *self)'.format(dealloc_func_name, cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     emitter.emit_line('PyObject_GC_UnTrack(self);')
+    # The trashcan is needed to handle deep recursive deallocations
+    emitter.emit_line('CPy_TRASHCAN_BEGIN(self, {})'.format(dealloc_func_name))
     emitter.emit_line('{}(self);'.format(clear_func_name))
     emitter.emit_line('Py_TYPE(self)->tp_free((PyObject *)self);')
+    emitter.emit_line('CPy_TRASHCAN_END(self)')
     emitter.emit_line('}')
 
 
@@ -636,7 +730,11 @@ def generate_methods_table(cl: ClassIR,
             continue
         emitter.emit_line('{{"{}",'.format(fn.name))
         emitter.emit_line(' (PyCFunction){}{},'.format(PREFIX, fn.cname(emitter.names)))
-        flags = ['METH_VARARGS', 'METH_KEYWORDS']
+        if use_fastcall(emitter.capi_version):
+            flags = ['METH_FASTCALL']
+        else:
+            flags = ['METH_VARARGS']
+        flags.append('METH_KEYWORDS')
         if fn.decl.kind == FUNC_STATICMETHOD:
             flags.append('METH_STATIC')
         elif fn.decl.kind == FUNC_CLASSMETHOD:
@@ -747,7 +845,8 @@ def generate_getter(cl: ClassIR,
     emitter.emit_line('{}({} *self, void *closure)'.format(getter_name(cl, attr, emitter.names),
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
-    emit_undefined_check(rtype, emitter, attr_field, '==')
+    attr_expr = 'self->{}'.format(attr_field)
+    emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
     emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
     emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
                                                                     repr(cl.name)))
@@ -769,13 +868,26 @@ def generate_setter(cl: ClassIR,
         setter_name(cl, attr, emitter.names),
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
+
+    deletable = cl.is_deletable(attr)
+    if not deletable:
+        emitter.emit_line('if (value == NULL) {')
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "{} object attribute {} cannot be deleted");'.format(repr(cl.name),
+                                                                                    repr(attr)))
+        emitter.emit_line('return -1;')
+        emitter.emit_line('}')
+
     if rtype.is_refcounted:
-        emit_undefined_check(rtype, emitter, attr_field, '!=')
+        attr_expr = 'self->{}'.format(attr_field)
+        emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
         emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
         emitter.emit_line('}')
-    emitter.emit_line('if (value != NULL) {')
+
+    if deletable:
+        emitter.emit_line('if (value != NULL) {')
     if rtype.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', rtype, custom_failure='return -1;', declare_dest=True)
+        emitter.emit_unbox('value', 'tmp', rtype, error=ReturnHandler('-1'), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):
         emitter.emit_line('PyObject *tmp = value;')
     else:
@@ -784,8 +896,10 @@ def generate_setter(cl: ClassIR,
                            '    return -1;')
     emitter.emit_inc_ref('tmp', rtype)
     emitter.emit_line('self->{} = tmp;'.format(attr_field))
-    emitter.emit_line('} else')
-    emitter.emit_line('    self->{} = {};'.format(attr_field, emitter.c_undefined_value(rtype)))
+    if deletable:
+        emitter.emit_line('} else')
+        emitter.emit_line('    self->{} = {};'.format(attr_field,
+                                                      emitter.c_undefined_value(rtype)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -822,7 +936,7 @@ def generate_property_setter(cl: ClassIR,
         cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     if arg_type.is_unboxed:
-        emitter.emit_unbox('value', 'tmp', arg_type, custom_failure='return -1;',
+        emitter.emit_unbox('value', 'tmp', arg_type, error=ReturnHandler('-1'),
                            declare_dest=True)
         emitter.emit_line('{}{}((PyObject *) self, tmp);'.format(
                           NATIVE_PREFIX,
@@ -833,15 +947,3 @@ def generate_property_setter(cl: ClassIR,
                           func_ir.cname(emitter.names)))
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
-
-
-def emit_undefined_check(rtype: RType, emitter: Emitter, attr: str, compare: str) -> None:
-    if isinstance(rtype, RTuple):
-        attr_expr = 'self->{}'.format(attr)
-        emitter.emit_line(
-            'if ({}) {{'.format(
-                emitter.tuple_undefined_check_cond(
-                    rtype, attr_expr, emitter.c_undefined_value, compare)))
-    else:
-        emitter.emit_line(
-            'if (self->{} {} {}) {{'.format(attr, compare, emitter.c_undefined_value(rtype)))

@@ -15,6 +15,9 @@
 import sys
 import os
 
+from sphinx.application import Sphinx
+from sphinx.util.docfields import Field
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -275,3 +278,16 @@ intersphinx_mapping = {
     'monkeytype': ('https://monkeytype.readthedocs.io/en/latest', None),
     'setuptools': ('https://setuptools.readthedocs.io/en/latest', None),
 }
+
+
+def setup(app: Sphinx) -> None:
+    app.add_object_type(
+        'confval',
+        'confval',
+        objname='configuration value',
+        indextemplate='pair: %s; configuration value',
+        doc_field_types=[
+            Field('type', label='Type', has_arg=False, names=('type',)),
+            Field('default', label='Default', has_arg=False, names=('default',)),
+        ]
+    )

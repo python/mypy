@@ -197,6 +197,14 @@ the following aspects, among others:
   defined in terms of translating them to C or C++. Mypy just uses
   Python semantics, and mypy does not deal with accessing C library
   functionality.
+  
+Does it run on PyPy?
+*********************
+
+Somewhat. With PyPy 3.8, mypy is at least able to type check itself.
+With older versions of PyPy, mypy relies on `typed-ast 
+<https://github.com/python/typed_ast>`_, which uses several APIs that
+PyPy does not support (including some internal CPython APIs).
 
 Mypy is a cool project. Can I help?
 ***********************************

@@ -1,7 +1,12 @@
 import os
 
 from mypy.options import Options
-from mypy.modulefinder import FindModuleCache, SearchPaths, ModuleNotFoundReason
+from mypy.modulefinder import (
+    FindModuleCache,
+    SearchPaths,
+    ModuleNotFoundReason,
+    expand_site_packages
+)
 
 from mypy.test.helpers import Suite, assert_equal
 from mypy.test.config import package_path
@@ -27,11 +32,11 @@ class ModuleFinderSuite(Suite):
         )
         options = Options()
         options.namespace_packages = True
-        self.fmc_ns = FindModuleCache(self.search_paths, options=options)
+        self.fmc_ns = FindModuleCache(self.search_paths, fscache=None, options=options)
 
         options = Options()
         options.namespace_packages = False
-        self.fmc_nons = FindModuleCache(self.search_paths, options=options)
+        self.fmc_nons = FindModuleCache(self.search_paths, fscache=None, options=options)
 
     def test__no_namespace_packages__nsx(self) -> None:
         """
@@ -143,23 +148,22 @@ class ModuleFinderSitePackagesSuite(Suite):
             package_path,
             "modulefinder-site-packages",
         ))
+
+        egg_dirs, site_packages = expand_site_packages([self.package_dir])
+
         self.search_paths = SearchPaths(
             python_path=(),
-            mypy_path=(
-                os.path.join(data_path, "pkg1"),
-            ),
-            package_path=(
-                self.package_dir,
-            ),
+            mypy_path=(os.path.join(data_path, "pkg1"),),
+            package_path=tuple(egg_dirs + site_packages),
             typeshed_path=(),
         )
         options = Options()
         options.namespace_packages = True
-        self.fmc_ns = FindModuleCache(self.search_paths, options=options)
+        self.fmc_ns = FindModuleCache(self.search_paths, fscache=None, options=options)
 
         options = Options()
         options.namespace_packages = False
-        self.fmc_nons = FindModuleCache(self.search_paths, options=options)
+        self.fmc_nons = FindModuleCache(self.search_paths, fscache=None, options=options)
 
     def path(self, *parts: str) -> str:
         return os.path.join(self.package_dir, *parts)
@@ -180,6 +184,13 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
+            # Namespace package without stub package
+            ("ns_pkg_w_stubs", self.path("ns_pkg_w_stubs")),
+            ("ns_pkg_w_stubs.typed", self.path("ns_pkg_w_stubs-stubs", "typed", "__init__.pyi")),
+            ("ns_pkg_w_stubs.typed_inline",
+                self.path("ns_pkg_w_stubs", "typed_inline", "__init__.py")),
+            ("ns_pkg_w_stubs.untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
             # Regular package with py.typed
             ("pkg_typed", self.path("pkg_typed", "__init__.py")),
             ("pkg_typed.a", self.path("pkg_typed", "a.py")),
@@ -197,6 +208,12 @@ class ModuleFinderSitePackagesSuite(Suite):
             # Top-level Python file in site-packages
             ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following .pth files
+            ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
+            ("ns_baz_pkg.a", self.path("baz", "ns_baz_pkg", "a.py")),
+            ("neighbor_pkg", self.path("..", "modulefinder-src", "neighbor_pkg", "__init__.py")),
+            ("ns_neighbor_pkg.a", self.path("..", "modulefinder-src", "ns_neighbor_pkg", "a.py")),
 
             # Something that doesn't exist
             ("does_not_exist", ModuleNotFoundReason.NOT_FOUND),
@@ -229,6 +246,13 @@ class ModuleFinderSitePackagesSuite(Suite):
             ("ns_pkg_untyped.b.c", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("ns_pkg_untyped.a.a_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
+            # Namespace package without stub package
+            ("ns_pkg_w_stubs", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_w_stubs.typed", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+            ("ns_pkg_w_stubs.typed_inline",
+                self.path("ns_pkg_w_stubs", "typed_inline", "__init__.py")),
+            ("ns_pkg_w_stubs.untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
             # Regular package with py.typed
             ("pkg_typed", self.path("pkg_typed", "__init__.py")),
             ("pkg_typed.a", self.path("pkg_typed", "a.py")),
@@ -246,6 +270,12 @@ class ModuleFinderSitePackagesSuite(Suite):
             # Top-level Python file in site-packages
             ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following .pth files
+            ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
+            ("ns_baz_pkg.a", ModuleNotFoundReason.NOT_FOUND),
+            ("neighbor_pkg", self.path("..", "modulefinder-src", "neighbor_pkg", "__init__.py")),
+            ("ns_neighbor_pkg.a", ModuleNotFoundReason.NOT_FOUND),
 
             # Something that doesn't exist
             ("does_not_exist", ModuleNotFoundReason.NOT_FOUND),

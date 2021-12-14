@@ -157,7 +157,7 @@ class B(metaclass=ABCMeta):
   @abstractmethod
   def f(self): pass
 A() # OK
-B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "f"
 [out]
 
 [case testInstantiatingClassWithInheritedAbstractMethod]
@@ -169,7 +169,7 @@ class A(metaclass=ABCMeta):
   @abstractmethod
   def g(self): pass
 class B(A): pass
-B() # E: Cannot instantiate abstract class 'B' with abstract attributes 'f' and 'g'
+B() # E: Cannot instantiate abstract class "B" with abstract attributes "f" and "g"
 [out]
 
 [case testInstantiationAbstractsInTypeForFunctions]
@@ -187,7 +187,7 @@ class C(B):
 def f(cls: Type[A]) -> A:
     return cls()  # OK
 def g() -> A:
-    return A()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+    return A()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 
 f(A)  # E: Only concrete class can be given where "Type[A]" is expected
 f(B)  # E: Only concrete class can be given where "Type[A]" is expected
@@ -213,7 +213,7 @@ def f(cls: Type[A]) -> A:
 
 Alias = A
 GoodAlias = C
-Alias()  # E: Cannot instantiate abstract class 'A' with abstract attribute 'm'
+Alias()  # E: Cannot instantiate abstract class "A" with abstract attribute "m"
 GoodAlias()
 f(Alias)  # E: Only concrete class can be given where "Type[A]" is expected
 f(GoodAlias)
@@ -293,7 +293,7 @@ class A(metaclass=ABCMeta):
     def i(self): pass
     @abstractmethod
     def j(self): pass
-a = A() # E: Cannot instantiate abstract class 'A' with abstract attributes 'a', 'b', ... and 'j' (7 methods suppressed)
+a = A() # E: Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
 [out]
 
 
@@ -311,7 +311,9 @@ class A(metaclass=ABCMeta):
     def g(self, x: int) -> int: pass
 class B(A):
     def f(self, x: str) -> int: \
-            # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int"
+            # E: Argument 1 of "f" is incompatible with supertype "A"; supertype defines the argument type as "int" \
+            # N: This violates the Liskov substitution principle \
+            # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         pass
     def g(self, x: int) -> int: pass
 [out]
@@ -327,7 +329,9 @@ class J(metaclass=ABCMeta):
     def g(self, x: str) -> str: pass
 class A(I, J):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int"
+        # E: Argument 1 of "f" is incompatible with supertype "I"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
     def g(self, x: str) -> int: pass \
         # E: Return type "int" of "g" incompatible with return type "str" in supertype "J"
     def h(self) -> int: pass # Not related to any base class
@@ -342,7 +346,9 @@ class J(metaclass=ABCMeta):
 class I(J): pass
 class A(I):
     def f(self, x: str) -> int: pass \
-        # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int"
+        # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "int" \
+        # N: This violates the Liskov substitution principle \
+        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testInvalidOverridingAbstractMethod]
@@ -353,7 +359,9 @@ class J(metaclass=ABCMeta):
     def f(self, x: 'J') -> None: pass
 class I(J):
     @abstractmethod
-    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "J"
+    def f(self, x: 'I') -> None: pass # E: Argument 1 of "f" is incompatible with supertype "J"; supertype defines the argument type as "J" \
+                                      # N: This violates the Liskov substitution principle \
+                                      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 [out]
 
 [case testAbstractClassCoAndContraVariance]
@@ -375,6 +383,8 @@ class A(I):
         pass
 [out]
 main:11: error: Argument 1 of "h" is incompatible with supertype "I"; supertype defines the argument type as "I"
+main:11: note: This violates the Liskov substitution principle
+main:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
 main:11: error: Return type "I" of "h" incompatible with return type "A" in supertype "I"
 
 
@@ -432,9 +442,13 @@ class I(metaclass=ABCMeta):
     def g(self, x): pass
 class A(I):
     def f(self, x): pass
-    def g(self, x, y) -> None: pass \
-        # E: Signature of "g" incompatible with supertype "I"
+    def g(self, x, y) -> None: pass  # Fail
 [out]
+main:10: error: Signature of "g" incompatible with supertype "I"
+main:10: note:      Superclass:
+main:10: note:          def g(self, x: Any) -> Any
+main:10: note:      Subclass:
+main:10: note:          def g(self, x: Any, y: Any) -> None
 
 [case testAbstractClassWithAllDynamicTypes2]
 from abc import abstractmethod, ABCMeta
@@ -514,8 +528,8 @@ class D(A, B):
 class E(A, B):
   def f(self) -> None: pass
   def g(self) -> None: pass
-C() # E: Cannot instantiate abstract class 'C' with abstract attribute 'g'
-D() # E: Cannot instantiate abstract class 'D' with abstract attribute 'f'
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "g"
+D() # E: Cannot instantiate abstract class "D" with abstract attribute "f"
 E()
 
 [case testInconsistentMro]
@@ -545,7 +559,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"
 B()
 B().f(1)
 a = B() # type: A
@@ -575,7 +589,7 @@ class B(A):
   def f(self, x: int) -> int: pass
   @overload
   def f(self, x: str) -> str: pass
-A() # E: Cannot instantiate abstract class 'A' with abstract attribute 'f'
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"
 B()
 B().f(1)
 a = B() # type: A
@@ -728,7 +742,7 @@ class A(metaclass=ABCMeta):
     @abstractproperty
     def x(self) -> int: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E: Cannot instantiate abstract class "B" with abstract attribute "x"
 
 [case testInstantiateClassWithReadWriteAbstractProperty]
 from abc import abstractproperty, ABCMeta
@@ -738,7 +752,7 @@ class A(metaclass=ABCMeta):
     @x.setter
     def x(self, x: int) -> None: pass
 class B(A): pass
-b = B() # E: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+b = B() # E: Cannot instantiate abstract class "B" with abstract attribute "x"
 
 [case testImplementAbstractPropertyViaProperty]
 from abc import abstractproperty, ABCMeta
@@ -793,7 +807,7 @@ b.x.y # E
 [builtins fixtures/property.pyi]
 [out]
 main:7: error: Property "x" defined in "A" is read-only
-main:8: error: Cannot instantiate abstract class 'B' with abstract attribute 'x'
+main:8: error: Cannot instantiate abstract class "B" with abstract attribute "x"
 main:9: error: "int" has no attribute "y"
 
 [case testSuperWithAbstractProperty]
@@ -942,15 +956,15 @@ class A:
 
     class C(B): pass
 
-A.B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'
-A.C()  # E: Cannot instantiate abstract class 'C' with abstract attribute 'f'
+A.B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"
+A.C()  # E: Cannot instantiate abstract class "C" with abstract attribute "f"
 
 [case testAbstractNewTypeAllowed]
 from typing import NewType, Mapping
 
 Config = NewType('Config', Mapping[str, str])
 
-bad = Mapping[str, str]()  # E: Cannot instantiate abstract class 'Mapping' with abstract attribute '__iter__'
+bad = Mapping[str, str]()  # E: Cannot instantiate abstract class "Mapping" with abstract attribute "__iter__"
 default = Config({'cannot': 'modify'})  # OK
 
 default[1] = 2  # E: Unsupported target for indexed assignment ("Config")
@@ -990,17 +1004,17 @@ my_abstract_types = {
   'B': MyAbstractB,
 }
 
-reveal_type(my_concrete_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
-reveal_type(my_abstract_types)  # N: Revealed type is 'builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]'
+reveal_type(my_concrete_types)  # N: Revealed type is "builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]"
+reveal_type(my_abstract_types)  # N: Revealed type is "builtins.dict[builtins.str*, def () -> __main__.MyAbstractType]"
 
 a = my_concrete_types['A']()
 a.do()
 b = my_concrete_types['B']()
 b.do()
 
-c = my_abstract_types['A']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+c = my_abstract_types['A']()  # E: Cannot instantiate abstract class "MyAbstractType" with abstract attribute "do"
 c.do()
-d = my_abstract_types['B']()  # E: Cannot instantiate abstract class 'MyAbstractType' with abstract attribute 'do'
+d = my_abstract_types['B']()  # E: Cannot instantiate abstract class "MyAbstractType" with abstract attribute "do"
 d.do()
 
 [builtins fixtures/dict.pyi]

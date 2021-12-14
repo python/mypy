@@ -1,7 +1,4 @@
-import sys
 from typing import Optional, Callable
-
-from mypy.nodes import Context
 from mypy.plugin import Plugin, MethodContext, FunctionContext
 from mypy.types import Type
 
@@ -21,12 +18,12 @@ class ArgKindsPlugin(Plugin):
 
 
 def extract_arg_kinds_from_function(ctx: FunctionContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
+    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
     return ctx.default_return_type
 
 
 def extract_arg_kinds_from_method(ctx: MethodContext) -> Type:
-    ctx.api.fail(str(ctx.arg_kinds), ctx.context)
+    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
     return ctx.default_return_type
 
 

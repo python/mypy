@@ -40,14 +40,19 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
                     if isinstance(x, list):
                         # Keep track of which node a list is associated with.
                         inferred[id(x)] = '%s (list)' % n
+                    if isinstance(x, tuple):
+                        # Keep track of which node a list is associated with.
+                        inferred[id(x)] = '%s (tuple)' % n
 
             for k in get_class_descriptors(type(obj)):
                 x = getattr(obj, k, None)
                 if isinstance(x, list):
                     inferred[id(x)] = '%s (list)' % n
+                if isinstance(x, tuple):
+                    inferred[id(x)] = '%s (tuple)' % n
 
-    freqs = {}  # type: Dict[str, int]
-    memuse = {}  # type: Dict[str, int]
+    freqs: Dict[str, int] = {}
+    memuse: Dict[str, int] = {}
     for obj in objs:
         if id(obj) in inferred:
             name = inferred[id(obj)]

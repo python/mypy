@@ -14,7 +14,7 @@ from mypy.util import correct_relative_import
 from mypy.types import (
     Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.errorcodes import ErrorCode
 from mypy import join
 
@@ -22,7 +22,7 @@ from mypy import join
 # (after the main pass):
 
 # Fix fallbacks (does joins)
-PRIORITY_FALLBACKS = 1  # type: Final
+PRIORITY_FALLBACKS: Final = 1
 
 
 @trait
@@ -73,6 +73,16 @@ class SemanticAnalyzerCoreInterface:
         """Is this the final iteration of semantic analysis?"""
         raise NotImplementedError
 
+    @abstractmethod
+    def is_future_flag_set(self, flag: str) -> bool:
+        """Is the specific __future__ feature imported"""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def is_stub_file(self) -> bool:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -91,11 +101,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         raise NotImplementedError
 
@@ -105,14 +116,15 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  allow_required: bool = False,
                   report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
     @abstractmethod
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
         raise NotImplementedError
 
     @abstractmethod
@@ -221,4 +233,4 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     """
     fallback = typ.partial_fallback
     assert fallback.type.fullname == 'builtins.tuple'
-    fallback.args[0] = join.join_type_list(list(typ.items))
+    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]

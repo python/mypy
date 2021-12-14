@@ -9,28 +9,31 @@ will take precedence. If your specialized op doesn't seem to be used,
 check that the priorities are configured properly.
 """
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
-from mypyc.ir.rtypes import object_rprimitive, int_rprimitive, bool_rprimitive
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC
+from mypyc.ir.rtypes import (
+    object_rprimitive, int_rprimitive, bool_rprimitive, c_int_rprimitive, pointer_rprimitive,
+    object_pointer_rprimitive, c_size_t_rprimitive, c_pyssize_t_rprimitive
+)
 from mypyc.primitives.registry import (
-    binary_op, unary_op, func_op, method_op, custom_op, call_emit, simple_emit,
-    call_negative_bool_emit, call_negative_magic_emit, negative_int_emit
+    binary_op, unary_op, method_op, function_op, custom_op, ERR_NEG_INT
 )
 
 
 # Binary operations
 
-for op, opid in [('==', 'Py_EQ'),
-                 ('!=', 'Py_NE'),
-                 ('<', 'Py_LT'),
-                 ('<=', 'Py_LE'),
-                 ('>', 'Py_GT'),
-                 ('>=', 'Py_GE')]:
+for op, opid in [('==', 2),   # PY_EQ
+                 ('!=', 3),   # PY_NE
+                 ('<',  0),   # PY_LT
+                 ('<=', 1),   # PY_LE
+                 ('>',  4),   # PY_GT
+                 ('>=', 5)]:  # PY_GE
     # The result type is 'object' since that's what PyObject_RichCompare returns.
-    binary_op(op=op,
+    binary_op(name=op,
               arg_types=[object_rprimitive, object_rprimitive],
-              result_type=object_rprimitive,
+              return_type=object_rprimitive,
+              c_function_name='PyObject_RichCompare',
               error_kind=ERR_MAGIC,
-              emit=simple_emit('{dest} = PyObject_RichCompare({args[0]}, {args[1]}, %s);' % opid),
+              extra_int_constants=[(opid, c_int_rprimitive)],
               priority=0)
 
 for op, funcname in [('+', 'PyNumber_Add'),
@@ -43,12 +46,13 @@ for op, funcname in [('+', 'PyNumber_Add'),
                      ('>>', 'PyNumber_Rshift'),
                      ('&', 'PyNumber_And'),
                      ('^', 'PyNumber_Xor'),
-                     ('|', 'PyNumber_Or')]:
-    binary_op(op=op,
+                     ('|', 'PyNumber_Or'),
+                     ('@', 'PyNumber_MatrixMultiply')]:
+    binary_op(name=op,
               arg_types=[object_rprimitive, object_rprimitive],
-              result_type=object_rprimitive,
+              return_type=object_rprimitive,
+              c_function_name=funcname,
               error_kind=ERR_MAGIC,
-              emit=call_emit(funcname),
               priority=0)
 
 for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
@@ -63,40 +67,29 @@ for op, funcname in [('+=', 'PyNumber_InPlaceAdd'),
                      ('&=', 'PyNumber_InPlaceAnd'),
                      ('^=', 'PyNumber_InPlaceXor'),
                      ('|=', 'PyNumber_InPlaceOr')]:
-    binary_op(op=op,
+    binary_op(name=op,
               arg_types=[object_rprimitive, object_rprimitive],
-              result_type=object_rprimitive,
+              return_type=object_rprimitive,
+              c_function_name=funcname,
               error_kind=ERR_MAGIC,
-              emit=call_emit(funcname),
               priority=0)
 
-binary_op(op='**',
+binary_op(name='**',
           arg_types=[object_rprimitive, object_rprimitive],
-          result_type=object_rprimitive,
+          return_type=object_rprimitive,
           error_kind=ERR_MAGIC,
-          emit=simple_emit('{dest} = PyNumber_Power({args[0]}, {args[1]}, Py_None);'),
+          c_function_name='CPyNumber_Power',
           priority=0)
 
-binary_op('in',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_MAGIC,
-          emit=negative_int_emit('{dest} = PySequence_Contains({args[1]}, {args[0]});'),
-          priority=0)
-
-binary_op('is',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_NEVER,
-          emit=simple_emit('{dest} = {args[0]} == {args[1]};'),
-          priority=0)
-
-binary_op('is not',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_NEVER,
-          emit=simple_emit('{dest} = {args[0]} != {args[1]};'),
-          priority=0)
+binary_op(
+    name='in',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PySequence_Contains',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    ordering=[1, 0],
+    priority=0)
 
 
 # Unary operations
@@ -104,153 +97,173 @@ binary_op('is not',
 for op, funcname in [('-', 'PyNumber_Negative'),
                      ('+', 'PyNumber_Positive'),
                      ('~', 'PyNumber_Invert')]:
-    unary_op(op=op,
+    unary_op(name=op,
              arg_type=object_rprimitive,
-             result_type=object_rprimitive,
+             return_type=object_rprimitive,
+             c_function_name=funcname,
              error_kind=ERR_MAGIC,
-             emit=call_emit(funcname),
              priority=0)
 
-unary_op(op='not',
-         arg_type=object_rprimitive,
-         result_type=bool_rprimitive,
-         error_kind=ERR_MAGIC,
-         format_str='{dest} = not {args[0]}',
-         emit=call_negative_magic_emit('PyObject_Not'),
-         priority=0)
-
+unary_op(
+    name='not',
+    arg_type=object_rprimitive,
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_Not',
+    error_kind=ERR_NEG_INT,
+    truncated_type=bool_rprimitive,
+    priority=0)
 
 # obj1[obj2]
-method_op('__getitem__',
+method_op(name='__getitem__',
           arg_types=[object_rprimitive, object_rprimitive],
-          result_type=object_rprimitive,
+          return_type=object_rprimitive,
+          c_function_name='PyObject_GetItem',
           error_kind=ERR_MAGIC,
-          emit=call_emit('PyObject_GetItem'),
           priority=0)
 
 # obj1[obj2] = obj3
-method_op('__setitem__',
-          arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_FALSE,
-          emit=call_negative_bool_emit('PyObject_SetItem'),
-          priority=0)
+method_op(
+    name='__setitem__',
+    arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_SetItem',
+    error_kind=ERR_NEG_INT,
+    priority=0)
 
 # del obj1[obj2]
-method_op('__delitem__',
-          arg_types=[object_rprimitive, object_rprimitive],
-          result_type=bool_rprimitive,
-          error_kind=ERR_FALSE,
-          emit=call_negative_bool_emit('PyObject_DelItem'),
-          priority=0)
+method_op(
+    name='__delitem__',
+    arg_types=[object_rprimitive, object_rprimitive],
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_DelItem',
+    error_kind=ERR_NEG_INT,
+    priority=0)
 
 # hash(obj)
-func_op(
+function_op(
     name='builtins.hash',
     arg_types=[object_rprimitive],
-    result_type=int_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyObject_Hash'))
+    return_type=int_rprimitive,
+    c_function_name='CPyObject_Hash',
+    error_kind=ERR_MAGIC)
 
 # getattr(obj, attr)
-py_getattr_op = func_op(
+py_getattr_op = function_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('PyObject_GetAttr')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_GetAttr',
+    error_kind=ERR_MAGIC)
 
 # getattr(obj, attr, default)
-func_op(
+function_op(
     name='builtins.getattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    emit=call_emit('CPyObject_GetAttr3')
-)
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_GetAttr3',
+    error_kind=ERR_MAGIC)
 
 # setattr(obj, attr, value)
-py_setattr_op = func_op(
+py_setattr_op = function_op(
     name='builtins.setattr',
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PyObject_SetAttr')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_SetAttr',
+    error_kind=ERR_NEG_INT)
 
 # hasattr(obj, attr)
-py_hasattr_op = func_op(
+py_hasattr_op = function_op(
     name='builtins.hasattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_NEVER,
-    emit=call_emit('PyObject_HasAttr')
-)
+    return_type=bool_rprimitive,
+    c_function_name='PyObject_HasAttr',
+    error_kind=ERR_NEVER)
 
 # del obj.attr
-py_delattr_op = func_op(
+py_delattr_op = function_op(
     name='builtins.delattr',
     arg_types=[object_rprimitive, object_rprimitive],
-    result_type=bool_rprimitive,
-    error_kind=ERR_FALSE,
-    emit=call_negative_bool_emit('PyObject_DelAttr')
-)
+    return_type=c_int_rprimitive,
+    c_function_name='PyObject_DelAttr',
+    error_kind=ERR_NEG_INT)
 
 # Call callable object with N positional arguments: func(arg1, ..., argN)
 # Arguments are (func, arg1, ..., argN).
 py_call_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    is_var_arg=True,
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='PyObject_CallFunctionObjArgs',
     error_kind=ERR_MAGIC,
-    format_str='{dest} = py_call({comma_args})',
-    emit=simple_emit('{dest} = PyObject_CallFunctionObjArgs({comma_args}, NULL);'))
+    var_arg_type=object_rprimitive,
+    extra_int_constants=[(0, pointer_rprimitive)])
+
+# Call callable object using positional and/or keyword arguments (Python 3.8+)
+py_vectorcall_op = custom_op(
+    arg_types=[object_rprimitive,  # Callable
+               object_pointer_rprimitive,  # Args (PyObject **)
+               c_size_t_rprimitive,  # Number of positional args
+               object_rprimitive],  # Keyword arg names tuple (or NULL)
+    return_type=object_rprimitive,
+    c_function_name='_PyObject_Vectorcall',
+    error_kind=ERR_MAGIC)
+
+# Call method using positional and/or keyword arguments (Python 3.9+)
+py_vectorcall_method_op = custom_op(
+    arg_types=[object_rprimitive,  # Method name
+               object_pointer_rprimitive,  # Args, including self (PyObject **)
+               c_size_t_rprimitive,  # Number of positional args, including self
+               object_rprimitive],  # Keyword arg names tuple (or NULL)
+    return_type=object_rprimitive,
+    c_function_name='PyObject_VectorcallMethod',
+    error_kind=ERR_MAGIC)
 
 # Call callable object with positional + keyword args: func(*args, **kwargs)
 # Arguments are (func, *args tuple, **kwargs dict).
 py_call_with_kwargs_op = custom_op(
     arg_types=[object_rprimitive, object_rprimitive, object_rprimitive],
-    result_type=object_rprimitive,
-    error_kind=ERR_MAGIC,
-    format_str='{dest} = py_call_with_kwargs({args[0]}, {args[1]}, {args[2]})',
-    emit=call_emit('PyObject_Call'))
+    return_type=object_rprimitive,
+    c_function_name='PyObject_Call',
+    error_kind=ERR_MAGIC)
 
 # Call method with positional arguments: obj.method(arg1, ...)
 # Arguments are (object, attribute name, arg1, ...).
 py_method_call_op = custom_op(
-    arg_types=[object_rprimitive],
-    result_type=object_rprimitive,
-    is_var_arg=True,
+    arg_types=[],
+    return_type=object_rprimitive,
+    c_function_name='CPyObject_CallMethodObjArgs',
     error_kind=ERR_MAGIC,
-    format_str='{dest} = py_method_call({comma_args})',
-    emit=simple_emit('{dest} = PyObject_CallMethodObjArgs({comma_args}, NULL);'))
+    var_arg_type=object_rprimitive,
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # len(obj)
-func_op(name='builtins.len',
-        arg_types=[object_rprimitive],
-        result_type=int_rprimitive,
-        error_kind=ERR_NEVER,
-        emit=call_emit('CPyObject_Size'),
-        priority=0)
+generic_len_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyObject_Size',
+    error_kind=ERR_MAGIC)
+
+# len(obj)
+# same as generic_len_op, however return py_ssize_t
+generic_ssize_t_len_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=c_pyssize_t_rprimitive,
+    c_function_name='PyObject_Size',
+    error_kind=ERR_NEG_INT)
 
 # iter(obj)
-iter_op = func_op(name='builtins.iter',
-                  arg_types=[object_rprimitive],
-                  result_type=object_rprimitive,
-                  error_kind=ERR_MAGIC,
-                  emit=call_emit('PyObject_GetIter'))
-
+iter_op = function_op(name='builtins.iter',
+                      arg_types=[object_rprimitive],
+                      return_type=object_rprimitive,
+                      c_function_name='PyObject_GetIter',
+                      error_kind=ERR_MAGIC)
 # next(iterator)
 #
 # Although the error_kind is set to be ERR_NEVER, this can actually
 # return NULL, and thus it must be checked using Branch.IS_ERROR.
-next_op = custom_op(name='next',
-                    arg_types=[object_rprimitive],
-                    result_type=object_rprimitive,
-                    error_kind=ERR_NEVER,
-                    emit=call_emit('PyIter_Next'))
-
+next_op = custom_op(arg_types=[object_rprimitive],
+                    return_type=object_rprimitive,
+                    c_function_name='PyIter_Next',
+                    error_kind=ERR_NEVER)
 # next(iterator)
 #
 # Do a next, don't swallow StopIteration, but also don't propagate an
@@ -258,8 +271,7 @@ next_op = custom_op(name='next',
 # represent an implicit StopIteration, but if StopIteration is
 # *explicitly* raised this will not swallow it.)
 # Can return NULL: see next_op.
-next_raw_op = custom_op(name='next',
-                        arg_types=[object_rprimitive],
-                        result_type=object_rprimitive,
-                        error_kind=ERR_NEVER,
-                        emit=call_emit('CPyIter_Next'))
+next_raw_op = custom_op(arg_types=[object_rprimitive],
+                        return_type=object_rprimitive,
+                        c_function_name='CPyIter_Next',
+                        error_kind=ERR_NEVER)
