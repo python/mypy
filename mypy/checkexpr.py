@@ -14,6 +14,7 @@ from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
 )
+from mypy.semanal_enum import ENUM_BASES
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -1000,9 +1001,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if (isinstance(callable_node, RefExpr)
-            and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
-                                           'enum.Flag', 'enum.IntFlag')):
+        if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 
@@ -2415,7 +2414,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            return '__truediv__' if 'division' in self.chk.future_import_flags else '__div__'
+            # TODO also check for "from __future__ import division"
+            return '__div__'
         else:
             return operators.op_methods[op]
 
@@ -2862,13 +2862,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         with (self.msg.disable_errors() if right_map is None else nullcontext()):
             right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
+        if left_map is None and right_map is None:
+            return UninhabitedType()
+
         if right_map is None:
             # The boolean expression is statically known to be the left value
-            assert left_map is not None  # find_isinstance_check guarantees this
+            assert left_map is not None
             return left_type
         if left_map is None:
             # The boolean expression is statically known to be the right value
-            assert right_map is not None  # find_isinstance_check guarantees this
+            assert right_map is not None
             return right_type
 
         if e.op == 'and':
@@ -3925,13 +3928,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type],
                             allow_none_return: bool = False) -> Type:
-        # We need to be have the correct amount of binder frames.
-        # Sometimes it can be missing for unreachable parts.
-        with (
-            self.chk.binder.frame_context(can_skip=True, fall_through=0)
-            if len(self.chk.binder.frames) > 1
-            else self.chk.binder.top_frame_context()
-        ):
+        with self.chk.binder.frame_context(can_skip=True, fall_through=0):
             if map is None:
                 # We still need to type check node, in case we want to
                 # process it for isinstance checks later

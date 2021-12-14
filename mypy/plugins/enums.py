@@ -18,15 +18,13 @@ from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, ge
 from mypy.typeops import make_simplified_union
 from mypy.nodes import TypeInfo
 from mypy.subtypes import is_equivalent
+from mypy.semanal_enum import ENUM_BASES
 
-# Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
-# enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
-ENUM_PREFIXES: Final = {"enum.Enum", "enum.IntEnum", "enum.Flag", "enum.IntFlag"}
-ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_PREFIXES} | {
-    "{}._name_".format(prefix) for prefix in ENUM_PREFIXES
+ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_BASES} | {
+    "{}._name_".format(prefix) for prefix in ENUM_BASES
 }
-ENUM_VALUE_ACCESS: Final = {"{}.value".format(prefix) for prefix in ENUM_PREFIXES} | {
-    "{}._value_".format(prefix) for prefix in ENUM_PREFIXES
+ENUM_VALUE_ACCESS: Final = {"{}.value".format(prefix) for prefix in ENUM_BASES} | {
+    "{}._value_".format(prefix) for prefix in ENUM_BASES
 }
 
 

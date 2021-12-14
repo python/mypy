@@ -119,6 +119,7 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
                   tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  allow_required: bool = False,
                   report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
