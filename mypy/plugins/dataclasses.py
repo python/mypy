@@ -279,7 +279,9 @@ class DataclassTransformer:
         unsafe_hash = decorator_arguments.get('unsafe_hash', False)
         eq = decorator_arguments['eq']
         frozen = decorator_arguments['frozen']
-        existing = '__hash__' in info.names
+
+        existing_hash = info.names.get('__hash__')
+        existing = existing_hash and not existing_hash.plugin_generated
 
         # https://github.com/python/cpython/blob/24af9a40a8f85af813ea89998aa4e931fcc78cd9/Lib/dataclasses.py#L846
         if ((not unsafe_hash and not eq and not frozen)

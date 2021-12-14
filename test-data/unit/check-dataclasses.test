@@ -1690,3 +1690,16 @@ class SecondCase:
     def __hash__(self) -> int: pass
 reveal_type(SecondCase(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
 [builtins fixtures/dataclasses.pyi]
+
+[case testSemanalTwoPassesWhileHashGeneration]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+a = f()  # Forward ref to force two semantic analysis passes
+
+@dataclass(unsafe_hash=True)  # Used to be an error here:
+class C:  # Cannot overwrite attribute "__hash__" in class "C"
+    x: str
+
+def f(): pass
+[builtins fixtures/dataclasses.pyi]
