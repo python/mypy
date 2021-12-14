@@ -83,6 +83,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     headers: HTTPMessage
     version: int
     debuglevel: int
+    fp: io.BufferedReader
     closed: bool
     status: int
     reason: str

@@ -3,7 +3,7 @@ from typing import Union, List
 from mypy.nodes import TypeInfo
 
 from mypy.erasetype import erase_typevars
-from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType
+from mypy.types import Instance, TypeVarType, TupleType, Type, TypeOfAny, AnyType, ParamSpecType
 
 
 def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
@@ -16,10 +16,15 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
     for i in range(len(typ.defn.type_vars)):
         tv = typ.defn.type_vars[i]
         # Change the line number
-        tv = TypeVarType(
-            tv.name, tv.fullname, tv.id, tv.values,
-            tv.upper_bound, tv.variance, line=-1, column=-1,
-        )
+        if isinstance(tv, TypeVarType):
+            tv = TypeVarType(
+                tv.name, tv.fullname, tv.id, tv.values,
+                tv.upper_bound, tv.variance, line=-1, column=-1,
+            )
+        else:
+            assert isinstance(tv, ParamSpecType)
+            tv = ParamSpecType(tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound,
+                               line=-1, column=-1)
         tvs.append(tv)
     inst = Instance(typ, tvs)
     if typ.tuple_type is None:

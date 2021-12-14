@@ -78,21 +78,21 @@ Quick start
 
 Mypy can be installed using pip:
 
-    $ python3 -m pip install -U mypy
+    python3 -m pip install -U mypy
 
 If you want to run the latest version of the code, you can install from git:
 
-    $ python3 -m pip install -U git+git://github.com/python/mypy.git
+    python3 -m pip install -U git+git://github.com/python/mypy.git
 
 
 Now you can type-check the [statically typed parts] of a program like this:
 
-    $ mypy PROGRAM
+    mypy PROGRAM
 
 You can always use the Python interpreter to run your statically typed
 programs, even if mypy reports type errors:
 
-    $ python3 PROGRAM
+    python3 PROGRAM
 
 You can also try mypy in an [online playground](https://mypy-play.net/) (developed by
 Yusuke Miyazaki).
@@ -162,7 +162,7 @@ mypy approximately 4 times faster than if interpreted!
 
 To install an interpreted mypy instead, use:
 
-    $ python3 -m pip install --no-binary mypy -U mypy
+    python3 -m pip install --no-binary mypy -U mypy
 
 To use a compiled version of a development
 version of mypy, directly install a binary from

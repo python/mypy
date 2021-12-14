@@ -64,6 +64,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_type_var(self, t: types.TypeVarType) -> Set[str]:
         return self._visit(t.values) | self._visit(t.upper_bound)
 
+    def visit_param_spec(self, t: types.ParamSpecType) -> Set[str]:
+        return set()
+
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(t.args)
         if t.type:

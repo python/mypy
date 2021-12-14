@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsWrite
 from types import FrameType, TracebackType
-from typing import IO, Any, Generator, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, Type
+from typing import IO, Any, Generator, Iterable, Iterator, List, Mapping, Optional, Tuple, Type
 
 _PT = Tuple[str, int, str, Optional[str]]
 
@@ -90,7 +90,7 @@ class TracebackException:
             lookup_lines: bool = ...,
             capture_locals: bool = ...,
             compact: bool = ...,
-            _seen: Set[int] | None = ...,
+            _seen: set[int] | None = ...,
         ) -> None: ...
         @classmethod
         def from_exception(
@@ -112,7 +112,7 @@ class TracebackException:
             limit: int | None = ...,
             lookup_lines: bool = ...,
             capture_locals: bool = ...,
-            _seen: Set[int] | None = ...,
+            _seen: set[int] | None = ...,
         ) -> None: ...
         @classmethod
         def from_exception(

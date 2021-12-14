@@ -18,7 +18,7 @@ def f(): ...  # E: Function is missing a return type annotation \
 def d(f): ...  # type: ignore
 @d
 # type: ignore
-def f(): ...  # type: ignore  # E: unused "type: ignore" comment
+def f(): ...  # type: ignore  # E: Unused "type: ignore" comment
 
 [case testIgnoreDecoratedFunction2]
 # flags: --disallow-untyped-defs
@@ -91,28 +91,28 @@ def g(x: int): ...
 
 [case testIgnoreScopeUnused1]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused "type: ignore" comment
-    "IGNORE"  # type: ignore  # E: unused "type: ignore" comment
-    +  # type: ignore  # E: unused "type: ignore" comment
+(  # type: ignore  # E: Unused "type: ignore" comment
+    "IGNORE"  # type: ignore  # E: Unused "type: ignore" comment
+    +  # type: ignore  # E: Unused "type: ignore" comment
     0  # type: ignore
-)  # type: ignore  # E: unused "type: ignore" comment
+)  # type: ignore  # E: Unused "type: ignore" comment
 [builtins fixtures/primitives.pyi]
 
 [case testIgnoreScopeUnused2]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused "type: ignore" comment
+(  # type: ignore  # E: Unused "type: ignore" comment
     "IGNORE"
     -  # type: ignore
-    0  # type: ignore  # E: unused "type: ignore" comment
-)  # type: ignore  # E: unused "type: ignore" comment
+    0  # type: ignore  # E: Unused "type: ignore" comment
+)  # type: ignore  # E: Unused "type: ignore" comment
 
 [case testIgnoreScopeUnused3]
 # flags: --warn-unused-ignores
-(  # type: ignore  # E: unused "type: ignore" comment
+(  # type: ignore  # E: Unused "type: ignore" comment
     "IGNORE"
     /
     0  # type: ignore
-)  # type: ignore  # E: unused "type: ignore" comment
+)  # type: ignore  # E: Unused "type: ignore" comment
 
 [case testPEP570ArgTypesMissing]
 # flags: --disallow-untyped-defs
@@ -546,3 +546,27 @@ def foo() -> None:
     x = 0
     [x := x + y for y in [1, 2, 3]]
 [builtins fixtures/dict.pyi]
+
+[case testOverloadWithPositionalOnlySelf]
+from typing import overload, Optional
+
+class Foo:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload
+    def f(self, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:  # E: Overloaded function implementation does not accept all possible arguments of signature 2
+        ...
+
+class Bar:
+    @overload
+    def f(self, a: str, /) -> None: ...
+
+    @overload  # Notice `/` in sig below:
+    def f(self, /, *, b: bool = False) -> None: ...
+
+    def f(self, a: Optional[str] = None, /, *, b: bool = False) -> None:
+        ...
+[builtins fixtures/bool.pyi]

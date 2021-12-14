@@ -66,6 +66,7 @@ def is_special_target(right: ProperType) -> bool:
         if right.type_object().fullname in (
             'mypy.types.UnboundType',
             'mypy.types.TypeVarType',
+            'mypy.types.ParamSpecType',
             'mypy.types.RawExpressionType',
             'mypy.types.EllipsisType',
             'mypy.types.StarType',

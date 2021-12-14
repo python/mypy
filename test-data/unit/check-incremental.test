@@ -3671,7 +3671,7 @@ pass
 [out]
 [out2]
 [out3]
-tmp/a.py:2: error: unused "type: ignore" comment
+tmp/a.py:2: error: Unused "type: ignore" comment
 
 -- Test that a non cache_fine_grained run can use a fine-grained cache
 [case testRegularUsesFgCache]
@@ -5583,5 +5583,30 @@ from foo import bar
 bar.x + 0
 [file foo/bar.py]
 x = 0
+[rechecked]
+[stale]
+
+[case testExplicitReexportImportCycleWildcard]
+# flags: --no-implicit-reexport
+import pkg.a
+[file pkg/__init__.pyi]
+
+[file pkg/a.pyi]
+MYPY = False
+if MYPY:
+    from pkg.b import B
+
+[file pkg/b.pyi]
+import pkg.a
+MYPY = False
+if MYPY:
+    from pkg.c import C
+class B:
+    pass
+
+[file pkg/c.pyi]
+from pkg.a import *
+class C:
+    pass
 [rechecked]
 [stale]

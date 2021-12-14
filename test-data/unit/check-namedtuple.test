@@ -1060,3 +1060,24 @@ def bad3() -> NamedTuple:
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testBoolInTuplesRegression]
+# https://github.com/python/mypy/issues/11701
+from typing import NamedTuple, Literal, List, Tuple
+
+C = NamedTuple("C", [("x", Literal[True, False])])
+
+T = Tuple[Literal[True, False]]
+
+# Was error here:
+# Incompatible types in assignment (expression has type "List[C]", variable has type "List[C]")
+x: List[C] = [C(True)]
+
+t: T
+
+# Was error here:
+# Incompatible types in assignment (expression has type "List[Tuple[bool]]",
+# variable has type "List[Tuple[Union[Literal[True], Literal[False]]]]")
+y: List[T] = [t]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

@@ -200,23 +200,34 @@ def verify_mypyfile(
         yield Error(object_path, "is not a module", stub, runtime)
         return
 
-    # Check things in the stub that are public
+    # Check things in the stub
     to_check = set(
         m
         for m, o in stub.names.items()
-        # TODO: change `o.module_public` to `not o.module_hidden`
-        if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
+        if not o.module_hidden and (not m.startswith("_") or hasattr(runtime, m))
     )
-    runtime_public_contents = [
-        m
-        for m in dir(runtime)
-        if not m.startswith("_")
-        # Ensure that the object's module is `runtime`, since in the absence of __all__ we don't
-        # have a good way to detect re-exports at runtime.
-        and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
-    ]
-    # Check all things declared in module's __all__, falling back to runtime_public_contents
-    to_check.update(getattr(runtime, "__all__", runtime_public_contents))
+
+    def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        obj = getattr(r, attr)
+        obj_mod = getattr(obj, "__module__", None)
+        if obj_mod is not None:
+            return obj_mod == r.__name__
+        return not isinstance(obj, types.ModuleType)
+
+    runtime_public_contents = (
+        runtime.__all__
+        if hasattr(runtime, "__all__")
+        else [
+            m
+            for m in dir(runtime)
+            if not m.startswith("_")
+            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
+            # don't have a good way to detect re-exports at runtime.
+            and _belongs_to_runtime(runtime, m)
+        ]
+    )
+    # Check all things declared in module's __all__, falling back to our best guess
+    to_check.update(runtime_public_contents)
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
 
     for entry in sorted(to_check):
@@ -1229,7 +1240,11 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         description="Compares stubs to objects introspected from the runtime."
     )
     parser.add_argument("modules", nargs="*", help="Modules to test")
-    parser.add_argument("--concise", action="store_true", help="Make output concise")
+    parser.add_argument(
+        "--concise",
+        action="store_true",
+        help="Makes stubtest's output more concise, one line per error",
+    )
     parser.add_argument(
         "--ignore-missing-stub",
         action="store_true",
@@ -1241,12 +1256,6 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
     )
     parser.add_argument(
-        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
-    )
-    parser.add_argument(
-        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
-    )
-    parser.add_argument(
         "--allowlist",
         "--whitelist",
         action="append",
@@ -1254,7 +1263,8 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         default=[],
         help=(
             "Use file as an allowlist. Can be passed multiple times to combine multiple "
-            "allowlists. Allowlists can be created with --generate-allowlist"
+            "allowlists. Allowlists can be created with --generate-allowlist. Allowlists "
+            "support regular expressions."
         ),
     )
     parser.add_argument(
@@ -1269,18 +1279,19 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         action="store_true",
         help="Ignore unused allowlist entries",
     )
-    config_group = parser.add_argument_group(
-        title='mypy config file',
-        description="Use a config file instead of command line arguments. "
-                    "Plugins and mypy path are the only supported "
-                    "configurations.",
-    )
-    config_group.add_argument(
-        '--mypy-config-file',
+    parser.add_argument(
+        "--mypy-config-file",
+        metavar="FILE",
         help=(
-            "An existing mypy configuration file, currently used by stubtest to help "
-            "determine mypy path and plugins"
+            "Use specified mypy config file to determine mypy plugins "
+            "and mypy path"
         ),
+    )
+    parser.add_argument(
+        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+    )
+    parser.add_argument(
+        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
 
     return parser.parse_args(args)

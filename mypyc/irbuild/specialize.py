@@ -57,6 +57,34 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
+def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
+                          name: Optional[str], typ: Optional[RType] = None) -> Optional[Value]:
+    # TODO: Allow special cases to have default args or named args. Currently they don't since
+    #       they check that everything in arg_kinds is ARG_POS.
+
+    # If there is a specializer for this function, try calling it.
+    # Return the first successful one.
+    if name and (name, typ) in specializers:
+        for specializer in specializers[name, typ]:
+            val = specializer(builder, expr, callee)
+            if val is not None:
+                return val
+    return None
+
+
+def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr,
+                                  callee: RefExpr) -> Optional[Value]:
+    """Invoke the Specializer callback for a function if one has been registered"""
+    return _apply_specialization(builder, expr, callee, callee.fullname)
+
+
+def apply_method_specialization(builder: 'IRBuilder', expr: CallExpr, callee: MemberExpr,
+                                typ: Optional[RType] = None) -> Optional[Value]:
+    """Invoke the Specializer callback for a method if one has been registered"""
+    name = callee.fullname if typ is None else callee.name
+    return _apply_specialization(builder, expr, callee, name, typ)
+
+
 def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
     """Decorator to register a function as being a specializer.
@@ -185,6 +213,34 @@ def translate_set_from_generator_call(
     return None
 
 
+@specialize_function('builtins.min')
+@specialize_function('builtins.max')
+def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if expr.arg_kinds == [ARG_POS, ARG_POS]:
+        x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
+        result = Register(builder.node_type(expr))
+        # CPython evaluates arguments reversely when calling min(...) or max(...)
+        if callee.fullname == 'builtins.min':
+            comparison = builder.binary_op(y, x, '<', expr.line)
+        else:
+            comparison = builder.binary_op(y, x, '>', expr.line)
+
+        true_block, false_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
+        builder.add_bool_branch(comparison, true_block, false_block)
+
+        builder.activate_block(true_block)
+        builder.assign(result, builder.coerce(y, result.type, expr.line), expr.line)
+        builder.goto(next_block)
+
+        builder.activate_block(false_block)
+        builder.assign(result, builder.coerce(x, result.type, expr.line), expr.line)
+        builder.goto(next_block)
+
+        builder.activate_block(next_block)
+        return result
+    return None
+
+
 @specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
@@ -301,10 +357,12 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
 
 
 @specialize_function('dataclasses.field')
+@specialize_function('attr.ib')
+@specialize_function('attr.attrib')
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    """Special case for 'dataclasses.field' and 'attr.Factory'
+    """Special case for 'dataclasses.field', 'attr.attrib', and 'attr.Factory'
     function calls because the results of such calls are type-checked
     by mypy using the types of the arguments to their respective
     functions, resulting in attempted coercions by mypyc that throw a
