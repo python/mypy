@@ -5424,7 +5424,7 @@ def f_f(arg): ...
 
 
 [case testOverloadIfBasic]
-# flags: --always-true True
+# flags: --always-true True --always-false False
 from typing import overload
 
 class A: ...
@@ -5448,7 +5448,7 @@ reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
 def f2(g: A) -> A: ...
 @overload
 def f2(g: B) -> B: ...
-if not True:
+if False:
     @overload
     def f2(g: C) -> C: ...
 def f2(g): ...
@@ -5457,6 +5457,21 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
     # N: Possible overload variants: \
     # N:     def f2(g: A) -> A \
     # N:     def f2(g: B) -> B \
+    # N: Revealed type is "Any"
+
+@overload
+def f3(g: A) -> A: ...
+@overload
+def f3(g: B) -> B: ...
+if maybe_true:
+    @overload
+    def f3(g: C) -> C: ...
+def f3(g): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(C()))  # E: No overload variant of "f3" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f3(g: A) -> A \
+    # N:     def f3(g: B) -> B \
     # N: Revealed type is "Any"
 
 [case testOverloadIfSysVersion]
@@ -5496,7 +5511,7 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
     # N:     def f2(g: A) -> A \
     # N:     def f2(g: B) -> B \
     # N: Revealed type is "Any"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/ops.pyi]
 
 [case testOverloadIfMerging]
 # flags: --always-true True
@@ -6009,7 +6024,7 @@ reveal_type(f1(C()))  # E: No overload variant of "f1" matches argument type "C"
 
 if True:
     @overload  # E: Single overload definition, multiple required
-    def g1(x: A) -> A: ...
+    def g2(x: A) -> A: ...
 @overload
 def f2(x: B) -> B: ...
 @overload
@@ -6066,7 +6081,7 @@ reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 [case testOverloadIfMixed]
 # flags: --always-true True --always-false False
-from typing import overload
+from typing import overload, TYPE_CHECKING
 
 class A: ...
 class B: ...
