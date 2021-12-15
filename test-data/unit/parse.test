@@ -935,10 +935,8 @@ MypyFile:1(
 x not y
 [out]
 main:1: error: invalid syntax
-[out version>=3.10]
+[out version==3.10.0]
 main:1: error: invalid syntax. Perhaps you forgot a comma?
-[out version>=3.10.1]
-main:1: error: invalid syntax
 
 [case testNotIs]
 x not is y # E: invalid syntax
@@ -948,10 +946,8 @@ x not is y # E: invalid syntax
 1 ~ 2
 [out]
 main:1: error: invalid syntax
-[out version>=3.10]
+[out version==3.10.0]
 main:1: error: invalid syntax. Perhaps you forgot a comma?
-[out version>=3.10.1]
-main:1: error: invalid syntax
 
 [case testSliceInList39]
 # flags: --python-version 3.9
