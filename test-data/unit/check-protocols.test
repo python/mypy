@@ -843,9 +843,9 @@ T_co = TypeVar('T_co', covariant=True)
 T_contra = TypeVar('T_contra', contravariant=True)
 
 class Proto(Protocol[T_co, T_contra]):  # type: ignore
-    def one(self, x: T_co) -> None:  # E: Cannot use a covariant type variable as a parameter
+    def one(self, x: T_co) -> None:  # E: This usage of this covariant type variable is unsafe as an input parameter.$NLIf this is intentional and you know what you are doing, you can ignore this line with 'unsafe-variance'
         pass
-    def other(self) -> T_contra:  # E: Cannot use a contravariant type variable as return type
+    def other(self) -> T_contra:  # E: This usage of this contravariant type variable is unsafe as a return type.$NLIf this is intentional and you know what you are doing, you can ignore this line with 'unsafe-variance'
         pass
 
 # Check that we respect user overrides of variance after the errors are reported
