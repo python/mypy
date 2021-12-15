@@ -449,6 +449,7 @@ class ASTConverter:
         current_overload_name: Optional[str] = None
         last_if_stmt: Optional[IfStmt] = None
         last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
+        last_if_stmt_overload_name: Optional[str] = None
         for stmt in stmts:
             if_overload_name: Optional[str] = None
             if_block_with_overload: Optional[Block] = None
@@ -502,8 +503,13 @@ class ASTConverter:
             else:
                 if last_if_stmt is not None:
                     ret.append(last_if_stmt)
+                    last_if_stmt_overload_name = current_overload_name
                     last_if_stmt, last_if_overload = None, None
 
+                if current_overload and current_overload_name == last_if_stmt_overload_name:
+                    # Remove last stmt (IfStmt) from ret if the overload names matched
+                    # Only happens if no executable block had been found in IfStmt
+                    ret.pop()
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
@@ -520,15 +526,16 @@ class ASTConverter:
                 elif (
                     isinstance(stmt, IfStmt)
                     and if_overload_name is not None
-                    and if_block_with_overload is not None
                 ):
                     current_overload = []
                     current_overload_name = if_overload_name
                     last_if_stmt = stmt
-                    last_if_overload = cast(
-                        Union[Decorator, FuncDef, OverloadedFuncDef],
-                        if_block_with_overload.body[0]
-                    )
+                    last_if_stmt_overload_name = None
+                    if if_block_with_overload is not None:
+                        last_if_overload = cast(
+                            Union[Decorator, FuncDef, OverloadedFuncDef],
+                            if_block_with_overload.body[0]
+                        )
                 else:
                     current_overload = []
                     current_overload_name = None
