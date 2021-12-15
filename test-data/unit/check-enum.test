@@ -1392,7 +1392,7 @@ Medal.silver = 2  # E: Cannot assign to final attribute "silver"
 from enum import Enum
 class Types(Enum):
     key = 0
-    value = 1  # E: Cannot override writable attribute "value" with a final one
+    value = 1
 
 
 [case testEnumReusedKeys]
@@ -1676,4 +1676,29 @@ from enum import Enum
 class A(Enum):
     class Inner: pass
 class B(A): pass  # E: Cannot inherit from final class "A"
+[builtins fixtures/bool.pyi]
+
+
+[case testEnumFinalSpecialProps]
+# https://github.com/python/mypy/issues/11699
+from enum import Enum, IntEnum
+
+class E(Enum):
+    name = 'a'
+    value = 'b'
+    _name_ = 'a1'
+    _value_ = 'b2'
+    _order_ = 'X Y'
+    __order__ = 'X Y'
+
+class EI(IntEnum):
+    name = 'a'
+    value = 1
+    _name_ = 'a1'
+    _value_ = 2
+    _order_ = 'X Y'
+    __order__ = 'X Y'
+
+E._order_ = 'a'  # E: Cannot assign to final attribute "_order_"
+EI.value = 2     # E: Cannot assign to final attribute "value"
 [builtins fixtures/bool.pyi]

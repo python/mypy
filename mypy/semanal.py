@@ -116,7 +116,7 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_typeddict import TypedDictAnalyzer
-from mypy.semanal_enum import EnumCallAnalyzer
+from mypy.semanal_enum import EnumCallAnalyzer, ENUM_BASES
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
     infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
@@ -1554,8 +1554,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self.fail('Cannot subclass "NewType"', defn)
                 if (
                     base.type.is_enum
-                    and base.type.fullname not in (
-                        'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag')
+                    and base.type.fullname not in ENUM_BASES
                     and base.type.names
                     and any(not isinstance(n.node, (FuncBase, Decorator))
                             for n in base.type.names.values())
@@ -4612,7 +4611,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         names = self.current_symbol_table(escape_comprehensions=escape_comprehensions)
         existing = names.get(name)
         if isinstance(symbol.node, PlaceholderNode) and can_defer:
-            self.defer(context)
+            if context is not None:
+                self.process_placeholder(name, 'name', context)
+            else:
+                # see note in docstring describing None contexts
+                self.defer()
         if (existing is not None
                 and context is not None
                 and not is_valid_replacement(existing, symbol)):

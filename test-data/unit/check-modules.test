@@ -3132,3 +3132,42 @@ main:2: error: Cannot find implementation or library stub for module named "blea
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
+
+[case testCyclicUndefinedImportWithName]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar1]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar2]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from c import *
+[file c.py]
+from a import *
+[out]
+tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar3]
+import test1
+[file test1.py]
+from dir1 import *
+[file dir1/__init__.py]
+from .test2 import *
+[file dir1/test2.py]
+from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
