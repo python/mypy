@@ -1485,7 +1485,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
 
-[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
@@ -2212,7 +2212,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass

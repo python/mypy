@@ -3123,7 +3123,7 @@ MypyFile:1(
         NameExpr(x)
         NameExpr(y)))))
 
-[case testConditionalExpressionInListComprehension]
+[case testConditionalExpressionInListComprehension2]
 a = [ 1 if x else 2 for x in y ]
 [out]
 MypyFile:1(
@@ -3329,7 +3329,7 @@ MypyFile:1()
 [out]
 MypyFile:1()
 
-[case testLatinUnixEncoding]
+[case testLatinUnixEncoding2]
 # coding: iso-latin-1
 [out]
 MypyFile:1()

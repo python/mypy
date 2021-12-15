@@ -338,7 +338,7 @@ main:1: error: Cannot find implementation or library stub for module named "a"
 main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 b.py:1: error: Cannot find implementation or library stub for module named "a"
 
-[case testDeleteFileWithBlockingError-only_when_cache]
+[case testDeleteFileWithBlockingError2-only_when_cache]
 -- Different cache/no-cache tests because:
 -- Error message ordering differs
 import a
@@ -521,7 +521,7 @@ a.py:1: error: invalid syntax. Perhaps you forgot a comma?
 b.py:2: error: Incompatible return value type (got "str", expected "int")
 ==
 
-[case testDecodeErrorBlocker-posix]
+[case testDecodeErrorBlocker1-posix]
 import a
 a.f(1)
 [file a.py]
@@ -537,7 +537,7 @@ mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in posi
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlocker-windows]
+[case testDecodeErrorBlocker2-windows]
 import a
 a.f(1)
 [file a.py]
