@@ -557,7 +557,7 @@ class ASTConverter:
         # Multiple overloads have already been merged as OverloadedFuncDef.
         if not (
             len(stmt.body[0].body) == 1
-            or isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+            and isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
         ):
             return None
 

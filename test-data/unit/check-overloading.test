@@ -6065,7 +6065,7 @@ else:
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 [case testOverloadIfMixed]
-# flags: --always-true True
+# flags: --always-true True --always-false False
 from typing import overload
 
 class A: ...
@@ -6101,3 +6101,13 @@ if True:
     def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+
+# Don't crash with AssignmentStmt if elif
+@overload  # E: Single overload definition, multiple required
+def f4(x: A) -> A: ...
+if False:
+    @overload
+    def f4(x: B) -> B: ...
+elif True:
+    var = 1
+def f4(x): ...  # E: Name "f4" already defined on line 39
