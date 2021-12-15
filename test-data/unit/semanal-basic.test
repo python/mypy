@@ -286,7 +286,7 @@ MypyFile:1(
         NameExpr(x* [l])
         NameExpr(None [builtins.None])))))
 
-[case testGlobalDeclScope]
+[case testGlobalDeclScope2]
 x = None
 def f():
     global x

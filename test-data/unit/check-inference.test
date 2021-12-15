@@ -2614,7 +2614,7 @@ class C(B):
 reveal_type(B.x)  # N: Revealed type is "None"
 reveal_type(C.x)  # N: Revealed type is "None"
 
-[case testLocalPartialTypesWithInheritance2]
+[case testLocalPartialTypesWithInheritance3]
 # flags: --local-partial-types
 from typing import Optional
 
@@ -2652,7 +2652,7 @@ class C:
     def f(self, x) -> None:
         C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
 
-[case testLocalPartialTypesAccessPartialNoneAttribute]
+[case testLocalPartialTypesAccessPartialNoneAttribute2]
 # flags: --local-partial-types
 class C:
     a = None  # E: Need type annotation for "a"

@@ -1486,7 +1486,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
 
-[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any

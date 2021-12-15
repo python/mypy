@@ -502,7 +502,7 @@ reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str*"
 [builtins fixtures/bool.pyi]
 
 
-[case testAttrsGenericInheritance]
+[case testAttrsGenericInheritance2]
 from typing import Generic, TypeVar
 import attr
 
