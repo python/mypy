@@ -18,7 +18,7 @@ from mypy.nodes import (
 
 from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
-    Branch, NO_TRACEBACK_LINE_NO
+    Branch, MethodCall, Op, NO_TRACEBACK_LINE_NO
 )
 from mypyc.ir.rtypes import RInstance, exc_rtuple
 from mypyc.primitives.generic_ops import py_delattr_op
@@ -561,13 +561,32 @@ def transform_with(builder: IRBuilder,
     # We could probably optimize the case where the manager is compiled by us,
     # but that is not our common case at all, so.
     mgr_v = builder.accept(expr)
-    typ = builder.call_c(type_op, [mgr_v], line)
-    exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
-    value = builder.py_call(
-        builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
-    )
+    is_native = isinstance(mgr_v.type, RInstance)
+    if is_native:
+        value = builder.add(MethodCall(mgr_v, "__enter__", args=[], line=line))
+        exit_ = None
+    else:
+        typ = builder.call_c(type_op, [mgr_v], line)
+        exit_ = builder.maybe_spill(builder.py_get_attr(typ, '__exit__', line))
+        value = builder.py_call(
+            builder.py_get_attr(typ, '__enter__', line), [mgr_v], line
+        )
     mgr = builder.maybe_spill(mgr_v)
     exc = builder.maybe_spill_assignable(builder.true())
+
+    def maybe_natively_call_exit(exc_info: bool) -> Value:
+        if exc_info:
+            args = get_sys_exc_info(builder)
+        else:
+            none = builder.none_object()
+            args = [none, none, none]
+
+        if is_native:
+            return builder.add(MethodCall(builder.read(mgr), "__exit__", args=args, line=line))
+        else:
+            assert exit_ is not None
+            return builder.py_call(builder.read(exit_),
+                            [builder.read(mgr)] + args, line)
 
     def try_body() -> None:
         if target:
@@ -578,8 +597,7 @@ def transform_with(builder: IRBuilder,
         builder.assign(exc, builder.false(), line)
         out_block, reraise_block = BasicBlock(), BasicBlock()
         builder.add_bool_branch(
-            builder.py_call(builder.read(exit_),
-                            [builder.read(mgr)] + get_sys_exc_info(builder), line),
+            maybe_natively_call_exit(exc_info=True),
             out_block,
             reraise_block
         )
@@ -594,10 +612,7 @@ def transform_with(builder: IRBuilder,
             Branch(builder.read(exc), exit_block, out_block, Branch.BOOL)
         )
         builder.activate_block(exit_block)
-        none = builder.none_object()
-        builder.py_call(
-            builder.read(exit_), [builder.read(mgr), none, none, none], line
-        )
+        maybe_natively_call_exit(exc_info=False)
         builder.goto_and_activate(out_block)
 
     transform_try_finally_stmt(

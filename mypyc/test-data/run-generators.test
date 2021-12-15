@@ -189,6 +189,23 @@ yooo? a
 exit! a exception!
 ((1,), 'exception!')
 
+[case testWithNative]
+class DummyContext:
+    def __init__(self) -> None:
+        self.x = 0
+
+    def __enter__(self) -> None:
+        self.x += 1
+
+    def __exit__(self, exc_type, exc_value, exc_tb) -> None:
+        self.x -= 1
+
+def test_basic() -> None:
+    context = DummyContext()
+    with context:
+        assert context.x == 1
+    assert context.x == 0
+
 [case testYieldNested]
 from typing import Callable, Generator
 
