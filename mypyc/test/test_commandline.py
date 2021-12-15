@@ -47,7 +47,7 @@ class TestCommandLine(MypycDataSuite):
         out = b''
         try:
             # Compile program
-            cmd = subprocess.run([sys.executable, '-m', 'mypyc', *args],
+            cmd = subprocess.run([sys.executable, '-m', 'mypyc', '--legacy', *args],
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd='tmp')
             if 'ErrorOutput' in testcase.name or cmd.returncode != 0:
                 out += cmd.stdout

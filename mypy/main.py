@@ -506,13 +506,19 @@ def process_options(args: List[str],
         help="Show program's version number and exit",
         stdout=stdout)
 
-    general_group.add_argument(
+    based_group = parser.add_argument_group(
+        title='Based functionality arguments')
+    based_group.add_argument(
         '--write-baseline', action="store_true",
         help="Create an error baseline from the result of this execution")
-    general_group.add_argument(
+    based_group.add_argument(
         '--baseline-file', action='store',
         help="Use baseline info in the given file"
              "(defaults to '{}')".format(defaults.BASELINE_FILE))
+    based_group.add_argument(
+        '--legacy', action='store_true',
+        help="Disable all based functionality")
+
     config_group = parser.add_argument_group(
         title='Config file',
         description="Use a config file instead of command line arguments. "
@@ -928,9 +934,12 @@ def process_options(args: List[str],
     if config_file and not os.path.exists(config_file):
         parser.error(f"Cannot find config file '{config_file}'")
 
-    based_enabled_codes = (
-        {"redundant-expr", "truthy-bool", "ignore-without-code", "unused-awaitable"}
-    )
+    if dummy.legacy:
+        mypy.options._based = False
+
+    based_enabled_codes = {
+        "redundant-expr", "truthy-bool", "ignore-without-code", "unused-awaitable",
+    } if mypy.options._based else set()
 
     options = Options()
 

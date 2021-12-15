@@ -23,6 +23,8 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
 
     The argument contains the description of the test case.
     """
+    import mypy.options
+    mypy.options._based = False
     options = Options()
     options.show_traceback = True
 

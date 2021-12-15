@@ -59,6 +59,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append('--show-traceback')
+    args.append('--legacy')
     if '--error-summary' not in args:
         args.append('--no-error-summary')
     # Type check the program.
@@ -67,6 +68,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     env.pop('COLUMNS', None)
     extra_path = os.path.join(os.path.abspath(test_temp_dir), 'pypath')
     env['PYTHONPATH'] = PREFIX
+    env["__MYPY_UNDER_TEST__"] = "1"
     if os.path.isdir(extra_path):
         env['PYTHONPATH'] += os.pathsep + extra_path
     process = subprocess.Popen(fixed + args,

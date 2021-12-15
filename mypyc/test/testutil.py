@@ -99,7 +99,10 @@ def build_ir_for_single_file2(input_lines: List[str],
     # By default generate IR compatible with the earliest supported Python C API.
     # If a test needs more recent API features, this should be overridden.
     compiler_options = compiler_options or CompilerOptions(capi_version=(3, 5))
+    import mypy.options
+    mypy.options._based = False
     options = Options()
+    options.legacy = True
     options.show_traceback = True
     options.use_builtins_fixtures = True
     options.strict_optional = True

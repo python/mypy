@@ -123,7 +123,7 @@ b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has 
 
 [case testErrorCodeWarnUnusedIgnores1]
 # flags: --warn-unused-ignores
-x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment
+x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores2]
 # flags: --warn-unused-ignores
@@ -131,19 +131,19 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 
 [case testErrorCodeWarnUnusedIgnores3]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores4]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores5]
 # flags: --warn-unused-ignores
-"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment  [unused-ignore]
 
 [case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
 # flags: --warn-unused-ignores
-"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
+"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment  [unused-ignore]
 
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
