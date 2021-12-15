@@ -450,6 +450,7 @@ class ASTConverter:
         last_if_stmt: Optional[IfStmt] = None
         last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
         last_if_stmt_overload_name: Optional[str] = None
+        skipped_if_stmts: List[IfStmt] = []
         for stmt in stmts:
             if_overload_name: Optional[str] = None
             if_block_with_overload: Optional[Block] = None
@@ -466,6 +467,8 @@ class ASTConverter:
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name == current_overload_name):
+                if last_if_stmt is not None:
+                    skipped_if_stmts.append(last_if_stmt)
                 if last_if_overload is not None:
                     # Last stmt was an IfStmt with same overload name
                     # Add overloads to current_overload
@@ -484,6 +487,7 @@ class ASTConverter:
                 # Check if stmts are reachable and add them to current_overload,
                 # otherwise skip IfStmt to allow subsequent overload
                 # or function definitions.
+                skipped_if_stmts.append(stmt)
                 if if_block_with_overload is None:
                     continue
                 if last_if_overload is not None:
@@ -509,7 +513,14 @@ class ASTConverter:
                 if current_overload and current_overload_name == last_if_stmt_overload_name:
                     # Remove last stmt (IfStmt) from ret if the overload names matched
                     # Only happens if no executable block had been found in IfStmt
-                    ret.pop()
+                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                if current_overload and skipped_if_stmts:
+                    # Add bare IfStmt (without overloads) to ret
+                    # Required for mypy to be able to still check conditions
+                    for if_stmt in skipped_if_stmts:
+                        ASTConverter._strip_contents_from_if_stmt(if_stmt)
+                        ret.append(if_stmt)
+                    skipped_if_stmts = []
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
@@ -541,6 +552,12 @@ class ASTConverter:
                     current_overload_name = None
                     ret.append(stmt)
 
+        if current_overload and skipped_if_stmts:
+            # Add bare IfStmt (without overloads) to ret
+            # Required for mypy to be able to still check conditions
+            for if_stmt in skipped_if_stmts:
+                ASTConverter._strip_contents_from_if_stmt(if_stmt)
+                ret.append(if_stmt)
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
@@ -603,6 +620,21 @@ class ASTConverter:
                 return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
             return stmt.else_body
         return None
+
+    @staticmethod
+    def _strip_contents_from_if_stmt(stmt: IfStmt) -> None:
+        """Remove contents from IfStmt.
+
+        Needed to still be able to check the conditions after the contents
+        have been merged with the surrunding function overloads.
+        """
+        if len(stmt.body) == 1:
+            stmt.body[0].body = []
+        if stmt.else_body and len(stmt.else_body.body) == 1:
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                ASTConverter._strip_contents_from_if_stmt(stmt.else_body.body[0])
+            else:
+                stmt.else_body.body = []
 
     def in_method_scope(self) -> bool:
         return self.class_and_function_stack[-2:] == ['C', 'F']

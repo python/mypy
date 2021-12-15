@@ -5463,7 +5463,7 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 def f3(g: A) -> A: ...
 @overload
 def f3(g: B) -> B: ...
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f3(g: C) -> C: ...
 def f3(g): ...
@@ -5777,7 +5777,7 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
 elif True:
@@ -5795,7 +5795,7 @@ reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B"
 
 @overload  # E: Single overload definition, multiple required
 def f4(x: A) -> A: ...
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f4(x: B) -> B: ...
 else:
@@ -5844,7 +5844,7 @@ def f2(x: A) -> A: ...
 if False:
     @overload
     def f2(x: B) -> B: ...
-elif maybe_true:
+elif maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f2(x: C) -> C: ...
 else:
@@ -5859,7 +5859,7 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
 elif False:
@@ -5891,13 +5891,13 @@ class D: ...
 
 @overload  # E: Single overload definition, multiple required
 def f1(x: A) -> A: ...
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f1(x: B) -> B: ...
 def f1(x): ...
 reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
 
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     @overload
     def f2(x: A) -> A: ...
 @overload
@@ -5914,14 +5914,14 @@ reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A"
 if True:
     @overload  # E: Single overload definition, multiple required
     def f3(x: A) -> A: ...
-    if maybe_true:
+    if maybe_true:  # E: Name "maybe_true" is not defined
         @overload
         def f3(x: B) -> B: ...
     def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 if True:
-    if maybe_true:
+    if maybe_true:  # E: Name "maybe_true" is not defined
         @overload
         def f4(x: A) -> A: ...
     @overload
@@ -6139,7 +6139,7 @@ reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
 # Test from check-functions - testUnconditionalRedefinitionOfConditionalFunction
 # If IfStmt only contains FuncDef, block is ignore if uncertain about execution
 # Necessary to be able to ignore always-false cases
-if maybe_true:
+if maybe_true:  # E: Name "maybe_true" is not defined
     def f6(x): ...
 def f6(x): ...
 
@@ -6161,4 +6161,41 @@ reveal_type(f8(C()))  # E: No overload variant of "f8" matches argument type "C"
     # N:     def f8(x: A) -> A \
     # N:     def f8(x: B) -> B \
     # N: Revealed type is "Any"
+
+if maybe_true:  # E: Name "maybe_true" is not defined
+    @overload
+    def f9(x: A) -> A: ...
+if another_maybe_true:  # E: Name "another_maybe_true" is not defined
+    @overload
+    def f9(x: B) -> B: ...
+@overload
+def f9(x: C) -> C: ...
+@overload
+def f9(x: D) -> D: ...
+def f9(x): ...
+reveal_type(f9(A()))  # E: No overload variant of "f9" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f9(x: C) -> C \
+    # N:     def f9(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f9(C()))  # N: Revealed type is "__main__.C"
+
+if True:
+    if maybe_true:  # E: Name "maybe_true" is not defined
+        @overload
+        def f10(x: A) -> A: ...
+    if another_maybe_true:  # E: Name "another_maybe_true" is not defined
+        @overload
+        def f10(x: B) -> B: ...
+    @overload
+    def f10(x: C) -> C: ...
+    @overload
+    def f10(x: D) -> D: ...
+    def f10(x): ...
+reveal_type(f10(A()))  # E: No overload variant of "f10" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f10(x: C) -> C \
+    # N:     def f10(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f10(C()))  # N: Revealed type is "__main__.C"
 [typing fixtures/typing-medium.pyi]
