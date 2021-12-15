@@ -561,9 +561,7 @@ class ASTConverter:
         ):
             return None
 
-        overload_name = cast(
-            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[0]
-        ).name
+        overload_name = stmt.body[0].body[0].name
         if stmt.else_body is None:
             return overload_name
 
