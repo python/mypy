@@ -6111,3 +6111,39 @@ if False:
 elif True:
     var = 1
 def f4(x): ...  # E: Name "f4" already defined on line 39
+
+if TYPE_CHECKING:
+    @overload
+    def f5(x: A) -> A: ...
+    @overload
+    def f5(x: B) -> B: ...
+def f5(x): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
+
+# Test from check-functions - testUnconditionalRedefinitionOfConditionalFunction
+# If IfStmt only contains FuncDef, block is ignore if uncertain about execution
+# Necessary to be able to ignore always-false cases
+if maybe_true:
+    def f6(x): ...
+def f6(x): ...
+
+if maybe_true:  # E: Name "maybe_true" is not defined
+    pass  # Some other node
+    def f7(x): ...
+def f7(x): ...  # E: Name "f7" already defined on line 66
+
+@overload
+def f8(x: A) -> A: ...
+@overload
+def f8(x: B) -> B: ...
+if False:
+    def f8(x: C) -> C: ...
+def f8(x): ...
+reveal_type(f8(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f8(C()))  # E: No overload variant of "f8" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f8(x: A) -> A \
+    # N:     def f8(x: B) -> B \
+    # N: Revealed type is "Any"
+[typing fixtures/typing-medium.pyi]
