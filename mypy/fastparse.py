@@ -1286,9 +1286,11 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
-    def visit_Match(self, n: Any) -> None:
+    def visit_Match(self, n: Any) -> Node:
         self.fail("Match statement is not supported",
                   line=n.lineno, column=n.col_offset, blocker=True)
+        # Just return some valid node
+        return PassStmt()
 
 
 class TypeConverter:
