@@ -170,7 +170,10 @@ class TestRun(MypycDataSuite):
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
         bench = testcase.config.getoption('--bench', False) and 'Benchmark' in testcase.name
 
+        from mypy import options as mypy_options
+        mypy_options._based = False
         options = Options()
+        options.legacy = True
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.strict_optional = True

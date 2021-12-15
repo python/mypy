@@ -767,7 +767,7 @@ class _GenericAlias(_BaseGenericAlias, _root=True):
         *,
         inst: bool = ...,
         name: str | None = ...,
-        _typevar_types: type[TypeVar] = ...,
+        _typevar_types: Type[TypeVar] = ...,
         _paramspec_tvars: bool = ...,
     ):
         self.__args__: tuple[type, ...]

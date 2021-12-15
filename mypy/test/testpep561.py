@@ -121,7 +121,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     f.write('{}\n'.format(s))
             cmd_line.append(program)
 
-        cmd_line.extend(['--no-error-summary'])
+        cmd_line.extend(['--no-error-summary', "--legacy"])
         if python_executable != sys.executable:
             cmd_line.append('--python-executable={}'.format(python_executable))
 
