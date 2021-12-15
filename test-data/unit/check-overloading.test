@@ -6037,6 +6037,22 @@ reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A"
     # N: Revealed type is "Any"
 reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
 
+if True:
+    if True:
+        @overload  # E: Single overload definition, multiple required
+        def g3(x: A) -> A: ...
+    @overload
+    def f3(x: B) -> B: ...
+    @overload
+    def f3(x: C) -> C: ...
+    def f3(x): ...
+reveal_type(f3(A()))  # E: No overload variant of "f3" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f3(x: B) -> B \
+    # N:     def f3(x: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+
 [case testOverloadIfSplitFunctionDef]
 # flags: --always-true True --always-false False
 from typing import overload
@@ -6198,4 +6214,23 @@ reveal_type(f10(A()))  # E: No overload variant of "f10" matches argument type "
     # N:     def f10(x: D) -> D \
     # N: Revealed type is "Any"
 reveal_type(f10(C()))  # N: Revealed type is "__main__.C"
+
+if some_var:  # E: Name "some_var" is not defined
+    pass
+@overload
+def f11(x: A) -> A: ...
+@overload
+def f11(x: B) -> B: ...
+def f11(x): ...
+reveal_type(f11(A()))  # N: Revealed type is "__main__.A"
+
+if True:
+    if some_var:  # E: Name "some_var" is not defined
+        pass
+    @overload
+    def f12(x: A) -> A: ...
+    @overload
+    def f12(x: B) -> B: ...
+    def f12(x): ...
+reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
 [typing fixtures/typing-medium.pyi]
