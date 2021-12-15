@@ -103,6 +103,7 @@ class Options:
         # File names, directory names or subpaths to avoid checking
         self.exclude: List[str] = []
 
+        self.legacy = False
         self.write_baseline = False
         self.baseline_file = defaults.BASELINE_FILE
 

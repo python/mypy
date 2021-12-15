@@ -2,7 +2,12 @@
 
 ## [Unreleased]
 ### Added
+
+## [1.2.0]
+### Added
 - Unions in output messages show with new syntax
+- `--legacy` flag
+- new baseline format
 
 ## [1.0.0]
 ### Added
