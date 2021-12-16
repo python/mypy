@@ -34,10 +34,8 @@ reveal_type(1) # N: Revealed type is "Literal[1]?"
 1 ''
 [out]
 main:1: error: invalid syntax  [syntax]
-[out version>=3.10]
+[out version==3.10.0]
 main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
-[out version>=3.10.1]
-main:1: error: invalid syntax  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]
