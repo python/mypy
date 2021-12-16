@@ -309,8 +309,6 @@ class stat_result:
 @runtime_checkable
 class PathLike(Protocol[_AnyStr_co]):
     def __fspath__(self) -> _AnyStr_co: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 _FdOrAnyPath = Union[int, StrOrBytesPath]
 
