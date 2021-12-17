@@ -76,8 +76,8 @@ class ModuleNotFoundReason(Enum):
             msg = (
                 'Skipping analyzing "{module}": module is installed, but missing library stubs '
                 'or py.typed marker. note: See '
-                'https://mypy.readthedocs.io/en/latest/more_types.html#advanced-uses-of-self-types '
-                'for advanced usage'
+                'https://mypy.readthedocs.io/en/latest/more_types.html'
+                '#advanced-uses-of-self-types for advanced usage'
             )
             notes = [doc_link]
         elif self is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
