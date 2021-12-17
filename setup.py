@@ -199,7 +199,11 @@ setup(name='mypy',
                         'tomli>=1.1.0',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 2'},
+      extras_require={
+          'dmypy': 'psutil >= 4.0',
+          'python2': 'typed_ast >= 1.4.0, < 2',
+          'reporting': 'lxml'
+      },
       python_requires=">=3.6",
       include_package_data=True,
       project_urls={
