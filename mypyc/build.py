@@ -30,7 +30,7 @@ from typing_extensions import TYPE_CHECKING, NoReturn, Type
 from mypy.main import process_options
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.build import BuildSource
+from mypy.build import BuildSource, CORE_BUILTIN_MODULES
 from mypy.fscache import FileSystemCache
 from mypy.util import write_junit_xml
 
@@ -124,6 +124,9 @@ def get_mypy_config(mypy_options: List[str],
 
     for source in mypyc_sources:
         options.per_module_options.setdefault(source.module, {})['mypyc'] = True
+
+    for module in CORE_BUILTIN_MODULES:
+        options.per_module_options.setdefault(module, {})['mypyc'] = True
 
     return mypyc_sources, all_sources, options
 

@@ -12,6 +12,7 @@ import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
+from mypy.build import CORE_BUILTIN_MODULES
 from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
@@ -209,6 +210,9 @@ class TestRun(MypycDataSuite):
 
         for source in sources:
             options.per_module_options.setdefault(source.module, {})['mypyc'] = True
+
+        for module in CORE_BUILTIN_MODULES:
+            options.per_module_options.setdefault(module, {})['mypyc'] = True
 
         separate = (self.get_separate('\n'.join(testcase.input), incremental_step) if self.separate
                     else False)

@@ -1155,3 +1155,19 @@ i = b"foo"
 
 def test_redefinition() -> None:
     assert i == b"foo"
+
+[case testAnyStr]
+from typing import AnyStr
+
+def f(x: AnyStr, y: AnyStr) -> AnyStr:
+    return x + y
+
+[typing fixtures/typing-full.pyi]
+
+[file driver.py]
+from native import f
+
+print(f("3", "4"))
+
+[out]
+34
