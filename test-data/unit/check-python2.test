@@ -92,7 +92,9 @@ raise BaseException, 1, None
 
 raise Exception
 raise Exception(1)
+raise Exception()
 raise Exception(1), None
+raise Exception(), None
 raise Exception(1), None, None
 raise Exception(1), None, e
 raise (Exception,)
