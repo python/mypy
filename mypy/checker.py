@@ -3551,7 +3551,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             assert isinstance(typ, TupleType)  # Is set in fastparse2.py
             if (len(typ.items) >= 2
                     and isinstance(get_proper_type(typ.items[1]), NoneType)):
-                expected_type = exc_inst_or_type
+                expected_type: Type = exc_inst_or_type
             else:
                 expected_type = TypeType(exc_type)
             self.check_subtype(
