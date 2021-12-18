@@ -735,7 +735,7 @@ f(a) # E: Argument 1 to "f" has incompatible type "List[int]"; expected "Listene
 g(b) # E: Argument 1 to "g" has incompatible type "Dict[str, int]"; expected "DictReader"
 [builtins fixtures/dict.pyi]
 
-[case testInvariantTypeConfusingNames]
+[case testInvariantTypeConfusingNames2]
 from typing import Iterable, Generic, TypeVar, List
 
 T = TypeVar('T')
