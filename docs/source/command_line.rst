@@ -440,15 +440,6 @@ potentially problematic or redundant in some way.
     These two flags let you discover cases where either workarounds are
     no longer necessary.
 
-.. option:: --warn-ignores-without-codes
-
-    This flag will make mypy report an error for any ``# type: ignore`` comments
-    which do not have error codes::
-
-        prog.py:1: error: "type: ignore" comment without error code
-
-    See :ref:`error-codes` for more information.
-
 .. option:: --no-warn-no-return
 
     By default, mypy will generate errors when a function is missing
