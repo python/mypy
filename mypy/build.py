@@ -2370,7 +2370,7 @@ class State:
             self.manager.errors.generate_unused_ignore_errors(self.xpath)
 
     def generate_ignore_without_code_notes(self) -> None:
-        if self.options.warn_ignores_without_codes:
+        if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
             self.manager.errors.generate_ignore_without_code_errors(
                 self.xpath,
                 self.options.warn_unused_ignores,

@@ -49,7 +49,6 @@ PER_MODULE_OPTIONS: Final = {
     "strict_equality",
     "strict_optional",
     "strict_optional_whitelist",
-    "warn_ignores_without_codes",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
@@ -143,9 +142,6 @@ class Options:
 
         # Warn about unused '# type: ignore' comments
         self.warn_unused_ignores = False
-
-        # Warn about '# type: ignore' comments which do not have error codes
-        self.warn_ignores_without_codes = False
 
         # Warn about unused '[mypy-<pattern>]'  or '[[tool.mypy.overrides]]' config sections
         self.warn_unused_configs = False
