@@ -249,7 +249,7 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     """Analyze single top-level function or method.
 
     Process the body of the function (including nested functions) again and again,
-    until all names have been resolved (ot iteration limit reached).
+    until all names have been resolved (or iteration limit reached).
     """
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False

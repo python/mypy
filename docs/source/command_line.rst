@@ -59,8 +59,8 @@ for full details, see :ref:`running-mypy`.
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
     those matching a subpath with ``--exclude /project/vendor/``. To ignore
-    multiple files / directories / paths, you can combine expressions with
-    ``|``, e.g ``--exclude '/setup\.py$|/build/'``.
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
 
     Note that this flag only affects recursive directory tree discovery, that
     is, when mypy is discovering files within a directory tree or submodules of
@@ -312,9 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example you can't use a bare ``x: list``, you must say
+    ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -419,7 +418,7 @@ For more details, see :ref:`no_strict_optional`.
 Configuring warnings
 ********************
 
-The follow flags enable warnings for code that is sound but is
+The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
 .. option:: --warn-redundant-casts
@@ -521,10 +520,10 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
+           # 'items' now has type list[list[str]]
            ...
 
 .. option:: --local-partial-types
@@ -585,9 +584,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 

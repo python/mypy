@@ -121,7 +121,7 @@ class ClassIR:
         # Map of methods that are actually present in an extension class
         self.methods: OrderedDict[str, FuncIR] = OrderedDict()
         # Glue methods for boxing/unboxing when a class changes the type
-        # while overriding a method. Maps from (parent class overrided, method)
+        # while overriding a method. Maps from (parent class overridden, method)
         # to IR of glue method.
         self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = OrderedDict()
 
@@ -151,6 +151,14 @@ class ClassIR:
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
+
+    def __repr__(self) -> str:
+        return (
+            "ClassIR("
+            "name={self.name}, module_name={self.module_name}, "
+            "is_trait={self.is_trait}, is_generated={self.is_generated}, "
+            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
+            ")".format(self=self))
 
     @property
     def fullname(self) -> str:

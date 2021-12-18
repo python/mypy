@@ -24,7 +24,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    get_proper_types
+    ParamSpecType, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -289,8 +289,8 @@ class MessageBuilder:
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
             else:
-                self.fail('{} not callable'.format(format_type(original_type)), context,
-                          code=codes.OPERATOR)
+                self.fail(message_registry.NOT_CALLABLE.format(
+                    format_type(original_type)), context, code=codes.OPERATOR)
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ''
@@ -397,7 +397,7 @@ class MessageBuilder:
         self.fail(msg, context, code=codes.OPERATOR)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail('{} not callable'.format(format_type(typ)), context)
+        self.fail(message_registry.NOT_CALLABLE.format(format_type(typ)), context)
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
@@ -798,7 +798,7 @@ class MessageBuilder:
         self.fail("Unpacking a string is disallowed", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('"{}" object is not iterable'.format(type), context)
+        self.fail('{} object is not iterable'.format(format_type(type)), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
@@ -1151,11 +1151,12 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
-        self.fail('Invalid signature "{}"'.format(func_type), context)
+        self.fail('Invalid signature {}'.format(format_type(func_type)), context)
 
     def invalid_signature_for_special_method(
             self, func_type: Type, context: Context, method_name: str) -> None:
-        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+        self.fail('Invalid signature {} for "{}"'.format(format_type(func_type), method_name),
+                  context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.note('Revealed type is "{}"'.format(typ), context)
@@ -1613,8 +1614,8 @@ class MessageBuilder:
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
             if not is_subtype(lhs_t, rhs_t):
                 if error_cnt < 3:
-                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
-                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                    notes.append('Expression tuple item {} has type {}; {} expected; '
+                        .format(str(i), format_type(rhs_t), format_type(lhs_t)))
                 error_cnt += 1
 
         error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
@@ -1692,6 +1693,8 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
+    elif isinstance(typ, ParamSpecType):
+        return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
@@ -1753,9 +1756,15 @@ def format_type_inner(typ: Type,
             # return type (this always works).
             return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
-            return_type = format(func.ret_type)
+            if func.type_guard is not None:
+                return_type = f'TypeGuard[{format(func.type_guard)}]'
+            else:
+                return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
+            param_spec = func.param_spec()
+            if param_spec is not None:
+                return f'Callable[{param_spec.name}, {return_type}]'
             arg_strings = []
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
@@ -2113,11 +2122,6 @@ def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Opt
                 pass
         assert False, "Couldn't determine module from CallableType"
     return None
-
-
-def temp_message_builder() -> MessageBuilder:
-    """Return a message builder usable for throwaway errors (which may not format properly)."""
-    return MessageBuilder(Errors(), {})
 
 
 # For hard-coding suggested missing member alternatives.

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import StrPath
-from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional, Tuple
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional
 
 from . import events, protocols, transports
 from .base_events import Server
@@ -24,7 +24,7 @@ async def open_connection(
     limit: int = ...,
     ssl_handshake_timeout: float | None = ...,
     **kwds: Any,
-) -> Tuple[StreamReader, StreamWriter]: ...
+) -> tuple[StreamReader, StreamWriter]: ...
 async def start_server(
     client_connected_cb: _ClientConnectedCallback,
     host: str | None = ...,
@@ -43,7 +43,7 @@ if sys.platform != "win32":
         _PathType = str
     async def open_unix_connection(
         path: _PathType | None = ..., *, loop: events.AbstractEventLoop | None = ..., limit: int = ..., **kwds: Any
-    ) -> Tuple[StreamReader, StreamWriter]: ...
+    ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_unix_server(
         client_connected_cb: _ClientConnectedCallback,
         path: _PathType | None = ...,

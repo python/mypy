@@ -6,6 +6,7 @@ from typing import (
     AsyncGenerator,
     Awaitable,
     Callable,
+    Coroutine,
     Generator,
     Generic,
     ItemsView,
@@ -13,13 +14,14 @@ from typing import (
     Iterator,
     KeysView,
     Mapping,
+    MutableSequence,
     Tuple,
     Type,
     TypeVar,
     ValuesView,
     overload,
 )
-from typing_extensions import Literal, final
+from typing_extensions import Literal, ParamSpec, final
 
 # Note, all classes "defined" here require special handling.
 
@@ -142,6 +144,8 @@ class CodeType:
             co_name: str = ...,
             co_lnotab: bytes = ...,
         ) -> CodeType: ...
+    if sys.version_info >= (3, 11):
+        def co_positions(self) -> Iterable[tuple[int | None, int | None, int | None, int | None]]: ...
 
 @final
 class MappingProxyType(Mapping[_KT, _VT_co], Generic[_KT, _VT_co]):
@@ -169,12 +173,17 @@ class SimpleNamespace:
 
 class ModuleType:
     __name__: str
-    __file__: str
+    __file__: str | None
     __dict__: dict[str, Any]
     __loader__: _LoaderProtocol | None
     __package__: str | None
+    __path__: MutableSequence[str]
     __spec__: ModuleSpec | None
     def __init__(self, name: str, doc: str | None = ...) -> None: ...
+    # __getattr__ doesn't exist at runtime,
+    # but having it here in typeshed makes dynamic imports
+    # using `builtins.__import__` or `importlib.import_module` less painful
+    def __getattr__(self, name: str) -> Any: ...
 
 @final
 class GeneratorType(Generator[_T_co, _T_contra, _V_co]):
@@ -211,7 +220,7 @@ class AsyncGeneratorType(AsyncGenerator[_T_co, _T_contra]):
     def aclose(self) -> Awaitable[None]: ...
 
 @final
-class CoroutineType:
+class CoroutineType(Coroutine[_T_co, _T_contra, _V_co]):
     __name__: str
     __qualname__: str
     cr_await: Any | None
@@ -219,12 +228,14 @@ class CoroutineType:
     cr_frame: FrameType
     cr_running: bool
     def close(self) -> None: ...
-    def __await__(self) -> Generator[Any, None, Any]: ...
-    def send(self, __arg: Any) -> Any: ...
+    def __await__(self) -> Generator[Any, None, _V_co]: ...
+    def send(self, __arg: _T_contra) -> _T_co: ...
     @overload
-    def throw(self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...) -> Any: ...
+    def throw(
+        self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
+    ) -> _T_co: ...
     @overload
-    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> Any: ...
+    def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
 
 class _StaticFunctionType:
     """Fictional type to correct the type of MethodType.__func__.
@@ -360,12 +371,20 @@ else:
 
 def prepare_class(
     name: str, bases: Tuple[type, ...] = ..., kwds: dict[str, Any] | None = ...
-) -> Tuple[type, dict[str, Any], dict[str, Any]]: ...
+) -> tuple[type, dict[str, Any], dict[str, Any]]: ...
 
 # Actually a different type, but `property` is special and we want that too.
 DynamicClassAttribute = property
 
-def coroutine(func: Callable[..., Any]) -> CoroutineType: ...
+_Fn = TypeVar("_Fn", bound=Callable[..., object])
+_R = TypeVar("_R")
+_P = ParamSpec("_P")
+
+# it's not really an Awaitable, but can be used in an await expression. Real type: Generator & Awaitable
+@overload
+def coroutine(func: Callable[_P, Generator[_R, Any, Any]]) -> Callable[_P, Awaitable[_R]]: ...  # type: ignore
+@overload
+def coroutine(func: _Fn) -> _Fn: ...  # type: ignore
 
 if sys.version_info >= (3, 8):
     CellType = _Cell

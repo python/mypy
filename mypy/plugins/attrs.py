@@ -97,7 +97,7 @@ class Attribute:
             converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+                converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
                 converter_type = converter.node.type
             elif converter and converter.type:
@@ -272,6 +272,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
+    slots = _get_decorator_bool_argument(ctx, 'slots', False)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
@@ -302,6 +303,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             return
 
     _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
+    if slots:
+        _add_slots(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -725,6 +728,12 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         node=var,
         plugin_generated=True,
     )
+
+
+def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
+               attributes: List[Attribute]) -> None:
+    # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
+    ctx.cls.info.slots = {attr.name for attr in attributes}
 
 
 class MethodAdder:

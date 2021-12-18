@@ -126,6 +126,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
+    'exclude': lambda s: [p.strip() for p in s.split('\n') if p.strip()],
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -171,7 +172,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         try:
             if is_toml(config_file):
                 with open(config_file, encoding="utf-8") as f:
-                    toml_data = tomli.load(f)
+                    toml_data = tomli.loads(f.read())
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:

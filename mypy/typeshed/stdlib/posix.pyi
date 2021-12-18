@@ -2,7 +2,9 @@ import sys
 from _typeshed import StrOrBytesPath
 from os import PathLike, _ExecEnv, _ExecVArgs, stat_result as stat_result
 from typing import Any, Iterable, NamedTuple, Sequence, Tuple, overload
+from typing_extensions import final
 
+@final
 class uname_result(NamedTuple):
     sysname: str
     nodename: str
@@ -10,6 +12,7 @@ class uname_result(NamedTuple):
     version: str
     machine: str
 
+@final
 class times_result(NamedTuple):
     user: float
     system: float
@@ -179,7 +182,7 @@ if sys.platform != "win32" and sys.version_info >= (3, 8):
         setsid: bool = ...,
         setsigmask: Iterable[int] = ...,
         setsigdef: Iterable[int] = ...,
-        scheduler: Tuple[Any, sched_param] | None = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
     ) -> int: ...
     def posix_spawnp(
         path: StrOrBytesPath,
@@ -192,7 +195,7 @@ if sys.platform != "win32" and sys.version_info >= (3, 8):
         setsid: bool = ...,
         setsigmask: Iterable[int] = ...,
         setsigdef: Iterable[int] = ...,
-        scheduler: Tuple[Any, sched_param] | None = ...,
+        scheduler: tuple[Any, sched_param] | None = ...,
     ) -> int: ...
 
 if sys.platform == "win32":

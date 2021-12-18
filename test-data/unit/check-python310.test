@@ -1015,8 +1015,7 @@ m: object
 
 match m:
     case list(x) | dict(x):
-        reveal_type(x)  # N: Revealed type is "builtins.object"
-[builtins fixtures/list.pyi]
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
 [builtins fixtures/dict.pyi]
 
 

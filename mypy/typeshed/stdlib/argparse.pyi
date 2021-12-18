@@ -1,8 +1,24 @@
 import sys
-from typing import IO, Any, Callable, Generator, Iterable, NoReturn, Pattern, Protocol, Sequence, Tuple, Type, TypeVar, overload
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Generator,
+    Generic,
+    Iterable,
+    NoReturn,
+    Pattern,
+    Protocol,
+    Sequence,
+    Tuple,
+    Type,
+    TypeVar,
+    overload,
+)
 
 _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
+_ArgumentParserT = TypeVar("_ArgumentParserT", bound=ArgumentParser)
 _N = TypeVar("_N")
 
 ONE_OR_MORE: str
@@ -20,7 +36,7 @@ class ArgumentError(Exception):
 
 # undocumented
 class _AttributeHolder:
-    def _get_kwargs(self) -> list[Tuple[str, Any]]: ...
+    def _get_kwargs(self) -> list[tuple[str, Any]]: ...
     def _get_args(self) -> list[Any]: ...
 
 # undocumented
@@ -67,10 +83,10 @@ class _ActionsContainer:
     def _get_positional_kwargs(self, dest: str, **kwargs: Any) -> dict[str, Any]: ...
     def _get_optional_kwargs(self, *args: Any, **kwargs: Any) -> dict[str, Any]: ...
     def _pop_action_class(self, kwargs: Any, default: Type[Action] | None = ...) -> Type[Action]: ...
-    def _get_handler(self) -> Callable[[Action, Iterable[Tuple[str, Action]]], Any]: ...
+    def _get_handler(self) -> Callable[[Action, Iterable[tuple[str, Action]]], Any]: ...
     def _check_conflict(self, action: Action) -> None: ...
-    def _handle_conflict_error(self, action: Action, conflicting_actions: Iterable[Tuple[str, Action]]) -> NoReturn: ...
-    def _handle_conflict_resolve(self, action: Action, conflicting_actions: Iterable[Tuple[str, Action]]) -> None: ...
+    def _handle_conflict_error(self, action: Action, conflicting_actions: Iterable[tuple[str, Action]]) -> NoReturn: ...
+    def _handle_conflict_resolve(self, action: Action, conflicting_actions: Iterable[tuple[str, Action]]) -> None: ...
 
 class _FormatterClass(Protocol):
     def __call__(self, prog: str) -> HelpFormatter: ...
@@ -135,41 +151,70 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     @overload
     def parse_args(self, *, namespace: _N) -> _N: ...
     if sys.version_info >= (3, 7):
+        @overload
         def add_subparsers(
-            self,
+            self: _ArgumentParserT,
             *,
             title: str = ...,
             description: str | None = ...,
             prog: str = ...,
-            parser_class: Type[ArgumentParser] = ...,
             action: Type[Action] = ...,
             option_string: str = ...,
             dest: str | None = ...,
             required: bool = ...,
             help: str | None = ...,
             metavar: str | None = ...,
-        ) -> _SubParsersAction: ...
-    else:
+        ) -> _SubParsersAction[_ArgumentParserT]: ...
+        @overload
         def add_subparsers(
             self,
             *,
             title: str = ...,
             description: str | None = ...,
             prog: str = ...,
-            parser_class: Type[ArgumentParser] = ...,
+            parser_class: Type[_ArgumentParserT] = ...,
+            action: Type[Action] = ...,
+            option_string: str = ...,
+            dest: str | None = ...,
+            required: bool = ...,
+            help: str | None = ...,
+            metavar: str | None = ...,
+        ) -> _SubParsersAction[_ArgumentParserT]: ...
+    else:
+        @overload
+        def add_subparsers(
+            self: _ArgumentParserT,
+            *,
+            title: str = ...,
+            description: str | None = ...,
+            prog: str = ...,
             action: Type[Action] = ...,
             option_string: str = ...,
             dest: str | None = ...,
             help: str | None = ...,
             metavar: str | None = ...,
-        ) -> _SubParsersAction: ...
+        ) -> _SubParsersAction[_ArgumentParserT]: ...
+        @overload
+        def add_subparsers(
+            self,
+            *,
+            title: str = ...,
+            description: str | None = ...,
+            prog: str = ...,
+            parser_class: Type[_ArgumentParserT] = ...,
+            action: Type[Action] = ...,
+            option_string: str = ...,
+            dest: str | None = ...,
+            help: str | None = ...,
+            metavar: str | None = ...,
+        ) -> _SubParsersAction[_ArgumentParserT]: ...
     def print_usage(self, file: IO[str] | None = ...) -> None: ...
     def print_help(self, file: IO[str] | None = ...) -> None: ...
     def format_usage(self) -> str: ...
     def format_help(self) -> str: ...
     def parse_known_args(
         self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...
-    ) -> Tuple[Namespace, list[str]]: ...
+    ) -> tuple[Namespace, list[str]]: ...
     def convert_arg_line_to_args(self, arg_line: str) -> list[str]: ...
     def exit(self, status: int = ..., message: str | None = ...) -> NoReturn: ...
     def error(self, message: str) -> NoReturn: ...
@@ -177,16 +222,16 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
         def parse_intermixed_args(self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...) -> Namespace: ...
         def parse_known_intermixed_args(
             self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...
-        ) -> Tuple[Namespace, list[str]]: ...
+        ) -> tuple[Namespace, list[str]]: ...
     # undocumented
     def _get_optional_actions(self) -> list[Action]: ...
     def _get_positional_actions(self) -> list[Action]: ...
-    def _parse_known_args(self, arg_strings: list[str], namespace: Namespace) -> Tuple[Namespace, list[str]]: ...
+    def _parse_known_args(self, arg_strings: list[str], namespace: Namespace) -> tuple[Namespace, list[str]]: ...
     def _read_args_from_files(self, arg_strings: list[str]) -> list[str]: ...
     def _match_argument(self, action: Action, arg_strings_pattern: str) -> int: ...
     def _match_arguments_partial(self, actions: Sequence[Action], arg_strings_pattern: str) -> list[int]: ...
-    def _parse_optional(self, arg_string: str) -> Tuple[Action | None, str, str | None] | None: ...
-    def _get_option_tuples(self, option_string: str) -> list[Tuple[Action, str, str | None]]: ...
+    def _parse_optional(self, arg_string: str) -> tuple[Action | None, str, str | None] | None: ...
+    def _get_option_tuples(self, option_string: str) -> list[tuple[Action, str, str | None]]: ...
     def _get_nargs_pattern(self, action: Action) -> str: ...
     def _get_values(self, action: Action, arg_strings: list[str]) -> Any: ...
     def _get_value(self, action: Action, arg_string: str) -> Any: ...
@@ -379,19 +424,19 @@ class _VersionAction(Action):
     ) -> None: ...
 
 # undocumented
-class _SubParsersAction(Action):
+class _SubParsersAction(Action, Generic[_ArgumentParserT]):
     _ChoicesPseudoAction: Type[Any]  # nested class
     _prog_prefix: str
-    _parser_class: Type[ArgumentParser]
-    _name_parser_map: dict[str, ArgumentParser]
-    choices: dict[str, ArgumentParser]
+    _parser_class: Type[_ArgumentParserT]
+    _name_parser_map: dict[str, _ArgumentParserT]
+    choices: dict[str, _ArgumentParserT]
     _choices_actions: list[Action]
     if sys.version_info >= (3, 7):
         def __init__(
             self,
             option_strings: Sequence[str],
             prog: str,
-            parser_class: Type[ArgumentParser],
+            parser_class: Type[_ArgumentParserT],
             dest: str = ...,
             required: bool = ...,
             help: str | None = ...,
@@ -402,13 +447,13 @@ class _SubParsersAction(Action):
             self,
             option_strings: Sequence[str],
             prog: str,
-            parser_class: Type[ArgumentParser],
+            parser_class: Type[_ArgumentParserT],
             dest: str = ...,
             help: str | None = ...,
             metavar: str | Tuple[str, ...] | None = ...,
         ) -> None: ...
     # TODO: Type keyword args properly.
-    def add_parser(self, name: str, **kwargs: Any) -> ArgumentParser: ...
+    def add_parser(self, name: str, **kwargs: Any) -> _ArgumentParserT: ...
     def _get_subactions(self) -> list[Action]: ...
 
 # undocumented

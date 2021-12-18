@@ -2,15 +2,8 @@ name: Trigger wheel build
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release*']
     tags: ['*']
-    paths-ignore:
-    - 'docs/**'
-    - '**/*.rst'
-    - '**/*.md'
-    - .gitignore
-    - CREDITS
-    - LICENSE
 
 jobs:
   build-wheels:

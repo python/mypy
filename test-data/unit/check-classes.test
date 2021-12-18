@@ -114,6 +114,43 @@ class A:
 A().f = None # E: Cannot assign to a method
 
 
+[case testOverrideAttributeWithMethod]
+# This was crashing:
+# https://github.com/python/mypy/issues/10134
+from typing import Protocol
+
+class Base:
+    __hash__ = None
+
+class Derived(Base):
+    def __hash__(self) -> int:  # E: Signature of "__hash__" incompatible with supertype "Base"
+        pass
+
+# Correct:
+
+class CallableProtocol(Protocol):
+    def __call__(self, arg: int) -> int:
+        pass
+
+class CorrectBase:
+    attr: CallableProtocol
+
+class CorrectDerived(CorrectBase):
+    def attr(self, arg: int) -> int:
+        pass
+
+[case testOverrideMethodWithAttribute]
+# The reverse should not crash as well:
+from typing import Callable
+
+class Base:
+    def __hash__(self) -> int:
+        pass
+
+class Derived(Base):
+    __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
+
+
 -- Attributes
 -- ----------
 
@@ -2024,8 +2061,8 @@ class B:
 class C:
     def __radd__(self, other, oops) -> int: ...
 [out]
-tmp/foo.pyi:3: error: Invalid signature "def (foo.B) -> foo.A"
-tmp/foo.pyi:5: error: Invalid signature "def (foo.C, Any, Any) -> builtins.int"
+tmp/foo.pyi:3: error: Invalid signature "Callable[[B], A]"
+tmp/foo.pyi:5: error: Invalid signature "Callable[[C, Any, Any], int]"
 
 [case testReverseOperatorOrderingCase1]
 class A:
@@ -2617,6 +2654,35 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testDecoratedGetAttribute]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattribute__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattribute__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
+
 [case testGetattributeSignature]
 class A:
     def __getattribute__(self, x: str) -> A: pass
@@ -2627,8 +2693,8 @@ class C:
 class D:
     def __getattribute__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattribute__"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattribute__"
+main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattribute__"
+main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattribute__"
 
 [case testGetattr]
 
@@ -2643,6 +2709,35 @@ b = a.bar
 [builtins fixtures/tuple.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testDecoratedGetattr]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattr__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattr__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
 
 [case testGetattrWithGetitem]
 class A:
@@ -2704,8 +2799,8 @@ class C:
 class D:
     def __getattr__(self, x: str) -> None: pass
 [out]
-main:4: error: Invalid signature "def (__main__.B, __main__.A) -> __main__.B" for "__getattr__"
-main:6: error: Invalid signature "def (__main__.C, builtins.str, builtins.str) -> __main__.C" for "__getattr__"
+main:4: error: Invalid signature "Callable[[B, A], B]" for "__getattr__"
+main:6: error: Invalid signature "Callable[[C, str, str], C]" for "__getattr__"
 
 [case testSetattr]
 from typing import Union, Any
@@ -2729,7 +2824,7 @@ c = C()
 c.fail = 4  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 class D:
-    __setattr__ = 'hello'  # E: Invalid signature "builtins.str" for "__setattr__"
+    __setattr__ = 'hello'  # E: Invalid signature "str" for "__setattr__"
 
 d = D()
 d.crash = 4  # E: "D" has no attribute "crash"
@@ -2750,16 +2845,45 @@ s = Sub()
 s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 
+[case testDecoratedSetattr]
+from typing import Any, Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[[Any, str, int], None]:
+    return f
+
+class A:
+    @decorator
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+
+a: A
+a.foo = 'a'
+a.bar = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+b: B
+b.good = 1
+b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
+
 [case testSetattrSignature]
 from typing import Any
 
 class Test:
-    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "def ()" for "__setattr__"
+    def __setattr__() -> None: ...  # E: Method must have at least one argument # E: Invalid signature "Callable[[], None]" for "__setattr__"
 t = Test()
 t.crash = 'test'  # E: "Test" has no attribute "crash"
 
 class A:
-    def __setattr__(self): ...  # E: Invalid signature "def (__main__.A) -> Any" for "__setattr__"
+    def __setattr__(self): ...  # E: Invalid signature "Callable[[A], Any]" for "__setattr__"
 a = A()
 a.test = 4  # E: "A" has no attribute "test"
 
@@ -2769,7 +2893,7 @@ b = B()
 b.integer = 5
 
 class C:
-    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "def (__main__.C, builtins.int, builtins.int)" for "__setattr__"
+    def __setattr__(self, name: int, value: int) -> None: ...  # E: Invalid signature "Callable[[C, int, int], None]" for "__setattr__"
 c = C()
 c.check = 13
 
@@ -2793,6 +2917,15 @@ b = B()
 b.at = '3'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
 if int():
     integer = b.at  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testSetattrKeywordArg]
+from typing import Any
+
+class C:
+    def __setattr__(self, key: str, value: Any, p: bool = False) -> None: ...
+
+c: C
+c.__setattr__("x", 42, p=True)
 
 -- CallableType objects
 -- ----------------
@@ -5500,8 +5633,8 @@ A = G
 x: A[B[int]] # E
 B = G
 [out]
-main:8:4: error: Type argument "__main__.G[builtins.int]" of "G" must be a subtype of "builtins.str"
-main:8:6: error: Type argument "builtins.int" of "G" must be a subtype of "builtins.str"
+main:8:4: error: Type argument "G[int]" of "G" must be a subtype of "str"
+main:8:6: error: Type argument "int" of "G" must be a subtype of "str"
 
 [case testExtremeForwardReferencing]
 from typing import TypeVar, Generic
@@ -6070,6 +6203,85 @@ class C:
         reveal_type(self.spec)  # N: Revealed type is "__main__.B"
 [builtins fixtures/bool.pyi]
 
+[case testDecoratedDunderGet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[..., int]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr2:
+    @change
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr3:
+    @untyped
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+reveal_type(c.spec1)  # N: Revealed type is "__main__.A"
+reveal_type(c.spec2)  # N: Revealed type is "builtins.int"
+reveal_type(c.spec3)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testDecoratedDunderSet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[[Any, Any, int], None]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr2:
+    @change
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr3:
+    @untyped
+    def __set__(self, obj: T, value: A) -> None: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+c.spec1 = A()
+c.spec1 = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+c.spec2 = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+c.spec2 = 1
+c.spec3 = A()
+c.spec3 = 1
+[builtins fixtures/bool.pyi]
+
 [case testClassLevelImport]
 # flags: --ignore-missing-imports
 class Test:
@@ -6418,6 +6630,37 @@ class B(A):
     pass
 
 reveal_type(B())  # N: Revealed type is "__main__.B"
+
+[case testNewReturnType10]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> Type['MyClass']:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType11]
+# https://github.com/python/mypy/issues/11398
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> type:
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
+
+[case testNewReturnType12]
+# https://github.com/python/mypy/issues/11398
+from typing import Type
+
+class MyMetaClass(type):
+    def __new__(cls, name, bases, attrs) -> int:  # E: Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
+        pass
+
+class MyClass(metaclass=MyMetaClass):
+    pass
 
 [case testGenericOverride]
 from typing import Generic, TypeVar, Any

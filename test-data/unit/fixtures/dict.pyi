@@ -31,7 +31,6 @@ class dict(Mapping[KT, VT]):
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: ...
 
-class complex: pass
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
@@ -53,8 +52,12 @@ class list(Sequence[T]): # needed by some test cases
 class tuple(Generic[T]): pass
 class function: pass
 class float: pass
+class complex: pass
 class bool(int): pass
 
-class ellipsis: pass
+class ellipsis:
+    __class__: object
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
+
+def iter(__iterable: Iterable[T]) -> Iterator[T]: pass
