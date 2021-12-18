@@ -1726,18 +1726,16 @@ class B2(A2):  # E: Cannot inherit from final class "A2"
 
 [case testEnumNotFinalWithMethodsAndUninitializedValuesStub]
 import lib
-reveal_type(lib.A)
-reveal_type(lib.B)
 
 [file lib.pyi]
 from enum import Enum
 class A(Enum):
     x: int
-class B(A):
+class B(A):  # E: Cannot inherit from final class "A"
+    x = 1    # E: Cannot override writable attribute "x" with a final one
+
+class C(Enum):
     x = 1
-[out]
-tmp/lib.pyi:4: error: Cannot inherit from final class "A"
-tmp/lib.pyi:5: error: Cannot override writable attribute "x" with a final one
-main:2: note: Revealed type is "def (value: builtins.object) -> lib.A*"
-main:3: note: Revealed type is "def (value: builtins.object) -> lib.B*"
+class D(C):  # E: Cannot inherit from final class "C"
+    x: int   # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]

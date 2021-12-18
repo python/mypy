@@ -870,6 +870,7 @@ class Var(SymbolNode):
                  'is_suppressed_import',
                  'explicit_self_type',
                  'from_module_getattr',
+                 'has_explicit_value',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -914,6 +915,9 @@ class Var(SymbolNode):
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
         self.from_module_getattr = False
+        # Var can be created with an explicit value `a = 1` or without one `a: int`,
+        # we need a way to tell which one is which.
+        self.has_explicit_value = False
 
     @property
     def name(self) -> str:
