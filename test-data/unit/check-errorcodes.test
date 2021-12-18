@@ -139,10 +139,14 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-ignores-without-codes
 "x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
 y # type: ignore # E: "type: ignore" comment without error code (hint: add [name-defined])  [ignore-without-code]
+z # type: ignore[name-defined]
+"a" # type: ignore[ignore-without-code]
 
 [case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
 # flags: --warn-ignores-without-codes --warn-unused-ignores
 "x" # type: ignore # E: Unused "type: ignore" comment
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined]
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --warn-ignores-without-codes
