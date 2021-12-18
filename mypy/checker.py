@@ -221,7 +221,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # functions such as open(), etc.
     plugin: Plugin
 
-    # Future flags that we get from semantic analyzer.
+    # Future flags that we get from semantic analyzer for this module.
     future_import_flags: Set[str]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile], options: Options,
