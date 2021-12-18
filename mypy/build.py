@@ -539,8 +539,6 @@ class BuildManager:
       modules:         Mapping of module ID to MypyFile (shared by the passes)
       semantic_analyzer:
                        Semantic analyzer, pass 2
-      semantic_analyzer_pass3:
-                       Semantic analyzer, pass 3
       all_types:       Map {Expression: Type} from all modules (enabled by export_types)
       options:         Build options
       missing_modules: Set of modules that could not be imported encountered so far
