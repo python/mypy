@@ -3532,6 +3532,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Important note: `raise exc, msg` is not the same as `raise (exc, msg)`
         # We call `raise exc, msg, traceback` - legacy mode.
         exc_type = self.named_type('builtins.BaseException')
+        exc_inst_or_type = UnionType([exc_type, TypeType(exc_type)])
 
         if (not s.legacy_mode and (isinstance(typ, TupleType) and typ.items
                 or (isinstance(typ, Instance) and typ.args
@@ -3539,7 +3540,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # `raise (exc, ...)` case:
             item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
             self.check_subtype(
-                item, UnionType([exc_type, TypeType(exc_type)]), s,
+                item, exc_inst_or_type, s,
                 'When raising a tuple, first element must by derived from BaseException',
             )
             return
@@ -3548,9 +3549,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # `raise Exception, msg, traceback` case
             # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
             assert isinstance(typ, TupleType)  # Is set in fastparse2.py
+            if (len(typ.items) >= 2
+                    and isinstance(get_proper_type(typ.items[1]), NoneType)):
+                expected_type = exc_inst_or_type
+            else:
+                expected_type = TypeType(exc_type)
             self.check_subtype(
-                typ.items[0], TypeType(exc_type), s,
-                'First argument must be BaseException subtype',
+                typ.items[0], expected_type, s,
+                'Argument 1 must be "{}" subtype'.format(expected_type),
             )
 
             # Typecheck `traceback` part:
@@ -3565,7 +3571,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 ])
                 self.check_subtype(
                     typ.items[2], traceback_type, s,
-                    'Third argument to raise must have "{}" type'.format(traceback_type),
+                    'Argument 3 must be "{}" subtype'.format(traceback_type),
                 )
         else:
             expected_type_items = [
