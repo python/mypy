@@ -56,12 +56,13 @@ def main(a: object, b: object) -> None:
 
 [case testTypeGuardIsBool]
 from typing_extensions import TypeGuard
-def f(a: TypeGuard[int]) -> None: pass
+def f(a: TypeGuard[int]) -> None:  # E: TypeGuard must only be used as a return type
+    pass
 reveal_type(f)  # N: Revealed type is "def (a: builtins.bool)"
-a: TypeGuard[int]
+a: TypeGuard[int]  # E: TypeGuard must only be used as a return type
 reveal_type(a)  # N: Revealed type is "builtins.bool"
 class C:
-    a: TypeGuard[int]
+    a: TypeGuard[int]  # E: TypeGuard must only be used as a return type
 reveal_type(C().a)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/tuple.pyi]
 
