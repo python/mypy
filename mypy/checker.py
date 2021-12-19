@@ -1678,9 +1678,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fail = True
                 op_method_wider_note = True
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
-            if subtyping_context.original.is_class and not subtyping_context.override.is_class:
-                fail = True
-            elif subtyping_context.original.is_static and not subtyping_context.override.is_static:
+            original_class_or_static = (
+                subtyping_context.original.is_class
+                or subtyping_context.original.is_static
+            )
+            override_class_or_static = (
+                subtyping_context.override.is_class
+                or subtyping_context.override.is_static
+            )
+            if original_class_or_static and not override_class_or_static:
                 fail = True
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
                 if original.type_guard is not None and override.type_guard is None:
