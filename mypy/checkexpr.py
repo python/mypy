@@ -883,11 +883,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callable_name=callable_name,
             object_type=object_type,
         )
+        proper_callee = get_proper_type(callee_type)
         if (isinstance(e.callee, RefExpr)
-                and isinstance(callee_type, CallableType)
-                and callee_type.type_guard is not None):
+                and isinstance(proper_callee, CallableType)
+                and proper_callee.type_guard is not None):
             # Cache it for find_isinstance_check()
-            e.callee.type_guard = callee_type.type_guard
+            e.callee.type_guard = proper_callee.type_guard
         return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
