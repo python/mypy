@@ -1,6 +1,6 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union, Final
 
 import mypy.checker
 from mypy.checkmember import analyze_member_access
@@ -26,7 +26,7 @@ from mypy.types import (
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor
 
-self_match_type_names = [
+self_match_type_names: Final = [
     "builtins.bool",
     "builtins.bytearray",
     "builtins.bytes",
@@ -40,7 +40,7 @@ self_match_type_names = [
     "builtins.tuple",
 ]
 
-non_sequence_match_type_names = [
+non_sequence_match_type_names: Final = [
     "builtins.str",
     "builtins.bytes",
     "builtins.bytearray"
