@@ -894,7 +894,7 @@ t: Traversable
 t = D[int]() # OK
 if int():
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "Traversable")
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testRecursiveProtocols2]
@@ -951,7 +951,7 @@ t = A() # OK
 if int():
     t = B() # E: Incompatible types in assignment (expression has type "B", variable has type "P1")
     t = C() # E: Incompatible types in assignment (expression has type "C", variable has type "P1")
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 [typing fixtures/typing-medium.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatch]
@@ -974,7 +974,8 @@ t: P1
 t = A() # E: Incompatible types in assignment (expression has type "A", variable has type "P1") \
         # N: Following member(s) of "A" have conflicts: \
         # N:     attr1: expected "Sequence[P2]", got "List[B]"
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable]
 from typing import Protocol
@@ -1831,7 +1832,7 @@ fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int,
 reveal_type(fun3(z)) # N: Revealed type is "builtins.object*"
 
 reveal_type(fun3(z3)) # N: Revealed type is "builtins.int*"
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 
 [case testBasicCallableStructuralSubtyping]
 from typing import Callable, Generic, TypeVar
@@ -2017,7 +2018,7 @@ f(C()) # E: Argument 1 to "f" has incompatible type "C"; expected "P" \
        # N:     attr1: expected "int", got "str" \
        # N:     attr2: expected "str", got "int" \
        # N: Protocol member P.attr2 expected settable variable, got read-only attribute
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 
 [case testIterableProtocolOnClass]
 from typing import TypeVar, Iterator
@@ -2083,7 +2084,7 @@ fun_p(D())  # E: Argument 1 to "fun_p" has incompatible type "D"; expected "PP" 
             # N: Following member(s) of "D" have conflicts: \
             # N:     attr: expected "int", got "str"
 fun_p(C())  # OK
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 
 [case testImplicitTypesInProtocols]
 from typing import Protocol

@@ -1478,7 +1478,7 @@ class B(A):
     @property
     def x(self) -> List[int]:  # E: Signature of "x" incompatible with supertype "A"
         return [123]
-[builtins fixtures/list.pyi]
+[builtins fixtures/property.pyi]
 
 [case testInferSetInitializedToEmpty]
 a = set()

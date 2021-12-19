@@ -1,4 +1,4 @@
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, Sequence
 
 _T = TypeVar('_T')
 
@@ -31,8 +31,10 @@ class property(object):
 class dict: pass
 class int: pass
 class str: pass
+class float: pass
 class bytes: pass
 class bool: pass
 class ellipsis: pass
 
+class list(Sequence[_T]): pass
 class tuple(Generic[_T]): pass
