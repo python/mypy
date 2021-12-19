@@ -547,3 +547,18 @@ accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has 
 accepts_typeguard(with_typeguard_b)
 accepts_typeguard(with_typeguard_c)
 [builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithGenerics]
+from typing import TypeVar, Tuple
+from typing_extensions import TypeGuard
+
+_T = TypeVar("_T")
+
+def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeGuard[Tuple[_T, _T]]:
+    pass
+
+def func(names: Tuple[str, ...]):
+    reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str]"
+    if is_two_element_tuple(names):
+        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str*, builtins.str*]"
+[builtins fixtures/tuple.pyi]
