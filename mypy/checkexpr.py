@@ -3504,7 +3504,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         else:
             # dict(...) will be called below.
             pass
-        # Call rv.update(arg) for each arg in **stargs,
+        # Re-infer types for each `**` unpack in dict args,
         # except if rv isn't set yet, then set rv = dict(arg).
         if stargs:
             for arg in stargs:
@@ -3519,8 +3519,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         variables=[kt, vt])
                     rv = self.check_call(constructor, [arg], [nodes.ARG_POS], arg)[0]
                 else:
-                    arg_type = arg.accept(self)
-                    rv = self.dict_unpack(rv, arg_type, arg)
+                    rv = self.dict_unpack(rv, arg.accept(self), arg)
         assert rv is not None
         return rv
 
