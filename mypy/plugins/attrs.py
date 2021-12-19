@@ -724,8 +724,6 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
     namedtuple_cls_name = "_AttrsAttributes"
     ti = ctx.api.basic_new_typeinfo(namedtuple_cls_name, fallback_type, 0)
     ti.is_named_tuple = True
-    ti.type_vars = [repr(a) for a in attributes_types]
-    ti.tuple_type = TupleType(attributes_types, fallback=fallback_type)
     for (name, _), attr_type in zip(attrs, attributes_types):
         var = Var(name, attr_type)
         var.is_property = True
@@ -733,9 +731,9 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         if isinstance(proper_type, Instance):
             var.info = proper_type.type
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
-    attributes_type = Instance(ti, attributes_types)
+    attributes_type = Instance(ti, [])
 
-    var = Var(name=attr_name, type=attributes_type)
+    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=attributes_type))
     var.info = ctx.cls.info
     var.is_classvar = True
     var._fullname = f"{ctx.cls.fullname}.{namedtuple_cls_name}"
