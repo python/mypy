@@ -1,6 +1,7 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union, Final
+from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
+from typing_extensions import Final
 
 import mypy.checker
 from mypy.checkmember import analyze_member_access
@@ -47,12 +48,15 @@ non_sequence_match_type_names: Final = [
 ]
 
 
+# For every Pattern a PatternType can be calculated. This requires recursively calculating
+# the PatternTypes of the sub-patterns first.
+# Using the data in the PatternType the match subject and captured names can be narrowed/inferred.
 PatternType = NamedTuple(
     'PatternType',
     [
-        ('type', Type),
+        ('type', Type),  # The type the match subject can be narrowed to
         ('rest_type', Type),  # For exhaustiveness checking. Not used yet
-        ('captures', Dict[Expression, Type]),
+        ('captures', Dict[Expression, Type]),  # The variables captured by the pattern
     ])
 
 
@@ -75,9 +79,11 @@ class PatternChecker(PatternVisitor[PatternType]):
     subject_type: Type
     # Type of the subject to check the (sub)pattern against
     type_context: List[Type]
-
+    # Types that match against self instead of their __match_args__ if used as a class pattern
+    # Filled in from self_match_type_names
     self_match_types: List[Type]
-
+    # Types that are sequences, but don't match sequence patterns. Filled in from
+    # non_sequence_match_type_names
     non_sequence_match_types: List[Type]
 
     def __init__(self,
@@ -89,8 +95,10 @@ class PatternChecker(PatternVisitor[PatternType]):
         self.plugin = plugin
 
         self.type_context = []
-        self.self_match_types = self.generate_types(self_match_type_names)
-        self.non_sequence_match_types = self.generate_types(non_sequence_match_type_names)
+        self.self_match_types = self.generate_types_from_names(self_match_type_names)
+        self.non_sequence_match_types = self.generate_types_from_names(
+            non_sequence_match_type_names
+        )
 
     def accept(self, o: Pattern, type_context: Type) -> PatternType:
         self.type_context.append(type_context)
@@ -286,7 +294,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             new_inner_type = UninhabitedType()
             for typ in new_inner_types:
                 new_inner_type = join_types(new_inner_type, typ)
-            new_type = self.construct_iterable_child(current_type, new_inner_type)
+            new_type = self.construct_sequence_child(current_type, new_inner_type)
             if not is_subtype(new_type, current_type):
                 new_type = current_type
         return PatternType(new_type, rest_type, captures)
@@ -313,6 +321,15 @@ class PatternChecker(PatternVisitor[PatternType]):
                                        star_pos: Optional[int],
                                        num_patterns: int
                                        ) -> List[Type]:
+        """
+        Contracts a list of types in a sequence pattern depending on the position of a starred
+        capture pattern.
+
+        For example if the sequence pattern [a, *b, c] is matched against types [bool, int, str,
+        bytes] the contracted types are [bool, Union[int, str], bytes].
+
+        If star_pos in None the types are returned unchanged.
+        """
         if star_pos is None:
             return types
         new_types = types[:star_pos]
@@ -327,6 +344,12 @@ class PatternChecker(PatternVisitor[PatternType]):
                                      star_pos: Optional[int],
                                      num_types: int
                                      ) -> List[Type]:
+        """
+        Undoes the contraction done by contract_starred_pattern_types.
+
+        For example if the sequence pattern is [a, *b, c] and types [bool, int, str] are extended
+        to lenght 4 the result is [bool, int, int, str].
+        """
         if star_pos is None:
             return types
         new_types = types[:star_pos]
@@ -579,7 +602,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         # If the static type is more general than sequence the actual type could still match
         return is_subtype(typ, sequence) or is_subtype(sequence, typ)
 
-    def generate_types(self, type_names: List[str]) -> List[Type]:
+    def generate_types_from_names(self, type_names: List[str]) -> List[Type]:
         types: List[Type] = []
         for name in type_names:
             try:
@@ -607,9 +630,17 @@ class PatternChecker(PatternVisitor[PatternType]):
             else:
                 original_type_map[expr] = typ
 
-    def construct_iterable_child(self, outer_type: Type, inner_type: Type) -> Type:
+    def construct_sequence_child(self, outer_type: Type, inner_type: Type) -> Type:
+        """
+        If outer_type is a child class of typing.Sequence returns a new instance of
+        outer_type, that is a Sequence of inner_type. If outer_type is not a child class of
+        typing.Sequence just returns a Sequence of inner_type
+
+        For example:
+        construct_sequence_child(List[int], str) = List[str]
+        """
         sequence = self.chk.named_generic_type("typing.Sequence", [inner_type])
-        if self.chk.type_is_iterable(outer_type):
+        if is_subtype(outer_type, self.chk.named_type("typing.Sequence")):
             proper_type = get_proper_type(outer_type)
             assert isinstance(proper_type, Instance)
             empty_type = fill_typevars(proper_type.type)

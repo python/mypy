@@ -3935,7 +3935,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
 
             type_maps: List[TypeMap] = [t.captures for t in pattern_types]
-            self.infer_names_from_type_maps(type_maps)
+            self.infer_variable_types_from_type_maps(type_maps)
 
             for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
                 with self.binder.frame_context(can_skip=True, fall_through=2):
@@ -3961,7 +3961,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
 
-    def infer_names_from_type_maps(self, type_maps: List[TypeMap]) -> None:
+    def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> None:
         all_captures: Dict[Var, List[Tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
@@ -5387,14 +5387,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                             expr_type: Type,
                                             type_ranges: Optional[List[TypeRange]],
                                             ctx: Context,
-                                            ) -> Tuple[Optional[Type], Optional[Type]]: ...
-
-    @overload
-    def conditional_types_with_intersection(self,
-                                            expr_type: Type,
-                                            type_ranges: Optional[List[TypeRange]],
-                                            ctx: Context,
-                                            default: None
+                                            default: None = None
                                             ) -> Tuple[Optional[Type], Optional[Type]]: ...
 
     @overload
@@ -5420,7 +5413,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(get_proper_type(yes_type), UninhabitedType) or type_ranges is None:
             return yes_type, no_type
 
-        # If conditions_type_map was unable to successfully narrow the expr_type
+        # If conditional_types was unable to successfully narrow the expr_type
         # using the type_ranges and concluded if-branch is unreachable, we try
         # computing it again using a different algorithm that tries to generate
         # an ad-hoc intersection between the expr_type and the type_ranges.
@@ -5465,13 +5458,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 @overload
 def conditional_types(current_type: Type,
                       proposed_type_ranges: Optional[List[TypeRange]],
-                      ) -> Tuple[Optional[Type], Optional[Type]]: ...
-
-
-@overload
-def conditional_types(current_type: Type,
-                      proposed_type_ranges: Optional[List[TypeRange]],
-                      default: None
+                      default: None = None
                       ) -> Tuple[Optional[Type], Optional[Type]]: ...
 
 
@@ -5490,7 +5477,9 @@ def conditional_types(current_type: Type,
 
     Returns a 2-tuple: The first element is the proposed type, if the expression
     can be the proposed type. The second element is the type it would hold
-    if it was not the proposed type, if any. UninhabitedType means unreachable"""
+    if it was not the proposed type, if any. UninhabitedType means unreachable.
+    None means no new information can be inferred. If default is set it is returned
+    instead."""
     if proposed_type_ranges:
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
