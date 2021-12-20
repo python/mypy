@@ -1,7 +1,10 @@
+Literal types and Enums
+=======================
+
 .. _literal_types:
 
 Literal types
-=============
+-------------
 
 Literal types let you indicate that an expression is equal to some specific
 primitive value. For example, if we annotate a variable with type ``Literal["foo"]``,
@@ -142,7 +145,7 @@ as adding an explicit ``Literal[...]`` annotation, it often leads to the same ef
 in practice.
 
 The main cases where the behavior of context-sensitive vs true literal types differ are
-when you try using those types in places that are not explicitly expecting a ``Literal[...]``. 
+when you try using those types in places that are not explicitly expecting a ``Literal[...]``.
 For example, compare and contrast what happens when you try appending these types to a list:
 
 .. code-block:: python
@@ -208,7 +211,7 @@ corresponding to some particular index, we can use Literal types like so:
 
     # You can also index using unions of literals
     id_key: Literal["main_id", "backup_id"]
-    reveal_type(d[id_key])    # Revealed type is "int" 
+    reveal_type(d[id_key])    # Revealed type is "int"
 
 .. _tagged_unions:
 
@@ -248,7 +251,7 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
         # Literal["new-job", "cancel-job"], but the check below will narrow
         # the type to either Literal["new-job"] or Literal["cancel-job"].
         #
-        # This in turns narrows the type of 'event' to either NewJobEvent 
+        # This in turns narrows the type of 'event' to either NewJobEvent
         # or CancelJobEvent.
         if event["tag"] == "new-job":
             print(event["job_name"])
@@ -292,7 +295,7 @@ in other programming languages.
 Exhaustive checks
 *****************
 
-One may want to check that some code covers all possible ``Literal`` or ``Enum`` cases, 
+One may want to check that some code covers all possible ``Literal`` or ``Enum`` cases,
 example:
 
 .. code-block:: python
@@ -311,8 +314,8 @@ example:
   assert validate('one') is True
   assert validate('two') is False
 
-In the code above it is really easy to make a mistake in the future: 
-by adding a new literal value to ``PossibleValues``, 
+In the code above it is really easy to make a mistake in the future:
+by adding a new literal value to ``PossibleValues``,
 but not adding its handler to ``validate`` function:
 
 .. code-block:: python
@@ -369,3 +372,72 @@ whatever type the parameter has. For example, ``Literal[3]`` is treated as a
 subtype of ``int`` and so will inherit all of ``int``'s methods directly. This
 means that ``Literal[3].__add__`` accepts the same arguments and has the same
 return type as ``int.__add__``.
+
+
+Enums
+-----
+
+Mypy has special support for :py:class:`enum.Enum` and its subclasses:
+:py:class:`enum.IntEnum`, :py:class:`enum.Flag`, and :py:class:`enum.IntFlag`.
+
+.. code-block:: python
+
+  from enum import Enum
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+  reveal_type(Direction.up)  # Revealed type is "Literal[Direction.up]?"
+  reveal_type(Direction.down)  # Revealed type is "Literal[Direction.down]?"
+
+You can use enums to annotate types as you would expect:
+
+.. code-block:: python
+
+  class Movement:
+      def __init__(self, direction: Direction, speed: float) -> None:
+          self.direction = direction
+          self.speed = speed
+
+  Movement(Direction.up, 5.0)  # ok
+  Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
+
+Mypy also tries to support special features of ``Enum``
+the same way Python's runtime does.
+
+Extra checks:
+
+- Any ``Enum`` class with values is implicitly :ref:`final <final_attrs>`.
+  This is what happens in CPython:
+
+  .. code-block:: python
+
+    >>> class AllDirection(Direction):
+    ...     left = 'left'
+    ...     right = 'right'
+    Traceback (most recent call last):
+      ...
+    TypeError: Other: cannot extend enumeration 'Some'
+
+  We do the same thing:
+
+  .. code-block:: python
+
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+        left = 'left'
+        right = 'right'
+
+- All ``Enum`` fields are implictly ``final`` as well.
+
+  .. code-block:: python
+
+    Direction.up = '^'  # E: Cannot assign to final attribute "up"
+
+- All field names are checked to be unique.
+
+  .. code-block:: python
+
+     class Some(Enum):
+        x = 1
+        x = 2  # E: Attempted to reuse member name "x" in Enum definition "Some"
