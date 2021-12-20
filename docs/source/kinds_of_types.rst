@@ -534,7 +534,7 @@ ambiguous or incorrect type alias declarations implicitly default to a valid val
 
    AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
 
-Explicit type aliases solves the ambiguness and improves readability.
+Explicit type aliases are unambiguous and improve readability.
 
 .. _named-tuples:
 
