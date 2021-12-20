@@ -403,6 +403,52 @@ You can use enums to annotate types as you would expect:
   Movement(Direction.up, 5.0)  # ok
   Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
 
+Exhaustive checks
+*****************
+
+Similiar to ``Literal`` types ``Enum`` supports exhaustive checks.
+Let's start with a definition:
+
+.. code-block:: python
+
+  from enum import Enum
+  from typing import NoReturn
+
+  def assert_never(value: NoReturn) -> NoReturn:
+      # This also works in runtime as well:
+      assert False, 'This code should never be reached, got: {0}'.format(value)
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+Now, let's define an exhaustive check:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction is Direction.up:
+          reveal_type(direction)  # N: Revealed type is "Literal[ex.Direction.up]"
+          print('Going up!')
+          return
+      elif direction is Direction.down:
+          print('Down')
+          return
+      assert_never(direction)
+
+And then test that it raises an error when some cases are not covered:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction == Direction.up:
+          print('Going up!')
+          return
+      assert_never(direction)  # E: Argument 1 to "assert_never" has incompatible type "Direction"; expected "NoReturn"
+
+Extra Enum checks
+*****************
+
 Mypy also tries to support special features of ``Enum``
 the same way Python's runtime does.
 
