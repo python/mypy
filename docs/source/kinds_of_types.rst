@@ -362,7 +362,6 @@ is needed:
 
 .. code-block:: python
 
-
    class Container:
        items: list[str]  # No initializer
 
@@ -522,7 +521,7 @@ assigning the type to a variable:
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
 
-Since Mypy 0.920 you can also use explicit type aliases which are defined by :pep:`613`.
+Since Mypy 0.930 you can also use explicit type aliases which are defined by :pep:`613`.
 
 Implicit type alias declaration rules create confusion when type aliases involve forward references,
 invalid types, or violate other restrictions enforced on type alias declaration.
