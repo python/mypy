@@ -5610,3 +5610,67 @@ class C:
     pass
 [rechecked]
 [stale]
+
+[case testIncrementalClassMethodErrorMessage]
+from a import Foo  # https://github.com/python/mypy/issues/11791
+
+class Bar(Foo):
+    def foo(cls, arg: int) -> int:
+        pass
+[file a.py]
+class Foo:
+    @classmethod
+    def foo(cls, arg: int) -> int:
+        pass
+[file a.py.2]
+class Foo:
+    @classmethod
+    def foo(cls, arg: int) -> int:
+        pass
+[builtins fixtures/classmethod.pyi]
+[out]
+main:4: error: Signature of "foo" incompatible with supertype "Foo"
+main:4: note:      Superclass:
+main:4: note:          @classmethod
+main:4: note:          def foo(cls, arg: int) -> int
+main:4: note:      Subclass:
+main:4: note:          def foo(cls, arg: int) -> int
+[out2]
+main:4: error: Signature of "foo" incompatible with supertype "Foo"
+main:4: note:      Superclass:
+main:4: note:          @classmethod
+main:4: note:          def foo(cls, arg: int) -> int
+main:4: note:      Subclass:
+main:4: note:          def foo(cls, arg: int) -> int
+
+[case testIncrementalStaticMethodErrorMessage]
+from a import Foo
+
+class Bar(Foo):
+    def foo(self, arg: int) -> int:
+        pass
+[file a.py]
+class Foo:
+    @staticmethod
+    def foo(arg: int) -> int:
+        pass
+[file a.py.2]
+class Foo:
+    @staticmethod
+    def foo(arg: int) -> int:
+        pass
+[builtins fixtures/classmethod.pyi]
+[out]
+main:4: error: Signature of "foo" incompatible with supertype "Foo"
+main:4: note:      Superclass:
+main:4: note:          @staticmethod
+main:4: note:          def foo(arg: int) -> int
+main:4: note:      Subclass:
+main:4: note:          def foo(self, arg: int) -> int
+[out2]
+main:4: error: Signature of "foo" incompatible with supertype "Foo"
+main:4: note:      Superclass:
+main:4: note:          @staticmethod
+main:4: note:          def foo(arg: int) -> int
+main:4: note:      Subclass:
+main:4: note:          def foo(self, arg: int) -> int

@@ -42,7 +42,8 @@ from mypy.types import (
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
-    format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES
+    format_type, format_type_bare, format_type_distinctly, SUGGESTED_TEST_FIXTURES,
+    SubtypingContext, ClassOrStaticContext,
 )
 import mypy.checkexpr
 from mypy.checkmember import (
@@ -1528,13 +1529,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Construct the type of the overriding method.
             if isinstance(defn, (FuncDef, OverloadedFuncDef)):
                 typ: Type = self.function_type(defn)
-                override_class_or_static = defn.is_class or defn.is_static
+                override_static = defn.is_static
                 override_class = defn.is_class
             else:
                 assert defn.var.is_ready
                 assert defn.var.type is not None
                 typ = defn.var.type
-                override_class_or_static = defn.func.is_class or defn.func.is_static
+                override_static = defn.func.is_static
                 override_class = defn.func.is_class
             typ = get_proper_type(typ)
             if isinstance(typ, FunctionLike) and not is_static(context):
@@ -1567,27 +1568,35 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 else:
                     assert False, str(base_attr.node)
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
-                original_class_or_static = original_node.is_class or original_node.is_static
+                original_class = original_node.is_class
+                original_static = original_node.is_static
             elif isinstance(original_node, Decorator):
                 fdef = original_node.func
-                original_class_or_static = fdef.is_class or fdef.is_static
+                original_class = fdef.is_class
+                original_static = fdef.is_static
             else:
-                original_class_or_static = False  # a variable can't be class or static
+                original_class = original_static = False  # a variable can't be class or static
+
+            subtyping_context = SubtypingContext(
+                original=ClassOrStaticContext(original_class, original_static),
+                override=ClassOrStaticContext(override_class, override_static),
+            )
+
             if isinstance(original_type, AnyType) or isinstance(typ, AnyType):
                 pass
             elif isinstance(original_type, FunctionLike) and isinstance(typ, FunctionLike):
                 original = self.bind_and_map_method(base_attr, original_type,
                                                     defn.info, base)
                 # Check that the types are compatible.
-                # TODO overloaded signatures
-                self.check_override(typ,
-                                    original,
-                                    defn.name,
-                                    name,
-                                    base.name,
-                                    original_class_or_static,
-                                    override_class_or_static,
-                                    context)
+                self.check_override(
+                    typ,
+                    original,
+                    defn.name,
+                    name,
+                    base.name,
+                    context,
+                    subtyping_context=subtyping_context,
+                )
             elif is_equivalent(original_type, typ):
                 # Assume invariance for a non-callable attribute here. Note
                 # that this doesn't affect read-only properties which can have
@@ -1600,7 +1609,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 pass
             else:
                 self.msg.signature_incompatible_with_supertype(
-                    defn.name, name, base.name, context)
+                    defn.name, name, base.name, context,
+                    subtyping_context=subtyping_context,
+                )
         return False
 
     def bind_and_map_method(self, sym: SymbolTableNode, typ: FunctionLike,
@@ -1640,9 +1651,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_override(self, override: FunctionLike, original: FunctionLike,
                        name: str, name_in_super: str, supertype: str,
-                       original_class_or_static: bool,
-                       override_class_or_static: bool,
-                       node: Context) -> None:
+                       node: Context,
+                       *,
+                       subtyping_context: SubtypingContext) -> None:
         """Check a method override with given signatures.
 
         Arguments:
@@ -1667,6 +1678,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 fail = True
                 op_method_wider_note = True
         if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
+            original_class_or_static = (
+                subtyping_context.original.is_class
+                or subtyping_context.original.is_static
+            )
+            override_class_or_static = (
+                subtyping_context.override.is_class
+                or subtyping_context.override.is_static
+            )
             if original_class_or_static and not override_class_or_static:
                 fail = True
             elif isinstance(original, CallableType) and isinstance(override, CallableType):
@@ -1743,7 +1762,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if not emitted_msg:
                 # Fall back to generic incompatibility message.
                 self.msg.signature_incompatible_with_supertype(
-                    name, name_in_super, supertype, node, original=original, override=override)
+                    name, name_in_super, supertype, node,
+                    original=original, override=override,
+                    subtyping_context=subtyping_context,
+                )
             if op_method_wider_note:
                 self.note("Overloaded operator methods can't have wider argument types"
                           " in overrides", node, code=codes.OVERRIDE)

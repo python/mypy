@@ -15,7 +15,10 @@ import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union
+from typing import (
+    cast, List, Dict, Any, Sequence, Iterable, Iterator,
+    Tuple, Set, Optional, Union, NamedTuple,
+)
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
@@ -84,6 +87,24 @@ SUGGESTED_TEST_FIXTURES: Final = {
     'builtins.property': 'property.pyi',
     'builtins.classmethod': 'classmethod.pyi',
 }
+
+
+class ClassOrStaticContext(NamedTuple):
+    """We use this type for better error messages with `@classmethod` and `@staticmethod`.
+
+    The problem is: we cannot just rely on the regular metadata,
+    since it is not serialized / deserialized properly. See #11791
+    """
+
+    is_class: bool
+    is_static: bool
+
+
+class SubtypingContext(NamedTuple):
+    """Container we use when working with incorrect subtyping message."""
+
+    original: ClassOrStaticContext
+    override: ClassOrStaticContext
 
 
 class MessageBuilder:
@@ -817,6 +838,7 @@ class MessageBuilder:
 
     def signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str, context: Context,
+            subtyping_context: SubtypingContext,
             original: Optional[FunctionLike] = None,
             override: Optional[FunctionLike] = None) -> None:
         code = codes.OVERRIDE
@@ -824,7 +846,6 @@ class MessageBuilder:
         self.fail('Signature of "{}" incompatible with {}'.format(
             name, target), context, code=code)
 
-        INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
         ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
         OFFSET = 4  # Four spaces, so that notes will look like this:
@@ -833,36 +854,36 @@ class MessageBuilder:
         # note:          def f(self) -> str
         # note:      Subclass:
         # note:          def f(self, x: str) -> None
-        if original is not None and isinstance(original, (CallableType, Overloaded)) \
-                and override is not None and isinstance(override, (CallableType, Overloaded)):
+        if isinstance(original, FunctionLike) and isinstance(override, FunctionLike):
             self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
-            self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
-                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            allow_dups=ALLOW_DUPS, code=code)
+            self.pretty_callable_or_overload(
+                original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                class_or_static=subtyping_context.original,
+                allow_dups=ALLOW_DUPS, code=code)
 
             self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
-            self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
-                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            allow_dups=ALLOW_DUPS, code=code)
+            self.pretty_callable_or_overload(
+                override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
+                class_or_static=subtyping_context.override,
+                allow_dups=ALLOW_DUPS, code=code)
 
     def pretty_callable_or_overload(self,
-                                    tp: Union[CallableType, Overloaded],
+                                    tp: FunctionLike,
                                     context: Context,
                                     *,
+                                    class_or_static: ClassOrStaticContext,
                                     offset: int = 0,
-                                    add_class_or_static_decorator: bool = False,
                                     allow_dups: bool = False,
                                     code: Optional[ErrorCode] = None) -> None:
         if isinstance(tp, CallableType):
-            if add_class_or_static_decorator:
-                decorator = pretty_class_or_static_decorator(tp)
-                if decorator is not None:
-                    self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
+            decorator = pretty_class_or_static_decorator(tp, class_or_static)
+            if decorator is not None:
+                self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
             self.note(pretty_callable(tp), context,
                       offset=offset, allow_dups=allow_dups, code=code)
         elif isinstance(tp, Overloaded):
             self.pretty_overload(tp, context, offset,
-                                 add_class_or_static_decorator=add_class_or_static_decorator,
+                                 class_or_static=class_or_static,
                                  allow_dups=allow_dups, code=code)
 
     def argument_incompatible_with_supertype(
@@ -1530,14 +1551,14 @@ class MessageBuilder:
                         context: Context,
                         offset: int,
                         *,
-                        add_class_or_static_decorator: bool = False,
+                        class_or_static: Optional[ClassOrStaticContext] = None,
                         allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
         for item in tp.items:
             self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
 
-            if add_class_or_static_decorator:
-                decorator = pretty_class_or_static_decorator(item)
+            if class_or_static is not None:
+                decorator = pretty_class_or_static_decorator(item, class_or_static)
                 if decorator is not None:
                     self.note(decorator, context, offset=offset, allow_dups=allow_dups, code=code)
 
@@ -1897,13 +1918,21 @@ def format_type_distinctly(*types: Type, bare: bool = False) -> Tuple[str, ...]:
         return tuple(quote_type_string(s) for s in strs)
 
 
-def pretty_class_or_static_decorator(tp: CallableType) -> Optional[str]:
+def pretty_class_or_static_decorator(
+    tp: CallableType, context: ClassOrStaticContext,
+) -> Optional[str]:
     """Return @classmethod or @staticmethod, if any, for the given callable type."""
+    is_static = context.is_static
+    is_class = context.is_class
     if tp.definition is not None and isinstance(tp.definition, SYMBOL_FUNCBASE_TYPES):
         if tp.definition.is_class:
-            return '@classmethod'
+            is_class = True
         if tp.definition.is_static:
-            return '@staticmethod'
+            is_static = True
+    if is_static:
+        return '@staticmethod'
+    if is_class:
+        return '@classmethod'
     return None
 
 
