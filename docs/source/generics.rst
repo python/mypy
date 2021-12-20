@@ -90,11 +90,20 @@ instantiation:
    >>> print(Stack[int]().__class__)
    __main__.Stack
 
+Generic types could be instantiated or subclassed as usual classes,
+but the above examples illustrate that type variables are erased at
+runtime. Generic ``Stack`` instances are just ordinary
+Python objects, and they have no extra runtime overhead or magic due
+to being generic, other than a metaclass that overloads the indexing
+operator.
+
 For Python 3.8 and lower, note that built-in types :py:class:`list`,
-:py:class:`dict` and so on do not support indexing in Python.
-This is why we have the aliases :py:class:`~typing.List`, :py:class:`~typing.Dict`
-and so on in the :py:mod:`typing` module. Indexing these aliases gives
-you a class that directly inherits from the target class in Python:
+:py:class:`dict` and so on do not support indexing in Python.  This is
+why we have the aliases :py:class:`~typing.List`,
+:py:class:`~typing.Dict` and so on in the :py:mod:`typing`
+module. Indexing these aliases gives you an object that is roughly
+similar to directly indexing the target class in more recent versions
+of Python:
 
 .. code-block:: python
 
@@ -103,15 +112,17 @@ you a class that directly inherits from the target class in Python:
    >>> from typing import List
    >>> List[int]
    typing.List[int]
-   >>> List[int].__bases__
-   (<class 'list'>, typing.MutableSequence)
 
-Generic types could be instantiated or subclassed as usual classes,
-but the above examples illustrate that type variables are erased at
-runtime. Generic ``Stack`` instances are just ordinary
-Python objects, and they have no extra runtime overhead or magic due
-to being generic, other than a metaclass that overloads the indexing
-operator.
+Note that these aliases don't behave exactly like class objects. They
+don't support constructing instances, in particular:
+
+.. code-block:: python
+
+   >>> from typing import List
+   >>> List[int]()
+   Traceback (most recent call last):
+   ...
+   TypeError: Type List cannot be instantiated; use list() instead
 
 .. _generic-subclasses:
 

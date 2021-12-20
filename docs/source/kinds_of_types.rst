@@ -578,8 +578,8 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 
 .. note::
 
-  You can use raw ``NamedTuple`` pseudo-class to annotate type
-  where any ``NamedTuple`` is expected.
+  You can use raw the ``NamedTuple`` "pseudo-class" in type annotations
+  when any ``NamedTuple`` object is valid.
 
   For example, it can be useful for deserialization:
 
@@ -594,10 +594,12 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
     deserialize_named_tuple(Point(x=1, y=2))  # ok
     deserialize_named_tuple(Person(name='Nikita', age=18))  # ok
 
-    deserialize_named_tuple((1, 2))  # Argument 1 to "deserialize_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+    # Error: Argument 1 to "deserialize_named_tuple" has incompatible type
+    # "Tuple[int, int]"; expected "NamedTuple"
+    deserialize_named_tuple((1, 2))
 
-  Note, that behavior is highly experimental, non-standard,
-  and can be not supported by other type checkers.
+  Note that this behavior is highly experimental, non-standard,
+  and may not be supported by other type checkers and IDEs.
 
 .. _type-of-class:
 
@@ -743,15 +745,15 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
    def squares(n: int) -> Iterator[int]:
        for i in range(n):
            yield i * i
-           
+
 A good rule of thumb is to annotate functions with the most specific return
 type possible. However, you should also take care to avoid leaking implementation
-details into a function's public API. In keeping with these two principles, prefer 
+details into a function's public API. In keeping with these two principles, prefer
 :py:class:`Iterator[YieldType] <typing.Iterator>` over
-:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a 
-generator function, as it lets mypy know that users are able to call :py:func:`next` on 
+:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a
+generator function, as it lets mypy know that users are able to call :py:func:`next` on
 the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
-sometimes be the better option, if you consider it an implementation detail that 
+sometimes be the better option, if you consider it an implementation detail that
 ``next()`` can be called on the object returned by your function.
 
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
