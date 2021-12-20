@@ -50,6 +50,8 @@ attr_attrib_makers: Final = {
 }
 
 SELF_TVAR_NAME: Final = "_AT"
+MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
+MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
 
 
 class Converter:
@@ -711,7 +713,6 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 
 def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
                                attrs: 'List[Tuple[str, Optional[Type]]]') -> None:
-    attr_name = '__attrs_attrs__'
     any_type = AnyType(TypeOfAny.explicit)
     attributes_types: 'List[Type]' = [
         ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
@@ -721,8 +722,7 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
     ])
 
-    namedtuple_cls_name = "_AttrsAttributes"
-    ti = ctx.api.basic_new_typeinfo(namedtuple_cls_name, fallback_type, 0)
+    ti = ctx.api.basic_new_typeinfo(MAGIC_ATTR_CLS_NAME, fallback_type, 0)
     ti.is_named_tuple = True
     for (name, _), attr_type in zip(attrs, attributes_types):
         var = Var(name, attr_type)
@@ -733,11 +733,11 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
     attributes_type = Instance(ti, [])
 
-    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=attributes_type))
+    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
     var.info = ctx.cls.info
     var.is_classvar = True
-    var._fullname = f"{ctx.cls.fullname}.{namedtuple_cls_name}"
-    ctx.cls.info.names[attr_name] = SymbolTableNode(
+    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
+    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
         kind=MDEF,
         node=var,
         plugin_generated=True,
