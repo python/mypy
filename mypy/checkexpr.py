@@ -1,6 +1,5 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from mypy.util import unnamed_function
 from mypy.backports import OrderedDict, nullcontext
 from contextlib import contextmanager
 import itertools
@@ -336,12 +335,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             self.msg.untyped_function_call(callee_type, e)
-
-        if (isinstance(callee_type, CallableType)
-                and not callee_type.is_type_obj()
-                and unnamed_function(callee_type.name)):
-            self.msg.underscore_function_call(e)
-            return AnyType(TypeOfAny.from_error)
 
         # Figure out the full name of the callee for plugin lookup.
         object_type = None

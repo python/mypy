@@ -2230,6 +2230,12 @@ reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
 
+[case testFunctionWithNameUnderscore]
+def _(x: int) -> None: pass
+
+_(1)
+_('x')  # E: Argument 1 to "_" has incompatible type "str"; expected "int"
+
 -- Positional-only arguments
 -- -------------------------
 
