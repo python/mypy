@@ -2031,6 +2031,23 @@ class DummyTypedDict(TypedDict):
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictTypeNarrowingWithFinalKey]
+from typing import Final, Optional, TypedDict
+
+KEY_NAME: Final = "bar"
+class Foo(TypedDict):
+    bar: Optional[str]
+
+foo = Foo(bar="hello")
+if foo["bar"] is not None:
+    string1: str = foo["bar"]
+    string2: str = foo[KEY_NAME]
+if foo[KEY_NAME] is not None:
+    string3: str = foo[KEY_NAME]
+    string4: str = foo["bar"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictDoubleForwardClass]
 from mypy_extensions import TypedDict
 from typing import Any, List
