@@ -71,7 +71,8 @@ def literal(e: Expression) -> int:
             return LITERAL_NO
 
     elif isinstance(e, NameExpr):
-        if isinstance(e.node, Var) and e.node.is_final:
+        if (isinstance(e.node, Var) and
+                e.node.is_final and e.node.final_value is not None):
             return LITERAL_YES
         return LITERAL_TYPE
 
@@ -118,7 +119,8 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ('Star', literal_hash(e.expr))
 
     def visit_name_expr(self, e: NameExpr) -> Key:
-        if isinstance(e.node, Var) and e.node.is_final:
+        if (isinstance(e.node, Var) and
+                e.node.is_final and e.node.final_value is not None):
             return ('Literal', e.node.final_value)
         # N.B: We use the node itself as the key, and not the name,
         # because using the name causes issues when there is shadowing
