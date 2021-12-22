@@ -321,7 +321,7 @@ Slots
 
 When a class has explicitly defined
 `__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_,
-mypy will check that all attributes assigned to are members of `__slots__`:
+mypy will check that all attributes assigned to are members of ``__slots__``:
 
 .. code-block:: python
 
@@ -336,14 +336,14 @@ mypy will check that all attributes assigned to are members of `__slots__`:
 
   my_album = Album('Songs about Python', 2021)
 
-Mypy will only check attribute assignments against `__slots__` when the following conditions hold:
+Mypy will only check attribute assignments against ``__slots__`` when
+the following conditions hold:
 
 1. All base classes (except builtin ones) must have explicit
    ``__slots__`` defined (this mirrors Python semantics).
 
 2. ``__slots__`` does not include ``__dict__``. If ``__slots__``
-   includes ``__dict__``, it allows setting all attributes, similar to
+   includes ``__dict__``, arbitrary attributes can be set, similar to
    when ``__slots__`` is not defined (this mirrors Python semantics).
 
-3. All values in ``__slots__`` must be statically known. All attribute
-   names must be string literals.
+3. All values in ``__slots__`` must be string literals.

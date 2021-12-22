@@ -77,8 +77,8 @@ Generic class internals
 ***********************
 
 You may wonder what happens at runtime when you index
-``Stack``. Actually, indexing ``Stack`` returns essentially a copy
-of ``Stack`` that returns instances of the original class on
+``Stack``. Indexing ``Stack`` returns a *generic alias*
+to ``Stack`` that returns instances of the original class on
 instantiation:
 
 .. code-block:: python
@@ -90,20 +90,20 @@ instantiation:
    >>> print(Stack[int]().__class__)
    __main__.Stack
 
-Generic types could be instantiated or subclassed as usual classes,
-but the above examples illustrate that type variables are erased at
-runtime. Generic ``Stack`` instances are just ordinary
+Generic aliases can be instantiated or subclassed, similar to real
+classes, but the above examples illustrate that type variables are
+erased at runtime. Generic ``Stack`` instances are just ordinary
 Python objects, and they have no extra runtime overhead or magic due
 to being generic, other than a metaclass that overloads the indexing
 operator.
 
-For Python 3.8 and lower, note that built-in types :py:class:`list`,
-:py:class:`dict` and so on do not support indexing in Python.  This is
-why we have the aliases :py:class:`~typing.List`,
+Note that in Python 3.8 and lower, the built-in types
+:py:class:`list`, :py:class:`dict` and others do not support indexing.
+This is why we have the aliases :py:class:`~typing.List`,
 :py:class:`~typing.Dict` and so on in the :py:mod:`typing`
-module. Indexing these aliases gives you an object that is roughly
-similar to directly indexing the target class in more recent versions
-of Python:
+module. Indexing these aliases gives you a generic alias that
+resembles generic aliases constructed by directly indexing the target
+class in more recent versions of Python:
 
 .. code-block:: python
 
@@ -113,8 +113,8 @@ of Python:
    >>> List[int]
    typing.List[int]
 
-Note that these aliases don't behave exactly like class objects. They
-don't support constructing instances, in particular:
+Note that the generic aliases in ``typing`` don't support constructing
+instances:
 
 .. code-block:: python
 
@@ -123,6 +123,13 @@ don't support constructing instances, in particular:
    Traceback (most recent call last):
    ...
    TypeError: Type List cannot be instantiated; use list() instead
+
+.. note::
+
+   In Python 3.6 indexing generic types or type aliases results in actual
+   type objects. This means that generic types in type annotations can
+   have a significant runtime cost. This was changed in Python 3.7, and
+   indexing generic types became a cheap operation.
 
 .. _generic-subclasses:
 

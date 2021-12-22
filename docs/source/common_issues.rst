@@ -383,8 +383,8 @@ explicit type cast:
       if index < 0:
           raise ValueError('No str found')
 
-      found = a[index]  # Has type "object" type, despite the fact that we know it is "str"
-      return cast(str, found)  # So, we need an explicit cast to make mypy happy
+      found = a[index]  # Has type "object", despite the fact that we know it is "str"
+      return cast(str, found)  # We need an explicit cast to make mypy happy
 
 Alternatively, you can use an ``assert`` statement together with some
 of the supported type inference techniques:
@@ -396,7 +396,7 @@ of the supported type inference techniques:
       if index < 0:
           raise ValueError('No str found')
 
-      found = a[index]  # Has type "object" type, despite the fact that we know it is "str"
+      found = a[index]  # Has type "object", despite the fact that we know it is "str"
       assert isinstance(found, str)  # Now, "found" will be narrowed to "str"
       return found  # No need for the explicit "cast()" anymore
 
