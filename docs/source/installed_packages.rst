@@ -178,9 +178,10 @@ the Python 2 stubs in a directory with the suffix ``-python2-stubs``.
 We recommend that Python 2 and Python 3 stubs are bundled together for
 simplicity, instead of distributing them separately.
 
-The instructions are enough to ensure that built wheels contains the appropriate
-files. However, to ensure inclusion inside the ``sdist`` (``.tar.gz`` archive),
-you may also need to modify the inclusion rules in your ``MANIFEST.in``:
+The instructions above are enough to ensure that the built wheels
+contain the appropriate files. However, to ensure inclusion inside the
+``sdist`` (``.tar.gz`` archive), you may also need to modify the
+inclusion rules in your ``MANIFEST.in``:
 
 .. code-block:: text
 
