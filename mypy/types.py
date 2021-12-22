@@ -1520,7 +1520,7 @@ class TupleType(ProperType):
         return self.length() == 0
 
     def can_be_any_bool(self) -> bool:
-        return (
+        return bool(
             self.partial_fallback.type
             and self.partial_fallback.type.fullname != 'builtins.tuple'
             and self.partial_fallback.type.names.get('__bool__')
