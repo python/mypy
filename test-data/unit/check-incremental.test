@@ -5610,3 +5610,26 @@ class C:
     pass
 [rechecked]
 [stale]
+
+
+[case testEnumAreStillFinalAfterCache]
+import a
+class Ok(a.RegularEnum):
+    x = 1
+class NotOk(a.FinalEnum):
+    x = 1
+[file a.py]
+from enum import Enum
+class RegularEnum(Enum):
+    x: int
+class FinalEnum(Enum):
+    x = 1
+[builtins fixtures/isinstance.pyi]
+[out]
+main:3: error: Cannot override writable attribute "x" with a final one
+main:4: error: Cannot inherit from final class "FinalEnum"
+main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
+[out2]
+main:3: error: Cannot override writable attribute "x" with a final one
+main:4: error: Cannot inherit from final class "FinalEnum"
+main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")

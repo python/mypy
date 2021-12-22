@@ -1290,7 +1290,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return []
         elif node and node.fullname in LITERAL_TYPE_NAMES:
             return []
-        elif node and node.fullname in ANNOTATED_TYPE_NAMES:
+        elif node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
             # Don't query the second argument to Annotated for TypeVars
             return self.query_types([t.args[0]])
         else:
