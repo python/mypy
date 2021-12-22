@@ -1,0 +1,35 @@
+name: Bug Report
+description: Something isn't working as it should
+labels: "bug"
+
+body:
+  - type: textarea
+    attributes:
+      label: Describe the problem, ie expected/actual result (if it's not blatantly obvious)
+  - type: textarea
+    attributes:
+      label: Gist to reproduce
+      description: >
+        Full source code is appreciated. We also very much appreciate
+        it if you try to narrow the source down to a small stand-alone example.
+      render: python
+  - type: markdown
+    attributes:
+      value: "# Your Environment"
+  - type: textarea
+    attributes:
+      label: Basedmypy version
+      description: output of `mypy --version`
+  - type: input
+    attributes:
+      label: Command-line flags
+  - type: input
+    attributes:
+      label: Configuration options from `pyptoject.toml` (and other config files)
+  - type: input
+    attributes:
+      label: Python version used
+  - type: input
+    attributes:
+      label: Operating system and version
+      description: Linux/macOS/Windows/wsl etc
