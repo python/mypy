@@ -521,20 +521,24 @@ assigning the type to a variable:
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
 
-Since Mypy 0.930 you can also use explicit type aliases which are defined by :pep:`613`.
+Since Mypy 0.930 you can also use *explicit type aliases*, which were
+introduced in :pep:`613`.
 
-Implicit type alias declaration rules create confusion when type aliases involve forward references,
-invalid types, or violate other restrictions enforced on type alias declaration.
-Because the distinction between an unannotated value and a type alias is implicit,
-ambiguous or incorrect type alias declarations implicitly default to a valid value assignment.
+There can be confusion about exactly when an assignment defines an implicit type alias --
+for example, when the alias contains forward references, invalid types, or violates some other
+restrictions on type alias declarations.  Because the
+distinction between an unannotated variable and a type alias is implicit,
+ambiguous or incorrect type alias declarations default to defining
+a normal variable instead of a type alias.
+
+Explicit type aliases are unambiguous and can also improve readability by
+making the intent clear:
 
 .. code-block:: python
 
-   from typing import TypeAlias  # or `from typing_extensions` before `python3.10`
+   from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
 
    AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
-
-Explicit type aliases are unambiguous and improve readability.
 
 .. _named-tuples:
 
