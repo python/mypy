@@ -29,7 +29,7 @@ well with extension modules). However, this means that stubtest has limited
 visibility; for instance, it cannot tell if a return type of a function is
 accurately typed in the stubs.
 
-For clarity, here are some more things stubtest does not do:
+For clarity, here are some additional things stubtest can't do:
 
 * Type check your code -- use ``mypy`` instead
 * Generate stubs -- use ``stubgen`` or ``pyright --createstub`` instead

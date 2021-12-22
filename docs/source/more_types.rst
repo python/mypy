@@ -297,7 +297,7 @@ return type by using overloads like so:
 The default values of a function's arguments don't affect its signature -- only
 the absence or presence of a default value does. So in order to reduce
 redundancy, it's possible to replace default values in overload definitions with
-`...` as a placeholder:
+``...`` as a placeholder:
 
 .. code-block:: python
 

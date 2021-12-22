@@ -306,14 +306,14 @@ You may want to check that some code covers all possible
           return True
       elif x == 'two':
           return False
-      raise ValueError('Wrong values passed: {0}'.format(x))
+      raise ValueError(f'Invalid value: {x}')
 
   assert validate('one') is True
   assert validate('two') is False
 
-In the code above, it's easy to make a mistake --
-by adding a new literal value to ``PossibleValues``,
-but forgotting to handle it in the ``validate`` function:
+In the code above, it's easy to make a mistake. You can
+add a new literal value to ``PossibleValues`` but forget
+to handle it in the ``validate`` function:
 
 .. code-block:: python
 

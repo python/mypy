@@ -578,8 +578,8 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 
 .. note::
 
-  You can use raw the ``NamedTuple`` "pseudo-class" in type annotations
-  when any ``NamedTuple`` object is valid.
+  You can use the raw ``NamedTuple`` "pseudo-class" in type annotations
+  if any ``NamedTuple`` object is valid.
 
   For example, it can be useful for deserialization:
 
