@@ -1689,6 +1689,11 @@ class E(Enum):
     _value_ = 'b2'
     _order_ = 'X Y'
     __order__ = 'X Y'
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
 
 class EI(IntEnum):
     name = 'a'
@@ -1697,10 +1702,15 @@ class EI(IntEnum):
     _value_ = 2
     _order_ = 'X Y'
     __order__ = 'X Y'
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
 
 E._order_ = 'a'  # E: Cannot assign to final attribute "_order_"
 EI.value = 2     # E: Cannot assign to final attribute "value"
-[builtins fixtures/bool.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testEnumNotFinalWithMethodsAndUninitializedValues]
 # https://github.com/python/mypy/issues/11578
