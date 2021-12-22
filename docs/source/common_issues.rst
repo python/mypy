@@ -26,102 +26,102 @@ No errors reported for obviously wrong code
 There are several common reasons why obviously wrong code is not
 flagged as an error.
 
-- **The function containing the error is not annotated.** Functions that
-  do not have any annotations (neither for any argument nor for the
-  return type) are not type-checked, and even the most blatant type
-  errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
-  annotations. Where that isn't possible, functions without annotations
-  can be checked using :option:`--check-untyped-defs <mypy --check-untyped-defs>`.
+**The function containing the error is not annotated.** Functions that
+do not have any annotations (neither for any argument nor for the
+return type) are not type-checked, and even the most blatant type
+errors (e.g. ``2 + 'a'``) pass silently.  The solution is to add
+annotations. Where that isn't possible, functions without annotations
+can be checked using :option:`--check-untyped-defs <mypy --check-untyped-defs>`.
 
-  Example:
+Example:
 
-  .. code-block:: python
+.. code-block:: python
 
-      def foo(a):
-          return '(' + a.split() + ')'  # No error!
+    def foo(a):
+        return '(' + a.split() + ')'  # No error!
 
-  This gives no error even though ``a.split()`` is "obviously" a list
-  (the author probably meant ``a.strip()``).  The error is reported
-  once you add annotations:
+This gives no error even though ``a.split()`` is "obviously" a list
+(the author probably meant ``a.strip()``).  The error is reported
+once you add annotations:
 
-  .. code-block:: python
+.. code-block:: python
 
-      def foo(a: str) -> str:
-          return '(' + a.split() + ')'
-      # error: Unsupported operand types for + ("str" and List[str])
+    def foo(a: str) -> str:
+        return '(' + a.split() + ')'
+    # error: Unsupported operand types for + ("str" and List[str])
 
-  If you don't know what types to add, you can use ``Any``, but beware:
+If you don't know what types to add, you can use ``Any``, but beware:
 
-- **One of the values involved has type 'Any'.** Extending the above
-  example, if we were to leave out the annotation for ``a``, we'd get
-  no error:
+**One of the values involved has type 'Any'.** Extending the above
+example, if we were to leave out the annotation for ``a``, we'd get
+no error:
 
-  .. code-block:: python
+.. code-block:: python
 
-      def foo(a) -> str:
-          return '(' + a.split() + ')'  # No error!
+    def foo(a) -> str:
+        return '(' + a.split() + ')'  # No error!
 
-  The reason is that if the type of ``a`` is unknown, the type of
-  ``a.split()`` is also unknown, so it is inferred as having type
-  ``Any``, and it is no error to add a string to an ``Any``.
+The reason is that if the type of ``a`` is unknown, the type of
+``a.split()`` is also unknown, so it is inferred as having type
+``Any``, and it is no error to add a string to an ``Any``.
 
-  If you're having trouble debugging such situations,
-  :ref:`reveal_type() <reveal-type>` might come in handy.
+If you're having trouble debugging such situations,
+:ref:`reveal_type() <reveal-type>` might come in handy.
 
-  Note that sometimes library stubs have imprecise type information,
-  e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
-  <https://github.com/python/typeshed/issues/285>`_ for the reason).
+Note that sometimes library stubs have imprecise type information,
+e.g. the :py:func:`pow` builtin returns ``Any`` (see `typeshed issue 285
+<https://github.com/python/typeshed/issues/285>`_ for the reason).
 
-- :py:meth:`__init__ <object.__init__>` **method has no annotated
-  arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
-  is considered fully-annotated **if at least one argument is annotated**,
-  while mypy will infer the return type as ``None``.
-  The implication is that, for a :py:meth:`__init__ <object.__init__>` method
-  that has no argument, you'll have to explicitly annotate the return type
-  as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
+:py:meth:`__init__ <object.__init__>` **method has no annotated
+arguments or return type annotation.** :py:meth:`__init__ <object.__init__>`
+is considered fully-annotated **if at least one argument is annotated**,
+while mypy will infer the return type as ``None``.
+The implication is that, for a :py:meth:`__init__ <object.__init__>` method
+that has no argument, you'll have to explicitly annotate the return type
+as ``None`` to type-check this :py:meth:`__init__ <object.__init__>` method:
 
-  .. code-block:: python
+.. code-block:: python
 
-      def foo(s: str) -> str:
-          return s
+    def foo(s: str) -> str:
+        return s
 
-      class A():
-          def __init__(self, value: str): # Return type inferred as None, considered as typed method
-              self.value = value
-              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+    class A():
+        def __init__(self, value: str): # Return type inferred as None, considered as typed method
+            self.value = value
+            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
-      class B():
-          def __init__(self):  # No argument is annotated, considered as untyped method
-              foo(1)  # No error!
+    class B():
+        def __init__(self):  # No argument is annotated, considered as untyped method
+            foo(1)  # No error!
 
-      class C():
-          def __init__(self) -> None:  # Must specify return type to type-check
-              foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
+    class C():
+        def __init__(self) -> None:  # Must specify return type to type-check
+            foo(1) # error: Argument 1 to "foo" has incompatible type "int"; expected "str"
 
-- **Some imports may be silently ignored**.  Another source of
-  unexpected ``Any`` values are the :option:`--ignore-missing-imports
-  <mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
-  <mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
-  any imported module that cannot be found is silently replaced with
-  ``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
-  modules for which a ``.py`` file is found but that are not specified
-  on the command line.  (If a ``.pyi`` stub is found it is always
-  processed normally, regardless of the value of
-  :option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
-  module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
-  clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
-  read up about these and other useful flags in :ref:`command-line`.
+**Some imports may be silently ignored**.  Another source of
+unexpected ``Any`` values are the :option:`--ignore-missing-imports
+<mypy --ignore-missing-imports>` and :option:`--follow-imports=skip
+<mypy --follow-imports>` flags.  When you use :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`,
+any imported module that cannot be found is silently replaced with
+``Any``.  When using :option:`--follow-imports=skip <mypy --follow-imports>` the same is true for
+modules for which a ``.py`` file is found but that are not specified
+on the command line.  (If a ``.pyi`` stub is found it is always
+processed normally, regardless of the value of
+:option:`--follow-imports <mypy --follow-imports>`.)  To help debug the former situation (no
+module found at all) leave out :option:`--ignore-missing-imports <mypy --ignore-missing-imports>`; to get
+clarity about the latter use :option:`--follow-imports=error <mypy --follow-imports>`.  You can
+read up about these and other useful flags in :ref:`command-line`.
 
-- **A function annotated as returning a non-optional type returns 'None'
-  and mypy doesn't complain**.
+**A function annotated as returning a non-optional type returns 'None'
+and mypy doesn't complain**.
 
-  .. code-block:: python
+.. code-block:: python
 
-      def foo() -> str:
-          return None  # No error!
+    def foo() -> str:
+        return None  # No error!
 
-  You may have disabled strict optional checking (see
-  :ref:`no_strict_optional` for more).
+You may have disabled strict optional checking (see
+:ref:`no_strict_optional` for more).
 
 .. _silencing_checker:
 
@@ -383,10 +383,10 @@ explicit type cast:
       if index < 0:
           raise ValueError('No str found')
 
-      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
-      return cast(str, found)  # So, we need an explicit cast to make mypy happy
+      found = a[index]  # Has type "object", despite the fact that we know it is "str"
+      return cast(str, found)  # We need an explicit cast to make mypy happy
 
-Alternatively, you can use ``assert`` statement together with some
+Alternatively, you can use an ``assert`` statement together with some
 of the supported type inference techniques:
 
 .. code-block:: python
@@ -396,9 +396,9 @@ of the supported type inference techniques:
       if index < 0:
           raise ValueError('No str found')
 
-      found = a[index]  # Has `object` type, despite the fact that we know it is `str`
-      assert isinstance(found, str)  # Now, `found` will be narrowed to `str` subtype
-      return found  # No need for the explicit `cast()` anymore
+      found = a[index]  # Has type "object", despite the fact that we know it is "str"
+      assert isinstance(found, str)  # Now, "found" will be narrowed to "str"
+      return found  # No need for the explicit "cast()" anymore
 
 .. note::
 
@@ -411,7 +411,7 @@ of the supported type inference techniques:
 
 .. note::
 
-   You can read more about type narrowing techniques here.
+   You can read more about type narrowing techniques :ref:`here <type-narrowing>`.
 
 Type inference in Mypy is designed to work well in common cases, to be
 predictable and to let the type checker give useful error
@@ -634,32 +634,41 @@ You can install the latest development version of mypy from source. Clone the
 Variables vs type aliases
 -------------------------
 
-Mypy has both type aliases and variables with types like ``Type[...]`` and it is important to know their difference.
+Mypy has both *type aliases* and variables with types like ``Type[...]``. These are
+subtly different, and it's important to understand how they differ to avoid pitfalls.
 
-1. Variables with type ``Type[...]`` should be created by assignments with an explicit type annotations:
+1. A variable with type ``Type[...]`` is defined using an assignment with an
+   explicit type annotation:
 
    .. code-block:: python
 
      class A: ...
      tp: Type[A] = A
 
-2. Aliases are created by assignments without an explicit type. 
+2. You can define a type alias using an assignment without an explicit type annotation
+   at the top level of a module:
 
    .. code-block:: python
 
      class A: ...
      Alias = A
 
-   Or you can also use :pep:`613` and explicit type aliases:
+   You can also use ``TypeAlias`` (:pep:`613`) to define an *explicit type alias*:
 
    .. code-block:: python
-   
-     from typing import TypeAlias  # or `from typing_extensions` before `python3.10`
-     
+
+     from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
+
      class A: ...
      Alias: TypeAlias = A
 
-3. The difference is that aliases are completely known statically and can be used in type context (annotations):
+   You should always use ``TypeAlias`` to define a type alias in a class body or
+   inside a function.
+
+The main difference is that the target of an alias is precisely known statically, and this
+means that they can be used in type annotations and other *type contexts*. Type aliases
+can't be defined conditionally (unless using
+:ref:`supported Python version and platform checks <version_and_platform_checks>`):
 
    .. code-block:: python
 
@@ -669,17 +678,18 @@ Mypy has both type aliases and variables with types like ``Type[...]`` and it is
      if random() > 0.5:
          Alias = A
      else:
-         Alias = B  # error: Cannot assign multiple types to name "Alias" without an explicit "Type[...]" annotation \
-                    # error: Incompatible types in assignment (expression has type "Type[B]", variable has type "Type[A]")
+         # error: Cannot assign multiple types to name "Alias" without an
+         # explicit "Type[...]" annotation
+         Alias = B
 
-     tp: Type[object]  # tp is a type variable
+     tp: Type[object]  # "tp" is a variable with a type object value
      if random() > 0.5:
          tp = A
      else:
          tp = B  # This is OK
 
-     def fun1(x: Alias) -> None: ...  # This is OK
-     def fun2(x: tp) -> None: ...  # error: Variable "__main__.tp" is not valid as a type
+     def fun1(x: Alias) -> None: ...  # OK
+     def fun2(x: tp) -> None: ...  # Error: "tp" is not valid as a type
 
 Incompatible overrides
 ----------------------
