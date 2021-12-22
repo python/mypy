@@ -2040,11 +2040,11 @@ class Foo(TypedDict):
 
 foo = Foo(bar="hello")
 if foo["bar"] is not None:
-    string1: str = foo["bar"]
-    string2: str = foo[KEY_NAME]
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
 if foo[KEY_NAME] is not None:
-    string3: str = foo[KEY_NAME]
-    string4: str = foo["bar"]
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
