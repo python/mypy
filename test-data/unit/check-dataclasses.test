@@ -1511,3 +1511,14 @@ class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "
     __slots__ = ()
     data: V
 [builtins fixtures/dataclasses.pyi]
+
+[case testSlotsDefinitionWithTwoPasses4]
+# flags: --python-version 3.10
+import dataclasses as dtc
+
+PublishedMessagesVar = dict[int, 'PublishedMessages']
+
+@dtc.dataclass(frozen=True, slots=True)
+class PublishedMessages:
+    left: int
+[builtins fixtures/dataclasses.pyi]
