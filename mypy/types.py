@@ -1062,6 +1062,150 @@ FormalArgument = NamedTuple('FormalArgument', [
     ('required', bool)])
 
 
+# TODO: should this take bound typevars too? what would this take?
+#   ex: class Z(Generic[P, T]): ...; Z[[V], V]
+# What does a typevar even mean in this context?
+class Parameters(ProperType):
+    """Type that represents the parameters to a function.
+
+    Used for ParamSpec analysis."""
+    __slots__ = ('arg_types',
+                 'arg_kinds',
+                 'arg_names',
+                 'min_args')
+
+    def __init__(self,
+                 arg_types: Sequence[Type],
+                 arg_kinds: List[ArgKind],
+                 arg_names: Sequence[Optional[str]],
+                 ) -> None:
+        #print(f"Parameters.__init__({arg_types=}, {arg_kinds=}, {arg_names=})")
+        self.arg_types = list(arg_types)
+        self.arg_kinds = arg_kinds
+        self.arg_names = list(arg_names)
+        self.min_args = arg_kinds.count(ARG_POS)
+        assert len(arg_types) == len(arg_kinds) == len(arg_names)
+
+    def copy_modified(self,
+                      arg_types: Bogus[Sequence[Type]] = _dummy,
+                      arg_kinds: Bogus[List[ArgKind]] = _dummy,
+                      arg_names: Bogus[Sequence[Optional[str]]] = _dummy
+                      ) -> 'Parameters':
+        return Parameters(
+            arg_types=arg_types if arg_types is not _dummy else self.arg_types,
+            arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
+            arg_names=arg_names if arg_names is not _dummy else self.arg_names,
+        )
+
+    def var_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for *args."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
+            if kind == ARG_STAR:
+                return FormalArgument(None, position, type, False)
+        return None
+
+    def kw_arg(self) -> Optional[FormalArgument]:
+        """The formal argument for **kwargs."""
+        for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
+            if kind == ARG_STAR2:
+                return FormalArgument(None, position, type, False)
+        return None
+
+    def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
+        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+
+        To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
+        if they are not None.
+
+        If you really want to include star args in the yielded output, set the
+        'include_star_args' parameter to 'True'."""
+        args = []
+        done_with_positional = False
+        for i in range(len(self.arg_types)):
+            kind = self.arg_kinds[i]
+            if kind.is_named() or kind.is_star():
+                done_with_positional = True
+            if not include_star_args and kind.is_star():
+                continue
+
+            required = kind.is_required()
+            pos = None if done_with_positional else i
+            arg = FormalArgument(
+                self.arg_names[i],
+                pos,
+                self.arg_types[i],
+                required
+            )
+            args.append(arg)
+        return args
+
+    def argument_by_name(self, name: Optional[str]) -> Optional[FormalArgument]:
+        if name is None:
+            return None
+        seen_star = False
+        for i, (arg_name, kind, typ) in enumerate(
+                zip(self.arg_names, self.arg_kinds, self.arg_types)):
+            # No more positional arguments after these.
+            if kind.is_named() or kind.is_star():
+                seen_star = True
+            if kind.is_star():
+                continue
+            if arg_name == name:
+                position = None if seen_star else i
+                return FormalArgument(name, position, typ, kind.is_required())
+        return self.try_synthesizing_arg_from_kwarg(name)
+
+    def argument_by_position(self, position: Optional[int]) -> Optional[FormalArgument]:
+        if position is None:
+            return None
+        if position >= len(self.arg_names):
+            return self.try_synthesizing_arg_from_vararg(position)
+        name, kind, typ = (
+            self.arg_names[position],
+            self.arg_kinds[position],
+            self.arg_types[position],
+        )
+        if kind.is_positional():
+            return FormalArgument(name, position, typ, kind == ARG_POS)
+        else:
+            return self.try_synthesizing_arg_from_vararg(position)
+
+    def try_synthesizing_arg_from_kwarg(self,
+                                        name: Optional[str]) -> Optional[FormalArgument]:
+        kw_arg = self.kw_arg()
+        if kw_arg is not None:
+            return FormalArgument(name, None, kw_arg.typ, False)
+        else:
+            return None
+
+    def try_synthesizing_arg_from_vararg(self,
+                                         position: Optional[int]) -> Optional[FormalArgument]:
+        var_arg = self.var_arg()
+        if var_arg is not None:
+            return FormalArgument(None, position, var_arg.typ, False)
+        else:
+            return None
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_parameters(self)
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'Parameters',
+                'arg_types': [t.serialize() for t in self.arg_types],
+                'arg_kinds': [int(x.value) for x in self.arg_kinds],
+                'arg_names': self.arg_names,
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'Parameters':
+        assert data['.class'] == 'Parameters'
+        return Parameters(
+            [deserialize_type(t) for t in data['arg_types']],
+            [ArgKind(x) for x in data['arg_kinds']],
+            data['arg_names'],
+        )
+
+
 class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (such as function)."""
 
@@ -1091,6 +1235,7 @@ class CallableType(FunctionLike):
                  )
 
     def __init__(self,
+                 # maybe this should be refactored to take a Parameters object
                  arg_types: Sequence[Type],
                  arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
@@ -2227,6 +2372,35 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             # Named type variable type.
             s = f'{t.name_with_suffix()}`{t.id}'
         return s
+
+    def visit_parameters(self, t: Parameters) -> str:
+        s = ''
+        bare_asterisk = False
+        for i in range(len(t.arg_types)):
+            if s != '':
+                s += ', '
+            if t.arg_kinds[i].is_named() and not bare_asterisk:
+                s += '*, '
+                bare_asterisk = True
+            if t.arg_kinds[i] == ARG_STAR:
+                s += '*'
+            if t.arg_kinds[i] == ARG_STAR2:
+                s += '**'
+            name = t.arg_names[i]
+            if name:
+                s += name + ': '
+            r = t.arg_types[i].accept(self)
+
+            # TODO: why are these treated differently than callable args?
+            if isinstance(t.arg_types[i], UnboundType):
+                s += r[:-1]
+            else:
+                s += r
+
+            if t.arg_kinds[i].is_optional():
+                s += ' ='
+
+        return '({})'.format(s)
 
     def visit_callable_type(self, t: CallableType) -> str:
         param_spec = t.param_spec()

@@ -7,7 +7,8 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
+    Parameters
 )
 import mypy.applytype
 import mypy.constraints
@@ -326,6 +327,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
         ):
             return True
         return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_parameters(self, left: Parameters) -> bool:
+        right = self.right
+        if isinstance(right, Parameters):
+            return are_parameters_compatible(
+                left, right,
+                is_compat=self._is_subtype,
+                ignore_pos_arg_names=self.ignore_pos_arg_names)
+        else:
+            return False
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -918,6 +929,19 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if right.is_ellipsis_args:
         return True
 
+    return are_parameters_compatible(left, right, is_compat=is_compat,
+                                     ignore_pos_arg_names=ignore_pos_arg_names,
+                                     check_args_covariantly=check_args_covariantly,
+                                     allow_partial_overlap=allow_partial_overlap)
+
+def are_parameters_compatible(left: Union[Parameters, CallableType],
+                              right: Union[Parameters, CallableType],
+                              *,
+                              is_compat: Callable[[Type, Type], bool],
+                              ignore_pos_arg_names: bool = False,
+                              check_args_covariantly: bool = False,
+                              allow_partial_overlap: bool = False) -> bool:
+    """Helper function for is_callable_compatible, used for Parameter compatibility"""
     left_star = left.var_arg()
     left_star2 = left.kw_arg()
     right_star = right.var_arg()
@@ -1359,6 +1383,14 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         ):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_parameters(self, left: Parameters) -> bool:
+        right = self.right
+        if isinstance(right, Parameters):
+            return are_parameters_compatible(left, right, is_compat=self._is_proper_subtype)
+        else:
+            # TODO: should this work against callables too?
+            return False
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right

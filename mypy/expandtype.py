@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType
+    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters
 )
 
 
@@ -110,6 +110,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl.with_flavor(t.flavor)
         else:
             return repl
+
+    def visit_parameters(self, t: Parameters) -> Type:
+        return t.copy_modified(arg_types=self.expand_types(t.arg_types))
 
     def visit_callable_type(self, t: CallableType) -> Type:
         param_spec = t.param_spec()

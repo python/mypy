@@ -15,7 +15,7 @@ from mypy.types import (
     Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
-    TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
+    Parameters, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
     TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis
 )
@@ -396,12 +396,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(args) > 0 and info.fullname == 'builtins.tuple':
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
+        # Only allow ParamSpec literals if there's a ParamSpec arg type:
+        # This might not be necessary.
+        allow_param_spec_literal = any(isinstance(tvar, ParamSpecType) for tvar in info.defn.type_vars)
+
         # Analyze arguments and (usually) construct Instance type. The
         # number of type arguments and their values are
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
         # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(args, allow_param_spec=True),
+        instance = Instance(info, self.anal_array(args, allow_param_spec=True,
+                                                  allow_param_spec_literal=allow_param_spec_literal),
                             ctx.line, ctx.column)
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
@@ -554,6 +559,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
+
+    def visit_parameters(self, t: Parameters) -> Type:
+        raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
@@ -1005,10 +1013,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def anal_array(self,
                    a: Iterable[Type],
                    nested: bool = True, *,
-                   allow_param_spec: bool = False) -> List[Type]:
+                   allow_param_spec: bool = False,
+                   allow_param_spec_literal: bool = False) -> List[Type]:
         res: List[Type] = []
         for t in a:
-            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+            if allow_param_spec_literal and isinstance(t, TypeList):
+                # paramspec literal (Z[[int, str, Whatever]])
+                params = self.analyze_callable_args(t)
+                if params:
+                    res.append(Parameters(*params))
+                else:
+                    res.append(AnyType(TypeOfAny.from_error))
+            else:
+                res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
         return res
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:
@@ -1266,7 +1283,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
             return False
-        if isinstance(type.args[0], (EllipsisType, TypeList)):
+        if isinstance(type.args[0], (EllipsisType, TypeList, ParamSpecType)):
             return True
         return False
 

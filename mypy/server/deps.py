@@ -99,7 +99,7 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, Parameters
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -959,6 +959,12 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
+        return triggers
+
+    def visit_parameters(self, typ: Parameters) -> List[str]:
+        triggers = []
+        for arg in typ.arg_types:
+            triggers.extend(self.get_type_triggers(arg))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
