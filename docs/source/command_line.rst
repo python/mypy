@@ -274,7 +274,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 Disallow dynamic typing
 ***********************
 
-The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``Any`` type is used to represent a value that has a :ref:`dynamic type <dynamic-typing>`.
 The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
 a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
 
