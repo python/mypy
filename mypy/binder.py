@@ -142,8 +142,9 @@ class ConditionalTypeBinder:
             return
         key = literal_hash(expr)
         assert key is not None, 'Internal error: binder tried to put non-literal'
-        if redeclare:
-            self.declarations[key] = typ
+        proper = get_proper_type(typ)
+        if redeclare and proper:
+            self.declarations[key] = proper
         elif key not in self.declarations:
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
