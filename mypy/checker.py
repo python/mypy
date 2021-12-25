@@ -3479,7 +3479,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         true_map, else_map = self.find_isinstance_check(s.expr)
         if s.msg is not None:
             self.expr_checker.analyze_cond_branch(else_map, s.msg, None)
-        self.push_type_map(true_map)
+        # We want to redeclare the type in type_map, because it was refined
+        # for the rest of the frame.
+        self.push_type_map(true_map, redeclare=True)
 
     def visit_raise_stmt(self, s: RaiseStmt) -> None:
         """Type check a raise statement."""
@@ -5244,12 +5246,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type('builtins.function'))
 
-    def push_type_map(self, type_map: 'TypeMap') -> None:
+    def push_type_map(self, type_map: 'TypeMap', *, redeclare: bool = False) -> None:
         if type_map is None:
             self.binder.unreachable()
         else:
             for expr, type in type_map.items():
-                self.binder.put(expr, type)
+                self.binder.put(expr, type, redeclare=redeclare)
 
     def infer_issubclass_maps(self, node: CallExpr,
                               expr: Expression,

@@ -135,14 +135,16 @@ class ConditionalTypeBinder:
                 return self.frames[i].types[key]
         return None
 
-    def put(self, expr: Expression, typ: Type) -> None:
+    def put(self, expr: Expression, typ: Type, *, redeclare: bool = False) -> None:
         if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
             return
         if not literal(expr):
             return
         key = literal_hash(expr)
         assert key is not None, 'Internal error: binder tried to put non-literal'
-        if key not in self.declarations:
+        if redeclare:
+            self.declarations[key] = typ
+        elif key not in self.declarations:
             self.declarations[key] = get_declaration(expr)
             self._add_dependencies(key)
         self._put(key, typ)
@@ -203,6 +205,7 @@ class ConditionalTypeBinder:
             type = resulting_values[0]
             assert type is not None
             declaration_type = get_proper_type(self.declarations.get(key))
+            print(key, declaration_type)
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):
