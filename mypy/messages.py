@@ -24,7 +24,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    ParamSpecType, get_proper_types
+    ParamSpecType, Parameters, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -1792,6 +1792,9 @@ def format_type_inner(typ: Type,
             return 'overloaded function'
     elif isinstance(typ, UnboundType):
         return str(typ)
+    elif isinstance(typ, Parameters):
+        # TODO: technically this is not the right way to format (there could be non-pos).
+        return '[{}]'.format(', '.join(map(format, typ.arg_types)))
     elif typ is None:
         raise RuntimeError('Type is None')
     else:

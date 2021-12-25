@@ -264,6 +264,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return self.analyze_type_with_type_info(node, t.args, t)
             elif node.fullname in ("typing_extensions.TypeAlias", "typing.TypeAlias"):
                 return AnyType(TypeOfAny.special_form)
+            # Concatenate is an operator, no need for a proper type
+            elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
+                return self.apply_concatenate_operator(t)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
         else:  # sym is None
@@ -276,6 +279,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.api.fail(
             'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
             t)
+
+    def apply_concatenate_operator(self, t: UnboundType) -> Optional[Type]:
+        if len(t.args) == 0:
+            self.api.fail('Concatenate needs type arguments', t)
+            return AnyType(TypeOfAny.from_error)
+
+        raise RuntimeError("TODO")
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
         """Bind special type that is recognized through magic name such as 'typing.Any'.
@@ -1021,7 +1031,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # paramspec literal (Z[[int, str, Whatever]])
                 params = self.analyze_callable_args(t)
                 if params:
-                    res.append(Parameters(*params))
+                    ts, kinds, names = params
+                    # bind these types
+                    res.append(Parameters(self.anal_array(ts), kinds, names))
                 else:
                     res.append(AnyType(TypeOfAny.from_error))
             else:

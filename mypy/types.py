@@ -2388,19 +2388,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += '**'
             name = t.arg_names[i]
             if name:
-                s += name + ': '
+                s += f'{name}: '
             r = t.arg_types[i].accept(self)
 
-            # TODO: why are these treated differently than callable args?
-            if isinstance(t.arg_types[i], UnboundType):
-                s += r[:-1]
-            else:
-                s += r
+            s += r
 
             if t.arg_kinds[i].is_optional():
                 s += ' ='
 
-        return '({})'.format(s)
+        return f'[{s}]'
 
     def visit_callable_type(self, t: CallableType) -> str:
         param_spec = t.param_spec()
