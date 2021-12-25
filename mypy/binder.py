@@ -205,7 +205,6 @@ class ConditionalTypeBinder:
             type = resulting_values[0]
             assert type is not None
             declaration_type = get_proper_type(self.declarations.get(key))
-            print(key, declaration_type)
             if isinstance(declaration_type, AnyType):
                 # At this point resulting values can't contain None, see continue above
                 if not all(is_same_type(type, cast(Type, t)) for t in resulting_values[1:]):

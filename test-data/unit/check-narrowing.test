@@ -1247,6 +1247,7 @@ def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> Non
 [builtins fixtures/dict.pyi]
 
 [case testBoolNarrowingAfterLiterallFallback]
+# https://github.com/python/mypy/issues/11839
 from typing import Any
 
 var: Any
@@ -1256,6 +1257,5 @@ reveal_type(var)  # N: Revealed type is "builtins.bool"
 
 if var:
     reveal_type(var)  # N: Revealed type is "Literal[True]"
-    pass
 reveal_type(var)  # N: Revealed type is "builtins.bool"
 [builtins fixtures/isinstance.pyi]
