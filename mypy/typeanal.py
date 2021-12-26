@@ -423,18 +423,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if len(args) > 0 and info.fullname == 'builtins.tuple':
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
-        # Only allow ParamSpec literals if there's a ParamSpec arg type:
-        # This might not be necessary.
-        allow_param_spec_literal = any(isinstance(tvar, ParamSpecType) for tvar in info.defn.type_vars)
 
         # Analyze arguments and (usually) construct Instance type. The
         # number of type arguments and their values are
         # checked only later, since we do not always know the
         # valid count at this point. Thus we may construct an
         # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(args, allow_param_spec=True,
-                                                  allow_param_spec_literal=allow_param_spec_literal),
+        instance = Instance(info, self.anal_array(args, allow_param_spec=True),
                             ctx.line, ctx.column)
+
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
             fix_instance(instance, self.fail, self.note,
@@ -566,9 +563,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_type_list(self, t: TypeList) -> Type:
-        self.fail('Bracketed expression "[...]" is not valid as a type', t)
-        self.note('Did you mean "List[...]"?', t)
-        return AnyType(TypeOfAny.from_error)
+        # paramspec literal (Z[[int, str, Whatever]])
+        # TODO: invalid usage restrictions
+        params = self.analyze_callable_args(t)
+        if params:
+            ts, kinds, names = params
+            # bind these types
+            return Parameters(self.anal_array(ts), kinds, names)
+        else:
+            return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
         self.fail('Invalid type', t)
@@ -1040,21 +1043,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def anal_array(self,
                    a: Iterable[Type],
                    nested: bool = True, *,
-                   allow_param_spec: bool = False,
-                   allow_param_spec_literal: bool = False) -> List[Type]:
+                   allow_param_spec: bool = False) -> List[Type]:
         res: List[Type] = []
         for t in a:
-            if allow_param_spec_literal and isinstance(t, TypeList):
-                # paramspec literal (Z[[int, str, Whatever]])
-                params = self.analyze_callable_args(t)
-                if params:
-                    ts, kinds, names = params
-                    # bind these types
-                    res.append(Parameters(self.anal_array(ts), kinds, names))
-                else:
-                    res.append(AnyType(TypeOfAny.from_error))
-            else:
-                res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
+            res.append(self.anal_type(t, nested, allow_param_spec=allow_param_spec))
         return res
 
     def anal_type(self, t: Type, nested: bool = True, *, allow_param_spec: bool = False) -> Type:

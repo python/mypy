@@ -406,3 +406,54 @@ with f() as x:
     pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testParamSpecLiterals]
+from typing_extensions import ParamSpec, TypeAlias
+from typing import Generic, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+class Z(Generic[P]): ...
+
+# literals can be applied
+n: Z[[int]]
+
+# type aliases too
+nt1 = Z[[int]]
+nt2: TypeAlias = Z[[int]]
+
+unt1: nt1
+unt2: nt2
+
+# literals actually keep types
+reveal_type(n)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt2)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+
+# passing into a function keeps the type
+def fT(a: T) -> T: ...
+def fP(a: Z[P]) -> Z[P]: ...
+
+reveal_type(fT(n))  # N: Revealed type is "__main__.Z*[[builtins.int]]"
+reveal_type(fP(n))  # N: Revealed type is "__main__.Z[[builtins.int]]"
+
+# literals can be in function args and return type
+def k(a: Z[[int]]) -> Z[[str]]: ...
+
+# functions work
+reveal_type(k(n))  # N: Revealed type is "__main__.Z[[builtins.str]]"
+
+# literals can be matched in arguments
+def kb(a: Z[[bytes]]) -> Z[[str]]: ...
+
+# TODO: return type is a bit weird, return Any
+reveal_type(kb(n))  # N: Revealed type is "__main__.Z[[builtins.str]]" \
+                    # E: Argument 1 to "kb" has incompatible type "Z[[int]]"; expected "Z[[bytes]]"
+
+
+# TODO(PEP612): fancy "aesthetic" syntax defined in PEP
+# n2: Z[bytes]
+# 
+# reveal_type(kb(n2))  # N: Revealed type is "__main__.Z[[builtins.str]]"
+[builtins fixtures/tuple.pyi]
