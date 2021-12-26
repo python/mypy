@@ -168,6 +168,7 @@ classifiers = [
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Topic :: Software Development',
 ]
 
@@ -194,8 +195,8 @@ setup(name='mypy',
       # When changing this, also update mypy-requirements.txt.
       install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
                         'typing_extensions>=3.10',
-                        'mypy_extensions >= 0.4.3, < 0.5.0',
-                        'tomli>=1.1.0,<2.0.0',
+                        'mypy_extensions >= 0.4.3',
+                        'tomli>=1.1.0',
                         ],
       # Same here.
       extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 2'},

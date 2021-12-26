@@ -17,24 +17,24 @@ implementation at runtime.
 What stubtest does and does not do
 **********************************
 
-stubtest will import your code and introspect your code objects at runtime, for
-example, by using the capabilities of the :py:mod:`inspect` module. stubtest
+Stubtest will import your code and introspect your code objects at runtime, for
+example, by using the capabilities of the :py:mod:`inspect` module. Stubtest
 will then analyse the stub files, and compare the two, pointing out things that
 differ between stubs and the implementation at runtime.
 
-It's important to be aware of the limitations of this comparison. stubtest will
+It's important to be aware of the limitations of this comparison. Stubtest will
 not make any attempt to statically analyse your actual code and relies only on
 dynamic runtime introspection (in particular, this approach means stubtest works
 well with extension modules). However, this means that stubtest has limited
 visibility; for instance, it cannot tell if a return type of a function is
 accurately typed in the stubs.
 
-For clarity, here are some more things stubtest does not do:
+For clarity, here are some additional things stubtest can't do:
 
-* Type check your code, use ``mypy``
-* Generate stubs, use ``stubgen`` or ``pyright --createstub``
-* Generate stubs based on running your application or test suite, use ``monkeytype``
-* Apply stubs to code to produce inline types, use ``retype`` or ``libcst``
+* Type check your code -- use ``mypy`` instead
+* Generate stubs -- use ``stubgen`` or ``pyright --createstub`` instead
+* Generate stubs based on running your application or test suite -- use ``monkeytype`` instead
+* Apply stubs to code to produce inline types -- use ``retype`` or ``libcst`` instead
 
 In summary, stubtest works very well for ensuring basic consistency between
 stubs and implementation or to check for stub completeness. It's used to
@@ -81,11 +81,11 @@ Usage
 Running stubtest can be as simple as ``stubtest module_to_check``.
 Run :option:`stubtest --help` for a quick summary of options.
 
-stubtest must be able to import the code to be checked, so make sure that mypy
+Subtest must be able to import the code to be checked, so make sure that mypy
 is installed in the same environment as the library to be tested. In some
 cases, setting ``PYTHONPATH`` can help stubtest find the code to import.
 
-Similarly, stubtest must be able to find the stubs to be checked. stubtest
+Similarly, stubtest must be able to find the stubs to be checked. Stubtest
 respects the ``MYPYPATH`` environment variable.
 
 If you wish to ignore some of stubtest's complaints, stubtest supports a

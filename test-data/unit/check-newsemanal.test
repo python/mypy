@@ -2314,7 +2314,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 
 C = int
 
-[case testNewAnalyzerCastForward2]
+[case testNewAnalyzerCastForward3]
 from typing import cast, NamedTuple
 
 x = cast('C', None)

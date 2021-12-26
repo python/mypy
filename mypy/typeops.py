@@ -759,8 +759,10 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
     Will replace the first instance of the literal with the sum type and
     remove all others.
 
-    if we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
+    If we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
     this function will return Color.
+
+    We also treat `Literal[True, False]` as `bool`.
     """
     proper_types = [get_proper_type(typ) for typ in types]
     sum_types: Dict[str, Tuple[Set[Any], List[int]]] = {}

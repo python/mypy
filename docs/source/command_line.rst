@@ -312,8 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. For example you can't use a bare ``x: list``, you must say
-    ``x: list[int]``.
+    type parameters. For example, you can't use a bare ``x: list``. Instead, you
+    must always write something like ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 

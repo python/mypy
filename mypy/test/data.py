@@ -114,9 +114,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                 if arg == 'skip-path-normalization':
                     normalize_output = False
                 if arg.startswith("version"):
-                    if arg[7:9] != ">=":
+                    compare_op = arg[7:9]
+                    if compare_op not in {">=", "=="}:
                         raise ValueError(
-                            "{}, line {}: Only >= version checks are currently supported".format(
+                            "{}, line {}: Only >= and == version checks are currently supported"
+                            .format(
                                 case.file, item.line
                             )
                         )
@@ -127,9 +129,17 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                         raise ValueError(
                             '{}, line {}: "{}" is not a valid python version'.format(
                                 case.file, item.line, version_str))
-                    if not sys.version_info >= version:
-                        version_check = False
-
+                    if compare_op == ">=":
+                        version_check = sys.version_info >= version
+                    elif compare_op == "==":
+                        if not 1 < len(version) < 4:
+                            raise ValueError(
+                                '{}, line {}: Only minor or patch version checks '
+                                'are currently supported with "==": "{}"'.format(
+                                    case.file, item.line, version_str
+                                )
+                            )
+                        version_check = sys.version_info[:len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == '\\' and normalize_output:
@@ -578,8 +588,13 @@ def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
+    test_names = set()
     for i in range(1, len(cases), NUM_GROUPS):
         name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
+        if name in test_names:
+            raise RuntimeError('Found a duplicate test name "{}" in {} on line {}'.format(
+                name, parent.name, line_no,
+            ))
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
@@ -595,6 +610,9 @@ def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
             line=line_no,
         )
         line_no += data.count('\n') + 1
+
+        # Record existing tests to prevent duplicates:
+        test_names.update({name})
 
 
 class DataSuiteCollector(pytest.Class):

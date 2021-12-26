@@ -95,10 +95,11 @@ Similarly, you can also give an explicit type when creating an empty set:
 
 .. note::
 
-   Using type annotations (e.g. `list[int]`) on builtin collections like
+   Using type arguments (e.g. ``list[int]``) on builtin collections like
    :py:class:`list`,  :py:class:`dict`, :py:class:`tuple`, and  :py:class:`set`
    only works in Python 3.9 and later. For Python 3.8 and earlier, you must use
-   :py:class:`~typing.List`, :py:class:`~typing.Dict`, etc.
+   :py:class:`~typing.List` (e.g. ``List[int]``), :py:class:`~typing.Dict`, and
+   so on.
 
 
 Compatibility of container types
@@ -267,19 +268,20 @@ short explanation of the bug. To do that, use this format:
     app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
 
 
-If your error displays an error code, like so:
+Mypy displays an error code for each error if you use
+:option:`--show-error-codes <mypy --show-error-codes>`:
 
 .. code-block:: text
 
    error: "str" has no attribute "trim"  [attr-defined]
 
 
-It is possible to add a specific error-code in your ignore comment, like
-``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
-find more information about error codes here: :ref:`silence-error-codes`.
+It is possible to add a specific error-code in your ignore comment (e.g.
+``# type: ignore[attr-defined]``) to clarify what's being silenced. You can
+find more information about error codes :ref:`here <silence-error-codes>`.
 
 Similarly, you can also ignore all mypy checks in a file, by adding a
-``# type: ignore`` on the top of the file:
+``# type: ignore`` at the top of the file:
 
 .. code-block:: python
 

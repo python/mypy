@@ -1,6 +1,5 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from mypy.util import unnamed_function
 from mypy.backports import OrderedDict, nullcontext
 from contextlib import contextmanager
 import itertools
@@ -14,6 +13,7 @@ from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
 )
+from mypy.semanal_enum import ENUM_BASES
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -345,12 +345,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 isinstance(callee_type, CallableType)
                 and callee_type.implicit):
             self.msg.untyped_function_call(callee_type, e)
-
-        if (isinstance(callee_type, CallableType)
-                and not callee_type.is_type_obj()
-                and unnamed_function(callee_type.name)):
-            self.msg.underscore_function_call(e)
-            return AnyType(TypeOfAny.from_error)
 
         # Figure out the full name of the callee for plugin lookup.
         object_type = None
@@ -1000,9 +994,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ret_type = get_proper_type(callee.ret_type)
         if callee.is_type_obj() and isinstance(ret_type, Instance):
             callable_name = ret_type.type.fullname
-        if (isinstance(callable_node, RefExpr)
-            and callable_node.fullname in ('enum.Enum', 'enum.IntEnum',
-                                           'enum.Flag', 'enum.IntFlag')):
+        if isinstance(callable_node, RefExpr) and callable_node.fullname in ENUM_BASES:
             # An Enum() call that failed SemanticAnalyzerPass2.check_enum_call().
             return callee.ret_type, callee
 
@@ -2415,7 +2407,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            return '__truediv__' if 'division' in self.chk.future_import_flags else '__div__'
+            # TODO also check for "from __future__ import division"
+            return '__div__'
         else:
             return operators.op_methods[op]
 
