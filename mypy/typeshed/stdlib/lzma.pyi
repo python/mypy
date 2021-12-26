@@ -1,7 +1,7 @@
 import io
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath
 from typing import IO, Any, Mapping, Sequence, TextIO, Union, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, final
 
 _OpenBinaryWritingMode = Literal["w", "wb", "x", "xb", "a", "ab"]
 _OpenTextWritingMode = Literal["wt", "xt", "at"]
@@ -40,6 +40,7 @@ PRESET_DEFAULT: int
 PRESET_EXTREME: int
 
 # from _lzma.c
+@final
 class LZMADecompressor(object):
     def __init__(self, format: int | None = ..., memlimit: int | None = ..., filters: _FilterChain | None = ...) -> None: ...
     def decompress(self, data: bytes, max_length: int = ...) -> bytes: ...
@@ -53,6 +54,7 @@ class LZMADecompressor(object):
     def needs_input(self) -> bool: ...
 
 # from _lzma.c
+@final
 class LZMACompressor(object):
     def __init__(
         self, format: int | None = ..., check: int = ..., preset: int | None = ..., filters: _FilterChain | None = ...

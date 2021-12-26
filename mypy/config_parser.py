@@ -172,7 +172,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         try:
             if is_toml(config_file):
                 with open(config_file, encoding="utf-8") as f:
-                    toml_data = tomli.load(f)
+                    toml_data = tomli.loads(f.read())
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:

@@ -178,6 +178,67 @@ reveal_type(g)  # N: Revealed type is "Any"
 reveal_type(h)  # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(i)  # N: Revealed type is "Any"
 
+[case testDisallowUntypedDecoratorsCallableInstanceDecoratedCall]
+# flags: --disallow-untyped-decorators
+from typing import Callable, TypeVar
+
+C = TypeVar('C', bound=Callable)
+
+def typed_decorator(c: C) -> C:
+    return c
+
+def untyped_decorator(c):
+    return c
+
+class TypedDecorator:
+    @typed_decorator
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator1:
+    @untyped_decorator
+    def __call__(self, c):
+        return function
+
+class UntypedDecorator2:
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator3:
+    @typed_decorator
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator4:
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    @typed_decorator
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+@TypedDecorator()
+def f() -> None: pass
+
+@UntypedDecorator1()  # E: Untyped decorator makes function "g1" untyped
+def g1() -> None: pass
+
+@UntypedDecorator2()  # E: Untyped decorator makes function "g2" untyped
+def g2() -> None: pass
+
+@UntypedDecorator3()  # E: Untyped decorator makes function "g3" untyped
+def g3() -> None: pass
+
+@UntypedDecorator4()  # E: Untyped decorator makes function "g4" untyped
+def g4() -> None: pass
+
+reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(g1)  # N: Revealed type is "Any"
+reveal_type(g2)  # N: Revealed type is "Any"
+reveal_type(g3)  # N: Revealed type is "Any"
+reveal_type(g4)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
 class Decorator:

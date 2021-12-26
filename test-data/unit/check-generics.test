@@ -52,7 +52,7 @@ class C: pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
-[case testGenericMemberVariable]
+[case testGenericMemberVariable2]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 a, b, c = None, None, None # type: (A[B], B, C)
@@ -2118,7 +2118,7 @@ class B(A[T], Generic[T, S]):
 reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]"
 [builtins fixtures/classmethod.pyi]
 
-[case testGenericClassAlternativeConstructorPrecise]
+[case testGenericClassAlternativeConstructorPrecise2]
 from typing import Generic, TypeVar, Type, Tuple, Any
 
 T = TypeVar('T')

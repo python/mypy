@@ -142,7 +142,7 @@ as adding an explicit ``Literal[...]`` annotation, it often leads to the same ef
 in practice.
 
 The main cases where the behavior of context-sensitive vs true literal types differ are
-when you try using those types in places that are not explicitly expecting a ``Literal[...]``. 
+when you try using those types in places that are not explicitly expecting a ``Literal[...]``.
 For example, compare and contrast what happens when you try appending these types to a list:
 
 .. code-block:: python
@@ -208,7 +208,7 @@ corresponding to some particular index, we can use Literal types like so:
 
     # You can also index using unions of literals
     id_key: Literal["main_id", "backup_id"]
-    reveal_type(d[id_key])    # Revealed type is "int" 
+    reveal_type(d[id_key])    # Revealed type is "int"
 
 .. _tagged_unions:
 
@@ -248,7 +248,7 @@ type. Then, you can discriminate between each kind of TypedDict by checking the 
         # Literal["new-job", "cancel-job"], but the check below will narrow
         # the type to either Literal["new-job"] or Literal["cancel-job"].
         #
-        # This in turns narrows the type of 'event' to either NewJobEvent 
+        # This in turns narrows the type of 'event' to either NewJobEvent
         # or CancelJobEvent.
         if event["tag"] == "new-job":
             print(event["job_name"])
@@ -289,11 +289,11 @@ using ``isinstance()``:
 This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.
 
-Exhaustive checks
-*****************
+Exhaustiveness checks
+*********************
 
-One may want to check that some code covers all possible ``Literal`` or ``Enum`` cases, 
-example:
+You may want to check that some code covers all possible
+``Literal`` or ``Enum`` cases. Example:
 
 .. code-block:: python
 
@@ -306,21 +306,22 @@ example:
           return True
       elif x == 'two':
           return False
-      raise ValueError('Wrong values passed: {0}'.format(x))
+      raise ValueError(f'Invalid value: {x}')
 
   assert validate('one') is True
   assert validate('two') is False
 
-In the code above it is really easy to make a mistake in the future: 
-by adding a new literal value to ``PossibleValues``, 
-but not adding its handler to ``validate`` function:
+In the code above, it's easy to make a mistake. You can
+add a new literal value to ``PossibleValues`` but forget
+to handle it in the ``validate`` function:
 
 .. code-block:: python
 
   PossibleValues = Literal['one', 'two', 'three']
 
-Mypy won't catch that ``'three'`` is not covered.
-However, if you want to have exhaustive check, you need to guard it properly:
+Mypy won't catch that ``'three'`` is not covered.  If you want mypy to
+perform an exhaustiveness check, you need to update your code to use an
+``assert_never()`` check:
 
 .. code-block:: python
 
@@ -329,8 +330,8 @@ However, if you want to have exhaustive check, you need to guard it properly:
   PossibleValues = Literal['one', 'two']
 
   def assert_never(value: NoReturn) -> NoReturn:
-      # This also works in runtime as well:
-      assert False, 'This code should never be reached, got: {0}'.format(value)
+      # This also works at runtime as well
+      assert False, f'This code should never be reached, got: {value}'
 
   def validate(x: PossibleValues) -> bool:
       if x == 'one':
@@ -339,22 +340,21 @@ However, if you want to have exhaustive check, you need to guard it properly:
           return False
       assert_never(x)
 
-In this case, when adding new values to ``PossibleValues``:
+Now if you add a new value to ``PossibleValues`` but don't update ``validate``,
+mypy will spot the error:
 
 .. code-block:: python
 
   PossibleValues = Literal['one', 'two', 'three']
-
-Mypy will cover you:
-
-.. code-block:: python
 
   def validate(x: PossibleValues) -> bool:
       if x == 'one':
           return True
       elif x == 'two':
           return False
-      assert_never(x)  # E: Argument 1 to "assert_never" has incompatible type "Literal['three']"; expected "NoReturn"
+      # Error: Argument 1 to "assert_never" has incompatible type "Literal['three']";
+      # expected "NoReturn"
+      assert_never(x)
 
 Limitations
 ***********

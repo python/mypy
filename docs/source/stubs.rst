@@ -36,10 +36,15 @@ the source code. This can be useful, for example, if you use 3rd party
 open source libraries in your program (and there are no stubs in
 typeshed yet).
 
-That's it! Now you can access the module in mypy programs and type check
+That's it!
+
+Now you can access the module in mypy programs and type check
 code that uses the library. If you write a stub for a library module,
 consider making it available for other programmers that use mypy
 by contributing it back to the typeshed repo.
+
+Mypy also ships with two tools for making it easier to create and maintain
+stubs: :ref:`stubgen` and :ref:`stubtest`.
 
 The following sections explain the kinds of type annotations you can use
 in your programs and stub files.

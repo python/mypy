@@ -410,7 +410,7 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 
 -- TODO: Fix this bug. It is a real bug that was been papered over
 -- by the test harness.
-[case testDeletionOfSubmoduleTriggersImportFrom1-only_when_cache-skip]
+[case testDeletionOfSubmoduleTriggersImportFrom1_2-only_when_cache-skip]
 -- Different cache/no-cache tests because:
 -- missing module error message mismatch
 from p import q
@@ -1752,7 +1752,7 @@ class Foo:
 ==
 a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
 
-[case testAddAndUseClass4]
+[case testAddAndUseClass4_2]
 [file a.py]
 [file a.py.2]
 from p.b import *

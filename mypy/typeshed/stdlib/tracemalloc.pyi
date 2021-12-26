@@ -1,7 +1,6 @@
 import sys
-from typing import Optional, Sequence, Tuple, Union, overload
-
 from _tracemalloc import *
+from typing import Optional, Sequence, Tuple, Union, overload
 
 def get_object_traceback(obj: object) -> Traceback | None: ...
 def take_snapshot() -> Snapshot: ...

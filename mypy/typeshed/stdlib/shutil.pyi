@@ -1,7 +1,7 @@
 import os
 import sys
 from _typeshed import StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
-from typing import Any, AnyStr, Callable, Iterable, NamedTuple, Sequence, Set, TypeVar, Union, overload
+from typing import Any, AnyStr, Callable, Iterable, NamedTuple, Sequence, TypeVar, Union, overload
 
 _PathT = TypeVar("_PathT", str, os.PathLike[str])
 # Return value of some functions that may either return a path-like object that was passed in or
@@ -21,7 +21,7 @@ def copymode(src: StrPath, dst: StrPath, *, follow_symlinks: bool = ...) -> None
 def copystat(src: StrPath, dst: StrPath, *, follow_symlinks: bool = ...) -> None: ...
 def copy(src: StrPath, dst: StrPath, *, follow_symlinks: bool = ...) -> _PathReturn: ...
 def copy2(src: StrPath, dst: StrPath, *, follow_symlinks: bool = ...) -> _PathReturn: ...
-def ignore_patterns(*patterns: StrPath) -> Callable[[Any, list[str]], Set[str]]: ...
+def ignore_patterns(*patterns: StrPath) -> Callable[[Any, list[str]], set[str]]: ...
 
 if sys.version_info >= (3, 8):
     def copytree(

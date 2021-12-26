@@ -24,6 +24,11 @@ dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
 }
+# The set of functions that generate dataclass fields.
+field_makers: Final = {
+    'dataclasses.field',
+}
+
 
 SELF_TVAR_NAME: Final = "_DT"
 
@@ -490,7 +495,7 @@ def _collect_field_args(expr: Expression,
     if (
             isinstance(expr, CallExpr) and
             isinstance(expr.callee, RefExpr) and
-            expr.callee.fullname == 'dataclasses.field'
+            expr.callee.fullname in field_makers
     ):
         # field() only takes keyword arguments.
         args = {}

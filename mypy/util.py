@@ -566,11 +566,12 @@ class FancyFormatter:
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
         set_eseq = curses.tigetstr('cup')
+        normal = curses.tigetstr('sgr0')
 
-        if not (bold and under and set_color and set_eseq):
+        if not (bold and under and set_color and set_eseq and normal):
             return False
 
-        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.NORMAL = normal.decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
         self.DIM = parse_gray_color(set_eseq)

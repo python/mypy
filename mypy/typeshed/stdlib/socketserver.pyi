@@ -2,7 +2,7 @@ import sys
 import types
 from _typeshed import Self
 from socket import socket as _socket
-from typing import Any, BinaryIO, Callable, ClassVar, Set, Tuple, Type, TypeVar, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Tuple, Type, TypeVar, Union
 
 _T = TypeVar("_T")
 _RequestType = Union[_socket, Tuple[bytes, _socket]]
@@ -88,7 +88,7 @@ if sys.platform != "win32":
 if sys.platform != "win32":
     class ForkingMixIn:
         timeout: float | None  # undocumented
-        active_children: Set[int] | None  # undocumented
+        active_children: set[int] | None  # undocumented
         max_children: int  # undocumented
         if sys.version_info >= (3, 7):
             block_on_close: bool

@@ -321,10 +321,28 @@ class SpooledTemporaryFile(IO[AnyStr]):
 
 class TemporaryDirectory(Generic[AnyStr]):
     name: AnyStr
-    @overload
-    def __init__(self: TemporaryDirectory[str], suffix: None = ..., prefix: None = ..., dir: None = ...) -> None: ...
-    @overload
-    def __init__(self, suffix: AnyStr | None = ..., prefix: AnyStr | None = ..., dir: _DirT[AnyStr] | None = ...) -> None: ...
+    if sys.version_info >= (3, 10):
+        @overload
+        def __init__(
+            self: TemporaryDirectory[str],
+            suffix: None = ...,
+            prefix: None = ...,
+            dir: None = ...,
+            ignore_cleanup_errors: bool = ...,
+        ) -> None: ...
+        @overload
+        def __init__(
+            self,
+            suffix: AnyStr | None = ...,
+            prefix: AnyStr | None = ...,
+            dir: _DirT[AnyStr] | None = ...,
+            ignore_cleanup_errors: bool = ...,
+        ) -> None: ...
+    else:
+        @overload
+        def __init__(self: TemporaryDirectory[str], suffix: None = ..., prefix: None = ..., dir: None = ...) -> None: ...
+        @overload
+        def __init__(self, suffix: AnyStr | None = ..., prefix: AnyStr | None = ..., dir: _DirT[AnyStr] | None = ...) -> None: ...
     def cleanup(self) -> None: ...
     def __enter__(self) -> AnyStr: ...
     def __exit__(
