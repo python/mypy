@@ -104,11 +104,21 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         if isinstance(repl, Instance):
             inst = repl
             # Return copy of instance with type erasure flag on.
+            # TODO: what does prefix mean in this case?
+            # TODO: why does this case even happen? Instances aren't plural.
             return Instance(inst.type, inst.args, line=inst.line,
                             column=inst.column, erased=True)
         elif isinstance(repl, ParamSpecType):
-            return repl.with_flavor(t.flavor)
+            # TODO: what if both have prefixes???
+            # (realistically, `repl` is the unification variable for `t` so this is fine)
+            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix)
+        elif isinstance(repl, Parameters):
+            return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
+                                      t.prefix.arg_kinds + repl.arg_kinds,
+                                      t.prefix.arg_names + repl.arg_names)
         else:
+            # returning parameters
+            # TODO: should this branch be removed? better not to fail silently
             return repl
 
     def visit_parameters(self, t: Parameters) -> Type:

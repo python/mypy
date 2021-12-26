@@ -266,6 +266,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.special_form)
             # Concatenate is an operator, no need for a proper type
             elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
+                # TODO: detect valid locations (`allow_param_spec` is not here.)
                 return self.apply_concatenate_operator(t)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
@@ -280,12 +281,24 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
             t)
 
-    def apply_concatenate_operator(self, t: UnboundType) -> Optional[Type]:
+    def apply_concatenate_operator(self, t: UnboundType) -> Optional[ParamSpecType]:
         if len(t.args) == 0:
             self.api.fail('Concatenate needs type arguments', t)
             return AnyType(TypeOfAny.from_error)
 
-        raise RuntimeError("TODO")
+        # last argument has to be ParamSpec (or Concatenate)
+        ps = self.anal_type(t.args[-1], allow_param_spec=True)
+        if not isinstance(ps, ParamSpecType):
+            print(ps)
+            self.api.fail('The last parameter to Concatenate needs to be a ParamSpec', t)
+            return AnyType(TypeOfAny.from_error)
+
+        args = self.anal_array(t.args[:-1])
+        pre = ps.prefix
+        pre = Parameters(args + pre.arg_types,
+                         [ARG_POS] * len(args) + pre.arg_kinds,
+                         [None] * len(args) + pre.arg_names)
+        return ps.copy_modified(prefix=pre)
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:
         """Bind special type that is recognized through magic name such as 'typing.Any'.

@@ -489,26 +489,43 @@ class ParamSpecType(TypeVarLikeType):
     always just 'object').
     """
 
-    __slots__ = ('flavor',)
+    __slots__ = ('flavor', 'prefix')
 
     flavor: int
+    prefix: 'Parameters'
 
     def __init__(
          self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int,
-         upper_bound: Type, *, line: int = -1, column: int = -1
+         upper_bound: Type, *, line: int = -1, column: int = -1, prefix: Optional['Parameters'] = None
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
+        self.prefix = prefix or Parameters([], [], [])
 
     @staticmethod
     def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
         new_id = TypeVarId.new(meta_level=1)
         return ParamSpecType(old.name, old.fullname, new_id, old.flavor, old.upper_bound,
-                             line=old.line, column=old.column)
+                             line=old.line, column=old.column, prefix=old.prefix)
 
     def with_flavor(self, flavor: int) -> 'ParamSpecType':
         return ParamSpecType(self.name, self.fullname, self.id, flavor,
-                             upper_bound=self.upper_bound)
+                             upper_bound=self.upper_bound, prefix=self.prefix)
+
+    def copy_modified(self, *,
+                      id: Bogus[Union[TypeVarId, int]] = _dummy,
+                      flavor: Bogus[int] = _dummy,
+                      prefix: Bogus['Parameters'] = _dummy) -> 'ParamSpecType':
+        return ParamSpecType(
+            self.name,
+            self.fullname,
+            id if id is not _dummy else self.id,
+            flavor if flavor is not _dummy else self.flavor,
+            self.upper_bound,
+            line=self.line,
+            column=self.column,
+            prefix=prefix if prefix is not _dummy else self.prefix,
+        )
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_param_spec(self)
@@ -539,6 +556,7 @@ class ParamSpecType(TypeVarLikeType):
             'id': self.id.raw_id,
             'flavor': self.flavor,
             'upper_bound': self.upper_bound.serialize(),
+            'prefix': self.prefix.serialize()
         }
 
     @classmethod
@@ -550,6 +568,7 @@ class ParamSpecType(TypeVarLikeType):
             data['id'],
             data['flavor'],
             deserialize_type(data['upper_bound']),
+            prefix=deserialize_type(data['prefix'])
         )
 
 
@@ -1079,7 +1098,6 @@ class Parameters(ProperType):
                  arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
                  ) -> None:
-        #print(f"Parameters.__init__({arg_types=}, {arg_kinds=}, {arg_names=})")
         self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
@@ -1493,7 +1511,7 @@ class CallableType(FunctionLike):
         if not isinstance(arg_type, ParamSpecType):
             return None
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
-                             arg_type.upper_bound)
+                             arg_type.upper_bound, prefix=arg_type.prefix)
 
     def expand_param_spec(self, c: 'CallableType') -> 'CallableType':
         return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
@@ -2365,12 +2383,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_param_spec(self, t: ParamSpecType) -> str:
+        # prefixes are displayed as Concatenate
+        s = ''
+        if t.prefix.arg_types:
+            s += f'Concatenate[{self.list_str(t.prefix.arg_types)}, '
         if t.name is None:
             # Anonymous type variable type (only numeric id).
-            s = f'`{t.id}'
+            s += f'`{t.id}'
         else:
             # Named type variable type.
-            s = f'{t.name_with_suffix()}`{t.id}'
+            s += f'{t.name_with_suffix()}`{t.id}'
+        if t.prefix.arg_types:
+            s += ']'
         return s
 
     def visit_parameters(self, t: Parameters) -> str:
