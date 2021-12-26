@@ -803,11 +803,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ret_type: Type,
         fallback: Instance,
     ) -> Optional[CallableType]:
-        """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], return None if we cannot."""
+        """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], returning None if we
+        cannot.
+        """
         if not isinstance(callable_args, UnboundType):
             return None
         sym = self.lookup_qualified(callable_args.name, callable_args)
         if sym is None:
+            return None
+        if sym.node is None:
             return None
         if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
             return None

@@ -63,7 +63,6 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_parameters(self, t: Parameters) -> ProperType:
         raise RuntimeError("Parameters should have been bound to a class")
 
-
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.
         any_type = AnyType(TypeOfAny.special_form)

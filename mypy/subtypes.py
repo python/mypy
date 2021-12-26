@@ -937,6 +937,7 @@ def is_callable_compatible(left: CallableType, right: CallableType,
                                      check_args_covariantly=check_args_covariantly,
                                      allow_partial_overlap=allow_partial_overlap)
 
+
 def are_parameters_compatible(left: Union[Parameters, CallableType],
                               right: Union[Parameters, CallableType],
                               *,

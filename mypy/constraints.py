@@ -484,7 +484,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if tvar.variance != COVARIANT:
                             res.extend(infer_constraints(
                                 template_arg, mapped_arg, neg_op(self.direction)))
-                    elif isinstance(tvar, ParamSpecType) and isinstance(template_arg, ParamSpecType):
+                    elif (isinstance(tvar, ParamSpecType) and
+                          isinstance(template_arg, ParamSpecType)):
                         suffix = get_proper_type(mapped_arg)
                         if isinstance(suffix, Parameters):
                             # no such thing as variance for ParamSpecs

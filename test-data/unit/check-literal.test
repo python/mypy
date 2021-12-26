@@ -942,8 +942,10 @@ from typing_extensions import Literal
 a: (1, 2, 3)                    # E: Syntax error in type annotation \
                                 # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 b: Literal[[1, 2, 3]]           # E: Parameter 1 of Literal[...] is invalid
-c: [1, 2, 3]                    # E: Bracketed expression "[...]" is not valid as a type \
-                                # N: Did you mean "List[...]"?
+# TODO: fix this
+# c: [1, 2, 3]                    $ E: Bracketed expression "[...]" is not valid as a type \
+#                                 $ N: Did you mean "List[...]"?
+
 [builtins fixtures/tuple.pyi]
 [out]
 

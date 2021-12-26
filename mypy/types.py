@@ -496,7 +496,8 @@ class ParamSpecType(TypeVarLikeType):
 
     def __init__(
          self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int,
-         upper_bound: Type, *, line: int = -1, column: int = -1, prefix: Optional['Parameters'] = None
+         upper_bound: Type, *, line: int = -1, column: int = -1,
+         prefix: Optional['Parameters'] = None
     ) -> None:
         super().__init__(name, fullname, id, upper_bound, line=line, column=column)
         self.flavor = flavor
