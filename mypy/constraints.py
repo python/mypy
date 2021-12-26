@@ -459,7 +459,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         # no such thing as variance for ParamSpecs
                         # TODO: is there a case I am missing?
                         # TODO: what is setting meta_level to 0?
-                        res.append(Constraint(TypeVarId(tvar.id.raw_id, 1), SUPERTYPE_OF, mapped_arg))
+                        res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, mapped_arg))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
@@ -481,7 +481,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         # no such thing as variance for ParamSpecs
                         # TODO: is there a case I am missing?
                         # TODO: what is setting meta_level to 0?
-                        res.append(Constraint(TypeVarId(tvar.id.raw_id, 1), SUPERTYPE_OF, mapped_arg))
+                        res.append(Constraint(template_arg.id, SUPERTYPE_OF, mapped_arg))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
