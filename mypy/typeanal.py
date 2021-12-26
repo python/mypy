@@ -281,7 +281,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             'Cannot resolve name "{}" (possible cyclic definition)'.format(t.name),
             t)
 
-    def apply_concatenate_operator(self, t: UnboundType) -> Optional[ParamSpecType]:
+    def apply_concatenate_operator(self, t: UnboundType) -> Type:
         if len(t.args) == 0:
             self.api.fail('Concatenate needs type arguments', t)
             return AnyType(TypeOfAny.from_error)
@@ -295,9 +295,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
         args = self.anal_array(t.args[:-1])
         pre = ps.prefix
+
+        # mypy can't infer this :(
+        names: List[Optional[str]] = [None] * len(args)
+
         pre = Parameters(args + pre.arg_types,
                          [ARG_POS] * len(args) + pre.arg_kinds,
-                         [None] * len(args) + pre.arg_names)
+                         names + pre.arg_names)
         return ps.copy_modified(prefix=pre)
 
     def try_analyze_special_unbound_type(self, t: UnboundType, fullname: str) -> Optional[Type]:

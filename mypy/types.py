@@ -568,7 +568,7 @@ class ParamSpecType(TypeVarLikeType):
             data['id'],
             data['flavor'],
             deserialize_type(data['upper_bound']),
-            prefix=deserialize_type(data['prefix'])
+            prefix=Parameters.deserialize(data['prefix'])
         )
 
 

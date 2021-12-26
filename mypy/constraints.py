@@ -446,6 +446,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # N.B: We use zip instead of indexing because the lengths might have
                 # mismatches during daemon reprocessing.
                 for tvar, mapped_arg, instance_arg in zip(tvars, mapped.args, instance.args):
+                    # TODO(PEP612): More ParamSpec work (or is Parameters the only thing accepted)
                     if isinstance(tvar, TypeVarType):
                         # The constraints for generic type parameters depend on variance.
                         # Include constraints from both directions if invariant.
@@ -455,16 +456,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if tvar.variance != COVARIANT:
                             res.extend(infer_constraints(
                                 mapped_arg, instance_arg, neg_op(self.direction)))
-                    elif isinstance(tvar, ParamSpecType):
-                        # no such thing as variance for ParamSpecs
-                        # TODO: is there a case I am missing?
-                        # TODO: what is setting meta_level to 0?
-                        suffix = template_arg
-                        prefix = mapped_arg.prefix
-                        suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
-                                                      suffix.arg_kinds[len(prefix.arg_kinds):],
-                                                      suffix.arg_names[len(prefix.arg_names):])
-                        res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                    elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
+                        suffix = get_proper_type(instance_arg)
+                        if isinstance(suffix, Parameters):
+                            # no such thing as variance for ParamSpecs
+                            # TODO: is there a case I am missing?
+                            # TODO: what is setting meta_level to 0?
+                            prefix = mapped_arg.prefix
+                            suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
+                                                          suffix.arg_kinds[len(prefix.arg_kinds):],
+                                                          suffix.arg_names[len(prefix.arg_names):])
+                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
@@ -482,16 +484,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if tvar.variance != COVARIANT:
                             res.extend(infer_constraints(
                                 template_arg, mapped_arg, neg_op(self.direction)))
-                    elif isinstance(tvar, ParamSpecType):
-                        # no such thing as variance for ParamSpecs
-                        # TODO: is there a case I am missing?
-                        # TODO: what is setting meta_level to 0?
-                        suffix = mapped_arg
-                        prefix = template_arg.prefix
-                        suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
-                                                      suffix.arg_kinds[len(prefix.arg_kinds):],
-                                                      suffix.arg_names[len(prefix.arg_names):])
-                        res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                    elif isinstance(tvar, ParamSpecType) and isinstance(template_arg, ParamSpecType):
+                        suffix = get_proper_type(mapped_arg)
+                        if isinstance(suffix, Parameters):
+                            # no such thing as variance for ParamSpecs
+                            # TODO: is there a case I am missing?
+                            # TODO: what is setting meta_level to 0?
+                            prefix = template_arg.prefix
+                            suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
+                                                          suffix.arg_kinds[len(prefix.arg_kinds):],
+                                                          suffix.arg_names[len(prefix.arg_names):])
+                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
                     # We avoid infinite recursion for structural subtypes by checking
