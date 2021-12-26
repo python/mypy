@@ -586,9 +586,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             else:
                 # TODO: Direction
                 # TODO: Deal with arguments that come before param spec ones?
+                # TODO: check the prefixes match
+                prefix = param_spec.prefix
+                prefix_len = len(prefix.arg_types)
                 res.append(Constraint(param_spec.id,
                                       SUBTYPE_OF,
-                                      cactual.copy_modified(ret_type=NoneType())))
+                                      cactual.copy_modified(
+                                        arg_types=cactual.arg_types[prefix_len:],
+                                        arg_kinds=cactual.arg_kinds[prefix_len:],
+                                        arg_names=cactual.arg_names[prefix_len:],
+                                        ret_type=NoneType())))
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:

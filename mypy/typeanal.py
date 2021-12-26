@@ -797,6 +797,41 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback=fallback,
         )
 
+    def analyze_callable_args_for_concatenate(
+        self,
+        callable_args: Type,
+        ret_type: Type,
+        fallback: Instance,
+    ) -> Optional[CallableType]:
+        """Construct a 'Callable[C, RET]', where C is Concatenate[..., P], return None if we cannot."""
+        if not isinstance(callable_args, UnboundType):
+            return None
+        sym = self.lookup_qualified(callable_args.name, callable_args)
+        if sym is None:
+            return None
+        if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
+            return None
+
+        tvar_def = self.anal_type(callable_args, allow_param_spec=True)
+        if not isinstance(tvar_def, ParamSpecType):
+            return None
+
+        # TODO: Use tuple[...] or Mapping[..] instead?
+        obj = self.named_type('builtins.object')
+        # ick, CallableType should take ParamSpecType
+        prefix = tvar_def.prefix
+        return CallableType(
+            [*prefix.arg_types,
+             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
+                           upper_bound=obj, prefix=tvar_def.prefix),
+             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
+                           upper_bound=obj)],
+            [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
+            [*prefix.arg_names, None, None],
+            ret_type=ret_type,
+            fallback=fallback,
+        )
+
     def analyze_callable_type(self, t: UnboundType) -> Type:
         fallback = self.named_type('builtins.function')
         if len(t.args) == 0:
@@ -825,6 +860,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 # Callable[P, RET] (where P is ParamSpec)
                 maybe_ret = self.analyze_callable_args_for_paramspec(
+                    callable_args,
+                    ret_type,
+                    fallback
+                ) or self.analyze_callable_args_for_concatenate(
                     callable_args,
                     ret_type,
                     fallback
