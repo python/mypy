@@ -152,6 +152,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         self.allow_placeholder = allow_placeholder
         # Are we in a context where Required[] is allowed?
         self.allow_required = allow_required
+        # Are we in a context where ParamSpec literals are allowed?
+        self.allow_param_spec_literals = False
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized
@@ -424,13 +426,30 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             fallback = Instance(info, [AnyType(TypeOfAny.special_form)], ctx.line)
             return TupleType(self.anal_array(args), fallback, ctx.line)
 
-        # Analyze arguments and (usually) construct Instance type. The
-        # number of type arguments and their values are
-        # checked only later, since we do not always know the
-        # valid count at this point. Thus we may construct an
-        # Instance with an invalid number of type arguments.
-        instance = Instance(info, self.anal_array(args, allow_param_spec=True),
-                            ctx.line, ctx.column)
+        # This is a heuristic: it will be checked later anyways but the error
+        # message may be worse.
+        with self.set_allow_param_spec_literals(info.has_param_spec_type):
+            # Analyze arguments and (usually) construct Instance type. The
+            # number of type arguments and their values are
+            # checked only later, since we do not always know the
+            # valid count at this point. Thus we may construct an
+            # Instance with an invalid number of type arguments.
+            instance = Instance(info, self.anal_array(args, allow_param_spec=True),
+                                ctx.line, ctx.column)
+
+        # "aesthetic" paramspec literals
+        # these do not support mypy_extensions VarArgs, etc. as they were already analyzed
+        #   TODO: should these be re-analyzed to get rid of this inconsistency?
+        # another inconsistency is with empty type args (Z[] is more possibly an error imo)
+        if len(info.type_vars) == 1 and info.has_param_spec_type and len(instance.args) > 0:
+            first_arg = get_proper_type(instance.args[0])
+
+            # TODO: can I use tuple syntax to isinstance multiple in 3.6?
+            if not (len(instance.args) == 1 and (isinstance(first_arg, Parameters) or
+                                                 isinstance(first_arg, ParamSpecType) or
+                                                 isinstance(first_arg, AnyType))):
+                args = instance.args
+                instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
 
         # Check type argument count.
         if len(instance.args) != len(info.type_vars) and not self.defining_alias:
@@ -564,13 +583,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_type_list(self, t: TypeList) -> Type:
         # paramspec literal (Z[[int, str, Whatever]])
-        # TODO: invalid usage restrictions
-        params = self.analyze_callable_args(t)
-        if params:
-            ts, kinds, names = params
-            # bind these types
-            return Parameters(self.anal_array(ts), kinds, names)
+        if self.allow_param_spec_literals:
+            params = self.analyze_callable_args(t)
+            if params:
+                ts, kinds, names = params
+                # bind these types
+                return Parameters(self.anal_array(ts), kinds, names)
+            else:
+                return AnyType(TypeOfAny.from_error)
         else:
+            self.fail('Bracketed expression "[...]" is not valid as a type', t)
+            self.note('Did you mean "List[...]"?', t)
             return AnyType(TypeOfAny.from_error)
 
     def visit_callable_argument(self, t: CallableArgument) -> Type:
@@ -1106,12 +1129,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if (not allow_param_spec
                 and isinstance(analyzed, ParamSpecType)
                 and analyzed.flavor == ParamSpecFlavor.BARE):
-            self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
-            self.note(
-                'You can use ParamSpec as the first argument to Callable, e.g., '
-                "'Callable[{}, int]'".format(analyzed.name),
-                t
-            )
+            if analyzed.prefix.arg_types:
+                self.fail('Invalid location for Concatenate', t)
+            else:
+                self.fail('Invalid location for ParamSpec "{}"'.format(analyzed.name), t)
+                self.note(
+                    'You can use ParamSpec as the first argument to Callable, e.g., '
+                    "'Callable[{}, int]'".format(analyzed.name),
+                    t
+                )
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
@@ -1155,6 +1181,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def tuple_type(self, items: List[Type]) -> TupleType:
         any_type = AnyType(TypeOfAny.special_form)
         return TupleType(items, fallback=self.named_type('builtins.tuple', [any_type]))
+
+    @contextmanager
+    def set_allow_param_spec_literals(self, to: bool) -> Iterator[None]:
+        old = self.allow_param_spec_literals
+        try:
+            self.allow_param_spec_literals = to
+            yield
+        finally:
+            self.allow_param_spec_literals = old
 
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]

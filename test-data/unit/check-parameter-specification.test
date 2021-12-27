@@ -15,9 +15,7 @@ def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
 def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
                           # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
-# TODO: Better error message
-def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for ParamSpec "P" \
-                                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for Concatenate
 
 def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                    # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
@@ -420,17 +418,17 @@ class Z(Generic[P]): ...
 # literals can be applied
 n: Z[[int]]
 
-# type aliases too
-nt1 = Z[[int]]
-nt2: TypeAlias = Z[[int]]
+# TODO: type aliases too
+# nt1 = Z[[int]]
+# nt2: TypeAlias = Z[[int]]
 
-unt1: nt1
-unt2: nt2
+# unt1: nt1
+# unt2: nt2
 
 # literals actually keep types
 reveal_type(n)  # N: Revealed type is "__main__.Z[[builtins.int]]"
-reveal_type(unt1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
-reveal_type(unt2)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+# reveal_type(unt1)  $ N: Revealed type is "__main__.Z[[builtins.int]]"
+# reveal_type(unt2)  $ N: Revealed type is "__main__.Z[[builtins.int]]"
 
 # passing into a function keeps the type
 def fT(a: T) -> T: ...
@@ -453,10 +451,9 @@ reveal_type(kb(n))  # N: Revealed type is "__main__.Z[[builtins.str]]" \
                     # E: Argument 1 to "kb" has incompatible type "Z[[int]]"; expected "Z[[bytes]]"
 
 
-# TODO(PEP612): fancy "aesthetic" syntax defined in PEP
-# n2: Z[bytes]
-# 
-# reveal_type(kb(n2))  $ N: Revealed type is "__main__.Z[[builtins.str]]"
+n2: Z[bytes]
+
+reveal_type(kb(n2))  # N: Revealed type is "__main__.Z[[builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecConcatenateFromPep]

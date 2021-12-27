@@ -1018,6 +1018,7 @@ class ClassDef(Statement):
 
     @classmethod
     def deserialize(self, data: JsonDict) -> 'ClassDef':
+        # TODO: Does this have to work with ParamSpecType too?
         assert data['.class'] == 'ClassDef'
         res = ClassDef(data['name'],
                        Block([]),
@@ -2469,8 +2470,8 @@ class TypeInfo(SymbolNode):
         'declared_metaclass', 'metaclass_type', 'names', 'is_abstract',
         'is_protocol', 'runtime_protocol', 'abstract_attributes',
         'deletable_attributes', 'slots', 'assuming', 'assuming_proper',
-        'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'bases',
-        '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
+        'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
+        'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
         'is_newtype', 'is_intersection', 'metadata',
     )
 
@@ -2553,6 +2554,9 @@ class TypeInfo(SymbolNode):
     # Generic type variable names (full names)
     type_vars: List[str]
 
+    # Whether this class has a ParamSpec type variable
+    has_param_spec_type: bool
+
     # Direct base classes.
     bases: List["mypy.types.Instance"]
 
@@ -2600,6 +2604,7 @@ class TypeInfo(SymbolNode):
         self.defn = defn
         self.module_name = module_name
         self.type_vars = []
+        self.has_param_spec_type = False
         self.bases = []
         self.mro = []
         self._mro_refs = None
@@ -2630,6 +2635,8 @@ class TypeInfo(SymbolNode):
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
             for vd in self.defn.type_vars:
+                if isinstance(vd, mypy.types.ParamSpecType):
+                    self.has_param_spec_type = True
                 self.type_vars.append(vd.fullname)
 
     @property
@@ -2794,6 +2801,7 @@ class TypeInfo(SymbolNode):
                 'defn': self.defn.serialize(),
                 'abstract_attributes': self.abstract_attributes,
                 'type_vars': self.type_vars,
+                'has_param_spec_type': self.has_param_spec_type,
                 'bases': [b.serialize() for b in self.bases],
                 'mro': [c.fullname for c in self.mro],
                 '_promote': None if self._promote is None else self._promote.serialize(),
@@ -2819,6 +2827,7 @@ class TypeInfo(SymbolNode):
         # TODO: Is there a reason to reconstruct ti.subtypes?
         ti.abstract_attributes = data['abstract_attributes']
         ti.type_vars = data['type_vars']
+        ti.has_param_spec_type = data['has_param_spec_type']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
         ti._promote = (None if data['_promote'] is None
                        else mypy.types.deserialize_type(data['_promote']))
