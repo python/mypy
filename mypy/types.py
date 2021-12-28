@@ -1520,10 +1520,15 @@ class CallableType(FunctionLike):
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
                              arg_type.upper_bound, prefix=prefix)
 
-    def expand_param_spec(self, c: 'CallableType') -> 'CallableType':
-        return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
-                                  arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                                  arg_names=self.arg_names[:-2] + c.arg_names)
+    def expand_param_spec(self, c: 'CallableType', no_prefix: bool = False) -> 'CallableType':
+        if no_prefix:
+            return self.copy_modified(arg_types=c.arg_types,
+                                      arg_kinds=c.arg_kinds,
+                                      arg_names=c.arg_names)
+        else:
+            return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
+                                      arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
+                                      arg_names=self.arg_names[:-2] + c.arg_names)
 
     def __hash__(self) -> int:
         return hash((self.ret_type, self.is_type_obj(),

@@ -461,7 +461,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(suffix, Parameters):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
-                            # TODO: what is setting meta_level to 0?
+                            # TODO: constraints between prefixes
                             prefix = mapped_arg.prefix
                             suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
                                                           suffix.arg_kinds[len(prefix.arg_kinds):],
@@ -490,7 +490,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         if isinstance(suffix, Parameters):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
-                            # TODO: what is setting meta_level to 0?
+                            # TODO: constraints between prefixes
                             prefix = template_arg.prefix
                             suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
                                                           suffix.arg_kinds[len(prefix.arg_kinds):],
@@ -586,7 +586,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
                 # TODO: Direction
-                # TODO: Deal with arguments that come before param spec ones?
                 # TODO: check the prefixes match
                 prefix = param_spec.prefix
                 prefix_len = len(prefix.arg_types)
@@ -597,6 +596,16 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                         arg_kinds=cactual.arg_kinds[prefix_len:],
                                         arg_names=cactual.arg_names[prefix_len:],
                                         ret_type=NoneType())))
+                # compare prefixes
+                cactual_prefix = cactual.copy_modified(
+                    arg_types=cactual.arg_types[:prefix_len],
+                    arg_kinds=cactual.arg_kinds[:prefix_len],
+                    arg_names=cactual.arg_names[:prefix_len])
+
+                # TODO: see above "FIX" comments for param_spec is None case
+                # TODO: this assume positional arguments
+                for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
+                    res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:

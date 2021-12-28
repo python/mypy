@@ -582,3 +582,21 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 # reason for rejection:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecConcatenateWithTypeVar]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+S = TypeVar("S")
+
+def f(c: Callable[Concatenate[S, P], R]) -> Callable[Concatenate[S, P], R]: ...
+
+def a(n: int) -> None: ...
+
+n = f(a)
+
+reveal_type(n)  # N: Revealed type is "def (builtins.int*)"
+reveal_type(n(42))  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]

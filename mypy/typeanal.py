@@ -847,10 +847,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         obj = self.named_type('builtins.object')
         # ick, CallableType should take ParamSpecType
         prefix = tvar_def.prefix
+        # we don't set the prefix here as generic arguments will get updated at some point
+        # in the future. CallableType.param_spec() accounts for this.
         return CallableType(
             [*prefix.arg_types,
              ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
-                           upper_bound=obj, prefix=tvar_def.prefix),
+                           upper_bound=obj),
              ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
                            upper_bound=obj)],
             [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
