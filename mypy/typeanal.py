@@ -291,7 +291,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # last argument has to be ParamSpec (or Concatenate)
         ps = self.anal_type(t.args[-1], allow_param_spec=True)
         if not isinstance(ps, ParamSpecType):
-            print(ps)
             self.api.fail('The last parameter to Concatenate needs to be a ParamSpec', t)
             return AnyType(TypeOfAny.from_error)
 

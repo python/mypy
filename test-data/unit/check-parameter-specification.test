@@ -569,10 +569,11 @@ from typing import Callable, TypeVar
 P = ParamSpec("P")
 R = TypeVar("R")
 
-def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
-    def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
-
-    return result  # Accepted
+# TODO: figure out how to only run this under >= 3.8
+# def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+#     def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+#
+#     return result  # Accepted
 
 def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
     def result(x: int, *args: P.args, **kwargs: P.kwargs) -> R: ...
