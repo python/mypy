@@ -1511,8 +1511,14 @@ class CallableType(FunctionLike):
         arg_type = self.arg_types[-2]
         if not isinstance(arg_type, ParamSpecType):
             return None
+        # sometimes paramspectypes are analyzed in from mysterious places,
+        # e.g. def f(prefix..., *args: P.args, **kwargs: P.kwargs) -> ...: ...
+        prefix = arg_type.prefix
+        if not prefix.arg_types:
+            # TODO: confirm that all arg kinds are positional
+            prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
-                             arg_type.upper_bound, prefix=arg_type.prefix)
+                             arg_type.upper_bound, prefix=prefix)
 
     def expand_param_spec(self, c: 'CallableType') -> 'CallableType':
         return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
