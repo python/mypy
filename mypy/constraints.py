@@ -458,7 +458,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 mapped_arg, instance_arg, neg_op(self.direction)))
                     elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
                         suffix = get_proper_type(instance_arg)
-                        if isinstance(suffix, Parameters):
+                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -487,7 +487,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     elif (isinstance(tvar, ParamSpecType) and
                           isinstance(template_arg, ParamSpecType)):
                         suffix = get_proper_type(mapped_arg)
-                        if isinstance(suffix, Parameters):
+                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes

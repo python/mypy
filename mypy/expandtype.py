@@ -112,7 +112,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # TODO: what if both have prefixes???
             # (realistically, `repl` is the unification variable for `t` so this is fine)
             return repl.copy_modified(flavor=t.flavor, prefix=t.prefix)
-        elif isinstance(repl, Parameters):
+        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
             return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
                                       t.prefix.arg_kinds + repl.arg_kinds,
                                       t.prefix.arg_names + repl.arg_names)

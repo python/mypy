@@ -601,3 +601,20 @@ n = f(a)
 reveal_type(n)  # N: Revealed type is "def (builtins.int*)"
 reveal_type(n(42))  # N: Revealed type is "None"
 [builtins fixtures/tuple.pyi]
+
+[case testCallablesAsParameters]
+# credits to https://github.com/microsoft/pyright/issues/2705
+from typing import ParamSpec, Concatenate, Generic, Callable, Any
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]):
+    def __init__(self, func: Callable[P, Any]) -> None: ...
+def bar(baz: Foo[Concatenate[int, P]]) -> Foo[P]: ...
+
+def test(a: int, b: str) -> str: ...
+
+abc = Foo(test)
+reveal_type(abc)
+bar(abc)
+[builtins fixtures/tuple.pyi]
