@@ -60,6 +60,31 @@ PyObject *vec_t_ext_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
+PyObject *Vec_T_Ext_Slice(PyObject *self, int64_t start, int64_t end) {
+    VecTExtObject *vec = (VecTExtObject *)self;
+    if (start < 0)
+        start += vec->len;
+    if (end < 0)
+        end += vec->len;
+    if (end < start)
+        end = start;
+    if (start < 0)
+        start = 0;
+    if (end > vec->len)
+        end = vec->len;
+    int64_t slicelength = end - start;
+    VecTExtObject *res = vec_t_ext_alloc(slicelength, vec->item_type, vec->optionals, vec->depth);
+    if (res == NULL)
+        return NULL;
+    res->len = slicelength;
+    for (Py_ssize_t i = 0; i < slicelength; i++) {
+        PyObject *item = vec->items[start + i];
+        Py_INCREF(item);
+        res->items[i] = item;
+    }
+    return (PyObject *)res;
+}
+
 PyObject *vec_t_ext_subscript(PyObject *self, PyObject *item) {
     VecTExtObject *vec = (VecTExtObject *)self;
     if (PyIndex_Check(item)) {
@@ -304,4 +329,5 @@ VecTExtFeatures TExtFeatures = {
     Vec_T_Ext_Append,
     Vec_T_Ext_Pop,
     Vec_T_Ext_Remove,
+    Vec_T_Ext_Slice,
 };

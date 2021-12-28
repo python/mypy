@@ -46,8 +46,9 @@ typedef struct _VecI64Features {
     PyObject *(*append)(PyObject *, int64_t);
     int64_t (*pop)(PyObject *, Py_ssize_t);
     int (*remove)(PyObject *, int64_t);
+    // TODO: Py_ssize_t
+    PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
-    // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, int64_t);
     // iter?
@@ -62,8 +63,9 @@ typedef struct _VecTFeatures {
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
     int (*remove)(PyObject *, PyObject *);
+    // TODO: Py_ssize_t
+    PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
-    // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
     // iter?
@@ -78,8 +80,9 @@ typedef struct _VecTExtFeatures {
     PyObject *(*append)(PyObject *, PyObject *);
     PyObject *(*pop)(PyObject *, Py_ssize_t);
     int (*remove)(PyObject *, PyObject *);
+    // TODO: Py_ssize_t
+    PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*extend)(PyObject *, PyObject *);
-    // PyObject *(*slice)(PyObject *, int64_t, int64_t);
     // PyObject *(*concat)(PyObject *, PyObject *);
     // bool (*contains)(PyObject *, PyObject *);
     // iter?

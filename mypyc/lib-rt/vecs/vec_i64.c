@@ -87,6 +87,28 @@ PyObject *vec_i64_get_item(PyObject *o, Py_ssize_t i) {
     }
 }
 
+PyObject *Vec_I64_Slice(PyObject *self, int64_t start, int64_t end) {
+    VecI64Object *vec = (VecI64Object *)self;
+    if (start < 0)
+        start += vec->len;
+    if (end < 0)
+        end += vec->len;
+    if (end < start)
+        end = start;
+    if (start < 0)
+        start = 0;
+    if (end > vec->len)
+        end = vec->len;
+    int64_t slicelength = end - start;
+    VecI64Object *res = vec_i64_alloc(slicelength);
+    if (res == NULL)
+        return NULL;
+    res->len = slicelength;
+    for (Py_ssize_t i = 0; i < slicelength; i++)
+        res->items[i] = vec->items[start + i];
+    return (PyObject *)res;
+}
+
 PyObject *vec_i64_subscript(PyObject *self, PyObject *item) {
     VecI64Object *vec = (VecI64Object *)self;
     if (PyIndex_Check(item)) {
@@ -288,4 +310,5 @@ VecI64Features I64Features = {
     Vec_I64_Append,
     Vec_I64_Pop,
     Vec_I64_Remove,
+    Vec_I64_Slice,
 };
