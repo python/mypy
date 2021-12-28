@@ -293,13 +293,14 @@ PyObject *CPyLong_FromStr(PyObject *o) {
     return CPyLong_FromStrWithBase(o, base);
 }
 
-PyObject *CPyLong_FromFloat(PyObject *o) {
-    if (PyLong_Check(o)) {
-        CPy_INCREF(o);
-        return o;
-    } else {
-        return PyLong_FromDouble(PyFloat_AS_DOUBLE(o));
+CPyTagged CPyTagged_FromFloat(double f) {
+    if (f < (double)CPY_TAGGED_MAX && f > CPY_TAGGED_MIN) {
+        return (CPyTagged)f << 1;
     }
+    PyObject *o = PyLong_FromDouble(f);
+    if (o == NULL)
+        return CPY_INT_TAG;
+    return CPyTagged_StealFromObject(o);
 }
 
 PyObject *CPyBool_Str(bool b) {

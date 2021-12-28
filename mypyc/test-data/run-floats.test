@@ -1,19 +1,73 @@
 # Test cases for floats (compile and run)
 
-[case testStrToFloat]
+[case testFloatOps]
+from typing import Any, cast
+from typing_extensions import Final
+from testutil import assertRaises
+
+MAGIC: Final = -113.0
+
+def test_arithmetic() -> None:
+    zero = float(0.0)
+    one = zero + 1.0
+    x = one + one / 2.0
+    assert x == 1.5
+    assert x - one == 0.5
+    assert x * x == 2.25
+    assert x / 2.0 == 0.75
+    assert x * (-0.5) == -0.75
+    assert -x == -1.5
+
+def test_boxing_and_unboxing() -> None:
+    x = 1.5
+    boxed: Any = x
+    assert repr(boxed) == "1.5"
+    assert type(boxed) is float
+    y: float = boxed
+    assert y == x
+    boxed_int: Any = 5
+    assert type(boxed_int) is int
+    z: float = boxed_int
+    assert z == 5.0
+
+def test_unboxing_failure() -> None:
+    boxed: Any = '1.5'
+    with assertRaises(TypeError):
+        x: float = boxed
+
+def test_coerce_from_int_literal() -> None:
+    x: float = 34
+    assert x == 34.0
+    y: float = -1
+    assert y == -1.0
+
+def test_coerce_from_short_tagged_int() -> None:
+    n = int() - 17
+    x: float = n
+    assert x == -17.0
+    for i in range(-300, 300):
+        y: float = i
+        o: object = y
+        assert o == i
+
+def test_coerce_from_long_tagged_int() -> None:
+    n = int() + 2**100
+    x: float = n
+    assert repr(x) == '1.2676506002282294e+30'
+    n = int() - 2**100
+    y: float = n
+    assert repr(y) == '-1.2676506002282294e+30'
+
 def str_to_float(x: str) -> float:
     return float(x)
 
-[file driver.py]
-from native import str_to_float
+def test_str_to_float() -> None:
+    assert str_to_float("1") == 1.0
+    assert str_to_float("1.234567") == 1.234567
+    assert str_to_float("44324") == 44324.0
+    assert str_to_float("23.4") == 23.4
+    assert str_to_float("-43.44e-4") == -43.44e-4
 
-assert str_to_float("1") == 1.0
-assert str_to_float("1.234567") == 1.234567
-assert str_to_float("44324") == 44324.0
-assert str_to_float("23.4") == 23.4
-assert str_to_float("-43.44e-4") == -43.44e-4
-
-[case testFloatArithmetic]
 def test_abs() -> None:
     assert abs(0.0) == 0.0
     assert abs(-1.234567) == 1.234567
@@ -28,3 +82,87 @@ def test_float_min_max() -> None:
     assert min(y, x) == 20.0
     assert max(x, y) == 30.0
     assert max(y, x) == 30.0
+
+def default(x: float = 0) -> float:
+    return x
+
+def test_float_default_value() -> None:
+    assert default(1.2) == 1.2
+    assert default() == 0.0
+
+class C:
+    def __init__(self, x: float) -> None:
+        self.x = x
+
+def test_float_attr() -> None:
+    for i in range(-200, 200):
+        f = float(i)
+        c = C(f)
+        assert c.x == f
+        a: Any = c
+        assert a.x == f
+        c.x = MAGIC
+        assert c.x == MAGIC
+        assert a.x == MAGIC
+        a.x = 1.0
+        assert a.x == 1.0
+        a.x = MAGIC
+        assert a.x == MAGIC
+
+class D:
+    def __init__(self, x: float) -> None:
+        if x:
+            self.x = x
+
+def test_float_attr_maybe_undefned() -> None:
+    for i in range(-200, 200):
+        if i == 0:
+            d = D(0.0)
+            with assertRaises(AttributeError):
+                d.x
+            a: Any = d
+            with assertRaises(AttributeError):
+                a.x
+            d.x = MAGIC
+            assert d.x == MAGIC
+            assert a.x == MAGIC
+            d.x = 0.0
+            assert d.x == 0.0
+            assert a.x == 0.0
+            a.x = MAGIC
+            assert a.x == MAGIC
+            d = D(0.0)
+            a = cast(Any, d)
+            a.x = MAGIC
+            assert d.x == MAGIC
+        else:
+            f = float(i)
+            d = D(f)
+            assert d.x == f
+            a2: Any = d
+            assert a2.x == f
+
+def f(x: float) -> float:
+    return x + 1
+
+def test_return_values() -> None:
+    a: Any = f
+    for i in range(-200, 200):
+        x = float(i)
+        assert f(x) == x + 1
+        assert a(x) == x + 1
+
+def exc() -> float:
+    raise IndexError('x')
+
+def test_exception() -> None:
+    with assertRaises(IndexError):
+        exc()
+    a: Any = exc
+    with assertRaises(IndexError):
+        a()
+
+def test_undefined_local_var() -> None:
+    if int():
+        x = 1.0
+    todo # TODO incomplete

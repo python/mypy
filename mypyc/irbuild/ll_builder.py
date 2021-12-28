@@ -46,6 +46,9 @@ from mypyc.ir.ops import (
     Cast,
     ComparisonOp,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -89,13 +92,13 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     c_size_t_rprimitive,
     dict_rprimitive,
-    float_rprimitive,
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
     is_bytes_rprimitive,
     is_dict_rprimitive,
     is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
     is_int_rprimitive,
@@ -126,6 +129,7 @@ from mypyc.primitives.dict_ops import (
     dict_update_in_display_op,
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
+from mypyc.primitives.float_ops import int_to_float_op
 from mypyc.primitives.generic_ops import (
     generic_len_op,
     generic_ssize_t_len_op,
@@ -340,6 +344,12 @@ class LowLevelIRBuilder:
                 is_bool_rprimitive(src_type) or is_bit_rprimitive(src_type)
             ) and is_fixed_width_rtype(target_type):
                 return self.add(Extend(src, target_type, signed=False))
+            elif isinstance(src, Integer) and is_float_rprimitive(target_type):
+                if is_tagged(src_type):
+                    return Float(float(src.value // 2))
+                return Float(float(src.value))
+            elif is_tagged(src_type) and is_float_rprimitive(target_type):
+                return self.call_c(int_to_float_op, [src], line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -1166,7 +1176,7 @@ class LowLevelIRBuilder:
 
     def load_float(self, value: float) -> Value:
         """Load a float literal value."""
-        return self.add(LoadLiteral(value, float_rprimitive))
+        return Float(value)
 
     def load_str(self, value: str) -> Value:
         """Load a str literal value.
@@ -1328,6 +1338,20 @@ class LowLevelIRBuilder:
             if is_tagged(rtype) and is_subtype(ltype, rtype):
                 lreg = self.coerce(lreg, short_int_rprimitive, line)
                 return self.compare_tagged(lreg, rreg, op, line)
+        if is_float_rprimitive(ltype) or is_float_rprimitive(rtype):
+            if isinstance(lreg, Integer):
+                lreg = Float(float(lreg.numeric_value()))
+            elif isinstance(rreg, Integer):
+                rreg = Float(float(rreg.numeric_value()))
+            if is_float_rprimitive(lreg.type) and is_float_rprimitive(rreg.type):
+                if op in FloatComparisonOp.op_to_id:
+                    return self.compare_floats(lreg, rreg, FloatComparisonOp.op_to_id[op], line)
+                if op.endswith("="):
+                    base_op = op[:-1]
+                else:
+                    base_op = op
+                if base_op in FloatOp.op_to_id:
+                    return self.float_op(lreg, rreg, FloatOp.op_to_id[base_op], line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)
@@ -1556,6 +1580,10 @@ class LowLevelIRBuilder:
                 return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
             elif expr_op == "+":
                 return value
+        if is_float_rprimitive(typ) and expr_op == "-":
+            # Translate to '0 - x'
+            return self.float_op(Float(0.0), value, FloatOp.SUB, line)
+
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
             num = value.value
@@ -1564,6 +1592,8 @@ class LowLevelIRBuilder:
             return Integer(-num, typ, value.line)
         if is_tagged(typ) and expr_op == "+":
             return value
+        if isinstance(value, Float):
+            return Float(-value.value, value.line)
         if isinstance(typ, RInstance):
             if expr_op == "-":
                 method = "__neg__"
@@ -1713,6 +1743,8 @@ class LowLevelIRBuilder:
         ):
             # Directly call the __bool__ method on classes that have it.
             result = self.gen_method_call(value, "__bool__", [], bool_rprimitive, value.line)
+        elif is_float_rprimitive(value.type):
+            result = self.compare_floats(value, Float(0.0), FloatComparisonOp.NEQ, value.line)
         else:
             value_type = optional_value_type(value.type)
             if value_type is not None:
@@ -1889,6 +1921,17 @@ class LowLevelIRBuilder:
             op: IntOp.* constant (e.g. IntOp.ADD)
         """
         return self.add(IntOp(type, lhs, rhs, op, line))
+
+    def float_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        """Generate a native float binary op.
+
+        Args:
+            op: FloatOp.* constant (e.g. FloatOp.ADD)
+        """
+        return self.add(FloatOp(lhs, rhs, op, line))
+
+    def compare_floats(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
+        return self.add(FloatComparisonOp(lhs, rhs, op, line))
 
     def fixed_width_int_op(self, type: RType, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         """Generate a binary op using Python fixed-width integer semantics.

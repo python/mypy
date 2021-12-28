@@ -1,0 +1,202 @@
+[case testFloatAdd]
+def f(x: float, y: float) -> float:
+    return x + y
+def g(x: float) -> float:
+    z = x - 1.5
+    return 2.5 * z
+[out]
+def f(x, y):
+    x, y, r0 :: float
+L0:
+    r0 = x + y
+    return r0
+def g(x):
+    x, r0, z, r1 :: float
+L0:
+    r0 = x - 1.5
+    z = r0
+    r1 = 2.5 * z
+    return r1
+
+[case testFloatBoxAndUnbox]
+from typing import Any
+def f(x: float) -> object:
+    return x
+def g(x: Any) -> float:
+    return x
+[out]
+def f(x):
+    x :: float
+    r0 :: object
+L0:
+    r0 = box(float, x)
+    return r0
+def g(x):
+    x :: object
+    r0 :: float
+L0:
+    r0 = unbox(float, x)
+    return r0
+
+[case testFloatNeg]
+def f(x: float) -> float:
+    y = x * -0.5
+    return -y
+[out]
+def f(x):
+    x, r0, y, r1 :: float
+L0:
+    r0 = x * -0.5
+    y = r0
+    r1 = 0.0 - y
+    return r1
+
+[case testFloatCoerceFromInt]
+from mypy_extensions import i64
+
+def from_int(x: int) -> float:
+    return x
+
+def from_literal() -> float:
+    return 5
+
+def from_literal_neg() -> float:
+    return -2
+[out]
+def from_int(x):
+    x :: int
+    r0 :: float
+L0:
+    r0 = CPyFloat_FromTagged(x)
+    return r0
+def from_literal():
+L0:
+    return 5.0
+def from_literal_neg():
+L0:
+    return -2.0
+
+[case testFloatOperatorAssignment]
+def f(x: float, y: float) -> float:
+    x += y
+    x -= 5.0
+    return x
+[out]
+def f(x, y):
+    x, y, r0, r1 :: float
+L0:
+    r0 = x + y
+    x = r0
+    r1 = x - 5.0
+    x = r1
+    return x
+
+[case testFloatComparison]
+def lt(x: float, y: float) -> bool:
+    return x < y
+def eq(x: float, y: float) -> bool:
+    return x == y
+[out]
+def lt(x, y):
+    x, y :: float
+    r0 :: bit
+L0:
+    r0 = x < y
+    return r0
+def eq(x, y):
+    x, y :: float
+    r0 :: bit
+L0:
+    r0 = x == y
+    return r0
+
+[case testFloatOpWithLiteralInt]
+def f(x: float) -> None:
+    y = x * 2
+    z = 1 - y
+    b = z < 3
+    c = 0 == z
+[out]
+def f(x):
+    x, r0, y, r1, z :: float
+    r2 :: bit
+    b :: bool
+    r3 :: bit
+    c :: bool
+L0:
+    r0 = x * 2.0
+    y = r0
+    r1 = 1.0 - y
+    z = r1
+    r2 = z < 3.0
+    b = r2
+    r3 = 0.0 == z
+    c = r3
+    return 1
+
+[case testFloatCallFunctionWithLiteralInt]
+def f(x: float) -> None: pass
+
+def g() -> None:
+    f(3)
+    f(-2)
+[out]
+def f(x):
+    x :: float
+L0:
+    return 1
+def g():
+    r0, r1 :: None
+L0:
+    r0 = f(3.0)
+    r1 = f(-2.0)
+    return 1
+
+[case testFloatAsBool]
+def f(x: float) -> int:
+    if x:
+        return 2
+    else:
+        return 5
+[out]
+def f(x):
+    x :: float
+    r0 :: bit
+L0:
+    r0 = x != 0.0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 4
+L2:
+    return 10
+L3:
+    unreachable
+
+[case testCallSqrtViaMathModule]
+import math
+
+def f(x: float) -> float:
+    return math.sqrt(x)
+[out]
+def f(x):
+    x, r0 :: float
+L0:
+    r0 = CPyFloat_Sqrt(x)
+    return r0
+
+[case testFloatFinalConstant]
+from typing_extensions import Final
+
+X: Final = 123.0
+Y: Final = -1.0
+
+def f() -> float:
+    a = X
+    return a + Y
+[out]
+def f():
+    a, r0 :: float
+L0:
+    a = 123.0
+    r0 = a + -1.0
+    return r0

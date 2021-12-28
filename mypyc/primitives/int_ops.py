@@ -50,8 +50,8 @@ for int_name in ("builtins.int", "mypy_extensions.i64", "mypy_extensions.i32"):
     function_op(
         name=int_name,
         arg_types=[float_rprimitive],
-        return_type=object_rprimitive,
-        c_function_name="CPyLong_FromFloat",
+        return_type=int_rprimitive,
+        c_function_name="CPyTagged_FromFloat",
         error_kind=ERR_MAGIC,
     )
 

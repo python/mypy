@@ -16,6 +16,8 @@ from mypyc.ir.ops import (
     ControlOp,
     DecRef,
     Extend,
+    FloatComparisonOp,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -380,6 +382,12 @@ class OpChecker(OpVisitor[None]):
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         self.check_compatibility(op, op.lhs.type, op.rhs.type)
+
+    def visit_float_op(self, op: FloatOp) -> None:
+        pass
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        pass
 
     def visit_load_mem(self, op: LoadMem) -> None:
         pass

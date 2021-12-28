@@ -25,6 +25,7 @@ from mypyc.ir.rtypes import (
     RVoid,
     bit_rprimitive,
     bool_rprimitive,
+    float_rprimitive,
     int_rprimitive,
     is_bit_rprimitive,
     is_bool_rprimitive,
@@ -188,6 +189,25 @@ class Integer(Value):
         else:
             self.value = value
         self.type = rtype
+        self.line = line
+
+    def numeric_value(self) -> int:
+        if is_short_int_rprimitive(self.type) or is_int_rprimitive(self.type):
+            return self.value // 2
+        return self.value
+
+
+class Float(Value):
+    """Float literal.
+
+    Floating point literals are treated as constant values and are generally
+    not included in data flow analyses and such, unlike Register and
+    Op subclasses.
+    """
+
+    def __init__(self, value: float, line: int = -1) -> None:
+        self.value = value
+        self.type = float_rprimitive
         self.line = line
 
 
@@ -1042,7 +1062,7 @@ class IntOp(RegisterOp):
     """Binary arithmetic or bitwise op on integer operands (e.g., r1 = r2 + r3).
 
     These ops are low-level and are similar to the corresponding C
-    operations (and unlike Python operations).
+    operations.
 
     The left and right values must have low-level integer types with
     compatible representations. Fixed-width integers, short_int_rprimitive,
@@ -1154,6 +1174,70 @@ class ComparisonOp(RegisterOp):
 
     def accept(self, visitor: OpVisitor[T]) -> T:
         return visitor.visit_comparison_op(self)
+
+
+class FloatOp(RegisterOp):
+    """Binary float arithmetic op (e.g., r1 = r2 + r3).
+
+    These ops are low-level and are similar to the corresponding C
+    operations (and unlike Python operations).
+
+    The left and right values must be floats.
+    """
+
+    error_kind = ERR_NEVER
+
+    ADD: Final = 0
+    SUB: Final = 1
+    MUL: Final = 2
+    DIV: Final = 3
+
+    op_str: Final = {ADD: "+", SUB: "-", MUL: "*", DIV: "/"}
+
+    op_to_id = {op: op_id for op_id, op in op_str.items()}  # type: Final
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = float_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def accept(self, visitor: "OpVisitor[T]") -> T:
+        return visitor.visit_float_op(self)
+
+
+class FloatComparisonOp(RegisterOp):
+    """Low-level comparison op for floats."""
+
+    error_kind = ERR_NEVER
+
+    EQ: Final = 200
+    NEQ: Final = 201
+    LT: Final = 202
+    GT: Final = 203
+    LE: Final = 204
+    GE: Final = 205
+
+    op_str: Final = {EQ: "==", NEQ: "!=", LT: "<", GT: ">", LE: "<=", GE: ">="}
+
+    op_to_id: Final = {op: op_id for op_id, op in op_str.items()}
+
+    def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
+        super().__init__(line)
+        self.type = bit_rprimitive
+        self.lhs = lhs
+        self.rhs = rhs
+        self.op = op
+
+    def sources(self) -> List[Value]:
+        return [self.lhs, self.rhs]
+
+    def accept(self, visitor: "OpVisitor[T]") -> T:
+        return visitor.visit_float_comparison_op(self)
 
 
 class LoadMem(RegisterOp):
@@ -1403,6 +1487,14 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_comparison_op(self, op: ComparisonOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_op(self, op: FloatOp) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> T:
         raise NotImplementedError
 
     @abstractmethod

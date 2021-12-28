@@ -54,6 +54,7 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     ComparisonOp,
+    Float,
     Integer,
     LoadAddress,
     LoadLiteral,
@@ -289,6 +290,9 @@ def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
         callee = callee.analyzed.expr  # Unwrap type application
 
     if isinstance(callee, MemberExpr):
+        if isinstance(callee.expr, RefExpr) and isinstance(callee.expr.node, MypyFile):
+            # Call a module-level function, not a method.
+            return translate_call(builder, expr, callee)
         return apply_method_specialization(builder, expr, callee) or translate_method_call(
             builder, expr, callee
         )
@@ -566,6 +570,8 @@ def try_constant_fold(builder: IRBuilder, expr: Expression) -> Value | None:
         return builder.load_int(value)
     elif isinstance(value, str):
         return builder.load_str(value)
+    elif isinstance(value, float):
+        return Float(value)
     return None
 
 

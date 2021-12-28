@@ -25,6 +25,9 @@ from mypyc.ir.ops import (
     ComparisonOp,
     DecRef,
     Extend,
+    Float,
+    FloatComparisonOp,
+    FloatOp,
     GetAttr,
     GetElementPtr,
     Goto,
@@ -671,6 +674,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
         self.emit_line(f"{dest} = {lhs_cast}{lhs} {op.op_str[op.op]} {rhs_cast}{rhs};")
 
+    def visit_float_op(self, op: FloatOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+
+    def visit_float_comparison_op(self, op: FloatComparisonOp) -> None:
+        dest = self.reg(op)
+        lhs = self.reg(op.lhs)
+        rhs = self.reg(op.rhs)
+        self.emit_line("%s = %s %s %s;" % (dest, lhs, op.op_str[op.op], rhs))
+
     def visit_load_mem(self, op: LoadMem) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
@@ -732,6 +747,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             elif val <= -(1 << 31):
                 s += "LL"
             return s
+        elif isinstance(reg, Float):
+            r = repr(reg.value)
+            if r == "inf":
+                return "INFINITY"
+            elif r == "-inf":
+                return "-INFINITY"
+            return r
         else:
             return self.emitter.reg(reg)
 
