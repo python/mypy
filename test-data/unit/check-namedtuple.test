@@ -673,7 +673,7 @@ Node = NamedTuple('Node', [
         ('children', Tuple['Node', ...]), # E: Cannot resolve name "Node" (possible cyclic definition)
     ])
 n: Node
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
@@ -689,7 +689,7 @@ class B(NamedTuple):
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]

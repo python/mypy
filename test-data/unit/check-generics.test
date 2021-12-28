@@ -2073,9 +2073,9 @@ class Base(Generic[T]):
             return (cls(item),)
         return cls(item)
 
-reveal_type(Base.make_some)  # N: Revealed type is "Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1]])"
+reveal_type(Base.make_some)  # N: Revealed type is "Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1], ...])"
 reveal_type(Base.make_some(1))  # N: Revealed type is "__main__.Base[builtins.int*]"
-reveal_type(Base.make_some(1, 1))  # N: Revealed type is "builtins.tuple[__main__.Base[builtins.int*]]"
+reveal_type(Base.make_some(1, 1))  # N: Revealed type is "builtins.tuple[__main__.Base[builtins.int*], ...]"
 
 class Sub(Base[str]): ...
 Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
@@ -2183,7 +2183,7 @@ class C(Generic[T]):
 class D(C[str]): ...
 
 reveal_type(D.get())  # N: Revealed type is "builtins.str*"
-reveal_type(D.get(42))  # N: Revealed type is "builtins.tuple[builtins.str*]"
+reveal_type(D.get(42))  # N: Revealed type is "builtins.tuple[builtins.str*, ...]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodAnnotation]

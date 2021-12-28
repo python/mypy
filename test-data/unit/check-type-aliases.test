@@ -312,7 +312,7 @@ T = Tuple
 c: C
 t: T
 reveal_type(c)  # N: Revealed type is "def (*Any, **Any) -> Any"
-reveal_type(t)  # N: Revealed type is "builtins.tuple[Any]"
+reveal_type(t)  # N: Revealed type is "builtins.tuple[Any, ...]"
 bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 [builtins fixtures/tuple.pyi]
