@@ -604,7 +604,8 @@ reveal_type(n(42))  # N: Revealed type is "None"
 
 [case testCallablesAsParameters]
 # credits to https://github.com/microsoft/pyright/issues/2705
-from typing import ParamSpec, Concatenate, Generic, Callable, Any
+from typing_extensions import ParamSpec, Concatenate
+from typing import Generic, Callable, Any
 
 P = ParamSpec("P")
 
@@ -612,9 +613,10 @@ class Foo(Generic[P]):
     def __init__(self, func: Callable[P, Any]) -> None: ...
 def bar(baz: Foo[Concatenate[int, P]]) -> Foo[P]: ...
 
-def test(a: int, b: str) -> str: ...
+# TODO: how to mark this as py>=3.8
+# def test(a: int, /, b: str) -> str: ...
 
-abc = Foo(test)
-reveal_type(abc)
-bar(abc)
+#abc = Foo(test)
+#reveal_type(abc)
+#bar(abc)
 [builtins fixtures/tuple.pyi]
