@@ -997,8 +997,8 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     warn_return_any = true
     warn_unused_configs = true
     exclude = [
-        '^file1\.py$',  # TOML single-quoted string (no escaping necessary)
-        "^file2\\.py$",  # TOML double-quoted string (backslash needs escaping)
+        '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+        "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
     ]
 
     # mypy per-module options:
