@@ -73,21 +73,19 @@ def create_environ(python_version: str) -> Dict[str, str]:
         'MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=2 PIP_NO_BUILD_ISOLATION=no'
     )
 
-    # lxml is slow to build wheels for new releases, so allow installing reqs to fail
-    # if we failed to install lxml, we'll skip tests, but allow the build to succeed
     env['CIBW_BEFORE_TEST'] = (
-        'pip install -r {project}/mypy/test-requirements.txt || true'
+        'pip install -r {project}/mypy/test-requirements.txt'
     )
 
     # pytest looks for configuration files in the parent directories of where the tests live.
     # since we are trying to run the tests from their installed location, we copy those into
     # the venv. Ew ew ew.
     env['CIBW_TEST_COMMAND'] = """
-      ( ! pip list | grep lxml ) || (
+      (
       DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))')
-      && TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
+      && TEST_DIRS=$(python -c 'import mypy.test; import mypyc.test; print(mypy.test.__path__[0], mypyc.test.__path__[0])')
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR
-      && MYPY_TEST_PREFIX='{project}/mypy' pytest $TEST_DIR
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $TEST_DIRS
       )
     """.replace('\n', ' ')
 
@@ -95,7 +93,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
     # previously didn't run any tests on windows wheels, so this is a net win.
     env['CIBW_TEST_COMMAND_WINDOWS'] = """
       bash -c "
-      ( ! pip list | grep lxml ) || (
+      (
       DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))')
       && TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR
