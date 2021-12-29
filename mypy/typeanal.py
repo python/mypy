@@ -163,10 +163,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Names of type aliases encountered while analysing a type will be collected here.
         self.aliases_used: Set[str] = set()
 
-    @property
-    def is_future_annotations(self) -> bool:
+    def is_future_annotations(self, target_version: Optional[Tuple[int, int]] = None) -> bool:
         return (
-            self.options.python_version >= (3, 9)
+            (self.options.python_version >= target_version
+                if target_version is not None else False)
             or self.api.is_future_flag_set('annotations')
             or self.allow_new_syntax  # basically tells us if this is a stub
         )
@@ -211,7 +211,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in get_nongen_builtins(self.options.python_version)
                     and t.args and
-                    not self.is_future_annotations):
+                    not self.is_future_annotations()):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
@@ -298,7 +298,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
         elif (fullname == 'typing.Tuple' or
-             (fullname == 'builtins.tuple' and self.is_future_annotations)):
+             (fullname == 'builtins.tuple' and self.is_future_annotations((3, 9)))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
@@ -331,7 +331,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
         elif (fullname == 'typing.Type' or
-             (fullname == 'builtins.type' and self.is_future_annotations)):
+             (fullname == 'builtins.type' and self.is_future_annotations((3, 9)))):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
@@ -708,7 +708,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_union_type(self, t: UnionType) -> Type:
         if (t.uses_pep604_syntax is True
                 and t.is_evaluated is True
-                and not self.is_future_annotations):
+                and not self.is_future_annotations((3, 10))):
             self.fail("X | Y syntax for unions requires Python 3.10", t)
         return UnionType(self.anal_array(t.items), t.line)
 
