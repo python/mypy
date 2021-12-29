@@ -490,3 +490,36 @@ def test_bitwise_ops() -> None:
     assert ~z == 1879040562
     assert ~zero == -1
     assert ~neg_one == 0
+
+def eq(x: i32, y: i32) -> bool:
+    return x == y
+
+def test_eq() -> None:
+    assert eq(int(), int())
+    assert eq(5 + int(), 5 + int())
+    assert eq(-5 + int(), -5 + int())
+    assert not eq(int(), 1 + int())
+    assert not eq(5 + int(), 6 + int())
+    assert not eq(-5 + int(), -6 + int())
+    assert not eq(-5 + int(), 5 + int())
+
+def test_comparisons() -> None:
+    one: i32 = 1 + int()
+    one2: i32 = 1 + int()
+    two: i32 = 2 + int()
+    assert one < two
+    assert not (one < one2)
+    assert not (two < one)
+    assert two > one
+    assert not (one > one2)
+    assert not (one > two)
+    assert one <= two
+    assert one <= one2
+    assert not (two <= one)
+    assert two >= one
+    assert one >= one2
+    assert not (one >= two)
+    assert one == one2
+    assert not (one == two)
+    assert one != two
+    assert not (one != one2)
