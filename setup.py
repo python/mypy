@@ -107,6 +107,8 @@ if USE_MYPYC:
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
+    ) + (
+        os.path.join('mypyc', '__main__.py'),
     )
 
     everything = (
