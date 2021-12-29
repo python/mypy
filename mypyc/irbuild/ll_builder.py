@@ -222,8 +222,9 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
-    def coerce_int_to_fixed_width(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
         assert is_fixed_width_rtype(target_type), target_type
+        assert isinstance(target_type, RPrimitive)
 
         res = Register(target_type)
 
@@ -1576,24 +1577,24 @@ class LowLevelIRBuilder:
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
                 return self.inline_fixed_width_divide(type, lhs, rhs, line)
             if is_int64_rprimitive(type):
-                op = int64_divide_op
+                prim = int64_divide_op
             elif is_int32_rprimitive(type):
-                op = int32_divide_op
+                prim = int32_divide_op
             else:
                 assert False, type
-            return self.call_c(op, [lhs, rhs], line)
+            return self.call_c(prim, [lhs, rhs], line)
         if op == IntOp.MOD:
             # Inline simple % by a constant, so that C
             # compilers can optimize more
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
                 return self.inline_fixed_width_mod(type, lhs, rhs, line)
             if is_int64_rprimitive(type):
-                op = int64_mod_op
+                prim = int64_mod_op
             elif is_int32_rprimitive(type):
-                op = int32_mod_op
+                prim = int32_mod_op
             else:
                 assert False, type
-            return self.call_c(op, [lhs, rhs], line)
+            return self.call_c(prim, [lhs, rhs], line)
         return self.int_op(type, lhs, rhs, op, line)
 
     def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:

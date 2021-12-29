@@ -727,7 +727,7 @@ class ForRange(ForGenerator):
         self.step = step
         self.end_target = builder.maybe_spill(end_reg)
         if is_short_int_rprimitive(start_reg.type) and is_short_int_rprimitive(end_reg.type):
-            index_type = short_int_rprimitive
+            index_type: RType = short_int_rprimitive
         elif is_fixed_width_rtype(end_reg.type):
             index_type = end_reg.type
         else:
