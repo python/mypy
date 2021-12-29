@@ -1440,5 +1440,5 @@ TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specifi
 [case testBaseClassAnnotatedWithoutArgs]
 # https://github.com/python/mypy/issues/11808
 from typing_extensions import Annotated
-# Nest line should not crash:
+# Next line should not crash:
 class A(Annotated): pass  # E: Annotated[...] must have exactly one type argument and at least one annotation
