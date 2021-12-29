@@ -665,7 +665,7 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
@@ -688,7 +688,7 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
