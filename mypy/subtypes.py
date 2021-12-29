@@ -1390,10 +1390,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
-        if isinstance(right, Parameters):
+        if isinstance(right, Parameters) or isinstance(right, CallableType):
             return are_parameters_compatible(left, right, is_compat=self._is_proper_subtype)
         else:
-            # TODO: should this work against callables too?
             return False
 
     def visit_callable_type(self, left: CallableType) -> bool:

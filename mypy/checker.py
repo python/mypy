@@ -4926,7 +4926,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if subtype_label is not None:
                 extra_info.append(subtype_label + ' ' + subtype_str)
             if supertype_label is not None:
-                extra_info.append(f'{supertype_label} {supertype_str}')
+                extra_info.append(supertype_label + ' ' + supertype_str)
             note_msg = make_inferred_type_note(outer_context or context, subtype,
                                                supertype, supertype_str)
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):

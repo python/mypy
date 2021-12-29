@@ -117,7 +117,6 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                                       t.prefix.arg_kinds + repl.arg_kinds,
                                       t.prefix.arg_names + repl.arg_names)
         else:
-            # returning parameters
             # TODO: should this branch be removed? better not to fail silently
             return repl
 
@@ -138,6 +137,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             if isinstance(repl, CallableType):
                 # Substitute *args: P.args, **kwargs: P.kwargs
                 prefix = param_spec.prefix
+                # we need to expand the types in the prefix, so might as well
+                # not get them in the first place
                 t = t.expand_param_spec(repl, no_prefix=True)
                 return t.copy_modified(
                     arg_types=self.expand_types(prefix.arg_types) + t.arg_types,

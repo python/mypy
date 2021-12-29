@@ -1116,6 +1116,7 @@ class Parameters(ProperType):
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
         )
 
+    # the following are copied from CallableType. Is there a way to decrease code duplication?
     def var_arg(self) -> Optional[FormalArgument]:
         """The formal argument for *args."""
         for position, (type, kind) in enumerate(zip(self.arg_types, self.arg_kinds)):
@@ -2410,6 +2411,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_parameters(self, t: Parameters) -> str:
+        # This is copied from visit_callable -- is there a way to decrease duplication?
         s = ''
         bare_asterisk = False
         for i in range(len(t.arg_types)):

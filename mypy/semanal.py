@@ -1171,6 +1171,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         defn.type_vars = tvar_defs
         defn.info.type_vars = []
+        # we want to make sure any additional logic in add_type_vars gets run
         defn.info.add_type_vars()
         if base_error:
             defn.info.fallback_to_any = True

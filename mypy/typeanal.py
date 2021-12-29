@@ -267,8 +267,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             elif node.fullname in ("typing_extensions.TypeAlias", "typing.TypeAlias"):
                 return AnyType(TypeOfAny.special_form)
             # Concatenate is an operator, no need for a proper type
-            elif node.fullname in ("typing_extensions.Concatenate", "typing.Concatenate"):
-                # TODO: detect valid locations (`allow_param_spec` is not here.)
+            elif node.fullname in ('typing_extensions.Concatenate', 'typing.Concatenate'):
+                # We check the return type further up the stack for valid use locations
                 return self.apply_concatenate_operator(t)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
@@ -835,7 +835,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
         if sym.node is None:
             return None
-        if sym.node.fullname not in ("typing_extensions.Concatenate", "typing.Concatenate"):
+        if sym.node.fullname not in ('typing_extensions.Concatenate', 'typing.Concatenate'):
             return None
 
         tvar_def = self.anal_type(callable_args, allow_param_spec=True)

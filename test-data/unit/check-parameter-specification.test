@@ -569,20 +569,23 @@ from typing import Callable, TypeVar
 P = ParamSpec("P")
 R = TypeVar("R")
 
-# TODO: figure out how to only run this under >= 3.8
-# def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
-#     def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
-#
-#     return result  # Accepted
+def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Accepted
 
 def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
     def result(x: int, *args: P.args, **kwargs: P.kwargs) -> R: ...
 
-    return result  # E: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
+    return result  # Rejected
 
 # reason for rejection:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/tuple.pyi]
+[out]
+main:9: error: invalid syntax
+[out version>=3.8]
+main:16: error: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
 
 [case testParamSpecConcatenateWithTypeVar]
 from typing_extensions import ParamSpec, Concatenate
@@ -613,10 +616,13 @@ class Foo(Generic[P]):
     def __init__(self, func: Callable[P, Any]) -> None: ...
 def bar(baz: Foo[Concatenate[int, P]]) -> Foo[P]: ...
 
-# TODO: how to mark this as py>=3.8
-# def test(a: int, /, b: str) -> str: ...
+def test(a: int, /, b: str) -> str: ...
 
-#abc = Foo(test)
-#reveal_type(abc)
-#bar(abc)
+abc = Foo(test)
+reveal_type(abc)
+bar(abc)
 [builtins fixtures/tuple.pyi]
+[out]
+main:11: error: invalid syntax
+[out version>=3.8]
+main:14: note: Revealed type is "__main__.Foo[def (builtins.int, b: builtins.str)]"
