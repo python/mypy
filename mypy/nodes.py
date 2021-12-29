@@ -2723,7 +2723,7 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
-        self._promote = None
+        self._promote = []
         self.alt_promote = None
         self.tuple_type = None
         self.is_named_tuple = False
