@@ -271,6 +271,7 @@ def test_attributes() -> None:
 
 [case testLowLevelIntErrorValues]
 from typing import Any
+import sys
 
 MYPY = False
 if MYPY:
@@ -311,7 +312,11 @@ def test_unbox_int() -> None:
 
 def test_unbox_int_fails() -> None:
     o: Any = 'x'
-    with assertRaises(TypeError, "an integer is required (got type str)"):
+    if sys.version_info[0] == 3 and sys.version_info[1] < 10:
+        msg = "an integer is required (got type str)"
+    else:
+        msg = "'str' object cannot be interpreted as an integer"
+    with assertRaises(TypeError, msg):
         x: i64 = o
     o2: Any = 1 << 63
     with assertRaises(OverflowError, "int too large to convert to i64"):
