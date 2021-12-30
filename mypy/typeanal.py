@@ -79,7 +79,7 @@ def analyze_type_alias(node: Expression,
     full names of type aliases it depends on (directly or indirectly).
     Return None otherwise. 'node' must have been semantically analyzed.
     """
-    try:  # TODO: refactor `expr_to_type` to work with `__future__` import
+    try:
         type = expr_to_unanalyzed_type(node, options, api.is_stub_file)
     except TypeTranslationError:
         api.fail('Invalid type alias: expression is not a valid type', node)
