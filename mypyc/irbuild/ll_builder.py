@@ -67,7 +67,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import (
     int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op,
-    int_to_int64_op, int64_to_int_op, int32_overflow
+    int_to_int64_op, int64_to_int_op, int32_overflow, int_to_int32_op
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
@@ -260,13 +260,18 @@ class LowLevelIRBuilder:
         self.goto(end)
 
         self.activate_block(slow)
-        if is_int64_rprimitive(target_type):
+        if is_int64_rprimitive(target_type) or (
+                is_int32_rprimitive(target_type) and size == int_rprimitive.size):
             # Slow path calls a library function that handles more complex logic
             ptr = self.int_op(
                 pointer_rprimitive, src, Integer(1, pointer_rprimitive), IntOp.XOR, line)
             ptr2 = Register(c_pointer_rprimitive)
             self.add(Assign(ptr2, ptr))
-            tmp = self.call_c(int_to_int64_op, [ptr2], line)
+            if is_int64_rprimitive(target_type):
+                conv_op = int_to_int64_op
+            else:
+                conv_op = int_to_int32_op
+            tmp = self.call_c(conv_op, [ptr2], line)
             self.add(Assign(res, tmp))
             self.add(KeepAlive([src]))
             self.goto(end)
