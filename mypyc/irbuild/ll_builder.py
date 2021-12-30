@@ -24,7 +24,8 @@ from mypyc.ir.ops import (
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
-    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem
+    LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem,
+    Extend
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -254,7 +255,11 @@ class LowLevelIRBuilder:
                               line)
             tmp = self.add(Truncate(tmp, target_type))
         else:
-            tmp = self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+            if size > int_rprimitive.size:
+                tmp = self.add(Extend(src, target_type, signed=True))
+            else:
+                tmp = src
+            tmp = self.int_op(target_type, tmp, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
 
         self.add(Assign(res, tmp))
         self.goto(end)

@@ -1491,7 +1491,7 @@ L0:
     c.x = r2; r3 = is_error
     return 1
 
-[case testCoerceIntToI64]
+[case testCoerceIntToI64_64bit]
 from mypy_extensions import i64
 
 def f(x: int) -> i64:
