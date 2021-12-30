@@ -21,6 +21,8 @@ ENUM_BASES: Final = frozenset((
 ))
 ENUM_SPECIAL_PROPS: Final = frozenset((
     'name', 'value', '_name_', '_value_', '_order_', '__order__',
+    # Also attributes from `object`:
+    '__module__', '__annotations__', '__doc__', '__slots__', '__dict__',
 ))
 
 
