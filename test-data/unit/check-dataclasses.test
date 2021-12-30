@@ -1456,3 +1456,69 @@ class Other:
     __slots__ = ('x',)
     x: int
 [builtins fixtures/dataclasses.pyi]
+
+
+[case testSlotsDefinitionWithTwoPasses1]
+# flags: --python-version 3.10
+# https://github.com/python/mypy/issues/11821
+from typing import TypeVar, Protocol, Generic
+from dataclasses import dataclass
+
+C = TypeVar("C", bound="Comparable")
+
+class Comparable(Protocol):
+    pass
+
+V = TypeVar("V", bound=Comparable)
+
+@dataclass(slots=True)
+class Node(Generic[V]):  # Error was here
+    data: V
+[builtins fixtures/dataclasses.pyi]
+
+[case testSlotsDefinitionWithTwoPasses2]
+# flags: --python-version 3.10
+from typing import TypeVar, Protocol, Generic
+from dataclasses import dataclass
+
+C = TypeVar("C", bound="Comparable")
+
+class Comparable(Protocol):
+    pass
+
+V = TypeVar("V", bound=Comparable)
+
+@dataclass(slots=True)  # Explicit slots are still not ok:
+class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "slots=True"
+    __slots__ = ('data',)
+    data: V
+[builtins fixtures/dataclasses.pyi]
+
+[case testSlotsDefinitionWithTwoPasses3]
+# flags: --python-version 3.10
+from typing import TypeVar, Protocol, Generic
+from dataclasses import dataclass
+
+C = TypeVar("C", bound="Comparable")
+
+class Comparable(Protocol):
+    pass
+
+V = TypeVar("V", bound=Comparable)
+
+@dataclass(slots=True)  # Explicit slots are still not ok, even empty ones:
+class Node(Generic[V]):  # E: "Node" both defines "__slots__" and is used with "slots=True"
+    __slots__ = ()
+    data: V
+[builtins fixtures/dataclasses.pyi]
+
+[case testSlotsDefinitionWithTwoPasses4]
+# flags: --python-version 3.10
+import dataclasses as dtc
+
+PublishedMessagesVar = dict[int, 'PublishedMessages']
+
+@dtc.dataclass(frozen=True, slots=True)
+class PublishedMessages:
+    left: int
+[builtins fixtures/dataclasses.pyi]
