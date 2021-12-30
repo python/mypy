@@ -12,7 +12,8 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, ERR_FALSE
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, Extend,
+    ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -540,6 +541,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         value = self.reg(op.src)
         # for C backend the generated code are straight assignments
         self.emit_line(f"{dest} = {value};")
+
+    def visit_extend(self, op: Extend) -> None:
+        dest = self.reg(op)
+        value = self.reg(op.src)
+        if op.signed:
+            src_cast = self.emit_signed_int_cast(op.src.type)
+        else:
+            src_cast = self.emit_unsigned_int_cast(op.src.type)
+        self.emit_line("{} = {}{};".format(dest, src_cast, value))
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)

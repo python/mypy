@@ -9,7 +9,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
-    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable, Cast
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable, Cast, Extend
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -31,6 +31,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
+from mypyc.common import PLATFORM_SIZE
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -452,6 +453,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
                          """cpy_r_a = -2147483648LL;""")
 
+<<<<<<< HEAD
     def test_cast_and_branch_merge(self) -> None:
         op = Cast(self.r, dict_rprimitive, 1)
         next_block = BasicBlock(9)
@@ -548,6 +550,27 @@ else {
             next_branch=branch,
         )
 
+||||||| constructed merge base
+=======
+    def test_extend(self) -> None:
+        a = Register(int32_rprimitive, 'a')
+        self.assert_emit(Extend(a, int64_rprimitive, signed=True),
+                         """cpy_r_r0 = cpy_r_a;""")
+        self.assert_emit(Extend(a, int64_rprimitive, signed=False),
+                         """cpy_r_r0 = (uint32_t)cpy_r_a;""")
+        if PLATFORM_SIZE == 4:
+            b = Register(int_rprimitive, 'b')
+            self.assert_emit(Extend(b, int64_rprimitive, signed=True),
+                             """cpy_r_r0 = (Py_ssize_t)cpy_r_b;""")
+            self.assert_emit(Extend(b, int64_rprimitive, signed=False),
+                             """cpy_r_r0 = cpy_r_b;""")
+        if PLATFORM_SIZE == 8:
+            self.assert_emit(Extend(a, int_rprimitive, signed=True),
+                             """cpy_r_r0 = cpy_r_a;""")
+            self.assert_emit(Extend(a, int_rprimitive, signed=False),
+                             """cpy_r_r0 = (uint32_t)cpy_r_a;""")
+
+>>>>>>> Add Extend op
     def assert_emit(self,
                     op: Op,
                     expected: str,

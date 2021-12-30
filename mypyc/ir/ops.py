@@ -938,8 +938,8 @@ class Truncate(RegisterOp):
 
     Truncate a value from type with more bits to type with less bits.
 
-    dst_type should be a native integer type or bool.
-    src_type can also be a short tagged integer.
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
     """
 
     error_kind = ERR_NEVER
@@ -961,6 +961,41 @@ class Truncate(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_truncate(self)
+
+
+class Extend(RegisterOp):
+    """result = extend src from src_type to dst_type
+
+    Extend a value from a type with fewer bits to a type with more bits.
+
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
+
+    If 'signed' is true, perform sign extension. Otherwise, the result will be
+    zero extended.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 src: Value,
+                 dst_type: RType,
+                 signed: bool,
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.type = dst_type
+        self.src_type = src.type
+        self.signed = signed
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_extend(self)
 
 
 class LoadGlobal(RegisterOp):
@@ -1348,6 +1383,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_truncate(self, op: Truncate) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_extend(self, op: Extend) -> T:
         raise NotImplementedError
 
     @abstractmethod
