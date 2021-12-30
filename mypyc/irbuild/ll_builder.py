@@ -237,16 +237,16 @@ class LowLevelIRBuilder:
         size = target_type.size
         if size < int_rprimitive.size:
             # Add a range check when the target type is smaller than the source tyoe
-            fast2, slow2 = BasicBlock(), BasicBlock()
-            upper_bound = 1 << (size * 8 - 2)
+            fast2, fast3 = BasicBlock(), BasicBlock()
+            upper_bound = 1 << (size * 8 - 1)
             check2 = self.add(ComparisonOp(src,
                                            Integer(upper_bound, src.type),
                                            ComparisonOp.SLT))
-            self.add(Branch(check2, fast2, slow2, Branch.BOOL))
-            self.activate_block(slow2)
-            check3 = self.add(ComparisonOp(src, Integer(-upper_bound, src.type), ComparisonOp.SGE))
-            self.add(Branch(check3, fast2, slow, Branch.BOOL))
+            self.add(Branch(check2, fast2, slow, Branch.BOOL))
             self.activate_block(fast2)
+            check3 = self.add(ComparisonOp(src, Integer(-upper_bound, src.type), ComparisonOp.SGE))
+            self.add(Branch(check3, fast3, slow, Branch.BOOL))
+            self.activate_block(fast3)
             tmp = self.int_op(c_pyssize_t_rprimitive,
                               src,
                               Integer(1, c_pyssize_t_rprimitive),

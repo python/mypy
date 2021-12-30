@@ -196,3 +196,49 @@ def test_comparisons() -> None:
     assert not (one == two)
     assert one != two
     assert not (one != one2)
+
+def test_mixed_comparisons() -> None:
+    i32_3: i32 = int() + 3
+    int_5 = int() + 5
+    assert i32_3 < int_5
+    assert int_5 > i32_3
+    b = i32_3 > int_5
+    assert not b
+
+    int_largest = int() + (1 << 31) - 1
+    assert int_largest > i32_3
+    int_smallest = int() - (1 << 31)
+    assert i32_3 > int_smallest
+
+    int_too_big = int() + (1 << 31)
+    int_too_small = int() - (1 << 31) - 1
+    with assertRaises(OverflowError):
+        assert i32_3 < int_too_big
+    with assertRaises(OverflowError):
+        assert int_too_big < i32_3
+    with assertRaises(OverflowError):
+        assert i32_3 > int_too_small
+    with assertRaises(OverflowError):
+        assert int_too_small < i32_3
+
+def test_mixed_arithmetic_and_bitwise_ops() -> None:
+    i32_3: i32 = int() + 3
+    int_5 = int() + 5
+    assert i32_3 + int_5 == 8
+    assert int_5 - i32_3 == 2
+    assert i32_3 << int_5 == 96
+    assert int_5 << i32_3  == 40
+    assert i32_3 ^ int_5 == 6
+    assert int_5 | i32_3  == 7
+
+    int_largest = int() + (1 << 31) - 1
+    assert int_largest - i32_3 == 2147483644
+    int_smallest = int() - (1 << 31)
+    assert int_smallest + i32_3 == -2147483645
+
+    int_too_big = int() + (1 << 31)
+    int_too_small = int() - (1 << 31) - 1
+    with assertRaises(OverflowError):
+        assert i32_3 & int_too_big
+    with assertRaises(OverflowError):
+        assert int_too_small & i32_3

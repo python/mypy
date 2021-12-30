@@ -291,7 +291,7 @@ def test_mixed_comparisons() -> None:
     with assertRaises(OverflowError):
         assert i64_3 > int_too_small
     with assertRaises(OverflowError):
-     assert int_too_small < i64_3
+        assert int_too_small < i64_3
 
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
     i64_3: i64 = int() + 3

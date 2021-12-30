@@ -225,10 +225,10 @@ L0:
     r1 = r0 == 0
     if r1 goto L1 else goto L4 :: bool
 L1:
-    r2 = x < 2147483648 :: signed
-    if r2 goto L3 else goto L2 :: bool
+    r2 = x < 4294967296 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = x >= -2147483648 :: signed
+    r3 = x >= -4294967296 :: signed
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = x >> 1
@@ -260,10 +260,10 @@ L0:
     r1 = r0 == 0
     if r1 goto L1 else goto L4 :: bool
 L1:
-    r2 = y < 2147483648 :: signed
-    if r2 goto L3 else goto L2 :: bool
+    r2 = y < 4294967296 :: signed
+    if r2 goto L2 else goto L4 :: bool
 L2:
-    r3 = y >= -2147483648 :: signed
+    r3 = y >= -4294967296 :: signed
     if r3 goto L3 else goto L4 :: bool
 L3:
     r4 = y >> 1
