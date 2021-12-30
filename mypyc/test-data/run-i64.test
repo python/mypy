@@ -269,6 +269,52 @@ def test_attributes() -> None:
         c.x = i + 1
         assert c.x == i + 1
 
+def test_mixed_comparisons() -> None:
+    i64_3: i64 = int() + 3
+    int_5 = int() + 5
+    assert i64_3 < int_5
+    assert int_5 > i64_3
+    b = i64_3 > int_5
+    assert not b
+
+    int_largest = int() + (1 << 63) - 1
+    assert int_largest > i64_3
+    int_smallest = int() - (1 << 63)
+    assert i64_3 > int_smallest
+
+    int_too_big = int() + (1 << 63)
+    int_too_small = int() - (1 << 63) - 1
+    with assertRaises(OverflowError):
+        assert i64_3 < int_too_big
+    with assertRaises(OverflowError):
+        assert int_too_big < i64_3
+    with assertRaises(OverflowError):
+        assert i64_3 > int_too_small
+    with assertRaises(OverflowError):
+     assert int_too_small < i64_3
+
+def test_mixed_arithmetic_and_bitwise_ops() -> None:
+    i64_3: i64 = int() + 3
+    int_5 = int() + 5
+    assert i64_3 + int_5 == 8
+    assert int_5 - i64_3 == 2
+    assert i64_3 << int_5 == 96
+    assert int_5 << i64_3  == 40
+    assert i64_3 ^ int_5 == 6
+    assert int_5 | i64_3  == 7
+
+    int_largest = int() + (1 << 63) - 1
+    assert int_largest - i64_3 == 9223372036854775804
+    int_smallest = int() - (1 << 63)
+    assert int_smallest + i64_3 == -9223372036854775805
+
+    int_too_big = int() + (1 << 63)
+    int_too_small = int() - (1 << 63) - 1
+    with assertRaises(OverflowError):
+        assert i64_3 & int_too_big
+    with assertRaises(OverflowError):
+        assert int_too_small & i64_3
+
 [case testI64ErrorValues]
 from typing import Any
 import sys
