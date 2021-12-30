@@ -75,9 +75,14 @@ def create_environ(python_version: str) -> Dict[str, str]:
 
     # lxml doesn't have a wheel for Python 3.10 on the manylinux image we use.
     # lxml has historically been slow to support new Pythons as well.
-    env['CIBW_BEFORE_TEST'] = (
-        'pip install -r <(grep -v lxml {project}/mypy/test-requirements.txt)'
-    )
+    env['CIBW_BEFORE_TEST'] = """
+      (
+      grep -v lxml {project}/mypy/test-requirements.txt > /tmp/test-requirements.txt
+      && cp {project}/mypy/mypy-requirements.txt /tmp/mypy-requirements.txt
+      && cp {project}/mypy/build-requirements.txt /tmp/build-requirements.txt
+      && pip install -r /tmp/test-requirements.txt
+      )
+    """.replace('\n', ' ')
 
     # pytest looks for configuration files in the parent directories of where the tests live.
     # since we are trying to run the tests from their installed location, we copy those into
@@ -94,7 +99,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
       && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR -k 'not (reports.test or testreports)'
 
       && MYPYC_TEST_DIR=$(python -c 'import mypyc.test; print(mypyc.test.__path__[0])')
-      && pytest $MYPYC_TEST_DIR -k 'not test_external'
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPYC_TEST_DIR -k 'not test_external'
       )
     """.replace('\n', ' ')
 
