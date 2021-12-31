@@ -293,6 +293,26 @@ def test_mixed_comparisons() -> None:
     with assertRaises(OverflowError):
         assert int_too_small < i64_3
 
+def test_mixed_comparisons_32bit() -> None:
+    # Test edge cases on 32-bit platforms
+    i64_3: i64 = int() + 3
+    int_5 = int() + 5
+
+    int_largest_short = int() + (1 << 30) - 1
+    int_largest_short_i64: i64 = int_largest_short
+    assert int_largest_short > i64_3
+    int_smallest_short = int() - (1 << 30)
+    int_smallest_short_i64: i64 = int_smallest_short
+    assert i64_3 > int_smallest_short
+
+    int_big = int() + (1 << 30)
+    assert int_big > i64_3
+    int_small = int() - (1 << 30) - 1
+    assert i64_3 > int_small
+
+    assert int_smallest_short_i64 > int_small
+    assert int_largest_short_i64 < int_big
+
 def test_mixed_arithmetic_and_bitwise_ops() -> None:
     i64_3: i64 = int() + 3
     int_5 = int() + 5
