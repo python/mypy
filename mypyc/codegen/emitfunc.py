@@ -641,7 +641,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = str(val)
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
-                s += 'ULL'
+                if val >= (1 << 63):
+                    s += 'ULL'
+                else:
+                    s += 'LL'
             elif val == -(1 << 63):
                 # Avoid overflowing C integer literal
                 s = '(-9223372036854775807LL - 1)'
