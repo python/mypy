@@ -206,7 +206,7 @@ class LowLevelIRBuilder:
                 return Integer(src.value >> 1, int64_rprimitive)
             elif is_int_rprimitive(src_type) and is_int64_rprimitive(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
-            elif is_int64_rprimitive(src_type) and is_int_rprimitive(target_type):
+            elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
                 return self.coerce_fixed_width_to_int(src, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
@@ -291,6 +291,15 @@ class LowLevelIRBuilder:
         return res
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
+        if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
+            # Simple case -- just sign extend and shift.
+            extended = self.add(Extend(src, c_pyssize_t_rprimitive, signed=True))
+            return self.int_op(int_rprimitive,
+                               extended,
+                               Integer(1, c_pyssize_t_rprimitive),
+                               IntOp.LEFT_SHIFT,
+                               line)
+
         assert is_int64_rprimitive(src.type)
 
         res = Register(int_rprimitive)

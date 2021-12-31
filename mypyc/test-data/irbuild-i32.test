@@ -312,3 +312,18 @@ L2:
 L3:
     r7 = r3 == y
     return r7
+
+[case testI32ConvertToInt_64bit]
+from mypy_extensions import i32
+
+def i32_to_int(a: i32) -> int:
+    return a
+[out]
+def i32_to_int(a):
+    a :: int32
+    r0 :: native_int
+    r1 :: int
+L0:
+    r0 = extend signed a: int32 to native_int
+    r1 = r0 << 1
+    return r1
