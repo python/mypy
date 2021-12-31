@@ -598,8 +598,8 @@ def i64_to_int(a):
     r0, r1 :: bit
     r2, r3, r4 :: int
 L0:
-    r0 = a < 4611686018427387904 :: unsigned
-    if r0 goto L3 else goto L1 :: bool
+    r0 = a <= 4611686018427387903 :: signed
+    if r0 goto L1 else goto L2 :: bool
 L1:
     r1 = a >= -4611686018427387904 :: signed
     if r1 goto L3 else goto L2 :: bool
@@ -610,6 +610,35 @@ L2:
 L3:
     r4 = a << 1
     r3 = r4
+L4:
+    return r3
+
+[case testI64ConvertToInt_32bit]
+from mypy_extensions import i64
+
+def i64_to_int(a: i64) -> int:
+    return a
+[out]
+def i64_to_int(a):
+    a :: int64
+    r0, r1 :: bit
+    r2, r3 :: int
+    r4 :: native_int
+    r5 :: int
+L0:
+    r0 = a <= 1073741823 :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    r1 = a >= -1073741824 :: signed
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = CPyTagged_FromSsize_t(a)
+    r3 = r2
+    goto L4
+L3:
+    r4 = truncate a: int64 to native_int
+    r5 = r4 << 1
+    r3 = r5
 L4:
     return r3
 
@@ -761,8 +790,8 @@ L2:
     keep_alive x
 L3:
     r7 = r3 + y
-    r8 = r7 < 4611686018427387904 :: unsigned
-    if r8 goto L6 else goto L4 :: bool
+    r8 = r7 <= 4611686018427387903 :: signed
+    if r8 goto L4 else goto L5 :: bool
 L4:
     r9 = r7 >= -4611686018427387904 :: signed
     if r9 goto L6 else goto L5 :: bool

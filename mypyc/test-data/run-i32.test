@@ -243,19 +243,12 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
     with assertRaises(OverflowError):
         assert int_too_small & i32_3
 
-def test_extend_to_int() -> None:
-    zero: i32 = int()
-    z: int = zero
-    assert z == 0
-    a: i32 = int() + 3
-    x: int = a
-    assert x == 3
-    b: i32 = int() - 4
-    y: int = b
-    assert y == -4
-    largest: i32 = int() + (1 << 31) - 1
-    largest_as_int: int = largest
-    assert largest_as_int == 2147483647
-    smallest: i32 = int() - (1 << 31)
-    smallest_as_int: int = smallest
-    assert smallest_as_int == -2147483648
+def test_coerce_to_and_from_int() -> None:
+    for shift in range(0, 32):
+        for sign in 1, -1:
+            for delta in range(-5, 5):
+                n = sign * (1 << shift) + delta
+                if -(1 << 31) <= n < (1 << 31):
+                    x: i32 = n
+                    m: int = x
+                    assert m == n

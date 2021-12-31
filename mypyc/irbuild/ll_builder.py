@@ -42,7 +42,7 @@ from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES, MAX_LITERAL_SHORT_INT, MIN_LITERAL_SHORT_INT, PLATFORM_SIZE,
-    use_vectorcall, use_method_vectorcall
+    MAX_SHORT_INT, MIN_SHORT_INT, use_vectorcall, use_method_vectorcall
 )
 from mypyc.primitives.registry import (
     method_call_ops, CFunctionDescription,
@@ -304,22 +304,26 @@ class LowLevelIRBuilder:
 
         res = Register(int_rprimitive)
 
-        big, fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+        fast, fast2, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
 
-        c1 = self.add(ComparisonOp(src, Integer((1 << 62), src.type), ComparisonOp.ULT))
-        self.add(Branch(c1, fast, big, Branch.BOOL))
+        c1 = self.add(ComparisonOp(src, Integer(MAX_SHORT_INT, src.type), ComparisonOp.SLE))
+        self.add(Branch(c1, fast, slow, Branch.BOOL))
 
-        self.activate_block(big)
-        c2 = self.add(ComparisonOp(src, Integer(-(1 << 62), src.type), ComparisonOp.SGE))
-        self.add(Branch(c2, fast, slow, Branch.BOOL))
+        self.activate_block(fast)
+        c2 = self.add(ComparisonOp(src, Integer(MIN_SHORT_INT, src.type), ComparisonOp.SGE))
+        self.add(Branch(c2, fast2, slow, Branch.BOOL))
 
         self.activate_block(slow)
         x = self.call_c(int64_to_int_op, [src], line)
         self.add(Assign(res, x))
         self.goto(end)
 
-        self.activate_block(fast)
-        s = self.int_op(int_rprimitive, src, Integer(1, src.type), IntOp.LEFT_SHIFT,
+        self.activate_block(fast2)
+        if PLATFORM_SIZE == 4:
+            tmp = self.add(Truncate(src, c_pyssize_t_rprimitive))
+        else:
+            tmp = src
+        s = self.int_op(int_rprimitive, tmp, Integer(1, tmp.type), IntOp.LEFT_SHIFT,
                         line)
         self.add(Assign(res, s))
         self.goto(end)

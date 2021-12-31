@@ -335,6 +335,16 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
     with assertRaises(OverflowError):
         assert int_too_small & i64_3
 
+def test_coerce_to_and_from_int() -> None:
+    for shift in range(0, 64):
+        for sign in 1, -1:
+            for delta in range(-5, 5):
+                n = sign * (1 << shift) + delta
+                if -(1 << 63) <= n < (1 << 63):
+                    x: i64 = n
+                    m: int = x
+                    assert m == n
+
 [case testI64ErrorValues]
 from typing import Any
 import sys
