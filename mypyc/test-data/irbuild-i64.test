@@ -1,4 +1,4 @@
-[case testLowLevelIntBasics]
+[case testI64Basics]
 from mypy_extensions import i64
 
 def f() -> i64:
@@ -13,7 +13,7 @@ L0:
     y = x
     return y
 
-[case testLowLevelIntCompare]
+[case testI64Compare]
 from mypy_extensions import i64
 
 def min(x: i64, y: i64) -> i64:
@@ -102,7 +102,7 @@ L17:
 L18:
     return y
 
-[case testLowLevelIntArithmetic]
+[case testI64Arithmetic]
 from mypy_extensions import i64
 
 def f(x: i64, y: i64) -> i64:
@@ -117,7 +117,7 @@ L0:
     r1 = y - z
     return r1
 
-[case testLowLevelIntNegation]
+[case testI64Negation]
 from mypy_extensions import i64
 
 def f() -> i64:
@@ -131,7 +131,7 @@ L0:
     r0 = 0 - i
     return r0
 
-[case testLowLevelIntMoreUnaryOps]
+[case testI64MoreUnaryOps]
 from mypy_extensions import i64
 
 def unary(x: i64) -> i64:
@@ -147,7 +147,7 @@ L0:
     x = y
     return x
 
-[case testLowLevelIntBoxingAndUnboxing]
+[case testI64BoxingAndUnboxing]
 from typing import Any
 from mypy_extensions import i64
 
@@ -166,7 +166,7 @@ L0:
     a = r1
     return 1
 
-[case testLowLevelIntListGetSetItem]
+[case testI64ListGetSetItem]
 from typing import List
 from mypy_extensions import i64
 
@@ -194,7 +194,7 @@ L0:
     r1 = CPyList_SetItemInt64(a, i, r0)
     return 1
 
-[case testLowLevelIntMixedArithmetic]
+[case testI64MixedArithmetic]
 from mypy_extensions import i64
 
 def f() -> i64:
@@ -211,7 +211,7 @@ L0:
     r1 = 3 - b
     return r1
 
-[case testLowLevelIntMixedComparison]
+[case testI64MixedComparison]
 from mypy_extensions import i64
 
 def f(a: i64) -> i64:
@@ -238,7 +238,7 @@ L4:
 L5:
     return 3
 
-[case testLowLevelIntInplaceOperations]
+[case testI64InplaceOperations]
 from mypy_extensions import i64
 
 def add(a: i64) -> i64:
@@ -284,7 +284,7 @@ L0:
     a = r6
     return a
 
-[case testLowLevelIntBitwiseOps]
+[case testI64BitwiseOps]
 from mypy_extensions import i64
 
 def forward(a: i64, b: i64) -> i64:
@@ -340,7 +340,7 @@ L0:
     r0 = a ^ -1
     return r0
 
-[case testLowLevelIntDivision]
+[case testI64Division]
 from mypy_extensions import i64
 
 def constant_divisor(x: i64) -> i64:
@@ -397,7 +397,7 @@ L0:
     r0 = CPyInt64_Divide(x, 0)
     return r0
 
-[case testLowLevelIntMod]
+[case testI64Mod]
 from mypy_extensions import i64
 
 def constant_divisor(x: i64) -> i64:
@@ -444,7 +444,7 @@ L0:
     r0 = CPyInt64_Remainder(x, 0)
     return r0
 
-[case testLowLevelIntInPlaceDiv]
+[case testI64InPlaceDiv]
 from mypy_extensions import i64
 
 def by_constant(x: i64) -> i64:
@@ -484,7 +484,7 @@ L0:
     x = r0
     return x
 
-[case testLowLevelIntInPlaceMod]
+[case testI64InPlaceMod]
 from mypy_extensions import i64
 
 def by_constant(x: i64) -> i64:
@@ -521,7 +521,7 @@ L0:
     x = r0
     return x
 
-[case testLowLevelIntForRange]
+[case testI64ForRange]
 from mypy_extensions import i64
 
 def g(a: i64) -> None: pass
@@ -556,7 +556,7 @@ L3:
 L4:
     return 1
 
-[case testLowLevelIntConvertIntToI64_64bit]
+[case testI64ConvertFromInt_64bit]
 from mypy_extensions import i64
 
 def int_to_i64(a: int) -> i64:
@@ -587,7 +587,7 @@ L2:
 L3:
     return r3
 
-[case testLowLevelIntConvertI64ToInt_64bit]
+[case testI64ConvertToInt_64bit]
 from mypy_extensions import i64
 
 def i64_to_int(a: i64) -> int:
@@ -613,7 +613,7 @@ L3:
 L4:
     return r3
 
-[case testLowLevelIntTuple]
+[case testI64Tuple]
 from typing import Tuple
 from mypy_extensions import i64
 
@@ -662,7 +662,7 @@ L0:
     r6 = r4 + r5
     return r6
 
-[case testLowLevelIntMixWithTagged1_64bit]
+[case testI64MixWithTagged1_64bit]
 from mypy_extensions import i64
 def f(x: i64, y: int) -> i64:
     return x + y
@@ -694,7 +694,7 @@ L3:
     r7 = x + r3
     return r7
 
-[case testLowLevelIntMixWithTagged2_64bit]
+[case testI64MixWithTagged2_64bit]
 from mypy_extensions import i64
 def f(x: int, y: i64) -> i64:
     return x + y
@@ -726,7 +726,7 @@ L3:
     r7 = r3 + y
     return r7
 
-[case testLowLevelIntMixWithTaggedInPlace1_64bit]
+[case testI64MixWithTaggedInPlace1_64bit]
 from mypy_extensions import i64
 def f(y: i64) -> int:
     x = 0
@@ -777,7 +777,7 @@ L7:
     x = r11
     return x
 
-[case testLowLevelIntMixWithTaggedInPlace2_64bit]
+[case testI64MixWithTaggedInPlace2_64bit]
 from mypy_extensions import i64
 def f(y: int) -> i64:
     x: i64 = 0
@@ -813,7 +813,7 @@ L3:
     x = r7
     return x
 
-[case testLowLevelIntMixedCompare1_64bit]
+[case testI64MixedCompare1_64bit]
 from mypy_extensions import i64
 def f(x: int, y: i64) -> bool:
     return x == y
@@ -846,7 +846,7 @@ L3:
     r7 = r3 == y
     return r7
 
-[case testLowLevelIntMixedCompare2_64bit]
+[case testI64MixedCompare2_64bit]
 from mypy_extensions import i64
 def f(x: i64, y: int) -> bool:
     return x == y
@@ -879,7 +879,7 @@ L3:
     r7 = x == r3
     return r7
 
-[case testLowLevelIntMixedCompare_32bit]
+[case testI64MixedCompare_32bit]
 from mypy_extensions import i64
 def f(x: int, y: i64) -> bool:
     return x == y

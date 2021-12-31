@@ -1,4 +1,7 @@
-[case testLowLevelIntI32BinaryOp]
+# Test cases for i32 native ints. Focus on things that are different from i64; no need to
+# duplicate all i64 test cases here.
+
+[case testI32BinaryOp]
 from mypy_extensions import i32
 
 def add_op(x: i32, y: i32) -> i32:
@@ -59,7 +62,7 @@ L0:
     f = r5
     return 1
 
-[case testLowLevelIntI32UnaryOp]
+[case testI32UnaryOp]
 from mypy_extensions import i32
 
 def unary(x: i32) -> i32:
@@ -78,7 +81,7 @@ L0:
     y = x
     return y
 
-[case testLowLevelIntI32DivisionByConstant]
+[case testI32DivisionByConstant]
 from mypy_extensions import i32
 
 def div_by_constant(x: i32) -> i32:
@@ -129,7 +132,7 @@ L6:
     x = r9
     return x
 
-[case testLowLevelIntI32ModByConstant]
+[case testI32ModByConstant]
 from mypy_extensions import i32
 
 def mod_by_constant(x: i32) -> i32:
@@ -174,7 +177,7 @@ L6:
     x = r8
     return x
 
-[case testLowLevelIntI32DivModByVariable]
+[case testI32DivModByVariable]
 from mypy_extensions import i32
 
 def divmod(x: i32, y: i32) -> i32:
@@ -189,7 +192,7 @@ L0:
     r1 = CPyInt32_Remainder(a, y)
     return r1
 
-[case testLowLevelIntI32BoxAndUnbox]
+[case testI32BoxAndUnbox]
 from typing import Any
 from mypy_extensions import i32
 
@@ -207,7 +210,7 @@ L0:
     r1 = box(int32, y)
     return r1
 
-[case testLowLevelIntI32MixedCompare1_64bit]
+[case testI32MixedCompare1_64bit]
 from mypy_extensions import i32
 def f(x: int, y: i32) -> bool:
     return x == y
@@ -242,7 +245,7 @@ L5:
     r7 = r6 == y
     return r7
 
-[case testLowLevelIntI32MixedCompare2_64bit]
+[case testI32MixedCompare2_64bit]
 from mypy_extensions import i32
 def f(x: i32, y: int) -> bool:
     return x == y
@@ -277,7 +280,7 @@ L5:
     r7 = x == r6
     return r7
 
-[case testLowLevelIntI32MixedCompare_32bit]
+[case testI32MixedCompare_32bit]
 from mypy_extensions import i32
 def f(x: int, y: i32) -> bool:
     return x == y
