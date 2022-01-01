@@ -2299,9 +2299,8 @@ L0:
 def BaseProperty.__init__(self, value):
     self :: __main__.BaseProperty
     value :: int
-    r0 :: bool
 L0:
-    self._incrementer = value; r0 = is_error
+    self._incrementer = value
     return 1
 def DerivedProperty.value(self):
     self :: __main__.DerivedProperty
@@ -2351,10 +2350,9 @@ def DerivedProperty.__init__(self, incr_func, value):
     incr_func :: object
     value :: int
     r0 :: None
-    r1 :: bool
 L0:
     r0 = BaseProperty.__init__(self, value)
-    self._incr_func = incr_func; r1 = is_error
+    self._incr_func = incr_func
     return 1
 def AgainProperty.next(self):
     self :: __main__.AgainProperty
