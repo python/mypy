@@ -395,3 +395,19 @@ L5:
     r9 = r8 << 1
     x = r9
     return 1
+
+[case testI32InitializeFromLiteral]
+from mypy_extensions import i32, i64
+
+def f() -> None:
+    x: i32 = 0
+    y: i32 = -127
+    z: i32 = 5 + 7
+[out]
+def f():
+    x, y, z :: int32
+L0:
+    x = 0
+    y = -127
+    z = 12
+    return 1

@@ -201,9 +201,9 @@ class LowLevelIRBuilder:
         if ((src_type.is_unboxed and target_type.is_unboxed)
                 and not is_runtime_subtype(src_type, target_type)):
             if (isinstance(src, Integer) and is_short_int_rprimitive(src_type)
-                    and is_int64_rprimitive(target_type)):
+                    and is_fixed_width_rtype(target_type)):
                 # TODO: range check
-                return Integer(src.value >> 1, int64_rprimitive)
+                return Integer(src.value >> 1, target_type)
             elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
