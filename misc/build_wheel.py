@@ -83,6 +83,8 @@ def create_environ(python_version: str) -> Dict[str, str]:
       && pip install -r /tmp/test-requirements.txt
       )
     """.replace('\n', ' ')
+    # lxml currently has wheels on Windows and doesn't have grep, so special case
+    env['CIBW_BEFORE_TEST_WINDOWS'] = "pip install -r {project}/mypy/test-requirements.txt"
 
     # pytest looks for configuration files in the parent directories of where the tests live.
     # since we are trying to run the tests from their installed location, we copy those into
