@@ -202,7 +202,7 @@ setup(name='mypy',
       extras_require={
           'dmypy': 'psutil >= 4.0',
           'python2': 'typed_ast >= 1.4.0, < 2',
-          'reporting': 'lxml'
+          'reports': 'lxml'
       },
       python_requires=">=3.6",
       include_package_data=True,
