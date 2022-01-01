@@ -968,7 +968,7 @@ L4:
 L5:
     return 3
 
-[case testI64AssignMixed]
+[case testI64AssignMixed_64bit]
 from mypy_extensions import i64
 def f(x: i64, y: int) -> i64:
     x = y

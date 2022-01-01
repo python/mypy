@@ -354,7 +354,7 @@ L3:
 L4:
     return r3
 
-[case testI32OperatorAssignmentMixed]
+[case testI32OperatorAssignmentMixed_64bit]
 from mypy_extensions import i32
 
 def f(a: i32) -> None:
