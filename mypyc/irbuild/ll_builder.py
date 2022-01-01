@@ -1459,6 +1459,9 @@ class LowLevelIRBuilder:
             zero = Integer(0, short_int_rprimitive)
             self.compare_tagged_condition(value, zero, '!=', true, false, value.line)
             return
+        elif is_fixed_width_rtype(value.type):
+            zero = Integer(0, value.type)
+            value = self.add(ComparisonOp(value, zero, ComparisonOp.NEQ))
         elif is_same_type(value.type, str_rprimitive):
             value = self.call_c(str_check_if_true, [value], value.line)
         elif (is_same_type(value.type, list_rprimitive)

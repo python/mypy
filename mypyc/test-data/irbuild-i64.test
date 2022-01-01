@@ -941,3 +941,29 @@ L2:
 L3:
     r8 = r4 == y
     return r8
+
+[case testI64AsBool]
+from mypy_extensions import i64
+def f(x: i64) -> i64:
+    if x:
+        return 5
+    elif not x:
+        return 6
+    return 3
+[out]
+def f(x):
+    x :: int64
+    r0, r1 :: bit
+L0:
+    r0 = x != 0
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return 5
+L2:
+    r1 = x != 0
+    if r1 goto L4 else goto L3 :: bool
+L3:
+    return 6
+L4:
+L5:
+    return 3
