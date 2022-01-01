@@ -338,6 +338,9 @@ class ClassIR:
             'children': [
                 cir.fullname for cir in self.children
             ] if self.children is not None else None,
+            'attrs_with_defaults': sorted(self.attrs_with_defaults),
+            '_always_initialized_attrs': sorted(self._always_initialized_attrs),
+            'init_unknown_code': self.init_unknown_code,
         }
 
     @classmethod
@@ -386,6 +389,9 @@ class ClassIR:
         ir.mro = [ctx.classes[s] for s in data['mro']]
         ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
         ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
+        ir.attrs_with_defaults = set(data['attrs_with_defaults'])
+        ir._always_initialized_attrs = set(data['_always_initialized_attrs'])
+        ir.init_unknown_code = data['init_unknown_code']
 
         return ir
 
