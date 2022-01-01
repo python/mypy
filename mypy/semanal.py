@@ -4979,19 +4979,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(exp, StrExpr):
                 self.all_exports.append(exp.value)
 
-    def check_no_global(self,
-                        name: str,
-                        ctx: Context,
-                        is_overloaded_func: bool = False) -> None:
-        if name in self.globals:
-            prev_is_overloaded = isinstance(self.globals[name], OverloadedFuncDef)
-            if is_overloaded_func and prev_is_overloaded:
-                self.fail("Nonconsecutive overload {} found".format(name), ctx)
-            elif prev_is_overloaded:
-                self.fail("Definition of '{}' missing 'overload'".format(name), ctx)
-            else:
-                self.name_already_defined(name, ctx, self.globals[name])
-
     def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
         incomplete = self.is_incomplete_namespace(namespace or self.cur_mod_id)
         if (namespace is None
@@ -5120,9 +5107,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
-
-    def fail_blocker(self, msg: str, ctx: Context) -> None:
-        self.fail(msg, ctx, blocker=True)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if not self.in_checked_function():

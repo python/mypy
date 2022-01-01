@@ -154,10 +154,6 @@ def _is_subtype(left: Type, right: Type,
                                       ignore_promotions=ignore_promotions))
 
 
-def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_type_params=True)
-
-
 def is_equivalent(a: Type, b: Type,
                   *,
                   ignore_type_params: bool = False,

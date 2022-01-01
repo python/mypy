@@ -1358,26 +1358,6 @@ class HasAnyFromUnimportedType(TypeQuery[bool]):
         return False
 
 
-def collect_any_types(t: Type) -> List[AnyType]:
-    """Return all inner `AnyType`s of type t"""
-    return t.accept(CollectAnyTypesQuery())
-
-
-class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
-    def __init__(self) -> None:
-        super().__init__(self.combine_lists_strategy)
-
-    def visit_any(self, t: AnyType) -> List[AnyType]:
-        return [t]
-
-    @classmethod
-    def combine_lists_strategy(cls, it: Iterable[List[AnyType]]) -> List[AnyType]:
-        result: List[AnyType] = []
-        for l in it:
-            result.extend(l)
-        return result
-
-
 def collect_all_inner_types(t: Type) -> List[Type]:
     """
     Return all types that `t` contains

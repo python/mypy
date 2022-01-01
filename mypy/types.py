@@ -903,6 +903,31 @@ class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
+
+    Several types has fallbacks to `Instance`. Why?
+    Because, for example `TupleTuple` is related to `builtins.tuple` instance.
+    And `FunctionLike` has `builtins.function` fallback.
+    This allows us to use types defined
+    in typeshed for our "special" and more precise types.
+
+    We used to have this helper function to get a fallback from different types.
+    Note, that it might be incomplete, since it is not used and not updated.
+    It just illustrates the concept:
+
+        def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
+            '''Returns the Instance fallback for this type if one exists or None.'''
+            if isinstance(typ, Instance):
+                return typ
+            elif isinstance(typ, TupleType):
+                return tuple_fallback(typ)
+            elif isinstance(typ, TypedDictType):
+                return typ.fallback
+            elif isinstance(typ, FunctionLike):
+                return typ.fallback
+            elif isinstance(typ, LiteralType):
+                return typ.fallback
+            return None
+
     """
 
     __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
@@ -1033,10 +1058,11 @@ class FunctionLike(ProperType):
 
     __slots__ = ('fallback',)
 
+    fallback: Instance
+
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        self.fallback: Instance
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
@@ -1639,7 +1665,7 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
-    def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
+    def create_anonymous_fallback(self) -> Instance:
         anonymous = self.as_anonymous()
         return anonymous.fallback
 
