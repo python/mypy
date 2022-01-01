@@ -507,7 +507,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        raise NotImplementedError("meeting two paramspec literals is not supported yet")
+        # TODO: is this the right variance?
+        if isinstance(self.s, Parameters) or isinstance(self.s, CallableType):
+            if len(t.arg_types) != len(self.s.arg_types):
+                return self.default(self.s)
+            return t.copy_modified(
+                arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+            )
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):

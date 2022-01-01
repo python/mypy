@@ -626,3 +626,18 @@ bar(abc)
 main:11: error: invalid syntax
 [out version>=3.8]
 main:14: note: Revealed type is "__main__.Foo[def (builtins.int, b: builtins.str)]"
+
+[case testSolveLiteralsWithSelfType]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, Generic
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]):
+    def foo(self: 'Foo[P]', other: Callable[P, None]) -> None: ...
+
+n: Foo[[int]]
+def f(x: int) -> None: ...
+
+n.foo(f)
+[builtins fixtures/tuple.pyi]

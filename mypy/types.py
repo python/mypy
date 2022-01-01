@@ -1521,7 +1521,9 @@ class CallableType(FunctionLike):
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
                              arg_type.upper_bound, prefix=prefix)
 
-    def expand_param_spec(self, c: 'CallableType', no_prefix: bool = False) -> 'CallableType':
+    def expand_param_spec(self,
+                          c: Union['CallableType', Parameters],
+                          no_prefix: bool = False) -> 'CallableType':
         if no_prefix:
             return self.copy_modified(arg_types=c.arg_types,
                                       arg_kinds=c.arg_kinds,
