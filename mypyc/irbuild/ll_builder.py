@@ -204,7 +204,7 @@ class LowLevelIRBuilder:
                     and is_int64_rprimitive(target_type)):
                 # TODO: range check
                 return Integer(src.value >> 1, int64_rprimitive)
-            elif is_int_rprimitive(src_type) and is_int64_rprimitive(target_type):
+            elif is_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
                 return self.coerce_fixed_width_to_int(src, line)

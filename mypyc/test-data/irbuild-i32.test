@@ -353,3 +353,45 @@ L3:
     r3 = r4
 L4:
     return r3
+
+[case testI32OperatorAssignmentMixed]
+from mypy_extensions import i32
+
+def f(a: i32) -> None:
+    x = 0
+    x += a
+[out]
+def f(a):
+    a :: int32
+    x :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6, r7 :: int32
+    r8 :: native_int
+    r9 :: int
+L0:
+    x = 0
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = x < 4294967296 :: signed
+    if r2 goto L2 else goto L4 :: bool
+L2:
+    r3 = x >= -4294967296 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = x >> 1
+    r5 = truncate r4: native_int to int32
+    r6 = r5
+    goto L5
+L4:
+    CPyInt32_Overflow()
+    unreachable
+L5:
+    r7 = r6 + a
+    r8 = extend signed r7: int32 to native_int
+    r9 = r8 << 1
+    x = r9
+    return 1
