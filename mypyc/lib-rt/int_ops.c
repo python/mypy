@@ -36,7 +36,7 @@ CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
 }
 
 CPyTagged CPyTagged_FromInt64(int64_t value) {
-    if (unlikely(CPyTagged_TooBig(value))) {
+    if (unlikely(CPyTagged_TooBigInt64(value))) {
         PyObject *object = PyLong_FromLongLong(value);
         return ((CPyTagged)object) | CPY_INT_TAG;
     } else {

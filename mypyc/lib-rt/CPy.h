@@ -201,6 +201,12 @@ static inline bool CPyTagged_TooBig(Py_ssize_t value) {
         && (value >= 0 || value < CPY_TAGGED_MIN);
 }
 
+static inline bool CPyTagged_TooBigInt64(int64_t value) {
+    // Micro-optimized for the common case where it fits.
+    return (uint64_t)value > CPY_TAGGED_MAX
+        && (value >= 0 || value < CPY_TAGGED_MIN);
+}
+
 static inline bool CPyTagged_IsAddOverflow(CPyTagged sum, CPyTagged left, CPyTagged right) {
     // This check was copied from some of my old code I believe that it works :-)
     return (Py_ssize_t)(sum ^ left) < 0 && (Py_ssize_t)(sum ^ right) < 0;
