@@ -35,8 +35,8 @@ from mypyc.ir.rtypes import (
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
-    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype,
-    is_int32_rprimitive, is_int_rprimitive, c_pointer_rprimitive, RPrimitive
+    is_bytes_rprimitive, is_int64_rprimitive, is_fixed_width_rtype, is_int32_rprimitive,
+    is_int_rprimitive, c_pointer_rprimitive, RPrimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
