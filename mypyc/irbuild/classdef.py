@@ -214,7 +214,8 @@ class ExtClassBuilder(ClassBuilder):
             self.builder.init_final_static(lvalue, value, self.cdef.name)
 
     def finalize(self, ir: ClassIR) -> None:
-        attrs_with_defaults, default_assignments = find_attr_initializers(self.builder, self.cdef)
+        attrs_with_defaults, default_assignments = find_attr_initializers(
+            self.builder, self.cdef, self.skip_attr_default)
         ir.attrs_with_defaults.update(attrs_with_defaults)
         generate_attr_defaults_init(self.builder, self.cdef, default_assignments)
         create_ne_from_eq(self.builder, self.cdef)
