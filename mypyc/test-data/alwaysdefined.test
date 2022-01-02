@@ -150,7 +150,7 @@ IfConditionalAndNonConditional1: [x]
 IfConditionalAndNonConditional2: []
 
 [case testAlwaysDefinedExpressions]
-from typing import Dict, Set, Optional
+from typing import Dict, List, Set, Optional
 from typing_extensions import Final
 
 import other
@@ -214,6 +214,10 @@ class Literals:
         self.b = b'x'
         self.c = 2.2
 
+class ListComprehension:
+    def __init__(self, x: List[int]) -> None:
+        self.a = [i + 1 for i in x]
+
 def f() -> int:
     return 0
 
@@ -232,6 +236,7 @@ LocalsAndGlobals: [a]
 Booleans: [a, b, c, d, e]
 ModuleFinal: [a, b]
 Literals: [a, b, c]
+ListComprehension: [a]
 
 [case testAlwaysDefinedExpressions2]
 from typing import List, Tuple
@@ -443,14 +448,3 @@ BaseUnsafe: [x]
 DerivUnsafe: [x, z]
 BaseWithDefault: [x, y]
 DerivedWithDefault: [x, y, z]
-
-[case testAlwaysDefinedUnsupportedOperation]
-from typing import Optional, List
-
-def f() -> int: return 0
-
-class Done:
-    def __init__(self) -> None:
-        self.cells = [0 for i in range(2)]
-[out]
-Done: [cells]
