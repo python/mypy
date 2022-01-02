@@ -443,3 +443,14 @@ BaseUnsafe: [x]
 DerivUnsafe: [x, z]
 BaseWithDefault: [x, y]
 DerivedWithDefault: [x, y, z]
+
+[case testAlwaysDefinedUnsupportedOperation]
+from typing import Optional, List
+
+def f() -> int: return 0
+
+class Done:
+    def __init__(self) -> None:
+        self.cells = [0 for i in range(2)]
+[out]
+Done: []

@@ -49,7 +49,7 @@ from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
     Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, GetAttr,
-    Call, RegisterOp, BasicBlock
+    Call, RegisterOp, BasicBlock, ControlOp
 )
 from mypyc.ir.rtypes import RInstance
 from mypyc.ir.class_ir import ClassIR
@@ -160,6 +160,11 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
                     attrs = attrs & (maybe_defined.after[block, i] -
                                      maybe_undefined.after[block, i])
                 break
+            if isinstance(op, ControlOp):
+                for target in op.targets():
+                    if not dirty.after[block, i] and dirty.before[target, 0]:
+                        attrs = attrs & (maybe_defined.after[target, 0] -
+                                         maybe_undefined.after[target, 0])
     return attrs
 
 
