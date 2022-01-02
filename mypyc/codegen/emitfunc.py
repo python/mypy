@@ -131,6 +131,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
+        if op.op == Branch.IS_ERROR and isinstance(op.value, GetAttr) and not op.negated:
+            op2 = op.value
+            if op2.class_type.class_ir.is_always_defined(op2.attr):
+                if false is not self.next_block:
+                    self.emit_line('goto {};'.format(self.label(false)))
+                return
         negated = op.negated
         negated_rare = False
         if true is self.next_block and op.traceback_entry is None:

@@ -606,8 +606,6 @@ class GetAttr(RegisterOp):
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = obj.type.attr_type(attr)
-        if self.class_type.class_ir.is_always_defined(attr):
-            self.error_kind = ERR_NEVER
 
     def sources(self) -> List[Value]:
         return [self.obj]
