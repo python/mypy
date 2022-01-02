@@ -104,7 +104,8 @@ list_append_op = method_op(
     arg_types=[list_rprimitive, object_rprimitive],
     return_type=c_int_rprimitive,
     c_function_name='PyList_Append',
-    error_kind=ERR_NEG_INT)
+    error_kind=ERR_NEG_INT,
+    run_arbitrary_code=False)
 
 # list.extend(obj)
 list_extend_op = method_op(
