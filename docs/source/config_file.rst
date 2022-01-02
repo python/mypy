@@ -207,9 +207,18 @@ section of the command line docs.
 
       [mypy]
       exclude = (?x)(
-          ^file1\.py$
-          |^file2\.py$
+          ^one\.py$    # files named "one.py"
+          | two\.pyi$  # or files ending with "two.pyi"
+          | ^three\.   # or files starting with "three."
         )
+
+    Crafting a single regular expression that excludes multiple files while remaining
+    human-readable can be a challenge. The above example demonstrates one approach.
+    ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
+    `ignores most whitespace and supports comments`__. The above is equivalent to:
+    ``(^one\.py$|two\.pyi$|^three\.)``.
+
+    .. __: https://docs.python.org/3/library/re.html#re.X
 
     For more details, see :option:`--exclude <mypy --exclude>`.
 
