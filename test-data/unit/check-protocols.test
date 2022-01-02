@@ -2693,6 +2693,42 @@ class A(Protocol):
 
 [builtins fixtures/tuple.pyi]
 
+[case testProrocolSlotsIsNotProtocolMember]
+# https://github.com/python/mypy/issues/11884
+from typing import Protocol
+
+class Foo(Protocol):
+    __slots__ = ()
+class NoSlots:
+    pass
+class EmptySlots:
+    __slots__ = ()
+class TupleSlots:
+    __slots__ = ('x', 'y')
+class StringSlots:
+    __slots__ = 'x y'
+def foo(f: Foo):
+    pass
+
+# All should pass:
+foo(NoSlots())
+foo(EmptySlots())
+foo(TupleSlots())
+foo(StringSlots())
+[builtins fixtures/tuple.pyi]
+
+[case testProtocolSlotsAndRuntimeCheckable]
+from typing import Protocol, runtime_checkable
+
+@runtime_checkable
+class Foo(Protocol):
+    __slots__ = ()
+class Bar:
+    pass
+issubclass(Bar, Foo)  # Used to be an error, when `__slots__` counted as a protocol member
+[builtins fixtures/isinstance.pyi]
+[typing fixtures/typing-full.pyi]
+
 [case testNoneVsProtocol]
 # mypy: strict-optional
 from typing_extensions import Protocol

@@ -2667,7 +2667,8 @@ class TypeInfo(SymbolNode):
         for base in self.mro[:-1]:  # we skip "object" since everyone implements it
             if base.is_protocol:
                 for name in base.names:
-                    members.add(name)
+                    if name != '__slots__':  # `__slots__` is not a protocol member
+                        members.add(name)
         return sorted(list(members))
 
     def __getitem__(self, name: str) -> 'SymbolTableNode':
