@@ -282,11 +282,11 @@ class Derived2(Base):
 
 class Conditionals:
     def __init__(self, b: bool, n: int) -> None:
-        if b:
+        if not (n == 5 or n >= n + 1):
             self.a = b
         else:
             self.a = not b
-        if not (n == 5 or n >= n + 1):
+        if b:
             self.b = 2
         else:
             self.b = 4
