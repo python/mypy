@@ -1070,30 +1070,26 @@ L0:
     return 1
 def A.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.A
-    r0 :: bool
 L0:
-    __mypyc_self__.x = 20; r0 = is_error
+    __mypyc_self__.x = 20
     return 1
 def B.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.B
-    r0 :: bool
-    r1 :: dict
-    r2 :: str
-    r3 :: object
-    r4 :: str
-    r5 :: bool
-    r6 :: object
-    r7, r8 :: bool
+    r0 :: dict
+    r1 :: str
+    r2 :: object
+    r3 :: str
+    r4 :: object
 L0:
-    __mypyc_self__.x = 20; r0 = is_error
-    r1 = __main__.globals :: static
-    r2 = 'LOL'
-    r3 = CPyDict_GetItem(r1, r2)
-    r4 = cast(str, r3)
-    __mypyc_self__.y = r4; r5 = is_error
-    r6 = box(None, 1)
-    __mypyc_self__.z = r6; r7 = is_error
-    __mypyc_self__.b = 1; r8 = is_error
+    __mypyc_self__.x = 20
+    r0 = __main__.globals :: static
+    r1 = 'LOL'
+    r2 = CPyDict_GetItem(r0, r1)
+    r3 = cast(str, r2)
+    __mypyc_self__.y = r3
+    r4 = box(None, 1)
+    __mypyc_self__.z = r4
+    __mypyc_self__.b = 1
     return 1
 
 [case testSubclassDictSpecalized]
@@ -1240,8 +1236,7 @@ L0:
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
     r0 :: str
-    r1 :: bool
 L0:
     r0 = ''
-    __mypyc_self__.s = r0; r1 = is_error
+    __mypyc_self__.s = r0
     return 1

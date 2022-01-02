@@ -3442,10 +3442,9 @@ def f(a: bool) -> int:
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
-    r0, r1 :: bool
 L0:
-    __mypyc_self__.x = 2; r0 = is_error
-    __mypyc_self__.y = 4; r1 = is_error
+    __mypyc_self__.x = 2
+    __mypyc_self__.y = 4
     return 1
 def f(a):
     a :: bool

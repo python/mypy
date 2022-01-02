@@ -564,6 +564,15 @@ def find_attr_initializers(builder: IRBuilder,
                 if skip is not None and skip(name, stmt):
                     continue
 
+                attr_type = cls.attr_type(name)
+
+                # If the attribute is initialized to None and type isn't optional,
+                # doesn't initialize it to anything (special case for "# type:" comments).
+                if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
+                    if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
+                            and not is_none_rprimitive(attr_type)):
+                        continue
+
                 attrs_with_defaults.add(name)
                 default_assignments.append(stmt)
 
@@ -588,15 +597,11 @@ def generate_attr_defaults_init(builder: IRBuilder,
             if not stmt.is_final_def and not is_constant(stmt.rvalue):
                 builder.warning('Unsupported default attribute value', stmt.rvalue.line)
 
-            # If the attribute is initialized to None and type isn't optional,
-            # don't initialize it to anything.
             attr_type = cls.attr_type(lvalue.name)
-            if isinstance(stmt.rvalue, RefExpr) and stmt.rvalue.fullname == 'builtins.None':
-                if (not is_optional_type(attr_type) and not is_object_rprimitive(attr_type)
-                        and not is_none_rprimitive(attr_type)):
-                    continue
             val = builder.coerce(builder.accept(stmt.rvalue), attr_type, stmt.line)
-            builder.add(SetAttr(self_var, lvalue.name, val, -1))
+            init = SetAttr(self_var, lvalue.name, val, -1)
+            init.mark_as_initializer()
+            builder.add(init)
 
         builder.add(Return(builder.true()))
 
