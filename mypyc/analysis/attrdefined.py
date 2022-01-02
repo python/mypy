@@ -1,12 +1,33 @@
 """Always defined attribute analysis.
 
-An always defined attribute has some statements in __init__ that
-always initialize the attribute when an instance is constructed,
-and the attribute is never read before initialization.
+An always defined attribute has some statements in __init__ or the
+class body that cause the attribute to be always initialized when an
+instance is constructed. It must also not be possible to read the
+attribute before initialization, and it can't be deletable.
 
-As soon as we encounter something that can execute arbitrary code, we
-must stop inferring always defined attributes, since this code could
-read an uninitialized attribute. We can only assume that a fairly
+We can assume that the value is always defined when reading an always
+defined attribute. Otherwise we'll need to raise AttributeError if the
+value is undefined.
+
+We use data flow analysis to figure out attributes that are always
+defined.
+
+Example:
+
+  class C:
+      def __init__(self) -> None:
+          self.x = 0
+          if func():
+              self.y = 1
+          else:
+              self.y = 2
+
+In this example, the attribute 'x' is always defined, but 'y' is not,
+since the call to func() could access 'y' before it's initialized.
+
+As soon as __init__ contains an op that can execute arbitrary code, we
+will stop inferring always defined attributes, since this code could
+read an uninitialized attribute. We only assume that a fairly
 restricted set of operations doesn't perform arbitrary reads.
 
 Our analysis is somewhat optimistic. We require that __del__ methods
@@ -41,7 +62,8 @@ from mypyc.analysis.defined import analyze_arbitrary_execution
 def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
     """Find always defined attributes all classes of a compilation unit.
 
-    Also tag attribute initialization ops.
+    Also tag attribute initialization ops to not decref the previous
+    value (as this would read a NULL pointer and segfault).
 
     This is the main entry point.
     """
