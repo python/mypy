@@ -68,8 +68,15 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
     This is the main entry point.
     """
     seen: Set[ClassIR] = set()
+
+    # First pass: only look at target class and classes in MRO
     for cl in class_irs:
         analyze_always_defined_attrs_in_class(cl, seen)
+
+    # Second pass: look at all derived class
+    seen = set()
+    for cl in class_irs:
+        update_always_defined_attrs_using_subclasses(cl, seen)
 
 
 def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> None:
@@ -277,3 +284,19 @@ def analyze_maybe_undefined_attrs_in_init(blocks: List[BasicBlock],
                         initial=initial_undefined,
                         backward=False,
                         kind=MAYBE_ANALYSIS)
+
+
+def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: Set[ClassIR]) -> None:
+    if cl in seen:
+        return
+    if cl.children is None:
+        # Subclasses are unknown
+        return
+    removed = set()
+    for attr in cl._always_initialized_attrs:
+        for child in cl.children:
+            update_always_defined_attrs_using_subclasses(child, seen)
+            if attr not in child._always_initialized_attrs:
+                removed.add(attr)
+    cl._always_initialized_attrs -= removed
+    seen.add(cl)

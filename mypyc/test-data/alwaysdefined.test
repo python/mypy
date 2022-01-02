@@ -421,6 +421,7 @@ class Deriv3(Base):
 class Deriv4(Base):
     def __init__(self) -> None:
         self.y = 1
+        self.x = 2
 
 def f(): pass
 
@@ -446,14 +447,33 @@ class DerivedWithDefault(BaseWithDefault):
     def __init__(self) -> None:
         super().__init__()
         self.z = 1
+
+class AlwaysDefinedInBase:
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 1
+
+class UndefinedInDerived(AlwaysDefinedInBase):
+    def __init__(self, x: bool) -> None:
+        self.x = 1
+        if x:
+            self.y = 2
+
+class UndefinedInDerived2(UndefinedInDerived):
+    def __init__(self, x: bool):
+        if x:
+            self.y = 2
 [out]
 Base: [x]
 Deriv1: [x, y]
 Deriv2: [x, y]
 Deriv22: [x, y, z]
 Deriv3: [x]
-Deriv4: [y]
+Deriv4: [x, y]
 BaseUnsafe: [x]
 DerivUnsafe: [x, z]
 BaseWithDefault: [x, y]
 DerivedWithDefault: [x, y, z]
+AlwaysDefinedInBase: []
+UndefinedInDerived: []
+UndefinedInDerived2: []
