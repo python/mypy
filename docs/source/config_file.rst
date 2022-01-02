@@ -197,7 +197,7 @@ section of the command line docs.
 
 .. confval:: exclude
 
-    :type: regular expressions
+    :type: regular expression
 
     A regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
