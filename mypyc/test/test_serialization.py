@@ -58,7 +58,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
         assert x.keys() == y.keys(), "Keys mismatch at {}".format(trail)
         for k in x.keys():
             assert_blobs_same(x[k], y[k], trail + (k,))
-    elif isinstance(x, Iterable) and not isinstance(x, str):
+    elif isinstance(x, Iterable) and not isinstance(x, (str, set)):
         for i, (xv, yv) in enumerate(zip(x, y)):
             assert_blobs_same(xv, yv, trail + (i,))
     elif isinstance(x, RType):
