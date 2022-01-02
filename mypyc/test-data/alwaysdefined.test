@@ -56,6 +56,14 @@ class If:
         else:
             self.y = 1
 
+class Deletable:
+    __deletable__ = ('x', 'y')
+
+    def __init__(self) -> None:
+        self.x = 0
+        self.y = 1
+        self.z = 2
+
 def f() -> None: pass
 [out]
 MethodCall: []
@@ -64,6 +72,7 @@ GetAttr: []
 CallSuper: []
 Lambda: []
 If: [a]
+Deletable: [z]
 
 [case testAlwaysDefinedConditional]
 class IfAlways:

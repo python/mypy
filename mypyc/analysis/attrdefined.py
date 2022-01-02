@@ -109,6 +109,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
 
     always_defined = find_always_defined_attributes(
         m.blocks, self_reg, all_attrs, maybe_defined, maybe_undefined, dirty)
+    always_defined = {a for a in always_defined if not cl.is_deletable(a)}
 
     cl._always_initialized_attrs = always_defined
     if always_defined:
