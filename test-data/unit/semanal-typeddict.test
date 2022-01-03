@@ -47,7 +47,7 @@ MypyFile:1(
   ClassDef:2(
     A
     BaseType(
-      mypy_extensions._TypedDict)
+      mypy_extensions._TypedDict[builtins.str])
     ExpressionStmt:3(
       StrExpr(foo))
     AssignmentStmt:4(

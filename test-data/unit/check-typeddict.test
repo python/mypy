@@ -360,12 +360,12 @@ def as_mapping(p: Point) -> Mapping[str, object]:
     return p
 [builtins fixtures/dict.pyi]
 
-[case testCannotConvertTypedDictToIncompatibleMapping]
+[case testConvertTypedDictToMapping]
 from mypy_extensions import TypedDict
 from typing import Mapping
 Point = TypedDict('Point', {'x': int, 'y': int})
 def as_mapping(p: Point) -> Mapping[str, int]:
-    return p  # E: Incompatible return value type (got "Point", expected "Mapping[str, int]")
+    return p
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictAcceptsIntForFloatDuckTypes]
@@ -540,8 +540,8 @@ left = Cell(value=42)
 right = {'score': 999}  # type: Mapping[str, int]
 joined1 = [left, right]
 joined2 = [right, left]
-reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, builtins.object]]"
-reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, builtins.object]]"
+reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, builtins.int]]"
+reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, builtins.int]]"
 [builtins fixtures/dict.pyi]
 
 [case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
@@ -616,7 +616,7 @@ M = Mapping[str, int]
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: X, y: M) -> None: pass
-reveal_type(f(g))  # N: Revealed type is "<nothing>"
+reveal_type(f(g))  # N: Revealed type is "TypedDict('__main__.X', {'x': builtins.int})"
 [builtins fixtures/dict.pyi]
 
 [case testMeetOfTypedDictWithIncompatibleMappingIsUninhabited]
@@ -1398,6 +1398,24 @@ reveal_type(f(b)) # N: Revealed type is "builtins.str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictOverloadMethod]
+from mypy_extensions import TypedDict
+from typing import Mapping
+
+
+class Base:
+    def meth(self) -> Mapping[str, str]:
+        pass
+
+class Foo(TypedDict):
+    a: str
+    b: str
+
+class Parent(Base):
+    def meth(self) -> Foo:
+        pass
+[builtins fixtures/dict.pyi]
+
 
 -- Special cases
 
@@ -1410,7 +1428,8 @@ class C(B): pass
 x: X
 reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})"
 m1: Mapping[str, object] = x
-m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
+m2: Mapping[str, B] = x
+m3: Mapping[str, int] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, int]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceInClassTypedDict]
@@ -1424,7 +1443,8 @@ class C(B): pass
 x: X
 reveal_type(x) # N: Revealed type is "TypedDict('__main__.X', {'b': __main__.B, 'c': __main__.C})"
 m1: Mapping[str, object] = x
-m2: Mapping[str, B] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, B]")
+m2: Mapping[str, B] = x
+m3: Mapping[str, int] = x # E: Incompatible types in assignment (expression has type "X", variable has type "Mapping[str, int]")
 [builtins fixtures/dict.pyi]
 
 [case testForwardReferenceToTypedDictInTypedDict]

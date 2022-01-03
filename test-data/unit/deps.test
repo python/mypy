@@ -681,7 +681,7 @@ def foo(x: Point) -> int:
 [out]
 <m.A.__init__> -> m
 <m.A.__new__> -> m
-<m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.foo
+<m.A> -> <m.Point>, <m.foo>, <m.p>, m, m.A, m.Point, m.foo
 <m.Point> -> <m.foo>, <m.p>, m, m.Point, m.foo
 <m.p> -> m
 

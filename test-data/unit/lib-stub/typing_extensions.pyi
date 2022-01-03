@@ -5,6 +5,8 @@ from typing import NewType as NewType
 import sys
 
 _T = TypeVar('_T')
+_VT = TypeVar('_VT')
+
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any:
@@ -29,15 +31,15 @@ TypeAlias: _SpecialForm
 TypeGuard: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).
-class _TypedDict(Mapping[str, object]):
+class _TypedDict(Mapping[str, _VT]):
     # Needed to make this class non-abstract. It is explicitly declared abstract in
     # typeshed, but we don't want to import abc here, as it would slow down the tests.
     def __iter__(self) -> Iterator[str]: ...
     def copy(self: _T) -> _T: ...
     # Using NoReturn so that only calls using the plugin hook can go through.
-    def setdefault(self, k: NoReturn, default: object) -> object: ...
+    def setdefault(self, k: NoReturn, default: _VT) -> _VT: ...
     # Mypy expects that 'default' has a type variable type.
-    def pop(self, k: NoReturn, default: _T = ...) -> object: ...
+    def pop(self, k: NoReturn, default: _T = ...) -> _VT: ...
     def update(self: _T, __m: _T) -> None: ...
     if sys.version_info < (3, 0):
         def has_key(self, k: str) -> bool: ...

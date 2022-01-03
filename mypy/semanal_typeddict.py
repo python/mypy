@@ -16,6 +16,7 @@ from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
+from mypy.typeops import make_simplified_union
 from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
@@ -362,10 +363,11 @@ class TypedDictAnalyzer:
                                  types: List[Type],
                                  required_keys: Set[str],
                                  line: int) -> TypeInfo:
+        value_type = make_simplified_union(types)
         # Prefer typing then typing_extensions if available.
-        fallback = (self.api.named_type_or_none('typing._TypedDict', []) or
-                    self.api.named_type_or_none('typing_extensions._TypedDict', []) or
-                    self.api.named_type_or_none('mypy_extensions._TypedDict', []))
+        fallback = (self.api.named_type_or_none('typing._TypedDict', [value_type]) or
+                    self.api.named_type_or_none('typing_extensions._TypedDict', [value_type]) or
+                    self.api.named_type_or_none('mypy_extensions._TypedDict', [value_type]))
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback, line)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
