@@ -12,7 +12,6 @@ import sys
 import pytest
 from typing import (
     List,
-    Protocol,
     Tuple,
     TYPE_CHECKING,
     Set,
@@ -24,6 +23,7 @@ from typing import (
     Union,
     overload
 )
+from typing_extensions import Protocol
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
