@@ -544,6 +544,30 @@ reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping*[built
 reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, builtins.int]]"
 [builtins fixtures/dict.pyi]
 
+[case testJoinOfTypedDictWithCompatibleMappingIsMappingWithUnionType]
+from mypy_extensions import TypedDict
+from typing import Mapping, Union
+Cell = TypedDict('Cell', {'value': int})
+left = Cell(value=42)
+right = {'score': 999, 'speed': 'fast'}  # type: Mapping[str, Union[int, str]]
+joined1 = [left, right]
+joined2 = [right, left]
+reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, Union[builtins.int, builtins.str]]]"
+reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, Union[builtins.int, builtins.str]]]"
+[builtins fixtures/dict.pyi]
+
+[case testJoinOfTypedDictWithDifferentValueTypeCompatibleMappingIsMappingWithUnionType]
+from mypy_extensions import TypedDict
+from typing import Mapping, Union
+Cell = TypedDict('Cell', {'value': int, 'speed': str})
+left = Cell(value=42, speed="fast")
+right = {'score': 999}  # type: Mapping[str, int]
+joined1 = [left, right]
+joined2 = [right, left]
+reveal_type(joined1)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, Union[builtins.int, builtins.str]]]"
+reveal_type(joined2)  # N: Revealed type is "builtins.list[typing.Mapping*[builtins.str, Union[builtins.int, builtins.str]]]"
+[builtins fixtures/dict.pyi]
+
 [case testJoinOfTypedDictWithCompatibleMappingSupertypeIsSupertype]
 from mypy_extensions import TypedDict
 from typing import Sized
