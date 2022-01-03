@@ -4128,7 +4128,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 num_args = len(target.type.type_vars)
             else:
                 has_param_spec = False
-                num_args = -1              
+                num_args = -1
         elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
             has_param_spec = base.node.has_param_spec_type
             num_args = len(base.node.type_vars)

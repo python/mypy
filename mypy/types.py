@@ -1146,8 +1146,8 @@ class Parameters(ProperType):
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
-            is_ellipsis_args=is_ellipsis_args
-                             if is_ellipsis_args is not _dummy else self.is_ellipsis_args
+            is_ellipsis_args=(is_ellipsis_args if is_ellipsis_args is not _dummy
+                              else self.is_ellipsis_args)
         )
 
     # the following are copied from CallableType. Is there a way to decrease code duplication?
