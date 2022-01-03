@@ -929,9 +929,6 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if check_args_covariantly:
         is_compat = flip_compat_check(is_compat)
 
-    if right.is_ellipsis_args:
-        return True
-
     return are_parameters_compatible(left, right, is_compat=is_compat,
                                      ignore_pos_arg_names=ignore_pos_arg_names,
                                      check_args_covariantly=check_args_covariantly,
@@ -945,6 +942,9 @@ def are_parameters_compatible(left: Union[Parameters, CallableType],
                               ignore_pos_arg_names: bool = False,
                               check_args_covariantly: bool = False,
                               allow_partial_overlap: bool = False) -> bool:
+    if right.is_ellipsis_args:
+        return True
+
     """Helper function for is_callable_compatible, used for Parameter compatibility"""
     left_star = left.var_arg()
     left_star2 = left.kw_arg()

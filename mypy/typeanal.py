@@ -775,8 +775,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         assert False, "Internal error: Unexpected partial type"
 
     def visit_ellipsis_type(self, t: EllipsisType) -> Type:
-        self.fail('Unexpected "..."', t)
-        return AnyType(TypeOfAny.from_error)
+        if self.allow_param_spec_literals:
+            any_type = AnyType(TypeOfAny.explicit)
+            return Parameters([any_type, any_type],
+                              [ARG_STAR, ARG_STAR2],
+                              [None, None],
+                              is_ellipsis_args=True)
+        else:
+            self.fail('Unexpected "..."', t)
+            return AnyType(TypeOfAny.from_error)
 
     def visit_type_type(self, t: TypeType) -> Type:
         return TypeType.make_normalized(self.anal_type(t.item), line=t.line)

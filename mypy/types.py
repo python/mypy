@@ -1092,28 +1092,36 @@ class Parameters(ProperType):
     __slots__ = ('arg_types',
                  'arg_kinds',
                  'arg_names',
-                 'min_args')
+                 'min_args',
+                 'is_ellipsis_args')
 
     def __init__(self,
                  arg_types: Sequence[Type],
                  arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
+                 *,
+                 is_ellipsis_args: bool = False
                  ) -> None:
         self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
-        self.min_args = arg_kinds.count(ARG_POS)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
+        self.min_args = arg_kinds.count(ARG_POS)
+        self.is_ellipsis_args = is_ellipsis_args
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
                       arg_kinds: Bogus[List[ArgKind]] = _dummy,
-                      arg_names: Bogus[Sequence[Optional[str]]] = _dummy
+                      arg_names: Bogus[Sequence[Optional[str]]] = _dummy,
+                      *,
+                      is_ellipsis_args: Bogus[bool] = _dummy
                       ) -> 'Parameters':
         return Parameters(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
+            is_ellipsis_args=is_ellipsis_args
+                             if is_ellipsis_args is not _dummy else self.is_ellipsis_args
         )
 
     # the following are copied from CallableType. Is there a way to decrease code duplication?
@@ -1527,11 +1535,13 @@ class CallableType(FunctionLike):
         if no_prefix:
             return self.copy_modified(arg_types=c.arg_types,
                                       arg_kinds=c.arg_kinds,
-                                      arg_names=c.arg_names)
+                                      arg_names=c.arg_names,
+                                      is_ellipsis_args=c.is_ellipsis_args)
         else:
             return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
                                       arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
-                                      arg_names=self.arg_names[:-2] + c.arg_names)
+                                      arg_names=self.arg_names[:-2] + c.arg_names,
+                                      is_ellipsis_args=c.is_ellipsis_args)
 
     def __hash__(self) -> int:
         return hash((self.ret_type, self.is_type_obj(),
@@ -2414,6 +2424,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_parameters(self, t: Parameters) -> str:
         # This is copied from visit_callable -- is there a way to decrease duplication?
+        if t.is_ellipsis_args:
+            return '...'
+
         s = ''
         bare_asterisk = False
         for i in range(len(t.arg_types)):

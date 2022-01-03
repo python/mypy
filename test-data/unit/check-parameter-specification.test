@@ -673,3 +673,35 @@ Z[bytes, str](lambda one: None)  # E: Cannot infer type of lambda \
 Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "Callable[[bytes, int], None]"; expected "Callable[[bytes, str], None]"
 
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralEllipsis]
+from typing_extensions import ParamSpec
+from typing import Generic, Callable
+
+P = ParamSpec("P")
+
+class Z(Generic[P]):
+    def __init__(self: 'Z[P]', c: Callable[P, None]) -> None:
+        ...
+
+def f1() -> None: ...
+def f2(*args: int) -> None: ...
+def f3(a: int, *, b: bytes) -> None: ...
+
+def f4(b: bytes) -> None: ...
+
+argh: Callable[..., None] = f4
+
+# check it works
+Z[...](f1)
+Z[...](f2)
+Z[...](f3)
+
+# check subtyping works
+n: Z[...]
+n = Z(f1)
+n = Z(f2)
+n = Z(f3)
+
+[builtins fixtures/tuple.pyi]
+
