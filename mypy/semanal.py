@@ -1908,7 +1908,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,
                                 module_public: bool,
                                 context: ImportBase) -> None:
-        module_hidden = not module_public and fullname not in self.modules
+        module_hidden = not module_public and not (
+            # `from package import module` should work regardless of whether package
+            # re-exports module
+            isinstance(node.node, MypyFile) and fullname in self.modules
+        )
 
         if isinstance(node.node, PlaceholderNode):
             if self.final_iteration:
@@ -2039,12 +2043,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                         if self.process_import_over_existing_name(
                                 name, existing_symbol, node, i):
                             continue
-                    # In stub files, `from x import *` always reexports the symbols.
-                    # In regular files, only if implicit reexports are enabled.
-                    module_public = self.is_stub_file or self.options.implicit_reexport
+                    # `from x import *` always reexports symbols
                     self.add_imported_symbol(name, node, i,
-                                             module_public=module_public,
-                                             module_hidden=not module_public)
+                                             module_public=True,
+                                             module_hidden=False)
 
         else:
             # Don't add any dummy symbols for 'from x import *' if 'x' is unknown.
@@ -5009,19 +5011,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(exp, StrExpr):
                 self.all_exports.append(exp.value)
 
-    def check_no_global(self,
-                        name: str,
-                        ctx: Context,
-                        is_overloaded_func: bool = False) -> None:
-        if name in self.globals:
-            prev_is_overloaded = isinstance(self.globals[name], OverloadedFuncDef)
-            if is_overloaded_func and prev_is_overloaded:
-                self.fail("Nonconsecutive overload {} found".format(name), ctx)
-            elif prev_is_overloaded:
-                self.fail("Definition of '{}' missing 'overload'".format(name), ctx)
-            else:
-                self.name_already_defined(name, ctx, self.globals[name])
-
     def name_not_defined(self, name: str, ctx: Context, namespace: Optional[str] = None) -> None:
         incomplete = self.is_incomplete_namespace(namespace or self.cur_mod_id)
         if (namespace is None
@@ -5150,9 +5139,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
-
-    def fail_blocker(self, msg: str, ctx: Context) -> None:
-        self.fail(msg, ctx, blocker=True)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if not self.in_checked_function():

@@ -1910,6 +1910,24 @@ class C:
 
 [builtins fixtures/module.pyi]
 
+[case testReExportChildStubs3]
+from util import mod
+reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
+
+from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+
+[file package/__init__.pyi]
+from .mod import mod as mod
+
+[file package/mod.pyi]
+class mod: ...
+
+[file util.pyi]
+from package import mod as mod
+# stubs require explicit re-export
+from package import mod as internal_detail
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
