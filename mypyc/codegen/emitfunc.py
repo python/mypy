@@ -134,6 +134,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         if op.op == Branch.IS_ERROR and isinstance(op.value, GetAttr) and not op.negated:
             op2 = op.value
             if op2.class_type.class_ir.is_always_defined(op2.attr):
+                # Getting an always defined attribute never fails, so the branch can be omitted.
                 if false is not self.next_block:
                     self.emit_line('goto {};'.format(self.label(false)))
                 return
