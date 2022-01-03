@@ -362,7 +362,7 @@ class TypedDictAnalyzer:
                                  types: List[Type],
                                  required_keys: Set[str],
                                  line: int) -> TypeInfo:
-        value_type = UnionType(types)
+        value_type = UnionType.make_union(types)
 
         # Prefer typing then typing_extensions if available.
         fallback = (self.api.named_type_or_none('typing._TypedDict', [value_type]) or
