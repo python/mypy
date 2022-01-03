@@ -1,3 +1,4 @@
+from _typeshed import Self
 import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
 import sys
 from _typeshed import SupportsKeysAndGetItem
@@ -742,3 +743,52 @@ if sys.version_info >= (3, 7):
 
 if sys.version_info >= (3, 10):
     def is_typeddict(tp: object) -> bool: ...
+
+class _Final:
+    """Mixin to prohibit subclassing"""
+
+    def __init_subclass__(__cls, *args: object, **kwds: object): ...
+
+
+class _BaseGenericAlias(_Final, _root=True):
+    __origin__: type
+    def __init__(self, origin: type, *, inst: bool = ..., name: str | None = ...) -> None:
+        self._inst = inst
+        self._name = name
+        self.__origin__ = origin
+
+_Params = Union[type, Tuple[type, ...]]
+
+class _GenericAlias(_BaseGenericAlias, _root=True):
+    def __init__(
+        self,
+        origin: type,
+        params: _Params,
+        *,
+        inst: bool = ...,
+        name: str | None = ...,
+        _typevar_types: type[TypeVar] = ...,
+        _paramspec_tvars: bool = ...,
+    ):
+        self.__args__: tuple[type, ...]
+        self.__parameters__: tuple[TypeVar, ...]
+        self._typevar_types = _typevar_types
+        self._paramspec_tvars = _paramspec_tvars
+        self.__module__ = origin.__module__
+    # def __eq__(self, other: object) -> bool:
+    #     ...
+    def __hash__(self) -> int: ...
+    def __or__(self, right: object) -> _SpecialForm: ...
+    def __ror__(self, left: object) -> _SpecialForm: ...
+    def __getitem__(self: Self, params: _Params) -> Self: ...
+    def copy_with(self: Self, params: _Params) -> Self: ...
+    # def __reduce__(self):
+    #     if self._name:
+    #         origin = globals()[self._name]
+    #     else:
+    #         origin = self.__origin__
+    #     args = tuple(self.__args__)
+    #     if len(args) == 1 and not isinstance(args[0], tuple):
+    #         args, = args
+    #     return operator.getitem, (origin, args)
+    def __mro_entries__(self, bases: tuple[type, ...]) -> tuple[type, ...]: ...
