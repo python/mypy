@@ -1924,3 +1924,28 @@ from native import A, B, C
 a = A()
 b = B()
 c = C()
+
+[case testCopyAlwaysDefinedAttributes]
+import copy
+from typing import Union
+
+class A: pass
+
+class C:
+    def __init__(self) -> None:
+        self.n = 0
+        self.s = ""
+        self.t = ("", 0)
+        self.u: Union[str, bytes] = ''
+        self.a = A()
+
+def test_copy() -> None:
+    c1 = C()
+    c1.n = 1
+    c1.s = "x"
+    c2 = copy.copy(c1)
+    assert c2.n == 1
+    assert c2.s == "x"
+    assert c2.t == ("", 0)
+    assert c2.u == ''
+    assert c2.a is c1.a

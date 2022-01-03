@@ -879,7 +879,10 @@ def generate_setter(cl: ClassIR,
         emitter.emit_line('return -1;')
         emitter.emit_line('}')
 
-    always_defined = cl.is_always_defined(attr)
+    # HACK: Don't consider refcounted values as always defined, since sometimes CPython
+    #       constructs uninitialized instances and then sets the attributes (e.g. through
+    #       copy.copy()). Always defined attributes are still not really safe, though.
+    always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if rtype.is_refcounted:
         attr_expr = 'self->{}'.format(attr_field)
