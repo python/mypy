@@ -131,6 +131,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
                  allow_required: bool = False,
+                 allow_param_spec_literals: bool = False,
                  report_invalid_types: bool = True) -> None:
         self.api = api
         self.lookup_qualified = api.lookup_qualified
@@ -153,7 +154,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Are we in a context where Required[] is allowed?
         self.allow_required = allow_required
         # Are we in a context where ParamSpec literals are allowed?
-        self.allow_param_spec_literals = False
+        self.allow_param_spec_literals = allow_param_spec_literals
         # Should we report an error whenever we encounter a RawExpressionType outside
         # of a Literal context: e.g. whenever we encounter an invalid type? Normally,
         # we want to report an error, but the caller may want to do more specialized

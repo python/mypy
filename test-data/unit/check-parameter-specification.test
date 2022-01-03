@@ -419,16 +419,16 @@ class Z(Generic[P]): ...
 n: Z[[int]]
 
 # TODO: type aliases too
-# nt1 = Z[[int]]
-# nt2: TypeAlias = Z[[int]]
+nt1 = Z[[int]]
+nt2: TypeAlias = Z[[int]]
 
-# unt1: nt1
-# unt2: nt2
+unt1: nt1
+unt2: nt2
 
 # literals actually keep types
 reveal_type(n)  # N: Revealed type is "__main__.Z[[builtins.int]]"
-# reveal_type(unt1)  $ N: Revealed type is "__main__.Z[[builtins.int]]"
-# reveal_type(unt2)  $ N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt2)  # N: Revealed type is "__main__.Z[[builtins.int]]"
 
 # passing into a function keeps the type
 def fT(a: T) -> T: ...
@@ -494,8 +494,8 @@ class X(Generic[T, P]):
 def f1(x: X[int, P_2]) -> str: ...                    # Accepted
 def f2(x: X[int, Concatenate[int, P_2]]) -> str: ...  # Accepted
 def f3(x: X[int, [int, bool]]) -> str: ...            # Accepted
-# Is ellipsis allowed by PEP? This shows up:
-# def f4(x: X[int, ...]) -> str: ...                    # Accepted
+# ellipsis only show up here, but I can assume it works like Callable[..., R]
+def f4(x: X[int, ...]) -> str: ...                    # Accepted
 # TODO: this is not rejected:
 # def f5(x: X[int, int]) -> str: ...                    # Rejected
 
@@ -627,7 +627,7 @@ main:11: error: invalid syntax
 [out version>=3.8]
 main:14: note: Revealed type is "__main__.Foo[def (builtins.int, b: builtins.str)]"
 
-[case testSolveLiteralsWithSelfType]
+[case testSolveParamSpecWithSelfType]
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, Generic
 
@@ -640,4 +640,36 @@ n: Foo[[int]]
 def f(x: int) -> None: ...
 
 n.foo(f)
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralsTypeApplication]
+from typing_extensions import ParamSpec
+from typing import Generic, Callable
+
+P = ParamSpec("P")
+
+class Z(Generic[P]):
+    def __init__(self, c: Callable[P, None]) -> None:
+        ...
+
+# it allows valid functions
+reveal_type(Z[[int]](lambda x: None))  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(Z[[]](lambda: None))  # N: Revealed type is "__main__.Z[[]]"
+reveal_type(Z[bytes, str](lambda b, s: None))  # N: Revealed type is "__main__.Z[[builtins.bytes, builtins.str]]"
+
+# it disallows invalid functions
+def f1(n: str) -> None: ...
+def f2(b: bytes, i: int) -> None: ...
+
+Z[[int]](lambda one, two: None)  # E: Cannot infer type of lambda \
+                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any, Any], None]"; expected "Callable[[int], None]"
+Z[[int]](f1)  # E: Argument 1 to "Z" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
+
+Z[[]](lambda one: None)  # E: Cannot infer type of lambda \
+                         # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
+
+Z[bytes, str](lambda one: None)  # E: Cannot infer type of lambda \
+                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[bytes, str], None]"
+Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "Callable[[bytes, int], None]"; expected "Callable[[bytes, str], None]"
+
 [builtins fixtures/tuple.pyi]

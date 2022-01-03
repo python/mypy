@@ -92,7 +92,7 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType
+    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -4113,6 +4113,27 @@ class SemanticAnalyzer(NodeVisitor[None],
                 items = items[:-1]
         else:
             items = [index]
+
+        # whether param spec literals be allowed here
+        # TODO: should this be computed once and passed in?
+        #   or is there a better way to do this?
+        base = expr.base
+        if isinstance(base, RefExpr) and isinstance(base.node, TypeAlias):
+            alias = base.node
+            target = get_proper_type(alias.target)
+            if isinstance(target, Instance):
+                has_param_spec = target.type.has_param_spec_type
+                num_args = len(target.type.type_vars)
+            else:
+                has_param_spec = False
+                num_args = -1              
+        elif isinstance(base, NameExpr) and isinstance(base.node, TypeInfo):
+            has_param_spec = base.node.has_param_spec_type
+            num_args = len(base.node.type_vars)
+        else:
+            has_param_spec = False
+            num_args = -1
+
         for item in items:
             try:
                 typearg = self.expr_to_unanalyzed_type(item)
@@ -4123,10 +4144,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             # may be analysing a type alias definition rvalue. The error will be
             # reported elsewhere if it is not the case.
             analyzed = self.anal_type(typearg, allow_unbound_tvars=True,
-                                      allow_placeholder=True)
+                                      allow_placeholder=True,
+                                      allow_param_spec_literals=has_param_spec)
             if analyzed is None:
                 return None
             types.append(analyzed)
+
+        if has_param_spec and num_args == 1 and len(types) > 0:
+            first_arg = get_proper_type(types[0])
+            if not (len(types) == 1 and (isinstance(first_arg, Parameters) or
+                                         isinstance(first_arg, ParamSpecType) or
+                                         isinstance(first_arg, AnyType))):
+                types = [Parameters(types, [ARG_POS] * len(types), [None] * len(types))]
+
         return types
 
     def visit_slice_expr(self, expr: SliceExpr) -> None:
@@ -5173,6 +5203,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                       allow_unbound_tvars: bool = False,
                       allow_placeholder: bool = False,
                       allow_required: bool = False,
+                      allow_param_spec_literals: bool = False,
                       report_invalid_types: bool = True) -> TypeAnalyser:
         if tvar_scope is None:
             tvar_scope = self.tvar_scope
@@ -5186,6 +5217,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             report_invalid_types=report_invalid_types,
                             allow_placeholder=allow_placeholder,
                             allow_required=allow_required,
+                            allow_param_spec_literals=allow_param_spec_literals,
                             allow_new_syntax=self.is_stub_file)
         tpan.in_dynamic_func = bool(self.function_stack and self.function_stack[-1].is_dynamic())
         tpan.global_scope = not self.type and not self.function_stack
@@ -5201,6 +5233,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                   allow_unbound_tvars: bool = False,
                   allow_placeholder: bool = False,
                   allow_required: bool = False,
+                  allow_param_spec_literals: bool = False,
                   report_invalid_types: bool = True,
                   third_pass: bool = False) -> Optional[Type]:
         """Semantically analyze a type.
@@ -5228,6 +5261,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                                allow_tuple_literal=allow_tuple_literal,
                                allow_placeholder=allow_placeholder,
                                allow_required=allow_required,
+                               allow_param_spec_literals=allow_param_spec_literals,
                                report_invalid_types=report_invalid_types)
         tag = self.track_incomplete_refs()
         typ = typ.accept(a)
