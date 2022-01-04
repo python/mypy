@@ -132,7 +132,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-    'exclude': lambda s: [p.strip() for p in s.split('\n') if p.strip()],
+    'exclude': lambda s: [s.strip()],
 }
 
 # Reuse the ini_config_types and overwrite the diff
