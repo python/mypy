@@ -214,6 +214,35 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+    .. note::
+
+       Note that the TOML equivalent differs slightly. It can be either a single string
+       (including a multi-line string) -- which is treated as a single regular
+       expression -- or an array of such strings. The following TOML examples are
+       equivalent to the above INI example.
+
+       Array of strings:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = [
+            "^file1\\.py$",  # TOML's double-quoted strings require escaping backslashes
+            '^file2\.py$',  # but TOML's single-quoted strings do not
+          ]
+
+       A single, multi-line string:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = '''(?x)(
+              ^file1\.py$
+              |^file2\.py$,
+          )'''
+
+       See :ref:`using-a-pyproject-toml`.
+
 .. confval:: namespace_packages
 
     :type: boolean
@@ -915,6 +944,8 @@ These options may only be set in the global section (``[mypy]``).
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
 
+.. _using-a-pyproject-toml:
+
 Using a pyproject.toml file
 ***************************
 
@@ -973,6 +1004,10 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     python_version = "2.7"
     warn_return_any = true
     warn_unused_configs = true
+    exclude = [
+        '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+        "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+    ]
 
     # mypy per-module options:
 
