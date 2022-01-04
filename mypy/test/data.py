@@ -10,25 +10,9 @@ from abc import abstractmethod
 import sys
 
 import pytest
-from typing import (
-    List,
-    Tuple,
-    TYPE_CHECKING,
-    Set,
-    Optional,
-    Iterator,
-    Any,
-    Dict,
-    NamedTuple,
-    Union,
-    overload
-)
-from typing_extensions import Protocol
+from typing import Callable, List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
-
-if TYPE_CHECKING:
-    from _typeshed import BytesPath, StrPath
 
 root_dir = os.path.normpath(PREFIX)
 
@@ -44,18 +28,6 @@ DeleteFile = NamedTuple('DeleteFile', [('module', str),
 FileOperation = Union[UpdateFile, DeleteFile]
 
 
-class JoinFunction(Protocol):
-    """A callback protocol with which both `ntpath.join()` and `posixpath.join()` are compliant.
-
-    The two functions have different parameter names,
-    meaning this file doesn't type-check on Windows without this protocol.
-    """
-    @overload
-    def __call__(self, __path: 'StrPath', *paths: 'StrPath') -> str: ...
-    @overload
-    def __call__(self, __path: 'BytesPath', *paths: 'BytesPath') -> bytes: ...
-
-
 def parse_test_case(case: 'DataDrivenTestCase') -> None:
     """Parse and prepare a single case from suite with test case descriptions.
 
@@ -63,7 +35,8 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     """
     test_items = parse_test_data(case.data, case.name)
     base_path = case.suite.base_path
-    join: JoinFunction
+    # this file doesn't type-check on Windows without this line, see #11895
+    join: Callable[[str, str], str]
     if case.suite.native_sep:
         join = os.path.join
     else:
