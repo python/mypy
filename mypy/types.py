@@ -950,7 +950,7 @@ class Instance(ProperType):
         # This is a dictionary that will be serialized and un-serialized as is.
         # It is useful for plugins to add their data to save in the cache.
         if metadata:
-            self.metadata = metadata  # type: Dict[str, JsonDict]
+            self.metadata: Dict[str, JsonDict] = metadata
         else:
             self.metadata = {}
 
@@ -1017,11 +1017,9 @@ class Instance(ProperType):
         type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
-        data: JsonDict = {
-            ".class": "Instance",
-        }
-        data["type_ref"] = type_ref
-        data["args"] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {".class": "Instance",
+                          "type_ref": type_ref,
+                          "args": [arg.serialize() for arg in self.args]}
         if self.metadata:
             data['metadata'] = self.metadata
         if self.last_known_value is not None:
@@ -1058,8 +1056,8 @@ class Instance(ProperType):
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            metadata if metadata is not _dummy else self.metadata,
             erased if erased is not _dummy else self.erased,
+            metadata if metadata is not _dummy else self.metadata,
             last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 

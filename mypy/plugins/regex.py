@@ -43,11 +43,11 @@ from sre_constants import (
     error as SreError, _NamedIntConstant as NIC,
 )
 
-STR_LIKE_TYPES = {
+STR_LIKE_TYPES: Final = {
     'builtins.unicode',
     'builtins.str',
     'builtins.bytes',
-}  # type: Final
+}
 
 FUNCTIONS_PRODUCING_MATCH_OBJECT = {
     're.search',
@@ -55,11 +55,11 @@ FUNCTIONS_PRODUCING_MATCH_OBJECT = {
     're.fullmatch',
 }
 
-METHODS_PRODUCING_MATCH_OBJECT = {
+METHODS_PRODUCING_MATCH_OBJECT: Final = {
     'typing.Pattern.search',
     'typing.Pattern.match',
     'typing.Pattern.fullmatch',
-}  # type: Final
+}
 
 METHODS_PRODUCING_GROUP = {
     'typing.Match.group',
@@ -89,7 +89,7 @@ def find_mandatory_groups(ast: Union[SubPattern, Tuple[NIC, Any]]) -> Iterator[i
     function only group numbers that can actually be found in the AST.
     """
     if isinstance(ast, tuple):
-        data = [ast]      # type: List[Tuple[NIC, Any]]
+        data: List[Tuple[NIC, Any]] = [ast]
     elif isinstance(ast, SubPattern):
         data = ast.data
     else:
@@ -151,10 +151,8 @@ def extract_regex_group_info(pattern: str) -> Tuple[List[int], int, Dict[str, in
     return mandatory_groups, total_groups, named_groups
 
 
-def analyze_regex_pattern_call(
-        pattern_type: Type,
-        default_return_type: Type,
-) -> Type:
+def analyze_regex_pattern_call(pattern_type: Type,
+                               default_return_type: Type) -> Type:
     """The re module contains several methods or functions
     that accept some string containing a regex pattern and returns
     either a typing.Pattern or typing.Match object.
@@ -273,7 +271,7 @@ def re_match_groups_callback(ctx: mypy.plugin.MethodContext) -> Type:
 
     optional_match_type = make_simplified_union([mandatory_match_type, default_type])
 
-    items = []  # type: List[Type]
+    items: List[Type] = []
     for i in range(1, total):
         if i in mandatory:
             items.append(mandatory_match_type)
@@ -305,7 +303,7 @@ def re_match_group_callback(ctx: mypy.plugin.MethodContext) -> Type:
         if len(arg_type) >= 1:
             possible_indices.append(coerce_to_literal(arg_type[0]))
 
-    outputs = []  # type: List[Type]
+    outputs: List[Type] = []
     for possible_index in possible_indices:
         if not isinstance(possible_index, LiteralType):
             outputs.append(optional_match_type)
