@@ -34,9 +34,7 @@ class SequenceMatcher(Generic[_T]):
 
 # mypy thinks the signatures of the overloads overlap, but the types still work fine
 @overload
-def get_close_matches(  # type: ignore
-    word: AnyStr, possibilities: Iterable[AnyStr], n: int = ..., cutoff: float = ...
-) -> list[AnyStr]: ...
+def get_close_matches(word: AnyStr, possibilities: Iterable[AnyStr], n: int = ..., cutoff: float = ...) -> list[AnyStr]: ...  # type: ignore[misc]
 @overload
 def get_close_matches(
     word: Sequence[_T], possibilities: Iterable[Sequence[_T]], n: int = ..., cutoff: float = ...
@@ -72,7 +70,7 @@ def ndiff(
     a: Sequence[str], b: Sequence[str], linejunk: _JunkCallback | None = ..., charjunk: _JunkCallback | None = ...
 ) -> Iterator[str]: ...
 
-class HtmlDiff(object):
+class HtmlDiff:
     def __init__(
         self,
         tabsize: int = ...,

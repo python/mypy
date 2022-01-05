@@ -1,6 +1,6 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence, Tuple, Type
+from typing import Any, Container, Iterable, Sequence, Type
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -37,7 +37,7 @@ if sys.platform == "win32":
         seqno: int | Type[_Unspecified] = ...,
         cond: str | Type[_Unspecified] = ...,
     ) -> None: ...
-    def add_data(db: _Database, table: str, values: Iterable[Tuple[Any, ...]]) -> None: ...
+    def add_data(db: _Database, table: str, values: Iterable[tuple[Any, ...]]) -> None: ...
     def add_stream(db: _Database, name: str, path: str) -> None: ...
     def init_database(
         name: str, schema: ModuleType, ProductName: str, ProductCode: str, ProductVersion: str, Manufacturer: str

@@ -1,4 +1,10 @@
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Iterator, Pattern
+
+ESCAPE: Pattern[str]
+ESCAPE_ASCII: Pattern[str]
+HAS_UTF8: Pattern[bytes]
+ESCAPE_DCT: dict[str, str]
+INFINITY: float
 
 def py_encode_basestring(s: str) -> str: ...  # undocumented
 def py_encode_basestring_ascii(s: str) -> str: ...  # undocumented

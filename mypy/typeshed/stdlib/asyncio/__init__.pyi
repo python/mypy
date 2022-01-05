@@ -2,7 +2,7 @@ import sys
 from typing import Type
 
 from .base_events import BaseEventLoop as BaseEventLoop
-from .coroutines import coroutine as coroutine, iscoroutine as iscoroutine, iscoroutinefunction as iscoroutinefunction
+from .coroutines import iscoroutine as iscoroutine, iscoroutinefunction as iscoroutinefunction
 from .events import (
     AbstractEventLoop as AbstractEventLoop,
     AbstractEventLoopPolicy as AbstractEventLoopPolicy,
@@ -71,39 +71,48 @@ from .transports import (
     WriteTransport as WriteTransport,
 )
 
-if sys.version_info >= (3, 7):
-    from .events import get_running_loop as get_running_loop
+if sys.version_info < (3, 11):
+    from .coroutines import coroutine as coroutine
+
+if sys.version_info >= (3, 9):
+    from .threads import to_thread as to_thread
+
 if sys.version_info >= (3, 8):
     from .exceptions import (
         CancelledError as CancelledError,
         IncompleteReadError as IncompleteReadError,
         InvalidStateError as InvalidStateError,
         LimitOverrunError as LimitOverrunError,
-        SendfileNotAvailableError as SendfileNotAvailableError,
         TimeoutError as TimeoutError,
     )
 else:
-    if sys.version_info >= (3, 7):
-        from .events import SendfileNotAvailableError as SendfileNotAvailableError
     from .futures import CancelledError as CancelledError, InvalidStateError as InvalidStateError, TimeoutError as TimeoutError
     from .streams import IncompleteReadError as IncompleteReadError, LimitOverrunError as LimitOverrunError
 
+if sys.version_info >= (3, 8):
+    from .exceptions import SendfileNotAvailableError as SendfileNotAvailableError
+elif sys.version_info >= (3, 7):
+    from .events import SendfileNotAvailableError as SendfileNotAvailableError
+
 if sys.version_info >= (3, 7):
+    from .events import get_running_loop as get_running_loop
     from .protocols import BufferedProtocol as BufferedProtocol
-
-if sys.version_info >= (3, 7):
     from .runners import run as run
-
-if sys.version_info >= (3, 7):
-    from .tasks import all_tasks as all_tasks, create_task as create_task, current_task as current_task
-if sys.version_info >= (3, 9):
-    from .threads import to_thread as to_thread
+    from .tasks import (
+        _enter_task as _enter_task,
+        _leave_task as _leave_task,
+        _register_task as _register_task,
+        _unregister_task as _unregister_task,
+        all_tasks as all_tasks,
+        create_task as create_task,
+        current_task as current_task,
+    )
 
 DefaultEventLoopPolicy: Type[AbstractEventLoopPolicy]
+
 if sys.platform == "win32":
     from .windows_events import *
-
-if sys.platform != "win32":
+else:
     from .streams import open_unix_connection as open_unix_connection, start_unix_server as start_unix_server
     from .unix_events import (
         AbstractChildWatcher as AbstractChildWatcher,
