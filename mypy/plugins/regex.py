@@ -165,13 +165,13 @@ def analyze_regex_pattern_call(pattern_type: Type,
     pattern_type = coerce_to_literal(pattern_type)
     if not isinstance(pattern_type, LiteralType):
         return default_return_type
-    if pattern_type.fallback.type.fullname() not in STR_LIKE_TYPES:
+    if pattern_type.fallback.type.fullname not in STR_LIKE_TYPES:
         return default_return_type
 
     return_type = get_proper_type(default_return_type)
     if not isinstance(return_type, Instance):
         return default_return_type
-    if return_type.type.fullname() not in OBJECTS_SUPPORTING_REGEX_METADATA:
+    if return_type.type.fullname not in OBJECTS_SUPPORTING_REGEX_METADATA:
         return default_return_type
 
     pattern = pattern_type.value
