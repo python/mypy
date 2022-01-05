@@ -52,7 +52,7 @@ class C: pass
 [out]
 main:8: error: Incompatible types in assignment (expression has type "C", variable has type "B")
 
-[case testGenericMemberVariable]
+[case testGenericMemberVariable2]
 from typing import TypeVar, Generic
 T = TypeVar('T')
 a, b, c = None, None, None # type: (A[B], B, C)
@@ -2073,15 +2073,15 @@ class Base(Generic[T]):
             return (cls(item),)
         return cls(item)
 
-reveal_type(Base.make_some)  # N: Revealed type is "Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1]])"
+reveal_type(Base.make_some)  # N: Revealed type is "Overload(def [T] (item: T`1) -> __main__.Base[T`1], def [T] (item: T`1, n: builtins.int) -> builtins.tuple[__main__.Base[T`1], ...])"
 reveal_type(Base.make_some(1))  # N: Revealed type is "__main__.Base[builtins.int*]"
-reveal_type(Base.make_some(1, 1))  # N: Revealed type is "builtins.tuple[__main__.Base[builtins.int*]]"
+reveal_type(Base.make_some(1, 1))  # N: Revealed type is "builtins.tuple[__main__.Base[builtins.int*], ...]"
 
 class Sub(Base[str]): ...
 Sub.make_some(1)  # E: No overload variant of "make_some" of "Base" matches argument type "int" \
-                  # N: Possible overload variant: \
+                  # N: Possible overload variants: \
                   # N:     def make_some(cls, item: str) -> Sub \
-                  # N:     <1 more non-matching overload not shown>
+                  # N:     def make_some(cls, item: str, n: int) -> Tuple[Sub, ...]
 [builtins fixtures/classmethod.pyi]
 
 [case testNoGenericAccessOnImplicitAttributes]
@@ -2118,7 +2118,7 @@ class B(A[T], Generic[T, S]):
 reveal_type(B.foo)  # N: Revealed type is "def [T, S] () -> Tuple[T`1, __main__.B[T`1, S`2]]"
 [builtins fixtures/classmethod.pyi]
 
-[case testGenericClassAlternativeConstructorPrecise]
+[case testGenericClassAlternativeConstructorPrecise2]
 from typing import Generic, TypeVar, Type, Tuple, Any
 
 T = TypeVar('T')
@@ -2183,7 +2183,7 @@ class C(Generic[T]):
 class D(C[str]): ...
 
 reveal_type(D.get())  # N: Revealed type is "builtins.str*"
-reveal_type(D.get(42))  # N: Revealed type is "builtins.tuple[builtins.str*]"
+reveal_type(D.get(42))  # N: Revealed type is "builtins.tuple[builtins.str*, ...]"
 [builtins fixtures/classmethod.pyi]
 
 [case testGenericClassMethodAnnotation]
@@ -2463,7 +2463,8 @@ class B(A): ...
 a_c: Container[A]
 b_c: Container[B]
 
-reveal_type([a_c, b_c])  # N: Revealed type is "builtins.list[__main__.Container*[__main__.B]]"
+# TODO: this can be more precise than "object", see a comment in mypy/join.py
+reveal_type([a_c, b_c])  # N: Revealed type is "builtins.list[builtins.object*]"
 [builtins fixtures/list.pyi]
 
 [case testGenericJoinRecursiveTypes]
@@ -2476,4 +2477,30 @@ a: A
 b: B
 
 reveal_type([a, b])  # N: Revealed type is "builtins.list[typing.Sequence*[builtins.object]]"
+[builtins fixtures/list.pyi]
+
+[case testGenericJoinRecursiveInvariant]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+class I(Generic[T]): ...
+
+class A(I[A]): ...
+class B(I[B]): ...
+
+a: A
+b: B
+reveal_type([a, b])  # N: Revealed type is "builtins.list[builtins.object*]"
+[builtins fixtures/list.pyi]
+
+[case testGenericJoinNestedInvariantAny]
+from typing import Any, Generic, TypeVar
+
+T = TypeVar("T")
+class I(Generic[T]): ...
+
+a: I[I[int]]
+b: I[I[Any]]
+reveal_type([a, b])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
+reveal_type([b, a])  # N: Revealed type is "builtins.list[__main__.I*[__main__.I[Any]]]"
 [builtins fixtures/list.pyi]

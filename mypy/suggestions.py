@@ -288,7 +288,7 @@ class SuggestionEngine:
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
-            self.builtin_type('builtins.function'))
+            self.named_type('builtins.function'))
 
     def get_starting_type(self, fdef: FuncDef) -> CallableType:
         if isinstance(fdef.type, CallableType):
@@ -344,14 +344,16 @@ class SuggestionEngine:
             types.append(arg_types)
         return types
 
-    def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
-        return [self.manager.all_types[arg.initializer] if arg.initializer else None
-                for arg in fdef.arguments]
+    def get_default_arg_types(self, fdef: FuncDef) -> List[Optional[Type]]:
+        return [
+            self.manager.all_types[arg.initializer] if arg.initializer else None
+            for arg in fdef.arguments
+        ]
 
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
             return typs
-        translator = StrToText(self.builtin_type)
+        translator = StrToText(self.named_type)
         return dedup(typs + [tp.accept(translator) for tp in typs])
 
     def get_guesses(self, is_method: bool, base: CallableType, defaults: List[Optional[Type]],
@@ -441,7 +443,7 @@ class SuggestionEngine:
             guesses = self.get_guesses(
                 is_method,
                 self.get_starting_type(node),
-                self.get_default_arg_types(graph[mod], node),
+                self.get_default_arg_types(node),
                 callsites,
                 uses,
             )
@@ -604,7 +606,7 @@ class SuggestionEngine:
 
             if not isinstance(typ, FunctionLike):
                 return None
-            for ct in typ.items():
+            for ct in typ.items:
                 if not (len(ct.arg_types) == 1
                         and isinstance(ct.arg_types[0], TypeVarType)
                         and ct.arg_types[0] == ct.ret_type):
@@ -632,11 +634,8 @@ class SuggestionEngine:
         finally:
             func.unanalyzed_type = old
 
-    def reload(self, state: State, check_errors: bool = False) -> List[str]:
-        """Recheck the module given by state.
-
-        If check_errors is true, raise an exception if there are errors.
-        """
+    def reload(self, state: State) -> List[str]:
+        """Recheck the module given by state."""
         assert state.path is not None
         self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])
@@ -648,8 +647,8 @@ class SuggestionEngine:
         assert state.tree is not None
         return state.tree
 
-    def builtin_type(self, s: str) -> Instance:
-        return self.manager.semantic_analyzer.builtin_type(s)
+    def named_type(self, s: str) -> Instance:
+        return self.manager.semantic_analyzer.named_type(s)
 
     def json_suggestion(self, mod: str, func_name: str, node: FuncDef,
                         suggestion: PyAnnotateSignature) -> str:
@@ -850,8 +849,8 @@ class TypeFormatter(TypeStrVisitor):
 
 
 class StrToText(TypeTranslator):
-    def __init__(self, builtin_type: Callable[[str], Instance]) -> None:
-        self.text_type = builtin_type('builtins.unicode')
+    def __init__(self, named_type: Callable[[str], Instance]) -> None:
+        self.text_type = named_type('builtins.unicode')
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         exp_t = get_proper_type(t)

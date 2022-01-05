@@ -145,39 +145,76 @@ MypyFile:1(
 
 [case testNamedTupleWithTooFewArguments]
 from collections import namedtuple
-N = namedtuple('N') # E: Too few arguments for namedtuple()
+N = namedtuple('N') # E: Too few arguments for "namedtuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidName]
 from collections import namedtuple
-N = namedtuple(1, ['x']) # E: namedtuple() expects a string literal as the first argument
+N = namedtuple(1, ['x']) # E: "namedtuple()" expects a string literal as the first argument
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems]
 from collections import namedtuple
-N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to namedtuple()
+N = namedtuple('N', 1) # E: List or tuple literal expected as the second argument to "namedtuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithInvalidItems2]
 from collections import namedtuple
-N = namedtuple('N', ['x', 1]) # E: String literal expected as namedtuple() item
+N = namedtuple('N', ['x', 1]) # E: String literal expected as "namedtuple()" item
 [builtins fixtures/tuple.pyi]
 
 [case testNamedTupleWithUnderscoreItemName]
 from collections import namedtuple
-N = namedtuple('N', ['_fallback']) # E: namedtuple() field names cannot start with an underscore: _fallback
+N = namedtuple('N', ['_fallback']) # E: "namedtuple()" field names cannot start with an underscore: _fallback
 [builtins fixtures/tuple.pyi]
 
 -- NOTE: The following code works at runtime but is not yet supported by mypy.
 --       Keyword arguments may potentially be supported in the future.
 [case testNamedTupleWithNonpositionalArgs]
 from collections import namedtuple
-N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to namedtuple()
+N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to "namedtuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithTooFewArguments]
+from typing import NamedTuple
+N = NamedTuple('N') # E: Too few arguments for "NamedTuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithManyArguments]
+from typing import NamedTuple
+N = NamedTuple('N', [], []) # E: Too many arguments for "NamedTuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithInvalidName]
+from typing import NamedTuple
+N = NamedTuple(1, ['x']) # E: "NamedTuple()" expects a string literal as the first argument
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithInvalidItems]
+from typing import NamedTuple
+N = NamedTuple('N', 1) # E: List or tuple literal expected as the second argument to "NamedTuple()"
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithUnderscoreItemName]
+from typing import NamedTuple
+N = NamedTuple('N', [('_fallback', int)]) # E: "NamedTuple()" field names cannot start with an underscore: _fallback
+[builtins fixtures/tuple.pyi]
+
+[case testTypingNamedTupleWithUnexpectedNames]
+from typing import NamedTuple
+N = NamedTuple(name='N', fields=[]) # E: Unexpected arguments to "NamedTuple()"
+[builtins fixtures/tuple.pyi]
+
+-- NOTE: The following code works at runtime but is not yet supported by mypy.
+--       Keyword arguments may potentially be supported in the future.
+[case testNamedTupleWithNonpositionalArgs2]
+from collections import namedtuple
+N = namedtuple(typename='N', field_names=['x']) # E: Unexpected arguments to "namedtuple()"
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidNamedTupleBaseClass]
 from typing import NamedTuple
-class A(NamedTuple('N', [1])): pass # E: Tuple expected as NamedTuple() field
+class A(NamedTuple('N', [1])): pass # E: Tuple expected as "NamedTuple()" field
 class B(A): pass
 [builtins fixtures/tuple.pyi]
 

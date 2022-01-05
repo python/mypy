@@ -631,3 +631,74 @@ def g(s: S) -> Callable[[S], None]: ...
 def f(x: S) -> None:
     h = g(x)
     h(x)
+
+[case testTypeVarWithTypedDictBoundInIndexExpression]
+from typing import TypeVar
+from typing_extensions import TypedDict
+
+class Data(TypedDict):
+    x: int
+
+
+T = TypeVar("T", bound=Data)
+
+
+def f(data: T) -> None:
+    reveal_type(data["x"]) # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarWithUnionTypedDictBoundInIndexExpression]
+from typing import TypeVar, Union, Dict
+from typing_extensions import TypedDict
+
+class Data(TypedDict):
+    x: int
+
+
+T = TypeVar("T", bound=Union[Data, Dict[str, str]])
+
+
+def f(data: T) -> None:
+    reveal_type(data["x"]) # N: Revealed type is "Union[builtins.int, builtins.str*]"
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testTypeVarWithTypedDictValueInIndexExpression]
+from typing import TypeVar, Union, Dict
+from typing_extensions import TypedDict
+
+class Data(TypedDict):
+    x: int
+
+
+T = TypeVar("T", Data, Dict[str, str])
+
+
+def f(data: T) -> None:
+    _: Union[str, int] = data["x"]
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testSelfTypeVarIndexExpr]
+from typing import TypeVar, Union, Type
+from typing_extensions import TypedDict
+
+T = TypeVar("T", bound="Indexable")
+
+class Indexable:
+    def __init__(self, index: str) -> None:
+        self.index = index 
+
+    def __getitem__(self: T, index: str) -> T:
+        return self._new_instance(index)
+
+    @classmethod
+    def _new_instance(cls: Type[T], index: str) -> T:
+        return cls("foo")
+
+    def m(self: T) -> T:
+        return self["foo"]
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]

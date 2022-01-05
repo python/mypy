@@ -18,7 +18,7 @@ root_dir = os.path.normpath(PREFIX)
 
 # File modify/create operation: copy module contents from source_path.
 UpdateFile = NamedTuple('UpdateFile', [('module', str),
-                                       ('source_path', str),
+                                       ('content', str),
                                        ('target_path', str)])
 
 # File delete operation: delete module file.
@@ -114,9 +114,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                 if arg == 'skip-path-normalization':
                     normalize_output = False
                 if arg.startswith("version"):
-                    if arg[7:9] != ">=":
+                    compare_op = arg[7:9]
+                    if compare_op not in {">=", "=="}:
                         raise ValueError(
-                            "{}, line {}: Only >= version checks are currently supported".format(
+                            "{}, line {}: Only >= and == version checks are currently supported"
+                            .format(
                                 case.file, item.line
                             )
                         )
@@ -127,9 +129,17 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                         raise ValueError(
                             '{}, line {}: "{}" is not a valid python version'.format(
                                 case.file, item.line, version_str))
-                    if not sys.version_info >= version:
-                        version_check = False
-
+                    if compare_op == ">=":
+                        version_check = sys.version_info >= version
+                    elif compare_op == "==":
+                        if not 1 < len(version) < 4:
+                            raise ValueError(
+                                '{}, line {}: Only minor or patch version checks '
+                                'are currently supported with "==": "{}"'.format(
+                                    case.file, item.line, version_str
+                                )
+                            )
+                        version_check = sys.version_info[:len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == '\\' and normalize_output:
@@ -247,7 +257,9 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
-        suite = self.parent.obj()
+        parent = self.getparent(DataSuiteCollector)
+        assert parent is not None, 'Should not happen'
+        suite = parent.obj()
         suite.setup()
         try:
             suite.run_case(self)
@@ -270,11 +282,35 @@ class DataDrivenTestCase(pytest.Item):
         self.tmpdir = tempfile.TemporaryDirectory(prefix='mypy-test-')
         os.chdir(self.tmpdir.name)
         os.mkdir(test_temp_dir)
+
+        # Precalculate steps for find_steps()
+        steps: Dict[int, List[FileOperation]] = {}
+
         for path, content in self.files:
-            dir = os.path.dirname(path)
-            os.makedirs(dir, exist_ok=True)
-            with open(path, 'w', encoding='utf8') as f:
-                f.write(content)
+            m = re.match(r'.*\.([0-9]+)$', path)
+            if m:
+                # Skip writing subsequent incremental steps - rather
+                # store them as operations.
+                num = int(m.group(1))
+                assert num >= 2
+                target_path = re.sub(r'\.[0-9]+$', '', path)
+                module = module_from_path(target_path)
+                operation = UpdateFile(module, content, target_path)
+                steps.setdefault(num, []).append(operation)
+            else:
+                # Write the first incremental steps
+                dir = os.path.dirname(path)
+                os.makedirs(dir, exist_ok=True)
+                with open(path, 'w', encoding='utf8') as f:
+                    f.write(content)
+
+        for num, paths in self.deleted_paths.items():
+            assert num >= 2
+            for path in paths:
+                module = module_from_path(path)
+                steps.setdefault(num, []).append(DeleteFile(module, path))
+        max_step = max(steps) if steps else 2
+        self.steps = [steps.get(num, []) for num in range(2, max_step + 1)]
 
     def teardown(self) -> None:
         assert self.old_cwd is not None and self.tmpdir is not None, \
@@ -312,23 +348,7 @@ class DataDrivenTestCase(pytest.Item):
 
         Defaults to having two steps if there aern't any operations.
         """
-        steps: Dict[int, List[FileOperation]] = {}
-        for path, _ in self.files:
-            m = re.match(r'.*\.([0-9]+)$', path)
-            if m:
-                num = int(m.group(1))
-                assert num >= 2
-                target_path = re.sub(r'\.[0-9]+$', '', path)
-                module = module_from_path(target_path)
-                operation = UpdateFile(module, path, target_path)
-                steps.setdefault(num, []).append(operation)
-        for num, paths in self.deleted_paths.items():
-            assert num >= 2
-            for path in paths:
-                module = module_from_path(path)
-                steps.setdefault(num, []).append(DeleteFile(module, path))
-        max_step = max(steps) if steps else 2
-        return [steps.get(num, []) for num in range(2, max_step + 1)]
+        return self.steps
 
 
 def module_from_path(path: str) -> str:
@@ -542,12 +562,12 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
             return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
+                parent=collector, name=name,
             )
     return None
 
 
-def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
+def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                      file: str) -> Iterator['DataDrivenTestCase']:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
@@ -568,8 +588,13 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
+    test_names = set()
     for i in range(1, len(cases), NUM_GROUPS):
         name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
+        if name in test_names:
+            raise RuntimeError('Found a duplicate test name "{}" in {} on line {}'.format(
+                name, parent.name, line_no,
+            ))
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
@@ -586,9 +611,12 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
         )
         line_no += data.count('\n') + 1
 
+        # Record existing tests to prevent duplicates:
+        test_names.update({name})
+
 
 class DataSuiteCollector(pytest.Class):
-    def collect(self) -> Iterator[pytest.Item]:
+    def collect(self) -> Iterator['DataFileCollector']:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
@@ -597,8 +625,32 @@ class DataSuiteCollector(pytest.Class):
         assert os.path.isdir(suite.data_prefix), \
             'Test data prefix ({}) not set correctly'.format(suite.data_prefix)
 
-        for f in suite.files:
-            yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
+        for data_file in suite.files:
+            yield DataFileCollector.from_parent(parent=self, name=data_file)
+
+
+class DataFileCollector(pytest.Collector):
+    """Represents a single `.test` data driven test file.
+
+    More context: https://github.com/python/mypy/issues/11662
+    """
+    parent: DataSuiteCollector
+
+    @classmethod  # We have to fight with pytest here:
+    def from_parent(  # type: ignore[override]
+        cls,
+        parent: DataSuiteCollector,
+        *,
+        name: str,
+    ) -> 'DataFileCollector':
+        return super().from_parent(parent, name=name)
+
+    def collect(self) -> Iterator['DataDrivenTestCase']:
+        yield from split_test_cases(
+            parent=self,
+            suite=self.parent.obj,
+            file=os.path.join(self.parent.obj.data_prefix, self.name),
+        )
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:

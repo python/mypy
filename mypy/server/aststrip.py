@@ -34,6 +34,7 @@ Notes:
 import contextlib
 from typing import Union, Iterator, Optional, Dict, Tuple
 
+from mypy.backports import nullcontext
 from mypy.nodes import (
     FuncDef, NameExpr, MemberExpr, RefExpr, MypyFile, ClassDef, AssignmentStmt,
     ImportFrom, CallExpr, Decorator, OverloadedFuncDef, Node, TupleExpr, ListExpr,
@@ -138,7 +139,7 @@ class NodeStripVisitor(TraverserVisitor):
             # See also #4814.
             assert isinstance(node.type, CallableType)
             node.type.variables = []
-        with self.enter_method(node.info) if node.info else nothing():
+        with self.enter_method(node.info) if node.info else nullcontext():
             super().visit_func_def(node)
 
     def visit_decorator(self, node: Decorator) -> None:
@@ -247,8 +248,3 @@ class NodeStripVisitor(TraverserVisitor):
         yield
         self.type = old_type
         self.is_class_body = old_is_class_body
-
-
-@contextlib.contextmanager
-def nothing() -> Iterator[None]:
-    yield

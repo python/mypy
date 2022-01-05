@@ -16,7 +16,7 @@ from typing import Callable, Optional, Dict, Tuple, List
 
 from mypy.nodes import (
     CallExpr, RefExpr, MemberExpr, NameExpr, TupleExpr, GeneratorExpr,
-    ListExpr, DictExpr, StrExpr, ARG_POS
+    ListExpr, DictExpr, StrExpr, IntExpr, ARG_POS, ARG_NAMED, Expression
 )
 from mypy.types import AnyType, TypeOfAny
 
@@ -25,17 +25,16 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, c_pyssize_t_rprimitive, is_dict_rprimitive
+    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_format_call, join_formatted_strings, convert_expr
+    tokenizer_format_call, join_formatted_strings, convert_format_expr_to_str, FormatOp
 )
 from mypyc.primitives.dict_ops import (
     dict_keys_op, dict_values_op, dict_items_op, dict_setdefault_spec_init_op
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
-from mypyc.primitives.str_ops import str_op, str_build_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
@@ -56,6 +55,34 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 # Specializers can operate on methods as well, and are keyed on the
 # name and RType in that case.
 specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
+
+
+def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
+                          name: Optional[str], typ: Optional[RType] = None) -> Optional[Value]:
+    # TODO: Allow special cases to have default args or named args. Currently they don't since
+    #       they check that everything in arg_kinds is ARG_POS.
+
+    # If there is a specializer for this function, try calling it.
+    # Return the first successful one.
+    if name and (name, typ) in specializers:
+        for specializer in specializers[name, typ]:
+            val = specializer(builder, expr, callee)
+            if val is not None:
+                return val
+    return None
+
+
+def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr,
+                                  callee: RefExpr) -> Optional[Value]:
+    """Invoke the Specializer callback for a function if one has been registered"""
+    return _apply_specialization(builder, expr, callee, callee.fullname)
+
+
+def apply_method_specialization(builder: 'IRBuilder', expr: CallExpr, callee: MemberExpr,
+                                typ: Optional[RType] = None) -> Optional[Value]:
+    """Invoke the Specializer callback for a method if one has been registered"""
+    name = callee.fullname if typ is None else callee.name
+    return _apply_specialization(builder, expr, callee, name, typ)
 
 
 def specialize_function(
@@ -186,10 +213,37 @@ def translate_set_from_generator_call(
     return None
 
 
+@specialize_function('builtins.min')
+@specialize_function('builtins.max')
+def faster_min_max(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    if expr.arg_kinds == [ARG_POS, ARG_POS]:
+        x, y = builder.accept(expr.args[0]), builder.accept(expr.args[1])
+        result = Register(builder.node_type(expr))
+        # CPython evaluates arguments reversely when calling min(...) or max(...)
+        if callee.fullname == 'builtins.min':
+            comparison = builder.binary_op(y, x, '<', expr.line)
+        else:
+            comparison = builder.binary_op(y, x, '>', expr.line)
+
+        true_block, false_block, next_block = BasicBlock(), BasicBlock(), BasicBlock()
+        builder.add_bool_branch(comparison, true_block, false_block)
+
+        builder.activate_block(true_block)
+        builder.assign(result, builder.coerce(y, result.type, expr.line), expr.line)
+        builder.goto(next_block)
+
+        builder.activate_block(false_block)
+        builder.assign(result, builder.coerce(x, result.type, expr.line), expr.line)
+        builder.goto(next_block)
+
+        builder.activate_block(next_block)
+        return result
+    return None
+
+
 @specialize_function('builtins.tuple')
 @specialize_function('builtins.frozenset')
 @specialize_function('builtins.dict')
-@specialize_function('builtins.sum')
 @specialize_function('builtins.min')
 @specialize_function('builtins.max')
 @specialize_function('builtins.sorted')
@@ -267,11 +321,48 @@ def any_all_helper(builder: IRBuilder,
     return retval
 
 
+@specialize_function('builtins.sum')
+def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
+    # specialized implementation is used if:
+    # - only one or two arguments given (if not, sum() has been given invalid arguments)
+    # - first argument is a Generator (there is no benefit to optimizing the performance of eg.
+    #   sum([1, 2, 3]), so non-Generator Iterables are not handled)
+    if not (len(expr.args) in (1, 2)
+            and expr.arg_kinds[0] == ARG_POS
+            and isinstance(expr.args[0], GeneratorExpr)):
+        return None
+
+    # handle 'start' argument, if given
+    if len(expr.args) == 2:
+        # ensure call to sum() was properly constructed
+        if not expr.arg_kinds[1] in (ARG_POS, ARG_NAMED):
+            return None
+        start_expr = expr.args[1]
+    else:
+        start_expr = IntExpr(0)
+
+    gen_expr = expr.args[0]
+    target_type = builder.node_type(expr)
+    retval = Register(target_type)
+    builder.assign(retval, builder.coerce(builder.accept(start_expr), target_type, -1), -1)
+
+    def gen_inner_stmts() -> None:
+        call_expr = builder.accept(gen_expr.left_expr)
+        builder.assign(retval, builder.binary_op(retval, call_expr, '+', -1), -1)
+
+    loop_params = list(zip(gen_expr.indices, gen_expr.sequences, gen_expr.condlists))
+    comprehension_helper(builder, loop_params, gen_inner_stmts, gen_expr.line)
+
+    return retval
+
+
 @specialize_function('dataclasses.field')
+@specialize_function('attr.ib')
+@specialize_function('attr.attrib')
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    """Special case for 'dataclasses.field' and 'attr.Factory'
+    """Special case for 'dataclasses.field', 'attr.attrib', and 'attr.Factory'
     function calls because the results of such calls are type-checked
     by mypy using the types of the arguments to their respective
     functions, resulting in attempted coercions by mypyc that throw a
@@ -296,12 +387,8 @@ def translate_next_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> 
         return None
 
     gen = expr.args[0]
-
     retval = Register(builder.node_type(expr))
-    default_val = None
-    if len(expr.args) > 1:
-        default_val = builder.accept(expr.args[1])
-
+    default_val = builder.accept(expr.args[1]) if len(expr.args) > 1 else None
     exit_block = BasicBlock()
 
     def gen_inner_stmts() -> None:
@@ -399,7 +486,7 @@ def translate_str_format(
             return None
         literals, format_ops = tokens
         # Convert variables to strings
-        substitutions = convert_expr(builder, format_ops, expr.args, expr.line)
+        substitutions = convert_format_expr_to_str(builder, format_ops, expr.args, expr.line)
         if substitutions is None:
             return None
         return join_formatted_strings(builder, literals, substitutions, expr.line)
@@ -434,18 +521,20 @@ def translate_fstring(
             else:
                 return None
 
-        result_list: List[Value] = [Integer(0, c_pyssize_t_rprimitive)]
+        format_ops = []
+        exprs: List[Expression] = []
+
         for item in expr.args[0].items:
             if isinstance(item, StrExpr) and item.value != '':
-                result_list.append(builder.accept(item))
+                format_ops.append(FormatOp.STR)
+                exprs.append(item)
             elif isinstance(item, CallExpr):
-                result_list.append(builder.call_c(str_op,
-                                                  [builder.accept(item.args[0])],
-                                                  expr.line))
+                format_ops.append(FormatOp.STR)
+                exprs.append(item.args[0])
 
-        if len(result_list) == 1:
-            return builder.load_str("")
+        substitutions = convert_format_expr_to_str(builder, format_ops, exprs, expr.line)
+        if substitutions is None:
+            return None
 
-        result_list[0] = Integer(len(result_list) - 1, c_pyssize_t_rprimitive)
-        return builder.call_c(str_build_op, result_list, expr.line)
+        return join_formatted_strings(builder, None, substitutions, expr.line)
     return None

@@ -1,10 +1,11 @@
 from typing import Sequence
 
 from mypy.types import (
-    Type, TypeGuardType, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
+    Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType)
+    ProperType, get_proper_type, TypeAliasType, ParamSpecType
+)
 from mypy.typeops import tuple_fallback, make_simplified_union
 
 
@@ -96,6 +97,11 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return (isinstance(self.right, TypeVarType) and
                 left.id == self.right.id)
 
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        # Ignore upper bound since it's derived from flavor.
+        return (isinstance(self.right, ParamSpecType) and
+                left.id == self.right.id and left.flavor == self.right.flavor)
+
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
         if isinstance(self.right, CallableType):
@@ -151,15 +157,9 @@ class SameTypeVisitor(TypeVisitor[bool]):
         else:
             return False
 
-    def visit_type_guard_type(self, left: TypeGuardType) -> bool:
-        if isinstance(self.right, TypeGuardType):
-            return is_same_type(left.type_guard, self.right.type_guard)
-        else:
-            return False
-
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

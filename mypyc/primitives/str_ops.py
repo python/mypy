@@ -6,7 +6,7 @@ from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType, object_rprimitive, str_rprimitive, int_rprimitive, list_rprimitive,
     c_int_rprimitive, pointer_rprimitive, bool_rprimitive, bit_rprimitive,
-    c_pyssize_t_rprimitive
+    c_pyssize_t_rprimitive, bytes_rprimitive
 )
 from mypyc.primitives.registry import (
     method_op, binary_op, function_op,
@@ -144,11 +144,62 @@ str_check_if_true = custom_op(
     arg_types=[str_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyStr_IsTrue',
-    error_kind=ERR_NEVER,
-)
+    error_kind=ERR_NEVER)
 
 str_ssize_t_size_op = custom_op(
     arg_types=[str_rprimitive],
     return_type=c_pyssize_t_rprimitive,
     c_function_name='CPyStr_Size_size_t',
     error_kind=ERR_NEG_INT)
+
+# obj.decode()
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_Decode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive), (0, pointer_rprimitive)])
+
+# obj.decode(encoding)
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_Decode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive)])
+
+# obj.decode(encoding, errors)
+method_op(
+    name='decode',
+    arg_types=[bytes_rprimitive, str_rprimitive, str_rprimitive],
+    return_type=str_rprimitive,
+    c_function_name='CPy_Decode',
+    error_kind=ERR_MAGIC)
+
+# str.encode()
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive), (0, pointer_rprimitive)])
+
+# str.encode(encoding)
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive, str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC,
+    extra_int_constants=[(0, pointer_rprimitive)])
+
+# str.encode(encoding, errors)
+method_op(
+    name='encode',
+    arg_types=[str_rprimitive, str_rprimitive, str_rprimitive],
+    return_type=bytes_rprimitive,
+    c_function_name='CPy_Encode',
+    error_kind=ERR_MAGIC)

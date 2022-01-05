@@ -27,10 +27,16 @@ class A:
         # type: (str) -> None
         pass
 
+class B:
+    def write(self):
+        # type: () -> int
+        pass
+
 print >>A(), ''
 print >>None, ''
 print >>1, '' # E: "int" has no attribute "write"
 print >>(None + ''), None # E: Unsupported left operand type for + ("None")
+print >> B(), ''  # E: Argument "file" to "print" has incompatible type "def () -> builtins.int"; expected "def (builtins.str) -> Any"
 
 [case testDivision]
 class A:

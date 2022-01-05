@@ -1,0 +1,7 @@
+[case testMatchStatementNotSupported]
+# flags: --python-version 3.10
+match str():  # E: Match statement is not supported
+    case 'x':
+        1 + ''
+    case _:
+        1 + b''

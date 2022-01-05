@@ -178,6 +178,67 @@ reveal_type(g)  # N: Revealed type is "Any"
 reveal_type(h)  # N: Revealed type is "def (*Any, **Any) -> Any"
 reveal_type(i)  # N: Revealed type is "Any"
 
+[case testDisallowUntypedDecoratorsCallableInstanceDecoratedCall]
+# flags: --disallow-untyped-decorators
+from typing import Callable, TypeVar
+
+C = TypeVar('C', bound=Callable)
+
+def typed_decorator(c: C) -> C:
+    return c
+
+def untyped_decorator(c):
+    return c
+
+class TypedDecorator:
+    @typed_decorator
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator1:
+    @untyped_decorator
+    def __call__(self, c):
+        return function
+
+class UntypedDecorator2:
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator3:
+    @typed_decorator
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+class UntypedDecorator4:
+    @untyped_decorator  # E: Untyped decorator makes function "__call__" untyped
+    @typed_decorator
+    def __call__(self, c: Callable) -> Callable:
+        return function
+
+@TypedDecorator()
+def f() -> None: pass
+
+@UntypedDecorator1()  # E: Untyped decorator makes function "g1" untyped
+def g1() -> None: pass
+
+@UntypedDecorator2()  # E: Untyped decorator makes function "g2" untyped
+def g2() -> None: pass
+
+@UntypedDecorator3()  # E: Untyped decorator makes function "g3" untyped
+def g3() -> None: pass
+
+@UntypedDecorator4()  # E: Untyped decorator makes function "g4" untyped
+def g4() -> None: pass
+
+reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(g1)  # N: Revealed type is "Any"
+reveal_type(g2)  # N: Revealed type is "Any"
+reveal_type(g3)  # N: Revealed type is "Any"
+reveal_type(g4)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
 [case testDisallowUntypedDecoratorsNonCallableInstance]
 # flags: --disallow-untyped-decorators
 class Decorator:
@@ -1193,6 +1254,8 @@ import attr
 class Unannotated:
     foo = attr.ib()
 
+[builtins fixtures/attr.pyi]
+
 [case testDisallowIncompleteDefsAttrsWithAnnotations]
 # flags: --disallow-incomplete-defs
 import attr
@@ -1200,6 +1263,8 @@ import attr
 @attr.s()
 class Annotated:
     bar: int = attr.ib()
+
+[builtins fixtures/attr.pyi]
 
 [case testDisallowIncompleteDefsAttrsPartialAnnotations]
 # flags: --disallow-incomplete-defs
@@ -1209,6 +1274,8 @@ import attr
 class PartiallyAnnotated:  # E: Function is missing a type annotation for one or more arguments
     bar: int = attr.ib()
     baz = attr.ib()
+
+[builtins fixtures/attr.pyi]
 
 [case testAlwaysTrueAlwaysFalseFlags]
 # flags: --always-true=YOLO --always-true=YOLO1 --always-false=BLAH1 --always-false BLAH --ignore-missing-imports
@@ -1495,17 +1562,7 @@ __all__ = ('b',)
 [out]
 main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
-[case testNoImplicitReexportStarConsideredImplicit]
-# flags: --no-implicit-reexport
-from other_module_2 import a
-[file other_module_1.py]
-a = 5
-[file other_module_2.py]
-from other_module_1 import *
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
-
-[case testNoImplicitReexportStarCanBeReexportedWithAll]
+[case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
 from other_module_2 import a
 from other_module_2 import b
@@ -1516,8 +1573,16 @@ b = 6
 from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+
+[case testNoImplicitReexportGetAttr]
+# flags: --no-implicit-reexport --python-version 3.7
+from other_module_2 import a  # E: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
+[file other_module_1.py]
+from typing import Any
+def __getattr__(name: str) -> Any: ...
+[file other_module_2.py]
+from other_module_1 import a
+[builtins fixtures/tuple.pyi]
 
 [case textNoImplicitReexportSuggestions]
 # flags: --no-implicit-reexport

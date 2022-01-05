@@ -18,7 +18,7 @@ from mypyc.common import PROPSET_PREFIX
 # vtable.
 #
 # This makes multiple inheritance tricky, since obviously we cannot be
-# an extension of multiple parent classes. We solve this by requriing
+# an extension of multiple parent classes. We solve this by requiring
 # all but one parent to be "traits", which we can operate on in a
 # somewhat less efficient way. For each trait implemented by a class,
 # we generate a separate vtable for the methods in that trait.
@@ -86,14 +86,13 @@ class ClassIR:
 
     def __init__(self, name: str, module_name: str, is_trait: bool = False,
                  is_generated: bool = False, is_abstract: bool = False,
-                 is_ext_class: bool = True, is_nested_func: bool = False) -> None:
+                 is_ext_class: bool = True) -> None:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
-        self.is_nested_func = is_nested_func
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -103,6 +102,9 @@ class ClassIR:
         self.has_dict = False
         # Do we allow interpreted subclasses? Derived from a mypyc_attr.
         self.allow_interpreted_subclasses = False
+        # Does this class need getseters to be generated for its attributes? (getseters are also
+        # added if is_generated is False)
+        self.needs_getseters = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -119,7 +121,7 @@ class ClassIR:
         # Map of methods that are actually present in an extension class
         self.methods: OrderedDict[str, FuncIR] = OrderedDict()
         # Glue methods for boxing/unboxing when a class changes the type
-        # while overriding a method. Maps from (parent class overrided, method)
+        # while overriding a method. Maps from (parent class overridden, method)
         # to IR of glue method.
         self.glue_methods: Dict[Tuple[ClassIR, str], FuncIR] = OrderedDict()
 
@@ -149,6 +151,14 @@ class ClassIR:
         # Direct subclasses of this class (use subclasses() to also include non-direct ones)
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
+
+    def __repr__(self) -> str:
+        return (
+            "ClassIR("
+            "name={self.name}, module_name={self.module_name}, "
+            "is_trait={self.is_trait}, is_generated={self.is_generated}, "
+            "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
+            ")".format(self=self))
 
     @property
     def fullname(self) -> str:
@@ -238,7 +248,7 @@ class ClassIR:
         return res[0] if res else None
 
     def subclasses(self) -> Optional[Set['ClassIR']]:
-        """Return all subclassses of this class, both direct and indirect.
+        """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
         because we are performing separate compilation.
@@ -264,7 +274,7 @@ class ClassIR:
             return None
         concrete = {c for c in subs if not (c.is_trait or c.is_abstract)}
         # We place classes with no children first because they are more likely
-        # to appear in various isinstance() checks. We then sort leafs by name
+        # to appear in various isinstance() checks. We then sort leaves by name
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 
@@ -276,11 +286,11 @@ class ClassIR:
             'is_ext_class': self.is_ext_class,
             'is_abstract': self.is_abstract,
             'is_generated': self.is_generated,
-            'is_nested_func': self.is_nested_func,
             'is_augmented': self.is_augmented,
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
             'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
+            'needs_getseters': self.needs_getseters,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -325,13 +335,13 @@ class ClassIR:
 
         ir.is_trait = data['is_trait']
         ir.is_generated = data['is_generated']
-        ir.is_nested_func = data['is_nested_func']
         ir.is_abstract = data['is_abstract']
         ir.is_ext_class = data['is_ext_class']
         ir.is_augmented = data['is_augmented']
         ir.inherits_python = data['inherits_python']
         ir.has_dict = data['has_dict']
         ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
+        ir.needs_getseters = data['needs_getseters']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(

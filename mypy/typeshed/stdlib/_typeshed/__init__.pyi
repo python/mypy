@@ -3,10 +3,11 @@
 # See the README.md file in this directory for more information.
 
 import array
+import ctypes
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Container, Iterable, Protocol, Tuple, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -26,10 +27,43 @@ Self = TypeVar("Self")  # noqa Y001
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
 
+# stable
+class SupportsNext(Protocol[_T_co]):
+    def __next__(self) -> _T_co: ...
+
+# stable
+class SupportsAnext(Protocol[_T_co]):
+    def __anext__(self) -> Awaitable[_T_co]: ...
+
 class SupportsLessThan(Protocol):
     def __lt__(self, __other: Any) -> bool: ...
 
 SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
+
+class SupportsGreaterThan(Protocol):
+    def __gt__(self, __other: Any) -> bool: ...
+
+SupportsGreaterThanT = TypeVar("SupportsGreaterThanT", bound=SupportsGreaterThan)  # noqa: Y001
+
+# Comparison protocols
+
+class SupportsDunderLT(Protocol):
+    def __lt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGT(Protocol):
+    def __gt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderLE(Protocol):
+    def __le__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGE(Protocol):
+    def __ge__(self, __other: Any) -> Any: ...
+
+class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
+
+SupportsRichComparison = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
+SupportsAnyComparison = Union[SupportsDunderLE, SupportsDunderGE, SupportsDunderGT, SupportsDunderLT]
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
@@ -41,11 +75,14 @@ class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
     def __getitem__(self, __k: int) -> _T_co: ...
 
+class SupportsTrunc(Protocol):
+    def __trunc__(self) -> int: ...
+
 # Mapping-like protocols
 
 # stable
 class SupportsItems(Protocol[_KT_co, _VT_co]):
-    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: ...
+    def items(self) -> AbstractSet[tuple[_KT_co, _VT_co]]: ...
 
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -156,8 +193,13 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
+ReadOnlyBuffer = bytes  # stable
+# Anything that implements the read-write buffer interface.
+# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
+# for it. Instead we have to list the most common stdlib buffer classes in a Union.
+WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, ctypes._CData]  # stable
+# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer = Union[ReadOnlyBuffer, WriteableBuffer]  # stable
 
 # stable
 if sys.version_info >= (3, 10):

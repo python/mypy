@@ -191,7 +191,7 @@ def g(a: A) -> int:
 <m.f1> -> m.g
 <m.f2> -> m.g
 
-[case testIndexExpr]
+[case testIndexExpr2]
 class A:
     def __getitem__(self, x: int) -> int: pass
 

@@ -79,7 +79,7 @@ dir/subdir/b.py:1: error: Name "undef" is not defined
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
-import a
+import pkg.a
 [file pkg/subdir/a.py]
 undef
 import pkg.a
@@ -306,13 +306,13 @@ mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (py
 [file mypy.ini]
 \[mypy]
 mypy_path =
-    foo:bar
-    , baz
-[file foo/foo.pyi]
+    foo_dir:bar_dir
+    , baz_dir
+[file foo_dir/foo.pyi]
 def foo(x: int) -> str: ...
-[file bar/bar.pyi]
+[file bar_dir/bar.pyi]
 def bar(x: str) -> list: ...
-[file baz/baz.pyi]
+[file baz_dir/baz.pyi]
 def baz(x: list) -> dict: ...
 [file file.py]
 import no_stubs
@@ -642,10 +642,6 @@ reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
 reveal_type(a**b) # N: Revealed type is "Any"
 reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
 reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
-a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
-            # N: Possible overload variants: \
-            # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \
-            # N:     def __pow__(self, int, Optional[int] = ...) -> Any
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -791,7 +787,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-\[mypy]]
+\[mypy]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
@@ -946,7 +942,13 @@ emarg/foo.py:1: error: Name "fail" is not defined
 emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
-# cmd: mypy --package-root= a/b/c.py main.py
+# cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootEmptyNamespacePackage]
+# cmd: mypy --namespace-packages --package-root= a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import a.b.c
@@ -1141,6 +1143,7 @@ import foo.bar
 1+'x'
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
+src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -1296,9 +1299,70 @@ pkg.py:1: error: "int" not callable
 1 + 2
 [out]
 
+[case testCmdlineNonInteractiveInstallTypesNoSitePackages]
+# cmd: mypy --install-types --non-interactive --no-site-packages -m pkg
+[out]
+error: --install-types not supported without python executable or site packages
+== Return code: 2
+
 [case testCmdlineInteractiveInstallTypesNothingToDo]
 # cmd: mypy --install-types -m pkg
 [file pkg.py]
 1()
 [out]
 pkg.py:1: error: "int" not callable
+
+[case testCmdlineExclude]
+# cmd: mypy --exclude abc .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineMultipleExclude]
+# cmd: mypy --exclude abc --exclude b/ .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = abc
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgMultipleExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = (?x)(
+    ^abc/
+    |^b/
+  )
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable

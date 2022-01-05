@@ -73,11 +73,11 @@ compiled code. For example, you may want to do interactive testing or
 to run benchmarks. This is also handy if you want to inspect the
 generated C code (see Inspecting Generated C).
 
-Run `scripts/mypyc` to compile a module to a C extension using your
+Run `mypyc` to compile a module to a C extension using your
 development version of mypyc:
 
 ```
-$ scripts/mypyc program.py
+$ mypyc program.py
 ```
 
 This will generate a C extension for `program` in the current working
