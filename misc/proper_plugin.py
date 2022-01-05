@@ -34,6 +34,9 @@ class ProperTypePlugin(Plugin):
 
 
 def isinstance_proper_hook(ctx: FunctionContext) -> Type:
+    if len(ctx.arg_types) != 2 or not ctx.arg_types[1]:
+        return ctx.default_return_type
+
     right = get_proper_type(ctx.arg_types[1][0])
     for arg in ctx.arg_types[0]:
         if (is_improper_type(arg) or
@@ -42,29 +45,36 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 return ctx.default_return_type
             ctx.api.fail('Never apply isinstance() to unexpanded types;'
                          ' use mypy.types.get_proper_type() first', ctx.context)
+            ctx.api.note('If you pass on the original type'  # type: ignore[attr-defined]
+                         ' after the check, always use its unexpanded version', ctx.context)
     return ctx.default_return_type
 
 
 def is_special_target(right: ProperType) -> bool:
     """Whitelist some special cases for use in isinstance() with improper types."""
     if isinstance(right, CallableType) and right.is_type_obj():
-        if right.type_object().fullname() == 'builtins.tuple':
+        if right.type_object().fullname == 'builtins.tuple':
             # Used with Union[Type, Tuple[Type, ...]].
             return True
-        if right.type_object().fullname() in ('mypy.types.Type',
-                                              'mypy.types.ProperType',
-                                              'mypy.types.TypeAliasType'):
+        if right.type_object().fullname in (
+            'mypy.types.Type',
+            'mypy.types.ProperType',
+            'mypy.types.TypeAliasType'
+        ):
             # Special case: things like assert isinstance(typ, ProperType) are always OK.
             return True
-        if right.type_object().fullname() in ('mypy.types.UnboundType',
-                                              'mypy.types.TypeVarType',
-                                              'mypy.types.RawExpressionType',
-                                              'mypy.types.EllipsisType',
-                                              'mypy.types.StarType',
-                                              'mypy.types.TypeList',
-                                              'mypy.types.CallableArgument',
-                                              'mypy.types.PartialType',
-                                              'mypy.types.ErasedType'):
+        if right.type_object().fullname in (
+            'mypy.types.UnboundType',
+            'mypy.types.TypeVarType',
+            'mypy.types.ParamSpecType',
+            'mypy.types.RawExpressionType',
+            'mypy.types.EllipsisType',
+            'mypy.types.StarType',
+            'mypy.types.TypeList',
+            'mypy.types.CallableArgument',
+            'mypy.types.PartialType',
+            'mypy.types.ErasedType'
+        ):
             # Special case: these are not valid targets for a type alias and thus safe.
             # TODO: introduce a SyntheticType base to simplify this?
             return True

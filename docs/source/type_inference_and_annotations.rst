@@ -12,7 +12,7 @@ static type of the value expression:
 .. code-block:: python
 
    i = 1           # Infer type "int" for i
-   l = [1, 2]      # Infer type "List[int]" for l
+   l = [1, 2]      # Infer type "list[int]" for l
 
 Type inference is not used in dynamically typed functions (those
 without a function type annotation) — every local variable type defaults
@@ -78,30 +78,39 @@ without some help:
 
 .. code-block:: python
 
-   l = []  # Error: Need type annotation for 'l'
+   l = []  # Error: Need type annotation for "l"
 
 In these cases you can give the type explicitly using a type annotation:
 
 .. code-block:: python
 
-   l: List[int] = []       # Create empty list with type List[int]
-   d: Dict[str, int] = {}  # Create empty dictionary (str -> int)
+   l: list[int] = []       # Create empty list with type list[int]
+   d: dict[str, int] = {}  # Create empty dictionary (str -> int)
 
 Similarly, you can also give an explicit type when creating an empty set:
 
 .. code-block:: python
 
-   s: Set[int] = set()
+   s: set[int] = set()
+
+.. note::
+
+   Using type arguments (e.g. ``list[int]``) on builtin collections like
+   :py:class:`list`,  :py:class:`dict`, :py:class:`tuple`, and  :py:class:`set`
+   only works in Python 3.9 and later. For Python 3.8 and earlier, you must use
+   :py:class:`~typing.List` (e.g. ``List[int]``), :py:class:`~typing.Dict`, and
+   so on.
+
 
 Compatibility of container types
 ********************************
 
-The following program generates a mypy error, since ``List[int]``
-is not compatible with ``List[object]``:
+The following program generates a mypy error, since ``list[int]``
+is not compatible with ``list[object]``:
 
 .. code-block:: python
 
-   def f(l: List[object], k: List[int]) -> None:
+   def f(l: list[object], k: list[int]) -> None:
        l = k  # Type check error: incompatible types in assignment
 
 The reason why the above assignment is disallowed is that allowing the
@@ -109,12 +118,12 @@ assignment could result in non-int values stored in a list of ``int``:
 
 .. code-block:: python
 
-   def f(l: List[object], k: List[int]) -> None:
+   def f(l: list[object], k: list[int]) -> None:
        l = k
        l.append('x')
-       print(k[-1])  # Ouch; a string in List[int]
+       print(k[-1])  # Ouch; a string in list[int]
 
-Other container types like :py:class:`~typing.Dict` and :py:class:`~typing.Set` behave similarly. We
+Other container types like :py:class:`dict` and :py:class:`set` behave similarly. We
 will discuss how you can work around this in :ref:`variance`.
 
 You can still run the above program; it prints ``x``. This illustrates
@@ -132,23 +141,23 @@ example, the following is valid:
 
 .. code-block:: python
 
-   def f(l: List[object]) -> None:
-       l = [1, 2]  # Infer type List[object] for [1, 2], not List[int]
+   def f(l: list[object]) -> None:
+       l = [1, 2]  # Infer type list[object] for [1, 2], not list[int]
 
 In an assignment, the type context is determined by the assignment
 target. In this case this is ``l``, which has the type
-``List[object]``. The value expression ``[1, 2]`` is type checked in
-this context and given the type ``List[object]``. In the previous
+``list[object]``. The value expression ``[1, 2]`` is type checked in
+this context and given the type ``list[object]``. In the previous
 example we introduced a new variable ``l``, and here the type context
 was empty.
 
 Declared argument types are also used for type context. In this program
-mypy knows that the empty list ``[]`` should have type ``List[int]`` based
+mypy knows that the empty list ``[]`` should have type ``list[int]`` based
 on the declared type of ``arg`` in ``foo``:
 
 .. code-block:: python
 
-    def foo(arg: List[int]) -> None:
+    def foo(arg: list[int]) -> None:
         print('Items:', ''.join(str(a) for a in arg))
 
     foo([])  # OK
@@ -159,10 +168,10 @@ in the following statement:
 
 .. code-block:: python
 
-    def foo(arg: List[int]) -> None:
+    def foo(arg: list[int]) -> None:
         print('Items:', ', '.join(arg))
 
-    a = []  # Error: Need type annotation for 'a'
+    a = []  # Error: Need type annotation for "a"
     foo(a)
 
 Working around the issue is easy by adding a type annotation:
@@ -170,7 +179,7 @@ Working around the issue is easy by adding a type annotation:
 .. code-block:: Python
 
     ...
-    a: List[int] = []  # OK
+    a: list[int] = []  # OK
     foo(a)
 
 Declaring multiple variable types at a time
@@ -182,17 +191,17 @@ must give each variable a type separately:
 
 .. code-block:: python
 
-   i, found = 0, False # type: int, bool
+   i, found = 0, False  # type: int, bool
 
 You can optionally use parentheses around the types, assignment targets
 and assigned expression:
 
 .. code-block:: python
 
-   i, found = 0, False # type: (int, bool)      # OK
-   (i, found) = 0, False # type: int, bool      # OK
-   i, found = (0, False) # type: int, bool      # OK
-   (i, found) = (0, False) # type: (int, bool)  # OK
+   i, found = 0, False  # type: (int, bool)      # OK
+   (i, found) = 0, False  # type: int, bool      # OK
+   i, found = (0, False)  # type: int, bool      # OK
+   (i, found) = (0, False)  # type: (int, bool)  # OK
 
 Starred expressions
 *******************
@@ -206,13 +215,77 @@ right-hand side of an assignment, but not always:
     p, q, *rs = 1, 2   # Error: Type of rs cannot be inferred
 
 On first line, the type of ``bs`` is inferred to be
-``List[int]``. However, on the second line, mypy cannot infer the type
+``list[int]``. However, on the second line, mypy cannot infer the type
 of ``rs``, because there is no right-hand side value for ``rs`` to
 infer the type from. In cases like these, the starred expression needs
 to be annotated with a starred type:
 
 .. code-block:: python
 
-    p, q, *rs = 1, 2  # type: int, int, List[int]
+    p, q, *rs = 1, 2  # type: int, int, list[int]
 
-Here, the type of ``rs`` is set to ``List[int]``.
+Here, the type of ``rs`` is set to ``list[int]``.
+
+Silencing type errors
+*********************
+
+You might want to disable type checking on specific lines, or within specific
+files in your codebase. To do that, you can use a ``# type: ignore`` comment.
+
+For example, say that the web framework that you use now takes an integer
+argument to ``run()``, which starts it on localhost on that port. Like so:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)
+
+However, the type stubs that the package uses is not up-to-date, and it still
+expects only ``str`` types for ``run()``. This would give you the following error:
+
+.. code-block:: text
+
+    error: Argument 1 to "run" of "A" has incompatible type "int"; expected "str"
+
+If you cannot directly fix the type stubs yourself, you can temporarily
+disable type checking on that line, by adding a ``# type: ignore``:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)  # type: ignore
+
+This will suppress any mypy errors that would have raised on that specific line.
+
+You should probably add some more information on the ``# type: ignore`` comment,
+to explain why the ignore was added in the first place. This could be a link to
+an issue on the repository responsible for the type stubs, or it could be a
+short explanation of the bug. To do that, use this format:
+
+.. code-block:: python
+
+    # Starting app on http://localhost:8000
+    app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
+
+
+Mypy displays an error code for each error if you use
+:option:`--show-error-codes <mypy --show-error-codes>`:
+
+.. code-block:: text
+
+   error: "str" has no attribute "trim"  [attr-defined]
+
+
+It is possible to add a specific error-code in your ignore comment (e.g.
+``# type: ignore[attr-defined]``) to clarify what's being silenced. You can
+find more information about error codes :ref:`here <silence-error-codes>`.
+
+Similarly, you can also ignore all mypy checks in a file, by adding a
+``# type: ignore`` at the top of the file:
+
+.. code-block:: python
+
+    # type: ignore
+    # This is a test file, skipping type checking in it.
+    import unittest
+    ...

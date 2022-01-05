@@ -1,7 +1,10 @@
 mypyc: Mypy to Python C Extension Compiler
 ==========================================
 
-*Mypyc is (mostly) not yet useful for general Python development.*
+**NOTE: We are in the process of moving the mypyc README to the**
+**[mypyc repository](https://github.com/mypyc/mypyc)**
+
+**This may be out of date!**
 
 Mypyc is a compiler that compiles mypy-annotated, statically typed
 Python modules into CPython C extensions. Currently our primary focus
@@ -20,8 +23,6 @@ semantics. This means (among some other things):
  * Monkey patching doesn't work
 
  * Instance attributes won't fall back to class attributes if undefined
-
- * Metaclasses not supported
 
  * Also there are still a bunch of bad bugs and unsupported features :)
 
@@ -59,9 +60,9 @@ Windows Requirements
 Quick Start for Contributors
 ----------------------------
 
-First clone the mypy git repository *and git submodules*:
+First clone the mypy git repository:
 
-    $ git clone --recurse-submodules https://github.com/python/mypy.git
+    $ git clone https://github.com/python/mypy.git
     $ cd mypy
 
 Optionally create a virtualenv (recommended):
@@ -75,15 +76,14 @@ Then install the dependencies:
 
 Now you can run the tests:
 
-    $ pytest mypyc
+    $ pytest -q mypyc
 
 Look at the [issue tracker](https://github.com/mypyc/mypyc/issues)
 for things to work on. Please express your interest in working on an
 issue by adding a comment before doing any significant work, since
-development is currently very active and there is real risk of duplicate
-work.
+there is a risk of duplicate work.
 
-Note that the issue tracker is still hosted on the mypyc project, not
+Note that the issue tracker is hosted on the mypyc GitHub project, not
 with mypy itself.
 
 Documentation
@@ -114,14 +114,13 @@ These are the current planned major milestones:
 
 6. [DONE] Release a version of mypy that includes a compiled mypy.
 
-7. 
+7.
     1. More feature/compatibility work. (100% compatibility with Python is distinctly
        an anti-goal, but more than we have now is a good idea.)
-    2. Support compiling Black, which is a prominent tool that could benefit
+    2. [DONE] Support compiling Black, which is a prominent tool that could benefit
        and has maintainer buy-in.
        (Let us know if you maintain another Python tool or library and are
        interested in working with us on this!)
-
     3. More optimization! Code size reductions in particular are likely to
        be valuable and will speed up mypyc compilation.
 

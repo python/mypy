@@ -108,23 +108,24 @@ The ``Any`` type is discussed in more detail in section :ref:`dynamic-typing`.
 Tuple types
 ***********
 
-The type ``Tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
+The type ``tuple[T1, ..., Tn]`` represents a tuple with the item types ``T1``, ..., ``Tn``:
 
 .. code-block:: python
 
-   def f(t: Tuple[int, str]) -> None:
+   # Use `typing.Tuple` in Python 3.8 and earlier
+   def f(t: tuple[int, str]) -> None:
        t = 1, 'foo'    # OK
        t = 'foo', 1    # Type check error
 
 A tuple type of this kind has exactly a specific number of items (2 in
 the above example). Tuples can also be used as immutable,
-varying-length sequences. You can use the type ``Tuple[T, ...]`` (with
+varying-length sequences. You can use the type ``tuple[T, ...]`` (with
 a literal ``...`` -- it's part of the syntax) for this
 purpose. Example:
 
 .. code-block:: python
 
-    def print_squared(t: Tuple[int, ...]) -> None:
+    def print_squared(t: tuple[int, ...]) -> None:
         for n in t:
             print(n, n ** 2)
 
@@ -134,12 +135,12 @@ purpose. Example:
 
 .. note::
 
-   Usually it's a better idea to use ``Sequence[T]`` instead of ``Tuple[T, ...]``, as
+   Usually it's a better idea to use ``Sequence[T]`` instead of ``tuple[T, ...]``, as
    :py:class:`~typing.Sequence` is also compatible with lists and other non-tuple sequences.
 
 .. note::
 
-   ``Tuple[...]`` is valid as a base class in Python 3.6 and later, and
+   ``tuple[...]`` is valid as a base class in Python 3.6 and later, and
    always in stub files. In earlier Python versions you can sometimes work around this
    limitation by using a named tuple as a base class (see section :ref:`named-tuples`).
 
@@ -194,7 +195,7 @@ using bidirectional type inference:
 
 .. code-block:: python
 
-   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as List[int]
+   l = map(lambda x: x + 1, [1, 2, 3])   # Infer x as int and l as list[int]
 
 If you want to give the argument or return value types explicitly, use
 an ordinary, perhaps nested function definition.
@@ -329,7 +330,7 @@ will complain about the possible ``None`` value. You can use
 
 When initializing a variable as ``None``, ``None`` is usually an
 empty place-holder value, and the actual value has a different type.
-This is why you need to annotate an attribute in a cases like the class
+This is why you need to annotate an attribute in cases like the class
 ``Resource`` above:
 
 .. code-block:: python
@@ -353,20 +354,16 @@ and ``None`` is used as a dummy, placeholder initializer:
 
 .. code-block:: python
 
-   from typing import List
-
    class Container:
-       items = None  # type: List[str]  # OK (only with type comment)
+       items = None  # type: list[str]  # OK (only with type comment)
 
 This is not a problem when using variable annotations, since no initializer
 is needed:
 
 .. code-block:: python
 
-   from typing import List
-
    class Container:
-       items: List[str]  # No initializer
+       items: list[str]  # No initializer
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
@@ -402,10 +399,29 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
     ``Optional[...]`` *does not* mean a function argument with a default value.
     However, if the default value of an argument is ``None``, you can use
     an optional type for the argument, but it's not enforced by default.
-    You can use the ``--no-implicit-optional`` command-line option to stop
+    You can use the :option:`--no-implicit-optional <mypy --no-implicit-optional>` command-line option to stop
     treating arguments with a ``None`` default value as having an implicit
     ``Optional[...]`` type. It's possible that this will become the default
     behavior in the future.
+
+.. _alternative_union_syntax:
+
+X | Y syntax for Unions
+-----------------------
+
+:pep:`604` introduced an alternative way for spelling union types. In Python
+3.10 and later, you can write ``Union[int, str]`` as ``int | str``. It is
+possible to use this syntax in versions of Python where it isn't supported by
+the runtime with some limitations (see :ref:`runtime_troubles`).
+
+.. code-block:: python
+
+    t1: int | str  # equivalent to Union[int, str]
+
+    t2: int | None  # equivalent to Optional[int]
+
+    # Usable in type comments
+    t3 = 42  # type: int | str
 
 .. _no_strict_optional:
 
@@ -418,7 +434,7 @@ the Java ``null``). In this mode ``None`` is also valid for primitive
 types such as ``int`` and ``float``, and :py:data:`~typing.Optional` types are
 not required.
 
-The mode is enabled through the ``--no-strict-optional`` command-line
+The mode is enabled through the :option:`--no-strict-optional <mypy --no-strict-optional>` command-line
 option. In mypy versions before 0.600 this was the default mode. You
 can enable this option explicitly for backward compatibility with
 earlier mypy versions, in case you don't want to introduce optional
@@ -437,8 +453,8 @@ this example -- it's not recommended if you can avoid it:
 However, making code "optional clean" can take some work! You can also use
 :ref:`the mypy configuration file <config-file>` to migrate your code
 to strict optional checking one file at a time, since there exists
-the :ref:`per-module flag <config-file-none-and-optional-handling>`
-``strict_optional`` to control strict optional mode.
+the per-module flag
+:confval:`strict_optional` to control strict optional mode.
 
 Often it's still useful to document whether a variable can be
 ``None``. For example, this function accepts a ``None`` argument,
@@ -475,52 +491,6 @@ valid for any type, but it's much more
 useful for a programmer who is reading the code. This also makes
 it easier to migrate to strict ``None`` checking in the future.
 
-Class name forward references
-*****************************
-
-Python does not allow references to a class object before the class is
-defined. Thus this code does not work as expected:
-
-.. code-block:: python
-
-   def f(x: A) -> None:  # Error: Name A not defined
-       ...
-
-   class A:
-       ...
-
-In cases like these you can enter the type as a string literal — this
-is a *forward reference*:
-
-.. code-block:: python
-
-   def f(x: 'A') -> None:  # OK
-       ...
-
-   class A:
-       ...
-
-Of course, instead of using a string literal type, you could move the
-function definition after the class definition. This is not always
-desirable or even possible, though.
-
-Any type can be entered as a string literal, and you can combine
-string-literal types with non-string-literal types freely:
-
-.. code-block:: python
-
-   def f(a: List['A']) -> None: ...  # OK
-   def g(n: 'int') -> None: ...      # OK, though not useful
-
-   class A: pass
-
-String literal types are never needed in ``# type:`` comments.
-
-String literal types must be defined (or imported) later *in the same
-module*.  They cannot be used to leave cross-module references
-unresolved.  (For dealing with import cycles, see
-:ref:`import-cycles`.)
-
 .. _type-aliases:
 
 Type aliases
@@ -530,7 +500,7 @@ In certain situations, type names may end up being long and painful to type:
 
 .. code-block:: python
 
-   def f() -> Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]:
+   def f() -> Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]:
        ...
 
 When cases like this arise, you can define a type alias by simply
@@ -538,7 +508,7 @@ assigning the type to a variable:
 
 .. code-block:: python
 
-   AliasType = Union[List[Dict[Tuple[int, str], Set[int]]], Tuple[str, List[str]]]
+   AliasType = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
 
    # Now we can use AliasType in place of the full name:
 
@@ -550,6 +520,25 @@ assigning the type to a variable:
     A type alias does not create a new type. It's just a shorthand notation for
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
+
+Since Mypy 0.930 you can also use *explicit type aliases*, which were
+introduced in :pep:`613`.
+
+There can be confusion about exactly when an assignment defines an implicit type alias --
+for example, when the alias contains forward references, invalid types, or violates some other
+restrictions on type alias declarations.  Because the
+distinction between an unannotated variable and a type alias is implicit,
+ambiguous or incorrect type alias declarations default to defining
+a normal variable instead of a type alias.
+
+Explicit type aliases are unambiguous and can also improve readability by
+making the intent clear:
+
+.. code-block:: python
+
+   from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
+
+   AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
 
 .. _named-tuples:
 
@@ -590,6 +579,31 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
         y: int
 
     p = Point(x=1, y='x')  # Argument has incompatible type "str"; expected "int"
+
+.. note::
+
+  You can use the raw ``NamedTuple`` "pseudo-class" in type annotations
+  if any ``NamedTuple`` object is valid.
+
+  For example, it can be useful for deserialization:
+
+  .. code-block:: python
+
+    def deserialize_named_tuple(arg: NamedTuple) -> Dict[str, Any]:
+        return arg._asdict()
+
+    Point = namedtuple('Point', ['x', 'y'])
+    Person = NamedTuple('Person', [('name', str), ('age', int)])
+
+    deserialize_named_tuple(Point(x=1, y=2))  # ok
+    deserialize_named_tuple(Person(name='Nikita', age=18))  # ok
+
+    # Error: Argument 1 to "deserialize_named_tuple" has incompatible type
+    # "Tuple[int, int]"; expected "NamedTuple"
+    deserialize_named_tuple((1, 2))
+
+  Note that this behavior is highly experimental, non-standard,
+  and may not be supported by other type checkers and IDEs.
 
 .. _type-of-class:
 
@@ -711,9 +725,9 @@ so use :py:data:`~typing.AnyStr`:
    def concat(x: AnyStr, y: AnyStr) -> AnyStr:
        return x + y
 
-   concat('a', 'b')     # Okay
-   concat(b'a', b'b')   # Okay
-   concat('a', b'b')    # Error: cannot mix bytes and unicode
+   concat('foo', 'foo')     # Okay
+   concat(b'foo', b'foo')   # Okay
+   concat('foo', b'foo')    # Error: cannot mix bytes and unicode
 
 For more details, see :ref:`type-variable-value-restriction`.
 
@@ -727,7 +741,7 @@ For more details, see :ref:`type-variable-value-restriction`.
 Generators
 **********
 
-A basic generator that only yields values can be annotated as having a return
+A basic generator that only yields values can be succinctly annotated as having a return
 type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
 
 .. code-block:: python
@@ -736,9 +750,20 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
        for i in range(n):
            yield i * i
 
+A good rule of thumb is to annotate functions with the most specific return
+type possible. However, you should also take care to avoid leaking implementation
+details into a function's public API. In keeping with these two principles, prefer
+:py:class:`Iterator[YieldType] <typing.Iterator>` over
+:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a
+generator function, as it lets mypy know that users are able to call :py:func:`next` on
+the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
+sometimes be the better option, if you consider it an implementation detail that
+``next()`` can be called on the object returned by your function.
+
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
-a value, you should use the
-:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead. For example:
+a value, on the other hand, you should use the
+:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
+either ``Iterator`` or ``Iterable``. For example:
 
 .. code-block:: python
 
@@ -761,7 +786,7 @@ annotated the first example as the following:
        for i in range(n):
            yield i * i
 
-This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+This is slightly different from using ``Iterator[int]`` or ``Iterable[int]``,
 since generators have :py:meth:`~generator.close`, :py:meth:`~generator.send`, and :py:meth:`~generator.throw` methods that
-generic iterables don't. If you will call these methods on the returned
-generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterable` or :py:class:`~typing.Iterator`.
+generic iterators and iterables don't. If you plan to call these methods on the returned
+generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterator` or :py:class:`~typing.Iterable`.

@@ -1,20 +1,19 @@
 """Shared definitions used by different parts of semantic analysis."""
 
-from abc import abstractmethod, abstractproperty
+from abc import abstractmethod
 
 from typing import Optional, List, Callable
 from typing_extensions import Final
 from mypy_extensions import trait
 
 from mypy.nodes import (
-    Context, SymbolTableNode, MypyFile, ImportedName, FuncDef, Node, TypeInfo, Expression, GDEF,
+    Context, SymbolTableNode, FuncDef, Node, TypeInfo, Expression,
     SymbolNode, SymbolTable
 )
-from mypy.util import correct_relative_import
 from mypy.types import (
     Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
 )
-from mypy.tvar_scope import TypeVarScope
+from mypy.tvar_scope import TypeVarLikeScope
 from mypy.errorcodes import ErrorCode
 from mypy import join
 
@@ -22,7 +21,7 @@ from mypy import join
 # (after the main pass):
 
 # Fix fallbacks (does joins)
-PRIORITY_FALLBACKS = 1  # type: Final
+PRIORITY_FALLBACKS: Final = 1
 
 
 @trait
@@ -67,9 +66,20 @@ class SemanticAnalyzerCoreInterface:
         """Is a module or class namespace potentially missing some definitions?"""
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def final_iteration(self) -> bool:
         """Is this the final iteration of semantic analysis?"""
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_future_flag_set(self, flag: str) -> bool:
+        """Is the specific __future__ feature imported"""
+        raise NotImplementedError
+
+    @property
+    @abstractmethod
+    def is_stub_file(self) -> bool:
         raise NotImplementedError
 
 
@@ -90,11 +100,12 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         raise NotImplementedError
 
     @abstractmethod
-    def named_type(self, qualified_name: str, args: Optional[List[Type]] = None) -> Instance:
+    def named_type(self, fullname: str,
+                   args: Optional[List[Type]] = None) -> Instance:
         raise NotImplementedError
 
     @abstractmethod
-    def named_type_or_none(self, qualified_name: str,
+    def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         raise NotImplementedError
 
@@ -104,14 +115,15 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
 
     @abstractmethod
     def anal_type(self, t: Type, *,
-                  tvar_scope: Optional[TypeVarScope] = None,
+                  tvar_scope: Optional[TypeVarLikeScope] = None,
                   allow_tuple_literal: bool = False,
                   allow_unbound_tvars: bool = False,
+                  allow_required: bool = False,
                   report_invalid_types: bool = True) -> Optional[Type]:
         raise NotImplementedError
 
     @abstractmethod
-    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance) -> TypeInfo:
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
         raise NotImplementedError
 
     @abstractmethod
@@ -156,45 +168,29 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     def qualified_name(self, n: str) -> str:
         raise NotImplementedError
 
-    @abstractproperty
+    @property
+    @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
         raise NotImplementedError
 
-
-def create_indirect_imported_name(file_node: MypyFile,
-                                  module: str,
-                                  relative: int,
-                                  imported_name: str) -> Optional[SymbolTableNode]:
-    """Create symbol table entry for a name imported from another module.
-
-    These entries act as indirect references.
-    """
-    target_module, ok = correct_relative_import(
-        file_node.fullname(),
-        relative,
-        module,
-        file_node.is_package_init_file())
-    if not ok:
-        return None
-    target_name = '%s.%s' % (target_module, imported_name)
-    link = ImportedName(target_name)
-    # Use GDEF since this refers to a module-level definition.
-    return SymbolTableNode(GDEF, link)
+    @abstractmethod
+    def is_func_scope(self) -> bool:
+        raise NotImplementedError
 
 
 def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
     sig = get_proper_type(sig)
     if isinstance(sig, FunctionLike):
         if fdef.info:
-            if fdef.info.fullname() in TPDICT_FB_NAMES:
+            if fdef.info.fullname in TPDICT_FB_NAMES:
                 # Avoid exposing the internal _TypedDict name.
                 class_name = 'TypedDict'
             else:
-                class_name = fdef.info.name()
+                class_name = fdef.info.name
             return sig.with_name(
-                '{} of {}'.format(fdef.name(), class_name))
+                '{} of {}'.format(fdef.name, class_name))
         else:
-            return sig.with_name(fdef.name())
+            return sig.with_name(fdef.name)
     else:
         return sig
 
@@ -208,11 +204,11 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     Note that there is an apparent chicken and egg problem with respect
     to verifying type arguments against bounds. Verifying bounds might
     require fallbacks, but we might use the bounds to calculate the
-    fallbacks. In partice this is not a problem, since the worst that
+    fallbacks. In practice this is not a problem, since the worst that
     can happen is that we have invalid type argument values, and these
     can happen in later stages as well (they will generate errors, but
     we don't prevent their existence).
     """
     fallback = typ.partial_fallback
-    assert fallback.type.fullname() == 'builtins.tuple'
-    fallback.args[0] = join.join_type_list(list(typ.items))
+    assert fallback.type.fullname == 'builtins.tuple'
+    fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]

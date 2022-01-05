@@ -10,6 +10,7 @@ import subprocess
 import sys
 
 from typing import List
+from typing import Optional
 
 from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import DataDrivenTestCase, DataSuite
@@ -23,7 +24,9 @@ python3_path = sys.executable
 # Files containing test case descriptions.
 cmdline_files = [
     'cmdline.test',
+    'cmdline.pyproject.test',
     'reports.test',
+    'envvars.test',
 ]
 
 
@@ -45,18 +48,22 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
         for s in testcase.input:
             file.write('{}\n'.format(s))
     args = parse_args(testcase.input[0])
+    custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append('--show-traceback')
-    args.append('--no-site-packages')
     if '--error-summary' not in args:
         args.append('--no-error-summary')
     # Type check the program.
     fixed = [python3_path, '-m', 'mypy']
     env = os.environ.copy()
+    env.pop('COLUMNS', None)
     env['PYTHONPATH'] = PREFIX
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
-                               cwd=test_temp_dir,
+                               cwd=os.path.join(
+                                   test_temp_dir,
+                                   custom_cwd or ""
+                                   ),
                                env=env)
     outb, errb = process.communicate()
     result = process.returncode
@@ -112,3 +119,18 @@ def parse_args(line: str) -> List[str]:
     if not m:
         return []  # No args; mypy will spit out an error.
     return m.group(1).split()
+
+
+def parse_cwd(line: str) -> Optional[str]:
+    """Parse the second line of the program for the command line.
+
+    This should have the form
+
+      # cwd: <directory>
+
+    For example:
+
+      # cwd: main/subdir
+    """
+    m = re.match('# cwd: (.*)$', line)
+    return m.group(1) if m else None

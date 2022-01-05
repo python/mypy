@@ -1,0 +1,408 @@
+[case testBasicParamSpec]
+from typing_extensions import ParamSpec
+P = ParamSpec('P')
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLocations]
+from typing import Callable, List
+from typing_extensions import ParamSpec, Concatenate
+P = ParamSpec('P')
+
+x: P  # E: ParamSpec "P" is unbound
+
+def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
+
+def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
+                          # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+# TODO(PEP612): uncomment once we have support for Concatenate
+# def foo3(x: Concatenate[int, P]) -> int: ...  $ E: Invalid location for Concatenate
+
+def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                                   # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+
+def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
+                                              # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecContextManagerLike]
+from typing import Callable, List, Iterator, TypeVar
+from typing_extensions import ParamSpec
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def tmpcontextmanagerlike(x: Callable[P, Iterator[T]]) -> Callable[P, List[T]]: ...
+
+@tmpcontextmanagerlike
+def whatever(x: int) -> Iterator[int]:
+    yield x
+
+reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int*]"
+reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int*]"
+[builtins fixtures/tuple.pyi]
+
+[case testInvalidParamSpecType]
+# flags: --python-version 3.10
+from typing import ParamSpec
+
+P = ParamSpec("P")
+
+class MyFunction(P):  # E: Invalid base class "P"
+    ...
+
+[case testParamSpecRevealType]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def f(x: Callable[P, int]) -> None: ...
+reveal_type(f)  # N: Revealed type is "def [P] (x: def (*P.args, **P.kwargs) -> builtins.int)"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecSimpleFunction]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
+
+def returns_int(a: str, b: bool) -> int: ...
+
+reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (a: builtins.str, b: builtins.bool) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecSimpleClass]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
+def f(x: int, y: str) -> None: ...
+
+reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: builtins.str)]"
+reveal_type(C(f).m)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecClassWithPrefixArgument]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, a: str, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
+def f(x: int, y: str) -> None: ...
+
+reveal_type(C(f).m)  # N: Revealed type is "def (a: builtins.str, x: builtins.int, y: builtins.str) -> builtins.int"
+reveal_type(C(f).m('', 1, ''))  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecDecorator]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+class W(Generic[P, R]):
+    f: Callable[P, R]
+    x: int
+    def __call__(self, *args: P.args, **kwargs: P.kwargs) -> R:
+        reveal_type(self.f(*args, **kwargs))  # N: Revealed type is "R`2"
+        return self.f(*args, **kwargs)
+
+def dec() -> Callable[[Callable[P, R]], W[P, R]]:
+    pass
+
+@dec()
+def f(a: int, b: str) -> None: ...
+
+reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: builtins.str), None]"
+reveal_type(f(1, ''))  # N: Revealed type is "None"
+reveal_type(f.x)  # N: Revealed type is "builtins.int"
+
+## TODO: How should this work?
+#
+# class C:
+#     @dec()
+#     def m(self, x: int) -> str: ...
+#
+# reveal_type(C().m(x=1))
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecFunction]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+R = TypeVar('R')
+
+def f(x: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    return x(*args, **kwargs)
+
+def g(x: int, y: str) -> None: ...
+
+reveal_type(f(g, 1, y='x'))  # N: Revealed type is "None"
+f(g, 'x', y='x')  # E: Argument 2 to "f" has incompatible type "str"; expected "int"
+f(g, 1, y=1)  # E: Argument "y" to "f" has incompatible type "int"; expected "str"
+f(g)  # E: Missing positional arguments "x", "y" in call to "f"
+
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecSpecialCase]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def register(func: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...
+
+def f(x: int, y: str, z: int, a: str) -> None: ...
+
+x = register(f, 1, '', 1, '')
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecInferredFromAny]
+from typing import Callable, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def f(x: Callable[P, int]) -> Callable[P, str]: ...
+
+g: Any
+reveal_type(f(g))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
+
+f(g)(1, 3, x=1, y=2)
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecDecoratorImplementation]
+from typing import Callable, Any, TypeVar, List
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+def dec(f: Callable[P, T]) -> Callable[P, List[T]]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> List[T]:
+        return [f(*args, **kwargs)]
+    return wrapper
+
+@dec
+def g(x: int, y: str = '') -> int: ...
+
+reveal_type(g)  # N: Revealed type is "def (x: builtins.int, y: builtins.str =) -> builtins.list[builtins.int*]"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecArgsAndKwargsTypes]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        reveal_type(args)  # N: Revealed type is "P.args`1"
+        reveal_type(kwargs)  # N: Revealed type is "P.kwargs`1"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecSubtypeChecking1]
+from typing import Callable, TypeVar, Generic, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        args = args
+        kwargs = kwargs
+        o: object
+        o = args
+        o = kwargs
+        o2: object
+        args = o2  # E: Incompatible types in assignment (expression has type "object", variable has type "P.args")
+        kwargs = o2  # E: Incompatible types in assignment (expression has type "object", variable has type "P.kwargs")
+        a: Any
+        a = args
+        a = kwargs
+        args = kwargs  # E: Incompatible types in assignment (expression has type "P.kwargs", variable has type "P.args")
+        kwargs = args  # E: Incompatible types in assignment (expression has type "P.args", variable has type "P.kwargs")
+        args = a
+        kwargs = a
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecSubtypeChecking2]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+
+class C(Generic[P]):
+    pass
+
+def f(c1: C[P], c2: C[P2]) -> None:
+    c1 = c1
+    c2 = c2
+    c1 = c2  # E: Incompatible types in assignment (expression has type "C[P2]", variable has type "C[P]")
+    c2 = c1  # E: Incompatible types in assignment (expression has type "C[P]", variable has type "C[P2]")
+
+def g(f: Callable[P, None], g: Callable[P2, None]) -> None:
+    f = f
+    g = g
+    f = g  # E: Incompatible types in assignment (expression has type "Callable[P2, None]", variable has type "Callable[P, None]")
+    g = f  # E: Incompatible types in assignment (expression has type "Callable[P, None]", variable has type "Callable[P2, None]")
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecJoin]
+from typing import Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+P3 = ParamSpec('P3')
+T = TypeVar('T')
+
+def join(x: T, y: T) -> T: ...
+
+class C(Generic[P, P2]):
+    def m(self, f: Callable[P, None], g: Callable[P2, None]) -> None:
+        reveal_type(join(f, f))  # N: Revealed type is "def (*P.args, **P.kwargs)"
+        reveal_type(join(f, g))  # N: Revealed type is "builtins.function*"
+
+    def m2(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        reveal_type(join(args, args))  # N: Revealed type is "P.args`1"
+        reveal_type(join(kwargs, kwargs))  # N: Revealed type is "P.kwargs`1"
+        reveal_type(join(args, kwargs))  # N: Revealed type is "builtins.object*"
+        def f(*args2: P2.args, **kwargs2: P2.kwargs) -> None:
+            reveal_type(join(args, args2))  # N: Revealed type is "builtins.object*"
+            reveal_type(join(kwargs, kwargs2))  # N: Revealed type is "builtins.object*"
+
+    def m3(self, c: C[P, P3]) -> None:
+        reveal_type(join(c, c))  # N: Revealed type is "__main__.C*[P`1, P3`-1]"
+        reveal_type(join(self, c))  # N: Revealed type is "builtins.object*"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecClassWithAny]
+from typing import Callable, Generic, Any
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+class C(Generic[P]):
+    def __init__(self, x: Callable[P, None]) -> None: ...
+
+    def m(self, *args: P.args, **kwargs: P.kwargs) -> int:
+        return 1
+
+c: C[Any]
+reveal_type(c)  # N: Revealed type is "__main__.C[Any]"
+reveal_type(c.m)  # N: Revealed type is "def (*args: Any, **kwargs: Any) -> builtins.int"
+c.m(4, 6, y='x')
+c = c
+
+def f() -> None: pass
+
+c2 = C(f)
+c2 = c
+c3 = C(f)
+c = c3
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecInferredFromLambda]
+from typing import Callable, TypeVar
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+T = TypeVar('T')
+
+# Similar to atexit.register
+def register(f: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[P, T]: ...  # N: "register" defined here
+
+def f(x: int) -> None: pass
+
+reveal_type(register(lambda: f(1)))  # N: Revealed type is "def ()"
+reveal_type(register(lambda x: f(x), x=1))  # N: Revealed type is "def (x: Any)"
+register(lambda x: f(x))  # E: Missing positional argument "x" in call to "register"
+register(lambda x: f(x), y=1)  # E: Unexpected keyword argument "y" for "register"
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecInvalidCalls]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+P2 = ParamSpec('P2')
+
+class C(Generic[P, P2]):
+    def m1(self, *args: P.args, **kwargs: P.kwargs) -> None:
+        self.m1(*args, **kwargs)
+        self.m2(*args, **kwargs)  # E: Argument 1 to "m2" of "C" has incompatible type "*P.args"; expected "P2.args" \
+            # E: Argument 2 to "m2" of "C" has incompatible type "**P.kwargs"; expected "P2.kwargs"
+        self.m1(*kwargs, **args)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args" \
+            # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
+        self.m3(*args, **kwargs)  # E: Argument 1 to "m3" of "C" has incompatible type "*P.args"; expected "int" \
+            # E: Argument 2 to "m3" of "C" has incompatible type "**P.kwargs"; expected "int"
+        self.m4(*args, **kwargs)  # E: Argument 1 to "m4" of "C" has incompatible type "*P.args"; expected "int" \
+            # E: Argument 2 to "m4" of "C" has incompatible type "**P.kwargs"; expected "int"
+
+        self.m1(*args, **args)  # E: Argument 2 to "m1" of "C" has incompatible type "**P.args"; expected "P.kwargs"
+        self.m1(*kwargs, **kwargs)  # E: Argument 1 to "m1" of "C" has incompatible type "*P.kwargs"; expected "P.args"
+
+    def m2(self, *args: P2.args, **kwargs: P2.kwargs) -> None:
+        pass
+
+    def m3(self, *args: int, **kwargs: int) -> None:
+        pass
+
+    def m4(self, x: int) -> None:
+        pass
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecOverUnannotatedDecorator]
+from typing import Callable, Iterator, TypeVar, ContextManager, Any
+from typing_extensions import ParamSpec
+
+from nonexistent import deco2  # type: ignore
+
+T = TypeVar("T")
+P = ParamSpec("P")
+T_co = TypeVar("T_co", covariant=True)
+
+class CM(ContextManager[T_co]):
+    def __call__(self, func: T) -> T: ...
+
+def deco1(
+    func: Callable[P, Iterator[T]]) -> Callable[P, CM[T]]: ...
+
+@deco1
+@deco2
+def f():
+    pass
+
+reveal_type(f)  # N: Revealed type is "def (*Any, **Any) -> __main__.CM[Any]"
+
+with f() as x:
+    pass
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-full.pyi]

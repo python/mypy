@@ -23,8 +23,8 @@ if sys.platform == 'win32':
     _IPCHandle = int
 
     kernel32 = ctypes.windll.kernel32
-    DisconnectNamedPipe = kernel32.DisconnectNamedPipe  # type: Callable[[_IPCHandle], int]
-    FlushFileBuffers = kernel32.FlushFileBuffers  # type: Callable[[_IPCHandle], int]
+    DisconnectNamedPipe: Callable[[_IPCHandle], int] = kernel32.DisconnectNamedPipe
+    FlushFileBuffers: Callable[[_IPCHandle], int] = kernel32.FlushFileBuffers
 else:
     import socket
     _IPCHandle = socket.socket
@@ -42,7 +42,7 @@ class IPCBase:
     and writing.
     """
 
-    connection = None  # type: _IPCHandle
+    connection: _IPCHandle
 
     def __init__(self, name: str, timeout: Optional[float]) -> None:
         self.name = name
@@ -109,7 +109,7 @@ class IPCBase:
                 assert err == 0, err
                 assert bytes_written == len(data)
             except WindowsError as e:
-                raise IPCException("Failed to write with error: {}".format(e.winerror))
+                raise IPCException("Failed to write with error: {}".format(e.winerror)) from e
         else:
             self.connection.sendall(data)
             self.connection.shutdown(socket.SHUT_WR)
@@ -131,11 +131,11 @@ class IPCClient(IPCBase):
             timeout = int(self.timeout * 1000) if self.timeout else _winapi.NMPWAIT_WAIT_FOREVER
             try:
                 _winapi.WaitNamedPipe(self.name, timeout)
-            except FileNotFoundError:
-                raise IPCException("The NamedPipe at {} was not found.".format(self.name))
+            except FileNotFoundError as e:
+                raise IPCException("The NamedPipe at {} was not found.".format(self.name)) from e
             except WindowsError as e:
                 if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
-                    raise IPCException("Timed out waiting for connection.")
+                    raise IPCException("Timed out waiting for connection.") from e
                 else:
                     raise
             try:
@@ -150,7 +150,7 @@ class IPCClient(IPCBase):
                 )
             except WindowsError as e:
                 if e.winerror == _winapi.ERROR_PIPE_BUSY:
-                    raise IPCException("The connection is busy.")
+                    raise IPCException("The connection is busy.") from e
                 else:
                     raise
             _winapi.SetNamedPipeHandleState(self.connection,
@@ -175,7 +175,7 @@ class IPCClient(IPCBase):
 
 class IPCServer(IPCBase):
 
-    BUFFER_SIZE = 2**16  # type: Final
+    BUFFER_SIZE: Final = 2 ** 16
 
     def __init__(self, name: str, timeout: Optional[float] = None) -> None:
         if sys.platform == 'win32':
@@ -237,8 +237,8 @@ class IPCServer(IPCBase):
         else:
             try:
                 self.connection, _ = self.sock.accept()
-            except socket.timeout:
-                raise IPCException('The socket timed out')
+            except socket.timeout as e:
+                raise IPCException('The socket timed out') from e
         return self
 
     def __exit__(self,

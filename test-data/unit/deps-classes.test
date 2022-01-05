@@ -16,6 +16,7 @@ def f(a: Any) -> None:
     n.a
 [file a.py]
 class A: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
@@ -35,6 +36,7 @@ def f(a: Any) -> None:
 [file a.py]
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
@@ -50,6 +52,7 @@ N = NamedTuple('N', [('x', int)])
 x = N(1)
 M = NamedTuple('M', [('z', 'N')])
 y = M(x)
+[builtins fixtures/tuple.pyi]
 [out]
 <m.M.__init__> -> m
 <m.M.__new__> -> m
@@ -71,6 +74,7 @@ def f(a: Any) -> None:
     n.a
 [file a.py]
 class A: pass
+[builtins fixtures/tuple.pyi]
 [out]
 <m.N.__init__> -> m.f
 <m.N.__new__> -> m.f
@@ -179,7 +183,7 @@ class B: pass
 <m.A> -> <m.f>, m.A, m.f, m.g
 <m.B.__init__> -> m
 <m.B.__new__> -> m
--- The <m.A.X> dependecy target is superfluous but benign
+-- The <m.A.X> dependency target is superfluous but benign
 <m.B> -> <m.A.X>, m
 <m> -> m
 
@@ -242,4 +246,4 @@ def f() -> None:
 <m.C.x> -> m.f
 <m.C> -> m.C, m.f
 <m.M.x> -> m.f
-<m.M> -> <m.C>, m.M
+<m.M> -> <m.C>, m, m.M

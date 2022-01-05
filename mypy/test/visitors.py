@@ -20,11 +20,11 @@ from mypy.types import Type
 # from testtypegen
 class SkippedNodeSearcher(TraverserVisitor):
     def __init__(self) -> None:
-        self.nodes = set()  # type: Set[Expression]
+        self.nodes: Set[Expression] = set()
         self.is_typing = False
 
     def visit_mypy_file(self, f: MypyFile) -> None:
-        self.is_typing = f.fullname() == 'typing' or f.fullname() == 'builtins'
+        self.is_typing = f.fullname == 'typing' or f.fullname == 'builtins'
         super().visit_mypy_file(f)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:

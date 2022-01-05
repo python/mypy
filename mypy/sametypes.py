@@ -4,13 +4,14 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type
+    ProperType, get_proper_type, TypeAliasType, ParamSpecType
 )
 from mypy.typeops import tuple_fallback, make_simplified_union
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -85,9 +86,21 @@ class SameTypeVisitor(TypeVisitor[bool]):
                 is_same_types(left.args, self.right.args) and
                 left.last_known_value == self.right.last_known_value)
 
+    def visit_type_alias_type(self, left: TypeAliasType) -> bool:
+        # Similar to protocols, two aliases with the same targets return False here,
+        # but both is_subtype(t, s) and is_subtype(s, t) return True.
+        return (isinstance(self.right, TypeAliasType) and
+                left.alias == self.right.alias and
+                is_same_types(left.args, self.right.args))
+
     def visit_type_var(self, left: TypeVarType) -> bool:
         return (isinstance(self.right, TypeVarType) and
                 left.id == self.right.id)
+
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        # Ignore upper bound since it's derived from flavor.
+        return (isinstance(self.right, ParamSpecType) and
+                left.id == self.right.id and left.flavor == self.right.flavor)
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
@@ -146,7 +159,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 

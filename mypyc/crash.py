@@ -1,7 +1,5 @@
 from typing import Iterator
-MYPY = False
-if MYPY:
-    from typing import NoReturn
+from typing_extensions import NoReturn
 
 import sys
 import traceback

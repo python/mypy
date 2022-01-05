@@ -18,7 +18,7 @@ from subprocess import PIPE
 import sys
 from tempfile import TemporaryDirectory
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 from typing import List
 
@@ -51,10 +51,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     version.
     """
     assert testcase.old_cwd is not None, "test was not properly set up"
+    # We must enable site packages to get access to installed stubs.
     # TODO: Enable strict optional for these tests
     mypy_cmdline = [
         '--show-traceback',
-        '--no-site-packages',
         '--no-strict-optional',
         '--no-silence-site-packages',
         '--no-error-summary',
@@ -72,6 +72,10 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         interpreter = python3_path
         mypy_cmdline.append('--python-version={}'.format('.'.join(map(str, PYTHON3_VERSION))))
 
+    m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
+    if m:
+        mypy_cmdline.extend(m.group(1).split())
+
     # Write the program to a file.
     program = '_' + testcase.name + '.py'
     program_path = os.path.join(test_temp_dir, program)
@@ -88,6 +92,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         if line.startswith(test_temp_dir + os.sep):
             output.append(line[len(test_temp_dir + os.sep):].rstrip("\r\n"))
         else:
+            # Normalize paths so that the output is the same on Windows and Linux/macOS.
+            line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
             output.append(line.rstrip("\r\n"))
     if returncode == 0:
         # Execute the program.

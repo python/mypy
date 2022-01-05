@@ -90,7 +90,7 @@ How do I type check my Python 2 code?
 
 You can use a :pep:`comment-based function annotation syntax
 <484#suggested-syntax-for-python-2-7-and-straddling-code>`
-and use the ``--py2`` command-line option to type check your Python 2 code.
+and use the :option:`--py2 <mypy --py2>` command-line option to type check your Python 2 code.
 You'll also need to install ``typing`` for Python 2 via ``pip install typing``.
 
 Is mypy free?
@@ -197,6 +197,14 @@ the following aspects, among others:
   defined in terms of translating them to C or C++. Mypy just uses
   Python semantics, and mypy does not deal with accessing C library
   functionality.
+  
+Does it run on PyPy?
+*********************
+
+Somewhat. With PyPy 3.8, mypy is at least able to type check itself.
+With older versions of PyPy, mypy relies on `typed-ast 
+<https://github.com/python/typed_ast>`_, which uses several APIs that
+PyPy does not support (including some internal CPython APIs).
 
 Mypy is a cool project. Can I help?
 ***********************************

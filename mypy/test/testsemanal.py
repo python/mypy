@@ -20,19 +20,22 @@ from mypy.options import Options
 # Semantic analyzer test cases: dump parse tree
 
 # Semantic analysis test case description files.
-semanal_files = ['semanal-basic.test',
-                 'semanal-expressions.test',
-                 'semanal-classes.test',
-                 'semanal-types.test',
-                 'semanal-typealiases.test',
-                 'semanal-modules.test',
-                 'semanal-statements.test',
-                 'semanal-abstractclasses.test',
-                 'semanal-namedtuple.test',
-                 'semanal-typeddict.test',
-                 'semenal-literal.test',
-                 'semanal-classvar.test',
-                 'semanal-python2.test']
+semanal_files = [
+    'semanal-basic.test',
+    'semanal-expressions.test',
+    'semanal-classes.test',
+    'semanal-types.test',
+    'semanal-typealiases.test',
+    'semanal-modules.test',
+    'semanal-statements.test',
+    'semanal-abstractclasses.test',
+    'semanal-namedtuple.test',
+    'semanal-typeddict.test',
+    'semenal-literal.test',
+    'semanal-classvar.test',
+    'semanal-python2.test',
+    'semanal-lambda.test',
+]
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -195,7 +198,7 @@ class SemAnalTypeInfoSuite(DataSuite):
 
 class TypeInfoMap(Dict[str, TypeInfo]):
     def __str__(self) -> str:
-        a = ['TypeInfoMap(']  # type: List[str]
+        a: List[str] = ["TypeInfoMap("]
         for x, y in sorted(self.items()):
             if isinstance(x, str) and (not x.startswith('builtins.') and
                                        not x.startswith('typing.') and

@@ -109,8 +109,7 @@ MypyFile:1(
   ExpressionStmt:3(
     IntExpr(255)))
 
-[case testLongLiteral-skip]
-# see typed_ast issue #26
+[case testLongLiteral]
 0L
 123L
 012L
@@ -372,8 +371,8 @@ def f(a, (a, b)):
 def g((x, (x, y))):
     pass
 [out]
-main:1: error: Duplicate argument 'a' in function definition
-main:3: error: Duplicate argument 'x' in function definition
+main:1: error: Duplicate argument "a" in function definition
+main:3: error: Duplicate argument "x" in function definition
 
 [case testBackquotesInPython2]
 `1 + 2`

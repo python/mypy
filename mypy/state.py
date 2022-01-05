@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Iterator
 
 # Value varies by file being processed
 strict_optional = False
-find_occurrences = None  # type: Optional[Tuple[str, str]]
+find_occurrences: Optional[Tuple[str, str]] = None
 
 
 @contextmanager
@@ -14,5 +14,7 @@ def strict_optional_set(value: bool) -> Iterator[None]:
     global strict_optional
     saved = strict_optional
     strict_optional = value
-    yield
-    strict_optional = saved
+    try:
+        yield
+    finally:
+        strict_optional = saved

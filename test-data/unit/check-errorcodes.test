@@ -6,8 +6,8 @@
 import m
 m.x  # E: Module has no attribute "x"  [attr-defined]
 'x'.foobar  # E: "str" has no attribute "foobar"  [attr-defined]
-from m import xx  # E: Module 'm' has no attribute 'xx'  [attr-defined]
-from m import think  # E: Module 'm' has no attribute 'think'; maybe "thing"?  [attr-defined]
+from m import xx  # E: Module "m" has no attribute "xx"  [attr-defined]
+from m import think  # E: Module "m" has no attribute "think"; maybe "thing"?  [attr-defined]
 for x in 1:  # E: "int" has no attribute "__iter__" (not iterable)  [attr-defined]
     pass
 [file m.py]
@@ -15,9 +15,9 @@ thing = 0
 [builtins fixtures/module.pyi]
 
 [case testErrorCodeUndefinedName]
-x # E: Name 'x' is not defined  [name-defined]
+x # E: Name "x" is not defined  [name-defined]
 def f() -> None:
-    y # E: Name 'y' is not defined  [name-defined]
+    y # E: Name "y" is not defined  [name-defined]
 [file m.py]
 [builtins fixtures/module.pyi]
 
@@ -28,17 +28,21 @@ class A:
         pass
 
 [case testErrorCodeNoteHasNoCode]
-reveal_type(1) # N: Revealed type is 'builtins.int'
+reveal_type(1) # N: Revealed type is "Literal[1]?"
 
 [case testErrorCodeSyntaxError]
-1 '' # E: invalid syntax  [syntax]
+1 ''
+[out]
+main:1: error: invalid syntax  [syntax]
+[out version==3.10.0]
+main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
 def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3]
 # This is a bit inconsistent -- syntax error would be more logical?
@@ -61,7 +65,7 @@ def f(): # E: Type signature has too many arguments  [syntax]
     # type: (int) -> None
     1
 
-x = 0  # type: x y  # E: syntax error in type comment 'x y'  [syntax]
+x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
 
 [case testErrorCodeSyntaxError3_python2]
 def f(): pass
@@ -92,7 +96,7 @@ c = 'x'.foobar  # type: int  # type: ignore
 [case testErrorCodeIgnoreMultiple1]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
-a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreMultiple2]
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
@@ -101,27 +105,51 @@ b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has 
 [case testErrorCodeIgnoreMultiple1_python2]
 a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
 a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
-a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name 'b' is not defined  [name-defined]
+a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreMultiple2_python2]
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined]
+
+[case testErrorCodeWarnUnusedIgnores1]
+# flags: --warn-unused-ignores
+x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defined]" comment
+
+[case testErrorCodeWarnUnusedIgnores2]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined]
+
+[case testErrorCodeWarnUnusedIgnores3]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, xyz] # E: Unused "type: ignore[xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores4]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type] # E: Unused "type: ignore[valid-type]" comment
+
+[case testErrorCodeWarnUnusedIgnores5]
+# flags: --warn-unused-ignores
+"x".foobar(y) # type: ignore[name-defined, attr-defined, valid-type, xyz] # E: Unused "type: ignore[valid-type, xyz]" comment
+
+[case testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode]
+# flags: --warn-unused-ignores
+"x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
 
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
 x3 # type: ignore   [ xyz , name-defined ]
 x4 # type: ignore[xyz,name-defined]
-y  # type: ignore   [xyz]  # E: Name 'y' is not defined  [name-defined]
-y  # type: ignore[  xyz  ]  # E: Name 'y' is not defined  [name-defined]
-y  # type: ignore[ xyz , foo  ]  # E: Name 'y' is not defined  [name-defined]
+y  # type: ignore   [xyz]  # E: Name "y" is not defined  [name-defined]
+y  # type: ignore[  xyz  ]  # E: Name "y" is not defined  [name-defined]
+y  # type: ignore[ xyz , foo  ]  # E: Name "y" is not defined  [name-defined]
 
 a = z  # type: int  # type: ignore  [name-defined]
 b = z2  # type: int  # type: ignore  [ name-defined ]
 c = z2  # type: int  # type: ignore  [ name-defined , xyz ]
-d = zz # type: int  # type: ignore  [xyz]  # E: Name 'zz' is not defined  [name-defined]
-e = zz # type: int  # type: ignore  [ xyz ]  # E: Name 'zz' is not defined  [name-defined]
-f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name 'zz' is not defined  [name-defined]
+d = zz # type: int  # type: ignore  [xyz]  # E: Name "zz" is not defined  [name-defined]
+e = zz # type: int  # type: ignore  [ xyz ]  # E: Name "zz" is not defined  [name-defined]
+f = zz # type: int  # type: ignore  [ xyz,foo ]  # E: Name "zz" is not defined  [name-defined]
 
 [case testErrorCodeIgnoreAfterArgComment]
 def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
@@ -134,7 +162,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     # type () -> None
     pass
 
-def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined]
       ):
     # type () -> None
     pass
@@ -150,7 +178,7 @@ def g(x  # type: xyz  # type: ignore  # Comment
     # type () -> None
     pass
 
-def h(x  # type: xyz  # type: ignore[foo]  # E: Name 'xyz' is not defined  [name-defined]
+def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined]
       ):
     # type () -> None
     pass
@@ -214,7 +242,7 @@ main:5: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
-f()  # E: Too few arguments for "f"  [call-arg]
+f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
 f(1, 2)  # E: Too many arguments for "f"  [call-arg]
 f(y=1)  # E: Unexpected keyword argument "y" for "f"  [call-arg]
 
@@ -250,15 +278,17 @@ x: f  # E: Function "__main__.f" is not valid as a type  [valid-type] \
 
 import sys
 y: sys  # E: Module "sys" is not valid as a type  [valid-type]
-z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type]
+z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
+      # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNeedTypeAnnotation]
 from typing import TypeVar
 
 T = TypeVar('T')
 def f() -> T: pass
-x = f()  # E: Need type annotation for 'x'  [var-annotated]
-y = []  # E: Need type annotation for 'y' (hint: "y: List[<type>] = ...")  [var-annotated]
+x = f()  # E: Need type annotation for "x"  [var-annotated]
+y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
 
 [case testErrorCodeBadOverride]
@@ -271,13 +301,19 @@ class B(A):
     def f(self) -> str:  # E: Return type "str" of "f" incompatible with return type "int" in supertype "A"  [override]
         return ''
 class C(A):
-    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override]
+    def f(self, x: int) -> int:  # E: Signature of "f" incompatible with supertype "A"  [override] \
+                                 # N:      Superclass: \
+                                 # N:          def f(self) -> int \
+                                 # N:      Subclass: \
+                                 # N:          def f(self, x: int) -> int
         return 0
 class D:
     def f(self, x: int) -> int:
         return 0
 class E(D):
-    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override]
+    def f(self, x: str) -> int:  # E: Argument 1 of "f" is incompatible with supertype "D"; supertype defines the argument type as "int"  [override] \
+                                 # N: This violates the Liskov substitution principle \
+                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         return 0
 
 class O:
@@ -362,7 +398,8 @@ async def asyncf():  # E: Function is missing a return type annotation  [no-unty
 
 async def asyncf2(x: int):  # E: Function is missing a return type annotation  [no-untyped-def]
     return 0
-[typing fixtures/typing-full.pyi]
+[typing fixtures/typing-async.pyi]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeCallUntypedFunction]
 # flags: --disallow-untyped-calls
@@ -378,7 +415,7 @@ from typing import Dict
 x: Dict[int, int]
 x['']  # E: Invalid index type "str" for "Dict[int, int]"; expected type "int"  [index]
 1['']  # E: Value of type "int" is not indexable  [index]
-1[''] = 1  # E: Unsupported target for indexed assignment  [index]
+1[''] = 1  # E: Unsupported target for indexed assignment ("int")  [index]
 [builtins fixtures/dict.pyi]
 
 [case testErrorCodeInvalidTypeArg]
@@ -403,7 +440,7 @@ class D(Generic[S]): pass
 class E(Generic[S, T]): pass
 
 x: C[object]  # E: Value of type variable "T" of "C" cannot be "object"  [type-var]
-y: D[int]  # E: Type argument "builtins.int" of "D" must be a subtype of "builtins.str"  [type-var]
+y: D[int]  # E: Type argument "int" of "D" must be a subtype of "str"  [type-var]
 z: D[int, int]  # E: "D" expects 1 type argument, but 2 given  [type-arg]
 
 def h(a: TT, s: S) -> None:
@@ -432,6 +469,7 @@ B() + ''  # E: Unsupported operand types for + ("B" and "str")  [operator]
 '' in B()  # E: Unsupported operand types for in ("str" and "B")  [operator]
 
 1()  # E: "int" not callable  [operator]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeListOrDictItem]
 from typing import List, Dict
@@ -448,14 +486,30 @@ class E(TypedDict):
     y: int
 
 a: D = {'x': ''}  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")  [typeddict-item]
-b: D = {'y': ''}  # E: Extra key 'y' for TypedDict "D"  [typeddict-item]
+b: D = {'y': ''}  # E: Extra key "y" for TypedDict "D"  [typeddict-item]
 c = D(x=0) if int() else E(x=0, y=0)
-c = {}  # E: Expected TypedDict key 'x' but found no keys  [typeddict-item]
+c = {}  # E: Expected TypedDict key "x" but found no keys  [typeddict-item]
+
+a['y'] = 1  # E: TypedDict "D" has no key "y"  [typeddict-item]
+a['x'] = 'x'  # E: Value of "x" has incompatible type "str"; expected "int"  [typeddict-item]
+a['y']  # E: TypedDict "D" has no key "y"  [typeddict-item]
 [builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testErrorCodeTypedDictNoteIgnore]
+from typing_extensions import TypedDict
+class A(TypedDict):
+    one_commonpart: int
+    two_commonparts: int
+
+a: A = {'one_commonpart': 1, 'two_commonparts': 2}
+a['other_commonpart'] = 3  # type: ignore[typeddict-item]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testErrorCodeCannotDetermineType]
-y = x  # E: Cannot determine type of 'x'  [has-type]
-reveal_type(y)  # N: Revealed type is 'Any'
+y = x  # E: Cannot determine type of "x"  [has-type]
+reveal_type(y)  # N: Revealed type is "Any"
 x = None
 
 [case testErrorCodeRedundantCast]
@@ -493,23 +547,22 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: No library stub file for module 'defusedxml'  [import] \
-                            # N: (Stub files are from https://github.com/python/typeshed)
-from nonexistent import foobar  # E: Cannot find module named 'nonexistent'  [import] \
-    # N: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-import nonexistent2  # E: Cannot find module named 'nonexistent2'  [import]
-from nonexistent3 import *  # E: Cannot find module named 'nonexistent3'  [import]
-from pkg import bad  # E: Module 'pkg' has no attribute 'bad'  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find module named 'pkg.bad2'  [import]
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import] \
+                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
+from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
+from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]
 x: int
-x: str  # E: Name 'x' already defined on line 1  [no-redef]
+x: str  # E: Name "x" already defined on line 1  [no-redef]
 
 def f():
     pass
-def f(): # E: Name 'f' already defined on line 4  [no-redef]
+def f(): # E: Name "f" already defined on line 4  [no-redef]
     pass
 
 [case testErrorCodeMissingReturn]
@@ -545,7 +598,7 @@ class A:
 class B(A):
     pass
 
-B()  # E: Cannot instantiate abstract class 'B' with abstract attribute 'f'  [abstract]
+B()  # E: Cannot instantiate abstract class "B" with abstract attribute "f"  [abstract]
 
 [case testErrorCodeNewTypeNotSubclassable]
 from typing import Union, NewType
@@ -612,9 +665,10 @@ def g() -> int:
 '%d' % 'no'  # E: Incompatible types in string interpolation (expression has type "str", placeholder has type "Union[int, float, SupportsInt]")  [str-format]
 '%d + %d' % (1, 2, 3)  # E: Not all arguments converted during string formatting  [str-format]
 
-'{}'.format(b'abc')  # E: On Python 3 '{}'.format(b'abc') produces "b'abc'"; use !r if this is a desired behavior  [str-bytes-safe]
-'%s' % b'abc'  # E: On Python 3 '%s' % b'abc' produces "b'abc'"; use %r if this is a desired behavior  [str-bytes-safe]
+'{}'.format(b'abc')  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior  [str-bytes-safe]
+'%s' % b'abc'  # E: On Python 3 formatting "b'abc'" with "%s" produces "b'abc'", not "abc"; use "%r" if this is desired behavior  [str-bytes-safe]
 [builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testErrorCodeIgnoreNamedDefinedNote]
 x: List[int]  # type: ignore[name-defined]
@@ -635,6 +689,7 @@ def g(p: P) -> None: pass
 
 p: A
 g(p)  # type: ignore[arg-type]
+[builtins fixtures/tuple.pyi]
 
 [case testErrorCodeNoneReturnNoteIgnore]
 # flags: --disallow-untyped-defs
@@ -684,17 +739,17 @@ Foo() + a  # type: ignore[operator]
 x = y  # type: ignored[foo]
 xx = y  # type: ignored [foo]
 [out]
-main:1: error: Name 'ignored' is not defined  [name-defined]
-main:1: error: Name 'y' is not defined  [name-defined]
-main:2: error: Name 'ignored' is not defined  [name-defined]
-main:2: error: Name 'y' is not defined  [name-defined]
+main:1: error: Name "ignored" is not defined  [name-defined]
+main:1: error: Name "y" is not defined  [name-defined]
+main:2: error: Name "ignored" is not defined  [name-defined]
+main:2: error: Name "y" is not defined  [name-defined]
 
 [case testErrorCodeTypeIgnoreMisspelled2]
 x = y  # type: int  # type: ignored[foo]
 x = y  # type: int  # type: ignored [foo]
 [out]
-main:1: error: syntax error in type comment 'int'  [syntax]
-main:2: error: syntax error in type comment 'int'  [syntax]
+main:1: error: syntax error in type comment "int"  [syntax]
+main:2: error: syntax error in type comment "int"  [syntax]
 
 [case testErrorCode__exit__Return]
 class InvalidReturn:
@@ -703,3 +758,178 @@ class InvalidReturn:
 # N: If return type of "__exit__" implies that it may return True, the context manager may swallow exceptions
         return False
 [builtins fixtures/bool.pyi]
+
+[case testErrorCodeOverloadedOperatorMethod]
+# flags: --strict-optional
+from typing import Optional, overload
+
+class A:
+    @overload
+    def __add__(self, x: int) -> A: ...
+    @overload
+    def __add__(self, x: str) -> str: ...
+    def __add__(self, x): pass
+
+class B:
+    pass
+
+x: Optional[B]
+A() + x  # type: ignore[operator]
+
+class C:
+    @overload
+    def __rsub__(self, x: int) -> A: ...
+    @overload
+    def __rsub__(self, x: str) -> str: ...
+    def __rsub__(self, x): pass
+
+x - C()  # type: ignore[operator]
+
+[case testErrorCodeMultiLineBinaryOperatorOperand]
+# flags: --strict-optional
+from typing import Optional
+
+class C: pass
+
+def f() -> Optional[C]:
+    return None
+
+f(  # type: ignore[operator]
+) + C()
+
+[case testErrorCodeSpecialArgTypeErrors]
+from typing import TypedDict
+
+class C(TypedDict):
+    x: int
+
+c: C
+c.setdefault('x', '1')  # type: ignore[typeddict-item]
+
+class A:
+    pass
+
+class B(A):
+    def f(self) -> None:
+        super(1, self).foo()  # type: ignore[arg-type]
+
+def f(**x: int) -> None:
+    pass
+
+f(**1)  # type: ignore[arg-type]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRedundantExpressions]
+# flags: --enable-error-code redundant-expr
+def foo() -> bool: ...
+
+lst = [1, 2, 3, 4]
+
+b = False or foo()                       # E: Left operand of "or" is always false  [redundant-expr]
+c = True and foo()                       # E: Left operand of "and" is always true  [redundant-expr]
+g = 3 if True else 4                     # E: If condition is always true  [redundant-expr]
+h = 3 if False else 4                    # E: If condition is always false  [redundant-expr]
+i = [x for x in lst if True]             # E: If condition in comprehension is always true  [redundant-expr]
+j = [x for x in lst if False]            # E: If condition in comprehension is always false  [redundant-expr]
+k = [x for x in lst if isinstance(x, int) or foo()]  # E: If condition in comprehension is always true  [redundant-expr]
+[builtins fixtures/isinstancelist.pyi]
+
+[case testNamedTupleNameMismatch]
+from typing import NamedTuple
+
+Foo = NamedTuple("Bar", [])  # E: First argument to namedtuple() should be "Foo", not "Bar"  [name-match]
+[builtins fixtures/tuple.pyi]
+
+[case testTypedDictNameMismatch]
+from typing_extensions import TypedDict
+
+Foo = TypedDict("Bar", {})  # E: First argument "Bar" to TypedDict() does not match variable name "Foo"  [name-match]
+[builtins fixtures/dict.pyi]
+[case testTruthyBool]
+# flags: --enable-error-code truthy-bool
+from typing import List, Union
+
+class Foo:
+    pass
+
+foo = Foo()
+if foo:  # E: "__main__.foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+zero = 0
+if zero:
+    pass
+
+false = False
+if false:
+    pass
+
+null = None
+if null:
+    pass
+
+s = ''
+if s:
+    pass
+
+good_union: Union[str, int] = 5
+if good_union:
+    pass
+if not good_union:
+    pass
+
+bad_union: Union[Foo, object] = Foo()
+if bad_union:  # E: "__main__.bad_union" has type "Union[Foo, object]" of which no members implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+if not bad_union:  # E: "__main__.bad_union" has type "object" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+    pass
+
+def f():
+    pass
+if f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
+    pass
+if not f:  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
+    pass
+conditional_result = 'foo' if f else 'bar'  # E: Function "Callable[[], Any]" could always be true in boolean context  [truthy-bool]
+
+lst: List[int] = []
+if lst:
+    pass
+[builtins fixtures/list.pyi]
+
+[case testSliceInDict39]
+# flags: --python-version 3.9 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+[case testSliceInDict38]
+# flags: --python-version 3.8 --show-column-numbers
+from typing import Dict
+b: Dict[int, x:y]
+c: Dict[x:y]
+
+[builtins fixtures/dict.pyi]
+[out]
+main:3:14: error: Invalid type comment or annotation  [valid-type]
+main:3:14: note: did you mean to use ',' instead of ':' ?
+main:4:4: error: "dict" expects 2 type arguments, but 1 given  [type-arg]
+main:4:9: error: Invalid type comment or annotation  [valid-type]
+main:4:9: note: did you mean to use ',' instead of ':' ?
+
+
+[case testSliceInCustomTensorType]
+# syntactically mimics torchtyping.TensorType
+class TensorType: ...
+t: TensorType["batch":..., float]  # type: ignore
+reveal_type(t)  # N: Revealed type is "__main__.TensorType"
+[builtins fixtures/tuple.pyi]

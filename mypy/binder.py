@@ -2,7 +2,7 @@ from contextlib import contextmanager
 from collections import defaultdict
 
 from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
-from typing_extensions import DefaultDict
+from typing_extensions import DefaultDict, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
@@ -13,10 +13,10 @@ from mypy.sametypes import is_same_type
 from mypy.erasetype import remove_instance_transient_info
 from mypy.nodes import Expression, Var, RefExpr
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import IndexExpr, MemberExpr, NameExpr
+from mypy.nodes import IndexExpr, MemberExpr, AssignmentExpr, NameExpr
 
 
-BindableExpression = Union[IndexExpr, MemberExpr, NameExpr]
+BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
 
 
 class Frame:
@@ -31,9 +31,11 @@ class Frame:
     that were assigned in that frame.
     """
 
-    def __init__(self) -> None:
-        self.types = {}  # type: Dict[Key, Type]
+    def __init__(self, id: int, conditional_frame: bool = False) -> None:
+        self.id = id
+        self.types: Dict[Key, Type] = {}
         self.unreachable = False
+        self.conditional_frame = conditional_frame
 
         # Should be set only if we're entering a frame where it's not
         # possible to accurately determine whether or not contained
@@ -69,37 +71,43 @@ class ConditionalTypeBinder:
     """
     # Stored assignments for situations with tuple/list lvalue and rvalue of union type.
     # This maps an expression to a list of bound types for every item in the union type.
-    type_assignments = None  # type: Optional[Assigns]
+    type_assignments: Optional[Assigns] = None
 
     def __init__(self) -> None:
+        self.next_id = 1
+
         # The stack of frames currently used.  These map
         # literal_hash(expr) -- literals like 'foo.bar' --
         # to types. The last element of this list is the
         # top-most, current frame. Each earlier element
         # records the state as of when that frame was last
         # on top of the stack.
-        self.frames = [Frame()]
+        self.frames = [Frame(self._get_id())]
 
         # For frames higher in the stack, we record the set of
         # Frames that can escape there, either by falling off
         # the end of the frame or by a loop control construct
         # or raised exception. The last element of self.frames
         # has no corresponding element in this list.
-        self.options_on_return = []  # type: List[List[Frame]]
+        self.options_on_return: List[List[Frame]] = []
 
         # Maps literal_hash(expr) to get_declaration(expr)
         # for every expr stored in the binder
-        self.declarations = {}  # type: Dict[Key, Optional[Type]]
+        self.declarations: Dict[Key, Optional[Type]] = {}
         # Set of other keys to invalidate if a key is changed, e.g. x -> {x.a, x[0]}
         # Whenever a new key (e.g. x.a.b) is added, we update this
-        self.dependencies = {}  # type: Dict[Key, Set[Key]]
+        self.dependencies: Dict[Key, Set[Key]] = {}
 
         # Whether the last pop changed the newly top frame on exit
         self.last_pop_changed = False
 
-        self.try_frames = set()  # type: Set[int]
-        self.break_frames = []  # type: List[int]
-        self.continue_frames = []  # type: List[int]
+        self.try_frames: Set[int] = set()
+        self.break_frames: List[int] = []
+        self.continue_frames: List[int] = []
+
+    def _get_id(self) -> int:
+        self.next_id += 1
+        return self.next_id
 
     def _add_dependencies(self, key: Key, value: Optional[Key] = None) -> None:
         if value is None:
@@ -109,9 +117,9 @@ class ConditionalTypeBinder:
         for elt in subkeys(key):
             self._add_dependencies(elt, value)
 
-    def push_frame(self) -> Frame:
+    def push_frame(self, conditional_frame: bool = False) -> Frame:
         """Push a new frame into the binder."""
-        f = Frame()
+        f = Frame(self._get_id(), conditional_frame)
         self.frames.append(f)
         self.options_on_return.append([])
         return f
@@ -128,7 +136,7 @@ class ConditionalTypeBinder:
         return None
 
     def put(self, expr: Expression, typ: Type) -> None:
-        if not isinstance(expr, (IndexExpr, MemberExpr, NameExpr)):
+        if not isinstance(expr, (IndexExpr, MemberExpr, AssignmentExpr, NameExpr)):
             return
         if not literal(expr):
             return
@@ -296,16 +304,17 @@ class ConditionalTypeBinder:
         # (See discussion in #3526)
         elif (isinstance(type, AnyType)
               and isinstance(declared_type, UnionType)
-              and any(isinstance(item, NoneType) for item in declared_type.items)
+              and any(isinstance(get_proper_type(item), NoneType) for item in declared_type.items)
               and isinstance(get_proper_type(self.most_recent_enclosing_type(expr, NoneType())),
                              NoneType)):
             # Replace any Nones in the union type with Any
-            new_items = [type if isinstance(item, NoneType) else item
+            new_items = [type if isinstance(get_proper_type(item), NoneType) else item
                          for item in declared_type.items]
             self.put(expr, UnionType(new_items))
         elif (isinstance(type, AnyType)
               and not (isinstance(declared_type, UnionType)
-                       and any(isinstance(item, AnyType) for item in declared_type.items))):
+                       and any(isinstance(get_proper_type(item), AnyType)
+                               for item in declared_type.items))):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
             self.put(expr, declared_type)
@@ -346,7 +355,7 @@ class ConditionalTypeBinder:
         # so make sure the index is positive
         if index < 0:
             index += len(self.options_on_return)
-        frame = Frame()
+        frame = Frame(self._get_id())
         for f in self.frames[index + 1:]:
             frame.types.update(f.types)
             if f.unreachable:
@@ -364,6 +373,7 @@ class ConditionalTypeBinder:
     @contextmanager
     def frame_context(self, *, can_skip: bool, fall_through: int = 1,
                       break_frame: int = 0, continue_frame: int = 0,
+                      conditional_frame: bool = False,
                       try_frame: bool = False) -> Iterator[Frame]:
         """Return a context manager that pushes/pops frames on enter/exit.
 
@@ -398,7 +408,7 @@ class ConditionalTypeBinder:
         if try_frame:
             self.try_frames.add(len(self.frames) - 1)
 
-        new_frame = self.push_frame()
+        new_frame = self.push_frame(conditional_frame)
         if try_frame:
             # An exception may occur immediately
             self.allow_jump(-1)

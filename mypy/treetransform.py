@@ -15,12 +15,12 @@ from mypy.nodes import (
     ConditionalExpr, DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr,
     UnicodeExpr, FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr,
     SliceExpr, OpExpr, UnaryExpr, LambdaExpr, TypeApplication, PrintStmt,
-    SymbolTable, RefExpr, TypeVarExpr, NewTypeExpr, PromoteExpr,
+    SymbolTable, RefExpr, TypeVarExpr, ParamSpecExpr, NewTypeExpr, PromoteExpr,
     ComparisonExpr, TempNode, StarExpr, Statement, Expression,
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -37,6 +37,8 @@ class TransformVisitor(NodeVisitor[Node]):
 
     Notes:
 
+     * This can only be used to transform functions or classes, not top-level
+       statements, and/or modules as a whole.
      * Do not duplicate TypeInfo nodes. This would generally not be desirable.
      * Only update some name binding cross-references, but only those that
        refer to Var, Decorator or FuncDef nodes, not those targeting ClassDef or
@@ -48,16 +50,20 @@ class TransformVisitor(NodeVisitor[Node]):
     """
 
     def __init__(self) -> None:
+        # To simplify testing, set this flag to True if you want to transform
+        # all statements in a file (this is prohibited in normal mode).
+        self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map = {}  # type: Dict[Var, Var]
+        self.var_map: Dict[Var, Var] = {}
         # These are uninitialized placeholder nodes used temporarily for nested
         # functions while we are transforming a top-level function. This maps an
         # untransformed node to a placeholder (which will later become the
         # transformed node).
-        self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
+        self.func_placeholder_map: Dict[FuncDef, FuncDef] = {}
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
+        assert self.test_only, "This visitor should not be used for whole files."
         # NOTE: The 'names' and 'imports' instance variables will be empty!
         ignored_lines = {line: codes[:]
                          for line, codes in node.ignored_lines.items()}
@@ -104,7 +110,7 @@ class TransformVisitor(NodeVisitor[Node]):
         for stmt in node.body.body:
             stmt.accept(init)
 
-        new = FuncDef(node.name(),
+        new = FuncDef(node.name,
                       [self.copy_argument(arg) for arg in node.arguments],
                       self.block(node.body),
                       cast(Optional[FunctionLike], self.optional_type(node.type)))
@@ -200,7 +206,7 @@ class TransformVisitor(NodeVisitor[Node]):
         # Note that a Var must be transformed to a Var.
         if node in self.var_map:
             return self.var_map[node]
-        new = Var(node.name(), self.optional_type(node.type))
+        new = Var(node.name, self.optional_type(node.type))
         new.line = node.line
         new._fullname = node._fullname
         new.info = node.info
@@ -250,6 +256,7 @@ class TransformVisitor(NodeVisitor[Node]):
                       self.block(node.body),
                       self.optional_block(node.else_body),
                       self.optional_type(node.unanalyzed_index_type))
+        new.is_async = node.is_async
         new.index_type = self.optional_type(node.index_type)
         return new
 
@@ -293,6 +300,7 @@ class TransformVisitor(NodeVisitor[Node]):
                        self.optional_expressions(node.target),
                        self.block(node.body),
                        self.optional_type(node.unanalyzed_type))
+        new.is_async = node.is_async
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 
@@ -356,7 +364,10 @@ class TransformVisitor(NodeVisitor[Node]):
         new.fullname = original.fullname
         target = original.node
         if isinstance(target, Var):
-            target = self.visit_var(target)
+            # Do not transform references to global variables. See
+            # testGenericFunctionAliasExpand for an example where this is important.
+            if original.kind != GDEF:
+                target = self.visit_var(target)
         elif isinstance(target, Decorator):
             target = self.visit_var(target.var)
         elif isinstance(target, FuncDef):
@@ -492,12 +503,17 @@ class TransformVisitor(NodeVisitor[Node]):
         return BackquoteExpr(self.expr(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> TypeVarExpr:
-        return TypeVarExpr(node.name(), node.fullname(),
+        return TypeVarExpr(node.name, node.fullname,
                            self.types(node.values),
                            self.type(node.upper_bound), variance=node.variance)
 
+    def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
+        return ParamSpecExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
+
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
-        return TypeAliasExpr(node.type, node.tvars, node.no_args)
+        return TypeAliasExpr(node.node)
 
     def visit_newtype_expr(self, node: NewTypeExpr) -> NewTypeExpr:
         res = NewTypeExpr(node.name, node.old_type, line=node.line, column=node.column)
@@ -580,7 +596,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return [self.duplicate_name(name) for name in names]
 
     def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
-        result = []  # type: List[Optional[NameExpr]]
+        result: List[Optional[NameExpr]] = []
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))
@@ -615,5 +631,5 @@ class FuncMapInitializer(TraverserVisitor):
         if node not in self.transformer.func_placeholder_map:
             # Haven't seen this FuncDef before, so create a placeholder node.
             self.transformer.func_placeholder_map[node] = FuncDef(
-                node.name(), node.arguments, node.body, None)
+                node.name, node.arguments, node.body, None)
         super().visit_func_def(node)

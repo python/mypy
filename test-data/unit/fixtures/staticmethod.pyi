@@ -9,6 +9,7 @@ class type:
 class function: pass
 
 staticmethod = object() # Dummy definition.
+property = object()  # Dummy definition
 
 class int:
     @staticmethod

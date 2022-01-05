@@ -38,6 +38,7 @@ s, t = d
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 
 -- Expressions
@@ -65,6 +66,7 @@ def f(x: Any) -> 'A':
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testCallingWithDynamicReturnType]
 from typing import Any
@@ -80,6 +82,7 @@ def f(x: 'A') -> Any:
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testBinaryOperationsWithDynamicLeftOperand]
 from typing import Any
@@ -156,9 +159,9 @@ a or d
 if int():
     c = a in d  # E: Incompatible types in assignment (expression has type "bool", variable has type "C")
 if int():
-    c = b and d # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+    c = b and d # E: Incompatible types in assignment (expression has type "Union[Literal[False], Any]", variable has type "C")
 if int():
-    c = b or d  # E: Incompatible types in assignment (expression has type "Union[bool, Any]", variable has type "C")
+    c = b or d  # E: Incompatible types in assignment (expression has type "Union[Literal[True], Any]", variable has type "C")
 if int():
     b = a + d
 if int():
@@ -359,7 +362,7 @@ a = None # type: A
 g = None # type: Callable[[], None]
 h = None # type: Callable[[A], None]
 
-f()     # E: Too few arguments for "f"
+f()     # E: Missing positional argument "x" in call to "f"
 f(x, x) # E: Too many arguments for "f"
 if int():
     g = f   # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[], None]")
@@ -414,7 +417,7 @@ g3 = None # type: Callable[[A, A, A], None]
 g4 = None # type: Callable[[A, A, A, A], None]
 
 f01(a, a)       # E: Too many arguments for "f01"
-f13()           # E: Too few arguments for "f13"
+f13()           # E: Missing positional argument "x" in call to "f13"
 f13(a, a, a, a) # E: Too many arguments for "f13"
 if int():
     g2 = f01 # E: Incompatible types in assignment (expression has type "Callable[[Any], Any]", variable has type "Callable[[A, A], None]")
@@ -445,6 +448,7 @@ def f13(x, y = b, z = b): pass
 
 class A: pass
 class B: pass
+[builtins fixtures/tuple.pyi]
 
 [case testSkipTypeCheckingWithImplicitSignature]
 a = None # type: A
@@ -533,7 +537,7 @@ class A:
 from typing import Any
 o = None # type: Any
 def f(x, *a): pass
-f() # E: Too few arguments for "f"
+f() # E: Missing positional argument "x" in call to "f"
 f(o)
 f(o, o)
 f(o, o, o)
@@ -550,7 +554,7 @@ f1 = None # type: Callable[[A], A]
 f2 = None # type: Callable[[A, A], A]
 a = None # type: A
 
-A(a)   # E: Too few arguments for "A"
+A(a)   # E: Missing positional argument "b" in call to "A"
 if int():
     f1 = A # E: Incompatible types in assignment (expression has type "Type[A]", variable has type "Callable[[A], A]")
 
@@ -672,6 +676,7 @@ class A(B):
         pass
     def g(self, x: Any) -> None:
         pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverridingMethodWithImplicitDynamicTypes]
 
@@ -690,6 +695,7 @@ class A(B):
         pass
     def g(self, x):
         pass
+[builtins fixtures/tuple.pyi]
 
 [case testOverridingMethodAcrossHierarchy]
 import typing
@@ -698,7 +704,9 @@ class C:
 class B(C):
     def f(self, a): pass
 class A(B):
-    def f(self, a: 'D') -> None: # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "A"
+    def f(self, a: 'D') -> None: # E: Argument 1 of "f" is incompatible with supertype "C"; supertype defines the argument type as "A" \
+                                 # N: This violates the Liskov substitution principle \
+                                 # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#incompatible-overrides
         pass
 class D: pass
 [out]
@@ -717,18 +725,28 @@ import typing
 class B:
     def f(self, x, y): pass
 class A(B):
-    def f(self, x: 'A') -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x: 'A') -> None:  # Fail
         pass
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:      Superclass:
+main:5: note:          def f(self, x: Any, y: Any) -> Any
+main:5: note:      Subclass:
+main:5: note:          def f(self, x: A) -> None
 
 [case testInvalidOverrideArgumentCountWithImplicitSignature3]
 import typing
 class B:
     def f(self, x: A) -> None: pass
 class A(B):
-    def f(self, x, y) -> None: # E: Signature of "f" incompatible with supertype "B"
+    def f(self, x, y) -> None:  # Fail
         x()
 [out]
+main:5: error: Signature of "f" incompatible with supertype "B"
+main:5: note:      Superclass:
+main:5: note:          def f(self, x: A) -> None
+main:5: note:      Subclass:
+main:5: note:          def f(self, x: Any, y: Any) -> None
 
 [case testInvalidOverrideWithImplicitSignatureAndClassMethod1]
 class B:

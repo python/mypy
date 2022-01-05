@@ -1,6 +1,6 @@
 # NOTE: Requires fixtures/dict.pyi
 from typing import (
-    Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
+    Any, Dict, Type, TypeVar, Optional, Any, Generic, Mapping, NoReturn as NoReturn, Iterator
 )
 import sys
 
@@ -41,5 +41,10 @@ def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -
 # This is intended as a class decorator, but mypy rejects abstract classes
 # when a Type[_T] is expected, so we can't give it the type we want.
 def trait(cls: Any) -> Any: ...
+
+# The real type is in the comment but it isn't safe to use **kwargs in
+# a lib-stub because the fixtures might not have dict. Argh!
+# def mypyc_attr(*attrs: str, **kwattrs: object) -> Callable[[_T], _T]: ...
+mypyc_attr: Any
 
 class FlexibleAlias(Generic[_T, _U]): ...

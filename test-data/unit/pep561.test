@@ -1,0 +1,224 @@
+[case testTypedPkgNoSitePkgsIgnoredImports]
+# pkgs: typedpkg
+# flags: --no-site-packages
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[file mypy.ini]
+\[mypy]
+ignore_missing_imports = True
+[out]
+testTypedPkgNoSitePkgsIgnoredImports.py:6: note: Revealed type is "Any"
+
+[case testTypedPkgSimple]
+# pkgs: typedpkg
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgSimple.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+
+[case testTypedPkgSimplePackageSearchPath]
+# pkgs: typedpkg
+# flags: -p typedpkg.pkg
+[out]
+
+[case testTypedPkg_config_nositepackages]
+# pkgs: typedpkg
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[file mypy.ini]
+\[mypy]
+no_site_packages=True
+[out]
+testTypedPkg_config_nositepackages.py:2: error: Cannot find implementation or library stub for module named "typedpkg.sample"
+testTypedPkg_config_nositepackages.py:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testTypedPkg_config_nositepackages.py:3: error: Cannot find implementation or library stub for module named "typedpkg"
+testTypedPkg_config_nositepackages.py:5: note: Revealed type is "Any"
+
+[case testTypedPkg_args_nositepackages]
+# pkgs: typedpkg
+# flags: --no-site-packages
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkg_args_nositepackages.py:3: error: Cannot find implementation or library stub for module named "typedpkg.sample"
+testTypedPkg_args_nositepackages.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testTypedPkg_args_nositepackages.py:4: error: Cannot find implementation or library stub for module named "typedpkg"
+testTypedPkg_args_nositepackages.py:6: note: Revealed type is "Any"
+
+[case testTypedPkgStubs]
+# pkgs: typedpkg-stubs
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgStubs.py:3: error: Module "typedpkg" has no attribute "dne"
+testTypedPkgStubs.py:5: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testStubPrecedence]
+# pkgs: typedpkg, typedpkg-stubs
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testStubPrecedence.py:5: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testTypedPkgStubs_python2]
+# pkgs: typedpkg-stubs
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgStubs_python2.py:3: error: Module "typedpkg" has no attribute "dne"
+testTypedPkgStubs_python2.py:5: note: Revealed type is "builtins.list[builtins.str]"
+
+[case testTypedPkgSimple_python2]
+# pkgs: typedpkg
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+
+[case testTypedPkgSimpleEgg]
+# pkgs: typedpkg; no-pip
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgSimpleEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+
+[case testTypedPkgSimpleEditable]
+# pkgs: typedpkg; editable
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+
+[case testTypedPkgSimpleEditableEgg]
+# pkgs: typedpkg; editable; no-pip
+from typedpkg.sample import ex
+from typedpkg import dne
+a = ex([''])
+reveal_type(a)
+[out]
+testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
+
+[case testTypedPkgNamespaceImportFrom]
+# pkgs: typedpkg, typedpkg_ns_a
+from typedpkg.pkg.aaa import af
+from typedpkg_ns.a.bbb import bf
+from typedpkg_ns.a.dne import dne
+
+af("abc")
+bf(False)
+dne(123)
+
+af(False)
+bf(2)
+dne("abc")
+[out]
+testTypedPkgNamespaceImportFrom.py:4: error: Cannot find implementation or library stub for module named "typedpkg_ns.a.dne"
+testTypedPkgNamespaceImportFrom.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testTypedPkgNamespaceImportFrom.py:10: error: Argument 1 to "af" has incompatible type "bool"; expected "str"
+testTypedPkgNamespaceImportFrom.py:11: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
+
+[case testTypedPkgNamespaceImportAs]
+# pkgs: typedpkg, typedpkg_ns_a
+import typedpkg.pkg.aaa as nm; af = nm.af
+import typedpkg_ns.a.bbb as am; bf = am.bf
+from typedpkg_ns.a.dne import dne
+
+af("abc")
+bf(False)
+dne(123)
+
+af(False)
+bf(2)
+dne("abc")
+[out]
+testTypedPkgNamespaceImportAs.py:4: error: Cannot find implementation or library stub for module named "typedpkg_ns.a.dne"
+testTypedPkgNamespaceImportAs.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testTypedPkgNamespaceImportAs.py:10: error: Argument 1 has incompatible type "bool"; expected "str"
+testTypedPkgNamespaceImportAs.py:11: error: Argument 1 has incompatible type "int"; expected "bool"
+
+[case testTypedPkgNamespaceRegImport]
+# pkgs: typedpkg, typedpkg_ns_a
+import typedpkg.pkg.aaa; af = typedpkg.pkg.aaa.af
+import typedpkg_ns.a.bbb; bf = typedpkg_ns.a.bbb.bf
+from typedpkg_ns.a.dne import dne
+
+af("abc")
+bf(False)
+dne(123)
+
+af(False)
+bf(2)
+dne("abc")
+
+[out]
+testTypedPkgNamespaceRegImport.py:4: error: Cannot find implementation or library stub for module named "typedpkg_ns.a.dne"
+testTypedPkgNamespaceRegImport.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testTypedPkgNamespaceRegImport.py:10: error: Argument 1 has incompatible type "bool"; expected "str"
+testTypedPkgNamespaceRegImport.py:11: error: Argument 1 has incompatible type "int"; expected "bool"
+
+-- This is really testing the test framework to make sure incremental works
+[case testPep561TestIncremental]
+# pkgs: typedpkg
+import a
+[file a.py]
+[file a.py.2]
+1 + 'no'
+[out]
+[out2]
+a.py:1: error: Unsupported operand types for + ("int" and "str")
+
+[case testTypedPkgNamespaceRegFromImportTwice]
+# pkgs: typedpkg_ns_a
+from typedpkg_ns import a
+-- dummy should trigger a second iteration
+[file dummy.py.2]
+[out]
+[out2]
+
+[case testNamespacePkgWStubs]
+# pkgs: typedpkg_ns_a, typedpkg_ns_b, typedpkg_ns_b-stubs
+# flags: --no-namespace-packages
+import typedpkg_ns.a.bbb as a
+import typedpkg_ns.b.bbb as b
+a.bf(False)
+b.bf(False)
+a.bf(1)
+b.bf(1)
+[out]
+testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b.bbb": module is installed, but missing library stubs or py.typed marker
+testNamespacePkgWStubs.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+testNamespacePkgWStubs.py:4: error: Skipping analyzing "typedpkg_ns.b": module is installed, but missing library stubs or py.typed marker
+testNamespacePkgWStubs.py:7: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
+
+[case testNamespacePkgWStubsWithNamespacePackagesFlag]
+# pkgs: typedpkg_ns_a, typedpkg_ns_b, typedpkg_ns_b-stubs
+# flags: --namespace-packages
+import typedpkg_ns.a.bbb as a
+import typedpkg_ns.b.bbb as b
+a.bf(False)
+b.bf(False)
+a.bf(1)
+b.bf(1)
+[out]
+testNamespacePkgWStubsWithNamespacePackagesFlag.py:7: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
+testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"

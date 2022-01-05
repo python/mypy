@@ -9,11 +9,13 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
-    Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarType, TPDICT_FB_NAMES, get_proper_type
+    FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType, TupleType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
+from mypy.checkexpr import is_literal_type_like
+from mypy.checker import detach_callable
 
 
 class DefaultPlugin(Plugin):
@@ -21,10 +23,9 @@ class DefaultPlugin(Plugin):
 
     def get_function_hook(self, fullname: str
                           ) -> Optional[Callable[[FunctionContext], Type]]:
-        from mypy.plugins import ctypes
-        from mypy.plugins import regex
+        from mypy.plugins import ctypes, regex, singledispatch
 
-        if fullname == 'contextlib.contextmanager':
+        if fullname in ('contextlib.contextmanager', 'contextlib.asynccontextmanager'):
             return contextmanager_callback
         elif fullname == 'builtins.open' and self.python_version[0] == 3:
             return open_callback
@@ -34,11 +35,13 @@ class DefaultPlugin(Plugin):
             return regex.re_compile_callback
         elif fullname in regex.FUNCTIONS_PRODUCING_MATCH_OBJECT:
             return regex.re_direct_match_callback
+        elif fullname == 'functools.singledispatch':
+            return singledispatch.create_singledispatch_function_callback
         return None
 
     def get_method_signature_hook(self, fullname: str
-                                  ) -> Optional[Callable[[MethodSigContext], CallableType]]:
-        from mypy.plugins import ctypes
+                                  ) -> Optional[Callable[[MethodSigContext], FunctionLike]]:
+        from mypy.plugins import ctypes, singledispatch
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
@@ -48,21 +51,24 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
-            return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
+        elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
+            return singledispatch.call_singledispatch_function_callback
         return None
 
     def get_method_hook(self, fullname: str
                         ) -> Optional[Callable[[MethodContext], Type]]:
-        from mypy.plugins import ctypes
-        from mypy.plugins import regex
+        from mypy.plugins import ctypes, regex, singledispatch
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_callback
         elif fullname == 'builtins.int.__pow__':
             return int_pow_callback
+        elif fullname == 'builtins.int.__neg__':
+            return int_neg_callback
+        elif fullname in ('builtins.tuple.__mul__', 'builtins.tuple.__rmul__'):
+            return tuple_mul_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
@@ -81,6 +87,10 @@ class DefaultPlugin(Plugin):
             return regex.re_match_groups_callback
         elif fullname in regex.METHODS_PRODUCING_GROUP:
             return regex.re_match_group_callback
+        elif fullname == singledispatch.SINGLEDISPATCH_REGISTER_METHOD:
+            return singledispatch.singledispatch_register_callback
+        elif fullname == singledispatch.REGISTER_CALLABLE_CALL_METHOD:
+            return singledispatch.call_singledispatch_function_after_register_argument
         return None
 
     def get_attribute_hook(self, fullname: str
@@ -102,16 +112,31 @@ class DefaultPlugin(Plugin):
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         from mypy.plugins import attrs
         from mypy.plugins import dataclasses
+        from mypy.plugins import functools
 
         if fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
             return partial(
                 attrs.attr_class_maker_callback,
-                auto_attribs_default=True
+                auto_attribs_default=True,
+            )
+        elif fullname in attrs.attr_frozen_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
+                frozen_default=True,
+            )
+        elif fullname in attrs.attr_define_makers:
+            return partial(
+                attrs.attr_class_maker_callback,
+                auto_attribs_default=None,
             )
         elif fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback
+        elif fullname in functools.functools_total_ordering_makers:
+            return functools.functools_total_ordering_maker_callback
+
         return None
 
 
@@ -177,12 +202,12 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
                 and isinstance(default_return, CallableType)):
             # The stub signature doesn't preserve information about arguments so
             # add them back here.
-            return default_return.copy_modified(
+            return detach_callable(default_return.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names,
                 variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args)
+                is_ellipsis_args=arg_type.is_ellipsis_args))
     return ctx.default_return_type
 
 
@@ -213,7 +238,8 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             return signature.copy_modified(
                 arg_types=[signature.arg_types[0],
                            make_simplified_union([value_type, tv])],
@@ -230,12 +256,11 @@ def typed_dict_get_callback(ctx: MethodContext) -> Type:
         if keys is None:
             return ctx.default_return_type
 
-        output_types = []  # type: List[Type]
+        output_types: List[Type] = []
         for key in keys:
             value_type = get_proper_type(ctx.type.items.get(key))
             if value_type is None:
-                ctx.api.msg.typeddict_key_not_found(ctx.type, key, ctx.context)
-                return AnyType(TypeOfAny.from_error)
+                return ctx.default_return_type
 
             if len(ctx.arg_types) == 1:
                 output_types.append(value_type)
@@ -278,7 +303,8 @@ def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:
             # Tweak the signature to include the value type as context. It's
             # only needed for type inference since there's a union with a type
             # variable that accepts everything.
-            tv = TypeVarType(signature.variables[0])
+            tv = signature.variables[0]
+            assert isinstance(tv, TypeVarType)
             typ = make_simplified_union([value_type, tv])
             return signature.copy_modified(
                 arg_types=[str_type, typ],
@@ -373,12 +399,6 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def typed_dict_delitem_signature_callback(ctx: MethodSigContext) -> CallableType:
-    # Replace NoReturn as the argument type.
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    return ctx.default_signature.copy_modified(arg_types=[str_type])
-
-
 def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     """Type check TypedDict.__delitem__."""
     if (isinstance(ctx.type, TypedDictType)
@@ -428,4 +448,52 @@ def int_pow_callback(ctx: MethodContext) -> Type:
             return ctx.api.named_generic_type('builtins.int', [])
         else:
             return ctx.api.named_generic_type('builtins.float', [])
+    return ctx.default_return_type
+
+
+def int_neg_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for int.__neg__.
+
+    This is mainly used to infer the return type as LiteralType
+    if the original underlying object is a LiteralType object
+    """
+    if isinstance(ctx.type, Instance) and ctx.type.last_known_value is not None:
+        value = ctx.type.last_known_value.value
+        fallback = ctx.type.last_known_value.fallback
+        if isinstance(value, int):
+            if is_literal_type_like(ctx.api.type_context[-1]):
+                return LiteralType(value=-value, fallback=fallback)
+            else:
+                return ctx.type.copy_modified(last_known_value=LiteralType(
+                    value=-value,
+                    fallback=ctx.type,
+                    line=ctx.type.line,
+                    column=ctx.type.column,
+                ))
+    elif isinstance(ctx.type, LiteralType):
+        value = ctx.type.value
+        fallback = ctx.type.fallback
+        if isinstance(value, int):
+            return LiteralType(value=-value, fallback=fallback)
+    return ctx.default_return_type
+
+
+def tuple_mul_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for tuple.__mul__ and tuple.__rmul__.
+
+    This is used to return a specific sized tuple if multiplied by Literal int
+    """
+    if not isinstance(ctx.type, TupleType):
+        return ctx.default_return_type
+
+    arg_type = get_proper_type(ctx.arg_types[0][0])
+    if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
+        value = arg_type.last_known_value.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+    elif isinstance(ctx.type, LiteralType):
+        value = arg_type.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+
     return ctx.default_return_type

@@ -5,12 +5,12 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Optional, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union
 
 from mypy import defaults
 import mypy.api as api
 
-import pytest  # type: ignore  # no pytest in typeshed
+import pytest
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
@@ -18,7 +18,9 @@ from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.data import (
+    DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
+)
 from mypy.test.config import test_temp_dir
 import mypy.version
 
@@ -31,8 +33,9 @@ MIN_LINE_LENGTH_FOR_ALIGNMENT = 5
 
 def run_mypy(args: List[str]) -> None:
     __tracebackhide__ = True
+    # We must enable site packages even though they could cause problems,
+    # since stubs for typing_extensions live there.
     outval, errval, status = api.run(args + ['--show-traceback',
-                                             '--no-site-packages',
                                              '--no-silence-site-packages'])
     if status != 0:
         sys.stdout.write(outval)
@@ -49,6 +52,7 @@ def assert_string_arrays_equal(expected: List[str], actual: List[str],
 
     Display any differences in a human-readable form.
     """
+    __tracebackhide__ = True
 
     actual = clean_up(actual)
     actual = [line.replace("can't", "cannot") for line in actual]
@@ -148,9 +152,9 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
     testcase_path = os.path.join(testcase.old_cwd, testcase.file)
     with open(testcase_path, encoding='utf8') as f:
         data_lines = f.read().splitlines()
-    test = '\n'.join(data_lines[testcase.line:testcase.lastline])
+    test = '\n'.join(data_lines[testcase.line:testcase.last_line])
 
-    mapping = {}  # type: Dict[str, List[str]]
+    mapping: Dict[str, List[str]] = {}
     for old, new in zip(testcase.output, output):
         PREFIX = 'error:'
         ind = old.find(PREFIX)
@@ -168,7 +172,7 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
                 list(chain.from_iterable(zip(mapping[old], betweens[1:])))
             test = ''.join(interleaved)
 
-    data_lines[testcase.line:testcase.lastline] = [test]
+    data_lines[testcase.line:testcase.last_line] = [test]
     data = '\n'.join(data_lines)
     with open(testcase_path, 'w', encoding='utf8') as f:
         print(data, file=f)
@@ -233,6 +237,8 @@ def clean_up(a: List[str]) -> List[str]:
     remove trailing carriage returns.
     """
     res = []
+    pwd = os.getcwd()
+    driver = pwd + '/driver.py'
     for s in a:
         prefix = os.sep
         ss = s
@@ -241,6 +247,8 @@ def clean_up(a: List[str]) -> List[str]:
                 ss = ss.replace(p, '')
         # Ignore spaces at end of line.
         ss = re.sub(' +$', '', ss)
+        # Remove pwd from driver.py's path
+        ss = ss.replace(driver, 'driver.py')
         res.append(re.sub('\\r$', '', ss))
     return res
 
@@ -321,18 +329,6 @@ def retry_on_error(func: Callable[[], Any], max_wait: float = 1.0) -> None:
                 raise
             time.sleep(wait_time)
 
-# TODO: assert_true and assert_false are redundant - use plain assert
-
-
-def assert_true(b: bool, msg: Optional[str] = None) -> None:
-    if not b:
-        raise AssertionError(msg)
-
-
-def assert_false(b: bool, msg: Optional[str] = None) -> None:
-    if b:
-        raise AssertionError(msg)
-
 
 def good_repr(obj: object) -> str:
     if isinstance(obj, str):
@@ -347,6 +343,7 @@ def good_repr(obj: object) -> str:
 
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
+    __tracebackhide__ = True
     if a != b:
         raise AssertionError(fmt.format(good_repr(a), good_repr(b)))
 
@@ -359,6 +356,7 @@ def typename(t: type) -> str:
 
 
 def assert_type(typ: type, value: object) -> None:
+    __tracebackhide__ = True
     if type(value) != typ:
         raise AssertionError('Invalid type {}, expected {}'.format(
             typename(type(value)), typename(typ)))
@@ -375,7 +373,6 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         if flags2:
             flags = flags2
 
-    flag_list = None
     if flags:
         flag_list = flags.group(1).split()
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
@@ -384,14 +381,14 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
             # TODO: support specifying targets via the flags pragma
             raise RuntimeError('Specifying targets via the flags pragma is not supported.')
     else:
+        flag_list = []
         options = Options()
         # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
         options.strict_optional = False
         options.error_summary = False
 
-    # Allow custom python version to override testcase_pyversion
-    if (not flag_list or
-            all(flag not in flag_list for flag in ['--python-version', '-2', '--py2'])):
+    # Allow custom python version to override testcase_pyversion.
+    if all(flag.split('=')[0] not in ['--python-version', '-2', '--py2'] for flag in flag_list):
         options.python_version = testcase_pyversion(testcase.file, testcase.name)
 
     if testcase.config.getoption('--mypy-verbose'):
@@ -409,11 +406,11 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+def write_and_fudge_mtime(content: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size
     # after a change. We manually set the mtime to circumvent this.
-    # Note that we increment the old file's mtime, which guarentees a
+    # Note that we increment the old file's mtime, which guarantees a
     # different value, rather than incrementing the mtime after the
     # copy, which could leave the mtime unchanged if the old file had
     # a similarly fudged mtime.
@@ -421,11 +418,31 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     if os.path.isfile(target_path):
         new_time = os.stat(target_path).st_mtime + 1
 
-    # Use retries to work around potential flakiness on Windows (AppVeyor).
-    retry_on_error(lambda: shutil.copy(source_path, target_path))
+    dir = os.path.dirname(target_path)
+    os.makedirs(dir, exist_ok=True)
+    with open(target_path, "w", encoding="utf-8") as target:
+        target.write(content)
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def perform_file_operations(
+        operations: List[Union[UpdateFile, DeleteFile]]) -> None:
+    for op in operations:
+        if isinstance(op, UpdateFile):
+            # Modify/create file
+            write_and_fudge_mtime(op.content, op.target_path)
+        else:
+            # Delete file/directory
+            if os.path.isdir(op.path):
+                # Sanity check to avoid unexpected deletions
+                assert op.path.startswith('tmp')
+                shutil.rmtree(op.path)
+            else:
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                path = op.path
+                retry_on_error(lambda: os.remove(path))
 
 
 def check_test_output_files(testcase: DataDrivenTestCase,

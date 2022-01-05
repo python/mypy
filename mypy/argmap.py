@@ -1,16 +1,20 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
-from typing import List, Optional, Sequence, Callable, Set
+from typing import TYPE_CHECKING, List, Optional, Sequence, Callable, Set
 
+from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
-    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, get_proper_type
+    Type, Instance, TupleType, AnyType, TypeOfAny, TypedDictType, ParamSpecType, get_proper_type
 )
 from mypy import nodes
 
+if TYPE_CHECKING:
+    from mypy.infer import ArgumentInferContext
 
-def map_actuals_to_formals(actual_kinds: List[int],
+
+def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: Sequence[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -23,13 +27,13 @@ def map_actuals_to_formals(actual_kinds: List[int],
     argument type with the given index.
     """
     nformals = len(formal_kinds)
-    formal_to_actual = [[] for i in range(nformals)]  # type: List[List[int]]
+    formal_to_actual: List[List[int]] = [[] for i in range(nformals)]
+    ambiguous_actual_kwargs: List[int] = []
     fi = 0
     for ai, actual_kind in enumerate(actual_kinds):
         if actual_kind == nodes.ARG_POS:
             if fi < nformals:
-                if formal_kinds[fi] in [nodes.ARG_POS, nodes.ARG_OPT,
-                                        nodes.ARG_NAMED, nodes.ARG_NAMED_OPT]:
+                if not formal_kinds[fi].is_star():
                     formal_to_actual[fi].append(ai)
                     fi += 1
                 elif formal_kinds[fi] == nodes.ARG_STAR:
@@ -51,14 +55,14 @@ def map_actuals_to_formals(actual_kinds: List[int],
                 # Assume that it is an iterable (if it isn't, there will be
                 # an error later).
                 while fi < nformals:
-                    if formal_kinds[fi] in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT, nodes.ARG_STAR2):
+                    if formal_kinds[fi].is_named(star=True):
                         break
                     else:
                         formal_to_actual[fi].append(ai)
                     if formal_kinds[fi] == nodes.ARG_STAR:
                         break
                     fi += 1
-        elif actual_kind in (nodes.ARG_NAMED, nodes.ARG_NAMED_OPT):
+        elif actual_kind.is_named():
             assert actual_names is not None, "Internal error: named kinds without names given"
             name = actual_names[ai]
             if name in formal_names:
@@ -69,31 +73,38 @@ def map_actuals_to_formals(actual_kinds: List[int],
             assert actual_kind == nodes.ARG_STAR2
             actualt = get_proper_type(actual_arg_type(ai))
             if isinstance(actualt, TypedDictType):
-                for name, value in actualt.items.items():
+                for name in actualt.items:
                     if name in formal_names:
                         formal_to_actual[formal_names.index(name)].append(ai)
                     elif nodes.ARG_STAR2 in formal_kinds:
                         formal_to_actual[formal_kinds.index(nodes.ARG_STAR2)].append(ai)
             else:
                 # We don't exactly know which **kwargs are provided by the
-                # caller. Assume that they will fill the remaining arguments.
-                for fi in range(nformals):
-                    # TODO: If there are also tuple varargs, we might be missing some potential
-                    #       matches if the tuple was short enough to not match everything.
-                    no_certain_match = (
-                        not formal_to_actual[fi]
-                        or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
-                    if ((formal_names[fi]
-                            and no_certain_match
-                            and formal_kinds[fi] != nodes.ARG_STAR) or
-                            formal_kinds[fi] == nodes.ARG_STAR2):
-                        formal_to_actual[fi].append(ai)
+                # caller, so we'll defer until all the other unambiguous
+                # actuals have been processed
+                ambiguous_actual_kwargs.append(ai)
+
+    if ambiguous_actual_kwargs:
+        # Assume the ambiguous kwargs will fill the remaining arguments.
+        #
+        # TODO: If there are also tuple varargs, we might be missing some potential
+        #       matches if the tuple was short enough to not match everything.
+        unmatched_formals = [fi for fi in range(nformals)
+                             if (formal_names[fi]
+                                 and (not formal_to_actual[fi]
+                                      or actual_kinds[formal_to_actual[fi][0]] == nodes.ARG_STAR)
+                                 and formal_kinds[fi] != nodes.ARG_STAR)
+                             or formal_kinds[fi] == nodes.ARG_STAR2]
+        for ai in ambiguous_actual_kwargs:
+            for fi in unmatched_formals:
+                formal_to_actual[fi].append(ai)
+
     return formal_to_actual
 
 
-def map_formals_to_actuals(actual_kinds: List[int],
+def map_formals_to_actuals(actual_kinds: List[nodes.ArgKind],
                            actual_names: Optional[Sequence[Optional[str]]],
-                           formal_kinds: List[int],
+                           formal_kinds: List[nodes.ArgKind],
                            formal_names: List[Optional[str]],
                            actual_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -104,7 +115,7 @@ def map_formals_to_actuals(actual_kinds: List[int],
                                               formal_names,
                                               actual_arg_type)
     # Now reverse the mapping.
-    actual_to_formal = [[] for _ in actual_kinds]  # type: List[List[int]]
+    actual_to_formal: List[List[int]] = [[] for _ in actual_kinds]
     for formal, actuals in enumerate(formal_to_actual):
         for actual in actuals:
             actual_to_formal[actual].append(formal)
@@ -133,17 +144,19 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, context: 'ArgumentInferContext') -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.
-        self.kwargs_used = set()  # type: Set[str]
+        self.kwargs_used: Set[str] = set()
+        # Type context for `*` and `**` arg kinds.
+        self.context = context
 
     def expand_actual_type(self,
                            actual_type: Type,
-                           actual_kind: int,
+                           actual_kind: nodes.ArgKind,
                            formal_name: Optional[str],
-                           formal_kind: int) -> Type:
+                           formal_kind: nodes.ArgKind) -> Type:
         """Return the actual (caller) type(s) of a formal argument with the given kinds.
 
         If the actual argument is a tuple *args, return the next individual tuple item that
@@ -157,14 +170,18 @@ class ArgTypeExpander:
         """
         actual_type = get_proper_type(actual_type)
         if actual_kind == nodes.ARG_STAR:
-            if isinstance(actual_type, Instance):
-                if actual_type.type.fullname() == 'builtins.list':
-                    # List *arg.
-                    return actual_type.args[0]
-                elif actual_type.args:
-                    # TODO: Try to map type arguments to Iterable
-                    return actual_type.args[0]
+            if isinstance(actual_type, Instance) and actual_type.args:
+                from mypy.subtypes import is_subtype
+                if is_subtype(actual_type, self.context.iterable_type):
+                    return map_instance_to_supertype(
+                        actual_type,
+                        self.context.iterable_type.type,
+                    ).args[0]
                 else:
+                    # We cannot properly unpack anything other
+                    # than `Iterable` type with `*`.
+                    # Just return `Any`, other parts of code would raise
+                    # a different error for improper use.
                     return AnyType(TypeOfAny.from_error)
             elif isinstance(actual_type, TupleType):
                 # Get the next tuple item of a tuple *arg.
@@ -174,9 +191,13 @@ class ArgTypeExpander:
                 else:
                     self.tuple_index += 1
                 return actual_type.items[self.tuple_index - 1]
+            elif isinstance(actual_type, ParamSpecType):
+                # ParamSpec is valid in *args but it can't be unpacked.
+                return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
         elif actual_kind == nodes.ARG_STAR2:
+            from mypy.subtypes import is_subtype
             if isinstance(actual_type, TypedDictType):
                 if formal_kind != nodes.ARG_STAR2 and formal_name in actual_type.items:
                     # Lookup type based on keyword argument name.
@@ -186,11 +207,20 @@ class ArgTypeExpander:
                     formal_name = (set(actual_type.items.keys()) - self.kwargs_used).pop()
                 self.kwargs_used.add(formal_name)
                 return actual_type.items[formal_name]
-            elif (isinstance(actual_type, Instance)
-                  and (actual_type.type.fullname() == 'builtins.dict')):
-                # Dict **arg.
-                # TODO: Handle arbitrary Mapping
-                return actual_type.args[1]
+            elif (
+                isinstance(actual_type, Instance) and
+                len(actual_type.args) > 1 and
+                is_subtype(actual_type, self.context.mapping_type)
+            ):
+                # Only `Mapping` type can be unpacked with `**`.
+                # Other types will produce an error somewhere else.
+                return map_instance_to_supertype(
+                    actual_type,
+                    self.context.mapping_type.type,
+                ).args[1]
+            elif isinstance(actual_type, ParamSpecType):
+                # ParamSpec is valid in **kwargs but it can't be unpacked.
+                return actual_type
             else:
                 return AnyType(TypeOfAny.from_error)
         else:

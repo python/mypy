@@ -16,6 +16,7 @@ class list(Sequence[T]):
     @overload
     def __init__(self, x: Iterable[T]) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
+    def __len__(self) -> int: pass
     def __contains__(self, item: object) -> bool: pass
     def __add__(self, x: list[T]) -> list[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
@@ -26,9 +27,12 @@ class list(Sequence[T]):
 
 class tuple(Generic[T]): pass
 class function: pass
-class int: pass
-class float: pass
-class str: pass
+class int:
+    def __bool__(self) -> bool: pass
+class float:
+    def __bool__(self) -> bool: pass
+class str:
+    def __len__(self) -> bool: pass
 class bool(int): pass
 
 property = object() # Dummy definition.

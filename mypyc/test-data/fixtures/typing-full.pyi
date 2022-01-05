@@ -131,6 +131,7 @@ class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     @overload
     def get(self, k: T, default: Union[T_co, V]) -> Union[T_co, V]: pass
     def values(self) -> Iterable[T_co]: pass  # Approximate return type
+    def items(self) -> Iterable[Tuple[T, T_co]]: pass  # Approximate return type
     def __len__(self) -> int: ...
     def __contains__(self, arg: object) -> int: pass
 
@@ -139,6 +140,9 @@ class MutableMapping(Mapping[T, U], metaclass=ABCMeta):
 
 class SupportsInt(Protocol):
     def __int__(self) -> int: pass
+
+class SupportsFloat(Protocol):
+    def __float__(self) -> float: pass
 
 def runtime_checkable(cls: T) -> T:
     return cls

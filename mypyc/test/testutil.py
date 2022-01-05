@@ -14,11 +14,14 @@ from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal
 
-from mypyc import genops
 from mypyc.options import CompilerOptions
-from mypyc.ops import FuncIR
+from mypyc.analysis.ircheck import assert_func_ir_valid
+from mypyc.ir.func_ir import FuncIR
 from mypyc.errors import Errors
+from mypyc.irbuild.main import build_ir
+from mypyc.irbuild.mapper import Mapper
 from mypyc.test.config import test_data_prefix
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, 'fixtures/ir.py')
@@ -28,7 +31,7 @@ TESTUTIL_PATH = os.path.join(test_data_prefix, 'fixtures/testutil.py')
 
 class MypycDataSuite(DataSuite):
     # Need to list no files, since this will be picked up as a suite of tests
-    files = []  # type: List[str]
+    files: List[str] = []
     data_prefix = test_data_prefix
 
 
@@ -53,12 +56,13 @@ def use_custom_builtins(builtins_path: str, testcase: DataDrivenTestCase) -> Ite
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
-    yield None
-
-    if default_builtins:
-        # Clean up.
-        os.remove(builtins)
+    # Actually perform the test case.
+    try:
+        yield None
+    finally:
+        if default_builtins:
+            # Clean up.
+            os.remove(builtins)
 
 
 def perform_test(func: Callable[[DataDrivenTestCase], None],
@@ -73,7 +77,7 @@ def perform_test(func: Callable[[DataDrivenTestCase], None],
         shutil.copyfile(builtins_path, builtins)
         default_builtins = True
 
-    # Actually peform the test case.
+    # Actually perform the test case.
     func(testcase)
 
     if default_builtins:
@@ -85,7 +89,9 @@ def build_ir_for_single_file(input_lines: List[str],
                              compiler_options: Optional[CompilerOptions] = None) -> List[FuncIR]:
     program_text = '\n'.join(input_lines)
 
-    compiler_options = compiler_options or CompilerOptions()
+    # By default generate IR compatible with the earliest supported Python C API.
+    # If a test needs more recent API features, this should be overridden.
+    compiler_options = compiler_options or CompilerOptions(capi_version=(3, 5))
     options = Options()
     options.show_traceback = True
     options.use_builtins_fixtures = True
@@ -105,13 +111,16 @@ def build_ir_for_single_file(input_lines: List[str],
         raise CompileError(result.errors)
 
     errors = Errors()
-    modules = genops.build_ir(
+    modules = build_ir(
         [result.files['__main__']], result.graph, result.types,
-        genops.Mapper({'__main__': None}),
+        Mapper({'__main__': None}),
         compiler_options, errors)
-    assert errors.num_errors == 0
+    if errors.num_errors:
+        raise CompileError(errors.new_messages())
 
     module = list(modules.values())[0]
+    for fn in module.functions:
+        assert_func_ir_valid(fn)
     return module.functions
 
 
@@ -143,9 +152,13 @@ def update_testcase_output(testcase: DataDrivenTestCase, output: List[str]) -> N
         print(data, file=f)
 
 
-def assert_test_output(testcase: DataDrivenTestCase, actual: List[str],
+def assert_test_output(testcase: DataDrivenTestCase,
+                       actual: List[str],
                        message: str,
-                       expected: Optional[List[str]] = None) -> None:
+                       expected: Optional[List[str]] = None,
+                       formatted: Optional[List[str]] = None) -> None:
+    __tracebackhide__ = True
+
     expected_output = expected if expected is not None else testcase.output
     if expected_output != actual and testcase.config.getoption('--update-data', False):
         update_testcase_output(testcase, actual)
@@ -195,3 +208,59 @@ def show_c(cfiles: List[List[Tuple[str, str]]]) -> None:
             print('== {} =='.format(cfile))
             print_with_line_numbers(ctext)
     heading('End C')
+
+
+def fudge_dir_mtimes(dir: str, delta: int) -> None:
+    for dirpath, _, filenames in os.walk(dir):
+        for name in filenames:
+            path = os.path.join(dirpath, name)
+            new_mtime = os.stat(path).st_mtime + delta
+            os.utime(path, times=(new_mtime, new_mtime))
+
+
+def replace_word_size(text: List[str]) -> List[str]:
+    """Replace WORDSIZE with platform specific word sizes"""
+    result = []
+    for line in text:
+        index = line.find('WORD_SIZE')
+        if index != -1:
+            # get 'WORDSIZE*n' token
+            word_size_token = line[index:].split()[0]
+            n = int(word_size_token[10:])
+            replace_str = str(PLATFORM_SIZE * n)
+            result.append(line.replace(word_size_token, replace_str))
+        else:
+            result.append(line)
+    return result
+
+
+def infer_ir_build_options_from_test_name(name: str) -> Optional[CompilerOptions]:
+    """Look for magic substrings in test case name to set compiler options.
+
+    Return None if the test case should be skipped (always pass).
+
+    Supported naming conventions:
+
+      *_64bit*:
+          Run test case only on 64-bit platforms
+      *_32bit*:
+          Run test caseonly on 32-bit platforms
+      *_python3_8* (or for any Python version):
+          Use Python 3.8+ C API features (default: lowest supported version)
+      *StripAssert*:
+          Don't generate code for assert statements
+    """
+    # If this is specific to some bit width, always pass if platform doesn't match.
+    if '_64bit' in name and IS_32_BIT_PLATFORM:
+        return None
+    if '_32bit' in name and not IS_32_BIT_PLATFORM:
+        return None
+    options = CompilerOptions(strip_asserts='StripAssert' in name,
+                              capi_version=(3, 5))
+    # A suffix like _python3.8 is used to set the target C API version.
+    m = re.search(r'_python([3-9]+)_([0-9]+)(_|\b)', name)
+    if m:
+        options.capi_version = (int(m.group(1)), int(m.group(2)))
+    elif '_py' in name or '_Python' in name:
+        assert False, 'Invalid _py* suffix (should be _pythonX_Y): {}'.format(name)
+    return options

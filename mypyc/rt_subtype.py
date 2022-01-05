@@ -13,9 +13,9 @@ particular place and runtime subtyping is used to determine whether a
 coercion is necessary first.
 """
 
-from mypyc.ops import (
-    RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor,
-    is_int_rprimitive, is_short_int_rprimitive,
+from mypyc.ir.rtypes import (
+    RType, RUnion, RInstance, RPrimitive, RTuple, RVoid, RTypeVisitor, RStruct, RArray,
+    is_int_rprimitive, is_short_int_rprimitive, is_bool_rprimitive, is_bit_rprimitive
 )
 from mypyc.subtype import is_subtype
 
@@ -43,6 +43,8 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
     def visit_rprimitive(self, left: RPrimitive) -> bool:
         if is_short_int_rprimitive(left) and is_int_rprimitive(self.right):
             return True
+        if is_bit_rprimitive(left) and is_bool_rprimitive(self.right):
+            return True
         return left is self.right
 
     def visit_rtuple(self, left: RTuple) -> bool:
@@ -50,6 +52,12 @@ class RTSubtypeVisitor(RTypeVisitor[bool]):
             return len(self.right.types) == len(left.types) and all(
                 is_runtime_subtype(t1, t2) for t1, t2 in zip(left.types, self.right.types))
         return False
+
+    def visit_rstruct(self, left: RStruct) -> bool:
+        return isinstance(self.right, RStruct) and self.right.name == left.name
+
+    def visit_rarray(self, left: RArray) -> bool:
+        return left == self.right
 
     def visit_rvoid(self, left: RVoid) -> bool:
         return isinstance(self.right, RVoid)

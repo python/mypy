@@ -1,26 +1,42 @@
-from collections import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple, Callable
 
-from mypy.join import (
-    is_similar_callables, combine_similar_callables, join_type_list, unpack_callback_protocol
-)
 from mypy.types import (
     Type, AnyType, TypeVisitor, UnboundType, NoneType, TypeVarType, Instance, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
-    ProperType, get_proper_type, get_proper_types
+    ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
+    ParamSpecType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import tuple_fallback, make_simplified_union
+from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
 from mypy import state
+from mypy import join
 
 # TODO Describe this module.
 
 
+def trivial_meet(s: Type, t: Type) -> ProperType:
+    """Return one of types (expanded) if it is a subtype of other, otherwise bottom type."""
+    if is_subtype(s, t):
+        return get_proper_type(s)
+    elif is_subtype(t, s):
+        return get_proper_type(t)
+    else:
+        if state.strict_optional:
+            return UninhabitedType()
+        else:
+            return NoneType()
+
+
 def meet_types(s: Type, t: Type) -> ProperType:
     """Return the greatest lower bound of two types."""
+    if is_recursive_pair(s, t):
+        # This case can trigger an infinite recursion, general support for this will be
+        # tricky so we use a trivial meet (like for protocols).
+        return trivial_meet(s, t)
     s = get_proper_type(s)
     t = get_proper_type(t)
 
@@ -35,6 +51,11 @@ def meet_types(s: Type, t: Type) -> ProperType:
 
 def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     """Return the declared type narrowed down to another type."""
+    # TODO: check infinite recursion for aliases here.
+    if isinstance(narrowed, TypeGuardedType):  # type: ignore[misc]
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return narrowed.type_guard
+
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 
@@ -54,13 +75,20 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
                                       for x in narrowed.relevant_items()])
     elif isinstance(narrowed, AnyType):
         return narrowed
+    elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
+        return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
         return TypeType.make_normalized(narrow_declared_type(declared.item, narrowed.item))
+    elif (isinstance(declared, TypeType)
+          and isinstance(narrowed, Instance)
+          and narrowed.type.is_metaclass()):
+        # We'd need intersection types, so give up.
+        return declared
     elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
-        if (narrowed.type.fullname() == 'builtins.dict' and
+        if (narrowed.type.fullname == 'builtins.dict' and
                 all(isinstance(t, AnyType) for t in get_proper_types(narrowed.args))):
             return declared
         return meet_types(declared, narrowed)
@@ -104,7 +132,7 @@ def get_possible_variants(typ: Type) -> List[Type]:
     elif isinstance(typ, Overloaded):
         # Note: doing 'return typ.items()' makes mypy
         # infer a too-specific return type of List[CallableType]
-        return list(typ.items())
+        return list(typ.items)
     else:
         return [typ]
 
@@ -119,8 +147,14 @@ def is_overlapping_types(left: Type,
     If 'prohibit_none_typevar_overlap' is True, we disallow None from overlapping with
     TypeVars (in both strict-optional and non-strict-optional mode).
     """
-    left = get_proper_type(left)
-    right = get_proper_type(right)
+    if (
+        isinstance(left, TypeGuardedType)  # type: ignore[misc]
+        or isinstance(right, TypeGuardedType)  # type: ignore[misc]
+    ):
+        # A type guard forces the new type even if it doesn't overlap the old.
+        return True
+
+    left, right = get_proper_types((left, right))
 
     def _is_overlapping_types(left: Type, right: Type) -> bool:
         '''Encode the kind of overlapping check to perform.
@@ -144,10 +178,6 @@ def is_overlapping_types(left: Type,
     if isinstance(left, illegal_types) or isinstance(right, illegal_types):
         return True
 
-    # 'Any' may or may not be overlapping with the other type
-    if isinstance(left, AnyType) or isinstance(right, AnyType):
-        return True
-
     # When running under non-strict optional mode, simplify away types of
     # the form 'Union[A, B, C, None]' into just 'Union[A, B, C]'.
 
@@ -156,6 +186,11 @@ def is_overlapping_types(left: Type,
             left = UnionType.make_union(left.relevant_items())
         if isinstance(right, UnionType):
             right = UnionType.make_union(right.relevant_items())
+        left, right = get_proper_types((left, right))
+
+    # 'Any' may or may not be overlapping with the other type
+    if isinstance(left, AnyType) or isinstance(right, AnyType):
+        return True
 
     # We check for complete overlaps next as a general-purpose failsafe.
     # If this check fails, we start checking to see if there exists a
@@ -183,7 +218,8 @@ def is_overlapping_types(left: Type,
     # If both types are singleton variants (and are not TypeVars), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    def is_none_typevar_overlap(t1: ProperType, t2: ProperType) -> bool:
+    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+        t1, t2 = get_proper_types((t1, t2))
         return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
 
     if prohibit_none_typevar_overlap:
@@ -242,20 +278,23 @@ def is_overlapping_types(left: Type,
     if isinstance(left, TypeType) and isinstance(right, TypeType):
         return _is_overlapping_types(left.item, right.item)
 
-    def _type_object_overlap(left: ProperType, right: ProperType) -> bool:
+    def _type_object_overlap(left: Type, right: Type) -> bool:
         """Special cases for type object types overlaps."""
         # TODO: these checks are a bit in gray area, adjust if they cause problems.
+        left, right = get_proper_types((left, right))
         # 1. Type[C] vs Callable[..., C], where the latter is class object.
         if isinstance(left, TypeType) and isinstance(right, CallableType) and right.is_type_obj():
             return _is_overlapping_types(left.item, right.ret_type)
         # 2. Type[C] vs Meta, where Meta is a metaclass for C.
-        if (isinstance(left, TypeType) and isinstance(left.item, Instance) and
-                isinstance(right, Instance)):
-            left_meta = left.item.type.metaclass_type
-            if left_meta is not None:
-                return _is_overlapping_types(left_meta, right)
-            # builtins.type (default metaclass) overlaps with all metaclasses
-            return right.type.has_base('builtins.type')
+        if isinstance(left, TypeType) and isinstance(right, Instance):
+            if isinstance(left.item, Instance):
+                left_meta = left.item.type.metaclass_type
+                if left_meta is not None:
+                    return _is_overlapping_types(left_meta, right)
+                # builtins.type (default metaclass) overlaps with all metaclasses
+                return right.type.has_base('builtins.type')
+            elif isinstance(left.item, AnyType):
+                return right.type.has_base('builtins.type')
         # 3. Callable[..., C] vs Meta is considered below, when we switch to fallbacks.
         return False
 
@@ -295,9 +334,9 @@ def is_overlapping_types(left: Type,
             return True
 
         # Two unrelated types cannot be partially overlapping: they're disjoint.
-        if left.type.has_base(right.type.fullname()):
+        if left.type.has_base(right.type.fullname):
             left = map_instance_to_supertype(left, right.type)
-        elif right.type.has_base(left.type.fullname()):
+        elif right.type.has_base(left.type.fullname):
             right = map_instance_to_supertype(right, left.type)
         else:
             return False
@@ -317,9 +356,9 @@ def is_overlapping_types(left: Type,
             # Or, to use a more concrete example, List[Union[A, B]] and List[Union[B, C]]
             # would be considered partially overlapping since it's possible for both lists
             # to contain only instances of B at runtime.
-            for left_arg, right_arg in zip(left.args, right.args):
-                if _is_overlapping_types(left_arg, right_arg):
-                    return True
+            if all(_is_overlapping_types(left_arg, right_arg)
+                   for left_arg, right_arg in zip(left.args, right.args)):
+                return True
 
         return False
 
@@ -368,10 +407,11 @@ def are_typed_dicts_overlapping(left: TypedDictType, right: TypedDictType, *,
     return True
 
 
-def are_tuples_overlapping(left: ProperType, right: ProperType, *,
+def are_tuples_overlapping(left: Type, right: Type, *,
                            ignore_promotions: bool = False,
                            prohibit_none_typevar_overlap: bool = False) -> bool:
     """Returns true if left and right are overlapping tuples."""
+    left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
     assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
@@ -386,7 +426,7 @@ def are_tuples_overlapping(left: ProperType, right: ProperType, *,
 
 def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
     """Find out if `left` is a Tuple[A, ...], and adjust its length to `right`"""
-    if isinstance(left, Instance) and left.type.fullname() == 'builtins.tuple':
+    if isinstance(left, Instance) and left.type.fullname == 'builtins.tuple':
         n = r.length() if isinstance(r, TupleType) else 1
         return TupleType([left.args[0]] * n, left)
     return None
@@ -395,7 +435,7 @@ def adjust_tuple(left: ProperType, r: ProperType) -> Optional[TupleType]:
 def is_tuple(typ: Type) -> bool:
     typ = get_proper_type(typ)
     return (isinstance(typ, TupleType)
-            or (isinstance(typ, Instance) and typ.type.fullname() == 'builtins.tuple'))
+            or (isinstance(typ, Instance) and typ.type.fullname == 'builtins.tuple'))
 
 
 class TypeMeetVisitor(TypeVisitor[ProperType]):
@@ -418,7 +458,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         if isinstance(self.s, UnionType):
-            meets = []  # type: List[Type]
+            meets: List[Type] = []
             for x in t.items:
                 for y in self.s.items:
                     meets.append(meet_types(x, y))
@@ -430,7 +470,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
     def visit_none_type(self, t: NoneType) -> ProperType:
         if state.strict_optional:
             if isinstance(self.s, NoneType) or (isinstance(self.s, Instance) and
-                                               self.s.type.fullname() == 'builtins.object'):
+                                               self.s.type.fullname == 'builtins.object'):
                 return t
             else:
                 return UninhabitedType()
@@ -460,6 +500,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return self.s
+        else:
+            return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             si = self.s
@@ -467,9 +513,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
-                    args = []  # type: List[Type]
-                    for i in range(len(t.args)):
-                        args.append(self.meet(t.args[i], si.args[i]))
+                    args: List[Type] = []
+                    # N.B: We use zip instead of indexing because the lengths might have
+                    # mismatches during daemon reprocessing.
+                    for ta, sia in zip(t.args, si.args):
+                        args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:
                     if state.strict_optional:
@@ -488,9 +536,13 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     else:
                         return NoneType()
         elif isinstance(self.s, FunctionLike) and t.type.is_protocol:
-            call = unpack_callback_protocol(t)
+            call = join.unpack_callback_protocol(t)
             if call:
                 return meet_types(call, self.s)
+        elif isinstance(self.s, FunctionLike) and self.s.is_type_obj() and t.type.is_metaclass():
+            if is_subtype(self.s.fallback, t):
+                return self.s
+            return self.default(self.s)
         elif isinstance(self.s, TypeType):
             return meet_types(t, self.s)
         elif isinstance(self.s, TupleType):
@@ -502,10 +554,15 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
-        if isinstance(self.s, CallableType) and is_similar_callables(t, self.s):
+        if isinstance(self.s, CallableType) and join.is_similar_callables(t, self.s):
             if is_equivalent(t, self.s):
-                return combine_similar_callables(t, self.s)
+                return join.combine_similar_callables(t, self.s)
             result = meet_similar_callables(t, self.s)
+            # We set the from_type_type flag to suppress error when a collection of
+            # concrete class objects gets inferred as their common abstract superclass.
+            if not ((t.is_type_obj() and t.type_object().is_abstract) or
+                    (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+                result.from_type_type = True
             if isinstance(get_proper_type(result.ret_type), UninhabitedType):
                 # Return a plain None or <uninhabited> instead of a weird function.
                 return self.default(self.s)
@@ -517,7 +574,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 return TypeType.make_normalized(res)
             return self.default(self.s)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
-            call = unpack_callback_protocol(self.s)
+            call = join.unpack_callback_protocol(self.s)
             if call:
                 return meet_types(t, call)
         return self.default(self.s)
@@ -527,8 +584,8 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         # as TypeJoinVisitor.visit_overloaded().
         s = self.s
         if isinstance(s, FunctionLike):
-            if s.items() == t.items():
-                return Overloaded(t.items())
+            if s.items == t.items:
+                return Overloaded(t.items)
             elif is_subtype(s, t):
                 return s
             elif is_subtype(t, s):
@@ -536,21 +593,21 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             else:
                 return meet_types(t.fallback, s.fallback)
         elif isinstance(self.s, Instance) and self.s.type.is_protocol:
-            call = unpack_callback_protocol(self.s)
+            call = join.unpack_callback_protocol(self.s)
             if call:
                 return meet_types(t, call)
         return meet_types(t.fallback, s)
 
     def visit_tuple_type(self, t: TupleType) -> ProperType:
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
-            items = []  # type: List[Type]
+            items: List[Type] = []
             for i in range(t.length()):
                 items.append(self.meet(t.items[i], self.s.items[i]))
             # TODO: What if the fallbacks are different?
             return TupleType(items, tuple_fallback(t))
         elif isinstance(self.s, Instance):
             # meet(Tuple[t1, t2, <...>], Tuple[s, ...]) == Tuple[meet(t1, s), meet(t2, s), <...>].
-            if self.s.type.fullname() == 'builtins.tuple' and self.s.args:
+            if self.s.type.fullname == 'builtins.tuple' and self.s.args:
                 return t.copy_modified(items=[meet_types(it, self.s.args[0]) for it in t.items])
             elif is_proper_subtype(t, self.s):
                 # A named tuple that inherits from a normal class
@@ -563,7 +620,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                 if (not is_equivalent(l, r) or
                         (name in t.required_keys) != (name in self.s.required_keys)):
                     return self.default(self.s)
-            item_list = []  # type: List[Tuple[str, Type]]
+            item_list: List[Tuple[str, Type]] = []
             for (item_name, s_item_type, t_item_type) in self.s.zipall(t):
                 if s_item_type is not None:
                     item_list.append((item_name, s_item_type))
@@ -572,8 +629,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     assert t_item_type is not None
                     item_list.append((item_name, t_item_type))
             items = OrderedDict(item_list)
-            mapping_value_type = join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
@@ -599,12 +655,15 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             if not isinstance(typ, NoneType):
                 typ = TypeType.make_normalized(typ, line=t.line)
             return typ
-        elif isinstance(self.s, Instance) and self.s.type.fullname() == 'builtins.type':
+        elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.type':
             return t
         elif isinstance(self.s, CallableType):
             return self.meet(t, self.s)
         else:
             return self.default(self.s)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        assert False, "This should be never called, got {}".format(t)
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)
@@ -621,13 +680,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
 def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     from mypy.join import join_types
-    arg_types = []  # type: List[Type]
+
+    arg_types: List[Type] = []
     for i in range(len(t.arg_types)):
         arg_types.append(join_types(t.arg_types[i], s.arg_types[i]))
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'function' as
     # fallback only if both operands have it as 'function'.
-    if t.fallback.type.fullname() != 'builtins.function':
+    if t.fallback.type.fullname != 'builtins.function':
         fallback = t.fallback
     else:
         fallback = s.fallback
@@ -637,7 +697,18 @@ def meet_similar_callables(t: CallableType, s: CallableType) -> CallableType:
                            name=None)
 
 
-def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
+def meet_type_list(types: List[Type]) -> Type:
+    if not types:
+        # This should probably be builtins.object but that is hard to get and
+        # it doesn't matter for any current users.
+        return AnyType(TypeOfAny.implementation_artifact)
+    met = types[0]
+    for t in types[1:]:
+        met = meet_types(met, t)
+    return met
+
+
+def typed_dict_mapping_pair(left: Type, right: Type) -> bool:
     """Is this a pair where one type is a TypedDict and another one is an instance of Mapping?
 
     This case requires a precise/principled consideration because there are two use cases
@@ -645,6 +716,7 @@ def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
     false positives for overloads, but we also need to avoid spuriously non-overlapping types
     to avoid false positives with --strict-equality.
     """
+    left, right = get_proper_types((left, right))
     assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
 
     if isinstance(left, TypedDictType):
@@ -656,7 +728,7 @@ def typed_dict_mapping_pair(left: ProperType, right: ProperType) -> bool:
     return isinstance(other, Instance) and other.type.has_base('typing.Mapping')
 
 
-def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
+def typed_dict_mapping_overlap(left: Type, right: Type,
                                overlapping: Callable[[Type, Type], bool]) -> bool:
     """Check if a TypedDict type is overlapping with a Mapping.
 
@@ -686,6 +758,7 @@ def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
     Mapping[<nothing>, <nothing>]. This way we avoid false positives for overloads, and also
     avoid false positives for comparisons like SomeTypedDict == {} under --strict-equality.
     """
+    left, right = get_proper_types((left, right))
     assert not isinstance(left, TypedDictType) or not isinstance(right, TypedDictType)
 
     if isinstance(left, TypedDictType):
@@ -696,7 +769,7 @@ def typed_dict_mapping_overlap(left: ProperType, right: ProperType,
         assert isinstance(right, TypedDictType)
         typed, other = right, left
 
-    mapping = next(base for base in other.type.mro if base.fullname() == 'typing.Mapping')
+    mapping = next(base for base in other.type.mro if base.fullname == 'typing.Mapping')
     other = map_instance_to_supertype(other, mapping)
     key_type, value_type = get_proper_types(other.args)
 

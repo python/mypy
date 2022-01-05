@@ -18,11 +18,11 @@ error codes that are enabled by default.
 Check that type arguments exist [type-arg]
 ------------------------------------------
 
-If you use ``--disallow-any-generics``, mypy requires that each generic
-type has values for each type argument. For example, the types ``List`` or
-``dict`` would be rejected. You should instead use types like ``List[int]`` or
-``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
-values. The type ``List`` is equivalent to ``List[Any]``, and so on.
+If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
+type has values for each type argument. For example, the types ``list`` or
+``dict`` would be rejected. You should instead use types like ``list[int]`` or
+``dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
+values. The type ``list`` is equivalent to ``list[Any]``, and so on.
 
 Example:
 
@@ -30,16 +30,14 @@ Example:
 
     # mypy: disallow-any-generics
 
-    from typing import List
-
-    # Error: Missing type parameters for generic type "List"  [type-arg]
-    def remove_dups(items: List) -> List:
+    # Error: Missing type parameters for generic type "list"  [type-arg]
+    def remove_dups(items: list) -> list:
         ...
 
 Check that every function has an annotation [no-untyped-def]
 ------------------------------------------------------------
 
-If you use ``--disallow-untyped-defs``, mypy requires that all functions
+If you use :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`, mypy requires that all functions
 have annotations (either a Python 3 annotation or a type comment).
 
 Example:
@@ -67,7 +65,7 @@ Example:
 Check that cast is not redundant [redundant-cast]
 -------------------------------------------------
 
-If you use ``--warn-redundant-casts``, mypy will generate an error if the source
+If you use :option:`--warn-redundant-casts <mypy --warn-redundant-casts>`, mypy will generate an error if the source
 type of a cast is the same as the target type.
 
 Example:
@@ -87,7 +85,7 @@ Example:
 Check that comparisons are overlapping [comparison-overlap]
 -----------------------------------------------------------
 
-If you use ``--strict-equality``, mypy will generate an error if it
+If you use :option:`--strict-equality <mypy --strict-equality>`, mypy will generate an error if it
 thinks that a comparison operation is always true or false. These are
 often bugs. Sometimes mypy is too picky and the comparison can
 actually be useful. Instead of disabling strict equality checking
@@ -118,7 +116,7 @@ literal:
 Check that no untyped functions are called [no-untyped-call]
 ------------------------------------------------------------
 
-If you use ``--disallow-untyped-calls``, mypy generates an error when you
+If you use :option:`--disallow-untyped-calls <mypy --disallow-untyped-calls>`, mypy generates an error when you
 call an unannotated function in an annotated function.
 
 Example:
@@ -138,7 +136,7 @@ Example:
 Check that function does not return Any value [no-any-return]
 -------------------------------------------------------------
 
-If you use ``--warn-return-any``, mypy generates an error if you return a
+If you use :option:`--warn-return-any <mypy --warn-return-any>`, mypy generates an error if you return a
 value with an ``Any`` type in a function that is annotated to return a
 non-``Any`` value.
 
@@ -158,7 +156,7 @@ Example:
 Check that types have no Any components due to missing imports [no-any-unimported]
 ----------------------------------------------------------------------------------
 
-If you use ``--disallow-any-unimported``, mypy generates an error if a component of
+If you use :option:`--disallow-any-unimported <mypy --disallow-any-unimported>`, mypy generates an error if a component of
 a type becomes ``Any`` because mypy couldn't resolve an import. These "stealth"
 ``Any`` types can be surprising and accidentally cause imprecise type checking.
 
@@ -174,3 +172,86 @@ that ``Cat`` falls back to ``Any`` in a type annotation:
     # Error: Argument 1 to "feed" becomes "Any" due to an unfollowed import  [no-any-unimported]
     def feed(cat: Cat) -> None:
         ...
+
+Check that statement or expression is unreachable [unreachable]
+---------------------------------------------------------------
+
+If you use :option:`--warn-unreachable <mypy --warn-unreachable>`, mypy generates an error if it
+thinks that a statement or expression will never be executed. In most cases, this is due to
+incorrect control flow or conditional checks that are accidentally always true or false.
+
+.. code-block:: python
+
+    # mypy: warn-unreachable
+
+    def example(x: int) -> None:
+        # Error: Right operand of "or" is never evaluated  [unreachable]
+        assert isinstance(x, int) or x == 'unused'
+
+        return
+        # Error: Statement is unreachable  [unreachable]
+        print('unreachable')
+
+Check that expression is redundant [redundant-expr]
+---------------------------------------------------
+
+If you use :option:`--enable-error-code redundant-expr <mypy --enable-error-code>`,
+mypy generates an error if it thinks that an expression is redundant.
+
+.. code-block:: python
+
+    # mypy: enable-error-code redundant-expr
+
+    def example(x: int) -> None:
+        # Error: Left operand of "and" is always true  [redundant-expr]
+        if isinstance(x, int) and x > 0:
+            pass
+
+        # Error: If condition is always true  [redundant-expr]
+        1 if isinstance(x, int) else 0
+
+        # Error: If condition in comprehension is always true  [redundant-expr]
+        [i for i in range(x) if isinstance(i, int)]
+
+
+Check that expression is not implicitly true in boolean context [truthy-bool]
+-----------------------------------------------------------------------------
+
+Warn when an expression whose type does not implement ``__bool__`` or ``__len__`` is used in boolean context,
+since unless implemented by a sub-type, the expression will always evaluate to true.
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+
+    class Foo:
+      pass
+    foo = Foo()
+    # Error: "foo" has type "Foo" which does not implement __bool__ or __len__ so it could always be true in boolean context
+    if foo:
+       ...
+
+
+This check might falsely imply an error. For example, ``Iterable`` does not implement
+``__len__`` and so this code will be flagged:
+
+.. code-block:: python
+
+    # mypy: enable-error-code truthy-bool
+    from typing import Iterable
+
+    def transform(items: Iterable[int]) -> Iterable[int]:
+        # Error: "items" has type "Iterable[int]" which does not implement __bool__ or __len__ so it could always be true in boolean context  [truthy-bool]
+        if not items:
+            return [42]
+        return [x + 1 for x in items]
+
+
+
+If called as ``transform((int(s) for s in []))``, this function would not return ``[42]`` unlike what the author
+might have intended. Of course it's possible that ``transform`` is only passed ``list`` objects, and so there is
+no error in practice. In such case, it might be prudent to annotate ``items: Sequence[int]``.
+
+This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
+except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
+while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.

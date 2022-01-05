@@ -23,13 +23,15 @@ Error codes may change in future mypy releases.
 Displaying error codes
 ----------------------
 
-Error codes are not displayed by default.  Use ``--show-error-codes``
-to display error codes. Error codes are shown inside square brackets:
+Error codes are not displayed by default.  Use :option:`--show-error-codes <mypy --show-error-codes>`
+or config `show_error_codes = True` to display error codes. Error codes are shown inside square brackets:
 
 .. code-block:: text
 
    $ mypy --show-error-codes prog.py
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
+
+.. _silence-error-codes:
 
 Silencing errors based on error codes
 -------------------------------------
@@ -43,7 +45,7 @@ codes on individual lines using this comment.
 .. note::
 
   There are command-line flags and config file settings for enabling
-  certain optional error codes, such as ``--disallow-untype-defs``,
+  certain optional error codes, such as :option:`--disallow-untyped-defs <mypy --disallow-untyped-defs>`,
   which enables the ``no-untyped-def`` error code.
 
 This example shows how to ignore an error about an imported name mypy

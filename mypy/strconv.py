@@ -24,7 +24,7 @@ class StrConv(NodeVisitor[str]):
 
     def __init__(self, show_ids: bool = False) -> None:
         self.show_ids = show_ids
-        self.id_mapper = None  # type: Optional[IdMapper]
+        self.id_mapper: Optional[IdMapper] = None
         if show_ids:
             self.id_mapper = IdMapper()
 
@@ -58,20 +58,20 @@ class StrConv(NodeVisitor[str]):
         array with information specific to methods, global functions or
         anonymous functions.
         """
-        args = []  # type: List[Union[mypy.nodes.Var, Tuple[str, List[mypy.nodes.Node]]]]
-        extra = []  # type: List[Tuple[str, List[mypy.nodes.Var]]]
+        args: List[Union[mypy.nodes.Var, Tuple[str, List[mypy.nodes.Node]]]] = []
+        extra: List[Tuple[str, List[mypy.nodes.Var]]] = []
         for arg in o.arguments:
-            kind = arg.kind  # type: int
-            if kind in (mypy.nodes.ARG_POS, mypy.nodes.ARG_NAMED):
+            kind: mypy.nodes.ArgKind = arg.kind
+            if kind.is_required():
                 args.append(arg.variable)
-            elif kind in (mypy.nodes.ARG_OPT, mypy.nodes.ARG_NAMED_OPT):
+            elif kind.is_optional():
                 assert arg.initializer is not None
                 args.append(('default', [arg.variable, arg.initializer]))
             elif kind == mypy.nodes.ARG_STAR:
                 extra.append(('VarArg', [arg.variable]))
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [arg.variable]))
-        a = []  # type: List[Any]
+        a: List[Any] = []
         if args:
             a.append(('Args', args))
         if o.type:
@@ -86,7 +86,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_mypy_file(self, o: 'mypy.nodes.MypyFile') -> str:
         # Skip implicit definitions.
-        a = [o.defs]  # type: List[Any]
+        a: List[Any] = [o.defs]
         if o.is_bom:
             a.insert(0, 'BOM')
         # Omit path to special file with name "main". This is used to simplify
@@ -126,7 +126,7 @@ class StrConv(NodeVisitor[str]):
 
     def visit_func_def(self, o: 'mypy.nodes.FuncDef') -> str:
         a = self.func_helper(o)
-        a.insert(0, o.name())
+        a.insert(0, o.name)
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, 'MaxPos({})'.format(o.max_pos))
@@ -141,7 +141,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_overloaded_func_def(self, o: 'mypy.nodes.OverloadedFuncDef') -> str:
-        a = o.items[:]  # type: Any
+        a: Any = o.items[:]
         if o.type:
             a.insert(0, o.type)
         if o.impl:
@@ -159,7 +159,7 @@ class StrConv(NodeVisitor[str]):
         if o.base_type_exprs:
             if o.info and o.info.bases:
                 if (len(o.info.bases) != 1
-                        or o.info.bases[0].type.fullname() != 'builtins.object'):
+                        or o.info.bases[0].type.fullname != 'builtins.object'):
                     a.insert(1, ('BaseType', o.info.bases))
             else:
                 a.insert(1, ('BaseTypeExpr', o.base_type_exprs))
@@ -183,7 +183,7 @@ class StrConv(NodeVisitor[str]):
         # compatible with old test case descriptions that assume this.
         if o.line < 0:
             lst = ':nil'
-        return 'Var' + lst + '(' + o.name() + ')'
+        return 'Var' + lst + '(' + o.name + ')'
 
     def visit_global_decl(self, o: 'mypy.nodes.GlobalDecl') -> str:
         return self.dump([o.names], o)
@@ -203,7 +203,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_assignment_stmt(self, o: 'mypy.nodes.AssignmentStmt') -> str:
-        a = []  # type: List[Any]
+        a: List[Any] = []
         if len(o.lvalues) > 1:
             a = [('Lvalues', o.lvalues)]
         else:
@@ -217,13 +217,13 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.op, o.lvalue, o.rvalue], o)
 
     def visit_while_stmt(self, o: 'mypy.nodes.WhileStmt') -> str:
-        a = [o.expr, o.body]  # type: List[Any]
+        a: List[Any] = [o.expr, o.body]
         if o.else_body:
             a.append(('Else', o.else_body.body))
         return self.dump(a, o)
 
     def visit_for_stmt(self, o: 'mypy.nodes.ForStmt') -> str:
-        a = []  # type: List[Any]
+        a: List[Any] = []
         if o.is_async:
             a.append(('Async', ''))
         a.append(o.index)
@@ -238,7 +238,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_if_stmt(self, o: 'mypy.nodes.IfStmt') -> str:
-        a = []  # type: List[Any]
+        a: List[Any] = []
         for i in range(len(o.expr)):
             a.append(('If', [o.expr[i]]))
             a.append(('Then', o.body[i].body))
@@ -273,7 +273,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([o.expr], o)
 
     def visit_try_stmt(self, o: 'mypy.nodes.TryStmt') -> str:
-        a = [o.body]  # type: List[Any]
+        a: List[Any] = [o.body]
 
         for i in range(len(o.vars)):
             a.append(o.types[i])
@@ -289,7 +289,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_with_stmt(self, o: 'mypy.nodes.WithStmt') -> str:
-        a = []  # type: List[Any]
+        a: List[Any] = []
         if o.is_async:
             a.append(('Async', ''))
         for i in range(len(o.expr)):
@@ -301,7 +301,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a + [o.body], o)
 
     def visit_print_stmt(self, o: 'mypy.nodes.PrintStmt') -> str:
-        a = o.args[:]  # type: List[Any]
+        a: List[Any] = o.args[:]
         if o.target:
             a.append(('Target', [o.target]))
         if o.newline:
@@ -393,8 +393,8 @@ class StrConv(NodeVisitor[str]):
     def visit_call_expr(self, o: 'mypy.nodes.CallExpr') -> str:
         if o.analyzed:
             return o.analyzed.accept(self)
-        args = []  # type: List[mypy.nodes.Expression]
-        extra = []  # type: List[Union[str, Tuple[str, List[Any]]]]
+        args: List[mypy.nodes.Expression] = []
+        extra: List[Union[str, Tuple[str, List[Any]]]] = []
         for i, kind in enumerate(o.arg_kinds):
             if kind in [mypy.nodes.ARG_POS, mypy.nodes.ARG_STAR]:
                 args.append(o.args[i])
@@ -405,8 +405,8 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [o.args[i]]))
             else:
-                raise RuntimeError('unknown kind %d' % kind)
-        a = [o.callee, ('Args', args)]  # type: List[Any]
+                raise RuntimeError("unknown kind %s" % kind)
+        a: List[Any] = [o.callee, ("Args", args)]
         return self.dump(a + extra, o)
 
     def visit_op_expr(self, o: 'mypy.nodes.OpExpr') -> str:
@@ -456,7 +456,8 @@ class StrConv(NodeVisitor[str]):
 
     def visit_type_var_expr(self, o: 'mypy.nodes.TypeVarExpr') -> str:
         import mypy.types
-        a = []  # type: List[Any]
+
+        a: List[Any] = []
         if o.variance == mypy.nodes.COVARIANT:
             a += ['Variance(COVARIANT)']
         if o.variance == mypy.nodes.CONTRAVARIANT:
@@ -467,20 +468,32 @@ class StrConv(NodeVisitor[str]):
             a += ['UpperBound({})'.format(o.upper_bound)]
         return self.dump(a, o)
 
+    def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
+        import mypy.types
+
+        a: List[Any] = []
+        if o.variance == mypy.nodes.COVARIANT:
+            a += ['Variance(COVARIANT)']
+        if o.variance == mypy.nodes.CONTRAVARIANT:
+            a += ['Variance(CONTRAVARIANT)']
+        if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
+            a += ['UpperBound({})'.format(o.upper_bound)]
+        return self.dump(a, o)
+
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> str:
         return 'TypeAliasExpr({})'.format(o.type)
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
-                                                  o.info.name(),
+                                                  o.info.name,
                                                   o.info.tuple_type)
 
     def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
-        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name(), o.items)
+        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name, o.items)
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
         return 'TypedDictExpr:{}({})'.format(o.line,
-                                             o.info.name())
+                                             o.info.name)
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return 'PromoteExpr:{}({})'.format(o.line, o.type)
@@ -511,7 +524,7 @@ class StrConv(NodeVisitor[str]):
         return self.dump([('Condition', [o.cond]), o.if_expr, o.else_expr], o)
 
     def visit_slice_expr(self, o: 'mypy.nodes.SliceExpr') -> str:
-        a = [o.begin_index, o.end_index, o.stride]  # type: List[Any]
+        a: List[Any] = [o.begin_index, o.end_index, o.stride]
         if not a[0]:
             a[0] = '<empty>'
         if not a[1]:
@@ -539,7 +552,7 @@ def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv'
     """
     from mypy.types import Type, TypeStrVisitor
 
-    a = []  # type: List[str]
+    a: List[str] = []
     if tag:
         a.append(tag + '(')
     for n in nodes:
@@ -553,7 +566,7 @@ def dump_tagged(nodes: Sequence[object], tag: Optional[str], str_conv: 'StrConv'
             a.append(indent(n.accept(str_conv), 2))
         elif isinstance(n, Type):
             a.append(indent(n.accept(TypeStrVisitor(str_conv.id_mapper)), 2))
-        elif n:
+        elif n is not None:
             a.append(indent(str(n), 2))
     if tag:
         a[-1] += ')'

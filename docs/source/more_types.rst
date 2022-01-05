@@ -84,7 +84,7 @@ certain values from base class instances. Example:
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper function :py:func:`NewType <typing.NewType>` that creates simple unique types with
+module provides a helper object :py:func:`NewType <typing.NewType>` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -95,7 +95,7 @@ definition:
         def __init__(self, _x: Base) -> None:
             ...
 
-However, at runtime, ``NewType('Derived', Base)`` will return a dummy function that
+However, at runtime, ``NewType('Derived', Base)`` will return a dummy callable that
 simply returns its argument:
 
 .. code-block:: python
@@ -127,7 +127,7 @@ containing the name of the new type and must equal the name of the variable to w
 type is assigned. The second argument must be a properly subclassable class, i.e.,
 not a type construct like :py:data:`~typing.Union`, etc.
 
-The function returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
+The callable returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -148,8 +148,7 @@ Example:
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
 You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
-:py:func:`~typing.NewType`, because function objects don't support these operations. You cannot
-create subclasses of these objects either.
+:py:func:`~typing.NewType`, nor can you subclass an object returned by :py:func:`~typing.NewType`.
 
 .. note::
 
@@ -295,6 +294,25 @@ return type by using overloads like so:
    subtypes, you can use a :ref:`value restriction
    <type-variable-value-restriction>`.
 
+The default values of a function's arguments don't affect its signature -- only
+the absence or presence of a default value does. So in order to reduce
+redundancy, it's possible to replace default values in overload definitions with
+``...`` as a placeholder:
+
+.. code-block:: python
+
+    from typing import overload
+
+    class M: ...
+
+    @overload
+    def get_model(model_or_pk: M, flag: bool = ...) -> M: ...
+    @overload
+    def get_model(model_or_pk: int, flag: bool = ...) -> M | None: ...
+
+    def get_model(model_or_pk: int | M, flag: bool = True) -> M | None:
+        ...
+
 
 Runtime behavior
 ----------------
@@ -336,13 +354,15 @@ program:
 
 .. code-block:: python
 
-    from typing import List, overload
+    # For Python 3.8 and below you must use `typing.List` instead of `list`. e.g.
+    # from typing import List
+    from typing import overload
 
     @overload
-    def summarize(data: List[int]) -> float: ...
+    def summarize(data: list[int]) -> float: ...
 
     @overload
-    def summarize(data: List[str]) -> str: ...
+    def summarize(data: list[str]) -> str: ...
 
     def summarize(data):
         if not data:
@@ -356,7 +376,7 @@ program:
     output = summarize([])
 
 The ``summarize([])`` call matches both variants: an empty list could
-be either a ``List[int]`` or a ``List[str]``. In this case, mypy
+be either a ``list[int]`` or a ``list[str]``. In this case, mypy
 will break the tie by picking the first matching variant: ``output``
 will have an inferred type of ``float``. The implementor is responsible
 for making sure ``summarize`` breaks ties in the same way at runtime.
@@ -378,7 +398,7 @@ matching variant returns:
 
 .. code-block:: python
 
-    some_list: Union[List[int], List[str]]
+    some_list: Union[list[int], list[str]]
 
     # output3 is of type 'Union[float, str]'
     output3 = summarize(some_list)
@@ -505,7 +525,7 @@ suppose we modify the above snippet so it calls ``summarize`` instead of
 
 .. code-block:: python
 
-    some_list: List[str] = []
+    some_list: list[str] = []
     summarize(some_list) + "danger danger"  # Type safe, yet crashes at runtime!
 
 We run into a similar issue here. This program type checks if we look just at the
@@ -535,7 +555,7 @@ type hints provided on the implementation. For example, in the
 argument list ``index: Union[int, slice]`` and a return type of
 ``Union[T, Sequence[T]]``. If there are no annotations on the
 implementation, then the body is not type checked. If you want to
-force mypy to check the body anyways, use the ``--check-untyped-defs``
+force mypy to check the body anyways, use the :option:`--check-untyped-defs <mypy --check-untyped-defs>`
 flag (:ref:`more details here <untyped-definitions-and-calls>`).
 
 The variants must also also be compatible with the implementation
@@ -552,7 +572,7 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
 
    Previously, mypy used to perform type erasure on all overload variants. For
    example, the ``summarize`` example from the previous section used to be
-   illegal because ``List[str]`` and ``List[int]`` both erased to just ``List[Any]``.
+   illegal because ``list[str]`` and ``list[int]`` both erased to just ``list[Any]``.
    This restriction was removed in mypy 0.620.
 
    Mypy also previously used to select the best matching variant using a different
@@ -560,6 +580,144 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
    ``Any``. The new algorithm uses the "pick the first match" rule and will fall back
    to returning ``Any`` only if the input arguments also contain ``Any``.
 
+
+.. _advanced_self:
+
+Advanced uses of self-types
+***************************
+
+Normally, mypy doesn't require annotations for the first arguments of instance and
+class methods. However, they may be needed to have more precise static typing
+for certain programming patterns.
+
+Restricted methods in generic classes
+-------------------------------------
+
+In generic classes some methods may be allowed to be called only
+for certain values of type arguments:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Tag(Generic[T]):
+       item: T
+       def uppercase_item(self: Tag[str]) -> str:
+           return self.item.upper()
+
+   def label(ti: Tag[int], ts: Tag[str]) -> None:
+       ti.uppercase_item()  # E: Invalid self argument "Tag[int]" to attribute function
+                            # "uppercase_item" with type "Callable[[Tag[str]], str]"
+       ts.uppercase_item()  # This is OK
+
+This pattern also allows matching on nested types in situations where the type
+argument is itself generic:
+
+.. code-block:: python
+
+  T = TypeVar('T', covariant=True)
+  S = TypeVar('S')
+
+   class Storage(Generic[T]):
+       def __init__(self, content: T) -> None:
+           self.content = content
+       def first_chunk(self: Storage[Sequence[S]]) -> S:
+           return self.content[0]
+
+   page: Storage[list[str]]
+   page.first_chunk()  # OK, type is "str"
+
+   Storage(0).first_chunk()  # Error: Invalid self argument "Storage[int]" to attribute function
+                             # "first_chunk" with type "Callable[[Storage[Sequence[S]]], S]"
+
+Finally, one can use overloads on self-type to express precise types of
+some tricky methods:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Tag(Generic[T]):
+       @overload
+       def export(self: Tag[str]) -> str: ...
+       @overload
+       def export(self, converter: Callable[[T], str]) -> str: ...
+
+       def export(self, converter=None):
+           if isinstance(self.item, str):
+               return self.item
+           return converter(self.item)
+
+In particular, an :py:meth:`~object.__init__` method overloaded on self-type
+may be useful to annotate generic class constructors where type arguments
+depend on constructor parameters in a non-trivial way, see e.g. :py:class:`~subprocess.Popen`.
+
+Mixin classes
+-------------
+
+Using host class protocol as a self-type in mixin methods allows
+more code re-usability for static typing of mixin classes. For example,
+one can define a protocol that defines common functionality for
+host classes instead of adding required abstract methods to every mixin:
+
+.. code-block:: python
+
+   class Lockable(Protocol):
+       @property
+       def lock(self) -> Lock: ...
+
+   class AtomicCloseMixin:
+       def atomic_close(self: Lockable) -> int:
+           with self.lock:
+               # perform actions
+
+   class AtomicOpenMixin:
+       def atomic_open(self: Lockable) -> int:
+           with self.lock:
+               # perform actions
+
+   class File(AtomicCloseMixin, AtomicOpenMixin):
+       def __init__(self) -> None:
+           self.lock = Lock()
+
+   class Bad(AtomicCloseMixin):
+       pass
+
+   f = File()
+   b: Bad
+   f.atomic_close()  # OK
+   b.atomic_close()  # Error: Invalid self type for "atomic_close"
+
+Note that the explicit self-type is *required* to be a protocol whenever it
+is not a supertype of the current class. In this case mypy will check the validity
+of the self-type only at the call site.
+
+Precise typing of alternative constructors
+------------------------------------------
+
+Some classes may define alternative constructors. If these
+classes are generic, self-type allows giving them precise signatures:
+
+.. code-block:: python
+
+   T = TypeVar('T')
+
+   class Base(Generic[T]):
+       Q = TypeVar('Q', bound='Base[T]')
+
+       def __init__(self, item: T) -> None:
+           self.item = item
+
+       @classmethod
+       def make_pair(cls: Type[Q], item: T) -> tuple[Q, Q]:
+           return cls(item), cls(item)
+
+   class Sub(Base[T]):
+       ...
+
+   pair = Sub.make_pair('yes')  # Type is "tuple[Sub[str], Sub[str]]"
+   bad = Sub[int].make_pair('no')  # Error: Argument 1 to "make_pair" of "Base"
+                                   # has incompatible type "str"; expected "int"
 
 .. _async-and-await:
 
@@ -749,7 +907,7 @@ Here is a typical example:
 Only a fixed set of string keys is expected (``'name'`` and
 ``'year'`` above), and each key has an independent value type (``str``
 for ``'name'`` and ``int`` for ``'year'`` above). We've previously
-seen the ``Dict[K, V]`` type, which lets you declare uniform
+seen the ``dict[K, V]`` type, which lets you declare uniform
 dictionary types, where every value has the same type, and arbitrary keys
 are supported. This is clearly not a good fit for
 ``movie`` above. Instead, you can use a ``TypedDict`` to give a precise
@@ -758,7 +916,7 @@ dictionary value depends on the key:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
@@ -768,7 +926,7 @@ dictionary value depends on the key:
 and ``'year'`` (with type ``int``). Note that we used an explicit type
 annotation for the ``movie`` variable. This type annotation is
 important -- without it, mypy will try to infer a regular, uniform
-:py:class:`~typing.Dict` type for ``movie``, which is not what we want here.
+:py:class:`dict` type for ``movie``, which is not what we want here.
 
 .. note::
 
@@ -777,7 +935,7 @@ important -- without it, mypy will try to infer a regular, uniform
    desired type based on the declared argument type. Also, if an
    assignment target has been previously defined, and it has a
    ``TypedDict`` type, mypy will treat the assigned value as a ``TypedDict``,
-   not :py:class:`~typing.Dict`.
+   not :py:class:`dict`.
 
 Now mypy will recognize these as valid:
 
@@ -814,12 +972,12 @@ arbitrarily complex types. For example, you can define nested
 ``TypedDict``\s and containers with ``TypedDict`` items.
 Unlike most other types, mypy uses structural compatibility checking
 (or structural subtyping) with ``TypedDict``\s. A ``TypedDict`` object with
-extra items is a compatible with (a subtype of) a narrower
+extra items is compatible with (a subtype of) a narrower
 ``TypedDict``, assuming item types are compatible (*totality* also affects
 subtyping, as discussed below).
 
-A ``TypedDict`` object is not a subtype of the regular ``Dict[...]``
-type (and vice versa), since :py:class:`~typing.Dict` allows arbitrary keys to be
+A ``TypedDict`` object is not a subtype of the regular ``dict[...]``
+type (and vice versa), since :py:class:`dict` allows arbitrary keys to be
 added and removed, unlike ``TypedDict``. However, any ``TypedDict`` object is
 a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 :py:class:`~typing.Mapping` only provides read-only access to the dictionary items:
@@ -834,17 +992,19 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
 .. note::
 
-   You need to install ``mypy_extensions`` using pip to use ``TypedDict``:
+   Unless you are on Python 3.8 or newer (where ``TypedDict`` is available in
+   standard library :py:mod:`typing` module) you need to install ``typing_extensions``
+   using pip to use ``TypedDict``:
 
    .. code-block:: text
 
-       python3 -m pip install --upgrade mypy-extensions
+      python3 -m pip install --upgrade typing-extensions
 
    Or, if you are using Python 2:
 
    .. code-block:: text
 
-       pip install --upgrade mypy-extensions
+      pip install --upgrade typing-extensions
 
 Totality
 --------
@@ -879,8 +1039,8 @@ Keys that aren't required are shown with a ``?`` in error messages:
 
 .. code-block:: python
 
-   # Revealed type is 'TypedDict('GuiOptions', {'language'?: builtins.str,
-   #                                            'color'?: builtins.str})'
+   # Revealed type is "TypedDict('GuiOptions', {'language'?: builtins.str,
+   #                                            'color'?: builtins.str})"
    reveal_type(options)
 
 Totality also affects structural compatibility. You can't use a partial
@@ -933,7 +1093,7 @@ in Python 3.6 and later:
 
 .. code-block:: python
 
-   from mypy_extensions import TypedDict
+   from typing_extensions import TypedDict
 
    class Movie(TypedDict):
        name: str
@@ -979,3 +1139,16 @@ and non-required keys, such as ``Movie`` above, will only be compatible with
 another ``TypedDict`` if all required keys in the other ``TypedDict`` are required keys in the
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
+
+Unions of TypedDicts
+--------------------
+
+Since TypedDicts are really just regular dicts at runtime, it is not possible to
+use ``isinstance`` checks to distinguish between different variants of a Union of
+TypedDict in the same way you can with regular objects.
+
+Instead, you can use the :ref:`tagged union pattern <tagged_unions>`. The referenced
+section of the docs has a full description with an example, but in short, you will
+need to give each TypedDict the same key where each value has a unique
+:ref:`Literal type <literal_types>`. Then, check that key to distinguish
+between your TypedDicts.

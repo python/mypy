@@ -36,18 +36,24 @@ class int: # for convenience
 
 class str: pass # for keyword argument key type
 class unicode: pass # needed for py2 docstrings
+class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases
     def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
     def __mul__(self, x: int) -> list[T]: pass
     def __contains__(self, item: object) -> bool: pass
+    def append(self, item: T) -> None: pass
 
 class tuple(Generic[T]): pass
 class function: pass
 class float: pass
+class complex: pass
 class bool(int): pass
 
-class ellipsis: pass
+class ellipsis:
+    __class__: object
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass
 class BaseException: pass
+
+def iter(__iterable: Iterable[T]) -> Iterator[T]: pass

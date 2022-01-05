@@ -11,11 +11,14 @@ class type:
 class function: pass
 
 class int: pass
+class float: pass
 class str:
     def format(self, *args, **kwars) -> str: ...
 class unicode:
     def format(self, *args, **kwars) -> unicode: ...
 class bool(int): pass
+
+bytes = str
 
 T = TypeVar('T')
 S = TypeVar('S')

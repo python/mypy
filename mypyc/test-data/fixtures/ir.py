@@ -20,20 +20,32 @@ class object:
 class type:
     def __init__(self, o: object) -> None: ...
     __name__ : str
+    __annotations__: Dict[str, Any]
 
 class ellipsis: pass
 
 # Primitive types are special in generated code.
 
 class int:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object, base: int = 10) -> None: pass
     def __add__(self, n: int) -> int: pass
     def __sub__(self, n: int) -> int: pass
     def __mul__(self, n: int) -> int: pass
+    def __pow__(self, n: int, modulo: Optional[int] = None) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
+    def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
+    def __invert__(self) -> int: pass
+    def __and__(self, n: int) -> int: pass
+    def __or__(self, n: int) -> int: pass
+    def __xor__(self, n: int) -> int: pass
+    def __lshift__(self, x: int) -> int: pass
+    def __rshift__(self, x: int) -> int: pass
     def __eq__(self, n: object) -> bool: pass
     def __ne__(self, n: object) -> bool: pass
     def __lt__(self, n: int) -> bool: pass
@@ -42,6 +54,9 @@ class int:
     def __ge__(self, n: int) -> bool: pass
 
 class str:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
     def __add__(self, x: str) -> str: pass
     def __eq__(self, x: object) -> bool: pass
@@ -50,11 +65,21 @@ class str:
     def __le__(self, x: str) -> bool: ...
     def __gt__(self, x: str) -> bool: ...
     def __ge__(self, x: str) -> bool: ...
+    @overload
+    def __getitem__(self, i: int) -> str: pass
+    @overload
+    def __getitem__(self, i: slice) -> str: pass
     def __contains__(self, item: str) -> bool: pass
+    def __iter__(self) -> Iterator[str]: ...
+    def split(self, sep: Optional[str] = None, max: Optional[int] = None) -> List[str]: pass
     def strip (self, item: str) -> str: pass
     def join(self, x: Iterable[str]) -> str: pass
     def format(self, *args: Any, **kwargs: Any) -> str: ...
-    def upper(self) -> str: pass
+    def upper(self) -> str: ...
+    def startswith(self, x: str, start: int=..., end: int=...) -> bool: ...
+    def endswith(self, x: str, start: int=..., end: int=...) -> bool: ...
+    def replace(self, old: str, new: str, maxcount: int=...) -> str: ...
+    def encode(self, x: str=..., y: str=...) -> bytes: ...
 
 class float:
     def __init__(self, x: object) -> None: pass
@@ -62,6 +87,7 @@ class float:
     def __sub__(self, n: float) -> float: pass
     def __mul__(self, n: float) -> float: pass
     def __truediv__(self, n: float) -> float: pass
+    def __neg__(self) -> float: pass
 
 class complex:
     def __init__(self, x: object, y: object = None) -> None: pass
@@ -69,21 +95,56 @@ class complex:
     def __sub__(self, n: complex) -> complex: pass
     def __mul__(self, n: complex) -> complex: pass
     def __truediv__(self, n: complex) -> complex: pass
+    def __neg__(self) -> complex: pass
 
 class bytes:
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, x: object) -> None: ...
+    def __add__(self, x: bytes) -> bytes: ...
+    def __eq__(self, x: object) -> bool: ...
+    def __ne__(self, x: object) -> bool: ...
+    @overload
+    def __getitem__(self, i: int) -> int: ...
+    @overload
+    def __getitem__(self, i: slice) -> bytes: ...
+    def join(self, x: Iterable[object]) -> bytes: ...
+    def decode(self, x: str=..., y: str=...) -> str: ...
+
+class bytearray:
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: object) -> None: pass
-    def __add__(self, x: object) -> bytes: pass
-    def __eq__(self, x:object) -> bool:pass
-    def __ne__(self, x: object) -> bool: pass
-    def join(self, x: Iterable[object]) -> bytes: pass
+    @overload
+    def __init__(self, string: str, encoding: str, err: str = ...) -> None: pass
+    def __add__(self, s: bytes) -> bytearray: ...
+    def __setitem__(self, i: int, o: int) -> None: ...
+    def __getitem__(self, i: int) -> int: ...
+    def decode(self, x: str = ..., y: str = ...) -> str: ...
 
-class bool:
+class bool(int):
     def __init__(self, o: object = ...) -> None: ...
-
+    @overload
+    def __and__(self, n: bool) -> bool: ...
+    @overload
+    def __and__(self, n: int) -> int: ...
+    @overload
+    def __or__(self, n: bool) -> bool: ...
+    @overload
+    def __or__(self, n: int) -> int: ...
+    @overload
+    def __xor__(self, n: bool) -> bool: ...
+    @overload
+    def __xor__(self, n: int) -> int: ...
 
 class tuple(Generic[T_co], Sequence[T_co], Iterable[T_co]):
     def __init__(self, i: Iterable[T_co]) -> None: pass
+    @overload
     def __getitem__(self, i: int) -> T_co: pass
+    @overload
+    def __getitem__(self, i: slice) -> Tuple[T_co, ...]: pass
     def __len__(self) -> int: pass
     def __iter__(self) -> Iterator[T_co]: ...
     def __contains__(self, item: object) -> int: ...
@@ -109,6 +170,9 @@ class list(Generic[T], Sequence[T], Iterable[T]):
     def extend(self, l: Iterable[T]) -> None: pass
     def insert(self, i: int, x: T) -> None: pass
     def sort(self) -> None: pass
+    def reverse(self) -> None: pass
+    def remove(self, o: T) -> None: pass
+    def index(self, o: T) -> int: pass
 
 class dict(Mapping[K, V]):
     @overload
@@ -130,7 +194,12 @@ class dict(Mapping[K, V]):
     @overload
     def update(self, **kwargs: V) -> None: ...
     def pop(self, x: int) -> K: pass
-    def keys(self) -> List[K]: pass
+    def keys(self) -> Iterable[K]: pass
+    def values(self) -> Iterable[V]: pass
+    def items(self) -> Iterable[Tuple[K, V]]: pass
+    def clear(self) -> None: pass
+    def copy(self) -> Dict[K, V]: pass
+    def setdefault(self, key: K, val: V = ...) -> V: pass
 
 class set(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
@@ -145,6 +214,12 @@ class set(Generic[T]):
     def __or__(self, s: Set[S]) -> Set[Union[T, S]]: ...
 
 class slice: pass
+
+class range(Iterable[int]):
+    def __init__(self, x: int, y: int = ..., z: int = ...) -> None: pass
+    def __iter__(self) -> Iterator[int]: pass
+    def __len__(self) -> int: pass
+    def __next__(self) -> int: pass
 
 class property:
     def __init__(self, fget: Optional[Callable[[Any], Any]] = ...,
@@ -172,7 +247,13 @@ class UserWarning(Warning): pass
 
 class TypeError(Exception): pass
 
+class ValueError(Exception): pass
+
 class AttributeError(Exception): pass
+
+class ImportError(Exception): pass
+
+class NameError(Exception): pass
 
 class LookupError(Exception): pass
 
@@ -182,19 +263,27 @@ class IndexError(LookupError): pass
 
 class RuntimeError(Exception): pass
 
+class UnicodeEncodeError(RuntimeError): pass
+
+class UnicodeDecodeError(RuntimeError): pass
+
 class NotImplementedError(RuntimeError): pass
 
 class StopIteration(Exception):
     value: Any
 
+class ArithmeticError(Exception): pass
+
+class ZeroDivisionError(Exception): pass
+
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
+def sum(i: Iterable[T]) -> int: pass
 def reversed(object: Sequence[T]) -> Iterator[T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
 def len(o: object) -> int: pass
 def print(*object) -> None: pass
-def range(x: int, y: int = ..., z: int = ...) -> Iterator[int]: pass
 def isinstance(x: object, t: object) -> bool: pass
 def iter(i: Iterable[T]) -> Iterator[T]: pass
 @overload
@@ -203,15 +292,25 @@ def next(i: Iterator[T]) -> T: pass
 def next(i: Iterator[T], default: T) -> T: pass
 def hash(o: object) -> int: ...
 def globals() -> Dict[str, Any]: ...
-def setattr(object: Any, name: str, value: Any) -> None: ...
+def getattr(obj: object, name: str) -> Any: ...
+def setattr(obj: object, name: str, value: Any) -> None: ...
 def enumerate(x: Iterable[T]) -> Iterator[Tuple[int, T]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S]) -> Iterator[Tuple[T, S]]: ...
 @overload
 def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, V]]: ...
+def eval(e: str) -> Any: ...
+def abs(x: float) -> float: ...
+def exit() -> None: ...
+def min(x: T, y: T) -> T: ...
+def max(x: T, y: T) -> T: ...
+def repr(o: object) -> str: ...
+def ascii(o: object) -> str: ...
+def ord(o: object) -> int: ...
+def chr(i: int) -> str: ...
 
 # Dummy definitions.
 class classmethod: pass
 class staticmethod: pass
 
-NotImplemented = ...  # type: Any
+NotImplemented: Any = ...

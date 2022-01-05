@@ -63,7 +63,7 @@ class SemanticAnalyzerPreAnalysis(TraverserVisitor):
         file_node = self.cur_mod_node
         if (self.is_global_scope
                 and file_node.is_stub
-                and node.name() == '__getattr__'
+                and node.name == '__getattr__'
                 and file_node.is_package_init_file()):
             # __init__.pyi with __getattr__ means that any submodules are assumed
             # to exist, even if there is no stub. Note that we can't verify that the

@@ -10,7 +10,7 @@ from typing_extensions import Final
 
 from mypy.ipc import IPCBase
 
-DEFAULT_STATUS_FILE = '.dmypy.json'  # type: Final
+DEFAULT_STATUS_FILE: Final = ".dmypy.json"
 
 
 def receive(connection: IPCBase) -> Any:
@@ -24,8 +24,8 @@ def receive(connection: IPCBase) -> Any:
         raise OSError("No data received")
     try:
         data = json.loads(bdata.decode('utf8'))
-    except Exception:
-        raise OSError("Data received is not valid JSON")
+    except Exception as e:
+        raise OSError("Data received is not valid JSON") from e
     if not isinstance(data, dict):
         raise OSError("Data received is not a dict (%s)" % str(type(data)))
     return data

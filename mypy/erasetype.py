@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type
+    get_proper_type, TypeAliasType, ParamSpecType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -57,6 +57,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.
         any_type = AnyType(TypeOfAny.special_form)
@@ -87,11 +90,14 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
-        from mypy.typeops import make_simplified_union  # asdf
+        from mypy.typeops import make_simplified_union
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
         return TypeType.make_normalized(t.item.accept(self), line=t.line)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
+        raise RuntimeError("Type aliases should be expanded before accepting this visitor")
 
 
 def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None) -> Type:
@@ -122,6 +128,16 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Type alias target can't contain bound type variables, so
+        # it is safe to just erase the arguments.
+        return t.copy_modified(args=[a.accept(self) for a in t.args])
+
 
 def remove_instance_transient_info(t: Type) -> Type:
     """Recursively removes any info from Instances that exist
@@ -133,6 +149,18 @@ def remove_instance_transient_info(t: Type) -> Type:
 
 class TransientInstanceInfoEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
-        if t.last_known_value or t.metadata:
-            return t.copy_modified(last_known_value=None, metadata={})
+        if not t.last_known_value and not t.args and not t.metadata:
+            return t
+        new_t = t.copy_modified(
+            args=[a.accept(self) for a in t.args],
+            last_known_value=None,
+            metadata={},
+        )
+        new_t.can_be_true = t.can_be_true
+        new_t.can_be_false = t.can_be_false
+        return new_t
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        # Type aliases can't contain literal values, because they are
+        # always constructed as explicit types.
         return t

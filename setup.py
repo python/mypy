@@ -5,22 +5,19 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 5, 0):
-    sys.stderr.write("ERROR: You need Python 3.5 or later to use mypy.\n")
+if sys.version_info < (3, 6, 0):
+    sys.stderr.write("ERROR: You need Python 3.6 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 
 # This requires setuptools when building; setuptools is not needed
-# when installing from a wheel file (though it is still neeeded for
+# when installing from a wheel file (though it is still needed for
 # alternative forms of installing, as suggested by README.md).
-from setuptools import setup
+from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
 from mypy.version import __version__ as version
-from mypy import git
-
-git.verify_git_integrity_or_abort(".")
 
 description = 'Optional static typing for Python'
 long_description = '''
@@ -73,6 +70,7 @@ cmdclass = {'build_py': CustomPythonBuild}
 package_data = ['py.typed']
 
 package_data += find_package_data(os.path.join('mypy', 'typeshed'), ['*.py', '*.pyi'])
+package_data += [os.path.join('mypy', 'typeshed', 'stdlib', 'VERSIONS')]
 
 package_data += find_package_data(os.path.join('mypy', 'xml'), ['*.xsd', '*.xslt', '*.css'])
 
@@ -88,11 +86,8 @@ if USE_MYPYC:
     MYPYC_BLACKLIST = tuple(os.path.join('mypy', x) for x in (
         # Need to be runnable as scripts
         '__main__.py',
-        'sitepkgs.py',
+        'pyinfo.py',
         os.path.join('dmypy', '__main__.py'),
-
-        # Needs to be interpreted to provide a hook to interpreted plugins
-        'interpreted_plugin.py',
 
         # Uses __getattr__/__setattr__
         'split_namespace.py',
@@ -103,9 +98,17 @@ if USE_MYPYC:
         # We don't populate __file__ properly at the top level or something?
         # Also I think there would be problems with how we generate version.py.
         'version.py',
+
+        # Skip these to reduce the size of the build
+        'stubtest.py',
+        'stubgenc.py',
+        'stubdoc.py',
+        'stubutil.py',
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
+        # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
+        os.path.join('mypyc', '__main__.py'),
     )
 
     everything = (
@@ -120,6 +123,7 @@ if USE_MYPYC:
     mypyc_targets = [x for x in mypyc_targets
                      if not x.startswith((os.path.join('mypy', 'test') + os.sep,
                                           os.path.join('mypyc', 'test') + os.sep,
+                                          os.path.join('mypyc', 'doc') + os.sep,
                                           os.path.join('mypyc', 'test-data') + os.sep,
                                           ))]
     # ... and add back in the one test module we need
@@ -129,27 +133,29 @@ if USE_MYPYC:
     # order. Sort them so that the mypyc output is deterministic.
     mypyc_targets.sort()
 
-    # This bit is super unfortunate: we want to use the mypy packaged
-    # with mypyc. It will arrange for the path to be setup so it can
-    # find it, but we've already imported parts, so we remove the
-    # modules that we've imported already, which will let the right
-    # versions be imported by mypyc.
-    del sys.modules['mypy']
-    del sys.modules['mypy.version']
-    del sys.modules['mypy.git']
+    use_other_mypyc = os.getenv('ALTERNATE_MYPYC_PATH', None)
+    if use_other_mypyc:
+        # This bit is super unfortunate: we want to use a different
+        # mypy/mypyc version, but we've already imported parts, so we
+        # remove the modules that we've imported already, which will
+        # let the right versions be imported by mypyc.
+        del sys.modules['mypy']
+        del sys.modules['mypy.version']
+        del sys.modules['mypy.git']
+        sys.path.insert(0, use_other_mypyc)
 
-    from mypyc.build import mypycify, MypycifyBuildExt
+    from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    debug_level = os.getenv('MYPYC_DEBUG_LEVEL', '1')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
-        mypyc_targets,
-        ['--config-file=mypy_bootstrap.ini'],
+        mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
-        # Use multi-file compliation mode on windows because without it
+        debug_level=debug_level,
+        # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
     )
-    cmdclass['build_ext'] = MypycifyBuildExt
 else:
     ext_modules = []
 
@@ -160,9 +166,11 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Topic :: Software Development',
 ]
 
@@ -176,25 +184,33 @@ setup(name='mypy',
       license='MIT License',
       py_modules=[],
       ext_modules=ext_modules,
-      packages=[
-          'mypy', 'mypy.test', 'mypy.server', 'mypy.plugins', 'mypy.dmypy',
-          'mypyc', 'mypyc.test',
-      ],
+      packages=find_packages(),
       package_data={'mypy': package_data},
-      scripts=['scripts/mypyc'],
       entry_points={'console_scripts': ['mypy=mypy.__main__:console_entry',
                                         'stubgen=mypy.stubgen:main',
+                                        'stubtest=mypy.stubtest:main',
                                         'dmypy=mypy.dmypy.client:console_entry',
+                                        'mypyc=mypyc.__main__:main',
                                         ]},
       classifiers=classifiers,
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
-      install_requires=['typed_ast >= 1.4.0, < 1.5.0',
-                        'typing_extensions>=3.7.4',
-                        'mypy_extensions >= 0.4.0, < 0.5.0',
+      install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
+                        'typing_extensions>=3.10',
+                        'mypy_extensions >= 0.4.3',
+                        'tomli>=1.1.0',
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0'},
-      python_requires=">=3.5",
+      extras_require={
+          'dmypy': 'psutil >= 4.0',
+          'python2': 'typed_ast >= 1.4.0, < 2',
+          'reports': 'lxml'
+      },
+      python_requires=">=3.6",
       include_package_data=True,
+      project_urls={
+          'News': 'http://mypy-lang.org/news.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Repository': 'https://github.com/python/mypy',
+      },
       )

@@ -18,7 +18,8 @@ the exit status mypy normally returns to the operating system.
 Any pretty formatting is left to the caller.
 
 The 'run_dmypy' function is similar, but instead mimics invocation of
-dmypy.
+dmypy. Note that run_dmypy is not thread-safe and modifies sys.stdout
+and sys.stderr during its invocation.
 
 Note that these APIs don't support incremental generation of error
 messages.
@@ -42,6 +43,8 @@ print('\nExit status:', result[2])
 
 """
 
+import sys
+
 from io import StringIO
 from typing import List, Tuple, TextIO, Callable
 
@@ -64,9 +67,25 @@ def run(args: List[str]) -> Tuple[str, str, int]:
     # Lazy import to avoid needing to import all of mypy to call run_dmypy
     from mypy.main import main
     return _run(lambda stdout, stderr: main(None, args=args,
-                                            stdout=stdout, stderr=stderr))
+                                            stdout=stdout, stderr=stderr, clean_exit=True))
 
 
 def run_dmypy(args: List[str]) -> Tuple[str, str, int]:
     from mypy.dmypy.client import main
-    return _run(lambda stdout, stderr: main(args))
+
+    # A bunch of effort has been put into threading stdout and stderr
+    # through the main API to avoid the threadsafety problems of
+    # modifying sys.stdout/sys.stderr, but that hasn't been done for
+    # the dmypy client, so we just do the non-threadsafe thing.
+    def f(stdout: TextIO, stderr: TextIO) -> None:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        try:
+            sys.stdout = stdout
+            sys.stderr = stderr
+            main(args)
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+    return _run(f)

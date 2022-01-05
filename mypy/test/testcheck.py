@@ -11,12 +11,12 @@ from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
-    retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
+    update_testcase_output, parse_options,
+    assert_target_equivalence, check_test_output_files, perform_file_operations,
 )
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
@@ -25,6 +25,7 @@ from mypy.semanal_main import core_modules
 # List of files that contain test case descriptions.
 typecheck_files = [
     'check-basic.test',
+    'check-union-or-syntax.test',
     'check-callable.test',
     'check-classes.test',
     'check-statements.test',
@@ -46,6 +47,7 @@ typecheck_files = [
     'check-isinstance.test',
     'check-lists.test',
     'check-namedtuple.test',
+    'check-narrowing.test',
     'check-typeddict.test',
     'check-type-aliases.test',
     'check-ignore.test',
@@ -88,15 +90,26 @@ typecheck_files = [
     'check-reports.test',
     'check-errorcodes.test',
     'check-annotated.test',
+    'check-parameter-specification.test',
+    'check-generic-alias.test',
+    'check-typeguard.test',
+    'check-functools.test',
+    'check-singledispatch.test',
+    'check-slots.test',
+    'check-formatting.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
+if sys.version_info >= (3, 9):
+    typecheck_files.append('check-python39.test')
+if sys.version_info >= (3, 10):
+    typecheck_files.append('check-python310.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+    typecheck_files.extend(['check-modules-case.test'])
 
 
 class TypeCheckSuite(DataSuite):
@@ -146,15 +159,7 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for op in operations:
-                if isinstance(op, UpdateFile):
-                    # Modify/create file
-                    copy_and_fudge_mtime(op.source_path, op.target_path)
-                else:
-                    # Delete file
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    path = op.path
-                    retry_on_error(lambda: os.remove(path))
+            perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
@@ -271,6 +276,11 @@ class TypeCheckSuite(DataSuite):
         if not missing_paths == busted_paths:
             raise AssertionError("cache data discrepancy %s != %s" %
                                  (missing_paths, busted_paths))
+        assert os.path.isfile(os.path.join(manager.options.cache_dir, ".gitignore"))
+        cachedir_tag = os.path.join(manager.options.cache_dir, "CACHEDIR.TAG")
+        assert os.path.isfile(cachedir_tag)
+        with open(cachedir_tag) as f:
+            assert f.read().startswith("Signature: 8a477f597d28d172789f06886806bc55")
 
     def find_error_message_paths(self, a: List[str]) -> Set[str]:
         hits = set()
@@ -331,10 +341,10 @@ class TypeCheckSuite(DataSuite):
             module_names = m.group(1)
             out = []
             search_paths = SearchPaths((test_temp_dir,), (), (), ())
-            cache = FindModuleCache(search_paths)
+            cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert path is not None, "Can't find ad hoc case file"
+                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

@@ -9,10 +9,10 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]``, containing
+importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``list[str]``, containing
 what normally would have been the command line arguments to mypy.
 
-Function ``run`` returns a ``Tuple[str, str, int]``, namely
+Function ``run`` returns a ``tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
 is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
 normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy normally
@@ -36,6 +36,9 @@ A trivial example of using the api is the following
         print(result[1])  # stderr
 
     print('\nExit status:', result[2])
+
+
+.. _extending-mypy-using-plugins:
 
 Extending mypy using plugins
 ****************************
@@ -69,8 +72,8 @@ Configuring mypy to use plugins
 *******************************
 
 Plugins are Python files that can be specified in a mypy
-:ref:`config file <config-file>` using one of the two formats: relative or
-absolute path to the plugin to the plugin file, or a module name (if the plugin
+:ref:`config file <config-file>` using the :confval:`plugins` option and one of the two formats: relative or
+absolute path to the plugin file, or a module name (if the plugin
 is installed using ``pip install`` in the same virtual environment where mypy
 is running). The two formats can be mixed, for example:
 
@@ -170,6 +173,8 @@ For example:
        ...
        yield timer()
 
+**get_function_signature_hook** is used to adjust the signature of a function.
+
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
 
@@ -199,14 +204,13 @@ to match runtime behaviour:
 
 .. code-block:: python
 
-   from lib import customize
+   from dataclasses import dataclass
 
-   @customize
-   class UserDefined:
-       pass
+   @dataclass  # built-in plugin adds `__init__` method here
+   class User:
+       name: str
 
-   var = UserDefined
-   var.customized  # mypy can understand this using a plugin
+   user = User(name='example')  # mypy can understand this using a plugin
 
 **get_metaclass_hook()** is similar to above, but for metaclasses.
 
@@ -235,6 +239,14 @@ insert some entries there) before the class body is analyzed.
 module. It is called before semantic analysis. For example, this can
 be used if a library has dependencies that are dynamically loaded
 based on configuration information.
+
+**report_config_data()** can be used if the plugin has some sort of
+per-module configuration that can affect typechecking. In that case,
+when the configuration for a module changes, we want to invalidate
+mypy's cache for that module so that it can be rechecked. This hook
+should be used to report to mypy any relevant configuration data,
+so that mypy knows to recheck the module if the configuration changes.
+The hooks should return data encodable as JSON.
 
 Notes about the semantic analyzer
 *********************************

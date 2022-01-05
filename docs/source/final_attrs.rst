@@ -11,18 +11,19 @@ This section introduces these related features:
 3. *Final classes* should not be subclassed.
 
 All of these are only enforced by mypy, and only in annotated code.
-They is no runtime enforcement by the Python runtime.
+There is no runtime enforcement by the Python runtime.
 
 .. note::
 
-   These are experimental features. They might change in later
-   versions of mypy. The *final* qualifiers are available through the
-   ``typing_extensions`` package on PyPI.
+    The examples in this page import ``Final`` and ``final`` from the
+    ``typing`` module. These types were added to ``typing`` in Python 3.8,
+    but are also available for use in Python 2.7 and 3.4 - 3.7 via the
+    ``typing_extensions`` package.
 
 Final names
 -----------
 
-You can use the ``typing_extensions.Final`` qualifier to indicate that
+You can use the ``typing.Final`` qualifier to indicate that
 a name or attribute should not be reassigned, redefined, or
 overridden.  This is often useful for module and class level constants
 as a way to prevent unintended modification.  Mypy will prevent
@@ -30,7 +31,7 @@ further assignments to final names in type-checked code:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    RATE: Final = 3000
 
@@ -45,7 +46,7 @@ from being overridden in a subclass:
 
 .. code-block:: python
 
-   from typing_extensions import Final
+   from typing import Final
 
    class Window:
        BORDER_WIDTH: Final = 2.5
@@ -67,7 +68,9 @@ You can use ``Final`` in one of these forms:
 
   .. code-block:: python
 
-     ID: Final[float] = 1
+     ID: Final[int] = 1
+
+  Here mypy will infer type ``int`` for ``ID``.
 
 * You can omit the type:
 
@@ -75,11 +78,11 @@ You can use ``Final`` in one of these forms:
 
      ID: Final = 1
 
-  Here mypy will infer type ``int`` for ``ID``. Note that unlike for
+  Here mypy will infer type ``Literal[1]`` for ``ID``. Note that unlike for
   generic classes this is *not* the same as ``Final[Any]``.
 
 * In class bodies and stub files you can omit the right hand side and just write
-  ``ID: Final[float]``.
+  ``ID: Final[int]``.
 
 * Finally, you can write ``self.id: Final = 1`` (also optionally with
   a type in square brackets). This is allowed *only* in
@@ -116,9 +119,9 @@ annotations. Using it in any other position is an error. In particular,
 
 .. code-block:: python
 
-   x: List[Final[int]] = []  # Error!
+   x: list[Final[int]] = []  # Error!
 
-   def fun(x: Final[List[int]]) ->  None:  # Error!
+   def fun(x: Final[list[int]]) ->  None:  # Error!
        ...
 
 ``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer
@@ -138,7 +141,7 @@ override a read-only property:
    class Derived(Base):
        ID: Final = 1  # OK
 
-Declaring a name as final only guarantees that the name wll not be re-bound
+Declaring a name as final only guarantees that the name will not be re-bound
 to another value. It doesn't make the value immutable. You can use immutable ABCs
 and containers to prevent mutating such values:
 
@@ -155,12 +158,11 @@ Final methods
 -------------
 
 Like with attributes, sometimes it is useful to protect a method from
-overriding. You can use the ``typing_extensions.final``
-decorator for this purpose:
+overriding. You can use the ``typing.final`` decorator for this purpose:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    class Base:
        @final
@@ -193,12 +195,12 @@ to make it final (or on the first overload in stubs):
 Final classes
 -------------
 
-You can apply the ``typing_extensions.final`` decorator to a class to indicate
+You can apply the ``typing.final`` decorator to a class to indicate
 to mypy that it should not be subclassed:
 
 .. code-block:: python
 
-   from typing_extensions import final
+   from typing import final
 
    @final
    class Leaf:
@@ -219,3 +221,17 @@ Here are some situations where using a final class may be useful:
   base classes and subclasses.
 * You want to retain the freedom to arbitrarily change the class implementation
   in the future, and these changes might break subclasses.
+
+An abstract class that defines at least one abstract method or
+property and has ``@final`` decorator will generate an error from
+mypy, since those attributes could never be implemented.
+
+.. code-block:: python
+
+    from abc import ABCMeta, abstractmethod
+    from typing import final
+
+    @final
+    class A(metaclass=ABCMeta):  # error: Final class A has abstract attributes "f"
+        @abstractmethod
+        def f(self, x: int) -> None: pass
