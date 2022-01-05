@@ -1033,3 +1033,54 @@ x2: X2[str, int]
 reveal_type(iter(x2))  # N: Revealed type is "typing.Iterator[builtins.int*]"
 reveal_type([*x2])  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/dict.pyi]
+
+[case testTypeSubtypingWithDifferentGenericVars]
+# flags: --python-version 3.10
+from typing import Any, Protocol, Iterable
+
+class Hashable(Protocol):
+    def __hash__(self) -> int: pass
+
+t1: type = type
+h1: Hashable = t1
+
+t2: type[type] = type
+h2: Hashable = t2
+
+t3: type[Any] = type
+h3: Hashable = t3
+
+# Metaclass magic:
+
+class NotHashable:
+    __hash__: None
+
+h_i: Hashable = NotHashable
+
+class NotHashableMeta(type):
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "type" defined the type as "Callable[[type[Any]], int]")
+
+class NotHashableType(metaclass=NotHashableMeta):
+    pass
+
+h_t: Hashable = NotHashableType  # E: Incompatible types in assignment (expression has type "Type[NotHashableType]", variable has type "Hashable")
+
+# Exact types:
+
+o1: type[object] = object
+o2: type[int] = int
+o3 = object
+
+h4: Hashable = o1
+h5: Hashable = o2
+h6: Hashable = o3
+
+# Errors:
+
+err1: Iterable = t1  # E: Incompatible types in assignment (expression has type "type[Any]", variable has type "Iterable[Any]")
+err2: Iterable = t2  # E: Incompatible types in assignment (expression has type "Type[type[Any]]", variable has type "Iterable[Any]")
+err3: Iterable = t3  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "Iterable[Any]")
+err4: int = t1  # E: Incompatible types in assignment (expression has type "type[Any]", variable has type "int")
+err5: int = t2  # E: Incompatible types in assignment (expression has type "Type[type[Any]]", variable has type "int")
+err6: int = t3  # E: Incompatible types in assignment (expression has type "Type[Any]", variable has type "int")
+[builtins fixtures/type.pyi]

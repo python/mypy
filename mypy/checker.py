@@ -301,6 +301,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         Deferred functions will be processed by check_second_pass().
         """
         self.recurse_into_functions = True
+        self.prepare_types()
         with state.strict_optional_set(self.options.strict_optional):
             self.errors.set_file(self.path, self.tree.fullname, scope=self.tscope)
             with self.tscope.module_scope(self.tree.fullname):
@@ -363,6 +364,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 else nullcontext():
                             self.check_partial(node)
             return True
+
+    def prepare_types(self) -> None:
+        """Additional preparations before actual type checking."""
+        # We need to set `TypeType` fallback, since it is now unset:
+        TypeType.fallback = self.type_type()
 
     def check_partial(self, node: Union[DeferredNodeType, FineGrainedDeferredNodeType]) -> None:
         if isinstance(node, MypyFile):
