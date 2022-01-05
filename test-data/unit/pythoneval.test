@@ -1598,18 +1598,18 @@ if match2:
     reveal_type(match2["n1"])
     reveal_type(match2["n2"])
 [out]
-_testRegexPluginBasicCase.py:8: note: Revealed type is 'Tuple[Union[builtins.str*, None], builtins.str*]'
-_testRegexPluginBasicCase.py:9: note: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
-_testRegexPluginBasicCase.py:10: note: Revealed type is 'builtins.str*'
-_testRegexPluginBasicCase.py:11: note: Revealed type is 'Union[builtins.str*, None]'
-_testRegexPluginBasicCase.py:12: note: Revealed type is 'builtins.str*'
-_testRegexPluginBasicCase.py:13: note: Revealed type is 'Tuple[builtins.str*, Union[builtins.str*, None], builtins.str*]'
-_testRegexPluginBasicCase.py:18: note: Revealed type is 'Tuple[Union[builtins.bytes*, None], builtins.bytes*]'
-_testRegexPluginBasicCase.py:19: note: Revealed type is 'builtins.bytes*'
-_testRegexPluginBasicCase.py:20: note: Revealed type is 'Union[builtins.bytes*, None]'
-_testRegexPluginBasicCase.py:21: note: Revealed type is 'builtins.bytes*'
-_testRegexPluginBasicCase.py:22: note: Revealed type is 'Union[builtins.bytes*, None]'
-_testRegexPluginBasicCase.py:23: note: Revealed type is 'builtins.bytes*'
+_testRegexPluginBasicCase.py:8: note: Revealed type is "Tuple[Union[builtins.str*, None], builtins.str*]"
+_testRegexPluginBasicCase.py:9: note: Revealed type is "Tuple[builtins.str*, builtins.str*]"
+_testRegexPluginBasicCase.py:10: note: Revealed type is "builtins.str*"
+_testRegexPluginBasicCase.py:11: note: Revealed type is "Union[builtins.str*, None]"
+_testRegexPluginBasicCase.py:12: note: Revealed type is "builtins.str*"
+_testRegexPluginBasicCase.py:13: note: Revealed type is "Tuple[builtins.str*, Union[builtins.str*, None], builtins.str*]"
+_testRegexPluginBasicCase.py:18: note: Revealed type is "Tuple[Union[builtins.bytes*, None], builtins.bytes*]"
+_testRegexPluginBasicCase.py:19: note: Revealed type is "builtins.bytes*"
+_testRegexPluginBasicCase.py:20: note: Revealed type is "Union[builtins.bytes*, None]"
+_testRegexPluginBasicCase.py:21: note: Revealed type is "builtins.bytes*"
+_testRegexPluginBasicCase.py:22: note: Revealed type is "Union[builtins.bytes*, None]"
+_testRegexPluginBasicCase.py:23: note: Revealed type is "builtins.bytes*"
 
 [case testRegexPluginNoFinal]
 # mypy: strict-optional
@@ -1622,8 +1622,8 @@ if match:
     reveal_type(match.groups())
     reveal_type(match[1])
 [out]
-_testRegexPluginNoFinal.py:8: note: Revealed type is 'typing.Sequence[builtins.str*]'
-_testRegexPluginNoFinal.py:9: note: Revealed type is 'builtins.str*'
+_testRegexPluginNoFinal.py:8: note: Revealed type is "builtins.tuple[Union[builtins.str*, Any], ...]"
+_testRegexPluginNoFinal.py:9: note: Revealed type is "Union[builtins.str*, Any]"
 
 [case testRegexPluginErrors]
 # mypy: strict-optional
@@ -1658,12 +1658,12 @@ if match:
     reveal_type(match[2])
     reveal_type(match.group(0, 1, 2))
 [out]
-_testRegexPluginDirectMethods.py:7: note: Revealed type is 'Tuple[Union[builtins.str*, None], builtins.str*]'
-_testRegexPluginDirectMethods.py:8: note: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
-_testRegexPluginDirectMethods.py:9: note: Revealed type is 'builtins.str*'
-_testRegexPluginDirectMethods.py:10: note: Revealed type is 'Union[builtins.str*, None]'
-_testRegexPluginDirectMethods.py:11: note: Revealed type is 'builtins.str*'
-_testRegexPluginDirectMethods.py:12: note: Revealed type is 'Tuple[builtins.str*, Union[builtins.str*, None], builtins.str*]'
+_testRegexPluginDirectMethods.py:7: note: Revealed type is "Tuple[Union[builtins.str*, None], builtins.str*]"
+_testRegexPluginDirectMethods.py:8: note: Revealed type is "Tuple[builtins.str*, builtins.str*]"
+_testRegexPluginDirectMethods.py:9: note: Revealed type is "builtins.str*"
+_testRegexPluginDirectMethods.py:10: note: Revealed type is "Union[builtins.str*, None]"
+_testRegexPluginDirectMethods.py:11: note: Revealed type is "builtins.str*"
+_testRegexPluginDirectMethods.py:12: note: Revealed type is "Tuple[builtins.str*, Union[builtins.str*, None], builtins.str*]"
 
 [case testRegexPluginUnknownArg]
 # mypy: strict-optional
@@ -1692,13 +1692,13 @@ if match2:
     match2["bad"]
     match2[5]
 [out]
-_testRegexPluginUnknownArg.py:11: note: Revealed type is 'Tuple[Union[builtins.str*, None], builtins.str*, Union[builtins.str*, None], builtins.str*]'
-_testRegexPluginUnknownArg.py:12: note: Revealed type is 'Union[builtins.str*, None]'
-_testRegexPluginUnknownArg.py:13: note: Revealed type is 'Union[builtins.str*, None]'
-_testRegexPluginUnknownArg.py:14: note: Revealed type is 'Tuple[builtins.str*, Union[builtins.str*, None], Union[builtins.str*, None]]'
-_testRegexPluginUnknownArg.py:20: note: Revealed type is 'Tuple[builtins.str*, builtins.str*]'
-_testRegexPluginUnknownArg.py:21: note: Revealed type is 'builtins.str*'
-_testRegexPluginUnknownArg.py:22: note: Revealed type is 'builtins.str*'
-_testRegexPluginUnknownArg.py:23: note: Revealed type is 'Tuple[builtins.str*, builtins.str*, builtins.str*]'
+_testRegexPluginUnknownArg.py:11: note: Revealed type is "Tuple[Union[builtins.str*, None], builtins.str*, Union[builtins.str*, None], builtins.str*]"
+_testRegexPluginUnknownArg.py:12: note: Revealed type is "Union[builtins.str*, None]"
+_testRegexPluginUnknownArg.py:13: note: Revealed type is "Union[builtins.str*, None]"
+_testRegexPluginUnknownArg.py:14: note: Revealed type is "Tuple[builtins.str*, Union[builtins.str*, None], Union[builtins.str*, None]]"
+_testRegexPluginUnknownArg.py:20: note: Revealed type is "Tuple[builtins.str*, builtins.str*]"
+_testRegexPluginUnknownArg.py:21: note: Revealed type is "builtins.str*"
+_testRegexPluginUnknownArg.py:22: note: Revealed type is "builtins.str*"
+_testRegexPluginUnknownArg.py:23: note: Revealed type is "Tuple[builtins.str*, builtins.str*, builtins.str*]"
 _testRegexPluginUnknownArg.py:24: error: Regex does not contain group named 'bad'
 _testRegexPluginUnknownArg.py:25: error: Regex has 3 total groups, given group number 5 is too big
