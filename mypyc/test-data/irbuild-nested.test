@@ -327,6 +327,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_a_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_a_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
     r0 :: __main__.a_env
@@ -369,6 +377,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_b_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_b_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_b_obj
     r0 :: __main__.b_env
@@ -415,6 +431,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_c_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_c_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_c_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_c_obj
     r0 :: __main__.c_env
@@ -439,6 +463,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_c_obj_0.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_c_obj_0
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_c_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_c_obj_0
     r0 :: __main__.c_env
@@ -501,6 +533,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def c_a_b_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.c_a_b_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'c'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def c_a_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.c_a_b_obj
     r0 :: __main__.b_a_env
@@ -527,6 +567,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def b_a_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.b_a_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'b'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def b_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.b_a_obj
     r0 :: __main__.a_env
@@ -596,6 +644,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_f_obj
     r0 :: __main__.f_env
@@ -620,6 +676,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_f_obj_0.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_f_obj_0
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_f_obj_0.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_f_obj_0
     r0 :: __main__.f_env
@@ -845,6 +909,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def __mypyc_lambda__0_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__0_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = '<lambda>'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def __mypyc_lambda__0_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __main__.__mypyc_lambda__0_f_obj
     a, b :: object
@@ -867,6 +939,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def __mypyc_lambda__1_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.__mypyc_lambda__1_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = '<lambda>'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def __mypyc_lambda__1_f_obj.__call__(__mypyc_self__, a, b):
     __mypyc_self__ :: __main__.__mypyc_lambda__1_f_obj
     a, b :: object

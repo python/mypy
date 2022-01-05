@@ -2829,6 +2829,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def g_a_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'g'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_a_obj
     r0 :: __main__.a_env
@@ -2886,6 +2894,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def g_b_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_b_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'g'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def g_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_b_obj
     r0 :: __main__.b_env
@@ -2943,6 +2959,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def d_c_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.d_c_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'd'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def d_c_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.d_c_obj
     r0 :: __main__.c_env
@@ -3102,6 +3126,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def g_a_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.g_a_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'g'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def g_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.g_a_obj
     r0 :: __main__.a_env

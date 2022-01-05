@@ -6,6 +6,8 @@ non-local variables defined in outer scopes.
 
 from typing import List
 
+from mypy.nodes import LambdaExpr
+
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive, none_rprimitive, str_rprimitive
@@ -87,11 +89,12 @@ def add_init_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     do have.
     """
     class_ir = fn_info.callable_class.ir
+    class_ir.needs_getseters = True
+    class_ir.attributes['__name__'] = str_rprimitive
+    fn_name_value = '<lambda>' if isinstance(fn_info.fitem, LambdaExpr) else fn_info.name
 
     with builder.enter_method(class_ir, '__init__', none_rprimitive, fn_info):
-        class_ir.needs_getseters = True
-        class_ir.attributes['__name__'] = str_rprimitive
-        fn_name = builder.load_str(fn_info.name)
+        fn_name = builder.load_str(fn_name_value)
         builder.add(SetAttr(builder.self(), '__name__', fn_name, fn_info.fitem.line))
         builder.add_implicit_return()
 

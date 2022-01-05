@@ -233,10 +233,15 @@ global_upvar = 20
 
 toplevel_lambda = lambda x: 10 + global_upvar + x
 
+def _create_lambda() -> Callable[[int], int]:
+    return lambda x: 10 + global_upvar + x
+
+nested_lambda = _create_lambda()
+
 [file driver.py]
 from native import (
     a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, triple, if_else, for_loop, while_loop,
-    free_vars, lambdas, outer, inner, A, toplevel_lambda
+    free_vars, lambdas, outer, inner, A, toplevel_lambda, nested_lambda
 )
 
 assert a()() == None
@@ -282,6 +287,9 @@ assert inner() == 'inner: normal function'
 assert A(3).outer(4) == 12
 
 assert toplevel_lambda(5) == 35
+assert toplevel_lambda.__name__ == '<lambda>'
+assert nested_lambda(5) == 35
+assert nested_lambda.__name__ == '<lambda>'
 
 [case testNestedFunctions2]
 from typing import Callable

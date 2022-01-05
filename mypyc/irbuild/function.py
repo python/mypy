@@ -345,7 +345,8 @@ def gen_func_ir(builder: IRBuilder,
     if fn_info.is_nested or fn_info.in_non_ext:
         func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)
-        add_init_to_callable_class(builder, fn_info)
+        if fn_info.is_nested:
+            add_init_to_callable_class(builder, fn_info)
         func_reg = instantiate_callable_class(builder, fn_info)
     else:
         assert isinstance(fn_info.fitem, FuncDef)
