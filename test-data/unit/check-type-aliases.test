@@ -51,9 +51,10 @@ f(1)
 f('x')
 
 [case testNoReturnTypeAlias]
+# https://github.com/python/mypy/issues/11903
 from typing import NoReturn
 Never = NoReturn
-a: Never
+a: Never  # Used to be an error here
 
 [case testImportUnionAlias]
 import typing
