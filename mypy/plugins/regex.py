@@ -141,7 +141,7 @@ def extract_regex_group_info(pattern: str) -> Tuple[List[int], int, Dict[str, in
 
     mandatory_groups = [0] + list(sorted(find_mandatory_groups(ast)))
 
-    if sys.version_info >= (3, 8, 0):
+    if sys.version_info >= (3, 8):
         state = ast.state
     else:
         state = ast.pattern
@@ -162,7 +162,7 @@ def analyze_regex_pattern_call(pattern_type: Type,
     these cases.
     """
 
-    pattern_type = coerce_to_literal(pattern_type)
+    pattern_type = get_proper_type(coerce_to_literal(pattern_type))
     if not isinstance(pattern_type, LiteralType):
         return default_return_type
     if pattern_type.fallback.type.fullname not in STR_LIKE_TYPES:
@@ -245,7 +245,7 @@ def re_get_match_callback(ctx: mypy.plugin.MethodContext) -> Type:
     if not isinstance(self_type, Instance) or 'default_re_plugin' not in self_type.metadata:
         return return_type
 
-    match_object = remove_optional(return_type)
+    match_object = get_proper_type(remove_optional(return_type))
     assert isinstance(match_object, Instance)
 
     pattern_metadata = self_type.metadata['default_re_plugin']
@@ -301,7 +301,7 @@ def re_match_group_callback(ctx: mypy.plugin.MethodContext) -> Type:
     possible_indices = []
     for arg_type in ctx.arg_types:
         if len(arg_type) >= 1:
-            possible_indices.append(coerce_to_literal(arg_type[0]))
+            possible_indices.append(get_proper_type(coerce_to_literal(arg_type[0])))
 
     outputs: List[Type] = []
     for possible_index in possible_indices:
@@ -310,7 +310,7 @@ def re_match_group_callback(ctx: mypy.plugin.MethodContext) -> Type:
             continue
 
         value = possible_index.value
-        fallback_name = possible_index.fallback.type.fullname()
+        fallback_name = possible_index.fallback.type.fullname
 
         if isinstance(value, str) and fallback_name in STR_LIKE_TYPES:
             if value not in named_groups:
