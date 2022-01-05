@@ -50,6 +50,11 @@ def f(x: A) -> None:
 f(1)
 f('x')
 
+[case testNoReturnTypeAlias]
+from typing import NoReturn
+Never = NoReturn
+a: Never
+
 [case testImportUnionAlias]
 import typing
 from _m import U
