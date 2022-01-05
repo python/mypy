@@ -4988,7 +4988,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         the name refers to a compatible generic type.
         """
         info = self.lookup_typeinfo(name)
-        args = [remove_instance_last_known_values(arg) for arg in args]
+        args = [remove_instance_transient_info(arg) for arg in args]
         # TODO: assert len(args) == len(info.defn.type_vars)
         return Instance(info, args)
 

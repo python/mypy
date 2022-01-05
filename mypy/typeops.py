@@ -10,8 +10,6 @@ from typing_extensions import Type as TypingType
 import itertools
 import sys
 
-import sys
-
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,

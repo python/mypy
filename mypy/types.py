@@ -958,7 +958,7 @@ class Instance(ProperType):
         # this instance, if one is known.
         #
         # This field is set whenever possible within expressions, but is erased upon
-        # variable assignment (see erasetype.remove_instance_last_known_values) unless
+        # variable assignment (see erasetype.remove_instance_transient_info) unless
         # the variable is declared to be final.
         #
         # For example, consider the following program:
