@@ -239,6 +239,7 @@ def outer() -> Generator:
 from native import normal, generator, triple, another_triple, outer
 from testutil import run_generator
 
+assert normal(1, 2.0).__name__ == 'generator'
 assert run_generator(normal(1, 2.0)(3, '4.00')) == ((1, 2.0, 3, '4.00'), None)
 assert run_generator(generator(1)) == ((1, 2, 3), None)
 assert run_generator(triple()()) == ((1, 2, 3), None)

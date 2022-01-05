@@ -9,7 +9,7 @@ from typing import List
 from mypy.nodes import LambdaExpr
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
+from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register, Return
 from mypyc.ir.rtypes import RInstance, object_rprimitive, none_rprimitive, str_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
 from mypyc.ir.class_ir import ClassIR
@@ -96,7 +96,7 @@ def add_init_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
     with builder.enter_method(class_ir, '__init__', none_rprimitive, fn_info):
         fn_name = builder.load_str(fn_name_value)
         builder.add(SetAttr(builder.self(), '__name__', fn_name, fn_info.fitem.line))
-        builder.add_implicit_return()
+        builder.add(Return(builder.none()))
 
 
 def add_call_to_callable_class(builder: IRBuilder,
