@@ -47,6 +47,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_a_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_a_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_a_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.inner_a_obj
     r0 :: __main__.a_env
@@ -82,6 +90,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def second_b_first_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.second_b_first_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'second'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def second_b_first_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.second_b_first_obj
     r0 :: __main__.first_b_env
@@ -108,6 +124,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def first_b_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.first_b_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'first'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def first_b_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.first_b_obj
     r0 :: __main__.b_env
@@ -153,6 +177,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_c_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_c_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_c_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: __main__.inner_c_obj
     s :: str
@@ -192,6 +224,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def inner_d_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.inner_d_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'inner'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def inner_d_obj.__call__(__mypyc_self__, s):
     __mypyc_self__ :: __main__.inner_d_obj
     s :: str
@@ -649,6 +689,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def foo_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.foo_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'foo'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def foo_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.foo_f_obj
     r0 :: __main__.f_env
@@ -674,6 +722,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def bar_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.bar_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'bar'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def bar_f_obj.__call__(__mypyc_self__):
     __mypyc_self__ :: __main__.bar_f_obj
     r0 :: __main__.f_env
@@ -700,6 +756,14 @@ L1:
 L2:
     r2 = PyMethod_New(__mypyc_self__, instance)
     return r2
+def baz_f_obj.__init__(__mypyc_self__):
+    __mypyc_self__ :: __main__.baz_f_obj
+    r0 :: str
+    r1 :: bool
+L0:
+    r0 = 'baz'
+    __mypyc_self__.__name__ = r0; r1 = is_error
+    return 1
 def baz_f_obj.__call__(__mypyc_self__, n):
     __mypyc_self__ :: __main__.baz_f_obj
     n :: int

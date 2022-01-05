@@ -44,8 +44,8 @@ from mypyc.irbuild.targets import AssignmentTarget
 from mypyc.irbuild.statement import transform_try_except
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
-    setup_callable_class, add_call_to_callable_class, add_get_to_callable_class,
-    instantiate_callable_class
+    setup_callable_class, add_init_to_callable_class, add_call_to_callable_class,
+    add_get_to_callable_class, instantiate_callable_class
 )
 from mypyc.irbuild.generator import (
     gen_generator_func, setup_env_for_generator_class, create_switch_for_generator_class,
@@ -348,6 +348,7 @@ def gen_func_ir(builder: IRBuilder,
     if fn_info.is_nested or fn_info.in_non_ext:
         func_ir = add_call_to_callable_class(builder, args, blocks, sig, fn_info)
         add_get_to_callable_class(builder, fn_info)
+        add_init_to_callable_class(builder, fn_info)
         func_reg = instantiate_callable_class(builder, fn_info)
     else:
         assert isinstance(fn_info.fitem, FuncDef)

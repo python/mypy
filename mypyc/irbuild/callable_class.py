@@ -8,7 +8,7 @@ from typing import List
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
 from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
-from mypyc.ir.rtypes import RInstance, object_rprimitive
+from mypyc.ir.rtypes import RInstance, object_rprimitive, none_rprimitive, str_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
 from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.builder import IRBuilder
@@ -55,7 +55,7 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # Define the actual callable class ClassIR, and set its
     # environment to point at the previously defined environment
     # class.
-    callable_class_ir = ClassIR(name, builder.module_name, is_generated=True)
+    callable_class_ir = ClassIR(name, builder.module_name, is_generated=True, is_nested_func=True)
 
     # The functools @wraps decorator attempts to call setattr on
     # nested functions, so we create a dict for these nested
@@ -78,6 +78,23 @@ def setup_callable_class(builder: IRBuilder) -> None:
     # and store that variable in a register to be accessed later.
     self_target = builder.add_self_to_env(callable_class_ir)
     builder.fn_info.callable_class.self_reg = builder.read(self_target, builder.fn_info.fitem.line)
+
+
+def add_init_to_callable_class(builder: IRBuilder, fn_info: FuncInfo) -> None:
+    """Generate a '__init__' method for a callable class representing a nested function.
+
+    The init method simply adds back the '__name__' attribute which non-nested functions
+    do have.
+    """
+    class_ir = fn_info.callable_class.ir
+    builder.enter_method(class_ir, '__init__', none_rprimitive, fn_info)
+
+    class_ir.attributes['__name__'] = str_rprimitive
+    fn_name = builder.load_str(fn_info.name)
+    builder.add(SetAttr(builder.self(), '__name__', fn_name, fn_info.fitem.line))
+
+    builder.add_implicit_return()
+    builder.leave_method()
 
 
 def add_call_to_callable_class(builder: IRBuilder,

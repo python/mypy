@@ -86,13 +86,14 @@ class ClassIR:
 
     def __init__(self, name: str, module_name: str, is_trait: bool = False,
                  is_generated: bool = False, is_abstract: bool = False,
-                 is_ext_class: bool = True) -> None:
+                 is_ext_class: bool = True, is_nested_func: bool = False) -> None:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
         self.is_generated = is_generated
         self.is_abstract = is_abstract
         self.is_ext_class = is_ext_class
+        self.is_nested_func = is_nested_func
         # An augmented class has additional methods separate from what mypyc generates.
         # Right now the only one is dataclasses.
         self.is_augmented = False
@@ -275,6 +276,7 @@ class ClassIR:
             'is_ext_class': self.is_ext_class,
             'is_abstract': self.is_abstract,
             'is_generated': self.is_generated,
+            'is_nested_func': self.is_nested_func,
             'is_augmented': self.is_augmented,
             'inherits_python': self.inherits_python,
             'has_dict': self.has_dict,
@@ -323,6 +325,7 @@ class ClassIR:
 
         ir.is_trait = data['is_trait']
         ir.is_generated = data['is_generated']
+        ir.is_nested_func = data['is_nested_func']
         ir.is_abstract = data['is_abstract']
         ir.is_ext_class = data['is_ext_class']
         ir.is_augmented = data['is_augmented']

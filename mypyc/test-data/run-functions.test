@@ -240,8 +240,12 @@ from native import (
 )
 
 assert a()() == None
+assert a().__name__ == 'inner'
 assert b()()() == 'b.first.second: nested function'
+assert b().__name__ == 'first'
+assert b()().__name__ == 'second'
 assert c(5.0)('c') == 'c!'
+assert c(5.0).__name__ == 'inner'
 assert d(4.0) == 'one?'
 assert e() == 0
 assert f() == 0
