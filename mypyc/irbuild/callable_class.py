@@ -9,7 +9,7 @@ from typing import List
 from mypy.nodes import LambdaExpr
 
 from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register, Return
+from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
 from mypyc.ir.rtypes import RInstance, object_rprimitive, none_rprimitive, str_rprimitive
 from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
 from mypyc.ir.class_ir import ClassIR
