@@ -4550,17 +4550,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
-        if_type = true_only(vartype)  # type: Type
-        else_type = false_only(vartype)  # type: Type
-        ref = node  # type: Expression
+        if_type = true_only(vartype)
+        else_type = false_only(vartype)
         if_map = (
-            {ref: if_type}
-            if not isinstance(get_proper_type(if_type), UninhabitedType)
+            {node: if_type}
+            if not isinstance(if_type, UninhabitedType)
             else None
         )
         else_map = (
-            {ref: else_type}
-            if not isinstance(get_proper_type(else_type), UninhabitedType)
+            {node: else_type}
+            if not isinstance(else_type, UninhabitedType)
             else None
         )
         return if_map, else_map
