@@ -1168,13 +1168,6 @@ def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> b
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
     supertype = get_proper_type(supertype)
-    if (isinstance(item, (ErasedType, DeletedType))
-            or isinstance(supertype, (ErasedType, DeletedType))):
-        # It might happen when working with `lambda` arguments.
-        # Basically, we cannot tell at this point: whether some type will cover
-        # `lambda`'s argument or not. But, `ErasedType` or `DeletedType`
-        # will break our code later in `erase_type` visitor.
-        return False
 
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)
