@@ -3210,3 +3210,33 @@ def test(seq: List[Union[Iterable, Any]]) -> None:
             k = [k]
             reveal_type(k)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/list.pyi]
+
+[case testRegression11705_Strict]
+# flags: --strict-optional
+# See: https://github.com/python/mypy/issues/11705
+from typing import Dict, Optional, NamedTuple
+class C(NamedTuple):
+    x: int
+
+t: Optional[C]
+d: Dict[C, bytes]
+x = t and d[t]
+reveal_type(x)  # N: Revealed type is "Union[None, builtins.bytes*]"
+if x:
+    reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+[builtins fixtures/dict.pyi]
+
+[case testRegression11705_NoStrict]
+# flags: --no-strict-optional
+# See: https://github.com/python/mypy/issues/11705
+from typing import Dict, Optional, NamedTuple
+class C(NamedTuple):
+    x: int
+
+t: Optional[C]
+d: Dict[C, bytes]
+x = t and d[t]
+reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+if x:
+    reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+[builtins fixtures/dict.pyi]
