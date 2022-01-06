@@ -2245,6 +2245,12 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return True
             # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
+        if isinstance(rv.node, Var):
+            return rv.node.fullname in (
+                'typing.NoReturn',
+                'typing_extensions.NoReturn',
+                'mypy_extensions.NoReturn',
+            )
 
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
