@@ -2072,7 +2072,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                          arg_names: Optional[Sequence[Optional[str]]],
                          context: Context,
                          arg_messages: MessageBuilder) -> Tuple[Type, Type]:
-        with self.msg.temporary_disable_type_names():
+        with self.msg.disable_type_names():
             results = [
                 self.check_call(
                     subtype,
@@ -2477,7 +2477,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for typ in base_type.relevant_items():
             # Format error messages consistently with
             # mypy.checkmember.analyze_union_member_access().
-            with local_errors.temporary_disable_type_names():
+            with local_errors.disable_type_names():
                 item, meth_item = self.check_method_call_by_name(
                     method, typ, args, arg_kinds,
                     context, local_errors, original_type,

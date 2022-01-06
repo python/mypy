@@ -311,7 +311,7 @@ def analyze_type_type_member_access(name: str,
 
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
-    with mx.msg.temporary_disable_type_names():
+    with mx.msg.disable_type_names():
         results = []
         for subtype in typ.relevant_items():
             # Self types should be bound to every individual item of a union.
