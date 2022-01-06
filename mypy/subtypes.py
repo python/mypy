@@ -1167,6 +1167,7 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
     if (isinstance(item, (ErasedType, DeletedType))
             or isinstance(supertype, (ErasedType, DeletedType))):
         # It might happen when working with `lambda` arguments.
