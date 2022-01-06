@@ -285,3 +285,14 @@ class C(list[int]):
     pass
 d: type[str]
 [builtins fixtures/list.pyi]
+
+
+[case testTypeAliasWithBuiltinListAliasInStub]
+# flags: --python-version 3.6
+import m
+reveal_type(m.a()[0])  # N: Revealed type is "builtins.int*"
+
+[file m.pyi]
+List = list
+a = List[int]
+[builtins fixtures/list.pyi]
