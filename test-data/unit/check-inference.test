@@ -3215,21 +3215,15 @@ def test(seq: List[Union[Iterable, Any]]) -> None:
 # https://github.com/python/mypy/issues/11913
 from typing import TypeVar, Type, Generic, Callable, Iterable
 
-_S = TypeVar('_S')
-_T1 = TypeVar('_T1')
-
-class map(Generic[_S]):
-    def __init__(self, __func: Callable[[_T1], _S], __iter1: Iterable[_T1]) -> None: ...
-
 class DataType: ...
-T = TypeVar("T", bound=DataType)
 
-def collection_from_dict_value(model: Type[T]) -> None:
-    map(
-        # This line was failing:
-        lambda i: i if isinstance(i, model) else i,
-        ["asdf"]
-    )
+T1 = TypeVar('T1')
+T2 = TypeVar("T2", bound=DataType)
+
+def map(__func: T1) -> None: ...
+
+def collection_from_dict_value(model: Type[T2]) -> None:
+    map(lambda i: i if isinstance(i, model) else i)
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRegression11705_Strict]
