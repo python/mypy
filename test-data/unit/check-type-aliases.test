@@ -56,6 +56,8 @@ from typing import NoReturn
 Never = NoReturn
 a: Never  # Used to be an error here
 
+def f(a: Never): ...
+f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn" 
 [case testImportUnionAlias]
 import typing
 from _m import U
