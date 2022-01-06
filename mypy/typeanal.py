@@ -70,7 +70,6 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       allow_new_syntax: bool = False,
                        allow_placeholder: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
@@ -81,12 +80,12 @@ def analyze_type_alias(node: Expression,
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     try:
-        type = expr_to_unanalyzed_type(node, options, allow_new_syntax)
+        type = expr_to_unanalyzed_type(node, options, api.is_stub_file)
     except TypeTranslationError:
         api.fail('Invalid type alias: expression is not a valid type', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_new_syntax=allow_new_syntax, defining_alias=True,
+                            defining_alias=True,
                             allow_placeholder=allow_placeholder)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -127,7 +126,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  is_typeshed_stub: bool, *,
                  defining_alias: bool = False,
                  allow_tuple_literal: bool = False,
-                 allow_new_syntax: bool = False,
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
                  allow_required: bool = False,
@@ -144,8 +142,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
         # Should we allow new type syntax when targeting older Python versions
-        # like 'list[int]' or 'X | Y' (allowed in stubs)?
-        self.allow_new_syntax = allow_new_syntax
+        # like 'list[int]' or 'X | Y' (allowed in stubs and with `__future__` import)?
+        self.always_allow_new_syntax = (
+            self.api.is_stub_file
+            or self.api.is_future_flag_set('annotations')
+        )
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         # If false, record incomplete ref if we generate PlaceholderType.
@@ -202,9 +203,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in get_nongen_builtins(self.options.python_version)
-                    and t.args and
-                    not self.allow_new_syntax and
-                    not self.api.is_future_flag_set("annotations")):
+                    and t.args
+                    and not self.always_allow_new_syntax):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
@@ -291,9 +291,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
         elif (fullname == 'typing.Tuple' or
-             (fullname == 'builtins.tuple' and (self.options.python_version >= (3, 9) or
-                                                self.api.is_future_flag_set('annotations') or
-                                                self.allow_new_syntax))):
+             (fullname == 'builtins.tuple'
+                and (self.always_allow_new_syntax or self.options.python_version >= (3, 9)))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
@@ -326,8 +325,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
         elif (fullname == 'typing.Type' or
-             (fullname == 'builtins.type' and (self.options.python_version >= (3, 9) or
-                                               self.api.is_future_flag_set('annotations')))):
+             (fullname == 'builtins.type'
+                and (self.always_allow_new_syntax or self.options.python_version >= (3, 9)))):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
@@ -704,9 +703,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_union_type(self, t: UnionType) -> Type:
         if (t.uses_pep604_syntax is True
                 and t.is_evaluated is True
-                and self.api.is_stub_file is False
-                and self.options.python_version < (3, 10)
-                and self.api.is_future_flag_set('annotations') is False):
+                and not self.always_allow_new_syntax
+                and not self.options.python_version >= (3, 10)):
             self.fail("X | Y syntax for unions requires Python 3.10", t)
         return UnionType(self.anal_array(t.items), t.line)
 
