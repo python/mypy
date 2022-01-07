@@ -2064,11 +2064,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                          arg_names: Optional[Sequence[Optional[str]]],
                          context: Context,
                          arg_messages: MessageBuilder) -> Tuple[Type, Type]:
-        self.msg.disable_type_names += 1
-        results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
-                                   arg_messages=arg_messages)
-                   for subtype in callee.relevant_items()]
-        self.msg.disable_type_names -= 1
+        with self.msg.disable_type_names():
+            results = [
+                self.check_call(
+                    subtype,
+                    args,
+                    arg_kinds,
+                    context,
+                    arg_names,
+                    arg_messages=arg_messages,
+                )
+                for subtype in callee.relevant_items()
+            ]
+
         return (make_simplified_union([res[0] for res in results]),
                 callee)
 
@@ -2462,11 +2470,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for typ in base_type.relevant_items():
             # Format error messages consistently with
             # mypy.checkmember.analyze_union_member_access().
-            local_errors.disable_type_names += 1
-            item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
-                                                             context, local_errors,
-                                                             original_type)
-            local_errors.disable_type_names -= 1
+            with local_errors.disable_type_names():
+                item, meth_item = self.check_method_call_by_name(
+                    method, typ, args, arg_kinds,
+                    context, local_errors, original_type,
+                )
             res.append(item)
             meth_res.append(meth_item)
         return make_simplified_union(res), make_simplified_union(meth_res)
