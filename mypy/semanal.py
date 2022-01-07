@@ -4567,6 +4567,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             return Instance(node, args)
         return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
 
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        """Legacy function -- use named_type() instead."""
+        return self.named_type(fully_qualified_name)
+
     def lookup_current_scope(self, name: str) -> Optional[SymbolTableNode]:
         if self.locals[-1] is not None:
             return self.locals[-1].get(name)
