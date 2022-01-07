@@ -1035,8 +1035,10 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         value = bytes_to_human_readable_repr(runtime)
     elif isinstance(runtime, enum.Enum):
         value = runtime.name
-    else:
+    elif isinstance(runtime, (int, str, bool)):
         value = runtime
+    else:
+        return fallback
 
     return mypy.types.LiteralType(value=value, fallback=fallback)
 
