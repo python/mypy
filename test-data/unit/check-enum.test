@@ -11,8 +11,8 @@ m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
 
-- Creation from Enum call
-- -----------------------
+-- Creation from Enum call
+-- -----------------------
 
 [case testEnumCreatedFromStringLiteral]
 from enum import Enum
@@ -40,8 +40,8 @@ reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
 
 [builtins fixtures/tuple.pyi]
 
-- Creation from EnumMeta
-- ----------------------
+-- Creation from EnumMeta
+-- ----------------------
 
 [case testEnumFromEnumMetaBasics]
 from enum import EnumMeta
