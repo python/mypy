@@ -1031,11 +1031,12 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
 
+    value: Union[bool, int, str]
     if isinstance(runtime, bytes):
         value = bytes_to_human_readable_repr(runtime)
     elif isinstance(runtime, enum.Enum):
         value = runtime.name
-    elif isinstance(runtime, (int, str, bool)):
+    elif isinstance(runtime, (bool, int, str)):
         value = runtime
     else:
         return fallback
