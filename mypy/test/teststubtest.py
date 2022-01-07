@@ -751,10 +751,14 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
-    def test_correct_literal(self) -> Iterator[Case]:
+    def test_good_literal(self) -> Iterator[Case]:
         yield Case(
             stub=r"""
             from typing_extensions import Literal
+
+            import enum
+            class Color(enum.Enum):
+                RED: int
 
             NUM: Literal[1]
             CHAR: Literal['a']
@@ -762,98 +766,66 @@ class StubtestUnit(unittest.TestCase):
             NON: Literal[None]
             BYT1: Literal[b'abc']
             BYT2: Literal[b'\x90']
+            ENUM: Literal[Color.RED]
             """,
             runtime=r"""
+            import enum
+            class Color(enum.Enum):
+                RED = 3
+
             NUM = 1
             CHAR = 'a'
             NON = None
             FLAG = True
             BYT1 = b"abc"
             BYT2 = b'\x90'
+            ENUM = Color.RED
             """,
             error=None,
         )
 
     @collect_cases
-    def test_invalid_int_float_literal(self) -> Iterator[Case]:
+    def test_bad_literal(self) -> Iterator[Case]:
+        yield Case("from typing_extensions import Literal", "", None)  # dummy case
         yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_NUM: Literal[1]
-            """,
-            runtime='WRONG_NUM = 1.0',
-            error='WRONG_NUM',
+            stub="INT_FLOAT_MISMATCH: Literal[1]",
+            runtime="INT_FLOAT_MISMATCH = 1.0",
+            error="INT_FLOAT_MISMATCH",
         )
-
-    @collect_cases
-    def test_invalid_int_literal(self) -> Iterator[Case]:
         yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_NUM: Literal[1]
-            """,
-            runtime='WRONG_NUM = 2',
-            error='WRONG_NUM',
+            stub="WRONG_INT: Literal[1]",
+            runtime="WRONG_INT = 2",
+            error="WRONG_INT",
         )
-
-    @collect_cases
-    def test_invalid_str_literal(self) -> Iterator[Case]:
         yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_STR: Literal['a']
-            """,
+            stub="WRONG_STR: Literal['a']",
             runtime="WRONG_STR = 'b'",
-            error='WRONG_STR',
-        )
-
-    @collect_cases
-    def test_invalid_str_bytes_literal(self) -> Iterator[Case]:
-        yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_STR1: Literal[b'a']
-            """,
-            runtime="WRONG_STR1 = 'a'",
-            error='WRONG_STR1',
+            error="WRONG_STR",
         )
         yield Case(
-            stub="WRONG_STR2: Literal['b']",
-            runtime="WRONG_STR2 = b'b'",
-            error='WRONG_STR2',
-        )
-
-    @collect_cases
-    def test_invalid_bytes_literal(self) -> Iterator[Case]:
-        yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_BYTES1: Literal[b'a']
-            """,
-            runtime="WRONG_BYTES1 = b'b'",
-            error='WRONG_BYTES1',
-        )
-
-    @collect_cases
-    def test_invalid_bool_literal(self) -> Iterator[Case]:
-        yield Case(
-            stub="""
-            from typing_extensions import Literal
-
-            WRONG_BOOL1: Literal[True]
-            """,
-            runtime="WRONG_BOOL1 = False",
-            error='WRONG_BOOL1',
+            stub="BYTES_STR_MISMATCH: Literal[b'value']",
+            runtime="BYTES_STR_MISMATCH = 'value'",
+            error="BYTES_STR_MISMATCH",
         )
         yield Case(
-            stub="WRONG_BOOL2: Literal[False]",
-            runtime="WRONG_BOOL2 = True",
-            error='WRONG_BOOL2',
+            stub="STR_BYTES_MISMATCH: Literal['value']",
+            runtime="STR_BYTES_MISMATCH = b'value'",
+            error="STR_BYTES_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_BYTES: Literal[b'abc']",
+            runtime="WRONG_BYTES = b'xyz'",
+            error="WRONG_BYTES",
+        )
+        yield Case(
+            stub="WRONG_BOOL_1: Literal[True]",
+            runtime="WRONG_BOOL_1 = False",
+            error='WRONG_BOOL_1',
+        )
+        yield Case(
+            stub="WRONG_BOOL_2: Literal[False]",
+            runtime="WRONG_BOOL_2 = True",
+            error='WRONG_BOOL_2',
         )
 
 

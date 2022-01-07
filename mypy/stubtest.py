@@ -713,6 +713,7 @@ def verify_var(
         and not is_subtype_helper(runtime_type, stub.type)
     ):
         should_error = True
+        # TODO: is this still necessary
         # Avoid errors when defining enums, since runtime_type is the enum itself, but we'd
         # annotate it with the type of runtime.value
         if isinstance(runtime, enum.Enum):
@@ -942,6 +943,7 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
+
     with mypy.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
@@ -1029,13 +1031,18 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
+
     if isinstance(runtime, bytes):
-        runtime = bytes_to_human_readable_repr(runtime)
+        value = bytes_to_human_readable_repr(runtime)
+    elif isinstance(runtime, enum.Enum):
+        value = runtime.name
+    else:
+        value = runtime
     try:
         # Literals are supposed to be only bool, int, str, bytes or enums, but this seems to work
         # well (when not using mypyc, for which bytes and enums are also problematic).
         return mypy.types.LiteralType(
-            value=runtime,
+            value=value,
             fallback=fallback,
         )
     except TypeError:
