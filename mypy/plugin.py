@@ -258,6 +258,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        """Legacy function -- use named_type() instead."""
+        # NOTE: Do not delete this since many plugins may still use it.
+        raise NotImplementedError
+
+    @abstractmethod
     def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         """Construct an instance of a type with given type arguments.
