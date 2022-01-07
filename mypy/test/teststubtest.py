@@ -751,7 +751,7 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
-    def test_literal(self) -> Iterator[Case]:
+    def test_correct_literal(self) -> Iterator[Case]:
         yield Case(
             stub=r"""
             from typing_extensions import Literal
@@ -772,6 +772,88 @@ class StubtestUnit(unittest.TestCase):
             BYT2 = b'\x90'
             """,
             error=None,
+        )
+
+    @collect_cases
+    def test_invalid_int_float_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_NUM: Literal[1]
+            """,
+            runtime='WRONG_NUM = 1.0',
+            error='WRONG_NUM',
+        )
+
+    @collect_cases
+    def test_invalid_int_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_NUM: Literal[1]
+            """,
+            runtime='WRONG_NUM = 2',
+            error='WRONG_NUM',
+        )
+
+    @collect_cases
+    def test_invalid_str_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_STR: Literal['a']
+            """,
+            runtime="WRONG_STR = 'b'",
+            error='WRONG_STR',
+        )
+
+    @collect_cases
+    def test_invalid_str_bytes_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_STR1: Literal[b'a']
+            """,
+            runtime="WRONG_STR1 = 'a'",
+            error='WRONG_STR1',
+        )
+        yield Case(
+            stub="WRONG_STR2: Literal['b']",
+            runtime="WRONG_STR2 = b'b'",
+            error='WRONG_STR2',
+        )
+
+    @collect_cases
+    def test_invalid_bytes_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_BYTES1: Literal[b'a']
+            """,
+            runtime="WRONG_BYTES1 = b'b'",
+            error='WRONG_BYTES1',
+        )
+
+    @collect_cases
+    def test_invalid_bool_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing_extensions import Literal
+
+            WRONG_BOOL1: Literal[True]
+            """,
+            runtime="WRONG_BOOL1 = False",
+            error='WRONG_BOOL1',
+        )
+        yield Case(
+            stub="WRONG_BOOL2: Literal[False]",
+            runtime="WRONG_BOOL2 = True",
+            error='WRONG_BOOL2',
         )
 
 
