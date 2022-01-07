@@ -3211,6 +3211,21 @@ def test(seq: List[Union[Iterable, Any]]) -> None:
             reveal_type(k)  # N: Revealed type is "builtins.list[Any]"
 [builtins fixtures/list.pyi]
 
+[case testErasedTypeRuntimeCoverage]
+# https://github.com/python/mypy/issues/11913
+from typing import TypeVar, Type, Generic, Callable, Iterable
+
+class DataType: ...
+
+T1 = TypeVar('T1')
+T2 = TypeVar("T2", bound=DataType)
+
+def map(__func: T1) -> None: ...
+
+def collection_from_dict_value(model: Type[T2]) -> None:
+    map(lambda i: i if isinstance(i, model) else i)
+[builtins fixtures/isinstancelist.pyi]
+
 [case testRegression11705_Strict]
 # flags: --strict-optional
 # See: https://github.com/python/mypy/issues/11705
