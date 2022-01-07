@@ -713,7 +713,6 @@ def verify_var(
         and not is_subtype_helper(runtime_type, stub.type)
     ):
         should_error = True
-        # TODO: is this still necessary
         # Avoid errors when defining enums, since runtime_type is the enum itself, but we'd
         # annotate it with the type of runtime.value
         if isinstance(runtime, enum.Enum):
@@ -1038,16 +1037,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         value = runtime.name
     else:
         value = runtime
-    try:
-        # Literals are supposed to be only bool, int, str, bytes or enums, but this seems to work
-        # well (when not using mypyc, for which bytes and enums are also problematic).
-        return mypy.types.LiteralType(
-            value=value,
-            fallback=fallback,
-        )
-    except TypeError:
-        # Ask for forgiveness if we're using mypyc.
-        return fallback
+
+    return mypy.types.LiteralType(value=value, fallback=fallback)
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}
