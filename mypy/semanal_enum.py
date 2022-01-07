@@ -174,11 +174,9 @@ class EnumCallAnalyzer:
                 values.append(value)
         elif isinstance(args[1], RefExpr) and isinstance(args[1].node, Var):
             proper_type = get_proper_type(args[1].node.type)
-            if (
-                proper_type is not None
-                and isinstance(proper_type, LiteralType)
-                and isinstance(proper_type.value, str)
-            ):
+            if (proper_type is not None
+                    and isinstance(proper_type, LiteralType)
+                    and isinstance(proper_type.value, str)):
                 fields = proper_type.value
                 for field in fields.replace(',', ' ').split():
                     items.append(field)
