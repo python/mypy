@@ -750,6 +750,30 @@ class StubtestUnit(unittest.TestCase):
             error="X.__init__"
         )
 
+    @collect_cases
+    def test_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub=r"""
+            from typing_extensions import Literal
+
+            NUM: Literal[1]
+            CHAR: Literal['a']
+            FLAG: Literal[True]
+            NON: Literal[None]
+            BYT1: Literal[b'abc']
+            BYT2: Literal[b'\x90']
+            """,
+            runtime=r"""
+            NUM = 1
+            CHAR = 'a'
+            NON = None
+            FLAG = True
+            BYT1 = b"abc"
+            BYT2 = b'\x90'
+            """,
+            error=None,
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
