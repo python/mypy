@@ -88,8 +88,19 @@ def generate_native_function(fn: FuncIR,
             next_block = blocks[i + 1]
         body.emit_label(block)
         visitor.next_block = next_block
-        for op in block.ops:
+        ops = block.ops
+        i = 0
+        while i < len(ops):
+            op = ops[i]
+            if i + 1 < len(ops) and isinstance(ops[i + 1], Branch):
+                visitor.next_branch = ops[i + 1]
+            else:
+                visitor.next_branch = None
             op.accept(visitor)
+            if visitor.merged:
+                i += 1
+                visitor.merged = False
+            i += 1
 
     body.emit_line('}')
 
@@ -111,6 +122,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.literals = emitter.context.literals
         self.rare = False
         self.next_block: Optional[BasicBlock] = None
+        # If not None, the following op is a branch (to allow op merging)
+        self.next_branch: Optional[Branch] = None
+        # If changed to True after a visit_* call, we processed two ops, not one
+        self.merged = False
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
