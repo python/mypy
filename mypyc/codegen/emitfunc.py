@@ -92,8 +92,11 @@ def generate_native_function(fn: FuncIR,
         i = 0
         while i < len(ops):
             op = ops[i]
-            if i + 1 < len(ops) and isinstance(ops[i + 1], Branch):
-                visitor.next_branch = ops[i + 1]
+            visitor.next_branch = None
+            if i + 1 < len(ops):
+                next_op = ops[i + 1]
+                if isinstance(next_op, Branch):
+                    visitor.next_branch = next_op
             else:
                 visitor.next_branch = None
             op.accept(visitor)
