@@ -311,13 +311,33 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 attr_rtype, dest, '==', unlikely=True
             )
             exc_class = 'PyExc_AttributeError'
+            merged_branch = None
             self.emitter.emit_line(
                 'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
                     exc_class, repr(op.attr), repr(cl.name)))
+            if self.next_branch is not None:
+                branch = self.next_branch
+                if (branch.value is op
+                        and branch.op == Branch.IS_ERROR
+                        and branch.traceback_entry is not None
+                        and not branch.negated):
+                    # Generate code for the following branch here to avoid
+                    # redundant branches in the generate code.
+                    self.emit_traceback(branch)
+                    self.emit_line('goto %s;' % self.label(branch.true))
+                    merged_branch = branch
+                    self.emitter.emit_line('}')
+
             if attr_rtype.is_refcounted:
-                self.emitter.emit_line('} else {')
+                if not merged_branch:
+                    self.emitter.emit_line('} else {')
                 self.emitter.emit_inc_ref(dest, attr_rtype)
-            self.emitter.emit_line('}')
+            if merged_branch:
+                if merged_branch.false is not self.next_block:
+                    self.emit_line('goto %s;' % self.label(merged_branch.false))
+                self.merged = True
+            else:
+                self.emitter.emit_line('}')
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
