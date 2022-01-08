@@ -293,7 +293,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
             self.emitter.emit_undefined_attr_check(
-                attr_rtype, attr_expr, '==', unlikely=True
+                attr_rtype, dest, '==', unlikely=True
             )
             exc_class = 'PyExc_AttributeError'
             self.emitter.emit_line(
@@ -301,7 +301,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                     exc_class, repr(op.attr), repr(cl.name)))
             if attr_rtype.is_refcounted:
                 self.emitter.emit_line('} else {')
-                self.emitter.emit_inc_ref(attr_expr, attr_rtype)
+                self.emitter.emit_inc_ref(dest, attr_rtype)
             self.emitter.emit_line('}')
 
     def visit_set_attr(self, op: SetAttr) -> None:

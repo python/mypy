@@ -281,10 +281,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
-               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+               if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
-                   CPyTagged_INCREF(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_INCREF(cpy_r_r0);
                }
             """)
 
@@ -292,7 +292,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             GetAttr(self.r, 'x', 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_x;
-               if (unlikely(((mod___AObject *)cpy_r_r)->_x == 2)) {
+               if (unlikely(cpy_r_r0 == 2)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'x' of 'A' undefined");
                }
             """)
