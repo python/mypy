@@ -315,9 +315,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
             exc_class = 'PyExc_AttributeError'
             merged_branch = None
-            self.emitter.emit_line(
-                'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                    exc_class, repr(op.attr), repr(cl.name)))
             if self.next_branch is not None:
                 branch = self.next_branch
                 if (branch.value is op
@@ -326,10 +323,14 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         and not branch.negated):
                     # Generate code for the following branch here to avoid
                     # redundant branches in the generate code.
-                    self.emit_traceback(branch)
+                    self.emit_attribute_error(branch, cl.name, op.attr)
                     self.emit_line('goto %s;' % self.label(branch.true))
                     merged_branch = branch
                     self.emitter.emit_line('}')
+            if not merged_branch:
+                self.emitter.emit_line(
+                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                        exc_class, repr(op.attr), repr(cl.name)))
 
             if attr_rtype.is_refcounted:
                 if not merged_branch:
@@ -640,6 +641,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+        assert op.traceback_entry is not None
+        globals_static = self.emitter.static_name('globals', self.module_name)
+        self.emit_line('CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);' % (
+            self.source_path.replace("\\", "\\\\"),
+            op.traceback_entry[0],
+            class_name,
+            attr,
+            op.traceback_entry[1],
+            globals_static))
+        if DEBUG_ERRORS:
+            self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
     def emit_signed_int_cast(self, type: RType) -> str:
         if is_tagged(type):
