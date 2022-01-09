@@ -329,7 +329,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
-        if isinstance(right, Parameters):
+        if isinstance(right, Parameters) or isinstance(right, CallableType):
             return are_parameters_compatible(
                 left, right,
                 is_compat=self._is_subtype,
@@ -365,6 +365,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
+        elif isinstance(right, Parameters):
+            # this doesn't check return types.... but is needed for is_equivalent
+            return are_parameters_compatible(
+                left, right,
+                is_compat=self._is_subtype,
+                ignore_pos_arg_names=self.ignore_pos_arg_names)
         else:
             return False
 

@@ -617,6 +617,34 @@ class MessageBuilder:
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
 
+        self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
+
+
+    def maybe_note_concatenate_pos_args(self,
+                                        original_caller_type: ProperType,
+                                        callee_type: ProperType,
+                                        context: Context,
+                                        code: Optional[ErrorCode] = None) -> None:
+        # pos-only vs positional can be confusing, with Concatenate
+        if (isinstance(callee_type, CallableType) and
+                isinstance(original_caller_type, CallableType) and
+                (original_caller_type.from_concatenate or callee_type.from_concatenate)):
+            names = []
+            for c, o in zip(
+                              callee_type.formal_arguments(),
+                              original_caller_type.formal_arguments()):
+                if None in (c.pos, o.pos):
+                    #non-positional
+                    continue
+                if c.name != o.name and None in (c.name, o.name):
+                    names.append(o.name)
+
+            if names:
+                missing_arguments = '"' + '", "'.join(names) + '"'
+                self.note(f'This may be because "{original_caller_type.name}" has arguments '
+                          f'named: {missing_arguments}', context, code=code)
+
+
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context, *, code: ErrorCode) -> None:
         index_str, expected_str = format_type_distinctly(index_type, expected_type)

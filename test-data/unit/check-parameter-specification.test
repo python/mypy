@@ -519,7 +519,8 @@ reveal_type(transform(bar)) # N: Revealed type is "def (builtins.str, *args: bui
 # CASE 4
 def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
 
-@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]"
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]" \
+                    # N: This may be because "one" has arguments named: "x"
 def one(x: str) -> int: ...
 
 @expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int], int]"
@@ -586,6 +587,7 @@ f2(lambda x: 42)(42, x=42)
 main:9: error: invalid syntax
 [out version>=3.8]
 main:16: error: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
+main:16: note: This may be because "result" has arguments named: "x"
 
 [case testParamSpecConcatenateWithTypeVar]
 from typing_extensions import ParamSpec, Concatenate

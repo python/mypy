@@ -864,6 +864,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             [*prefix.arg_names, None, None],
             ret_type=ret_type,
             fallback=fallback,
+            from_concatenate=True,
         )
 
     def analyze_callable_type(self, t: UnboundType) -> Type:

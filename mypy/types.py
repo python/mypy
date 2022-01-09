@@ -1286,6 +1286,8 @@ class CallableType(FunctionLike):
                  'def_extras',  # Information about original definition we want to serialize.
                                 # This is used for more detailed error messages.
                  'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
+                 'from_concatenate',  # whether this callable is from a concatenate object
+                                      # (this is used for error messages)
                  )
 
     def __init__(self,
@@ -1307,6 +1309,7 @@ class CallableType(FunctionLike):
                  bound_args: Sequence[Optional[Type]] = (),
                  def_extras: Optional[Dict[str, Any]] = None,
                  type_guard: Optional[Type] = None,
+                 from_concatenate: bool = False
                  ) -> None:
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
@@ -1326,6 +1329,7 @@ class CallableType(FunctionLike):
         self.implicit = implicit
         self.special_sig = special_sig
         self.from_type_type = from_type_type
+        self.from_concatenate = from_concatenate
         if not bound_args:
             bound_args = ()
         self.bound_args = bound_args
@@ -1368,6 +1372,7 @@ class CallableType(FunctionLike):
                       bound_args: Bogus[List[Optional[Type]]] = _dummy,
                       def_extras: Bogus[Dict[str, Any]] = _dummy,
                       type_guard: Bogus[Optional[Type]] = _dummy,
+                      from_concatenate: Bogus[bool] = _dummy,
                       ) -> 'CallableType':
         return CallableType(
             arg_types=arg_types if arg_types is not _dummy else self.arg_types,
@@ -1388,6 +1393,8 @@ class CallableType(FunctionLike):
             bound_args=bound_args if bound_args is not _dummy else self.bound_args,
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
+            from_concatenate=(from_concatenate if from_concatenate is not _dummy
+                                else self.from_concatenate),
         )
 
     def var_arg(self) -> Optional[FormalArgument]:
@@ -1597,6 +1604,7 @@ class CallableType(FunctionLike):
                                for t in self.bound_args],
                 'def_extras': dict(self.def_extras),
                 'type_guard': self.type_guard.serialize() if self.type_guard is not None else None,
+                'from_concatenate': self.from_concatenate,
                 }
 
     @classmethod
@@ -1617,6 +1625,7 @@ class CallableType(FunctionLike):
             def_extras=data['def_extras'],
             type_guard=(deserialize_type(data['type_guard'])
                         if data['type_guard'] is not None else None),
+            from_concatenate=data['from_concatenate'],
         )
 
 
