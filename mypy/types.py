@@ -1273,7 +1273,7 @@ class CallableType(FunctionLike):
         return sum([kind.is_positional() for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
-        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+        """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
         if they are not None.
