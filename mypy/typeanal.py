@@ -17,7 +17,8 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis,
+    TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
 )
 
 from mypy.nodes import (
@@ -42,10 +43,8 @@ type_constructors: Final = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
-    'typing.Literal',
-    'typing_extensions.Literal',
-    'typing.Annotated',
-    'typing_extensions.Annotated',
+    *LITERAL_TYPE_NAMES,
+    *ANNOTATED_TYPE_NAMES,
 }
 
 ARG_KINDS_BY_CONSTRUCTOR: Final = {
@@ -262,7 +261,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
-            elif node.fullname in ("typing_extensions.TypeAlias", "typing.TypeAlias"):
+            elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
@@ -286,7 +285,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return NoneType()
         elif fullname == 'typing.Any' or fullname == 'builtins.Any':
             return AnyType(TypeOfAny.explicit)
-        elif fullname in ('typing.Final', 'typing_extensions.Final'):
+        elif fullname in FINAL_TYPE_NAMES:
             self.fail("Final can be only used as an outermost qualifier"
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
@@ -351,9 +350,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return self.anal_type(t.args[0])
         elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
             return UninhabitedType(is_noreturn=True)
-        elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
+        elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
-        elif fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
+        elif fullname in ANNOTATED_TYPE_NAMES:
             if len(t.args) < 2:
                 self.fail("Annotated[...] must have exactly one type argument"
                           " and at least one annotation", t)
@@ -1287,11 +1286,9 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return [(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
             return []
-        elif node and node.fullname in ('typing_extensions.Literal', 'typing.Literal'):
+        elif node and node.fullname in LITERAL_TYPE_NAMES:
             return []
-        elif (node
-                and node.fullname in ('typing_extensions.Annotated', 'typing.Annotated')
-                and t.args):
+        elif node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
             # Don't query the second argument to Annotated for TypeVars
             return self.query_types([t.args[0]])
         else:

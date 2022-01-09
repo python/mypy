@@ -20,7 +20,7 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike, ParamSpecType, ParamSpecFlavor,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
-    get_proper_types, flatten_nested_unions
+    get_proper_types, flatten_nested_unions, LITERAL_TYPE_NAMES,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -4551,10 +4551,9 @@ def try_getting_literal(typ: Type) -> ProperType:
 
 def is_expr_literal_type(node: Expression) -> bool:
     """Returns 'true' if the given node is a Literal"""
-    valid = ('typing.Literal', 'typing_extensions.Literal')
     if isinstance(node, IndexExpr):
         base = node.base
-        return isinstance(base, RefExpr) and base.fullname in valid
+        return isinstance(base, RefExpr) and base.fullname in LITERAL_TYPE_NAMES
     if isinstance(node, NameExpr):
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(get_proper_type(underlying.target),

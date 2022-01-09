@@ -81,6 +81,42 @@ TPDICT_FB_NAMES: Final = (
     "mypy_extensions._TypedDict",
 )
 
+# Supported names of Protocol base class.
+PROTOCOL_NAMES: Final = (
+    'typing.Protocol',
+    'typing_extensions.Protocol',
+)
+
+# Supported TypeAlias names.
+TYPE_ALIAS_NAMES: Final = (
+    "typing.TypeAlias",
+    "typing_extensions.TypeAlias",
+)
+
+# Supported Final type names.
+FINAL_TYPE_NAMES: Final = (
+    'typing.Final',
+    'typing_extensions.Final',
+)
+
+# Supported @final decorator names.
+FINAL_DECORATOR_NAMES: Final = (
+    'typing.final',
+    'typing_extensions.final',
+)
+
+# Supported Literal type names.
+LITERAL_TYPE_NAMES: Final = (
+    'typing.Literal',
+    'typing_extensions.Literal',
+)
+
+# Supported Annotated type names.
+ANNOTATED_TYPE_NAMES: Final = (
+    'typing.Annotated',
+    'typing_extensions.Annotated',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 

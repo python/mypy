@@ -92,7 +92,8 @@ from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType
+    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType,
+    PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -1154,8 +1155,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             for decorator in defn.decorators:
                 decorator.accept(self)
                 if isinstance(decorator, RefExpr):
-                    if decorator.fullname in ('typing.final',
-                                              'typing_extensions.final'):
+                    if decorator.fullname in FINAL_DECORATOR_NAMES:
                         self.fail("@final cannot be used with TypedDict", decorator)
             if info is None:
                 self.mark_incomplete(defn.name, defn)
@@ -1282,8 +1282,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 else:
                     self.fail('@runtime_checkable can only be used with protocol classes',
                               defn)
-            elif decorator.fullname in ('typing.final',
-                                        'typing_extensions.final'):
+            elif decorator.fullname in FINAL_DECORATOR_NAMES:
                 defn.info.is_final = True
 
     def clean_up_bases_and_infer_type_variables(
@@ -1328,8 +1327,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(base, UnboundType):
                 sym = self.lookup_qualified(base.name, base)
                 if sym is not None and sym.node is not None:
-                    if (sym.node.fullname in ('typing.Protocol', 'typing_extensions.Protocol') and
-                            i not in removed):
+                    if sym.node.fullname in PROTOCOL_NAMES and i not in removed:
                         # also remove bare 'Protocol' bases
                         removed.append(i)
                         is_protocol = True
@@ -1377,8 +1375,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if sym is None or sym.node is None:
             return None
         if (sym.node.fullname == 'typing.Generic' or
-                sym.node.fullname == 'typing.Protocol' and base.args or
-                sym.node.fullname == 'typing_extensions.Protocol' and base.args):
+                sym.node.fullname in PROTOCOL_NAMES and base.args):
             is_proto = sym.node.fullname != 'typing.Generic'
             tvars: TypeVarLikeList = []
             for arg in unbound.args:
@@ -2669,7 +2666,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         pep_613 = False
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
             lookup = self.lookup(s.unanalyzed_type.name, s, suppress_errors=True)
-            if lookup and lookup.fullname in ("typing.TypeAlias", "typing_extensions.TypeAlias"):
+            if lookup and lookup.fullname in TYPE_ALIAS_NAMES:
                 pep_613 = True
         if not pep_613 and s.unanalyzed_type is not None:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
@@ -3410,7 +3407,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         sym = self.lookup_qualified(typ.name, typ)
         if not sym or not sym.node:
             return False
-        return sym.node.fullname in ('typing.Final', 'typing_extensions.Final')
+        return sym.node.fullname in FINAL_TYPE_NAMES
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
