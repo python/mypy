@@ -1394,7 +1394,7 @@ class CallableType(FunctionLike):
             def_extras=def_extras if def_extras is not _dummy else dict(self.def_extras),
             type_guard=type_guard if type_guard is not _dummy else self.type_guard,
             from_concatenate=(from_concatenate if from_concatenate is not _dummy
-                                else self.from_concatenate),
+                              else self.from_concatenate),
         )
 
     def var_arg(self) -> Optional[FormalArgument]:

@@ -619,7 +619,6 @@ class MessageBuilder:
 
         self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
 
-
     def maybe_note_concatenate_pos_args(self,
                                         original_caller_type: ProperType,
                                         callee_type: ProperType,
@@ -629,21 +628,20 @@ class MessageBuilder:
         if (isinstance(callee_type, CallableType) and
                 isinstance(original_caller_type, CallableType) and
                 (original_caller_type.from_concatenate or callee_type.from_concatenate)):
-            names = []
+            names: List[str] = []
             for c, o in zip(
                               callee_type.formal_arguments(),
                               original_caller_type.formal_arguments()):
                 if None in (c.pos, o.pos):
-                    #non-positional
+                    # non-positional
                     continue
-                if c.name != o.name and None in (c.name, o.name):
+                if c.name != o.name and c.name is None and o.name is not None:
                     names.append(o.name)
 
             if names:
                 missing_arguments = '"' + '", "'.join(names) + '"'
                 self.note(f'This may be because "{original_caller_type.name}" has arguments '
                           f'named: {missing_arguments}', context, code=code)
-
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context, *, code: ErrorCode) -> None:
