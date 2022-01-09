@@ -677,7 +677,7 @@ implementation.
 
    # presence of required function below is checked
    def func(value):
-       <actual implementation>
+       pass  # actual implementation
 
 Report syntax errors [syntax]
 -----------------------------
