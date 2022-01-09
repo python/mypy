@@ -1465,3 +1465,30 @@ class C:
         self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/attr.pyi]
+
+[case testAttrsOverloadConverter]
+from typing import Optional, overload
+
+from attr import define, field
+
+@overload
+def conv(value: None) -> None:
+    ...
+
+
+@overload
+def conv(value: str) -> Optional[int]:
+    ...
+
+
+def conv(value: Optional[str]) -> Optional[int]:
+    if value is None:
+        return None
+
+    return int(value)
+
+@define
+class Test:
+    test_field: Optional[int] = field(converter=conv)
+
+[builtins fixtures/attr.pyi]

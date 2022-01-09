@@ -124,7 +124,8 @@ from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Di
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind, TypeInfo
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind, TypeInfo,
+    OverloadedFuncDef,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -302,6 +303,10 @@ class SemanticAnalyzerPluginInterface:
         case the current target being analyzed will be deferred and
         analyzed again.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def analyze_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
         raise NotImplementedError
 
     @abstractmethod

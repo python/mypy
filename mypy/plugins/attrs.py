@@ -101,6 +101,11 @@ class Attribute:
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
                 converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
+                if converter.node.type is None:
+                    # In certain cases the final overload type is not yet ready.
+                    # We analyze it and schedule another pass.
+                    ctx.api.analyze_overloaded_func_def(converter.node)
+                    ctx.api.defer()
                 converter_type = converter.node.type
             elif converter and converter.type:
                 converter_type = converter.type
