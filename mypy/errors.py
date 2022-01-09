@@ -521,7 +521,7 @@ class Errors:
                                  codes.UNUSED_IGNORE, False, False, False)
                 self._add_error_info(file, info)
 
-    def generate_no_code_ignore_errors(self, file: str):
+    def generate_no_code_ignore_errors(self, file: str) -> None:
         if not is_typeshed_file(file) and file not in self.ignored_files:
             for line, ignored_codes in self.ignored_lines[file].items():
                 if not ignored_codes:
@@ -805,7 +805,7 @@ class Errors:
                 file: [
                     {
                         "line": error.line,
-                        "code": error.code.code,
+                        "code": error.code and error.code.code,
                         "message": error.message
                     } for error in errors
                 ]
