@@ -1526,12 +1526,31 @@ class TupleType(ProperType):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  column: int = -1, implicit: bool = False) -> None:
-        super().__init__(line, column)
-        self.items = items
         self.partial_fallback = fallback
+        self.items = items
         self.implicit = implicit
-        self.can_be_true = len(self.items) > 0
-        self.can_be_false = len(self.items) == 0
+        super().__init__(line, column)
+
+    def can_be_true_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() > 0
+
+    def can_be_false_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() == 0
+
+    def can_be_any_bool(self) -> bool:
+        return bool(
+            self.partial_fallback.type
+            and self.partial_fallback.type.fullname != 'builtins.tuple'
+            and self.partial_fallback.type.names.get('__bool__')
+        )
 
     def length(self) -> int:
         return len(self.items)
