@@ -272,8 +272,8 @@ def verify_typeinfo(
         try:
             runtime_attr = getattr(runtime, mangled_entry)
         except Exception:
-            # Catch all exceptions in case the runtime raises an unexpected exception from __getattr__ or
-            # similar.
+            # Catch all exceptions in case the runtime raises an unexpected exception
+            # from __getattr__ or similar.
             runtime_attr = MISSING
         yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
