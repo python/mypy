@@ -851,7 +851,7 @@ class Errors:
                 file: [
                     {
                         "line": error.line,
-                        "code": error.code.code,
+                        "code": error.code and error.code.code,
                         "message": error.message
                     } for error in errors
                 ]
