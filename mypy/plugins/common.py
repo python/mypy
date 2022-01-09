@@ -157,7 +157,7 @@ def add_method_to_class(
 
 
 def deserialize_and_fixup_type(
-    data: Union[str, JsonDict], api: SemanticAnalyzerPluginInterface
+    data: Union[str, JsonDict], api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface]
 ) -> Type:
     typ = deserialize_type(data)
     typ.accept(TypeFixer(api.modules, allow_missing=False))
