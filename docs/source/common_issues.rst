@@ -507,7 +507,10 @@ understand how mypy handles a particular piece of code. Example:
    reveal_type((1, 'hello'))  # Revealed type is "Tuple[builtins.int, builtins.str]"
 
 You can also use ``reveal_locals()`` at any line in a file
-to see the types of all local variables at once. Example:
+to see the types of all local variables at once. ``reveal_locals()``
+will only list the names and types of inferred variables.
+
+Example:
 
 .. code-block:: python
 
