@@ -1435,7 +1435,7 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>))
+    X<3> (Literal[0]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 ==>
 TypeInfo<0>(
@@ -1443,8 +1443,8 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>)
-    Y<6> (builtins.int<4>))
+    X<3> (Literal[0]?<4>)
+    Y<6> (Literal[1]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 
 [case testLiteralMerge]

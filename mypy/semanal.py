@@ -2104,10 +2104,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
+        self.store_final_status(s)
         self.check_classvar(s)
         self.process_type_annotation(s)
         self.apply_dynamic_class_hook(s)
-        self.store_final_status(s)
         if not s.type:
             self.process_module_assignment(s.lvalues, s.rvalue, s)
         self.process__all__(s)
