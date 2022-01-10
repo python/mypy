@@ -614,6 +614,17 @@ section of the command line docs.
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
 
+    The expression for the new value must contain a reference to the variable:
+
+    .. code-block:: python
+
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
+           items = [item.split() for item in items]
+           # 'items' now has type list[list[str]]
+
+           items = "mypy"  # invalid redefinition to str because the expression doesn't contain a reference to 'items'
+
 .. confval:: local_partial_types
 
     :type: boolean
