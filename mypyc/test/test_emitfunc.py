@@ -187,6 +187,29 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (cpy_r_b == 2) goto CPyL9;""",
                          next_block=next_block)
 
+    def test_branch_rare(self) -> None:
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        next_block = BasicBlock(9)
+        self.assert_emit(Branch(self.b, BasicBlock(8), next_block, Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        self.assert_emit(b,
+                         """if (likely(!cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (likely(cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+
     def test_call(self) -> None:
         decl = FuncDecl('myfn', None, 'mod',
                         FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))

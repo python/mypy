@@ -11,7 +11,7 @@ from mypy.types import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
+    is_subtype, is_equivalent, is_proper_subtype,
     is_protocol_implementation, find_member
 )
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
@@ -72,7 +72,7 @@ class InstanceJoiner:
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
-        elif t.type.bases and is_subtype_ignoring_tvars(t, s):
+        elif t.type.bases and is_subtype(t, s, ignore_type_params=True):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
@@ -402,8 +402,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 if (is_equivalent(s_item_type, t_item_type) and
                     (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
-            mapping_value_type = join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys

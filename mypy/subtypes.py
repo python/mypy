@@ -154,10 +154,6 @@ def _is_subtype(left: Type, right: Type,
                                       ignore_promotions=ignore_promotions))
 
 
-def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_type_params=True)
-
-
 def is_equivalent(a: Type, b: Type,
                   *,
                   ignore_type_params: bool = False,
@@ -1171,6 +1167,7 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)

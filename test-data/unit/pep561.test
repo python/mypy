@@ -18,7 +18,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimple.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
+testTypedPkgSimple.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgSimplePackageSearchPath]
 # pkgs: typedpkg
@@ -89,7 +89,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
+testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgSimpleEgg]
 # pkgs: typedpkg; no-pip
@@ -98,7 +98,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
+testTypedPkgSimpleEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgSimpleEditable]
 # pkgs: typedpkg; editable
@@ -107,7 +107,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
+testTypedPkgSimpleEditable.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgSimpleEditableEgg]
 # pkgs: typedpkg; editable; no-pip
@@ -116,7 +116,7 @@ from typedpkg import dne
 a = ex([''])
 reveal_type(a)
 [out]
-testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str]"
+testTypedPkgSimpleEditableEgg.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 
 [case testTypedPkgNamespaceImportFrom]
 # pkgs: typedpkg, typedpkg_ns_a

@@ -1411,7 +1411,7 @@ accepts_named_tuple(1)
 accepts_named_tuple((1, 2))
 [out]
 _testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
-_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str]"
+_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
 _testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"

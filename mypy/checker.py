@@ -63,7 +63,7 @@ from mypy import message_registry
 from mypy.message_registry import ErrorMessage
 from mypy.subtypes import (
     is_subtype, is_equivalent, is_proper_subtype, is_more_precise,
-    restrict_subtype_away, is_subtype_ignoring_tvars, is_callable_compatible,
+    restrict_subtype_away, is_callable_compatible,
     unify_generic_callable, find_member
 )
 from mypy.constraints import SUPERTYPE_OF
@@ -956,7 +956,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if isclass:
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
-                        if not is_subtype_ignoring_tvars(ref_type, erased):
+                        if not is_subtype(ref_type, erased, ignore_type_params=True):
                             note = None
                             if (isinstance(erased, Instance) and erased.type.is_protocol or
                                     isinstance(erased, TypeType) and
@@ -1737,7 +1737,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if len(order) == len(original.items) and order != sorted(order):
                     self.msg.overload_signature_incompatible_with_supertype(
-                        name, name_in_super, supertype, override, node)
+                        name, name_in_super, supertype, node)
                     emitted_msg = True
 
             if not emitted_msg:
@@ -2517,7 +2517,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(node.name, base.name, node)
             return False
         if node.is_final:
-            if base.fullname in ENUM_BASES and node.name in ENUM_SPECIAL_PROPS:
+            if base.fullname in ENUM_BASES or node.name in ENUM_SPECIAL_PROPS:
                 return True
             self.check_if_final_var_override_writable(node.name, base_node, node)
         return True
@@ -4550,17 +4550,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
 
-        if_type = true_only(vartype)  # type: Type
-        else_type = false_only(vartype)  # type: Type
-        ref = node  # type: Expression
+        if_type = true_only(vartype)
+        else_type = false_only(vartype)
         if_map = (
-            {ref: if_type}
-            if not isinstance(get_proper_type(if_type), UninhabitedType)
+            {node: if_type}
+            if not isinstance(if_type, UninhabitedType)
             else None
         )
         else_map = (
-            {ref: else_type}
-            if not isinstance(get_proper_type(else_type), UninhabitedType)
+            {node: else_type}
+            if not isinstance(else_type, UninhabitedType)
             else None
         )
         return if_map, else_map

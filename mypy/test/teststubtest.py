@@ -750,6 +750,84 @@ class StubtestUnit(unittest.TestCase):
             error="X.__init__"
         )
 
+    @collect_cases
+    def test_good_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub=r"""
+            from typing_extensions import Literal
+
+            import enum
+            class Color(enum.Enum):
+                RED: int
+
+            NUM: Literal[1]
+            CHAR: Literal['a']
+            FLAG: Literal[True]
+            NON: Literal[None]
+            BYT1: Literal[b'abc']
+            BYT2: Literal[b'\x90']
+            ENUM: Literal[Color.RED]
+            """,
+            runtime=r"""
+            import enum
+            class Color(enum.Enum):
+                RED = 3
+
+            NUM = 1
+            CHAR = 'a'
+            NON = None
+            FLAG = True
+            BYT1 = b"abc"
+            BYT2 = b'\x90'
+            ENUM = Color.RED
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_bad_literal(self) -> Iterator[Case]:
+        yield Case("from typing_extensions import Literal", "", None)  # dummy case
+        yield Case(
+            stub="INT_FLOAT_MISMATCH: Literal[1]",
+            runtime="INT_FLOAT_MISMATCH = 1.0",
+            error="INT_FLOAT_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_INT: Literal[1]",
+            runtime="WRONG_INT = 2",
+            error="WRONG_INT",
+        )
+        yield Case(
+            stub="WRONG_STR: Literal['a']",
+            runtime="WRONG_STR = 'b'",
+            error="WRONG_STR",
+        )
+        yield Case(
+            stub="BYTES_STR_MISMATCH: Literal[b'value']",
+            runtime="BYTES_STR_MISMATCH = 'value'",
+            error="BYTES_STR_MISMATCH",
+        )
+        yield Case(
+            stub="STR_BYTES_MISMATCH: Literal['value']",
+            runtime="STR_BYTES_MISMATCH = b'value'",
+            error="STR_BYTES_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_BYTES: Literal[b'abc']",
+            runtime="WRONG_BYTES = b'xyz'",
+            error="WRONG_BYTES",
+        )
+        yield Case(
+            stub="WRONG_BOOL_1: Literal[True]",
+            runtime="WRONG_BOOL_1 = False",
+            error='WRONG_BOOL_1',
+        )
+        yield Case(
+            stub="WRONG_BOOL_2: Literal[False]",
+            runtime="WRONG_BOOL_2 = True",
+            error='WRONG_BOOL_2',
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!

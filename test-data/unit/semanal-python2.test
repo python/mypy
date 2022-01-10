@@ -45,7 +45,7 @@ MypyFile:1(
   ExpressionStmt:2(
     CastExpr:2(
       TupleExpr:2()
-      builtins.tuple[builtins.int])))
+      builtins.tuple[builtins.int, ...])))
 
 [case testTupleArgList_python2]
 def f(x, (y, z)):

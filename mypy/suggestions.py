@@ -344,9 +344,11 @@ class SuggestionEngine:
             types.append(arg_types)
         return types
 
-    def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
-        return [self.manager.all_types[arg.initializer] if arg.initializer else None
-                for arg in fdef.arguments]
+    def get_default_arg_types(self, fdef: FuncDef) -> List[Optional[Type]]:
+        return [
+            self.manager.all_types[arg.initializer] if arg.initializer else None
+            for arg in fdef.arguments
+        ]
 
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
@@ -441,7 +443,7 @@ class SuggestionEngine:
             guesses = self.get_guesses(
                 is_method,
                 self.get_starting_type(node),
-                self.get_default_arg_types(graph[mod], node),
+                self.get_default_arg_types(node),
                 callsites,
                 uses,
             )
@@ -632,11 +634,8 @@ class SuggestionEngine:
         finally:
             func.unanalyzed_type = old
 
-    def reload(self, state: State, check_errors: bool = False) -> List[str]:
-        """Recheck the module given by state.
-
-        If check_errors is true, raise an exception if there are errors.
-        """
+    def reload(self, state: State) -> List[str]:
+        """Recheck the module given by state."""
         assert state.path is not None
         self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])

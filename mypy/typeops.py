@@ -12,7 +12,7 @@ import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
@@ -42,25 +42,6 @@ def tuple_fallback(typ: TupleType) -> Instance:
     if info.fullname != 'builtins.tuple':
         return typ.partial_fallback
     return Instance(info, [join_type_list(typ.items)])
-
-
-def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
-    """Returns the Instance fallback for this type if one exists.
-
-    Otherwise, returns None.
-    """
-    if isinstance(typ, Instance):
-        return typ
-    elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
-    elif isinstance(typ, TypedDictType):
-        return typ.fallback
-    elif isinstance(typ, FunctionLike):
-        return typ.fallback
-    elif isinstance(typ, LiteralType):
-        return typ.fallback
-    else:
-        return None
 
 
 def type_object_type_from_function(signature: FunctionLike,
@@ -723,7 +704,10 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
-        items = [try_expanding_sum_type_to_union(item, target_fullname) for item in typ.items]
+        items = [
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in typ.relevant_items()
+        ]
         return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:
