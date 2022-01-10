@@ -147,8 +147,9 @@ class DataclassTransformer:
                     and not self._is_kw_only_type(attr.type)]
 
             if info.fallback_to_any:
-                args = [Argument(Var('args'), AnyType(TypeOfAny.explicit), None, ARG_STAR),
-                        Argument(Var('kwargs'), AnyType(TypeOfAny.explicit), None, ARG_STAR2),
+                nameless_var = Var('')
+                args = [Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                        Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
                         ]
 
             add_method(
