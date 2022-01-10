@@ -1712,9 +1712,17 @@ class B(A): pass  # E: Cannot inherit from final class "A"
 
 [case testEnumFinalSpecialProps]
 # https://github.com/python/mypy/issues/11699
+# https://github.com/python/mypy/issues/11820
 from enum import Enum, IntEnum
 
-class E(Enum):
+class BaseWithSpecials:
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
+
+class E(BaseWithSpecials, Enum):
     name = 'a'
     value = 'b'
     _name_ = 'a1'
