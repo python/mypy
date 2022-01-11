@@ -147,8 +147,16 @@ class DataclassTransformer:
                     and not self._is_kw_only_type(attr.type)]
 
             if info.fallback_to_any:
+                # Make positional args optional since we don't know their order.
+                # This will at least allow us to typecheck them if they are called
+                # as kwargs
+                for arg in args:
+                    if arg.kind == ARG_POS:
+                        arg.kind = ARG_OPT
+
                 nameless_var = Var('')
                 args = [Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                        *args,
                         Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
                         ]
 
