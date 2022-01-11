@@ -10,9 +10,7 @@ defined attribute. Otherwise we'll need to raise AttributeError if the
 value is undefined.
 
 We use data flow analysis to figure out attributes that are always
-defined.
-
-Example:
+defined. Example:
 
   class C:
       def __init__(self) -> None:
@@ -21,28 +19,37 @@ Example:
               self.y = 1
           else:
               self.y = 2
+              self.z = 3
 
-In this example, the attribute 'x' is always defined, but 'y' is not,
-since the call to func() could access 'y' before it's initialized.
+In this example, the attributes 'x' and 'y' are always defined, but 'z'
+is not. The analysis assumes that we know that there won't be any subclasses.
 
-As soon as __init__ contains an op that can execute arbitrary code, we
-will stop inferring always defined attributes, since this code could
-read an uninitialized attribute. We only assume that a fairly
-restricted set of operations doesn't perform arbitrary reads.
+The analysis also works if there is a known, closed set of subclasses.
+An attribute defined in a base class is can only be always defined if it's
+also always defined in all subclasses.
 
-Our analysis is somewhat optimistic. We require that __del__ methods
-don't call gc.get_objects() and then access partially initialized
-objects. Code like this could potentially cause a segfault with a null
-pointer reference:
+As soon as __init__ contains an op that can 'leak' self to another
+function, we will stop inferring always defined attributes, since the
+analysis only looks at __init__ methods. The called code could read an
+uninitialized attribute. Example:
 
-- enter __init__ of a native class C
-- allocate an empty object (e.g. a list) in __init__
-- cyclic garbage collector runs and calls __del__ that accesses the x
-  attribute of C which has not been initialized -> segfault
-- (in normal operation) initialize the x attribute to a non-null value
+  class C:
+      def __init__(self) -> None:
+          self.x = self.foo()
 
-This runs after IR building as a separate pass. Since we only run this
-on __init__ methods, this analysis pass will be fairly quick.
+      def foo(self) -> int:
+          ...
+
+Now we won't infer 'x' as always defined, since 'foo' could ready it
+before initialization.
+
+Our analysis is somewhat optimistic. We assume that nobody calls a
+method of a partially uninitialized object through gc.get_objects(), in
+particular. Code like this could potentially cause a segfault with a null
+pointer reference.
+
+The analysis runs after IR building as a separate pass. Since we only
+run this on __init__ methods, this analysis pass will be fairly quick.
 """
 
 from typing import List, Set, Tuple
