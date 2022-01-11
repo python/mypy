@@ -288,6 +288,15 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                }
             """)
 
+    def test_get_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, 'x', 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_x;
+               if (unlikely(((mod___AObject *)cpy_r_r)->_x == 2)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'x' of 'A' undefined");
+               }
+            """)
+
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
