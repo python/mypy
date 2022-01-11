@@ -122,10 +122,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
+        negated_rare = False
         if true is self.next_block and op.traceback_entry is None:
             # Switch true/false since it avoids an else block.
             true, false = false, true
             negated = not negated
+            negated_rare = True
 
         neg = '!' if negated else ''
         cond = ''
@@ -150,7 +152,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         # For error checks, tell the compiler the branch is unlikely
         if op.traceback_entry is not None or op.rare:
-            cond = 'unlikely({})'.format(cond)
+            if not negated_rare:
+                cond = 'unlikely({})'.format(cond)
+            else:
+                cond = 'likely({})'.format(cond)
 
         if false is self.next_block:
             if op.traceback_entry is None:

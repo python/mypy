@@ -704,7 +704,10 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
-        items = [try_expanding_sum_type_to_union(item, target_fullname) for item in typ.items]
+        items = [
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in typ.relevant_items()
+        ]
         return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:

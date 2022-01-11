@@ -20,7 +20,7 @@ from mypy.types import (
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, LiteralType, LiteralValue,
     is_named_instance, FunctionLike, ParamSpecType, ParamSpecFlavor,
     StarType, is_optional, remove_optional, is_generic_instance, get_proper_type, ProperType,
-    get_proper_types, flatten_nested_unions
+    get_proper_types, flatten_nested_unions, LITERAL_TYPE_NAMES,
 )
 from mypy.nodes import (
     NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
@@ -2064,11 +2064,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                          arg_names: Optional[Sequence[Optional[str]]],
                          context: Context,
                          arg_messages: MessageBuilder) -> Tuple[Type, Type]:
-        self.msg.disable_type_names += 1
-        results = [self.check_call(subtype, args, arg_kinds, context, arg_names,
-                                   arg_messages=arg_messages)
-                   for subtype in callee.relevant_items()]
-        self.msg.disable_type_names -= 1
+        with self.msg.disable_type_names():
+            results = [
+                self.check_call(
+                    subtype,
+                    args,
+                    arg_kinds,
+                    context,
+                    arg_names,
+                    arg_messages=arg_messages,
+                )
+                for subtype in callee.relevant_items()
+            ]
+
         return (make_simplified_union([res[0] for res in results]),
                 callee)
 
@@ -2462,11 +2470,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for typ in base_type.relevant_items():
             # Format error messages consistently with
             # mypy.checkmember.analyze_union_member_access().
-            local_errors.disable_type_names += 1
-            item, meth_item = self.check_method_call_by_name(method, typ, args, arg_kinds,
-                                                             context, local_errors,
-                                                             original_type)
-            local_errors.disable_type_names -= 1
+            with local_errors.disable_type_names():
+                item, meth_item = self.check_method_call_by_name(
+                    method, typ, args, arg_kinds,
+                    context, local_errors, original_type,
+                )
             res.append(item)
             meth_res.append(meth_item)
         return make_simplified_union(res), make_simplified_union(meth_res)
@@ -4543,10 +4551,9 @@ def try_getting_literal(typ: Type) -> ProperType:
 
 def is_expr_literal_type(node: Expression) -> bool:
     """Returns 'true' if the given node is a Literal"""
-    valid = ('typing.Literal', 'typing_extensions.Literal')
     if isinstance(node, IndexExpr):
         base = node.base
-        return isinstance(base, RefExpr) and base.fullname in valid
+        return isinstance(base, RefExpr) and base.fullname in LITERAL_TYPE_NAMES
     if isinstance(node, NameExpr):
         underlying = node.node
         return isinstance(underlying, TypeAlias) and isinstance(get_proper_type(underlying.target),

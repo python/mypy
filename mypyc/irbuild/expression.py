@@ -326,11 +326,20 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             return translate_call(builder, expr, callee)
 
     ir = builder.mapper.type_to_ir[callee.info]
-    # Search for the method in the mro, skipping ourselves.
+    # Search for the method in the mro, skipping ourselves. We
+    # determine targets of super calls to native methods statically.
     for base in ir.mro[1:]:
         if callee.name in base.method_decls:
             break
     else:
+        if (ir.is_ext_class
+                and ir.builtin_base is None
+                and not ir.inherits_python
+                and callee.name == '__init__'
+                and len(expr.args) == 0):
+            # Call translates to object.__init__(self), which is a
+            # no-op, so omit the call.
+            return builder.none()
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)
