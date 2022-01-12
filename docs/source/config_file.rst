@@ -629,8 +629,8 @@ section of the command line docs.
         def process(items: list[str]) -> None:
            items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
            print(items)
-           items = "100"  # valid, items not has type str
-           items = int(items)  # valid, items not has type int
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. confval:: local_partial_types
 
