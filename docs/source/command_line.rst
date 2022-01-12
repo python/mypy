@@ -516,9 +516,6 @@ of the above sections.
     unrelated type. This flag enables redefinition of a variable with an
     arbitrary type *in some contexts*: only redefinitions within the
     same block and nesting depth as the original definition are allowed.
-
-    The expression for the new value must contain a reference to the variable.
-
     Example where this can be useful:
 
     .. code-block:: python
@@ -528,7 +525,15 @@ of the above sections.
            items = [item.split() for item in items]
            # 'items' now has type list[list[str]]
 
-           items = "mypy"  # invalid redefinition to str because the expression doesn't contain a reference to 'items'
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items not has type str
+           items = int(items)  # valid, items not has type int
 
 .. option:: --local-partial-types
 
