@@ -297,6 +297,23 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                }
             """)
 
+    def test_get_attr_merged(self) -> None:
+        op = GetAttr(self.r, 'y', 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            CPyTagged_INCREF(cpy_r_r0);
+            goto CPyL9;
+            """,
+            next_branch=branch)
+
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
@@ -428,7 +445,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                     expected: str,
                     next_block: Optional[BasicBlock] = None,
                     *,
-                    rare: bool = False) -> None:
+                    rare: bool = False,
+                    next_branch: Optional[Branch] = None) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -440,6 +458,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
         visitor.next_block = next_block
         visitor.rare = rare
+        visitor.next_branch = next_branch
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
