@@ -270,12 +270,13 @@ def verify_typeinfo(
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:
-            runtime_attr = getattr(runtime, mangled_entry)
+            runtime_attr = getattr(runtime, mangled_entry, MISSING)
         except Exception:
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
-            runtime_attr = MISSING
-        yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
+            pass
+        else:
+            yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
 def _verify_static_class_methods(
