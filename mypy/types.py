@@ -118,13 +118,7 @@ ANNOTATED_TYPE_NAMES: Final = (
 )
 
 # We use this constant in various places when checking `tuple` subtyping:
-TUPLE_LIKE_INSTANCE_NAMES: Final = (
-    'builtins.tuple',
-    'typing.Iterable',
-    'typing.Container',
-    'typing.Sequence',
-    'typing.Reversible',
-)
+TUPLE_LIKE_INSTANCE_NAMES: Final = ()
 
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
