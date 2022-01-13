@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, SPECIAL_DUNDERS
 
 
 class Missing:

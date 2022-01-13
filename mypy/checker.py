@@ -24,7 +24,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
+    ARG_POS, ARG_STAR, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node, ARG_NAMED, MatchStmt)
 from mypy import nodes
@@ -1923,7 +1923,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # TODO: make sure that `x = @class/staticmethod(func)`
             # and `x = property(prop)` both work correctly.
             # Now they are incorrectly counted as enum members.
-            or isinstance(sym.node.type, FunctionLike)
+            or isinstance(get_proper_type(sym.node.type), FunctionLike)
         ):
             return False
 
