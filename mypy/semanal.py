@@ -1554,13 +1554,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
-                if self.enum_has_final_values(base):
-                    # This means that are trying to subclass a non-default
-                    # Enum class, with defined members. This is not possible.
-                    # In runtime, it will raise. We need to mark this type as final.
-                    # However, methods can be defined on a type: only values can't.
-                    # We also don't count values with annotations only.
-                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
@@ -1597,25 +1590,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.set_dummy_mro(defn.info)
             return
         self.calculate_class_mro(defn, self.object_type)
-
-    def enum_has_final_values(self, base: Instance) -> bool:
-        if (
-            base.type.is_enum
-            and base.type.fullname not in ENUM_BASES
-            and base.type.names
-            and base.type.defn
-        ):
-            for sym in base.type.names.values():
-                if isinstance(sym.node, (FuncBase, Decorator)):
-                    continue  # A method
-                if not isinstance(sym.node, Var):
-                    return True  # Can be a class
-                if self.is_stub_file or sym.node.has_explicit_value:
-                    # Corner case: assignments like `x: int` are fine in `.py` files.
-                    # But, not is `.pyi` files, because we don't know
-                    # if there's aactually a value or not.
-                    return True
-        return False
 
     def configure_tuple_base_class(self,
                                    defn: ClassDef,

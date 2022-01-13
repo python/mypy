@@ -24,7 +24,7 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
+    ARG_POS, ARG_STAR, ARG_STAR2, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node, ARG_NAMED, MatchStmt)
 from mypy import nodes
@@ -1897,7 +1897,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
             if self.is_final_enum_value(sym):
-                self.fail('Cannot extend enum with members: "{}"'.format(base.fullname))
+                self.fail(
+                    'Cannot extend enum with existing members: "{}"'.format(
+                        base.name,
+                    ),
+                    defn,
+                )
                 break
 
     def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
@@ -1915,15 +1920,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             is_private(sym.node.name)
             or is_dunder(sym.node.name)
             or is_sunder(sym.node.name)
+            # TODO: make sure that `x = @class/staticmethod(func)`
+            # and `x = property(prop)` both work correctly.
+            # Now they are incorrectly counted as enum members.
+            or isinstance(sym.node.type, FunctionLike)
         ):
             return False
 
-        if sym.node.type and is_subtype(sym.node.type)
-
-        # if self.is_stub:
-        #     return True
-        # if sym.node.has_explicit_value:
-        #     return True
+        if self.is_stub or sym.node.has_explicit_value:
+            return True
         return False
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
