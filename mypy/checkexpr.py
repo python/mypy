@@ -2576,7 +2576,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We consider this to be the fast path, we move on if it is not a literal.
         # But, operations on literal types are not processed further.
 
-        print(left_type, context)
         if isinstance(context, OpExpr) and isinstance(left_type, (LiteralType, Instance)):
             fallback_left_type = (
                 left_type.fallback
