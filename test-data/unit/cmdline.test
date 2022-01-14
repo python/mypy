@@ -1354,9 +1354,10 @@ b/bpkg.py:1: error: "int" not callable
 # cmd: mypy .
 [file mypy.ini]
 \[mypy]
-exclude =
-    abc
-    b
+exclude = (?x)(
+    ^abc/
+    |^b/
+  )
 [file abc/apkg.py]
 1()
 [file b/bpkg.py]

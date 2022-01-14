@@ -8,7 +8,8 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    SelfType
+    SelfType,
+    TUPLE_LIKE_INSTANCE_NAMES,
 )
 import mypy.applytype
 import mypy.constraints
@@ -126,7 +127,10 @@ def _is_subtype(left: Type, right: Type,
         # of a union of all enum items as literal types. Only do it if
         # the previous check didn't succeed, since recombining can be
         # expensive.
-        if not is_subtype_of_item and isinstance(left, Instance) and left.type.is_enum:
+        # `bool` is a special case, because `bool` is `Literal[True, False]`.
+        if (not is_subtype_of_item
+                and isinstance(left, Instance)
+                and (left.type.is_enum or left.type.fullname == 'builtins.bool')):
             right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
             is_subtype_of_item = any(is_subtype(orig_left, item,
                                                 ignore_type_params=ignore_type_params,
@@ -150,10 +154,6 @@ def _is_subtype(left: Type, right: Type,
                                       ignore_pos_arg_names=ignore_pos_arg_names,
                                       ignore_declared_variance=ignore_declared_variance,
                                       ignore_promotions=ignore_promotions))
-
-
-def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_type_params=True)
 
 
 def is_equivalent(a: Type, b: Type,
@@ -369,11 +369,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if is_named_instance(right, 'typing.Sized'):
                 return True
-            elif (is_named_instance(right, 'builtins.tuple') or
-                  is_named_instance(right, 'typing.Iterable') or
-                  is_named_instance(right, 'typing.Container') or
-                  is_named_instance(right, 'typing.Sequence') or
-                  is_named_instance(right, 'typing.Reversible')):
+            elif is_named_instance(right, TUPLE_LIKE_INSTANCE_NAMES):
                 if right.args:
                     iter_type = right.args[0]
                 else:
@@ -1174,6 +1170,7 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)
@@ -1386,11 +1383,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if (is_named_instance(right, 'builtins.tuple') or
-                    is_named_instance(right, 'typing.Iterable') or
-                    is_named_instance(right, 'typing.Container') or
-                    is_named_instance(right, 'typing.Sequence') or
-                    is_named_instance(right, 'typing.Reversible')):
+            if is_named_instance(right, TUPLE_LIKE_INSTANCE_NAMES):
                 if not right.args:
                     return False
                 iter_type = get_proper_type(right.args[0])

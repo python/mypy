@@ -1485,7 +1485,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
 
-[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
@@ -2212,7 +2212,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2229,6 +2229,12 @@ h = f if bool() else g
 reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
+
+[case testFunctionWithNameUnderscore]
+def _(x: int) -> None: pass
+
+_(1)
+_('x')  # E: Argument 1 to "_" has incompatible type "str"; expected "int"
 
 -- Positional-only arguments
 -- -------------------------

@@ -6463,7 +6463,7 @@ class C(B):
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testIgnorePrivateMethodsTypeCheck]
+[case testIgnorePrivateMethodsTypeCheck2]
 class A:
     def __foo_(self) -> int: ...
 class B:

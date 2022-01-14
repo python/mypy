@@ -107,13 +107,13 @@ class MessageBuilder:
     disable_count = 0
 
     # Hack to deduplicate error messages from union types
-    disable_type_names = 0
+    disable_type_names_count = 0
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
         self.disable_count = 0
-        self.disable_type_names = 0
+        self.disable_type_names_count = 0
 
     #
     # Helpers
@@ -122,7 +122,7 @@ class MessageBuilder:
     def copy(self) -> 'MessageBuilder':
         new = MessageBuilder(self.errors.copy(), self.modules)
         new.disable_count = self.disable_count
-        new.disable_type_names = self.disable_type_names
+        new.disable_type_names_count = self.disable_type_names_count
         return new
 
     def clean_copy(self) -> 'MessageBuilder':
@@ -144,6 +144,14 @@ class MessageBuilder:
             yield
         finally:
             self.disable_count -= 1
+
+    @contextmanager
+    def disable_type_names(self) -> Iterator[None]:
+        self.disable_type_names_count += 1
+        try:
+            yield
+        finally:
+            self.disable_type_names_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
@@ -298,7 +306,7 @@ class MessageBuilder:
                 extra = ' (not iterable)'
             elif member == '__aiter__':
                 extra = ' (not async iterable)'
-            if not self.disable_type_names:
+            if not self.disable_type_names_count:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
@@ -380,7 +388,7 @@ class MessageBuilder:
         else:
             right_str = format_type(right_type)
 
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
@@ -389,7 +397,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported left operand type for {} (some union)'.format(op)
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(
@@ -807,7 +815,7 @@ class MessageBuilder:
 
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
-            overload: Overloaded, context: Context) -> None:
+            context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
             name, target), context, code=codes.OVERRIDE)
@@ -1399,9 +1407,6 @@ class MessageBuilder:
     def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition", truthiness, context)
 
-    def redundant_condition_in_assert(self, truthiness: bool, context: Context) -> None:
-        self.redundant_expr("Condition in assert", truthiness, context)
-
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
                   context, code=codes.REDUNDANT_EXPR)
@@ -1855,8 +1860,7 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
 
 
 def format_type_bare(typ: Type,
-                     verbosity: int = 0,
-                     fullnames: Optional[Set[str]] = None) -> str:
+                     verbosity: int = 0) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2122,11 +2126,6 @@ def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Opt
                 pass
         assert False, "Couldn't determine module from CallableType"
     return None
-
-
-def temp_message_builder() -> MessageBuilder:
-    """Return a message builder usable for throwaway errors (which may not format properly)."""
-    return MessageBuilder(Errors(), {})
 
 
 # For hard-coding suggested missing member alternatives.

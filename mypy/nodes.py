@@ -840,6 +840,7 @@ VAR_FLAGS: Final = [
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
     'explicit_self_type', 'is_ready', 'from_module_getattr',
+    'has_explicit_value',
 ]
 
 
@@ -870,6 +871,7 @@ class Var(SymbolNode):
                  'is_suppressed_import',
                  'explicit_self_type',
                  'from_module_getattr',
+                 'has_explicit_value',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -914,6 +916,9 @@ class Var(SymbolNode):
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
         self.from_module_getattr = False
+        # Var can be created with an explicit value `a = 1` or without one `a: int`,
+        # we need a way to tell which one is which.
+        self.has_explicit_value = False
 
     @property
     def name(self) -> str:
@@ -1294,19 +1299,16 @@ class IfStmt(Statement):
 
 
 class RaiseStmt(Statement):
-    __slots__ = ('expr', 'from_expr', 'legacy_mode')
+    __slots__ = ('expr', 'from_expr')
 
     # Plain 'raise' is a valid statement.
     expr: Optional[Expression]
     from_expr: Optional[Expression]
-    # Is set when python2 has `raise exc, msg, traceback`.
-    legacy_mode: bool
 
     def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         super().__init__()
         self.expr = expr
         self.from_expr = from_expr
-        self.legacy_mode = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)

@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr
 
 
 class Missing:
@@ -269,11 +269,14 @@ def verify_typeinfo(
             mangled_entry = "_{}{}".format(stub.name, entry)
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
-        yield from verify(
-            stub_to_verify,
-            getattr(runtime, mangled_entry, MISSING),
-            object_path + [entry],
-        )
+        try:
+            runtime_attr = getattr(runtime, mangled_entry, MISSING)
+        except Exception:
+            # Catch all exceptions in case the runtime raises an unexpected exception
+            # from __getattr__ or similar.
+            pass
+        else:
+            yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
 def _verify_static_class_methods(
@@ -942,6 +945,7 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
+
     with mypy.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
@@ -1029,16 +1033,18 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
-    try:
-        # Literals are supposed to be only bool, int, str, bytes or enums, but this seems to work
-        # well (when not using mypyc, for which bytes and enums are also problematic).
-        return mypy.types.LiteralType(
-            value=runtime,
-            fallback=fallback,
-        )
-    except TypeError:
-        # Ask for forgiveness if we're using mypyc.
+
+    value: Union[bool, int, str]
+    if isinstance(runtime, bytes):
+        value = bytes_to_human_readable_repr(runtime)
+    elif isinstance(runtime, enum.Enum):
+        value = runtime.name
+    elif isinstance(runtime, (bool, int, str)):
+        value = runtime
+    else:
         return fallback
+
+    return mypy.types.LiteralType(value=value, fallback=fallback)
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}

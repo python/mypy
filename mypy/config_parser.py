@@ -57,6 +57,12 @@ def expand_path(path: str) -> str:
     return os.path.expandvars(os.path.expanduser(path))
 
 
+def str_or_array_as_list(v: Union[str, Sequence[str]]) -> List[str]:
+    if isinstance(v, str):
+        return [v.strip()] if v.strip() else []
+    return [p.strip() for p in v if p.strip()]
+
+
 def split_and_match_files_list(paths: Sequence[str]) -> List[str]:
     """Take a list of files/directories (with support for globbing through the glob library).
 
@@ -126,7 +132,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-    'exclude': lambda s: [p.strip() for p in s.split('\n') if p.strip()],
+    'exclude': lambda s: [s.strip()],
 }
 
 # Reuse the ini_config_types and overwrite the diff
@@ -143,6 +149,7 @@ toml_config_types.update({
     'disable_error_code': try_split,
     'enable_error_code': try_split,
     'package_root': try_split,
+    'exclude': str_or_array_as_list,
 })
 
 

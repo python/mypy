@@ -241,7 +241,7 @@ def f(x: M[C]) -> None:
     y = x.get(None)
     reveal_type(y) # N: Revealed type is "__main__.C"
 
-[case testUnionSimplificationSpecialCases]
+[case testUnionSimplificationSpecialCases2]
 from typing import Any, TypeVar, Union
 
 class C(Any): pass

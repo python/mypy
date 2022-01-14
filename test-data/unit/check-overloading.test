@@ -2589,12 +2589,12 @@ def f(*args): pass
 i: int
 reveal_type(f(i))           # N: Revealed type is "Tuple[builtins.int]"
 reveal_type(f(i, i))        # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(f(i, i, i))     # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(i, i, i))     # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
-reveal_type(f(*[]))         # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(*[i]))        # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(*[i, i]))     # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(*[i, i, i]))  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*[]))         # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(*[i]))        # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(*[i, i]))     # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(*[i, i, i]))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/list.pyi]
 
 [case testOverloadVarargsSelectionWithTuples]
@@ -2608,10 +2608,10 @@ def f(*xs: int) -> Tuple[int, ...]: ...
 def f(*args): pass
 
 i: int
-reveal_type(f(*()))         # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*()))         # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(f(*(i,)))       # N: Revealed type is "Tuple[builtins.int]"
 reveal_type(f(*(i, i)))     # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(f(*(i, i, i)))  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*(i, i, i)))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadVarargsSelectionWithNamedTuples]
@@ -2631,7 +2631,7 @@ b: B
 c: C
 reveal_type(f(*a))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
 reveal_type(f(*b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(f(*c))  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(*c))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testOverloadKwargsSelectionWithDict]
@@ -2645,10 +2645,10 @@ def f(**xs: int) -> Tuple[int, ...]: ...
 def f(**kwargs): pass
 
 empty: Dict[str, int]
-reveal_type(f(**empty))                      # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(**{'x': 4}))                   # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is "builtins.tuple[builtins.int]"
-reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(**empty))                      # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(**{'x': 4}))                   # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(**{'x': 4, 'y': 4}))           # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(f(**{'a': 4, 'b': 4, 'c': 4}))   # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/dict.pyi]
 
 [case testOverloadKwargsSelectionWithTypedDict]
@@ -2672,7 +2672,7 @@ c: C
 
 reveal_type(f(**a))  # N: Revealed type is "Tuple[builtins.int]"
 reveal_type(f(**b))  # N: Revealed type is "Tuple[builtins.int, builtins.int]"
-reveal_type(f(**c))  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(f(**c))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/dict.pyi]
 
 [case testOverloadVarargsAndKwargsSelection]
@@ -4314,7 +4314,7 @@ class Wrapper3:
     def foo(x: Union[int, str]): pass  # E: Self argument missing for a non-static method (or an invalid type for self)
 [builtins fixtures/staticmethod.pyi]
 
-[case testOverloadWithSwappedDecorators]
+[case testOverloadWithSwappedDecorators2]
 from typing import overload
 
 class Wrapper1:
