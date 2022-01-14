@@ -71,7 +71,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
 from mypy.semanal import set_callable_name, refers_to_fullname
 from mypy.mro import calculate_mro, MroError
-from mypy.erasetype import erase_typevars, remove_instance_last_known_values, erase_type
+from mypy.erasetype import erase_typevars, remove_instance_transient_info, erase_type
 from mypy.expandtype import expand_type, expand_type_by_instance
 from mypy.visitor import NodeVisitor
 from mypy.join import join_types
@@ -2188,7 +2188,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if partial_types is not None:
                             if not self.current_node_deferred:
                                 # Partial type can't be final, so strip any literal values.
-                                rvalue_type = remove_instance_last_known_values(rvalue_type)
+                                rvalue_type = remove_instance_transient_info(rvalue_type)
                                 inferred_type = make_simplified_union(
                                     [rvalue_type, NoneType()])
                                 self.set_inferred_type(var, lvalue, inferred_type)
@@ -2270,7 +2270,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if inferred:
                 rvalue_type = self.expr_checker.accept(rvalue)
                 if not inferred.is_final:
-                    rvalue_type = remove_instance_last_known_values(rvalue_type)
+                    rvalue_type = remove_instance_transient_info(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
 
@@ -4987,7 +4987,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         the name refers to a compatible generic type.
         """
         info = self.lookup_typeinfo(name)
-        args = [remove_instance_last_known_values(arg) for arg in args]
+        args = [remove_instance_transient_info(arg) for arg in args]
         # TODO: assert len(args) == len(info.defn.type_vars)
         return Instance(info, args)
 

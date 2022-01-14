@@ -975,10 +975,11 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
+    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'metadata', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, erased: bool = False,
+                 metadata: Optional[Dict[str, JsonDict]] = None,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
@@ -991,11 +992,18 @@ class Instance(ProperType):
         # True if recovered after incorrect number of type arguments error
         self.invalid = False
 
+        # This is a dictionary that will be serialized and un-serialized as is.
+        # It is useful for plugins to add their data to save in the cache.
+        if metadata:
+            self.metadata: Dict[str, JsonDict] = metadata
+        else:
+            self.metadata = {}
+
         # This field keeps track of the underlying Literal[...] value associated with
         # this instance, if one is known.
         #
         # This field is set whenever possible within expressions, but is erased upon
-        # variable assignment (see erasetype.remove_instance_last_known_values) unless
+        # variable assignment (see erasetype.remove_instance_transient_info) unless
         # the variable is declared to be final.
         #
         # For example, consider the following program:
@@ -1054,11 +1062,11 @@ class Instance(ProperType):
         type_ref = self.type.fullname
         if not self.args and not self.last_known_value:
             return type_ref
-        data: JsonDict = {
-            ".class": "Instance",
-        }
-        data["type_ref"] = type_ref
-        data["args"] = [arg.serialize() for arg in self.args]
+        data: JsonDict = {".class": "Instance",
+                          "type_ref": type_ref,
+                          "args": [arg.serialize() for arg in self.args]}
+        if self.metadata:
+            data['metadata'] = self.metadata
         if self.last_known_value is not None:
             data['last_known_value'] = self.last_known_value.serialize()
         return data
@@ -1077,12 +1085,15 @@ class Instance(ProperType):
             args = [deserialize_type(arg) for arg in args_list]
         inst = Instance(NOT_READY, args)
         inst.type_ref = data['type_ref']  # Will be fixed up by fixup.py later.
+        if 'metadata' in data:
+            inst.metadata = data['metadata']
         if 'last_known_value' in data:
             inst.last_known_value = LiteralType.deserialize(data['last_known_value'])
         return inst
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
+                      metadata: Bogus[Dict[str, JsonDict]] = _dummy,
                       erased: Bogus[bool] = _dummy,
                       last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
@@ -1091,6 +1102,7 @@ class Instance(ProperType):
             self.line,
             self.column,
             erased if erased is not _dummy else self.erased,
+            metadata if metadata is not _dummy else self.metadata,
             last_known_value if last_known_value is not _dummy else self.last_known_value,
         )
 
