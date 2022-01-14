@@ -340,7 +340,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 if merged_branch.false is not self.next_block:
                     self.emit_line('goto %s;' % self.label(merged_branch.false))
                 self.op_index += 1
-            elif not alwawys_defined:
+            elif not always_defined:
                 self.emitter.emit_line('}')
 
     def next_branch(self) -> Optional[Branch]:
