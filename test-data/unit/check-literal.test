@@ -3506,7 +3506,7 @@ def func1(loop_count: int):
     x = x + 1
     reveal_type(x)  # N: Revealed type is "builtins.int"
 
-    for _ in range(loop_count):
+    for _ in [1, 2, 3]:
         x = x + 1
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]

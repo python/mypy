@@ -121,7 +121,7 @@ class float:
 class type: pass
 class str: pass
 [out]
-OpExpr(3) : builtins.int
+OpExpr(3) : Literal[3]?
 OpExpr(4) : builtins.float
 OpExpr(5) : builtins.float
 OpExpr(6) : builtins.float
