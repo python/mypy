@@ -846,7 +846,13 @@ def generate_getter(cl: ClassIR,
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     attr_expr = 'self->{}'.format(attr_field)
-    if not cl.is_always_defined(attr):
+
+    # HACK: Don't consider refcounted values as always defined, since it's possible to
+    #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
+    #       values is benign.
+    always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
+
+    if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
         emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
         emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
@@ -879,9 +885,9 @@ def generate_setter(cl: ClassIR,
         emitter.emit_line('return -1;')
         emitter.emit_line('}')
 
-    # HACK: Don't consider refcounted values as always defined, since sometimes CPython
-    #       constructs uninitialized instances and then sets the attributes (e.g. through
-    #       copy.copy()). Always defined attributes are still not really safe, though.
+    # HACK: Don't consider refcounted values as always defined, since it's possible to
+    #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
+    #       values is benign.
     always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
 
     if rtype.is_refcounted:
