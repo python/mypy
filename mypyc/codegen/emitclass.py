@@ -284,7 +284,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
 
         emit_line()
-        generate_new_for_class(cl, new_name, vtable_name, setup_name, emitter)
+        init_fn = cl.get_method('__init__')
+        generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
         generate_traverse_for_class(cl, traverse_name, emitter)
         emit_line()
@@ -608,8 +609,11 @@ def generate_init_for_class(cl: ClassIR,
     emitter.emit_line(
         '{}(PyObject *self, PyObject *args, PyObject *kwds)'.format(func_name))
     emitter.emit_line('{')
-    emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
-        PREFIX, init_fn.cname(emitter.names)))
+    if cl.allow_interpreted_subclasses or cl.builtin_base:
+        emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
+            PREFIX, init_fn.cname(emitter.names)))
+    else:
+        emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
     return func_name
@@ -619,6 +623,7 @@ def generate_new_for_class(cl: ClassIR,
                            func_name: str,
                            vtable_name: str,
                            setup_name: str,
+                           init_fn: Optional[FuncIR],
                            emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line(
@@ -633,7 +638,17 @@ def generate_new_for_class(cl: ClassIR,
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
-    emitter.emit_line('return {}(type);'.format(setup_name))
+    if not init_fn or cl.allow_interpreted_subclasses or cl.builtin_base:
+        emitter.emit_line('return {}(type);'.format(setup_name))
+    else:
+        emitter.emit_line('PyObject *self = {}(type);'.format(setup_name))
+        emitter.emit_lines('if (self == NULL)',
+                           '    return NULL;')
+        emitter.emit_line('PyObject *ret = {}{}(self, args, kwds);'.format(
+            PREFIX, init_fn.cname(emitter.names)))
+        emitter.emit_lines('if (ret == NULL)',
+                           '    return NULL;')
+        emitter.emit_line('return self;')
     emitter.emit_line('}')
 
 

@@ -710,8 +710,7 @@ class B(A):
 
 class C(B):
     def __init__(self, x: int, y: int) -> None:
-        init = super(C, self).__init__
-        init(x, y+1)
+        super(C, self).__init__(x, y + 1)
 
     def foo(self, x: int) -> int:
         # should go to A, not B
@@ -1329,16 +1328,18 @@ assert Nothing2.X == 10
 assert Nothing3.X == 10
 
 [case testPickling]
-from mypy_extensions import trait
+from mypy_extensions import trait, mypyc_attr
 from typing import Any, TypeVar, Generic
 
 def dec(x: Any) -> Any:
     return x
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class A:
     x: int
     y: str
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class B(A):
     z: bool
 
@@ -1949,3 +1950,73 @@ def test_copy() -> None:
     assert c2.t == ("", 0)
     assert c2.u == ''
     assert c2.a is c1.a
+
+[case testNonNativeCallsToDunderNewAndInit]
+from typing import Any
+from testutil import assertRaises
+
+count_c = 0
+
+class C:
+    def __init__(self) -> None:
+        self.x = 'a'  # Always defined attribute
+        global count_c
+        count_c += 1
+
+    def get(self) -> str:
+        return self.x
+
+def test_no_init_args() -> None:
+    global count_c
+    count_c = 0
+
+    # Use Any to get non-native semantics
+    cls: Any = C
+    # __new__ implicitly calls __init__ for native classes
+    obj = cls.__new__(cls)
+    assert obj.get() == 'a'
+    assert count_c == 1
+    # Make sure we don't call __init__ twice
+    obj2 = cls()
+    assert obj2.get() == 'a'
+    assert count_c == 2
+
+count_d = 0
+
+class D:
+    def __init__(self, x: str) -> None:
+        self.x = x  # Always defined attribute
+        global count_d
+        count_d += 1
+
+    def get(self) -> str:
+        return self.x
+
+def test_init_arg() -> None:
+    global count_d
+    count_d = 0
+
+    # Use Any to get non-native semantics
+    cls: Any = D
+    # __new__ implicitly calls __init__ for native classes
+    obj = cls.__new__(cls, 'abc')
+    assert obj.get() == 'abc'
+    assert count_d == 1
+    # Make sure we don't call __init__ twice
+    obj2 = cls('x')
+    assert obj2.get() == 'x'
+    assert count_d == 2
+    # Keyword args should work
+    obj = cls.__new__(cls, x='abc')
+    assert obj.get() == 'abc'
+    assert count_d == 3
+
+def test_invalid_init_args() -> None:
+    # Use Any to get non-native semantics
+    cls: Any = D
+    with assertRaises(TypeError):
+        cls()
+    with assertRaises(TypeError):
+        cls(y='x')
+    with assertRaises(TypeError):
+        cls(1)
