@@ -30,8 +30,8 @@ also always defined in all subclasses.
 
 As soon as __init__ contains an op that can 'leak' self to another
 function, we will stop inferring always defined attributes, since the
-analysis only looks at __init__ methods. The called code could read an
-uninitialized attribute. Example:
+analysis is intra-procedural and only looks at __init__ methods. The
+called code could read an uninitialized attribute. Example:
 
   class C:
       def __init__(self) -> None:
@@ -40,13 +40,13 @@ uninitialized attribute. Example:
       def foo(self) -> int:
           ...
 
-Now we won't infer 'x' as always defined, since 'foo' could ready it
+Now we won't infer 'x' as always defined, since 'foo' might read 'x'
 before initialization.
 
 Our analysis is somewhat optimistic. We assume that nobody calls a
 method of a partially uninitialized object through gc.get_objects(), in
 particular. Code like this could potentially cause a segfault with a null
-pointer reference.
+pointer dereference.
 
 The analysis runs after IR building as a separate pass. Since we only
 run this on __init__ methods, this analysis pass will be fairly quick.
@@ -63,7 +63,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.analysis.dataflow import (
     BaseAnalysisVisitor, AnalysisResult, get_cfg, CFG, MAYBE_ANALYSIS, run_analysis
 )
-from mypyc.analysis.defined import analyze_arbitrary_execution
+from mypyc.analysis.defined import analyze_self_leaks
 
 
 def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
@@ -109,7 +109,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
         return
     self_reg = m.arg_regs[0]
     cfg = get_cfg(m.blocks)
-    dirty = analyze_arbitrary_execution(m.blocks, self_reg, cfg)
+    dirty = analyze_self_leaks(m.blocks, self_reg, cfg)
     maybe_defined = analyze_maybe_defined_attrs_in_init(
         m.blocks, self_reg, cl.attrs_with_defaults, cfg)
     all_attrs: Set[str] = set()
@@ -210,6 +210,12 @@ def attributes_initialized_by_init_call(op: Call) -> Set[str]:
 
 
 class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
+    """Find attributes that may have been defined via some code path.
+
+    Consider initializations in class body and assignments to 'self.x'
+    and calls to base class '__init__'.
+    """
+
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
 
@@ -252,6 +258,12 @@ def analyze_maybe_defined_attrs_in_init(blocks: List[BasicBlock],
 
 
 class AttributeMaybeUndefinedVisitor(BaseAnalysisVisitor[str]):
+    """Find attributes that may be undefined via some code path.
+
+    Consider initializations in class body, assignments to 'self.x'
+    and calls to base class '__init__'.
+    """
+
     def __init__(self, self_reg: Register) -> None:
         self.self_reg = self_reg
 

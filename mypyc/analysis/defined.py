@@ -15,11 +15,13 @@ CLEAN: GenAndKill = set(), set()
 DIRTY: GenAndKill = {None}, {None}
 
 
-class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
-    """Analyze whether arbitrary code may have been executed at certain point.
+class SelfLeakedVisitor(OpVisitor[GenAndKill]):
+    """Analyze whether 'self' may be seen by arbitrary code in '__init__'.
 
     More formally, the set is not empty if along some path from IR entry point
-    arbitrary code could have been executed.
+    arbitrary code could have been executed that has access to 'self'.
+
+    (We don't consider access via 'gc.get_objects()'.)
     """
 
     def __init__(self, self_reg: Register) -> None:
@@ -32,6 +34,8 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_return(self, op: Return) -> GenAndKill:
+        # Consider all exits from the function 'dirty' since they implicitly
+        # cause 'self' to be returned.
         return DIRTY
 
     def visit_unreachable(self, op: Unreachable) -> GenAndKill:
@@ -55,10 +59,10 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
             cl = self_type.class_ir
             if not cl.init_unknown_code:
                 return CLEAN
-        return DIRTY
+        return self.check_register_op(op)
 
     def visit_method_call(self, op: MethodCall) -> GenAndKill:
-        return DIRTY
+        return self.check_register_op(op)
 
     def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill:
         return CLEAN
@@ -105,10 +109,7 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_call_c(self, op: CallC) -> GenAndKill:
-        # Certain hand-picked functions are known to not run arbitrary code.
-        if not op.run_arbitrary_code:
-            return self.check_register_op(op)
-        return DIRTY
+        return self.check_register_op(op)
 
     def visit_truncate(self, op: Truncate) -> GenAndKill:
         return CLEAN
@@ -140,12 +141,12 @@ class ArbitraryExecutionVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
 
-def analyze_arbitrary_execution(blocks: List[BasicBlock],
-                                self_reg: Register,
-                                cfg: CFG) -> AnalysisResult[None]:
+def analyze_self_leaks(blocks: List[BasicBlock],
+                       self_reg: Register,
+                       cfg: CFG) -> AnalysisResult[None]:
     return run_analysis(blocks=blocks,
                         cfg=cfg,
-                        gen_and_kill=ArbitraryExecutionVisitor(self_reg),
+                        gen_and_kill=SelfLeakedVisitor(self_reg),
                         initial=set(),
                         backward=False,
                         kind=MAYBE_ANALYSIS)

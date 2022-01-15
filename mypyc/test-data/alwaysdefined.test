@@ -23,8 +23,10 @@ class MethodCall:
 
 class FuncCall:
     def __init__(self, x: int) -> None:
-        f()
+        f(x)
         self.x = x
+        f(self)
+        self.y = x
 
 class GetAttr:
     x: int
@@ -34,7 +36,7 @@ class GetAttr:
 
 class _Base:
     def  __init__(self) -> None:
-        f()
+        f(self)
 
 class CallSuper(_Base):
     def __init__(self, x: int) -> None:
@@ -64,15 +66,20 @@ class Deletable:
         self.y = 1
         self.z = 2
 
-def f() -> None: pass
+class PrimitiveWithSelf:
+    def __init__(self, s: str) -> None:
+        self.x = getattr(self, s)
+
+def f(a) -> None: pass
 [out]
 MethodCall: []
-FuncCall: []
+FuncCall: [x]
 GetAttr: []
 CallSuper: []
 Lambda: []
 If: [a]
 Deletable: [z]
+PrimitiveWithSelf: []
 
 [case testAlwaysDefinedConditional]
 class IfAlways:
@@ -110,7 +117,7 @@ class IfStopAnalysis1:
     def __init__(self, x: int, y: int) -> None:
         if x:
             self.x = x
-            f()
+            f(self)
         else:
             self.x = x
         self.y = y
@@ -121,7 +128,7 @@ class IfStopAnalysis2:
             self.x = x
         else:
             self.x = x
-            f()
+            f(self)
         self.y = y
 
 class IfStopAnalysis3:
@@ -129,7 +136,7 @@ class IfStopAnalysis3:
         if x:
             self.x = x
         else:
-            f()
+            f(self)
             self.x = x
         self.y = y
 
@@ -147,7 +154,7 @@ class IfConditionalAndNonConditional2:
             self.x = x
         self.x = 0
 
-def f() -> None: pass
+def f(a) -> None: pass
 [out]
 IfAlways: [x, y, z]
 IfSometimes1: [y]
@@ -171,8 +178,8 @@ class Collections:
         self.l = [x]
         self.d: Dict[str, str] = {}
         self.s: Set[int] = set()
-        self.d2 = {'x': x}  # Can call __hash__ and __eq__
-        self.s2 = {x}  # Can call __hash__ and __eq__
+        self.d2 = {'x': x}
+        self.s2 = {x}
         self.l2 = [f()]
 
 class Comparisons:
@@ -191,8 +198,8 @@ class BinaryOps:
         self.b = x & 2
         self.c = x * 2
         self.d = -x
-        self.f = x << x
         self.e = 'x' + s
+        self.f = x << x
 
 g = 2
 
@@ -227,6 +234,26 @@ class ListComprehension:
     def __init__(self, x: List[int]) -> None:
         self.a = [i + 1 for i in x]
 
+class Helper:
+    def __init__(self, arg) -> None:
+        self.x = 0
+
+    def foo(self, arg) -> int:
+        return 1
+
+class AttrAccess:
+    def __init__(self, o: Helper) -> None:
+        self.x = o.x
+        o.x = o.x + 1
+        self.y = o.foo(self.x)
+        o.foo(self)
+        self.z = 1
+
+class Construct:
+    def __init__(self) -> None:
+        self.x = Helper(1)
+        self.y = Helper(self)
+
 def f() -> int:
     return 0
 
@@ -238,14 +265,17 @@ Y: Final = 3
 
 [out]
 C: []
-Collections: [d, l, s]
-Comparisons: [c1, c2, n1, n2, o1, o2]
-BinaryOps: [a, b, c, d, f]
-LocalsAndGlobals: [a]
+Collections: [d, d2, l, l2, s, s2]
+Comparisons: [c1, c2, n1, n2, o1, o2, s]
+BinaryOps: [a, b, c, d, e, f]
+LocalsAndGlobals: [a, g]
 Booleans: [a, b, c, d, e]
 ModuleFinal: [a, b]
 Literals: [a, b, c]
 ListComprehension: [a]
+Helper: [x]
+AttrAccess: [x, y]
+Construct: [x]
 
 [case testAlwaysDefinedExpressions2]
 from typing import List, Tuple
@@ -360,7 +390,7 @@ def f() -> None:
 [out]
 Return: [x, y]
 While: [a]
-Try: [a]
+Try: [a, d]
 Assert: [a]
 
 [case testAlwaysDefinedAttributeDefaults]
@@ -423,12 +453,12 @@ class Deriv4(Base):
         self.y = 1
         self.x = 2
 
-def f(): pass
+def f(a): pass
 
 class BaseUnsafe:
     def __init__(self, x: int, y: int) -> None:
         self.x = x
-        f()  # Unknown function
+        f(self)  # Unknown function
         self.y = y
 
 class DerivUnsafe(BaseUnsafe):
