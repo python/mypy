@@ -133,6 +133,11 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
+NO_OVERLOAD_IMPL: Final = ErrorCode(
+    "no-overload-impl",
+    "Check that overloaded functions outside stub files have an implementation",
+    "General",
+)
 
 
 # Syntax errors are often blocking.
