@@ -530,7 +530,7 @@ def add_non_ext_class_attr(builder: IRBuilder,
 def find_attr_initializers(builder: IRBuilder,
                            cdef: ClassDef,
                            skip: Optional[Callable[[str, AssignmentStmt], bool]] = None,
-) -> Tuple[Set[str], List[AssignmentStmt]]:
+                           ) -> Tuple[Set[str], List[AssignmentStmt]]:
     """Find initializers of attributes in a class body.
 
     If provided, the skip arg should be a callable which will return whether
