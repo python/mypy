@@ -14,8 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters,
-    ENUM_REMOVED_PROPS
+    TypeAliasType, TypeQuery, ParamSpecType, Parameters, ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -23,6 +22,7 @@ from mypy.nodes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.copytype import copy_type
 
 from mypy.typevars import fill_typevars
 
