@@ -146,7 +146,7 @@ f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int
 
 [case testUnionWithNoReturn]
 from typing import Union, NoReturn
-def f() -> Union[int, NoReturn]: return 1
+def f() -> Union[int, NoReturn]: ...
 reveal_type(f()) # N: Revealed type is "builtins.int"
 
 [case testUnionSimplificationGenericFunction]
