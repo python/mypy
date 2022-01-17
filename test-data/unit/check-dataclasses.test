@@ -1522,3 +1522,17 @@ PublishedMessagesVar = dict[int, 'PublishedMessages']
 class PublishedMessages:
     left: int
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesAnyInherit]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any
+B: Any
+@dataclass
+class A(B):
+    a: int
+
+A(a=1, b=2)
+A(1)
+A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
+[builtins fixtures/dataclasses.pyi]
