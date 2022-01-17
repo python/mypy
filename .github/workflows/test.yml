@@ -127,6 +127,7 @@ jobs:
         pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
     - name: Setup tox environment
       run: tox -e py --notest
+      continue-on-error: true
     - name: Test
       run: tox -e py --skip-pkg-install -- "-n 2"
       continue-on-error: true
