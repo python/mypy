@@ -436,9 +436,6 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             error: What happens on error
             raise_exception: If True, also raise TypeError on failure
-            optional: Set True when it is an optional argument
-            src_type: The type of the source C variable, help speed up
-                      casting optional types
             likely: If the cast is likely to succeed (can be False for unions)
         """
         error = error or AssignHandler()
@@ -613,7 +610,6 @@ class Emitter:
                            declare_dest=False,
                            raise_exception=False,
                            optional=False,
-                           src_type=src_type,
                            likely=False)
             self.emit_line('if ({} != NULL) goto {};'.format(dest, good_label))
         # Handle cast failure.
@@ -685,8 +681,8 @@ class Emitter:
             declare_dest: If True, also declare the variable 'dest'
             error: What happens on error
             raise_exception: If True, also raise TypeError on failure
-            optional: Set True when it is an optional argument
             borrow: If True, create a borrowed reference
+
         """
         error = error or AssignHandler()
         # TODO: Verify refcount handling.

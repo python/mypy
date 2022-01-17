@@ -704,7 +704,7 @@ def generate_arg_check(name: str,
 
     The object is named PyObject *obj_{}. This is expected to generate
     a value of name arg_{} (unboxed if necessary). For each primitive a runtime
-    check ensures the correct type (The object primitive is always valid).
+    check ensures the correct type.
     """
     error = error or AssignHandler()
     if typ.is_unboxed:
