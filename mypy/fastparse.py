@@ -1290,7 +1290,7 @@ class ASTConverter:
 
     def visit_Match(self, n: Any) -> Node:
         self.errors.report(message="Match statement is not supported",
-                  line=n.lineno, column=n.col_offset, blocker=True)
+                  line=n.lineno, column=n.col_offset, blocker=True, code=codes.SYNTAX)
         # Just return some valid node
         return PassStmt()
 
