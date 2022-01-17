@@ -1825,7 +1825,6 @@ class Other(Some):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
 
-
 [case testFinalWithDunderAssignment]
 import enum
 class Some(enum.Enum):
@@ -1835,7 +1834,6 @@ class Other(Some):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
 
-
 [case testFinalWithSunderAssignment]
 import enum
 class Some(enum.Enum):
@@ -1844,7 +1842,6 @@ class Some(enum.Enum):
 class Other(Some):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
-
 
 [case testFinalWithMethodAssignment]
 import enum
