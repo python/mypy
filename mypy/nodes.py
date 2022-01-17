@@ -12,6 +12,8 @@ from typing_extensions import DefaultDict, Final, TYPE_CHECKING, TypeAlias as _T
 from mypy_extensions import trait
 
 import mypy.strconv
+from mypy import message_registry
+from mypy.message_registry import ErrorMessage
 from mypy.util import short_type
 from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 
@@ -3408,12 +3410,12 @@ def check_arg_kinds(
             is_kw_arg = True
 
 
-def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[str, T], None],
+def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[ErrorMessage, T], None],
                     description: str = 'function definition') -> None:
     seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail('Duplicate argument "{}" in {}'.format(name, description), node)
+            fail(message_registry.DUPLICATE_ARGUMENT_IN_X.format(name, description), node)
             break
         seen_names.add(name)
 

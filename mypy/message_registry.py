@@ -113,7 +113,7 @@ TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
-DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
+DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
 DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
@@ -160,6 +160,43 @@ INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
+
+# FastParse
+TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
+    'syntax error in type comment "{}"', codes.SYNTAX
+)
+INVALID_TYPE_IGNORE: Final = ErrorMessage('Invalid "type: ignore" comment', codes.SYNTAX)
+ELLIPSIS_WITH_OTHER_TYPEARGS: Final = ErrorMessage(
+    "Ellipses cannot accompany other argument types in function type signature", codes.SYNTAX
+)
+TYPE_SIGNATURE_TOO_MANY_ARGS: Final = ErrorMessage(
+    "Type signature has too many arguments", codes.SYNTAX
+)
+TYPE_SIGNATURE_TOO_FEW_ARGS: Final = ErrorMessage(
+    "Type signature has too few arguments", codes.SYNTAX
+)
+ARG_CONSTRUCTOR_NAME_EXPECTED: Final = ErrorMessage("Expected arg constructor name", codes.SYNTAX)
+ARG_CONSTRUCTOR_TOO_MANY_ARGS: Final = ErrorMessage(
+    "Too many arguments for argument constructor", codes.SYNTAX
+)
+MULTIPLE_VALUES_FOR_NAME_KWARG: Final = ErrorMessage(
+    '"{}" gets multiple values for keyword argument "name"', codes.SYNTAX
+)
+MULTIPLE_VALUES_FOR_TYPE_KWARG: Final = ErrorMessage(
+    '"{}" gets multiple values for keyword argument "type"', codes.SYNTAX
+)
+ARG_CONSTRUCTOR_UNEXPECTED_ARG: Final = ErrorMessage(
+    'Unexpected argument "{}" for argument constructor', codes.SYNTAX
+)
+ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
+    "Expected string literal for argument name, got {}", codes.SYNTAX
+)
+EXCEPT_EXPR_NOTNAME_UNSUPPORTED: Final = ErrorMessage(
+    'Sorry, "except <expr>, <anything but a name>" is not supported', codes.SYNTAX
+)
+
+# Nodes
+DUPLICATE_ARGUMENT_IN_X: Final = ErrorMessage('Duplicate argument "{}" in {}')
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')

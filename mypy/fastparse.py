@@ -37,6 +37,7 @@ from mypy.types import (
 )
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
+from mypy.message_registry import ErrorMessage
 from mypy.errors import Errors
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
@@ -222,8 +223,8 @@ def parse_type_comment(type_comment: str,
     except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
-            err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
-            errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
+            err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
+            errors.report(line, column, err_msg.value, blocker=True, code=err_msg.code)
             return None, None
         else:
             raise
@@ -235,7 +236,8 @@ def parse_type_comment(type_comment: str,
             ignored: Optional[List[str]] = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
-                    errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
+                    err_msg = message_registry.INVALID_TYPE_IGNORE
+                    errors.report(line, column, err_msg.value, code=err_msg.code)
                 else:
                     raise SyntaxError
         else:
@@ -313,12 +315,12 @@ class ASTConverter:
         self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
 
     def fail(self,
-             msg: str,
+             msg: ErrorMessage,
              line: int,
              column: int,
              blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
+            self.errors.report(line, column, msg.value, blocker=blocker, code=msg.code)
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -501,7 +503,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+                self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, ismodule=True))
         return MypyFile(body,
                         self.imports,
@@ -574,7 +576,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
                 self.fail(err_msg, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
@@ -593,13 +595,12 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
                                            for t in arg_types):
-                self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature", lineno, n.col_offset)
+                self.fail(message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS, lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, n.col_offset,
+                self.fail(message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS, lineno, n.col_offset,
                           blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, n.col_offset,
+                self.fail(message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS, lineno, n.col_offset,
                           blocker=False)
             else:
                 func_type = CallableType([a if a is not None else
@@ -727,7 +728,7 @@ class ASTConverter:
 
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
-    def fail_arg(self, msg: str, arg: ast3.arg) -> None:
+    def fail_arg(self, msg: ErrorMessage, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)
 
     # ClassDef(identifier name,
@@ -1288,7 +1289,7 @@ class ASTConverter:
         return self.visit(cast(Any, n).value)
 
     def visit_Match(self, n: Any) -> Node:
-        self.fail("Match statement is not supported",
+        self.errors.report(message="Match statement is not supported",
                   line=n.lineno, column=n.col_offset, blocker=True)
         # Just return some valid node
         return PassStmt()
@@ -1365,9 +1366,9 @@ class TypeConverter:
             return None
         return self.node_stack[-2]
 
-    def fail(self, msg: str, line: int, column: int) -> None:
+    def fail(self, msg: ErrorMessage, line: int, column: int) -> None:
         if self.errors:
-            self.errors.report(line, column, msg, blocker=True, code=codes.SYNTAX)
+            self.errors.report(line, column, msg.value, blocker=True, code=msg.code)
 
     def note(self, msg: str, line: int, column: int) -> None:
         if self.errors:
@@ -1398,7 +1399,7 @@ class TypeConverter:
                 note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
             return self.invalid_type(e, note=note)
         if not constructor:
-            self.fail("Expected arg constructor name", e.lineno, e.col_offset)
+            self.fail(message_registry.ARG_CONSTRUCTOR_NAME_EXPECTED, e.lineno, e.col_offset)
 
         name: Optional[str] = None
         default_type = AnyType(TypeOfAny.special_form)
@@ -1411,25 +1412,25 @@ class TypeConverter:
             elif i == 1:
                 name = self._extract_argument_name(arg)
             else:
-                self.fail("Too many arguments for argument constructor",
+                self.fail(message_registry.ARG_CONSTRUCTOR_TOO_MANY_ARGS,
                           f.lineno, f.col_offset)
         for k in e.keywords:
             value = k.value
             if k.arg == "name":
                 if name is not None:
-                    self.fail('"{}" gets multiple values for keyword argument "name"'.format(
+                    self.fail(message_registry.MULTIPLE_VALUES_FOR_NAME_KWARG.format(
                         constructor), f.lineno, f.col_offset)
                 name = self._extract_argument_name(value)
             elif k.arg == "type":
                 if typ is not default_type:
-                    self.fail('"{}" gets multiple values for keyword argument "type"'.format(
+                    self.fail(message_registry.MULTIPLE_VALUES_FOR_TYPE_KWARG.format(
                         constructor), f.lineno, f.col_offset)
                 converted = self.visit(value)
                 assert converted is not None
                 typ = converted
             else:
                 self.fail(
-                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    message_registry.ARG_CONSTRUCTOR_UNEXPECTED_ARG.format(k.arg),
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
@@ -1441,7 +1442,7 @@ class TypeConverter:
             return n.s.strip()
         elif isinstance(n, NameConstant) and str(n.value) == 'None':
             return None
-        self.fail('Expected string literal for argument name, got {}'.format(
+        self.fail(message_registry.ARG_NAME_EXPECTED_STRING_LITERAL.format(
             type(n).__name__), self.line, 0)
         return None
 
