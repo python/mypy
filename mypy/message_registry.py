@@ -21,7 +21,9 @@ class ErrorMessage(NamedTuple):
 
 
 # Invalid types
-INVALID_TYPE_RAW_ENUM_VALUE: Final = "Invalid type: try using Literal[{}.{}] instead?"
+INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
+    "Invalid type: try using Literal[{}.{}] instead?"
+)
 
 # Type checker error message constants
 NO_RETURN_VALUE_EXPECTED: Final = ErrorMessage("No return value expected", codes.RETURN_VALUE)
@@ -146,9 +148,11 @@ GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
     "Access to generic instance variables via class is ambiguous"
 )
 GENERIC_CLASS_VAR_ACCESS: Final = "Access to generic class variables is ambiguous"
-BARE_GENERIC: Final = "Missing type parameters for generic type {}"
-IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
-    'Implicit generic "Any". Use "{}" and specify generic parameters'
+BARE_GENERIC: Final = ErrorMessage(
+    "Missing type parameters for generic type {}", codes.TYPE_ARG
+)
+IMPLICIT_GENERIC_ANY_BUILTIN: Final = ErrorMessage(
+    'Implicit generic "Any". Use "{}" and specify generic parameters', codes.TYPE_ARG
 )
 
 # TypeVar
@@ -197,6 +201,108 @@ EXCEPT_EXPR_NOTNAME_UNSUPPORTED: Final = ErrorMessage(
 
 # Nodes
 DUPLICATE_ARGUMENT_IN_X: Final = ErrorMessage('Duplicate argument "{}" in {}')
+POS_ARGS_BEFORE_DEFAULT_NAMED_OR_VARARGS: Final = ErrorMessage(
+    "Required positional args may not appear after default, named or var args"
+)
+DEFAULT_ARGS_BEFORE_NAMED_OR_VARARGS: Final = ErrorMessage(
+    "Positional default args may not appear after named or var args"
+)
+VAR_ARGS_BEFORE_NAMED_OR_VARARGS: Final = ErrorMessage(
+    "Var args may not appear after named or var args"
+)
+KWARGS_MUST_BE_LAST: Final = ErrorMessage("A **kwargs argument must be the last argument")
+MULTIPLE_KWARGS: Final = ErrorMessage("You may only have one **kwargs argument")
+
+# Type Analysis
+TYPEANAL_INTERNAL_ERROR: Final = ErrorMessage("Internal error (node is None, kind={})")
+NOT_SUBSCRIPTABLE: Final = ErrorMessage('"{}" is not subscriptable')
+NOT_SUBSCRIPTABLE_REPLACEMENT: Final = ErrorMessage('"{}" is not subscriptable, use "{}" instead')
+INVALID_LOCATION_FOR_PARAMSPEC: Final = ErrorMessage(
+    'Invalid location for ParamSpec "{}"'
+)
+UNBOUND_PARAMSPEC: Final = ErrorMessage('ParamSpec "{}" is unbound')
+PARAMSPEC_USED_WITH_ARGS: Final = ErrorMessage('ParamSpec "{}" used with arguments')
+NO_BOUND_TYPEVAR_GENERIC_ALIAS: Final = ErrorMessage(
+    'Can\'t use bound type variable "{}" to define generic alias'
+)
+TYPEVAR_USED_WITH_ARGS: Final = ErrorMessage('Type variable "{}" used with arguments')
+ONLY_OUTERMOST_FINAL: Final = ErrorMessage(
+    "Final can be only used as an outermost qualifier in a variable annotation"
+)
+BUILTIN_TUPLE_NOT_DEFINED: Final = ErrorMessage('Name "tuple" is not defined')
+SINGLE_TYPE_ARG: Final = ErrorMessage("{} must have exactly one type argument")
+INVALID_NESTED_CLASSVAR: Final = ErrorMessage("Invalid type: ClassVar nested inside other type")
+CLASSVAR_ATMOST_ONE_TYPE_ARG: Final = ErrorMessage(
+    "ClassVar[...] must have at most one type argument"
+)
+ANNOTATED_SINGLE_TYPE_ARG: Final = ErrorMessage(
+    "Annotated[...] must have exactly one type argument and at least one annotation"
+)
+REQUIRED_OUTSIDE_TYPEDDICT: Final = ErrorMessage(
+    "Required[] can be only used in a TypedDict definition"
+)
+NOTREQUIRED_OUTSIDE_TYPEDDICT: Final = ErrorMessage(
+    "NotRequired[] can be only used in a TypedDict definition"
+)
+REQUIRED_SINGLE_TYPE_ARG: Final = ErrorMessage("Required[] must have exactly one type argument")
+NOTREQUIRED_SINGLE_TYPE_ARG: Final = ErrorMessage(
+    "NotRequired[] must have exactly one type argument"
+)
+GENERIC_TUPLE_UNSUPPORTED: Final = ErrorMessage("Generic tuple types not supported")
+GENERIC_TYPED_DICT_UNSUPPORTED: Final = ErrorMessage("Generic TypedDict types not supported")
+VARIABLE_NOT_VALID_TYPE: Final = ErrorMessage(
+    'Variable "{}" is not valid as a type', codes.VALID_TYPE
+)
+FUNCTION_NOT_VALID_TYPE: Final = ErrorMessage(
+    'Function "{}" is not valid as a type', codes.VALID_TYPE
+)
+MODULE_NOT_VALID_TYPE: Final = ErrorMessage('Module "{}" is not valid as a type', codes.VALID_TYPE)
+UNBOUND_TYPEVAR: Final = ErrorMessage('Type variable "{}" is unbound', codes.VALID_TYPE)
+CANNOT_INTERPRET_AS_TYPE: Final = ErrorMessage(
+    'Cannot interpret reference "{}" as a type', codes.VALID_TYPE
+)
+INVALID_TYPE: Final = ErrorMessage("Invalid type")
+BRACKETED_EXPR_INVALID_TYPE: Final = ErrorMessage(
+    'Bracketed expression "[...]" is not valid as a type'
+)
+ANNOTATION_SYNTAX_ERROR: Final = ErrorMessage("Syntax error in type annotation", codes.SYNTAX)
+TUPLE_SINGLE_STAR_TYPE: Final = ErrorMessage("At most one star type allowed in a tuple")
+INVALID_TYPE_USE_LITERAL: Final = ErrorMessage(
+    "Invalid type: try using Literal[{}] instead?", codes.VALID_TYPE
+)
+INVALID_LITERAL_TYPE: Final = ErrorMessage(
+    "Invalid type: {} literals cannot be used as a type", codes.VALID_TYPE
+)
+INVALID_ANNOTATION: Final = ErrorMessage("Invalid type comment or annotation", codes.VALID_TYPE)
+PIPE_UNION_REQUIRES_PY310: Final = ErrorMessage("X | Y syntax for unions requires Python 3.10")
+UNEXPECTED_ELLIPSIS: Final = ErrorMessage('Unexpected "..."')
+CALLABLE_INVALID_FIRST_ARG: Final = ErrorMessage(
+    'The first argument to Callable must be a list of types or "..."'
+)
+CALLABLE_INVALID_ARGS: Final = ErrorMessage(
+    'Please use "Callable[[<parameters>], <return type>]" or "Callable"'
+)
+INVALID_ARG_CONSTRUCTOR: Final = ErrorMessage('Invalid argument constructor "{}"')
+ARGS_SHOULD_NOT_HAVE_NAMES: Final = ErrorMessage("{} arguments should not have names")
+LITERAL_AT_LEAST_ONE_ARG: Final = ErrorMessage("Literal[...] must have at least one parameter")
+LITERAL_INDEX_CANNOT_BE_ANY: Final = ErrorMessage(
+    'Parameter {} of Literal[...] cannot be of type "Any"'
+)
+LITERAL_INDEX_INVALID_TYPE: Final = ErrorMessage(
+    'Parameter {} of Literal[...] cannot be of type "{}"'
+)
+LITERAL_INVALID_EXPRESSION: Final = ErrorMessage(
+    "Invalid type: Literal[...] cannot contain arbitrary expressions"
+)
+LITERAL_INVALID_PARAMETER: Final = ErrorMessage("Parameter {} of Literal[...] is invalid")
+TYPEVAR_BOUND_BY_OUTER_CLASS: Final = ErrorMessage('Type variable "{}" is bound by an outer class')
+TYPE_ARG_COUNT_MISMATCH: Final = ErrorMessage('"{}" expects {}, but {} given', codes.TYPE_ARG)
+TYPE_ALIAS_ARG_COUNT_MISMATCH: Final = ErrorMessage(
+    "Bad number of arguments for type alias, expected: {}, given: {}"
+)
+INVALID_TYPE_ALIAS: Final = ErrorMessage("Invalid type alias: expression is not a valid type")
+CANNOT_RESOLVE_TYPE: Final = ErrorMessage('Cannot resolve {} "{}" (possible cyclic definition)')
+UNION_SYNTAX_REQUIRES_PY310: Final = ErrorMessage("X | Y syntax for unions requires Python 3.10")
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')

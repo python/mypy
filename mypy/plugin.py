@@ -152,7 +152,7 @@ class TypeAnalyzerPluginInterface:
     options: Options
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 

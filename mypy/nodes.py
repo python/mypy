@@ -3376,7 +3376,7 @@ deserialize_map: Final = {
 
 
 def check_arg_kinds(
-        arg_kinds: List[ArgKind], nodes: List[T], fail: Callable[[str, T], None]) -> None:
+        arg_kinds: List[ArgKind], nodes: List[T], fail: Callable[[ErrorMessage, T], None]) -> None:
     is_var_arg = False
     is_kw_arg = False
     seen_named = False
@@ -3384,28 +3384,27 @@ def check_arg_kinds(
     for kind, node in zip(arg_kinds, nodes):
         if kind == ARG_POS:
             if is_var_arg or is_kw_arg or seen_named or seen_opt:
-                fail("Required positional args may not appear "
-                     "after default, named or var args",
+                fail(message_registry.POS_ARGS_BEFORE_DEFAULT_NAMED_OR_VARARGS,
                      node)
                 break
         elif kind == ARG_OPT:
             if is_var_arg or is_kw_arg or seen_named:
-                fail("Positional default args may not appear after named or var args", node)
+                fail(message_registry.DEFAULT_ARGS_BEFORE_NAMED_OR_VARARGS, node)
                 break
             seen_opt = True
         elif kind == ARG_STAR:
             if is_var_arg or is_kw_arg or seen_named:
-                fail("Var args may not appear after named or var args", node)
+                fail(message_registry.VAR_ARGS_BEFORE_NAMED_OR_VARARGS, node)
                 break
             is_var_arg = True
         elif kind == ARG_NAMED or kind == ARG_NAMED_OPT:
             seen_named = True
             if is_kw_arg:
-                fail("A **kwargs argument must be the last argument", node)
+                fail(message_registry.KWARGS_MUST_BE_LAST, node)
                 break
         elif kind == ARG_STAR2:
             if is_kw_arg:
-                fail("You may only have one **kwargs argument", node)
+                fail(message_registry.MULTIPLE_KWARGS, node)
                 break
             is_kw_arg = True
 
