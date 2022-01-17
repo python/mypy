@@ -3409,8 +3409,9 @@ def check_arg_kinds(
             is_kw_arg = True
 
 
-def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[ErrorMessage, T], None],
-                    description: str = 'function definition') -> None:
+def check_arg_names(
+        names: Sequence[Optional[str]], nodes: List[T], fail: Callable[[ErrorMessage, T], None],
+        description: str = 'function definition') -> None:
     seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:

@@ -49,7 +49,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
     TypeConverter, parse_type_comment, parse_type_ignore_tag,
-    TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
+    TYPE_IGNORE_PATTERN
 )
 from mypy.options import Options
 from mypy.util import bytes_to_human_readable_repr
