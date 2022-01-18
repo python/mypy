@@ -5,7 +5,9 @@ from itertools import chain
 from contextlib import contextmanager
 from mypy.backports import OrderedDict
 
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence
+from typing import (
+    Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence, Union
+)
 from typing_extensions import Final
 from mypy_extensions import DefaultNamedArg
 
@@ -925,7 +927,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
-    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
+    def fail(self, msg: Union[str, ErrorMessage], ctx: Context) -> None:
         self.fail_func(msg, ctx)
 
     def note(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
