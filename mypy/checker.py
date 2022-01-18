@@ -26,7 +26,7 @@ from mypy.nodes import (
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
     ARG_POS, ARG_STAR, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node, ARG_NAMED, MatchStmt)
+    is_final_node, MatchStmt)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
