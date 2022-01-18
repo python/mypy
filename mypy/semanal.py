@@ -92,6 +92,7 @@ from mypy.messages import (
     best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS
 )
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
     FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
@@ -693,7 +694,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if func.name in ['__init_subclass__', '__class_getitem__']:
                 func.is_class = True
             if not func.arguments:
-                self.fail('Method must have at least one argument', func)
+                self.fail(message_registry.METHOD_ATLEAST_ONE_ARG, func)
             elif isinstance(functype, CallableType):
                 self_type = get_proper_type(functype.arg_types[0])
                 if isinstance(self_type, AnyType):
@@ -858,11 +859,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Some of them were overloads, but not all.
             for idx in non_overload_indexes:
                 if self.is_stub_file:
-                    self.fail("An implementation for an overloaded function "
-                              "is not allowed in a stub file", defn.items[idx])
+                    self.fail(message_registry.OVERLOAD_IMPLEMENTATION_IN_STUB, defn.items[idx])
                 else:
-                    self.fail("The implementation for an overloaded function "
-                              "must come last", defn.items[idx])
+                    self.fail(message_registry.OVERLOAD_IMPLEMENTATION_LAST, defn.items[idx])
         else:
             for idx in non_overload_indexes[1:]:
                 self.name_already_defined(defn.name, defn.items[idx], defn.items[0])
@@ -883,9 +882,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     else:
                         item.is_abstract = True
             else:
-                self.fail(
-                    "An overloaded function outside a stub file must have an implementation",
-                    defn, code=codes.NO_OVERLOAD_IMPL)
+                self.fail(message_registry.OVERLOAD_IMPLEMENTATION_REQUIRED, defn)
 
     def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
         """Detect the @final status of an overloaded function (and perform checks)."""
@@ -897,12 +894,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Only show the error once per overload
             bad_final = next(ov for ov in defn.items if ov.is_final)
             if not self.is_stub_file:
-                self.fail("@final should be applied only to overload implementation",
-                          bad_final)
+                self.fail(message_registry.FINAL_DEC_ON_OVERLOAD_ONLY, bad_final)
             elif any(item.is_final for item in defn.items[1:]):
                 bad_final = next(ov for ov in defn.items[1:] if ov.is_final)
-                self.fail("In a stub file @final must be applied only to the first overload",
-                          bad_final)
+                self.fail(message_registry.FINAL_DEC_STUB_FIRST_OVERLOAD, bad_final)
         if defn.impl is not None and defn.impl.is_final:
             defn.is_final = True
 
@@ -957,10 +952,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                             # Get abstractness from the original definition.
                             item.func.is_abstract = first_item.func.is_abstract
                 else:
-                    self.fail("Decorated property not supported", item)
+                    self.fail(message_registry.DECORATED_PROPERTY_UNSUPPORTED, item)
                 item.func.accept(self)
             else:
-                self.fail('Unexpected definition for property "{}"'.format(first_item.func.name),
+                self.fail(message_registry.UNEXPECTED_PROPERTY_DEFN.format(first_item.func.name),
                           item)
                 deleted_items.append(i + 1)
         for i in reversed(deleted_items):
@@ -1018,13 +1013,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         sig = fdef.type
         assert isinstance(sig, CallableType)
         if len(sig.arg_types) < len(fdef.arguments):
-            self.fail('Type signature has too few arguments', fdef)
+            self.fail(message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS, fdef)
             # Add dummy Any arguments to prevent crashes later.
             num_extra_anys = len(fdef.arguments) - len(sig.arg_types)
             extra_anys = [AnyType(TypeOfAny.from_error)] * num_extra_anys
             sig.arg_types.extend(extra_anys)
         elif len(sig.arg_types) > len(fdef.arguments):
-            self.fail('Type signature has too many arguments', fdef, blocker=True)
+            self.fail(message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS, fdef, blocker=True)
 
     def visit_decorator(self, dec: Decorator) -> None:
         self.statement = dec
@@ -1070,7 +1065,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method('property', dec)
                 if len(dec.func.arguments) > 1:
-                    self.fail('Too many arguments', dec.func)
+                    self.fail(message_registry.TOO_MANY_ARGS, dec.func)
             elif refers_to_fullname(d, 'typing.no_type_check'):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
@@ -1084,7 +1079,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         dec.var.is_final = True
                     removed.append(i)
                 else:
-                    self.fail("@final cannot be used with non-method functions", d)
+                    self.fail(message_registry.FINAL_DEC_WITH_METHODS_ONLY, d)
         for i in reversed(removed):
             del dec.decorators[i]
         if (not dec.is_overload or dec.var.is_property) and self.type:
@@ -1093,12 +1088,12 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
-            self.fail('Decorated property not supported', dec)
+            self.fail(message_registry.DECORATED_PROPERTY_UNSUPPORTED, dec)
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
-            self.fail('"%s" used with a non-method' % decorator, context)
+            self.fail(message_registry.DECORATOR_USED_WITH_NON_METHOD.format(decorator), context)
 
     #
     # Classes
@@ -1161,7 +1156,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 decorator.accept(self)
                 if isinstance(decorator, RefExpr):
                     if decorator.fullname in FINAL_DECORATOR_NAMES:
-                        self.fail("@final cannot be used with TypedDict", decorator)
+                        self.fail(message_registry.CANNOT_USE_FINAL_DEC_WITH_TYPEDDICT, decorator)
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
@@ -1285,8 +1280,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if defn.info.is_protocol:
                     defn.info.runtime_protocol = True
                 else:
-                    self.fail('@runtime_checkable can only be used with protocol classes',
-                              defn)
+                    self.fail(message_registry.RUNTIME_CHECKABLE_WITH_NON_PROPERTY, defn)
             elif decorator.fullname in FINAL_DECORATOR_NAMES:
                 defn.info.is_final = True
 
@@ -1324,7 +1318,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             result = self.analyze_class_typevar_declaration(base)
             if result is not None:
                 if declared_tvars:
-                    self.fail('Only single Generic[...] or Protocol[...] can be in bases', context)
+                    self.fail(message_registry.BASES_MUST_HAVE_SINGLE_GENERIC_OR_PROTOCOL, context)
                 removed.append(i)
                 tvars = result[0]
                 is_protocol |= result[1]
@@ -1340,11 +1334,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         all_tvars = self.get_all_bases_tvars(base_type_exprs, removed)
         if declared_tvars:
             if len(remove_dups(declared_tvars)) < len(declared_tvars):
-                self.fail("Duplicate type variables in Generic[...] or Protocol[...]", context)
+                self.fail(message_registry.DUPLICATE_TYPEVARS_IN_GENERIC_OR_PROTOCOL, context)
             declared_tvars = remove_dups(declared_tvars)
             if not set(all_tvars).issubset(set(declared_tvars)):
-                self.fail("If Generic[...] or Protocol[...] is present"
-                          " it should list all type variables", context)
+                self.fail(message_registry.GENERIC_PROTOCOL_NOT_ALL_TYPEVARS, context)
                 # In case of error, Generic tvars will go first
                 declared_tvars = remove_dups(declared_tvars + all_tvars)
         else:
@@ -1389,8 +1382,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if tvar:
                     tvars.append(tvar)
                 elif not self.found_incomplete_ref(tag):
-                    self.fail('Free type variable expected in %s[...]' %
-                              sym.node.name, base)
+                    self.fail(message_registry.FREE_TYPEVAR_EXPECTED.format(sym.node.name), base)
             return tvars, is_proto
         return None
 
@@ -1520,12 +1512,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             except TypeTranslationError:
                 name = self.get_name_repr_of_expr(base_expr)
                 if isinstance(base_expr, CallExpr):
-                    msg = 'Unsupported dynamic base class'
+                    msg = message_registry.UNSUPPORTED_DYNAMIC_BASE_CLASS
                 else:
-                    msg = 'Invalid base class'
+                    msg = message_registry.INVALID_BASE_CLASS
+                extra = ''
                 if name:
-                    msg += ' "{}"'.format(name)
-                self.fail(msg, base_expr)
+                    extra += ' "{}"'.format(name)
+
+                self.fail(msg.format(extra), base_expr)
                 is_error = True
                 continue
             if base is None:
@@ -1553,29 +1547,24 @@ class SemanticAnalyzer(NodeVisitor[None],
                 base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
-                    self.fail('Cannot subclass "NewType"', defn)
-                if self.enum_has_final_values(base):
-                    # This means that are trying to subclass a non-default
-                    # Enum class, with defined members. This is not possible.
-                    # In runtime, it will raise. We need to mark this type as final.
-                    # However, methods can be defined on a type: only values can't.
-                    # We also don't count values with annotations only.
-                    base.type.is_final = True
+                    self.fail(message_registry.CANNOT_SUBCLASS_NEWTYPE, defn)
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
                     if isinstance(base_expr, (NameExpr, MemberExpr)):
-                        msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
+                        msg = message_registry.CANNOT_SUBCLASS_ANY_NAMED.format(base_expr.name)
                     else:
-                        msg = 'Class cannot subclass value of type "Any"'
+                        msg = message_registry.CANNOT_SUBCLASS_ANY
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
             else:
-                msg = 'Invalid base class'
+                msg = message_registry.INVALID_BASE_CLASS
                 name = self.get_name_repr_of_expr(base_expr)
+                extra = ''
                 if name:
-                    msg += ' "{}"'.format(name)
-                self.fail(msg, base_expr)
+                    extra += ' "{}"'.format(name)
+
+                self.fail(msg.format(extra), base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
                 if isinstance(base_expr, (NameExpr, MemberExpr)):
@@ -1626,7 +1615,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # There may be an existing valid tuple type from previous semanal iterations.
         # Use equality to check if it is the case.
         if info.tuple_type and info.tuple_type != base:
-            self.fail("Class has two incompatible bases derived from tuple", defn)
+            self.fail(message_registry.INCOMPATIBLE_BASES, defn)
             defn.has_incompatible_baseclass = True
         info.tuple_type = base
         if isinstance(base_expr, CallExpr):
@@ -1657,8 +1646,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         try:
             calculate_mro(defn.info, obj_type)
         except MroError:
-            self.fail('Cannot determine consistent method resolution '
-                      'order (MRO) for "%s"' % defn.name, defn)
+            self.fail(message_registry.CANNOT_DETERMINE_MRO.format(defn.name), defn)
             self.set_dummy_mro(defn.info)
         # Allow plugins to alter the MRO to handle the fact that `def mro()`
         # on metaclasses permits MRO rewriting.
@@ -1682,7 +1670,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.options.python_version[0] == 2:
             for body_node in defn.defs.body:
                 if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
+                    self.fail(message_registry.INNER_METACLASS_UNSUPPORTED, body_node)
                     break
                 elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
                     lvalue = body_node.lvalues[0]
@@ -1718,7 +1706,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if len(metas) == 0:
             return
         if len(metas) > 1:
-            self.fail("Multiple metaclass definitions", defn)
+            self.fail(message_registry.MULTIPLE_METACLASSES, defn)
             return
         defn.metaclass = metas.pop()
 
@@ -1728,15 +1716,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         for base in info.bases:
             baseinfo = base.type
             if self.is_base_class(info, baseinfo):
-                self.fail('Cycle in inheritance hierarchy', defn)
+                self.fail(message_registry.INHERITANCE_CYCLE, defn)
                 cycle = True
             if baseinfo.fullname == 'builtins.bool':
-                self.fail('"%s" is not a valid base class' %
-                          baseinfo.name, defn, blocker=True)
+                self.fail(message_registry.NAMED_INVALID_BASE_CLASS.format(baseinfo.name),
+                          defn,
+                          blocker=True)
                 return False
         dup = find_duplicate(info.direct_base_classes())
         if dup:
-            self.fail('Duplicate base class "%s"' % dup.name, defn, blocker=True)
+            self.fail(message_registry.DUPLICATE_BASE_CLASS.format(dup.name), defn, blocker=True)
             return False
         return not cycle
 
@@ -1763,7 +1752,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
             if metaclass_name is None:
-                self.fail('Dynamic metaclass not supported for "%s"' % defn.name, defn.metaclass)
+                self.fail(message_registry.UNSUPPORTED_NAMED_DYNAMIC_BASE_CLASS.format(defn.name),
+                          defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
@@ -1780,10 +1770,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail('Invalid metaclass "%s"' % metaclass_name, defn.metaclass)
+                self.fail(message_registry.INVALID_METACLASS.format(metaclass_name),
+                          defn.metaclass)
                 return
             if not sym.node.is_metaclass():
-                self.fail('Metaclasses not inheriting from "type" are not supported',
+                self.fail(message_registry.METACLASS_MUST_INHERIT_TYPE,
                           defn.metaclass)
                 return
             inst = fill_typevars(sym.node)
@@ -1802,12 +1793,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
             if defn.metaclass is not None:
-                self.fail('Inconsistent metaclass structure for "%s"' % defn.name, defn)
+                self.fail(message_registry.INCONSISTENT_METACLAS_STRUCTURE.format(defn.name), defn)
         else:
             if defn.info.metaclass_type.type.has_base('enum.EnumMeta'):
                 defn.info.is_enum = True
                 if defn.type_vars:
-                    self.fail("Enum class cannot be generic", defn)
+                    self.fail(message_registry.NO_GENERIC_ENUM, defn)
 
     #
     # Imports
@@ -1956,20 +1947,19 @@ class SemanticAnalyzer(NodeVisitor[None],
                 imported_id, context, module_public=module_public, module_hidden=module_hidden
             )
             return
-        message = 'Module "{}" has no attribute "{}"'.format(import_id, source_id)
+        message = message_registry.MODULE_MISSING_ATTIRBUTE
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
             if not self.options.implicit_reexport and source_id in module.names.keys():
-                message = ('Module "{}" does not explicitly export attribute "{}"'
-                           '; implicit reexport disabled'.format(import_id, source_id))
+                message = (message_registry.NO_IMPLICIT_REEXPORT.format(import_id, source_id))
             else:
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives)[:3]
                 if matches:
                     suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
-                    message += "{}".format(suggestion)
-        self.fail(message, context, code=codes.ATTR_DEFINED)
+                message = message.format(import_id, source_id, suggestion)
+        self.fail(message, context)
         self.add_unknown_imported_symbol(
             imported_id, context, target_name=None, module_public=module_public,
             module_hidden=not module_public
@@ -2015,7 +2005,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         import_id, ok = correct_relative_import(self.cur_mod_id, node.relative, node.id,
                                                 self.cur_mod_node.is_package_init_file())
         if not ok:
-            self.fail("Relative import climbs too many namespaces", node)
+            self.fail(message_registry.INCORRECT_RELATIVE_IMPORT, node)
         return import_id
 
     def visit_import_all(self, i: ImportAll) -> None:
@@ -2231,7 +2221,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not isinstance(rv, RefExpr):
             return False
         if isinstance(rv.node, TypeVarExpr):
-            self.fail('Type variable "{}" is invalid as target for type alias'.format(
+            self.fail(message_registry.INVALID_TYPE_ALIAS_TARGET.format(
                 rv.fullname), rv)
             return False
 
@@ -2318,11 +2308,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         if internal_name is None:
             return False
         if isinstance(lvalue, MemberExpr):
-            self.fail("NamedTuple type as an attribute is not supported", lvalue)
+            self.fail(message_registry.NAMEDTUPLE_ATTRIBUTE_UNSUPPORTED, lvalue)
             return False
         if internal_name != name:
-            self.fail('First argument to namedtuple() should be "{}", not "{}"'.format(
-                name, internal_name), s.rvalue, code=codes.NAME_MATCH)
+            self.fail(message_registry.NAMEDTUPLE_INCORRECT_FIRST_ARG.format(
+                name, internal_name), s.rvalue)
             return True
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
@@ -2342,7 +2332,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not is_typed_dict:
             return False
         if isinstance(lvalue, MemberExpr):
-            self.fail("TypedDict type as attribute is not supported", lvalue)
+            self.fail(message_registry.TYPEDDICT_ATTRIBUTE_UNSUPPORTED, lvalue)
             return False
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
@@ -2416,22 +2406,22 @@ class SemanticAnalyzer(NodeVisitor[None],
             return False
         assert isinstance(s.unanalyzed_type, UnboundType)
         if len(s.unanalyzed_type.args) > 1:
-            self.fail("Final[...] takes at most one type argument", s.unanalyzed_type)
+            self.fail(message_registry.FINAL_ATMOST_ONE_ARG, s.unanalyzed_type)
         invalid_bare_final = False
         if not s.unanalyzed_type.args:
             s.type = None
             if isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs:
                 invalid_bare_final = True
-                self.fail("Type in Final[...] can only be omitted if there is an initializer", s)
+                self.fail(message_registry.FINAL_INITIALIZER_REQUIRED, s)
         else:
             s.type = s.unanalyzed_type.args[0]
 
         if s.type is not None and self.is_classvar(s.type):
-            self.fail("Variable should not be annotated with both ClassVar and Final", s)
+            self.fail(message_registry.FINAL_CLASSVAR_DISALLOWED, s)
             return False
 
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], RefExpr):
-            self.fail("Invalid final declaration", s)
+            self.fail(message_registry.INVALID_FINAL, s)
             return False
         lval = s.lvalues[0]
         assert isinstance(lval, RefExpr)
@@ -2443,7 +2433,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             lval.is_inferred_def = s.type is None
 
         if self.loop_depth > 0:
-            self.fail("Cannot use Final inside a loop", s)
+            self.fail(message_registry.FINAL_IN_LOOP_DISALLOWED, s)
         if self.type and self.type.is_protocol:
             self.msg.protocol_members_cant_be_final(s)
         if (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs and
@@ -2463,13 +2453,13 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert isinstance(lval, RefExpr)
         if isinstance(lval, MemberExpr):
             if not self.is_self_member_ref(lval):
-                self.fail("Final can be only applied to a name or an attribute on self", s)
+                self.fail(message_registry.FINAL_ONLY_ON_SELF_MEMBER, s)
                 s.is_final_def = False
                 return
             else:
                 assert self.function_stack
                 if self.function_stack[-1].name != '__init__':
-                    self.fail("Can only declare a final attribute in class body or __init__", s)
+                    self.fail(message_registry.FINAL_ONLY_IN_CLASS_BODY_OR_INIT, s)
                     s.is_final_def = False
                     return
 
@@ -2555,7 +2545,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         else:
             if (self.type and self.type.is_protocol and
                     self.is_annotated_protocol_member(s) and not self.is_func_scope()):
-                self.fail('All protocol members must have explicitly declared types', s)
+                self.fail(message_registry.PROTOCOL_MEMBERS_MUST_BE_TYPED, s)
             # Set the type if the rvalue is a simple literal (even if the above error occurred).
             if len(s.lvalues) == 1 and isinstance(s.lvalues[0], RefExpr):
                 if s.lvalues[0].is_inferred_def:
@@ -2694,8 +2684,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # TODO: find a more robust way to track the order of definitions.
             # Note: if is_alias_def=True, this is just a node from previous iteration.
             if isinstance(existing.node, TypeAlias) and not s.is_alias_def:
-                self.fail('Cannot assign multiple types to name "{}"'
-                          ' without an explicit "Type[...]" annotation'
+                self.fail(message_registry.MULTIPLE_TYPES_WITHOUT_EXPLICIT_TYPE
                           .format(lvalue.name), lvalue)
             return False
 
@@ -2832,11 +2821,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif isinstance(lval, MemberExpr):
             self.analyze_member_lvalue(lval, explicit_type, is_final)
             if explicit_type and not self.is_self_member_ref(lval):
-                self.fail('Type cannot be declared in assignment to non-self '
-                          'attribute', lval)
+                self.fail(message_registry.TYPE_DECLARATION_IN_ASSIGNMENT, lval)
         elif isinstance(lval, IndexExpr):
             if explicit_type:
-                self.fail('Unexpected type declaration', lval)
+                self.fail(message_registry.UNEXPECTED_TYPE_DECLARATION, lval)
             lval.accept(self)
         elif isinstance(lval, TupleExpr):
             self.analyze_tuple_or_list_lvalue(lval, explicit_type)
@@ -2844,9 +2832,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             if nested:
                 self.analyze_lvalue(lval.expr, nested, explicit_type)
             else:
-                self.fail('Starred assignment target must be in a list or tuple', lval)
+                self.fail(message_registry.STAR_ASSIGNMENT_TARGET_LIST_OR_TUPLE, lval)
         else:
-            self.fail('Invalid assignment target', lval)
+            self.fail(message_registry.INVALID_ASSIGNMENT_TARGET, lval)
 
     def analyze_name_lvalue(self,
                             lvalue: NameExpr,
@@ -2865,7 +2853,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         name = lvalue.name
         if self.is_alias_for_final_name(name):
             if is_final:
-                self.fail("Cannot redefine an existing name as final", lvalue)
+                self.fail(message_registry.REDEFINE_AS_FINAL, lvalue)
             else:
                 self.msg.cant_assign_to_final(name, self.type is not None, lvalue)
 
@@ -2877,9 +2865,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
             # Special case: we need to be sure that `Enum` keys are unique.
             if existing is not None and not isinstance(existing.node, PlaceholderNode):
-                self.fail('Attempted to reuse member name "{}" in Enum definition "{}"'.format(
-                    name, self.type.name,
-                ), lvalue)
+                self.fail(message_registry.ENUM_REUSED_MEMBER_IN_DEFN.format(name, self.type.name),
+                          lvalue)
 
         if (not existing or isinstance(existing.node, PlaceholderNode)) and not outer:
             # Define new variable.
@@ -2901,7 +2888,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         typ = AnyType(TypeOfAny.special_form)
                         self.store_declared_types(lvalue, typ)
             if is_final and self.is_final_redefinition(kind, name):
-                self.fail("Cannot redefine an existing name as final", lvalue)
+                self.fail(message_registry.REDEFINE_AS_FINAL, lvalue)
         else:
             self.make_name_lvalue_point_to_existing_def(lvalue, explicit_type, is_final)
 
@@ -2967,7 +2954,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         if is_final:
             # Redefining an existing name with final is always an error.
-            self.fail("Cannot redefine an existing name as final", lval)
+            self.fail(message_registry.REDEFINE_AS_FINAL, lval)
         original_def = self.lookup(lval.name, lval, suppress_errors=True)
         if original_def is None and self.type and not self.is_func_scope():
             # Workaround to allow "x, x = ..." in class body.
@@ -2990,7 +2977,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         star_exprs = [item for item in items if isinstance(item, StarExpr)]
 
         if len(star_exprs) > 1:
-            self.fail('Two starred expressions in assignment', lval)
+            self.fail(message_registry.TWO_STAR_EXPRESSIONS_IN_ASSIGNMENT, lval)
         else:
             if len(star_exprs) == 1:
                 star_exprs[0].valid = True
@@ -3022,7 +3009,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             node = self.type.get(lval.name)
             if cur_node and is_final:
                 # Overrides will be checked in type checker.
-                self.fail("Cannot redefine an existing name as final", lval)
+                self.fail(message_registry.REDEFINE_AS_FINAL, lval)
             # On first encounter with this definition, if this attribute was defined before
             # with an inferred type and it's marked with an explicit type now, give an error.
             if (not lval.node and cur_node and isinstance(cur_node.node, Var) and
@@ -3036,7 +3023,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     # so we also check if `is_final` is passed.
                     or (cur_node is None and (explicit_type or is_final))):
                 if self.type.is_protocol and node is None:
-                    self.fail("Protocol members cannot be defined via assignment to self", lval)
+                    self.fail(message_registry.PROTOCOL_ASSIGNMENT_TO_SELF, lval)
                 else:
                     # Implicit attribute definition in __init__.
                     lval.is_new_def = True
@@ -3063,13 +3050,13 @@ class SemanticAnalyzer(NodeVisitor[None],
     def check_lvalue_validity(self, node: Union[Expression, SymbolNode, None],
                               ctx: Context) -> None:
         if isinstance(node, TypeVarExpr):
-            self.fail('Invalid assignment target', ctx)
+            self.fail(message_registry.INVALID_ASSIGNMENT_TARGET, ctx)
         elif isinstance(node, TypeInfo):
             self.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, ctx)
 
     def store_declared_types(self, lvalue: Lvalue, typ: Type) -> None:
         if isinstance(typ, StarType) and not isinstance(lvalue, StarExpr):
-            self.fail('Star type only allowed for starred expressions', lvalue)
+            self.fail(message_registry.STARTYPE_ONLY_FOR_STAR_EXPRESSIONS, lvalue)
         if isinstance(lvalue, RefExpr):
             lvalue.is_inferred_def = False
             if isinstance(lvalue.node, Var):
@@ -3081,13 +3068,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             typ = get_proper_type(typ)
             if isinstance(typ, TupleType):
                 if len(lvalue.items) != len(typ.items):
-                    self.fail('Incompatible number of tuple items', lvalue)
+                    self.fail(message_registry.INCOMPATIBLE_TUPLE_ITEM_COUNT, lvalue)
                     return
                 for item, itemtype in zip(lvalue.items, typ.items):
                     self.store_declared_types(item, itemtype)
             else:
-                self.fail('Tuple type expected for multiple variables',
-                          lvalue)
+                self.fail(message_registry.TUPLE_TYPE_EXPECTED, lvalue)
         elif isinstance(lvalue, StarExpr):
             # Historical behavior for the old parser
             if isinstance(typ, StarType):
@@ -3111,7 +3097,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         lvalue = s.lvalues[0]
         assert isinstance(lvalue, NameExpr)
         if s.type:
-            self.fail("Cannot declare the type of a type variable", s)
+            self.fail(message_registry.CANNOT_DECLARE_TYPE_OF_TYPEVAR, s)
             return False
 
         name = lvalue.name
@@ -3136,7 +3122,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                              # Also give error for another type variable with the same name.
                              (isinstance(existing.node, TypeVarExpr) and
                               existing.node is call.analyzed)):
-            self.fail('Cannot redefine "%s" as a type variable' % name, s)
+            self.fail(message_registry.REDEFINE_AS_TYPEVAR.format(name), s)
             return False
 
         if self.options.disallow_any_unimported:
@@ -3183,15 +3169,15 @@ class SemanticAnalyzer(NodeVisitor[None],
             call.callee.name if isinstance(call.callee, NameExpr) else call.callee.fullname
         )
         if len(call.args) < 1:
-            self.fail("Too few arguments for {}()".format(typevarlike_type), context)
+            self.fail(message_registry.TYPEVAR_CALL_TOO_FEW_ARGS.format(typevarlike_type), context)
             return False
         if (not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
                 or not call.arg_kinds[0] == ARG_POS):
-            self.fail("{}() expects a string literal as first argument".format(typevarlike_type),
-                      context)
+            self.fail(message_registry.TYPEVAR_CALL_EXPECTED_STRING_LITERAL.format(
+                typevarlike_type), context)
             return False
         elif call.args[0].value != name:
-            msg = 'String argument 1 "{}" to {}(...) does not match variable name "{}"'
+            msg = message_registry.TYPEVAR_NAME_ARG_MISMATCH
             self.fail(msg.format(call.args[0].value, typevarlike_type, name), context)
             return False
         return True
@@ -3244,7 +3230,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     return None
             elif param_name == 'bound':
                 if has_values:
-                    self.fail("TypeVar cannot have both values and an upper bound", context)
+                    self.fail(message_registry.TYPEVAR_VALUE_WITH_BOUND_DISALLOWED, context)
                     return None
                 try:
                     # We want to use our custom error message below, so we suppress
@@ -3270,21 +3256,19 @@ class SemanticAnalyzer(NodeVisitor[None],
                     return None
             elif param_name == 'values':
                 # Probably using obsolete syntax with values=(...). Explain the current syntax.
-                self.fail('TypeVar "values" argument not supported', context)
-                self.fail("Use TypeVar('T', t, ...) instead of TypeVar('T', values=(t, ...))",
-                          context)
+                self.fail(message_registry.TYPEVAR_VALUES_ARG_UNSUPPORTED, context)
+                self.fail(message_registry.USE_NEW_TYPEVAR_SYNTAX, context)
                 return None
             else:
-                self.fail('{}: "{}"'.format(
-                    message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, param_name,
-                ), context)
+                self.fail(message_registry.TYPEVAR_UNEXPECTED_ARG_NAMED.format(param_name),
+                          context)
                 return None
 
         if covariant and contravariant:
-            self.fail("TypeVar cannot be both covariant and contravariant", context)
+            self.fail(message_registry.TYPEVAR_COVARIANT_AND_CONTRAVARIANT, context)
             return None
         elif num_values == 1:
-            self.fail("TypeVar cannot have only a single constraint", context)
+            self.fail(message_registry.TYPEVAR_SINGLE_CONSTRAINT, context)
             return None
         elif covariant:
             variance = COVARIANT
@@ -3311,7 +3295,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         lvalue = s.lvalues[0]
         assert isinstance(lvalue, NameExpr)
         if s.type:
-            self.fail("Cannot declare the type of a parameter specification", s)
+            self.fail(message_registry.CANNOT_DECLARE_TYPE_OF_PARAMSPEC, s)
             return False
 
         name = lvalue.name
@@ -3372,7 +3356,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     analyzed = PlaceholderType(None, [], node.line)
                 result.append(analyzed)
             except TypeTranslationError:
-                self.fail('Type expected', node)
+                self.fail(message_registry.TYPE_EXPECTED, node)
                 result.append(AnyType(TypeOfAny.from_error))
         return result
 
@@ -3415,7 +3399,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return sym.node.fullname in FINAL_TYPE_NAMES
 
     def fail_invalid_classvar(self, context: Context) -> None:
-        self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
+        self.fail(message_registry.CLASSVAR_OUTSIDE_CLASS_BODY, context)
 
     def process_module_assignment(self, lvals: List[Lvalue], rval: Expression,
                                   ctx: AssignmentStmt) -> None:
@@ -3477,10 +3461,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if lnode:
                         if isinstance(lnode.node, MypyFile) and lnode.node is not rnode.node:
                             assert isinstance(lval, (NameExpr, MemberExpr))
-                            self.fail(
-                                'Cannot assign multiple modules to name "{}" '
-                                'without explicit "types.ModuleType" annotation'.format(lval.name),
-                                ctx)
+                            self.fail(message_registry.MULTIPLE_MODULE_ASSIGNMENT
+                                      .format(lval.name),
+                                      ctx)
                         # never create module alias except on initial var definition
                         elif lval.is_inferred_def:
                             assert rnode.node is not None
@@ -3500,13 +3483,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 s.lvalues[0].name == '__deletable__' and s.lvalues[0].kind == MDEF):
             rvalue = s.rvalue
             if not isinstance(rvalue, (ListExpr, TupleExpr)):
-                self.fail('"__deletable__" must be initialized with a list or tuple expression', s)
+                self.fail(message_registry.DELETABLE_MUST_BE_WITH_LIST_OR_TUPLE, s)
                 return
             items = rvalue.items
             attrs = []
             for item in items:
                 if not isinstance(item, StrExpr):
-                    self.fail('Invalid "__deletable__" item; string literal expected', item)
+                    self.fail(message_registry.DELETABLE_EXPECTED_STRING_LITERAL, item)
                 else:
                     attrs.append(item.value)
             assert self.type
@@ -3591,7 +3574,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         self.statement = s
         if not self.is_func_scope():
-            self.fail('"return" outside function', s)
+            self.fail(message_registry.RETURN_OUTSIDE_FUNCTION, s)
         if s.expr:
             s.expr.accept(self)
 
@@ -3650,12 +3633,12 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail('"break" outside loop', s, serious=True, blocker=True)
+            self.fail(message_registry.BREAK_OUTSIDE_LOOP, s, serious=True, blocker=True)
 
     def visit_continue_stmt(self, s: ContinueStmt) -> None:
         self.statement = s
         if self.loop_depth == 0:
-            self.fail('"continue" outside loop', s, serious=True, blocker=True)
+            self.fail(message_registry.CONTINUE_OUTSIDE_LOOP, s, serious=True, blocker=True)
 
     def visit_if_stmt(self, s: IfStmt) -> None:
         self.statement = s
@@ -3691,7 +3674,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             actual_targets = [t for t in s.target if t is not None]
             if len(actual_targets) == 0:
                 # We have a type for no targets
-                self.fail('Invalid type comment: "with" statement has no targets', s)
+                self.fail(message_registry.WITH_HAS_NO_TARGETS, s)
             elif len(actual_targets) == 1:
                 # We have one target and one type
                 types = [s.unanalyzed_type]
@@ -3701,10 +3684,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                     types = s.unanalyzed_type.items.copy()
                 else:
                     # But it's the wrong number of items
-                    self.fail('Incompatible number of types for "with" targets', s)
+                    self.fail(message_registry.WITH_INCOMPATIBLE_TARGET_COUNT, s)
             else:
                 # We have multiple targets and one type
-                self.fail('Multiple types expected for multiple "with" targets', s)
+                self.fail(message_registry.WITH_MULTIPLE_TYPES_EXPECTED, s)
 
         new_types: List[Type] = []
         for e, n in zip(s.expr, s.target):
@@ -3732,7 +3715,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.statement = s
         s.expr.accept(self)
         if not self.is_valid_del_target(s.expr):
-            self.fail('Invalid delete target', s)
+            self.fail(message_registry.INVALID_DELETE_TARGET, s)
 
     def is_valid_del_target(self, s: Expression) -> bool:
         if isinstance(s, (IndexExpr, NameExpr, MemberExpr)):
@@ -3746,27 +3729,26 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.statement = g
         for name in g.names:
             if name in self.nonlocal_decls[-1]:
-                self.fail('Name "{}" is nonlocal and global'.format(name), g)
+                self.fail(message_registry.NAME_IS_NONLOCAL_AND_GLOBAL.format(name), g)
             self.global_decls[-1].add(name)
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
         self.statement = d
         if not self.is_func_scope():
-            self.fail("nonlocal declaration not allowed at module level", d)
+            self.fail(message_registry.NONLOCAL_AT_MODULE_LEVEL, d)
         else:
             for name in d.names:
                 for table in reversed(self.locals[:-1]):
                     if table is not None and name in table:
                         break
                 else:
-                    self.fail('No binding for nonlocal "{}" found'.format(name), d)
+                    self.fail(message_registry.NONLOCAL_NO_BINDING_FOUND.format(name), d)
 
                 if self.locals[-1] is not None and name in self.locals[-1]:
-                    self.fail('Name "{}" is already defined in local '
-                              'scope before nonlocal declaration'.format(name), d)
+                    self.fail(message_registry.LOCAL_DEFINITION_BEFORE_NONLOCAL.format(name), d)
 
                 if name in self.global_decls[-1]:
-                    self.fail('Name "{}" is nonlocal and global'.format(name), d)
+                    self.fail(message_registry.NAME_IS_NONLOCAL_AND_GLOBAL.format(name), d)
                 self.nonlocal_decls[-1].add(name)
 
     def visit_print_stmt(self, s: PrintStmt) -> None:
@@ -3807,8 +3789,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def bind_name_expr(self, expr: NameExpr, sym: SymbolTableNode) -> None:
         """Bind name expression to a symbol table node."""
         if isinstance(sym.node, TypeVarExpr) and self.tvar_scope.get_binding(sym):
-            self.fail('"{}" is a type variable and only valid in type '
-                      'context'.format(expr.name), expr)
+            self.fail(message_registry.NAME_ONLY_VALID_IN_TYPE_CONTEXT.format(expr.name), expr)
         elif isinstance(sym.node, PlaceholderNode):
             self.process_placeholder(expr.name, 'name', expr)
         else:
@@ -3818,7 +3799,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_super_expr(self, expr: SuperExpr) -> None:
         if not self.type and not expr.call.args:
-            self.fail('"super" used outside class', expr)
+            self.fail(message_registry.SUPER_OUTSIDE_CLASS, expr)
             return
         expr.info = self.type
         for arg in expr.call.args:
@@ -3851,16 +3832,16 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_star_expr(self, expr: StarExpr) -> None:
         if not expr.valid:
             # XXX TODO Change this error message
-            self.fail('Can use starred expression only as assignment target', expr)
+            self.fail(message_registry.INVALID_STAR_EXPRESSION, expr)
         else:
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
         if not self.is_func_scope():  # not sure
-            self.fail('"yield from" outside function', e, serious=True, blocker=True)
+            self.fail(message_registry.YIELD_FROM_OUTSIDE_FUNC, e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
-                self.fail('"yield from" in async function', e, serious=True, blocker=True)
+                self.fail(message_registry.YIELD_FROM_IN_ASYNC_FUNC, e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
         if e.expr:
@@ -3881,7 +3862,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             try:
                 target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
-                self.fail('Cast target is not a type', expr)
+                self.fail(message_registry.CAST_TARGET_IS_NOT_TYPE, expr)
                 return
             # Piggyback CastExpr object to the CallExpr object; it takes
             # precedence over the CallExpr semantics.
@@ -3930,7 +3911,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, 'typing.Any'):
             # Special form Any(...) no longer supported.
-            self.fail('Any(...) is no longer supported. Use cast(Any, ...) instead', expr)
+            self.fail(message_registry.ANY_CALL_UNSUPPORTED, expr)
         elif refers_to_fullname(expr.callee, 'typing._promote'):
             # Special form _promote(...).
             if not self.check_fixed_args(expr, 1, '_promote'):
@@ -3939,7 +3920,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             try:
                 target = self.expr_to_unanalyzed_type(expr.args[0])
             except TypeTranslationError:
-                self.fail('Argument 1 to _promote is not a type', expr)
+                self.fail(message_registry.PROMOTE_ARG_EXPECTED_TYPE, expr)
                 return
             expr.analyzed = PromoteExpr(target)
             expr.analyzed.line = expr.line
@@ -3994,12 +3975,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         if numargs == 1:
             s = ''
         if len(expr.args) != numargs:
-            self.fail('"%s" expects %d argument%s' % (name, numargs, s),
-                      expr)
+            self.fail(message_registry.ARG_COUNT_MISMATCH.format(name, numargs, s), expr)
             return False
         if expr.arg_kinds != [ARG_POS] * numargs:
-            self.fail('"%s" must be called with %s positional argument%s' %
-                      (name, numargs, s), expr)
+            self.fail(message_registry.POS_ARG_COUNT_MISMATCH.format(name, numargs, s), expr)
             return False
         return True
 
@@ -4136,7 +4115,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             try:
                 typearg = self.expr_to_unanalyzed_type(item)
             except TypeTranslationError:
-                self.fail('Type expected within [...]', expr)
+                self.fail(message_registry.TYPE_EXPECTED_IN_BRACKETS, expr)
                 return None
             # We always allow unbound type variables in IndexExpr, since we
             # may be analysing a type alias definition rvalue. The error will be
@@ -4242,11 +4221,12 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail('"yield" outside function', expr, serious=True, blocker=True)
+            self.fail(message_registry.YIELD_OUTSIDE_FUNC, expr, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):
-                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
+                    self.fail(message_registry.YIELD_IN_ASYNC_FUNC, expr, serious=True,
+                              blocker=True)
                 else:
                     self.function_stack[-1].is_generator = True
                     self.function_stack[-1].is_async_generator = True
@@ -4257,9 +4237,9 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():
-            self.fail('"await" outside function', expr)
+            self.fail(message_registry.AWAIT_OUTSIDE_FUNC, expr)
         elif not self.function_stack[-1].is_coroutine:
-            self.fail('"await" outside coroutine ("async def")', expr)
+            self.fail(message_registry.AWAIT_OUTSIDE_COROUTINE, expr)
         expr.expr.accept(self)
 
     #
@@ -4948,7 +4928,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.defer(ctx)
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
-        self.fail('Cannot resolve {} "{}" (possible cyclic definition)'.format(kind, name), ctx)
+        self.fail(message_registry.CANNOT_RESOLVE_NAME.format(kind, name), ctx)
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
@@ -5056,8 +5036,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # later on. Defer current target.
             self.record_incomplete_ref()
             return
-        message = 'Name "{}" is not defined'.format(name)
-        self.fail(message, ctx, code=codes.NAME_DEFINED)
+        self.fail(message_registry.NAME_NOT_DEFINED.format(name), ctx)
 
         if 'builtins.{}'.format(name) in SUGGESTED_TEST_FIXTURES:
             # The user probably has a missing definition in a test fixture. Let's verify.
@@ -5108,8 +5087,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             extra_msg = ' on line {}'.format(node.line)
         else:
             extra_msg = ' (possibly by an import)'
-        self.fail('{} "{}" already defined{}'.format(noun, unmangle(name), extra_msg), ctx,
-                  code=codes.NO_REDEF)
+        self.fail(message_registry.NAME_ALREADY_DEFINED.format(noun, unmangle(name), extra_msg),
+                  ctx)
 
     def name_already_defined(self,
                              name: str,
@@ -5159,7 +5138,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return True
 
     def fail(self,
-             msg: str,
+             msg: Union[str, ErrorMessage],
              ctx: Context,
              serious: bool = False,
              *,
@@ -5169,7 +5148,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
+        assert isinstance(msg, ErrorMessage)
+        
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
+                           blocker=blocker)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if not self.in_checked_function():

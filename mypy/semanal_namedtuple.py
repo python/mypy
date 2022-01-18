@@ -23,6 +23,8 @@ from mypy.nodes import (
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.util import get_unique_redefinition_name
+from mypy.message_registry import ErrorMessage
+from mypy import message_registry
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't
 # easily be supported in a static checker.
@@ -39,10 +41,6 @@ NAMEDTUPLE_PROHIBITED_NAMES: Final = (
     "_asdict",
     "_source",
     "__annotations__",
-)
-
-NAMEDTUP_CLASS_ERROR: Final = (
-    "Invalid statement in NamedTuple definition; " 'expected "field_name: field_type [= default]"'
 )
 
 SELF_TVAR_NAME: Final = "_NT"
@@ -94,10 +92,10 @@ class NamedTupleAnalyzer:
         or None, if any of the types are not ready.
         """
         if self.options.python_version < (3, 6) and not is_stub_file:
-            self.fail('NamedTuple class syntax is only supported in Python 3.6', defn)
+            self.fail(message_registry.NAMEDTUPLE_SUPPORTED_ABOVE_PY36, defn)
             return [], [], {}
         if len(defn.base_type_exprs) > 1:
-            self.fail('NamedTuple should be a single base', defn)
+            self.fail(message_registry.NAMEDTUPLE_SINGLE_BASE, defn)
         items: List[str] = []
         types: List[Type] = []
         default_items: Dict[str, Expression] = {}
@@ -115,10 +113,10 @@ class NamedTupleAnalyzer:
                 if (isinstance(stmt, ExpressionStmt) and
                         isinstance(stmt.expr, StrExpr)):
                     continue
-                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                self.fail(message_registry.NAMEDTUPLE_CLASS_ERROR, stmt)
             elif len(stmt.lvalues) > 1 or not isinstance(stmt.lvalues[0], NameExpr):
                 # An assignment, but an invalid one.
-                self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                self.fail(message_registry.NAMEDTUPLE_CLASS_ERROR, stmt)
             else:
                 # Append name and type in this case...
                 name = stmt.lvalues[0].name
@@ -133,15 +131,13 @@ class NamedTupleAnalyzer:
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith('_'):
-                    self.fail('NamedTuple field name cannot start with an underscore: {}'
-                              .format(name), stmt)
+                    self.fail(message_registry.NAMEDTUPLE_FIELD_NO_UNDERSCORE.format(name), stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
-                    self.fail(NAMEDTUP_CLASS_ERROR, stmt)
+                    self.fail(message_registry.NAMEDTUPLE_CLASS_ERROR, stmt)
                 elif isinstance(stmt.rvalue, TempNode):
                     # x: int assigns rvalue to TempNode(AnyType())
                     if default_items:
-                        self.fail('Non-default NamedTuple fields cannot follow default fields',
-                                  stmt)
+                        self.fail(message_registry.NAMEDTUPLE_FIELD_DEFAULT_AFTER_NONDEFAULT, stmt)
                 else:
                     default_items[name] = stmt.rvalue
         return items, types, default_items
@@ -266,13 +262,13 @@ class NamedTupleAnalyzer:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail('Too few arguments for "{}()"'.format(type_name), call)
+            self.fail(message_registry.NAMEDTUPLE_TOO_FEW_ARGS.format(type_name), call)
             return None
         defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
             if fullname == 'typing.NamedTuple':
-                self.fail('Too many arguments for "NamedTuple()"', call)
+                self.fail(message_registry.NAMEDTUPLE_TOO_MANY_ARGS.format(type_name), call)
                 return None
             for i, arg_name in enumerate(call.arg_names[2:], 2):
                 if arg_name == 'defaults':
@@ -283,17 +279,16 @@ class NamedTupleAnalyzer:
                         defaults = list(arg.items)
                     else:
                         self.fail(
-                            "List or tuple literal expected as the defaults argument to "
-                            "{}()".format(type_name),
-                            arg
-                        )
+                            message_registry.NAMEDTUPLE_EXPECTED_LIST_TUPLE_DEFAULTS.format(
+                                type_name
+                            ), arg)
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
+            self.fail(message_registry.NAMEDTUPLE_UNEXPECTED_ARGS.format(type_name), call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                '"{}()" expects a string literal as the first argument'.format(type_name), call)
+                message_registry.NAMEDTUPLE_ARG_EXPECTED_STRING_LITERAL.format(type_name), call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         types: List[Type] = []
@@ -304,11 +299,7 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    'List or tuple literal expected as the second argument to "{}()"'.format(
-                        type_name,
-                    ),
-                    call,
-                )
+                    message_registry.NAMEDTUPLE_ARG_EXPECTED_LIST_TUPLE.format(type_name), call)
                 return None
         else:
             listexpr = args[1]
@@ -316,7 +307,7 @@ class NamedTupleAnalyzer:
                 # The fields argument contains just names, with implicit Any types.
                 if any(not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
                        for item in listexpr.items):
-                    self.fail('String literal expected as "namedtuple()" item', call)
+                    self.fail(message_registry.NAMEDTUPLE_EXPECTED_STRING_LITERAL, call)
                     return None
                 items = [cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
                          for item in listexpr.items]
@@ -333,10 +324,12 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
-                      + ', '.join(underscore), call)
+            self.fail(
+                message_registry.NAMEDTUPLE_FIELDS_NO_UNDERSCORE.format(
+                    type_name, ', '.join(underscore)
+                ), call)
         if len(defaults) > len(items):
-            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
+            self.fail(message_registry.NAMEDTUPLE_TOO_MANY_DEFAULTS.format(type_name), call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
@@ -352,18 +345,18 @@ class NamedTupleAnalyzer:
         for item in nodes:
             if isinstance(item, TupleExpr):
                 if len(item.items) != 2:
-                    self.fail('Invalid "NamedTuple()" field definition', item)
+                    self.fail(message_registry.NAMEDTUPLE_INVALID_FIELD_DEFINITION, item)
                     return None
                 name, type_node = item.items
                 if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
                     items.append(name.value)
                 else:
-                    self.fail('Invalid "NamedTuple()" field name', item)
+                    self.fail(message_registry.NAMEDTUPLE_INVALID_FIELD_NAME, item)
                     return None
                 try:
                     type = expr_to_unanalyzed_type(type_node, self.options, self.api.is_stub_file)
                 except TypeTranslationError:
-                    self.fail('Invalid field type', type_node)
+                    self.fail(message_registry.NAMEDTUPLE_INVALID_FIELD_TYPE, type_node)
                     return None
                 analyzed = self.api.anal_type(type)
                 # Workaround #4987 and avoid introducing a bogus UnboundType
@@ -374,7 +367,7 @@ class NamedTupleAnalyzer:
                     return [], [], [], False
                 types.append(analyzed)
             else:
-                self.fail('Tuple expected as "NamedTuple()" field', item)
+                self.fail(message_registry.NAMEDTUPLE_TUPLE_EXPECTED, item)
                 return None
         return items, types, [], True
 
@@ -528,8 +521,9 @@ class NamedTupleAnalyzer:
                     continue
                 ctx = named_tuple_info.names[prohibited].node
                 assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
-                          ctx)
+                self.fail(message_registry.NAMEDTUPLE_CANNOT_OVERWRITE_ATTRIBUTE.format(
+                    prohibited
+                ), ctx)
 
         # Restore the names in the original symbol table. This ensures that the symbol
         # table contains the field objects created by build_namedtuple_typeinfo. Exclude
@@ -550,5 +544,5 @@ class NamedTupleAnalyzer:
 
     # Helpers
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         self.api.fail(msg, ctx)

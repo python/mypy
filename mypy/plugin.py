@@ -284,7 +284,7 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, serious: bool = False, *,
+    def fail(self, msg: Union[str, ErrorMessage], ctx: Context, serious: bool = False, *,
              blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
