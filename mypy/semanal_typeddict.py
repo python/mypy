@@ -92,7 +92,6 @@ class TypedDictAnalyzer:
             keys: List[str] = []
             types = []
             required_keys = set()
-
             # Iterate over bases in reverse order so that leftmost base class' keys take precedence
             for base in reversed(typeddict_bases):
                 assert isinstance(base, RefExpr)
@@ -163,7 +162,7 @@ class TypedDictAnalyzer:
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
-                    analyzed = self.api.anal_type(stmt.type)
+                    analyzed = self.api.anal_type(stmt.type, allow_required=True)
                     if analyzed is None:
                         return None, [], set()  # Need to defer
                     types.append(analyzed)
@@ -238,7 +237,21 @@ class TypedDictAnalyzer:
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)
-            required_keys = set(items) if total else set()
+            required_keys = {
+                field
+                for (field, t) in zip(items, types)
+                if (total or (
+                    isinstance(t, RequiredType) and  # type: ignore[misc]
+                    t.required
+                )) and not (
+                    isinstance(t, RequiredType) and  # type: ignore[misc]
+                    not t.required
+                )
+            }
+            types = [  # unwrap Required[T] to just T
+                t.item if isinstance(t, RequiredType) else t  # type: ignore[misc]
+                for t in types
+            ]
             info = self.build_typeddict_typeinfo(name, items, types, required_keys, call.line)
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
