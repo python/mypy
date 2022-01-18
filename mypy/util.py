@@ -46,6 +46,26 @@ default_python2_interpreter: Final = [
     "C:\\Python27\\python.exe",
 ]
 
+SPECIAL_DUNDERS: Final = frozenset((
+    "__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__",
+))
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
+    """Returns whether name is a dunder name.
+
+    Args:
+        exclude_special: Whether to return False for a couple special dunder methods.
+
+    """
+    if exclude_special and name in SPECIAL_DUNDERS:
+        return False
+    return name.startswith("__") and name.endswith("__")
+
+
+def is_sunder(name: str) -> bool:
+    return not is_dunder(name) and name.startswith('_') and name.endswith('_')
+
 
 def split_module_names(mod_name: str) -> List[str]:
     """Return the module and all parent module names.

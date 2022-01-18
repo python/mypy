@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, SPECIAL_DUNDERS
 
 
 class Missing:
@@ -897,20 +897,6 @@ def verify_typealias(
     yield Error(
         object_path, "is not a recognised type alias", stub, runtime, stub_desc=str(stub_target)
     )
-
-
-SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
-
-
-def is_dunder(name: str, exclude_special: bool = False) -> bool:
-    """Returns whether name is a dunder name.
-
-    :param exclude_special: Whether to return False for a couple special dunder methods.
-
-    """
-    if exclude_special and name in SPECIAL_DUNDERS:
-        return False
-    return name.startswith("__") and name.endswith("__")
 
 
 def is_probably_a_function(runtime: Any) -> bool:
