@@ -221,7 +221,8 @@ OVERLOAD_IMPLEMENTATION_LAST: Final = ErrorMessage(
     "The implementation for an overloaded function must come last"
 )
 OVERLOAD_IMPLEMENTATION_REQUIRED: Final = ErrorMessage(
-    "An overloaded function outside a stub file must have an implementation"
+    "An overloaded function outside a stub file must have an implementation",
+    codes.NO_OVERLOAD_IMPL,
 )
 FINAL_DEC_ON_OVERLOAD_ONLY: Final = ErrorMessage(
     "@final should be applied only to overload implementation"
@@ -343,7 +344,7 @@ TYPEVAR_NAME_ARG_MISMATCH: Final = ErrorMessage(
     'String argument 1 "{}" to {}(...) does not match variable name "{}"'
 )
 TYPEVAR_UNEXPECTED_ARG: Final = ErrorMessage("Unexpected argument to TypeVar()")
-TYPEVAR_UNEXPECTED_ARG_NAMED: Final = ErrorMessage('Unexpected argument to TypeVar(): "{}"')
+TYPEVAR_UNEXPECTED_ARG_NAMED: Final = ErrorMessage('Unexpected argument to "TypeVar()": "{}"')
 TYPEVAR_VALUE_WITH_BOUND_DISALLOWED: Final = ErrorMessage(
     "TypeVar cannot have both values and an upper bound"
 )
@@ -461,10 +462,10 @@ NAMEDTUPLE_ARG_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     '"{}()" expects a string literal as the first argument'
 )
 NAMEDTUPLE_ARG_EXPECTED_LIST_TUPLE: Final = ErrorMessage(
-    "List or tuple literal expected as the second argument to namedtuple()"
+    'List or tuple literal expected as the second argument to "{}()"'
 )
 NAMEDTUPLE_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
-    "String literal expected as namedtuple() item"
+    'String literal expected as "namedtuple()" item'
 )
 NAMEDTUPLE_FIELDS_NO_UNDERSCORE: Final = ErrorMessage(
     '"{}()" field names cannot start with an underscore: {}'
@@ -473,7 +474,7 @@ NAMEDTUPLE_TOO_MANY_DEFAULTS: Final = ErrorMessage('Too many defaults given in c
 NAMEDTUPLE_INVALID_FIELD_DEFINITION: Final = ErrorMessage("Invalid NamedTuple field definition")
 NAMEDTUPLE_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid NamedTuple() field name")
 NAMEDTUPLE_INVALID_FIELD_TYPE: Final = ErrorMessage("Invalid field type")
-NAMEDTUPLE_TUPLE_EXPECTED: Final = ErrorMessage("Tuple expected as NamedTuple() field")
+NAMEDTUPLE_TUPLE_EXPECTED: Final = ErrorMessage('Tuple expected as "NamedTuple()" field')
 NAMEDTUPLE_CANNOT_OVERWRITE_ATTRIBUTE: Final = ErrorMessage(
     'Cannot overwrite NamedTuple attribute "{}"'
 )
