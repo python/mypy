@@ -186,13 +186,13 @@ corresponding to some particular index, we can use Literal types like so:
 
     # But what if we want the index to be a variable? Normally mypy won't
     # know exactly what the index is and so will return a less precise type:
-    int_index = 1
+    int_index = 0
     reveal_type(tup[int_index])  # Revealed type is "Union[str, float]"
 
     # But if we use either Literal types or a Final int, we can gain back
     # the precision we originally had:
-    lit_index: Literal[1] = 1
-    fin_index: Final = 1
+    lit_index: Literal[0] = 0
+    fin_index: Final = 0
     reveal_type(tup[lit_index])  # Revealed type is "str"
     reveal_type(tup[fin_index])  # Revealed type is "str"
 

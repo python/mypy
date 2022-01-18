@@ -117,6 +117,15 @@ ANNOTATED_TYPE_NAMES: Final = (
     'typing_extensions.Annotated',
 )
 
+# We use this constant in various places when checking `tuple` subtyping:
+TUPLE_LIKE_INSTANCE_NAMES: Final = (
+    'builtins.tuple',
+    'typing.Iterable',
+    'typing.Container',
+    'typing.Sequence',
+    'typing.Reversible',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -2482,9 +2491,12 @@ def strip_type(typ: Type) -> ProperType:
         return typ
 
 
-def is_named_instance(t: Type, fullname: str) -> bool:
+def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
+    if not isinstance(fullnames, tuple):
+        fullnames = (fullnames,)
+
     t = get_proper_type(t)
-    return isinstance(t, Instance) and t.type.fullname == fullname
+    return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
 TP = TypeVar('TP', bound=Type)

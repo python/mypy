@@ -1573,3 +1573,15 @@ x: OrderedDict[str, str] = OrderedDict({})
 reveal_type(x)  # Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 [out]
 _testTypingExtensionsOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.str]"
+
+[case testEnumValueWithPlaceholderNodeType]
+# https://github.com/python/mypy/issues/11971
+from enum import Enum
+from typing import Callable, Dict
+class Foo(Enum):
+    Bar: Foo = Callable[[str], None]
+    Baz: Foo = Callable[[Dict[str, "Missing"]], None]
+[out]
+_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined

@@ -2205,7 +2205,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
                 if isinstance(e.left, StrExpr):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
-            elif pyversion[0] <= 2:
+            elif pyversion[0] == 2:
                 if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
@@ -3077,7 +3077,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return union
 
-    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
+    def visit_typeddict_index_expr(self, td_type: TypedDictType,
+                                   index: Expression,
+                                   local_errors: Optional[MessageBuilder] = None
+                                   ) -> Type:
+        local_errors = local_errors or self.msg
         if isinstance(index, (StrExpr, UnicodeExpr)):
             key_names = [index.value]
         else:
@@ -3097,14 +3101,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         and key_type.fallback.type.fullname != 'builtins.bytes'):
                     key_names.append(key_type.value)
                 else:
-                    self.msg.typeddict_key_must_be_string_literal(td_type, index)
+                    local_errors.typeddict_key_must_be_string_literal(td_type, index)
                     return AnyType(TypeOfAny.from_error)
 
         value_types = []
         for key_name in key_names:
             value_type = td_type.items.get(key_name)
             if value_type is None:
-                self.msg.typeddict_key_not_found(td_type, key_name, index)
+                local_errors.typeddict_key_not_found(td_type, key_name, index)
                 return AnyType(TypeOfAny.from_error)
             else:
                 value_types.append(value_type)

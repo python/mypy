@@ -898,6 +898,17 @@ if lst:
     pass
 [builtins fixtures/list.pyi]
 
+[case testNoOverloadImplementation]
+from typing import overload
+
+@overload  # E: An overloaded function outside a stub file must have an implementation  [no-overload-impl]
+def f(arg: int) -> int:
+    ...
+
+@overload
+def f(arg: str) -> str:
+    ...
+
 [case testSliceInDict39]
 # flags: --python-version 3.9 --show-column-numbers
 from typing import Dict

@@ -8,7 +8,8 @@ from mypy.types import (
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
     ProperType, ParamSpecType, get_proper_type, TypeAliasType, is_union_with_any,
-    callable_with_ellipsis
+    callable_with_ellipsis,
+    TUPLE_LIKE_INSTANCE_NAMES,
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -501,11 +502,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 return res
         if isinstance(actual, AnyType):
             return self.infer_against_any(template.args, actual)
-        if (isinstance(actual, TupleType) and
-            (is_named_instance(template, 'typing.Iterable') or
-             is_named_instance(template, 'typing.Container') or
-             is_named_instance(template, 'typing.Sequence') or
-             is_named_instance(template, 'typing.Reversible'))
+        if (isinstance(actual, TupleType)
+                and is_named_instance(template, TUPLE_LIKE_INSTANCE_NAMES)
                 and self.direction == SUPERTYPE_OF):
             for item in actual.items:
                 cb = infer_constraints(template.args[0], item, SUPERTYPE_OF)
