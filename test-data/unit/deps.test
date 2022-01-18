@@ -1470,6 +1470,7 @@ AttributeInOtherModule = str
 
 [typing fixtures/typing-typeddict.pyi]
 [builtins fixtures/fine_grained.pyi]
+[builtins fixtures/dict.pyi]
 
 [out]
 <m.x> -> m

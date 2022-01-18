@@ -1379,6 +1379,7 @@ class Foo:
 reveal_type(asdict(Foo('bar')))  # N: Revealed type is "TypedDict({'bar': builtins.str})"
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictPython39]
 # flags: --python-version 3.9
@@ -1391,6 +1392,7 @@ class Foo:
 reveal_type(asdict(Foo('bar')))  # N: Revealed type is "TypedDict({'bar': builtins.str})"
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictRecursion]
 # flags: --python-version 3.7
@@ -1433,6 +1435,7 @@ class Customer:
 reveal_type(asdict(Customer("foo")))  # N: Revealed type is "TypedDict({'card': Union[builtins.str, TypedDict({'last4': builtins.int})]})"
 
 [typing fixtures/typing-full.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictType]
 # flags: --python-version 3.7
@@ -1451,7 +1454,7 @@ class Customer:
 reveal_type(asdict(Customer(Card)))  # N: Revealed type is "TypedDict({'card': Type[__main__.Card]})"
 
 [typing fixtures/typing-full.pyi]
-
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictCallable]
 # flags: --python-version 3.7
@@ -1472,7 +1475,7 @@ def func(_: Card) -> Card: pass
 reveal_type(asdict(Customer(func)))  # N: Revealed type is "TypedDict({'card': def (__main__.Card) -> __main__.Card})"
 
 [typing fixtures/typing-full.pyi]
-
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictList]
 # flags: --python-version 3.7
@@ -1503,7 +1506,7 @@ reveal_type(result['list_no_generic']) # N: Revealed type is "builtins.list[Any]
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
-
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictListSubclass]
 # flags: --python-version 3.7
@@ -1552,6 +1555,7 @@ reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is "buil
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/list.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictDict]
 # flags: --python-version 3.7
@@ -1621,6 +1625,7 @@ reveal_type(result['partners']) # N: Revealed type is "Tuple[TypedDict({'name': 
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictTupleSubclass]
 # flags: --python-version 3.7
@@ -1649,6 +1654,7 @@ reveal_type(result['tuple_subclass']) # N: Revealed type is "Tuple[TypedDict({'n
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictNamedTuple]
 # flags: --python-version 3.7
@@ -1679,6 +1685,7 @@ reveal_type(result['staff']) # N: Revealed type is "Any"
 
 [typing fixtures/typing-full.pyi]
 [builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 
 [case testDataclassFieldDoesNotFailOnKwargsUnpacking]
 # flags: --python-version 3.7
