@@ -14,6 +14,8 @@ from mypy.nodes import (
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.types import get_proper_type, LiteralType
+from mypy.message_registry import ErrorMessage
+from mypy import message_registry
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -46,7 +48,7 @@ class EnumCallAnalyzer:
         if enum_call is None:
             return False
         if isinstance(lvalue, MemberExpr):
-            self.fail("Enum type as attribute is not supported", lvalue)
+            self.fail(message_registry.ENUM_ATTRIBUTE_UNSUPPORTED, lvalue)
             return False
         # Yes, it's a valid Enum definition. Add it to the symbol table.
         self.api.add_symbol(name, enum_call, s)
@@ -119,15 +121,19 @@ class EnumCallAnalyzer:
         """
         args = call.args
         if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+            return self.fail_enum_call_arg(message_registry.ENUM_CALL_UNEXPECTED_ARGS.format(
+                class_name), call)
         if len(args) < 2:
-            return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(message_registry.ENUM_CALL_TOO_FEW_ARGS.format(
+                class_name), call)
         if len(args) > 6:
-            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(message_registry.ENUM_CALL_TOO_MANY_ARGS.format(
+                class_name), call)
         valid_name = [None, 'value', 'names', 'module', 'qualname', 'type', 'start']
         for arg_name in call.arg_names:
             if arg_name not in valid_name:
-                self.fail_enum_call_arg('Unexpected keyword argument "{}"'.format(arg_name), call)
+                self.fail_enum_call_arg(message_registry.ENUM_CALL_UNEXPECTED_KWARG.format(
+                    arg_name), call)
         value, names = None, None
         for arg_name, arg in zip(call.arg_names, args):
             if arg_name == 'value':
@@ -140,7 +146,7 @@ class EnumCallAnalyzer:
             names = args[1]
         if not isinstance(value, (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
-                "%s() expects a string literal as the first argument" % class_name, call)
+                message_registry.ENUM_CALL_EXPECTED_STRING_LITERAL.format(class_name), call)
         items = []
         values: List[Optional[Expression]] = []
         if isinstance(names, (StrExpr, UnicodeExpr)):
@@ -164,14 +170,13 @@ class EnumCallAnalyzer:
                     values.append(value)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() with tuple or list expects strings or (name, value) pairs" %
-                    class_name,
-                    call)
+                    message_registry.ENUM_CALL_EXPECTED_STRINGS_OR_PAIRS.format(class_name), call)
         elif isinstance(names, DictExpr):
             for key, value in names.items:
                 if not isinstance(key, (StrExpr, UnicodeExpr)):
                     return self.fail_enum_call_arg(
-                        "%s() with dict literal requires string literals" % class_name, call)
+                        message_registry.ENUM_CALL_DICT_EXPECTED_STRING_KEYS.format(class_name),
+                        call)
                 items.append(key.value)
                 values.append(value)
         elif isinstance(args[1], RefExpr) and isinstance(args[1].node, Var):
@@ -188,23 +193,21 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument" %
-                    class_name,
-                    call)
+                    message_registry.ENUM_CALL_EXPECTED_LITERAL.format(class_name), call)
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument" %
-                class_name,
+                message_registry.ENUM_CALL_EXPECTED_LITERAL.format(class_name),
                 call)
         if len(items) == 0:
-            return self.fail_enum_call_arg("%s() needs at least one item" % class_name, call)
+            return self.fail_enum_call_arg(message_registry.ENUM_CALL_ATLEAST_ONE_ITEM.format(
+                class_name), call)
         if not values:
             values = [None] * len(items)
         assert len(items) == len(values)
         return items, values, True
 
-    def fail_enum_call_arg(self, message: str,
+    def fail_enum_call_arg(self, message: ErrorMessage,
                            context: Context) -> Tuple[List[str],
                                                       List[Optional[Expression]], bool]:
         self.fail(message, context)
@@ -212,5 +215,5 @@ class EnumCallAnalyzer:
 
     # Helpers
 
-    def fail(self, msg: str, ctx: Context) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         self.api.fail(msg, ctx)

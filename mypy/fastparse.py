@@ -129,10 +129,6 @@ N = TypeVar('N', bound=Node)
 MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
 _dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
-
-INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
-
 TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
