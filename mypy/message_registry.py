@@ -64,6 +64,7 @@ INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
+INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage('Incompatible types in capture pattern')
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
@@ -229,3 +230,18 @@ TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
 TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
+
+# Match Statement
+MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
+OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
+CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
+    "Class pattern class must not be a type alias with type parameters"
+)
+CLASS_PATTERN_TYPE_REQUIRED: Final = 'Expected type in class pattern; found "{}"'
+CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = "Too many positional patterns for class pattern"
+CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
+    'Keyword "{}" already matches a positional pattern'
+)
+CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
+CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
+MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'

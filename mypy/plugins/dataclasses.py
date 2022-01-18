@@ -11,12 +11,12 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type, add_attribute_to_class,
 )
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
-    Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type,
-    AnyType, TypeOfAny,
+    Type, Instance, NoneType, TypeVarType, CallableType, TupleType, LiteralType,
+    get_proper_type, AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
 
@@ -132,6 +132,7 @@ class DataclassTransformer:
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
             'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
+            'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
         }
         py_version = self._ctx.api.options.python_version
 
@@ -217,6 +218,16 @@ class DataclassTransformer:
             self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
 
         self.reset_init_only_vars(info, attributes)
+
+        if (decorator_arguments['match_args'] and
+                ('__match_args__' not in info.names or
+                 info.names['__match_args__'].plugin_generated) and
+                attributes):
+            str_type = ctx.api.named_type("builtins.str")
+            literals: List[Type] = [LiteralType(attr.name, str_type)
+                        for attr in attributes if attr.is_in_init]
+            match_args_type = TupleType(literals, ctx.api.named_type("builtins.tuple"))
+            add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
 
         self._add_dataclass_fields_magic_attribute()
 

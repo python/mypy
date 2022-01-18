@@ -1,7 +1,1177 @@
-[case testMatchStatementNotSupported]
-# flags: --python-version 3.10
-match str():  # E: Match statement is not supported
-    case 'x':
-        1 + ''
+-- Capture Pattern --
+[case testCapturePatternType]
+class A: ...
+m: A
+
+match m:
+    case a:
+        reveal_type(a)  # N: Revealed type is "__main__.A"
+
+
+-- Literal Pattern --
+[case testLiteralPatternNarrows]
+m: object
+
+match m:
+    case 1:
+        reveal_type(m)  # N: Revealed type is "Literal[1]?"
+
+[case testLiteralPatternAlreadyNarrower]
+m: bool
+
+match m:
+    case 1:
+        reveal_type(m)  # N: Revealed type is "builtins.bool"
+
+[case testLiteralPatternUnreachable]
+# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+m: int
+
+match m:
+    case "str":
+        reveal_type(m)
+[builtins fixtures/primitives.pyi]
+
+
+-- Value Pattern --
+[case testValuePatternNarrows]
+import b
+m: object
+
+match m:
+    case b.b:
+        reveal_type(m)  # N: Revealed type is "builtins.int"
+[file b.py]
+b: int
+
+[case testValuePatternAlreadyNarrower]
+import b
+m: bool
+
+match m:
+    case b.b:
+        reveal_type(m)  # N: Revealed type is "builtins.bool"
+[file b.py]
+b: int
+
+[case testValuePatternIntersect]
+import b
+
+class A: ...
+m: A
+
+match m:
+    case b.b:
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+[file b.py]
+class B: ...
+b: B
+
+[case testValuePatternUnreachable]
+# primitives are needed because otherwise mypy doesn't see that int and str are incompatible
+import b
+
+m: int
+
+match m:
+    case b.b:
+        reveal_type(m)
+[file b.py]
+b: str
+[builtins fixtures/primitives.pyi]
+
+
+-- Sequence Pattern --
+[case testSequencePatternCaptures]
+from typing import List
+m: List[int]
+
+match m:
+    case [a]:
+        reveal_type(a)  # N: Revealed type is "builtins.int*"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternCapturesStarred]
+from typing import Sequence
+m: Sequence[int]
+
+match m:
+    case [a, *b]:
+        reveal_type(a)  # N: Revealed type is "builtins.int*"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternNarrowsInner]
+from typing import Sequence
+m: Sequence[object]
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
+
+[case testSequencePatternNarrowsOuter]
+from typing import Sequence
+m: object
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
+
+[case testSequencePatternAlreadyNarrowerInner]
+from typing import Sequence
+m: Sequence[bool]
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
+
+[case testSequencePatternAlreadyNarrowerOuter]
+from typing import Sequence
+m: Sequence[object]
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
+
+[case testSequencePatternAlreadyNarrowerBoth]
+from typing import Sequence
+m: Sequence[bool]
+
+match m:
+    case [1, True]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
+
+[case testNestedSequencePatternNarrowsInner]
+from typing import Sequence
+m: Sequence[Sequence[object]]
+
+match m:
+    case [[1], [True]]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
+
+[case testNestedSequencePatternNarrowsOuter]
+from typing import Sequence
+m: object
+
+match m:
+    case [[1], [True]]:
+        reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
+
+[case testSequencePatternDoesntNarrowInvariant]
+from typing import List
+m: List[object]
+
+match m:
+    case [1]:
+        reveal_type(m)  # N: Revealed type is "builtins.list[builtins.object]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternMatches]
+import array, collections
+from typing import Sequence, Iterable
+
+m1: object
+m2: Sequence[int]
+m3: array.array[int]
+m4: collections.deque[int]
+m5: list[int]
+m6: memoryview
+m7: range
+m8: tuple[int]
+
+m9: str
+m10: bytes
+m11: bytearray
+
+match m1:
+    case [a]:
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+
+match m2:
+    case [b]:
+        reveal_type(b)  # N: Revealed type is "builtins.int*"
+
+match m3:
+    case [c]:
+        reveal_type(c)  # N: Revealed type is "builtins.int*"
+
+match m4:
+    case [d]:
+        reveal_type(d)  # N: Revealed type is "builtins.int*"
+
+match m5:
+    case [e]:
+        reveal_type(e)  # N: Revealed type is "builtins.int*"
+
+match m6:
+    case [f]:
+        reveal_type(f)  # N: Revealed type is "builtins.int*"
+
+match m7:
+    case [g]:
+        reveal_type(g)  # N: Revealed type is "builtins.int*"
+
+match m8:
+    case [h]:
+        reveal_type(h)  # N: Revealed type is "builtins.int"
+
+match m9:
+    case [i]:
+        reveal_type(i)
+
+match m10:
+    case [j]:
+        reveal_type(j)
+
+match m11:
+    case [k]:
+        reveal_type(k)
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-full.pyi]
+
+
+[case testSequencePatternCapturesTuple]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.str"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleTooLong]
+from typing import Tuple
+m: Tuple[int, str]
+
+match m:
+    case [a, b, c]:
+        reveal_type(a)
+        reveal_type(b)
+        reveal_type(c)
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleTooShort]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, b]:
+        reveal_type(a)
+        reveal_type(b)
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleNarrows]
+from typing import Tuple
+m: Tuple[object, object]
+
+match m:
+    case [1, "str"]:
+        reveal_type(m)  # N: Revealed type is "Tuple[Literal[1]?, Literal['str']?]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleStarred]
+from typing import Tuple
+m: Tuple[int, str, bool]
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.str]"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+[case testSequencePatternTupleStarredUnion]
+from typing import Tuple
+m: Tuple[int, str, float, bool]
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.list[Union[builtins.str, builtins.float]]"
+        reveal_type(c)  # N: Revealed type is "builtins.bool"
+        reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
+[builtins fixtures/list.pyi]
+
+
+[case testSequencePatternTupleStarredTooShort]
+from typing import Tuple
+m: Tuple[int]
+reveal_type(m)  # N: Revealed type is "Tuple[builtins.int]"
+
+match m:
+    case [a, *b, c]:
+        reveal_type(a)
+        reveal_type(b)
+        reveal_type(c)
+[builtins fixtures/list.pyi]
+
+[case testNonMatchingSequencePattern]
+from typing import List
+
+x: List[int]
+match x:
+    case [str()]:
+        pass
+
+[case testSequenceUnion-skip]
+from typing import List, Union
+m: Union[List[List[str]], str]
+
+match m:
+    case [list(['str'])]:
+        reveal_type(m)  # N: Revealed type is "builtins.list[builtins.list[builtins.str]]"
+[builtins fixtures/list.pyi]
+
+-- Mapping Pattern --
+[case testMappingPatternCaptures]
+from typing import Dict
+import b
+m: Dict[str, int]
+
+match m:
+    case {"key": v}:
+        reveal_type(v)  # N: Revealed type is "builtins.int*"
+    case {b.b: v2}:
+        reveal_type(v2)  # N: Revealed type is "builtins.int*"
+[file b.py]
+b: str
+[builtins fixtures/dict.pyi]
+
+[case testMappingPatternCapturesWrongKeyType]
+# This is not actually unreachable, as a subclass of dict could accept keys with different types
+from typing import Dict
+import b
+m: Dict[str, int]
+
+match m:
+    case {1: v}:
+        reveal_type(v)  # N: Revealed type is "builtins.int*"
+    case {b.b: v2}:
+        reveal_type(v2)  # N: Revealed type is "builtins.int*"
+[file b.py]
+b: int
+[builtins fixtures/dict.pyi]
+
+[case testMappingPatternCapturesTypedDict]
+from typing import TypedDict
+
+class A(TypedDict):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case {"a": v}:
+        reveal_type(v)  # N: Revealed type is "builtins.str"
+    case {"b": v2}:
+        reveal_type(v2)  # N: Revealed type is "builtins.int"
+    case {"a": v3, "b": v4}:
+        reveal_type(v3)  # N: Revealed type is "builtins.str"
+        reveal_type(v4)  # N: Revealed type is "builtins.int"
+    case {"o": v5}:
+        reveal_type(v5)  # N: Revealed type is "builtins.object*"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMappingPatternCapturesTypedDictWithLiteral]
+from typing import TypedDict
+import b
+
+class A(TypedDict):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case {b.a: v}:
+        reveal_type(v)  # N: Revealed type is "builtins.str"
+    case {b.b: v2}:
+        reveal_type(v2)  # N: Revealed type is "builtins.int"
+    case {b.a: v3, b.b: v4}:
+        reveal_type(v3)  # N: Revealed type is "builtins.str"
+        reveal_type(v4)  # N: Revealed type is "builtins.int"
+    case {b.o: v5}:
+        reveal_type(v5)  # N: Revealed type is "builtins.object*"
+[file b.py]
+from typing import Final, Literal
+a: Final = "a"
+b: Literal["b"] = "b"
+o: Final[str] = "o"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMappingPatternCapturesTypedDictWithNonLiteral]
+from typing import TypedDict
+import b
+
+class A(TypedDict):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case {b.a: v}:
+        reveal_type(v)  # N: Revealed type is "builtins.object*"
+[file b.py]
+from typing import Final, Literal
+a: str
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMappingPatternCapturesTypedDictUnreachable]
+# TypedDict keys are always str, so this is actually unreachable
+from typing import TypedDict
+import b
+
+class A(TypedDict):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case {1: v}:
+        reveal_type(v)
+    case {b.b: v2}:
+        reveal_type(v2)
+[file b.py]
+b: int
+[typing fixtures/typing-typeddict.pyi]
+
+[case testMappingPatternCaptureRest]
+m: object
+
+match m:
+    case {'k': 1, **r}:
+        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
+[builtins fixtures/dict.pyi]
+
+[case testMappingPatternCaptureRestFromMapping]
+from typing import Mapping
+
+m: Mapping[str, int]
+
+match m:
+    case {'k': 1, **r}:
+        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+[builtins fixtures/dict.pyi]
+
+-- Mapping patterns currently don't narrow --
+
+-- Class Pattern --
+[case testClassPatternCapturePositional]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternMemberClassCapturePositional]
+import b
+
+m: b.A
+
+match m:
+    case b.A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[file b.py]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternCaptureKeyword]
+class A:
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(a=i, b=j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+
+[case testClassPatternCaptureSelf]
+m: object
+
+match m:
+    case bool(a):
+        reveal_type(a)  # N: Revealed type is "builtins.bool"
+    case bytearray(b):
+        reveal_type(b)  # N: Revealed type is "builtins.bytearray"
+    case bytes(c):
+        reveal_type(c)  # N: Revealed type is "builtins.bytes"
+    case dict(d):
+        reveal_type(d)  # N: Revealed type is "builtins.dict[Any, Any]"
+    case float(e):
+        reveal_type(e)  # N: Revealed type is "builtins.float"
+    case frozenset(f):
+        reveal_type(f)  # N: Revealed type is "builtins.frozenset[Any]"
+    case int(g):
+        reveal_type(g)  # N: Revealed type is "builtins.int"
+    case list(h):
+        reveal_type(h)  # N: Revealed type is "builtins.list[Any]"
+    case set(i):
+        reveal_type(i)  # N: Revealed type is "builtins.set[Any]"
+    case str(j):
+        reveal_type(j)  # N: Revealed type is "builtins.str"
+    case tuple(k):
+        reveal_type(k)  # N: Revealed type is "builtins.tuple[Any]"
+[builtins fixtures/primitives.pyi]
+
+[case testClassPatternNarrowSelfCapture]
+m: object
+
+match m:
+    case bool():
+        reveal_type(m)  # N: Revealed type is "builtins.bool"
+    case bytearray():
+        reveal_type(m)  # N: Revealed type is "builtins.bytearray"
+    case bytes():
+        reveal_type(m)  # N: Revealed type is "builtins.bytes"
+    case dict():
+        reveal_type(m)  # N: Revealed type is "builtins.dict[Any, Any]"
+    case float():
+        reveal_type(m)  # N: Revealed type is "builtins.float"
+    case frozenset():
+        reveal_type(m)  # N: Revealed type is "builtins.frozenset[Any]"
+    case int():
+        reveal_type(m)  # N: Revealed type is "builtins.int"
+    case list():
+        reveal_type(m)  # N: Revealed type is "builtins.list[Any]"
+    case set():
+        reveal_type(m)  # N: Revealed type is "builtins.set[Any]"
+    case str():
+        reveal_type(m)  # N: Revealed type is "builtins.str"
+    case tuple():
+        reveal_type(m)  # N: Revealed type is "builtins.tuple[Any]"
+[builtins fixtures/primitives.pyi]
+
+[case testClassPatternCaptureDataclass]
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dataclasses.pyi]
+
+[case testClassPatternCaptureDataclassNoMatchArgs]
+from dataclasses import dataclass
+
+@dataclass(match_args=False)
+class A:
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):  # E: Class "__main__.A" doesn't define "__match_args__"
+        pass
+[builtins fixtures/dataclasses.pyi]
+
+[case testClassPatternCaptureDataclassPartialMatchArgs]
+from dataclasses import dataclass, field
+
+@dataclass
+class A:
+    a: str
+    b: int = field(init=False)
+
+m: A
+
+match m:
+    case A(i, j):  # E: Too many positional patterns for class pattern
+        pass
+    case A(k):
+        reveal_type(k)  # N: Revealed type is "builtins.str"
+[builtins fixtures/dataclasses.pyi]
+
+[case testClassPatternCaptureNamedTupleInline]
+from collections import namedtuple
+
+A = namedtuple("A", ["a", "b"])
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
+[builtins fixtures/list.pyi]
+
+[case testClassPatternCaptureNamedTupleInlineTyped]
+from typing import NamedTuple
+
+A = NamedTuple("A", [("a", str), ("b", int)])
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
+[case testClassPatternCaptureNamedTupleClass]
+from typing import NamedTuple
+
+class A(NamedTuple):
+    a: str
+    b: int
+
+m: A
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternCaptureGeneric]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+m: object
+
+match m:
+    case A(a=i):
+        reveal_type(m)  # N: Revealed type is "__main__.A[Any]"
+        reveal_type(i)  # N: Revealed type is "Any"
+
+[case testClassPatternCaptureGenericAlreadyKnown]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+m: A[int]
+
+match m:
+    case A(a=i):
+        reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
+        reveal_type(i)  # N: Revealed type is "builtins.int*"
+
+[case testClassPatternCaptureFilledGenericTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+B = A[int]
+
+m: object
+
+match m:
+    case B(a=i):  # E: Class pattern class must not be a type alias with type parameters
+        reveal_type(i)
+
+[case testClassPatternCaptureGenericTypeAlias]
+from typing import Generic, TypeVar
+
+T = TypeVar('T')
+
+class A(Generic[T]):
+    a: T
+
+B = A
+
+m: object
+
+match m:
+    case B(a=i):
+        pass
+
+[case testClassPatternNarrows]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+
+m: object
+
+match m:
+    case A():
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+    case A(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternNarrowsUnion]
+from typing import Final, Union
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+
+class B:
+    __match_args__: Final = ("a", "b")
+    a: int
+    b: str
+
+m: Union[A, B]
+
+match m:
+    case A():
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+
+match m:
+    case A(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
+
+match m:
+    case B():
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+
+match m:
+    case B(k, l):
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+        reveal_type(k)  # N: Revealed type is "builtins.int"
+        reveal_type(l)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternAlreadyNarrower]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+class B(A): ...
+
+m: B
+
+match m:
+    case A():
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+
+match m:
+    case A(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.B"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternIntersection]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+class B: ...
+
+m: B
+
+match m:
+    case A():
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">"
+    case A(i, j):
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">1"
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternNonexistentKeyword]
+class A: ...
+
+m: object
+
+match m:
+    case A(a=j):  # E: Class "__main__.A" has no attribute "a"
+        reveal_type(m)  # N: Revealed type is "__main__.A"
+        reveal_type(j)  # N: Revealed type is "Any"
+
+[case testClassPatternDuplicateKeyword]
+class A:
+    a: str
+
+m: object
+
+match m:
+    case A(a=i, a=j):  # E: Duplicate keyword pattern "a"
+        pass
+
+[case testClassPatternDuplicateImplicitKeyword]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a",)
+    a: str
+
+m: object
+
+match m:
+    case A(i, a=j):  # E: Keyword "a" already matches a positional pattern
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternTooManyPositionals]
+from typing import Final
+
+class A:
+    __match_args__: Final = ("a", "b")
+    a: str
+    b: int
+
+m: object
+
+match m:
+    case A(i, j, k):  # E: Too many positional patterns for class pattern
+        pass
+[builtins fixtures/tuple.pyi]
+
+[case testClassPatternIsNotType]
+a = 1
+m: object
+
+match m:
+    case a(i, j):  # E: Expected type in class pattern; found "builtins.int"
+        reveal_type(i)
+        reveal_type(j)
+
+[case testClassPatternNestedGenerics]
+# From cpython test_patma.py
+x = [[{0: 0}]]
+match x:
+    case list([({-0-0j: int(real=0+0j, imag=0-0j) | (1) as z},)]):
+        y = 0
+
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list*[builtins.dict*[builtins.int*, builtins.int*]]]"
+reveal_type(y)  # N: Revealed type is "builtins.int"
+reveal_type(z)  # N: Revealed type is "builtins.int*"
+[builtins fixtures/dict.pyi]
+
+[case testNonFinalMatchArgs]
+class A:
+    __match_args__ = ("a", "b")  # N: __match_args__ must be final for checking of match statements to work
+    a: str
+    b: int
+
+m: object
+
+match m:
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testAnyTupleMatchArgs]
+from typing import Tuple, Any
+
+class A:
+    __match_args__: Tuple[Any, ...]
+    a: str
+    b: int
+
+m: object
+
+match m:
+    case A(i, j, k):
+        reveal_type(i)  # N: Revealed type is "Any"
+        reveal_type(j)  # N: Revealed type is "Any"
+        reveal_type(k)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testNonLiteralMatchArgs]
+from typing import Final
+
+b: str = "b"
+class A:
+    __match_args__: Final = ("a", b)  # N: __match_args__ must be a tuple containing string literals for checking of match statements to work
+    a: str
+    b: int
+
+m: object
+
+match m:
+    case A(i, j, k):  # E: Too many positional patterns for class pattern
+        pass
+    case A(i, j):
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testExternalMatchArgs]
+from typing import Final, Literal
+
+args: Final = ("a", "b")
+class A:
+    __match_args__: Final = args
+    a: str
+    b: int
+
+arg: Final = "a"
+arg2: Literal["b"] = "b"
+class B:
+    __match_args__: Final = (arg, arg2)
+    a: str
+    b: int
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
+
+
+-- As Pattern --
+[case testAsPattern]
+m: int
+
+match m:
+    case x as l:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+        reveal_type(l)  # N: Revealed type is "builtins.int"
+
+[case testAsPatternNarrows]
+m: object
+
+match m:
+    case int() as l:
+        reveal_type(l)  # N: Revealed type is "builtins.int"
+
+[case testAsPatternCapturesOr]
+m: object
+
+match m:
+    case 1 | 2 as n:
+        reveal_type(n)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
+[case testAsPatternAlreadyNarrower]
+m: bool
+
+match m:
+    case int() as l:
+        reveal_type(l)  # N: Revealed type is "builtins.bool"
+
+
+-- Or Pattern --
+[case testOrPatternNarrows]
+m: object
+
+match m:
+    case 1 | 2:
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
+[case testOrPatternNarrowsStr]
+m: object
+
+match m:
+    case "foo" | "bar":
+        reveal_type(m)  # N: Revealed type is "Union[Literal['foo']?, Literal['bar']?]"
+
+[case testOrPatternNarrowsUnion]
+m: object
+
+match m:
+    case 1 | "foo":
+        reveal_type(m)  # N: Revealed type is "Union[Literal[1]?, Literal['foo']?]"
+
+[case testOrPatterCapturesMissing]
+from typing import List
+m: List[int]
+
+match m:
+    case [x, y] | list(x):  # E: Alternative patterns bind different names
+        reveal_type(x)  # N: Revealed type is "builtins.object"
+        reveal_type(y)  # N: Revealed type is "builtins.int*"
+[builtins fixtures/list.pyi]
+
+[case testOrPatternCapturesJoin]
+m: object
+
+match m:
+    case list(x) | dict(x):
+        reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
+[builtins fixtures/dict.pyi]
+
+
+-- Interactions --
+[case testCapturePatternMultipleCases]
+m: object
+
+match m:
+    case int(x):
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+    case str(x):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
+
+[case testCapturePatternMultipleCaptures]
+from typing import Iterable
+
+m: Iterable[int]
+
+match m:
+    case [x, x]:  # E: Multiple assignments to name "x" in pattern
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
+[case testCapturePatternPreexistingSame]
+a: int
+m: int
+
+match m:
+    case a:
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+
+[case testCapturePatternPreexistingIncompatible]
+a: str
+m: int
+
+match m:
+    case a:  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testCapturePatternPreexistingIncompatibleLater]
+a: str
+m: object
+
+match m:
+    case str(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+    case int(a):  # E: Incompatible types in capture pattern (pattern captures type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+
+-- Guards --
+[case testSimplePatternGuard]
+m: str
+
+def guard() -> bool: ...
+
+match m:
+    case a if guard():
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testAlwaysTruePatternGuard]
+m: str
+
+match m:
+    case a if True:
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testAlwaysFalsePatternGuard]
+m: str
+
+match m:
+    case a if False:
+        reveal_type(a)
+
+[case testRedefiningPatternGuard]
+# flags: --strict-optional
+m: str
+
+match m:
+    case a if a := 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+        reveal_type(a)  # N: Revealed type is "<nothing>"
+
+[case testAssigningPatternGuard]
+m: str
+
+match m:
+    case a if a := "test":
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+
+[case testNarrowingPatternGuard]
+m: object
+
+match m:
+    case a if isinstance(a, str):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testIncompatiblePatternGuard]
+class A: ...
+class B: ...
+
+m: A
+
+match m:
+    case a if isinstance(a, B):
+        reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testUnreachablePatternGuard]
+m: str
+
+match m:
+    case a if isinstance(a, int):
+        reveal_type(a)
+[builtins fixtures/isinstancelist.pyi]
+
+-- Exhaustiveness --
+[case testUnionNegativeNarrowing-skip]
+from typing import Union
+
+m: Union[str, int]
+
+match m:
+    case str(a):
+        reveal_type(a)  # N: Revealed type is "builtins.str"
+        reveal_type(m)  # N: Revealed type is "builtins.str"
+    case b:
+        reveal_type(b)  # N: Revealed type is "builtins.int"
+        reveal_type(m)  # N: Revealed type is "builtins.int"
+
+[case testOrPatternNegativeNarrowing-skip]
+from typing import Union
+
+m: Union[str, bytes, int]
+
+match m:
+    case str(a) | bytes(a):
+        reveal_type(a)  # N: Revealed type is "builtins.object"
+        reveal_type(m)  # N: Revealed type is "Union[builtins.str, builtins.bytes]"
+    case b:
+        reveal_type(b)  # N: Revealed type is "builtins.int"
+
+[case testExhaustiveReturn-skip]
+def foo(value) -> int:
+  match value:
+    case "bar":
+      return 1
     case _:
-        1 + b''
+      return 2
+
+[case testNoneExhaustiveReturn-skip]
+def foo(value) -> int:  # E: Missing return statement
+  match value:
+    case "bar":
+      return 1
+    case 2:
+      return 2
