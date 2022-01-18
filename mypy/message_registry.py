@@ -280,7 +280,8 @@ MODULE_MISSING_ATTIRBUTE: Final = ErrorMessage(
     'Module "{}" has no attribute "{}"{}', codes.ATTR_DEFINED
 )
 NO_IMPLICIT_REEXPORT: Final = ErrorMessage(
-    'Module "{}" does not explicitly export attribute "{}"; implicit reexport disabled'
+    'Module "{}" does not explicitly export attribute "{}"; implicit reexport disabled',
+    codes.ATTR_DEFINED
 )
 INCORRECT_RELATIVE_IMPORT: Final = ErrorMessage("Relative import climbs too many namespaces")
 INVALID_TYPE_ALIAS_TARGET: Final = ErrorMessage(
