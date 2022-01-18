@@ -5155,10 +5155,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        assert isinstance(msg, ErrorMessage)
-        
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
-                           blocker=blocker)
+        if isinstance(msg, ErrorMessage):
+            self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
+                            blocker=blocker)
+            return
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if not self.in_checked_function():
