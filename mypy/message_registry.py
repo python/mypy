@@ -536,7 +536,9 @@ TYPEDDICT_TOTAL_MUST_BE_BOOL_2: Final = ErrorMessage('Value of "total" must be T
 TYPEDDICT_DUPLICATE_KEY: Final = ErrorMessage('Duplicate TypedDict key "{}"')
 TYPEDDICT_INVALID_FIELD_NAME: Final = ErrorMessage("Invalid TypedDict() field name")
 TYPEDDICT_INVALID_FIELD_TYPE: Final = ErrorMessage("Invalid field type")
-
+TYPEDDICT_INLINE_UNSUPPORTED: Final = ErrorMessage(
+    'Inline TypedDict types not supported; use assignment to define TypedDict'
+)
 # Type Analysis
 TYPEANAL_INTERNAL_ERROR: Final = ErrorMessage("Internal error (node is None, kind={})")
 NOT_SUBSCRIPTABLE: Final = ErrorMessage('"{}" is not subscriptable')

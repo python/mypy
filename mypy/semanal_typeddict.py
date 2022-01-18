@@ -328,10 +328,10 @@ class TypedDictAnalyzer:
                         isinstance(field_type_expr.callee, RefExpr) and
                         field_type_expr.callee.fullname in TPDICT_NAMES):
                     self.fail_typeddict_arg(
-                        'Inline TypedDict types not supported; use assignment to define TypedDict',
+                        message_registry.TYPEDDICT_INLINE_UNSUPPORTED,
                         field_type_expr)
                 else:
-                    self.fail_typeddict_arg('Invalid field type', field_type_expr)
+                    self.fail_typeddict_arg(message_registry.TYPEDDICT_INVALID_FIELD_TYPE, field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(type, allow_required=True)
             if analyzed is None:
