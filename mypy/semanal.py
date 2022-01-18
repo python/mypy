@@ -1548,6 +1548,13 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail(message_registry.CANNOT_SUBCLASS_NEWTYPE, defn)
+                if self.enum_has_final_values(base):
+                    # This means that are trying to subclass a non-default
+                    # Enum class, with defined members. This is not possible.
+                    # In runtime, it will raise. We need to mark this type as final.
+                    # However, methods can be defined on a type: only values can't.
+                    # We also don't count values with annotations only.
+                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
@@ -1563,7 +1570,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 extra = ''
                 if name:
                     extra += ' "{}"'.format(name)
-
                 self.fail(msg.format(extra), base_expr)
                 info.fallback_to_any = True
             if self.options.disallow_any_unimported and has_any_from_unimported_type(base):
@@ -1948,6 +1954,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             )
             return
         message = message_registry.MODULE_MISSING_ATTIRBUTE
+        suggestion = ''
         # Suggest alternatives, if any match is found.
         module = self.modules.get(import_id)
         if module:
