@@ -39,6 +39,9 @@ class unicode: pass # needed for py2 docstrings
 class bytes: pass
 
 class list(Sequence[T]): # needed by some test cases
+    @overload
+    def __init__(self) -> None: pass
+    @overload
     def __init__(self, x: Iterable[T]) -> None: pass
     def __getitem__(self, x: int) -> T: pass
     def __iter__(self) -> Iterator[T]: pass
