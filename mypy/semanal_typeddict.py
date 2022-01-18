@@ -2,7 +2,6 @@
 
 from mypy.backports import OrderedDict
 from typing import Optional, List, Set, Tuple
-from typing_extensions import Final
 
 from mypy.types import (
     Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType,
@@ -18,9 +17,7 @@ from mypy.options import Options
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder
 from mypy.message_registry import ErrorMessage
-from mypy import message_registry, errorcodes as codes
-
-
+from mypy import message_registry
 
 
 class TypedDictAnalyzer:
@@ -67,7 +64,6 @@ class TypedDictAnalyzer:
                 defn.analyzed.line = defn.line
                 defn.analyzed.column = defn.column
                 return True, info
-
 
             # Extending/merging existing TypedDicts
             typeddict_bases = []
@@ -327,11 +323,13 @@ class TypedDictAnalyzer:
                 key = field_name_expr.value
                 items.append(key)
                 if key in seen_keys:
-                    self.fail(message_registry.TYPEDDICT_DUPLICATE_KEY.format(key), field_name_expr)
+                    self.fail(message_registry.TYPEDDICT_DUPLICATE_KEY.format(key),
+                              field_name_expr)
                 seen_keys.add(key)
             else:
                 name_context = field_name_expr or field_type_expr
-                self.fail_typeddict_arg(message_registry.TYPEDDICT_INVALID_FIELD_NAME, name_context)
+                self.fail_typeddict_arg(message_registry.TYPEDDICT_INVALID_FIELD_NAME,
+                                        name_context)
                 return [], [], False
             try:
                 type = expr_to_unanalyzed_type(field_type_expr, self.options,
@@ -344,7 +342,8 @@ class TypedDictAnalyzer:
                         message_registry.TYPEDDICT_INLINE_UNSUPPORTED,
                         field_type_expr)
                 else:
-                    self.fail_typeddict_arg(message_registry.TYPEDDICT_INVALID_FIELD_TYPE, field_type_expr)
+                    self.fail_typeddict_arg(message_registry.TYPEDDICT_INVALID_FIELD_TYPE,
+                                            field_type_expr)
                 return [], [], False
             analyzed = self.api.anal_type(type, allow_required=True)
             if analyzed is None:

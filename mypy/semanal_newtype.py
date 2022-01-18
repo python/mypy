@@ -21,7 +21,6 @@ from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.messages import MessageBuilder, format_type
 from mypy import message_registry
 from mypy.message_registry import ErrorMessage
-from mypy import errorcodes as codes
 
 
 class NewTypeAnalyzer:
