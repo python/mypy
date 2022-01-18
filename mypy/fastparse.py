@@ -40,6 +40,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
+from mypy.util import bytes_to_human_readable_repr
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -1286,6 +1287,12 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
+    def visit_Match(self, n: Any) -> Node:
+        self.fail("Match statement is not supported",
+                  line=n.lineno, column=n.col_offset, blocker=True)
+        # Just return some valid node
+        return PassStmt()
+
 
 class TypeConverter:
     def __init__(self,
@@ -1632,17 +1639,3 @@ def stringify_name(n: AST) -> Optional[str]:
         if sv is not None:
             return "{}.{}".format(sv, n.attr)
     return None  # Can't do it.
-
-
-def bytes_to_human_readable_repr(b: bytes) -> str:
-    """Converts bytes into some human-readable representation. Unprintable
-    bytes such as the nul byte are escaped. For example:
-
-        >>> b = bytes([102, 111, 111, 10, 0])
-        >>> s = bytes_to_human_readable_repr(b)
-        >>> print(s)
-        foo\n\x00
-        >>> print(repr(s))
-        'foo\\n\\x00'
-    """
-    return repr(b)[2:-1]

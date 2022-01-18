@@ -30,7 +30,7 @@ class ErrorCode:
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
-CALL_ARG: Final = ErrorCode(
+CALL_ARG: Final[ErrorCode] = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
 ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "General")
@@ -132,6 +132,11 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
 )
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
+)
+NO_OVERLOAD_IMPL: Final = ErrorCode(
+    "no-overload-impl",
+    "Check that overloaded functions outside stub files have an implementation",
+    "General",
 )
 
 

@@ -17,7 +17,6 @@ from mypy.types import (
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
 from mypy.checkexpr import is_literal_type_like
-from mypy.checker import detach_callable
 
 
 class DefaultPlugin(Plugin):
@@ -51,8 +50,6 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
-            return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
@@ -198,12 +195,12 @@ def contextmanager_callback(ctx: FunctionContext) -> Type:
                 and isinstance(default_return, CallableType)):
             # The stub signature doesn't preserve information about arguments so
             # add them back here.
-            return detach_callable(default_return.copy_modified(
+            return default_return.copy_modified(
                 arg_types=arg_type.arg_types,
                 arg_kinds=arg_type.arg_kinds,
                 arg_names=arg_type.arg_names,
                 variables=arg_type.variables,
-                is_ellipsis_args=arg_type.is_ellipsis_args))
+                is_ellipsis_args=arg_type.is_ellipsis_args)
     return ctx.default_return_type
 
 
@@ -393,12 +390,6 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
 
         return make_simplified_union(value_types)
     return ctx.default_return_type
-
-
-def typed_dict_delitem_signature_callback(ctx: MethodSigContext) -> CallableType:
-    # Replace NoReturn as the argument type.
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    return ctx.default_signature.copy_modified(arg_types=[str_type])
 
 
 def typed_dict_delitem_callback(ctx: MethodContext) -> Type:

@@ -274,7 +274,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 Disallow dynamic typing
 ***********************
 
-The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``Any`` type is used to represent a value that has a :ref:`dynamic type <dynamic-typing>`.
 The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
 a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
 
@@ -312,8 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. For example you can't use a bare ``x: list``, you must say
-    ``x: list[int]``.
+    type parameters. For example, you can't use a bare ``x: list``. Instead, you
+    must always write something like ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -418,7 +418,7 @@ For more details, see :ref:`no_strict_optional`.
 Configuring warnings
 ********************
 
-The follow flags enable warnings for code that is sound but is
+The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
 .. option:: --warn-redundant-casts
@@ -853,13 +853,17 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --html-report / --xslt-html-report DIR
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --linecount-report DIR
 
@@ -881,13 +885,17 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --xml-report DIR
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 Miscellaneous
 *************

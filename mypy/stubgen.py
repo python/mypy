@@ -1661,7 +1661,7 @@ def parse_options(args: List[str]) -> Options:
 
     ns = parser.parse_args(args)
 
-    pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
+    pyversion = defaults.PYTHON2_VERSION if ns.py2 else sys.version_info[:2]
     if not ns.interpreter:
         ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
     if ns.modules + ns.packages and ns.files:

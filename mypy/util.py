@@ -105,6 +105,20 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
         return default_encoding, -1
 
 
+def bytes_to_human_readable_repr(b: bytes) -> str:
+    """Converts bytes into some human-readable representation. Unprintable
+    bytes such as the nul byte are escaped. For example:
+
+        >>> b = bytes([102, 111, 111, 10, 0])
+        >>> s = bytes_to_human_readable_repr(b)
+        >>> print(s)
+        foo\n\x00
+        >>> print(repr(s))
+        'foo\\n\\x00'
+    """
+    return repr(b)[2:-1]
+
+
 class DecodeError(Exception):
     """Exception raised when a file cannot be decoded due to an unknown encoding type.
 
@@ -566,11 +580,12 @@ class FancyFormatter:
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
         set_eseq = curses.tigetstr('cup')
+        normal = curses.tigetstr('sgr0')
 
-        if not (bold and under and set_color and set_eseq):
+        if not (bold and under and set_color and set_eseq and normal):
             return False
 
-        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.NORMAL = normal.decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
         self.DIM = parse_gray_color(set_eseq)

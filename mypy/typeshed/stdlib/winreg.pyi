@@ -1,6 +1,7 @@
 from _typeshed import Self
 from types import TracebackType
 from typing import Any, Type, Union
+from typing_extensions import final
 
 _KeyType = Union[HKEYType, int]
 
@@ -88,6 +89,7 @@ REG_WHOLE_HIVE_VOLATILE: int  # undocumented
 error = OSError
 
 # Though this class has a __name__ of PyHKEY, it's exposed as HKEYType for some reason
+@final
 class HKEYType:
     def __bool__(self) -> bool: ...
     def __int__(self) -> int: ...

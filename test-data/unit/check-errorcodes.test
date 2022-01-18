@@ -34,7 +34,7 @@ reveal_type(1) # N: Revealed type is "Literal[1]?"
 1 ''
 [out]
 main:1: error: invalid syntax  [syntax]
-[out version>=3.10]
+[out version==3.10.0]
 main:1: error: invalid syntax. Perhaps you forgot a comma?  [syntax]
 
 [case testErrorCodeSyntaxError2]
@@ -897,6 +897,17 @@ lst: List[int] = []
 if lst:
     pass
 [builtins fixtures/list.pyi]
+
+[case testNoOverloadImplementation]
+from typing import overload
+
+@overload  # E: An overloaded function outside a stub file must have an implementation  [no-overload-impl]
+def f(arg: int) -> int:
+    ...
+
+@overload
+def f(arg: str) -> str:
+    ...
 
 [case testSliceInDict39]
 # flags: --python-version 3.9 --show-column-numbers

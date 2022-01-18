@@ -346,7 +346,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-asyncio.coroutine
+@asyncio.coroutine
 def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result('42')  #Try to set an str as result to a Future[int]

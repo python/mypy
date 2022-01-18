@@ -120,11 +120,11 @@ semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from abc import abstractmethod
-from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict
+from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict, Union
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind, TypeInfo
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -134,6 +134,7 @@ from mypy.messages import MessageBuilder
 from mypy.options import Options
 from mypy.lookup import lookup_fully_qualified
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 
 
 @trait
@@ -224,7 +225,8 @@ class CheckerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: Union[str, ErrorMessage], ctx: Context, *,
+             code: Optional[ErrorCode] = None) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -270,6 +272,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        """Legacy function -- use named_type() instead."""
+        # NOTE: Do not delete this since many plugins may still use it.
+        raise NotImplementedError
+
+    @abstractmethod
     def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         """Construct an instance of a type with given type arguments.
@@ -278,6 +286,10 @@ class SemanticAnalyzerPluginInterface:
         type name. This is possible when the qualified name includes a
         module name and the module has not been imported.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
         raise NotImplementedError
 
     @abstractmethod

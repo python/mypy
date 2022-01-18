@@ -1,22 +1,22 @@
 import sys
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Iterable, Iterator, List, Pattern, Set, Type, TypeVar, Union
+from typing import Any, Iterable, Iterator, List, Pattern, Type, TypeVar, Union
 from typing_extensions import Final
 
 _T = TypeVar("_T")
 
-WSP: Final[Set[str]]
-CFWS_LEADER: Final[Set[str]]
-SPECIALS: Final[Set[str]]
-ATOM_ENDS: Final[Set[str]]
-DOT_ATOM_ENDS: Final[Set[str]]
-PHRASE_ENDS: Final[Set[str]]
-TSPECIALS: Final[Set[str]]
-TOKEN_ENDS: Final[Set[str]]
-ASPECIALS: Final[Set[str]]
-ATTRIBUTE_ENDS: Final[Set[str]]
-EXTENDED_ATTRIBUTE_ENDS: Final[Set[str]]
+WSP: Final[set[str]]
+CFWS_LEADER: Final[set[str]]
+SPECIALS: Final[set[str]]
+ATOM_ENDS: Final[set[str]]
+DOT_ATOM_ENDS: Final[set[str]]
+PHRASE_ENDS: Final[set[str]]
+TSPECIALS: Final[set[str]]
+TOKEN_ENDS: Final[set[str]]
+ASPECIALS: Final[set[str]]
+ATTRIBUTE_ENDS: Final[set[str]]
+EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
 
 def quote_string(value: Any) -> str: ...
 

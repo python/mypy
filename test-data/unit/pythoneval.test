@@ -1085,7 +1085,7 @@ _testTypedDictGet.py:9: note: Revealed type is "builtins.object*"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, key: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, key: str, default: object) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, str, object) -> object
 _testTypedDictGet.py:12: note: Revealed type is "builtins.object*"
 
 [case testTypedDictMappingMethods]
@@ -1411,7 +1411,7 @@ accepts_named_tuple(1)
 accepts_named_tuple((1, 2))
 [out]
 _testNamedTupleTypeInheritanceSpecialCase.py:8: note: Revealed type is "collections.OrderedDict[builtins.str, Any]"
-_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str]"
+_testNamedTupleTypeInheritanceSpecialCase.py:9: note: Revealed type is "builtins.tuple[builtins.str, ...]"
 _testNamedTupleTypeInheritanceSpecialCase.py:10: note: Revealed type is "builtins.dict[builtins.str, Any]"
 _testNamedTupleTypeInheritanceSpecialCase.py:17: error: Argument 1 to "accepts_named_tuple" has incompatible type "int"; expected "NamedTuple"
 _testNamedTupleTypeInheritanceSpecialCase.py:18: error: Argument 1 to "accepts_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
@@ -1456,9 +1456,9 @@ frozenset({1}) == [1]  # Error
 {1: 2}.keys() == [1]  # Error
 [out]
 _testStrictEqualityAllowlist.py:5: error: Non-overlapping equality check (left operand type: "FrozenSet[int]", right operand type: "List[int]")
-_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "Set[str]")
-_testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "_dict_values[int, int]", right operand type: "Set[int]")
-_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "_dict_keys[int, int]", right operand type: "List[int]")
+_testStrictEqualityAllowlist.py:11: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "Set[str]")
+_testStrictEqualityAllowlist.py:12: error: Non-overlapping equality check (left operand type: "dict_values[int, int]", right operand type: "Set[int]")
+_testStrictEqualityAllowlist.py:13: error: Non-overlapping equality check (left operand type: "dict_keys[int, int]", right operand type: "List[int]")
 
 [case testUnreachableWithStdlibContextManagers]
 # mypy: warn-unreachable, strict-optional
@@ -1573,3 +1573,15 @@ x: OrderedDict[str, str] = OrderedDict({})
 reveal_type(x)  # Revealed type is "collections.OrderedDict[builtins.str, builtins.int]"
 [out]
 _testTypingExtensionsOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.str]"
+
+[case testEnumValueWithPlaceholderNodeType]
+# https://github.com/python/mypy/issues/11971
+from enum import Enum
+from typing import Callable, Dict
+class Foo(Enum):
+    Bar: Foo = Callable[[str], None]
+    Baz: Foo = Callable[[Dict[str, "Missing"]], None]
+[out]
+_testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
+_testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined

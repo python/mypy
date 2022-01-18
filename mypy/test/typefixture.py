@@ -8,7 +8,8 @@ from typing import List, Optional, Tuple
 from mypy.semanal_shared import set_callable_name
 from mypy.types import (
     Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
-    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
+    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType,
+    TypeVarLikeType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, FuncDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -234,7 +235,7 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v: List[TypeVarType] = []
+            v: List[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]
