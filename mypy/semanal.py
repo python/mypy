@@ -5157,7 +5157,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert ctx is not None, msg
         if isinstance(msg, ErrorMessage):
             self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
-                            blocker=blocker)
+                               blocker=blocker)
             return
         self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
 
