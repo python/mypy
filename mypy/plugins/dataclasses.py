@@ -497,10 +497,10 @@ class DataclassTransformer:
         attr_name = '__dataclass_fields__'
         any_type = AnyType(TypeOfAny.explicit)
         field_type = self._ctx.api.named_type_or_none('dataclasses.Field', [any_type]) or any_type
-        attr_type = self._ctx.api.named_type('builtins.dict', [
+        attr_type = self._ctx.api.named_type_or_none('builtins.dict', [
             self._ctx.api.named_type('builtins.str'),
             field_type,
-        ])
+        ]) or any_type
         var = Var(name=attr_name, type=attr_type)
         var.info = self._ctx.cls.info
         var._fullname = self._ctx.cls.info.fullname + '.' + attr_name
