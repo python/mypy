@@ -934,6 +934,7 @@ AttributeInOtherModule = int
 
 [typing fixtures/typing-typeddict.pyi]
 [builtins fixtures/fine_grained.pyi]
+[builtins fixtures/primitives.pyi]
 [out]
 ==
 c.py:3: error: Unsupported operand types for + ("int" and "str")

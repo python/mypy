@@ -1554,7 +1554,6 @@ reveal_type(result['list_subclass_2_typevars']) # N: Revealed type is "builtins.
 reveal_type(result['list_subclass_with_constraint']) # N: Revealed type is "builtins.list[TypedDict({'name': builtins.str, 'age': builtins.int})]"
 
 [typing fixtures/typing-full.pyi]
-[builtins fixtures/list.pyi]
 [builtins fixtures/dict.pyi]
 
 [case testDataclassesAsdictDict]
