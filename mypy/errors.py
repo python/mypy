@@ -588,8 +588,10 @@ class Errors:
         error_info = self.error_info_map[path]
         if formatter is not None:
             error_info = [info for info in error_info if not info.hidden]
-            errors = self.render_messages(self.sort_messages(error_info))
-            errors = self.remove_duplicates(errors)
+            error_tuples = self.render_messages(self.sort_messages(error_info))
+            error_tuples = self.remove_duplicates(error_tuples)
+
+            errors = create_errors(error_tuples)
             return [formatter.report_error(err) for err in errors]
 
         self.flushed_files.add(path)
@@ -868,3 +870,51 @@ def report_internal_error(err: Exception,
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
+
+class MypyError:
+    def __init__(self,
+                 file_path: str,
+                 line: int,
+                 column: int,
+                 message: str,
+                 hint: str,
+                 errorcode: Optional[ErrorCode]) -> None:
+        self.file_path = file_path
+        self.line = line
+        self.column = column
+        self.message = message
+        self.hint = hint
+        self.errorcode = errorcode
+
+# (file_path, line, column)
+_ErrorLocation = Tuple[str, int, int]
+
+def create_errors(error_tuples: List[ErrorTuple]) -> List[MypyError]:
+    errors: List[MypyError] = []
+    latest_error_at_location: Dict[_ErrorLocation, MypyError] = {}
+
+    for error_tuple in error_tuples:
+        file_path, line, column, severity, message, _, errorcode = error_tuple
+        if file_path is None:
+            continue
+
+        assert severity in ('error', 'note')
+        if severity == 'note':
+            error_location = (file_path, line, column)
+            error = latest_error_at_location.get(error_location)
+            if error is None:
+                # No error tuple found for this hint. Ignoring it
+                continue
+            
+            if error.hint == '':
+                error.hint = message
+            else:
+                error.hint += '\n' + message
+
+        else:
+            error = MypyError(file_path, line, column, message, "", errorcode)
+            errors.append(error)
+            error_location = (file_path, line, column)
+            latest_error_at_location[error_location] = error
+
+    return errors

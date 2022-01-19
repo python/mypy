@@ -3,24 +3,23 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from mypy.errors import ErrorTuple
+    from mypy.errors import MypyError
 
 
 class ErrorFormatter(ABC):
     """Defines how errors are formatted before being printed."""
     @abstractmethod
-    def report_error(self, error: 'ErrorTuple') -> str:
+    def report_error(self, error: 'MypyError') -> str:
         raise NotImplementedError
 
 
 class JSONFormatter(ErrorFormatter):
-    def report_error(self, error: 'ErrorTuple') -> str:
-        file, line, column, severity, message, _, errorcode = error
+    def report_error(self, error: 'MypyError') -> str:
         return json.dumps({
-            'file': file,
-            'line': line,
-            'column': column,
-            'severity': severity,
-            'message': message,
-            'code': None if errorcode is None else errorcode.code,
+            'file': error.file_path,
+            'line': error.line,
+            'column': error.column,
+            'message': error.message,
+            'hint': error.hint,
+            'code': None if error.errorcode is None else error.errorcode.code,
         })
