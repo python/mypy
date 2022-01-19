@@ -577,7 +577,7 @@ def asdict_callback(ctx: FunctionContext) -> Type:
 class AsDictVisitor(TypeTranslator):
     def __init__(self, api: CheckerPluginInterface) -> None:
         self.api = api
-        self.seen_dataclasses = set()  # type: Set[str]
+        self.seen_dataclasses: Set[str] = set()
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         return t.copy_modified(args=[a.accept(self) for a in t.args])
@@ -593,12 +593,15 @@ class AsDictVisitor(TypeTranslator):
                 return self.api.named_generic_type(
                     'builtins.dict', [self.api.named_generic_type('builtins.str', []), any_type])
             attrs = info.metadata['dataclass']['attributes']
-            fields = OrderedDict()  # type: OrderedDict[str, Type]
+            fields: OrderedDict[str, Type] = OrderedDict()
             self.seen_dataclasses.add(info.fullname)
             for data in attrs:
                 attr = DataclassAttribute.deserialize(info, data, self.api)
                 self.api.add_plugin_dependency(make_trigger(info.fullname + "." + attr.name))
-                sym_node = info.names[attr.name]
+                # TODO: attr.name should be available
+                sym_node = info.names.get(attr.name, None)
+                if sym_node is None:
+                    continue
                 attr_type = sym_node.type
                 assert attr_type is not None
                 fields[attr.name] = attr_type.accept(self)
