@@ -534,7 +534,7 @@ match m:
     case str(j):
         reveal_type(j)  # N: Revealed type is "builtins.str"
     case tuple(k):
-        reveal_type(k)  # N: Revealed type is "builtins.tuple[Any]"
+        reveal_type(k)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
 [case testClassPatternNarrowSelfCapture]
@@ -562,7 +562,7 @@ match m:
     case str():
         reveal_type(m)  # N: Revealed type is "builtins.str"
     case tuple():
-        reveal_type(m)  # N: Revealed type is "builtins.tuple[Any]"
+        reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
 [case testClassPatternCaptureDataclass]

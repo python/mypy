@@ -24,9 +24,9 @@ from mypy.nodes import (
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
     Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
-    ARG_POS, ARG_STAR, LITERAL_TYPE, LDEF, MDEF, GDEF,
+    ARG_POS, ARG_STAR, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
-    is_final_node, ARG_NAMED, MatchStmt)
+    is_final_node, MatchStmt)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
@@ -86,7 +86,7 @@ from mypy.scope import Scope
 from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode
-from mypy.util import is_typeshed_file
+from mypy.util import is_typeshed_file, is_dunder, is_sunder
 
 T = TypeVar('T')
 
@@ -1833,6 +1833,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
+        if not defn.has_incompatible_baseclass and defn.info.is_enum:
+            for base in defn.info.mro[1:-1]:  # we don't need self and `object`
+                if base.is_enum and base.fullname not in ENUM_BASES:
+                    self.check_final_enum(defn, base)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1889,6 +1893,43 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
+
+    def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
+        for sym in base.names.values():
+            if self.is_final_enum_value(sym):
+                self.fail(
+                    'Cannot extend enum with existing members: "{}"'.format(
+                        base.name,
+                    ),
+                    defn,
+                )
+                break
+
+    def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
+        if isinstance(sym.node, (FuncBase, Decorator)):
+            return False  # A method is fine
+        if not isinstance(sym.node, Var):
+            return True  # Can be a class or anything else
+
+        # Now, only `Var` is left, we need to check:
+        # 1. Private name like in `__prop = 1`
+        # 2. Dunder name like `__hash__ = some_hasher`
+        # 3. Sunder name like `_order_ = 'a, b, c'`
+        # 4. If it is a method / descriptor like in `method = classmethod(func)`
+        if (
+            is_private(sym.node.name)
+            or is_dunder(sym.node.name)
+            or is_sunder(sym.node.name)
+            # TODO: make sure that `x = @class/staticmethod(func)`
+            # and `x = property(prop)` both work correctly.
+            # Now they are incorrectly counted as enum members.
+            or isinstance(get_proper_type(sym.node.type), FunctionLike)
+        ):
+            return False
+
+        if self.is_stub or sym.node.has_explicit_value:
+            return True
+        return False
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

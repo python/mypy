@@ -113,22 +113,23 @@ jobs:
     - name: Test
       run: tox -e ${{ matrix.toxenv }} --skip-pkg-install -- ${{ matrix.tox_extra_args }}
 
-  python-nightly:
-    runs-on: ubuntu-latest
-    name: Test suite with Python nightly
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
-      with:
-        python-version: '3.11-dev'
-    - name: Install tox
-      run: |
-        pip install -U pip==21.2.3 setuptools
-        pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
-    - name: Setup tox environment
-      run: tox -e py --notest
-    - name: Test
-      run: tox -e py --skip-pkg-install -- "-n 2"
-      continue-on-error: true
-    - name: Mark as a success
-      run: exit 0
+# TODO: re-enable when `typed-ast` will be fixed for `python==3.11`
+#   python-nightly:
+#     runs-on: ubuntu-latest
+#     name: Test suite with Python nightly
+#     steps:
+#     - uses: actions/checkout@v2
+#     - uses: actions/setup-python@v2
+#       with:
+#         python-version: '3.11-dev'
+#     - name: Install tox
+#       run: |
+#         pip install -U pip==21.2.3 setuptools
+#         pip install --upgrade 'setuptools!=50' virtualenv==20.4.7 tox==3.20.1
+#     - name: Setup tox environment
+#       run: tox -e py --notest
+#     - name: Test
+#       run: tox -e py --skip-pkg-install -- "-n 2"
+#       continue-on-error: true
+#     - name: Mark as a success
+#       run: exit 0

@@ -5627,9 +5627,9 @@ class FinalEnum(Enum):
 [builtins fixtures/isinstance.pyi]
 [out]
 main:3: error: Cannot override writable attribute "x" with a final one
-main:4: error: Cannot inherit from final class "FinalEnum"
+main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
 [out2]
 main:3: error: Cannot override writable attribute "x" with a final one
-main:4: error: Cannot inherit from final class "FinalEnum"
+main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")

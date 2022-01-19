@@ -1469,22 +1469,22 @@ class NonEmptyFlag(Flag):
 class NonEmptyIntFlag(IntFlag):
     x = 1
 
-class ErrorEnumWithValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
+class ErrorEnumWithValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
     x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")
-class ErrorIntEnumWithValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
+class ErrorIntEnumWithValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
     x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntEnum")
-class ErrorFlagWithValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
+class ErrorFlagWithValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
     x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyFlag")
-class ErrorIntFlagWithValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
+class ErrorIntFlagWithValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
     x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntFlag")
 
-class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
     pass
-class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
     pass
-class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
     pass
-class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
     pass
 [builtins fixtures/bool.pyi]
 
@@ -1588,13 +1588,17 @@ class NonEmptyIntFlag(IntFlag):
 class NonEmptyEnumMeta(EnumMeta):
     x = 1
 
-class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum" \
+                                            # E: Cannot extend enum with existing members: "NonEmptyEnum"
     pass
-class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum" \
+                                                  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
     pass
-class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag" \
+                                            # E: Cannot extend enum with existing members: "NonEmptyFlag"
     pass
-class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag" \
+                                                  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
     pass
 class ErrorEnumMetaWithoutValue(NonEmptyEnumMeta):  # E: Cannot inherit from final class "NonEmptyEnumMeta"
     pass
@@ -1692,13 +1696,13 @@ class NonEmptyIntFlag(IntFlag):
     x = 1
     def method(self) -> None: pass
 
-class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum"
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
     pass
-class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum"
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
     pass
-class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag"
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
     pass
-class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag"
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
     pass
 [builtins fixtures/bool.pyi]
 
@@ -1707,7 +1711,7 @@ from enum import Enum
 
 class A(Enum):
     class Inner: pass
-class B(A): pass  # E: Cannot inherit from final class "A"
+class B(A): pass  # E: Cannot extend enum with existing members: "A"
 [builtins fixtures/bool.pyi]
 
 [case testEnumFinalSpecialProps]
@@ -1765,12 +1769,12 @@ class B(A):
 
 class A1(Enum):
     x: int = 1
-class B1(A1):  # E: Cannot inherit from final class "A1"
+class B1(A1):  # E: Cannot extend enum with existing members: "A1"
     pass
 
 class A2(Enum):
     x = 2
-class B2(A2):  # E: Cannot inherit from final class "A2"
+class B2(A2):  # E: Cannot extend enum with existing members: "A2"
     pass
 
 # We leave this `Final` without a value,
@@ -1788,12 +1792,12 @@ import lib
 from enum import Enum
 class A(Enum):
     x: int
-class B(A):  # E: Cannot inherit from final class "A"
+class B(A):  # E: Cannot extend enum with existing members: "A"
     x = 1    # E: Cannot override writable attribute "x" with a final one
 
 class C(Enum):
     x = 1
-class D(C):  # E: Cannot inherit from final class "C"
+class D(C):  # E: Cannot extend enum with existing members: "C"
     x: int   # E: Cannot assign to final name "x"
 [builtins fixtures/bool.pyi]
 
@@ -1810,4 +1814,57 @@ reveal_type(A.str.value)  # N: Revealed type is "Literal['foo']?"
 reveal_type(A.int.value)  # N: Revealed type is "Literal[1]?"
 reveal_type(A.bool.value)  # N: Revealed type is "Literal[False]?"
 reveal_type(A.tuple.value)  # N: Revealed type is "Tuple[Literal[1]?]"
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithPrivateAssignment]
+import enum
+class Some(enum.Enum):
+    __priv = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithDunderAssignment]
+import enum
+class Some(enum.Enum):
+    __some__ = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithSunderAssignment]
+import enum
+class Some(enum.Enum):
+    _some_ = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithMethodAssignment]
+import enum
+from typing import overload
+class Some(enum.Enum):
+    def lor(self, other) -> bool:
+        pass
+
+    ror = lor
+
+class Other(Some):  # Should pass
+    pass
+
+
+class WithOverload(enum.IntEnum):
+    @overload
+    def meth(self, arg: int) -> int: pass
+    @overload
+    def meth(self, arg: str) -> str: pass
+    def meth(self, arg): pass
+
+    alias = meth
+
+class SubWithOverload(WithOverload):  # Should pass
+    pass
 [builtins fixtures/tuple.pyi]
