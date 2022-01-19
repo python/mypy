@@ -871,6 +871,7 @@ def report_internal_error(err: Exception,
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
 
+
 class MypyError:
     def __init__(self,
                  file_path: str,
@@ -886,8 +887,10 @@ class MypyError:
         self.hint = hint
         self.errorcode = errorcode
 
+
 # (file_path, line, column)
 _ErrorLocation = Tuple[str, int, int]
+
 
 def create_errors(error_tuples: List[ErrorTuple]) -> List[MypyError]:
     errors: List[MypyError] = []
@@ -905,7 +908,7 @@ def create_errors(error_tuples: List[ErrorTuple]) -> List[MypyError]:
             if error is None:
                 # No error tuple found for this hint. Ignoring it
                 continue
-            
+
             if error.hint == '':
                 error.hint = message
             else:
