@@ -2962,20 +2962,24 @@ import submod
 class C:
     __metaclass__ = submod.M
 [file submod.py]
+from typing import Optional
 class M(type):
-    x = None  # type: int
+    x = None  # type: Optional[int]
 [file submod.py.2]
+from typing import Optional
 class M(type):
-    x = None  # type: str
+    x = None  # type: Optional[str]
 [file submod.py.3]
+from typing import Optional
 class M(type):
-    y = None  # type: str
+    y = None  # type: Optional[str]
 [file submod.py.4]
+from typing import Optional
 class M(type):
-    x = None  # type: int
+    x = None  # type: Optional[int]
 [out]
 ==
-a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "Optional[str]")
 ==
 a.py:4: error: "Type[C]" has no attribute "x"
 ==
@@ -3686,7 +3690,7 @@ class BaseS:
     x: str
 [out]
 ==
-b.py:3: error: Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
+b.py:3: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testAliasFineGenericMod]
 import b

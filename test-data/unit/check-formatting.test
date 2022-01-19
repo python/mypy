@@ -524,7 +524,7 @@ class D(bytes):
 
 [case testFormatCallFormatTypesBytesNotPy2]
 # flags: --py2
-from typing import Union, TypeVar, NewType, Generic
+from typing import Union, TypeVar, NewType, Generic, Optional
 
 A = TypeVar('A', str, unicode)
 B = TypeVar('B', bound=str)
@@ -547,7 +547,7 @@ u'{}'.format(x)
 u'{}'.format(n)
 
 class C(Generic[B]):
-    x = None  # type: B
+    x = None  # type: Optional[B]
     def meth(self):
         # type: () -> None
         '{}'.format(self.x)

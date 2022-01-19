@@ -279,8 +279,9 @@ def f(arg):
     # type: (Type[C]) -> None
     arg.x
 [file mod.py]
+from typing import Optional
 class M(type):
-    x = None  # type: int
+    x = None  # type: Optional[int]
 class C:
     __metaclass__ = M
 [out]

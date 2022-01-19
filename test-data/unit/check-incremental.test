@@ -5205,7 +5205,7 @@ def test() -> None:
 [out]
 [out2]
 
-[case testCannotDetermineTypeFromOtherModule]
+[case testCanDetermineTypeFromOtherModule]
 
 import aa
 
@@ -5233,15 +5233,15 @@ class Base:
     def foo(self) -> int: ...
 
 class Sub(Base):
-    foo = desc(42)  # type: ignore
+    foo = desc(42)
 
 [builtins fixtures/property.pyi]
 [out]
-tmp/a.py:3: error: Cannot determine type of "foo"
-tmp/a.py:4: error: Cannot determine type of "foo"
+tmp/b.py:12: error: Too many arguments for "desc"
+tmp/b.py:12: error: Incompatible types in assignment (expression has type "desc", variable has type "int")
 [out2]
-tmp/a.py:3: error: Cannot determine type of "foo"
-tmp/a.py:4: error: Cannot determine type of "foo"
+tmp/b.py:12: error: Too many arguments for "desc"
+tmp/b.py:12: error: Incompatible types in assignment (expression has type "desc", variable has type "int")
 
 [case testRedefinitionClass]
 import b

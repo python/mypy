@@ -4339,7 +4339,7 @@ class C(B):
     x = object()
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "A" defined the type as "int")
-main:6: error: Incompatible types in assignment (expression has type "object", base class "B" defined the type as "str")
+main:6: error: Incompatible types in assignment (expression has type "object", variable has type "str")
 
 [case testClassOneErrorPerLine]
 class A:
@@ -7134,3 +7134,27 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testInheritClassVariableType]
+# flags: --python-version 3.7
+from __future__ import annotations
+class Base:
+  X: list[int] = []
+class Derived0(Base):
+  X = []
+class Derived1(Base):
+  X: list[str] = [] # E: Incompatible types in assignment (expression has type "List[str]", base class "Base" defined the type as "List[int]")
+class Derived2(Base):
+  X = ["a"] # E: List item 0 has incompatible type "str"; expected "int"
+[builtins fixtures/tuple.pyi]
+
+[case testInheritClassVariableTypeIncompatibility]
+# flags: --python-version 3.7
+from __future__ import annotations
+class A:
+    x: list[int]
+class B(A):
+    x: list[str] # E: Incompatible types in assignment (expression has type "List[str]", base class "A" defined the type as "List[int]")
+class C(B):
+    x = ["hi"]
+[builtins fixtures/tuple.pyi]
