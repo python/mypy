@@ -47,10 +47,11 @@ from mypy.types import (
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
-    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
+    TypeConverter, parse_type_comment, parse_type_ignore_tag,
     TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
+from mypy.util import bytes_to_human_readable_repr
 from mypy.reachability import mark_block_unreachable
 
 try:
@@ -664,23 +665,19 @@ class ASTConverter:
                         typ)
         return self.set_line(stmt, n)
 
-    # 'raise' [test [',' test [',' test]]]
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
-        legacy_mode = False
         if n.type is None:
             e = None
         else:
             if n.inst is None:
                 e = self.visit(n.type)
             else:
-                legacy_mode = True
                 if n.tback is None:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
         stmt = RaiseStmt(e, None)
-        stmt.legacy_mode = legacy_mode
         return self.set_line(stmt, n)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)

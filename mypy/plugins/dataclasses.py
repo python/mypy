@@ -4,18 +4,19 @@ from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
-    ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, MDEF, Argument, AssignmentStmt, CallExpr,
-    Context, Expression, JsonDict, NameExpr, RefExpr,
-    SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr, PlaceholderNode
+    ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
+    Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
+    NameExpr, RefExpr, SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr,
+    PlaceholderNode
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type, add_attribute_to_class,
 )
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
-    Type, Instance, NoneType, TypeVarType, CallableType, get_proper_type,
-    AnyType, TypeOfAny,
+    Type, Instance, NoneType, TypeVarType, CallableType, TupleType, LiteralType,
+    get_proper_type, AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
 
@@ -24,6 +25,11 @@ dataclass_makers: Final = {
     'dataclass',
     'dataclasses.dataclass',
 }
+# The set of functions that generate dataclass fields.
+field_makers: Final = {
+    'dataclasses.field',
+}
+
 
 SELF_TVAR_NAME: Final = "_DT"
 
@@ -125,7 +131,10 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
+            'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
+            'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
         }
+        py_version = self._ctx.api.options.python_version
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -134,11 +143,28 @@ class DataclassTransformer:
         if (decorator_arguments['init'] and
                 ('__init__' not in info.names or info.names['__init__'].plugin_generated) and
                 attributes):
+
+            args = [attr.to_argument() for attr in attributes if attr.is_in_init
+                    and not self._is_kw_only_type(attr.type)]
+
+            if info.fallback_to_any:
+                # Make positional args optional since we don't know their order.
+                # This will at least allow us to typecheck them if they are called
+                # as kwargs
+                for arg in args:
+                    if arg.kind == ARG_POS:
+                        arg.kind = ARG_OPT
+
+                nameless_var = Var('')
+                args = [Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR),
+                        *args,
+                        Argument(nameless_var, AnyType(TypeOfAny.explicit), None, ARG_STAR2),
+                        ]
+
             add_method(
                 ctx,
                 '__init__',
-                args=[attr.to_argument() for attr in attributes if attr.is_in_init
-                      and not self._is_kw_only_type(attr.type)],
+                args=args,
                 return_type=NoneType(),
             )
 
@@ -188,7 +214,20 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
+        if decorator_arguments['slots']:
+            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+
         self.reset_init_only_vars(info, attributes)
+
+        if (decorator_arguments['match_args'] and
+                ('__match_args__' not in info.names or
+                 info.names['__match_args__'].plugin_generated) and
+                attributes):
+            str_type = ctx.api.named_type("builtins.str")
+            literals: List[Type] = [LiteralType(attr.name, str_type)
+                        for attr in attributes if attr.is_in_init]
+            match_args_type = TupleType(literals, ctx.api.named_type("builtins.tuple"))
+            add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
 
         self._add_dataclass_fields_magic_attribute()
 
@@ -196,6 +235,38 @@ class DataclassTransformer:
             'attributes': [attr.serialize() for attr in attributes],
             'frozen': decorator_arguments['frozen'],
         }
+
+    def add_slots(self,
+                  info: TypeInfo,
+                  attributes: List[DataclassAttribute],
+                  *,
+                  correct_version: bool) -> None:
+        if not correct_version:
+            # This means that version is lower than `3.10`,
+            # it is just a non-existent argument for `dataclass` function.
+            self._ctx.api.fail(
+                'Keyword argument "slots" for "dataclass" '
+                'is only valid in Python 3.10 and higher',
+                self._ctx.reason,
+            )
+            return
+
+        generated_slots = {attr.name for attr in attributes}
+        if ((info.slots is not None and info.slots != generated_slots)
+                or info.names.get('__slots__')):
+            # This means we have a slots conflict.
+            # Class explicitly specifies a different `__slots__` field.
+            # And `@dataclass(slots=True)` is used.
+            # In runtime this raises a type error.
+            self._ctx.api.fail(
+                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
+                    self._ctx.cls.name,
+                ),
+                self._ctx.cls,
+            )
+            return
+
+        info.slots = generated_slots
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
@@ -456,7 +527,7 @@ def _collect_field_args(expr: Expression,
     if (
             isinstance(expr, CallExpr) and
             isinstance(expr.callee, RefExpr) and
-            expr.callee.fullname == 'dataclasses.field'
+            expr.callee.fullname in field_makers
     ):
         # field() only takes keyword arguments.
         args = {}

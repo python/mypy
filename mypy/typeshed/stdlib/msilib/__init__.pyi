@@ -1,6 +1,6 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence, Set, Tuple, Type
+from typing import Any, Container, Iterable, Sequence, Tuple, Type
 from typing_extensions import Literal
 
 if sys.platform == "win32":
@@ -25,14 +25,14 @@ if sys.platform == "win32":
     class Table:
 
         name: str
-        fields: list[Tuple[int, str, int]]
+        fields: list[tuple[int, str, int]]
         def __init__(self, name: str) -> None: ...
         def add_field(self, index: int, name: str, type: int) -> None: ...
         def sql(self) -> str: ...
         def create(self, db: _Database) -> None: ...
     class _Unspecified: ...
     def change_sequence(
-        seq: Sequence[Tuple[str, str | None, int]],
+        seq: Sequence[tuple[str, str | None, int]],
         action: str,
         seqno: int | Type[_Unspecified] = ...,
         cond: str | Type[_Unspecified] = ...,
@@ -48,14 +48,14 @@ if sys.platform == "win32":
     class CAB:
 
         name: str
-        files: list[Tuple[str, str]]
-        filenames: Set[str]
+        files: list[tuple[str, str]]
+        filenames: set[str]
         index: int
         def __init__(self, name: str) -> None: ...
         def gen_id(self, file: str) -> str: ...
-        def append(self, full: str, file: str, logical: str) -> Tuple[int, str]: ...
+        def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
-    _directories: Set[str]
+    _directories: set[str]
     class Directory:
 
         db: _Database
@@ -64,8 +64,8 @@ if sys.platform == "win32":
         physical: str
         logical: str
         component: str | None
-        short_names: Set[str]
-        ids: Set[str]
+        short_names: set[str]
+        ids: set[str]
         keyfiles: dict[str, str]
         componentflags: int | None
         absolute: str

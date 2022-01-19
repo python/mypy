@@ -1,7 +1,8 @@
 import asynchat
 import asyncore
 import socket
-from typing import Any, DefaultDict, Tuple, Type
+from collections import defaultdict
+from typing import Any, Tuple, Type
 
 _Address = Tuple[str, int]  # (host, port)
 
@@ -9,7 +10,7 @@ class SMTPChannel(asynchat.async_chat):
     COMMAND: int
     DATA: int
 
-    command_size_limits: DefaultDict[str, int]
+    command_size_limits: defaultdict[str, int]
     smtp_server: SMTPServer
     conn: socket.socket
     addr: Any

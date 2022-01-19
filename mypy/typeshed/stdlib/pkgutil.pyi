@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsRead
 from importlib.abc import Loader, MetaPathFinder, PathEntryFinder
-from typing import IO, Any, Callable, Iterable, Iterator, NamedTuple, Tuple
+from typing import IO, Any, Callable, Iterable, Iterator, NamedTuple
 
 class ModuleInfo(NamedTuple):
     module_finder: MetaPathFinder | PathEntryFinder
@@ -14,7 +14,7 @@ class ImpImporter:
     def __init__(self, path: str | None = ...) -> None: ...
 
 class ImpLoader:
-    def __init__(self, fullname: str, file: IO[str], filename: str, etc: Tuple[str, str, int]) -> None: ...
+    def __init__(self, fullname: str, file: IO[str], filename: str, etc: tuple[str, str, int]) -> None: ...
 
 def find_loader(fullname: str) -> Loader | None: ...
 def get_importer(path_item: str) -> PathEntryFinder | None: ...

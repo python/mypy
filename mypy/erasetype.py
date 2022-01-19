@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType
+    get_proper_type, TypeAliasType, ParamSpecType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -41,8 +41,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> ProperType:
-        # Should not get here.
-        raise RuntimeError()
+        return t
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # Should not get here.
@@ -55,6 +54,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
@@ -121,6 +123,11 @@ class TypeVarEraser(TypeTranslator):
         self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         if self.erase_id(t.id):
             return self.replacement
         return t

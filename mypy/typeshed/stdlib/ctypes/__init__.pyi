@@ -109,7 +109,7 @@ class _FuncPointer(_PointerLike, _CData):
     @overload
     def __init__(self, callable: Callable[..., Any]) -> None: ...
     @overload
-    def __init__(self, func_spec: Tuple[str | int, CDLL], paramflags: Tuple[_PF, ...] = ...) -> None: ...
+    def __init__(self, func_spec: tuple[str | int, CDLL], paramflags: Tuple[_PF, ...] = ...) -> None: ...
     @overload
     def __init__(self, vtlb_index: int, name: str, paramflags: Tuple[_PF, ...] = ..., iid: pointer[c_int] = ...) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
@@ -173,7 +173,7 @@ def POINTER(type: Type[_CT]) -> Type[pointer[_CT]]: ...
 # ctypes._Pointer in that it is the base class for all pointer types. Unlike the real _Pointer,
 # it can be instantiated directly (to mimic the behavior of the real pointer function).
 class pointer(Generic[_CT], _PointerLike, _CData):
-    _type_: ClassVar[Type[_CT]]
+    _type_: Type[_CT]
     contents: _CT
     def __init__(self, arg: _CT = ...) -> None: ...
     @overload
@@ -252,7 +252,7 @@ class _CField:
     size: int
 
 class _StructUnionMeta(_CDataMeta):
-    _fields_: Sequence[Tuple[str, Type[_CData]] | Tuple[str, Type[_CData], int]]
+    _fields_: Sequence[tuple[str, Type[_CData]] | tuple[str, Type[_CData], int]]
     _pack_: int
     _anonymous_: Sequence[str]
     def __getattr__(self, name: str) -> _CField: ...
@@ -268,8 +268,8 @@ class BigEndianStructure(Structure): ...
 class LittleEndianStructure(Structure): ...
 
 class Array(Generic[_CT], _CData):
-    _length_: ClassVar[int]
-    _type_: ClassVar[Type[_CT]]
+    _length_: int
+    _type_: Type[_CT]
     raw: bytes  # Note: only available if _CT == c_char
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.

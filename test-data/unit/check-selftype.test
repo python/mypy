@@ -366,7 +366,7 @@ reveal_type(x.f)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttribute]
-from typing import Callable, TypeVar, ClassVar
+from typing import Callable, TypeVar
 class K: pass
 T = TypeVar('T', bound=K)
 class A(K):
@@ -374,8 +374,8 @@ class A(K):
     def g(self: K) -> int: return 0
     @property
     def gt(self: T) -> T: return self
-    f: ClassVar[Callable[[object], int]]
-    ft: ClassVar[Callable[[T], T]]
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
 
 class B(A):
     pass
@@ -392,15 +392,15 @@ reveal_type(B().ft())  # N: Revealed type is "__main__.B*"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeTuple]
-from typing import Callable, TypeVar, Tuple, ClassVar
+from typing import Callable, TypeVar, Tuple
 T = TypeVar('T')
 class A(Tuple[int, int]):
     @property
     def g(self: object) -> int: return 0
     @property
     def gt(self: T) -> T: return self
-    f: ClassVar[Callable[[object], int]]
-    ft: ClassVar[Callable[[T], T]]
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
 
 class B(A):
     pass
@@ -450,7 +450,7 @@ reveal_type(X1.ft())  # N: Revealed type is "Type[__main__.X]"
 [builtins fixtures/property.pyi]
 
 [case testSelfTypeProperSupertypeAttributeGeneric]
-from typing import Callable, TypeVar, Generic, ClassVar
+from typing import Callable, TypeVar, Generic
 Q = TypeVar('Q', covariant=True)
 class K(Generic[Q]):
     q: Q
@@ -460,8 +460,8 @@ class A(K[Q]):
     def g(self: K[object]) -> int: return 0
     @property
     def gt(self: K[T]) -> T: return self.q
-    f: ClassVar[Callable[[object], int]]
-    ft: ClassVar[Callable[[T], T]]
+    f: Callable[[object], int]
+    ft: Callable[[T], T]
 
 class B(A[Q]):
     pass
@@ -555,9 +555,9 @@ reveal_type(P)  # N: Revealed type is "Overload(def [T] (use_str: Literal[True])
 reveal_type(P(use_str=True))  # N: Revealed type is "lib.P[builtins.str]"
 reveal_type(P(use_str=False))  # N: Revealed type is "lib.P[builtins.int]"
 
-reveal_type(C)  # N: Revealed type is "Overload(def [T] (item: T`1, use_tuple: Literal[False]) -> lib.C[T`1], def [T] (item: T`1, use_tuple: Literal[True]) -> lib.C[builtins.tuple[T`1]])"
+reveal_type(C)  # N: Revealed type is "Overload(def [T] (item: T`1, use_tuple: Literal[False]) -> lib.C[T`1], def [T] (item: T`1, use_tuple: Literal[True]) -> lib.C[builtins.tuple[T`1, ...]])"
 reveal_type(C(0, use_tuple=False))  # N: Revealed type is "lib.C[builtins.int*]"
-reveal_type(C(0, use_tuple=True))  # N: Revealed type is "lib.C[builtins.tuple[builtins.int*]]"
+reveal_type(C(0, use_tuple=True))  # N: Revealed type is "lib.C[builtins.tuple[builtins.int*, ...]]"
 
 T = TypeVar('T')
 class SubP(P[T]):
@@ -802,6 +802,37 @@ class Bad(metaclass=Meta):
 Good.do_x()
 Bad.do_x()  # E: Invalid self argument "Type[Bad]" to attribute function "do_x" with type "Callable[[Type[T]], T]"
 
+[case testSelfTypeProtocolClassmethodMatch]
+from typing import Type, TypeVar, Protocol
+
+T = TypeVar('T')
+
+class HasDoX(Protocol):
+    @classmethod
+    def do_x(cls: Type[T]) -> T:
+        ...
+
+class Good:
+    @classmethod
+    def do_x(cls) -> 'Good':
+        ...
+
+class Bad:
+    @classmethod
+    def do_x(cls) -> Good:
+        ...
+
+good: HasDoX = Good()
+bad: HasDoX = Bad()
+[builtins fixtures/classmethod.pyi]
+[out]
+main:21: error: Incompatible types in assignment (expression has type "Bad", variable has type "HasDoX")
+main:21: note: Following member(s) of "Bad" have conflicts:
+main:21: note:     Expected:
+main:21: note:         def do_x(cls) -> Bad
+main:21: note:     Got:
+main:21: note:         def do_x(cls) -> Good
+
 [case testSelfTypeNotSelfType]
 # Friendlier error messages for common mistakes. See #2950
 class A:
@@ -918,9 +949,9 @@ class Other(Base): ...
 class Double(Sub): ...
 
 reveal_type(Other.make())  # N: Revealed type is "__main__.Other*"
-reveal_type(Other.make(3))  # N: Revealed type is "builtins.tuple[__main__.Other*]"
+reveal_type(Other.make(3))  # N: Revealed type is "builtins.tuple[__main__.Other*, ...]"
 reveal_type(Double.make())  # N: Revealed type is "__main__.Sub"
-reveal_type(Double.make(3))  # N: Revealed type is "builtins.tuple[__main__.Sub]"
+reveal_type(Double.make(3))  # N: Revealed type is "builtins.tuple[__main__.Sub, ...]"
 [file lib.pyi]
 from typing import overload, TypeVar, Type, Tuple
 

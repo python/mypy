@@ -18,7 +18,7 @@ def add_info_hook(ctx: DynamicClassDefContext):
     class_def.info = info
     queryset_type_fullname = ctx.call.args[0].fullname
     queryset_info = ctx.api.lookup_fully_qualified_or_none(queryset_type_fullname).node  # type: TypeInfo
-    obj = ctx.api.builtin_type('builtins.object')
+    obj = ctx.api.named_type('builtins.object')
     info.mro = [info, queryset_info, obj.type]
     info.bases = [Instance(queryset_info, [])]
     ctx.api.add_symbol_table_node(ctx.name, SymbolTableNode(GDEF, info))

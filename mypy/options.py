@@ -286,7 +286,7 @@ class Options:
         self.package_root: List[str] = []
         self.cache_map: Dict[str, Tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
-        self.fast_exit = False
+        self.fast_exit = True
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Optional[Callable[[Any], Any]] = None

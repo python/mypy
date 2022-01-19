@@ -50,6 +50,14 @@ def f(x: A) -> None:
 f(1)
 f('x')
 
+[case testNoReturnTypeAlias]
+# https://github.com/python/mypy/issues/11903
+from typing import NoReturn
+Never = NoReturn
+a: Never  # Used to be an error here
+
+def f(a: Never): ...
+f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn" 
 [case testImportUnionAlias]
 import typing
 from _m import U
@@ -312,7 +320,7 @@ T = Tuple
 c: C
 t: T
 reveal_type(c)  # N: Revealed type is "def (*Any, **Any) -> Any"
-reveal_type(t)  # N: Revealed type is "builtins.tuple[Any]"
+reveal_type(t)  # N: Revealed type is "builtins.tuple[Any, ...]"
 bad: C[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 also_bad: T[int]  # E: Bad number of arguments for type alias, expected: 0, given: 1
 [builtins fixtures/tuple.pyi]

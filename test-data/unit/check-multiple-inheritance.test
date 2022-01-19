@@ -502,7 +502,7 @@ class A(Base1, Base2):
 [out]
 main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
 
-[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType2]
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):

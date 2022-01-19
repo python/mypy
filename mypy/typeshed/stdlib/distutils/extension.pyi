@@ -1,12 +1,10 @@
-from typing import Tuple
-
 class Extension:
     def __init__(
         self,
         name: str,
         sources: list[str],
         include_dirs: list[str] | None = ...,
-        define_macros: list[Tuple[str, str | None]] | None = ...,
+        define_macros: list[tuple[str, str | None]] | None = ...,
         undef_macros: list[str] | None = ...,
         library_dirs: list[str] | None = ...,
         libraries: list[str] | None = ...,

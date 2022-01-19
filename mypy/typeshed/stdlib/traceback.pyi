@@ -1,7 +1,7 @@
 import sys
 from _typeshed import SupportsWrite
 from types import FrameType, TracebackType
-from typing import IO, Any, Generator, Iterable, Iterator, List, Mapping, Optional, Set, Tuple, Type
+from typing import IO, Any, Generator, Iterable, Iterator, List, Mapping, Optional, Tuple, Type
 
 _PT = Tuple[str, int, str, Optional[str]]
 
@@ -65,8 +65,8 @@ def format_exc(limit: int | None = ..., chain: bool = ...) -> str: ...
 def format_tb(tb: TracebackType | None, limit: int | None = ...) -> list[str]: ...
 def format_stack(f: FrameType | None = ..., limit: int | None = ...) -> list[str]: ...
 def clear_frames(tb: TracebackType) -> None: ...
-def walk_stack(f: FrameType | None) -> Iterator[Tuple[FrameType, int]]: ...
-def walk_tb(tb: TracebackType | None) -> Iterator[Tuple[FrameType, int]]: ...
+def walk_stack(f: FrameType | None) -> Iterator[tuple[FrameType, int]]: ...
+def walk_tb(tb: TracebackType | None) -> Iterator[tuple[FrameType, int]]: ...
 
 class TracebackException:
     __cause__: TracebackException
@@ -90,7 +90,7 @@ class TracebackException:
             lookup_lines: bool = ...,
             capture_locals: bool = ...,
             compact: bool = ...,
-            _seen: Set[int] | None = ...,
+            _seen: set[int] | None = ...,
         ) -> None: ...
         @classmethod
         def from_exception(
@@ -112,7 +112,7 @@ class TracebackException:
             limit: int | None = ...,
             lookup_lines: bool = ...,
             capture_locals: bool = ...,
-            _seen: Set[int] | None = ...,
+            _seen: set[int] | None = ...,
         ) -> None: ...
         @classmethod
         def from_exception(
@@ -146,7 +146,7 @@ class StackSummary(List[FrameSummary]):
     @classmethod
     def extract(
         cls,
-        frame_gen: Iterable[Tuple[FrameType, int]],
+        frame_gen: Iterable[tuple[FrameType, int]],
         *,
         limit: int | None = ...,
         lookup_lines: bool = ...,

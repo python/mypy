@@ -1,8 +1,9 @@
+from _warnings import warn as warn, warn_explicit as warn_explicit
 from types import ModuleType, TracebackType
 from typing import Any, Sequence, TextIO, Type, overload
 from typing_extensions import Literal
 
-from _warnings import warn as warn, warn_explicit as warn_explicit
+_ActionKind = Literal["default", "error", "ignore", "always", "module", "once"]
 
 filters: Sequence[tuple[str, str | None, Type[Warning], str | None, int]]  # undocumented, do not mutate
 
@@ -11,9 +12,14 @@ def showwarning(
 ) -> None: ...
 def formatwarning(message: Warning | str, category: Type[Warning], filename: str, lineno: int, line: str | None = ...) -> str: ...
 def filterwarnings(
-    action: str, message: str = ..., category: Type[Warning] = ..., module: str = ..., lineno: int = ..., append: bool = ...
+    action: _ActionKind,
+    message: str = ...,
+    category: Type[Warning] = ...,
+    module: str = ...,
+    lineno: int = ...,
+    append: bool = ...,
 ) -> None: ...
-def simplefilter(action: str, category: Type[Warning] = ..., lineno: int = ..., append: bool = ...) -> None: ...
+def simplefilter(action: _ActionKind, category: Type[Warning] = ..., lineno: int = ..., append: bool = ...) -> None: ...
 def resetwarnings() -> None: ...
 
 class _OptionError(Exception): ...

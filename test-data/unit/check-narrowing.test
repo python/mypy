@@ -1047,8 +1047,81 @@ else:
 if str_or_bool_literal is not True and str_or_bool_literal is not False:
     reveal_type(str_or_bool_literal)  # N: Revealed type is "builtins.str"
 else:
-    reveal_type(str_or_bool_literal)  # N: Revealed type is "Union[Literal[False], Literal[True]]"
+    reveal_type(str_or_bool_literal)  # N: Revealed type is "builtins.bool"
+[builtins fixtures/primitives.pyi]
 
+[case testNarrowingBooleanIdentityCheck]
+# flags: --strict-optional
+from typing import Optional
+from typing_extensions import Literal
+
+bool_val: bool
+
+if bool_val is not False:
+    reveal_type(bool_val)   # N: Revealed type is "Literal[True]"
+else:
+    reveal_type(bool_val)   # N: Revealed type is "Literal[False]"
+
+opt_bool_val: Optional[bool]
+
+if opt_bool_val is not None:
+    reveal_type(opt_bool_val)   # N: Revealed type is "builtins.bool"
+
+if opt_bool_val is not False:
+    reveal_type(opt_bool_val)   # N: Revealed type is "Union[Literal[True], None]"
+else:
+    reveal_type(opt_bool_val)   # N: Revealed type is "Literal[False]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingBooleanTruthiness]
+# flags: --strict-optional
+from typing import Optional
+from typing_extensions import Literal
+
+bool_val: bool
+
+if bool_val:
+    reveal_type(bool_val)   # N: Revealed type is "Literal[True]"
+else:
+    reveal_type(bool_val)   # N: Revealed type is "Literal[False]"
+reveal_type(bool_val)  # N: Revealed type is "builtins.bool"
+
+opt_bool_val: Optional[bool]
+
+if opt_bool_val:
+    reveal_type(opt_bool_val)   # N: Revealed type is "Literal[True]"
+else:
+    reveal_type(opt_bool_val)   # N: Revealed type is "Union[Literal[False], None]"
+reveal_type(opt_bool_val)   # N: Revealed type is "Union[builtins.bool, None]"
+[builtins fixtures/primitives.pyi]
+
+[case testNarrowingBooleanBoolOp]
+# flags: --strict-optional
+from typing import Optional
+from typing_extensions import Literal
+
+bool_a: bool
+bool_b: bool
+
+if bool_a and bool_b:
+   reveal_type(bool_a) # N: Revealed type is "Literal[True]"
+   reveal_type(bool_b) # N: Revealed type is "Literal[True]"
+else:
+   reveal_type(bool_a) # N: Revealed type is "builtins.bool"
+   reveal_type(bool_b) # N: Revealed type is "builtins.bool"
+
+if not bool_a or bool_b:
+   reveal_type(bool_a) # N: Revealed type is "builtins.bool"
+   reveal_type(bool_b) # N: Revealed type is "builtins.bool"
+else:
+   reveal_type(bool_a) # N: Revealed type is "Literal[True]"
+   reveal_type(bool_b) # N: Revealed type is "Literal[False]"
+
+if True and bool_b:
+   reveal_type(bool_b) # N: Revealed type is "Literal[True]"
+
+x = True and bool_b
+reveal_type(x) # N: Revealed type is "builtins.bool"
 [builtins fixtures/primitives.pyi]
 
 [case testNarrowingTypedDictUsingEnumLiteral]
@@ -1143,3 +1216,32 @@ else:
     reveal_type(abc) # N: Revealed type is "TypedDict('__main__.B', {'tag': Literal['B'], 'b': builtins.int})"
 
 [builtins fixtures/primitives.pyi]
+
+
+[case testNarrowingRuntimeCover]
+from typing import Dict, List, Union
+
+def unreachable(x: Union[str, List[str]]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, list):
+        reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
+    else:
+        reveal_type(x)  # No output: this branch is unreachable
+
+def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, list):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.list[builtins.str], builtins.list[builtins.int]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def two_type_vars(x: Union[str, Dict[str, int], Dict[bool, object], int]) -> None:
+    if isinstance(x, str):
+        reveal_type(x)  # N: Revealed type is "builtins.str"
+    elif isinstance(x, dict):
+        reveal_type(x)  # N: Revealed type is "Union[builtins.dict[builtins.str, builtins.int], builtins.dict[builtins.bool, builtins.object]]"
+    else:
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/dict.pyi]

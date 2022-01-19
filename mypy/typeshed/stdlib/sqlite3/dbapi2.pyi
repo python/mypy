@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from datetime import date, datetime, time
-from typing import Any, Callable, Generator, Iterable, Iterator, Protocol, Tuple, Type, TypeVar
+from typing import Any, Callable, Generator, Iterable, Iterator, Protocol, Type, TypeVar
 
 _T = TypeVar("_T")
 
@@ -16,8 +16,8 @@ def DateFromTicks(ticks: float) -> Date: ...
 def TimeFromTicks(ticks: float) -> Time: ...
 def TimestampFromTicks(ticks: float) -> Timestamp: ...
 
-version_info: Tuple[int, int, int]
-sqlite_version_info: Tuple[int, int, int]
+version_info: tuple[int, int, int]
+sqlite_version_info: tuple[int, int, int]
 Binary = memoryview
 
 # The remaining definitions are imported from _sqlite3.
@@ -35,6 +35,8 @@ SQLITE_CREATE_TEMP_TRIGGER: int
 SQLITE_CREATE_TEMP_VIEW: int
 SQLITE_CREATE_TRIGGER: int
 SQLITE_CREATE_VIEW: int
+if sys.version_info >= (3, 7):
+    SQLITE_CREATE_VTABLE: int
 SQLITE_DELETE: int
 SQLITE_DENY: int
 SQLITE_DETACH: int
@@ -46,12 +48,31 @@ SQLITE_DROP_TEMP_TRIGGER: int
 SQLITE_DROP_TEMP_VIEW: int
 SQLITE_DROP_TRIGGER: int
 SQLITE_DROP_VIEW: int
+if sys.version_info >= (3, 7):
+    SQLITE_DROP_VTABLE: int
+    SQLITE_FUNCTION: int
 SQLITE_IGNORE: int
 SQLITE_INSERT: int
 SQLITE_OK: int
+if sys.version_info >= (3, 11):
+    SQLITE_LIMIT_LENGTH: int
+    SQLITE_LIMIT_SQL_LENGTH: int
+    SQLITE_LIMIT_COLUMN: int
+    SQLITE_LIMIT_EXPR_DEPTH: int
+    SQLITE_LIMIT_COMPOUND_SELECT: int
+    SQLITE_LIMIT_VDBE_OP: int
+    SQLITE_LIMIT_FUNCTION_ARG: int
+    SQLITE_LIMIT_ATTACHED: int
+    SQLITE_LIMIT_LIKE_PATTERN_LENGTH: int
+    SQLITE_LIMIT_VARIABLE_NUMBER: int
+    SQLITE_LIMIT_TRIGGER_DEPTH: int
+    SQLITE_LIMIT_WORKER_THREADS: int
 SQLITE_PRAGMA: int
 SQLITE_READ: int
 SQLITE_REINDEX: int
+if sys.version_info >= (3, 7):
+    SQLITE_RECURSIVE: int
+    SQLITE_SAVEPOINT: int
 SQLITE_SELECT: int
 SQLITE_TRANSACTION: int
 SQLITE_UPDATE: int
@@ -167,7 +188,7 @@ class Cursor(Iterator[Any]):
     description: Any
     lastrowid: Any
     row_factory: Any
-    rowcount: Any
+    rowcount: int
     # TODO: Cursor class accepts exactly 1 argument
     # required type is sqlite3.Connection (which is imported as _Connection)
     # however, the name of the __init__ variable is unknown

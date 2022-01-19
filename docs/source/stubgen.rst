@@ -1,4 +1,4 @@
-.. _stugen:
+.. _stubgen:
 
 .. program:: stubgen
 

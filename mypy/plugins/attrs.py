@@ -22,7 +22,7 @@ from mypy.plugins.common import (
 )
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
-    Overloaded, UnionType, FunctionLike, get_proper_type,
+    Overloaded, UnionType, FunctionLike, Instance, get_proper_type,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
@@ -50,6 +50,8 @@ attr_attrib_makers: Final = {
 }
 
 SELF_TVAR_NAME: Final = "_AT"
+MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
+MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
 
 
 class Converter:
@@ -97,7 +99,7 @@ class Attribute:
             converter_type: Optional[Type] = None
             if converter and isinstance(converter.node, TypeInfo):
                 from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.builtin_type)
+                converter_type = type_object_type(converter.node, ctx.api.named_type)
             elif converter and isinstance(converter.node, OverloadedFuncDef):
                 converter_type = converter.node.type
             elif converter and converter.type:
@@ -272,6 +274,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     init = _get_decorator_bool_argument(ctx, 'init', True)
     frozen = _get_frozen(ctx, frozen_default)
     order = _determine_eq_order(ctx)
+    slots = _get_decorator_bool_argument(ctx, 'slots', False)
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
@@ -301,7 +304,9 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.defer()
             return
 
-    _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
+    _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
+    if slots:
+        _add_slots(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -707,24 +712,43 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 
 
 def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
-                               raw_attr_types: 'List[Optional[Type]]') -> None:
-    attr_name = '__attrs_attrs__'
+                               attrs: 'List[Tuple[str, Optional[Type]]]') -> None:
     any_type = AnyType(TypeOfAny.explicit)
     attributes_types: 'List[Type]' = [
         ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
-        for attr_type in raw_attr_types
+        for _, attr_type in attrs
     ]
     fallback_type = ctx.api.named_type('builtins.tuple', [
         ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
     ])
-    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))
+
+    ti = ctx.api.basic_new_typeinfo(MAGIC_ATTR_CLS_NAME, fallback_type, 0)
+    ti.is_named_tuple = True
+    for (name, _), attr_type in zip(attrs, attributes_types):
+        var = Var(name, attr_type)
+        var.is_property = True
+        proper_type = get_proper_type(attr_type)
+        if isinstance(proper_type, Instance):
+            var.info = proper_type.type
+        ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
+    attributes_type = Instance(ti, [])
+
+    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
     var.info = ctx.cls.info
-    var._fullname = ctx.cls.info.fullname + '.' + attr_name
-    ctx.cls.info.names[attr_name] = SymbolTableNode(
+    var.is_classvar = True
+    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
+    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
         kind=MDEF,
         node=var,
         plugin_generated=True,
+        no_serialize=True,
     )
+
+
+def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
+               attributes: List[Attribute]) -> None:
+    # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
+    ctx.cls.info.slots = {attr.name for attr in attributes}
 
 
 class MethodAdder:
