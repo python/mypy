@@ -8,7 +8,7 @@ import importlib
 import inspect
 import os.path
 import re
-from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
+from typing import List, Dict, Tuple, Optional, Any, Set
 from types import ModuleType
 from typing_extensions import Final
 
