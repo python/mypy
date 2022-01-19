@@ -322,10 +322,11 @@ def generate_c_type_stub(module: ModuleType,
     The result lines will be appended to 'output'. If necessary, any
     required names will be added to 'imports'.
     """
-    # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
-    # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa
-    items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
+    attributes: List[str] = list(obj.__dict__)
+    attributes.sort(key=method_name_sort_key)
+    items: List[Tuple[str, Any]] = [
+        (name, getattr(obj, name)) for name in attributes
+    ]
     methods: List[str] = []
     types: List[str] = []
     static_properties: List[str] = []
@@ -338,7 +339,7 @@ def generate_c_type_stub(module: ModuleType,
             if not is_skipped_attribute(attr):
                 if attr == '__new__':
                     # TODO: We should support __new__.
-                    if '__init__' in obj_dict:
+                    if '__init__' in attributes:
                         # Avoid duplicate functions if both are present.
                         # But is there any case where .__new__() has a
                         # better signature than __init__() ?
