@@ -78,7 +78,7 @@ from mypy.nodes import (
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt,
+    MatchStmt, FuncBase
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
