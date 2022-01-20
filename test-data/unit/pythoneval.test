@@ -1585,28 +1585,3 @@ class Foo(Enum):
 _testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
-
-[case testImplicit604TypeAliasWithCyclicImport]
-from was_builtins import foo
-reveal_type(foo)
-[file was_abc.pyi]
-from was_builtins import *
-[file was_builtins.pyi]
-import was_typing
-from was_typeshed import ReadableBuffer
-foo: ReadableBuffer
-[file was_collections.pyi]
-from was_builtins import *
-[file was_mmap.pyi]
-from was_builtins import *
-class mmap: ...
-[file was_typeshed.pyi]
-import was_mmap
-WriteableBuffer = was_mmap.mmap
-ReadableBuffer = str | WriteableBuffer
-[file was_typing.pyi]
-from was_builtins import *
-import was_abc
-import was_collections
-[out]
-_testImplicit604TypeAliasWithCyclicImport.py:2: note: Revealed type is "Union[builtins.str, was_mmap.mmap]"
