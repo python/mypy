@@ -4788,7 +4788,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert not module_hidden or not module_public
 
         symbol_node: Optional[SymbolNode] = node.node
-        if self.is_class_scope() and isinstance(symbol_node, (Var, FuncBase)):
+        if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
             # We construct a new node to represent this symbol and set its `info` attribute
             # to `self.type`. Note that imports inside class scope do not produce methods, so
             # in all cases constructing a Var gets us the assignment like behaviour we want.
@@ -4802,12 +4802,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # constructed Var, so check for possible redefinitions here.
                 symbol_node = existing.node
             else:
-                # Dumb if statement to appease mypyc
-                if isinstance(symbol_node, Var):
-                    symbol_node = Var(symbol_node.name, symbol_node.type)
-                else:
-                    symbol_node = Var(symbol_node.name, symbol_node.type)
-
+                symbol_node = Var(symbol_node.name, symbol_node.type)
                 assert self.type is not None
                 symbol_node.info = self.type
                 symbol_node._fullname = self.qualified_name(name)
