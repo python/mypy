@@ -1953,6 +1953,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (data_base is None
                     and enum_base is None  # data type is always before `Enum`
                     and new_method
+                    and new_method.node
                     and new_method.node.fullname != 'builtins.object.__new__'):
                 data_base = base
                 continue
