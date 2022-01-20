@@ -41,6 +41,7 @@ from mypy.subtypes import (
 from mypy.sametypes import is_same_type
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
+from mypy.message_registry import ErrorMessage
 from mypy import message_registry, errorcodes as codes
 
 TYPES_FOR_UNIMPORTED_HINTS: Final = {
@@ -189,7 +190,7 @@ class MessageBuilder:
                                end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
-             msg: str,
+             msg: Union[str, ErrorMessage],
              context: Optional[Context],
              *,
              code: Optional[ErrorCode] = None,
@@ -197,6 +198,12 @@ class MessageBuilder:
              origin: Optional[Context] = None,
              allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
+        # TODO(tushar): Remove `str` support after full migration
+        if isinstance(msg, ErrorMessage):
+            self.report(msg.value, context, 'error', code=msg.code, file=file,
+                    origin=origin, allow_dups=allow_dups)
+            return
+
         self.report(msg, context, 'error', code=code, file=file,
                     origin=origin, allow_dups=allow_dups)
 

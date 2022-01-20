@@ -212,6 +212,80 @@ VAR_ARGS_BEFORE_NAMED_OR_VARARGS: Final = ErrorMessage(
 KWARGS_MUST_BE_LAST: Final = ErrorMessage("A **kwargs argument must be the last argument")
 MULTIPLE_KWARGS: Final = ErrorMessage("You may only have one **kwargs argument")
 
+# String formatting checks
+FORMAT_STR_INVALID_SPECIFIER: Final = ErrorMessage(
+    "Invalid conversion specifier in format string", codes.STRING_FORMATTING
+)
+FORMAT_STR_BRACES_IN_SPECIFIER: Final = ErrorMessage(
+    "Conversion value must not contain { or }", codes.STRING_FORMATTING
+)
+FORMAT_STR_NESTING_ATMOST_TWO_LEVELS: Final = ErrorMessage(
+    "Formatting nesting must be at most two levels deep", codes.STRING_FORMATTING
+)
+FORMAT_STR_UNEXPECTED_RBRACE: Final = ErrorMessage(
+    "Invalid conversion specifier in format string: unexpected }", codes.STRING_FORMATTING
+)
+FORMAT_STR_UNMATCHED_LBRACE: Final = ErrorMessage(
+    "Invalid conversion specifier in format string: unmatched {", codes.STRING_FORMATTING
+)
+UNRECOGNIZED_FORMAT_SPEC: Final = ErrorMessage(
+    'Unrecognized format specification "{}"', codes.STRING_FORMATTING
+)
+FORMAT_STR_INVALID_CONVERSION_TYPE: Final = ErrorMessage(
+    'Invalid conversion type "{}", must be one of "r", "s" or "a"', codes.STRING_FORMATTING
+)
+FORMAT_STR_BYTES_USE_REPR: Final = ErrorMessage(
+    "On Python 3 '{}'.format(b'abc') produces \"b'abc'\", not 'abc'; use '{!r}'.format(b'abc')"
+    " if this is desired behavior",
+    codes.STR_BYTES_PY3,
+)
+FORMAT_STR_BYTES_USE_REPR_OLD: Final = ErrorMessage(
+    "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; use '%r' % b'abc' if this is"
+    " desired behavior",
+    codes.STR_BYTES_PY3,
+)
+FORMAT_STR_INVALID_NUMERIC_FLAG: Final = ErrorMessage(
+    "Numeric flags are only allowed for numeric types", codes.STRING_FORMATTING
+)
+FORMAT_STR_REPLACEMENT_NOT_FOUND: Final = ErrorMessage(
+    "Cannot find replacement for positional format specifier {}", codes.STRING_FORMATTING
+)
+FORMAT_STR_NAMED_REPLACEMENT_NOT_FOUND: Final = ErrorMessage(
+    'Cannot find replacement for named format specifier "{}"', codes.STRING_FORMATTING
+)
+FORMAT_STR_PARTIAL_FIELD_NUMBERING: Final = ErrorMessage(
+    "Cannot combine automatic field numbering and manual field specification",
+    codes.STRING_FORMATTING,
+)
+FORMAT_STR_SYNTAX_ERROR: Final = ErrorMessage(
+    'Syntax error in format specifier "{}"', codes.STRING_FORMATTING
+)
+FORMAT_STR_INVALID_ACCESSOR_EXPR: Final = ErrorMessage(
+    'Only index and member expressions are allowed in format field accessors; got "{}"',
+    codes.STRING_FORMATTING,
+)
+FORMAT_STR_INVALID_INDEX_ACCESSOR: Final = ErrorMessage(
+    'Invalid index expression in format field accessor "{}"', codes.STRING_FORMATTING
+)
+FORMAT_STR_BYTES_ABOVE_PY35: Final = ErrorMessage(
+    "Bytes formatting is only supported in Python 3.5 and later", codes.STRING_FORMATTING
+)
+FORMAT_STR_BYTES_DICT_KEYS_MUST_BE_BYTES: Final = ErrorMessage(
+    "Dictionary keys in bytes formatting must be bytes, not strings", codes.STRING_FORMATTING
+)
+FORMAT_STR_BYTES_REQUIRED_PY3: Final = ErrorMessage(
+    "On Python 3 b'%s' requires bytes, not string", codes.STRING_FORMATTING
+)
+FORMAT_STR_INVALID_BYTES_SPECIFIER_PY35: Final = ErrorMessage(
+    'Format character "b" is only supported in Python 3.5 and later', codes.STRING_FORMATTING
+)
+FORMAT_STR_INVALID_BYTES_SPECIFIER: Final = ErrorMessage(
+    'Format character "b" is only supported on bytes patterns', codes.STRING_FORMATTING
+)
+FORMAT_STR_ASCII_SPECIFIER_PY3: Final = ErrorMessage(
+    'Format character "a" is only supported in Python 3', codes.STRING_FORMATTING
+)
+
 # Semantic Analysis
 METHOD_ATLEAST_ONE_ARG: Final = ErrorMessage('Method must have at least one argument')
 OVERLOAD_IMPLEMENTATION_IN_STUB: Final = ErrorMessage(
