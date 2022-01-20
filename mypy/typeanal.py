@@ -927,6 +927,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def analyze_type(self, t: Type) -> Type:
         return t.accept(self)
 
+    # TODO(tushar): remove `str` type and `code` property from here
     def fail(self, msg: Union[str, ErrorMessage], ctx: Context) -> None:
         self.fail_func(msg, ctx)
 

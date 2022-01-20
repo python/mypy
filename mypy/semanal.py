@@ -5118,6 +5118,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # no regular functions.
         return True
 
+    # TODO(tushar): remove `str` type and `code` property from here
     def fail(self,
              msg: Union[str, ErrorMessage],
              ctx: Context,

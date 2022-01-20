@@ -223,6 +223,7 @@ class CheckerPluginInterface:
         """Return the type context of the plugin"""
         raise NotImplementedError
 
+    # TODO(tushar): remove `str` type and `code` property from here
     @abstractmethod
     def fail(self, msg: Union[str, ErrorMessage], ctx: Context, *,
              code: Optional[ErrorCode] = None) -> None:

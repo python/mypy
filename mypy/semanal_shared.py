@@ -45,6 +45,7 @@ class SemanticAnalyzerCoreInterface:
     def lookup_fully_qualified_or_none(self, name: str) -> Optional[SymbolTableNode]:
         raise NotImplementedError
 
+    # TODO(tushar): remove `str` type and `code` property from here
     @abstractmethod
     def fail(self, msg: Union[str, ErrorMessage], ctx: Context, serious: bool = False, *,
              blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
