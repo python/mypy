@@ -378,6 +378,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(e.callee, MemberExpr) and e.callee.name == 'format':
             self.check_str_format_call(e)
         ret_type = get_proper_type(ret_type)
+        if isinstance(ret_type, UnionType):
+            ret_type = make_simplified_union(ret_type.items)
         if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
             self.chk.binder.unreachable()
         # Warn on calls to functions that always return None. The check
@@ -3077,7 +3079,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return union
 
-    def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
+    def visit_typeddict_index_expr(self, td_type: TypedDictType,
+                                   index: Expression,
+                                   local_errors: Optional[MessageBuilder] = None
+                                   ) -> Type:
+        local_errors = local_errors or self.msg
         if isinstance(index, (StrExpr, UnicodeExpr)):
             key_names = [index.value]
         else:
@@ -3097,14 +3103,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         and key_type.fallback.type.fullname != 'builtins.bytes'):
                     key_names.append(key_type.value)
                 else:
-                    self.msg.typeddict_key_must_be_string_literal(td_type, index)
+                    local_errors.typeddict_key_must_be_string_literal(td_type, index)
                     return AnyType(TypeOfAny.from_error)
 
         value_types = []
         for key_name in key_names:
             value_type = td_type.items.get(key_name)
             if value_type is None:
-                self.msg.typeddict_key_not_found(td_type, key_name, index)
+                local_errors.typeddict_key_not_found(td_type, key_name, index)
                 return AnyType(TypeOfAny.from_error)
             else:
                 value_types.append(value_type)
