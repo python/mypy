@@ -4805,6 +4805,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 symbol_node = Var(symbol_node.name, symbol_node.type)
                 assert self.type is not None
                 symbol_node.info = self.type
+                symbol_node._fullname = self.qualified_name(name)
 
         symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
