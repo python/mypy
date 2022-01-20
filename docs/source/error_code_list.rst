@@ -657,6 +657,28 @@ consistently when using the call-based syntax. Example:
     # Error: First argument to namedtuple() should be "Point2D", not "Point"
     Point2D = NamedTuple("Point", [("x", int), ("y", int)])
 
+Check that overloaded functions have an implementation [no-overload-impl]
+-------------------------------------------------------------------------
+
+Overloaded functions outside of stub files must be followed by a non overloaded
+implementation.
+
+.. code-block:: python
+
+   from typing import overload
+
+   @overload
+   def func(value: int) -> int:
+       ...
+
+   @overload
+   def func(value: str) -> str:
+       ...
+
+   # presence of required function below is checked
+   def func(value):
+       pass  # actual implementation
+
 Report syntax errors [syntax]
 -----------------------------
 

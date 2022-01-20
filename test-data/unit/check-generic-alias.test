@@ -273,6 +273,8 @@ b: B
 import m
 reveal_type(m.a)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(m.b)  # N: Revealed type is "builtins.list[builtins.list[builtins.int]]"
+m.C  # has complex representation, ignored
+reveal_type(m.d)  # N: Revealed type is "Type[builtins.str]"
 
 [file m.pyi]
 A = list[int]
@@ -281,4 +283,16 @@ B = list[list[int]]
 b: B
 class C(list[int]):
     pass
+d: type[str]
+[builtins fixtures/list.pyi]
+
+
+[case testTypeAliasWithBuiltinListAliasInStub]
+# flags: --python-version 3.6
+import m
+reveal_type(m.a()[0])  # N: Revealed type is "builtins.int*"
+
+[file m.pyi]
+List = list
+a = List[int]
 [builtins fixtures/list.pyi]

@@ -1399,7 +1399,40 @@ class A:
     b: int = attr.ib()
     c: str = attr.ib()
 
-reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str]]"
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsBareClassHasAttributeWithAttributes]
+import attr
+
+@attr.s
+class A:
+    b = attr.ib()
+    c = attr.ib()
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[Any], attr.Attribute[Any], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[Any]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[Any]"
+A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
+
+[builtins fixtures/attr.pyi]
+
+[case testAttrsNGClassHasAttributeWithAttributes]
+import attr
+
+@attr.define
+class A:
+    b: int
+    c: str
+
+reveal_type(A.__attrs_attrs__)  # N: Revealed type is "Tuple[attr.Attribute[builtins.int], attr.Attribute[builtins.str], fallback=__main__.A._AttrsAttributes]"
+reveal_type(A.__attrs_attrs__[0])  # N: Revealed type is "attr.Attribute[builtins.int]"
+reveal_type(A.__attrs_attrs__.b)  # N: Revealed type is "attr.Attribute[builtins.int]"
+A.__attrs_attrs__.x  # E: "_AttrsAttributes" has no attribute "x"
 
 [builtins fixtures/attr.pyi]
 

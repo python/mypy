@@ -81,6 +81,51 @@ TPDICT_FB_NAMES: Final = (
     "mypy_extensions._TypedDict",
 )
 
+# Supported names of Protocol base class.
+PROTOCOL_NAMES: Final = (
+    'typing.Protocol',
+    'typing_extensions.Protocol',
+)
+
+# Supported TypeAlias names.
+TYPE_ALIAS_NAMES: Final = (
+    "typing.TypeAlias",
+    "typing_extensions.TypeAlias",
+)
+
+# Supported Final type names.
+FINAL_TYPE_NAMES: Final = (
+    'typing.Final',
+    'typing_extensions.Final',
+)
+
+# Supported @final decorator names.
+FINAL_DECORATOR_NAMES: Final = (
+    'typing.final',
+    'typing_extensions.final',
+)
+
+# Supported Literal type names.
+LITERAL_TYPE_NAMES: Final = (
+    'typing.Literal',
+    'typing_extensions.Literal',
+)
+
+# Supported Annotated type names.
+ANNOTATED_TYPE_NAMES: Final = (
+    'typing.Annotated',
+    'typing_extensions.Annotated',
+)
+
+# We use this constant in various places when checking `tuple` subtyping:
+TUPLE_LIKE_INSTANCE_NAMES: Final = (
+    'builtins.tuple',
+    'typing.Iterable',
+    'typing.Container',
+    'typing.Sequence',
+    'typing.Reversible',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -1273,7 +1318,7 @@ class CallableType(FunctionLike):
         return sum([kind.is_positional() for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
-        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+        """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
         if they are not None.
@@ -1526,12 +1571,31 @@ class TupleType(ProperType):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  column: int = -1, implicit: bool = False) -> None:
-        super().__init__(line, column)
-        self.items = items
         self.partial_fallback = fallback
+        self.items = items
         self.implicit = implicit
-        self.can_be_true = len(self.items) > 0
-        self.can_be_false = len(self.items) == 0
+        super().__init__(line, column)
+
+    def can_be_true_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() > 0
+
+    def can_be_false_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() == 0
+
+    def can_be_any_bool(self) -> bool:
+        return bool(
+            self.partial_fallback.type
+            and self.partial_fallback.type.fullname != 'builtins.tuple'
+            and self.partial_fallback.type.names.get('__bool__')
+        )
 
     def length(self) -> int:
         return len(self.items)
@@ -2427,9 +2491,12 @@ def strip_type(typ: Type) -> ProperType:
         return typ
 
 
-def is_named_instance(t: Type, fullname: str) -> bool:
+def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
+    if not isinstance(fullnames, tuple):
+        fullnames = (fullnames,)
+
     t = get_proper_type(t)
-    return isinstance(t, Instance) and t.type.fullname == fullname
+    return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
 TP = TypeVar('TP', bound=Type)
