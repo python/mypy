@@ -240,8 +240,8 @@ FORMAT_STR_BYTES_USE_REPR: Final = ErrorMessage(
     codes.STR_BYTES_PY3,
 )
 FORMAT_STR_BYTES_USE_REPR_OLD: Final = ErrorMessage(
-    "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; use '%r' % b'abc' if this is"
-    " desired behavior",
+    'On Python 3 formatting "b\'abc\'" with "%s" produces "b\'abc\'", not "abc"; use "%r"'
+    " if this is desired behavior",
     codes.STR_BYTES_PY3,
 )
 FORMAT_STR_INVALID_NUMERIC_FLAG: Final = ErrorMessage(
