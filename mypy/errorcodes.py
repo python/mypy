@@ -54,25 +54,27 @@ RETURN: Final[ErrorCode] = ErrorCode(
 RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
-ASSIGNMENT: Final = ErrorCode(
+ASSIGNMENT: Final[ErrorCode] = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
 TYPE_ARG: Final[ErrorCode] = ErrorCode(
     "type-arg", "Check that generic type arguments are present", "General"
 )
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
-UNION_ATTR: Final = ErrorCode(
+UNION_ATTR: Final[ErrorCode] = ErrorCode(
     "union-attr", "Check that attribute exists in each item of a union", "General"
 )
-INDEX: Final = ErrorCode("index", "Check indexing operations", "General")
-OPERATOR: Final = ErrorCode("operator", "Check that operator is valid for operands", "General")
-LIST_ITEM: Final = ErrorCode(
+INDEX: Final[ErrorCode] = ErrorCode("index", "Check indexing operations", "General")
+OPERATOR: Final[ErrorCode] = ErrorCode(
+    "operator", "Check that operator is valid for operands", "General"
+)
+LIST_ITEM: Final[ErrorCode] = ErrorCode(
     "list-item", "Check list items in a list expression [item, ...]", "General"
 )
-DICT_ITEM: Final = ErrorCode(
+DICT_ITEM: Final[ErrorCode] = ErrorCode(
     "dict-item", "Check dict items in a dict expression {key: value, ...}", "General"
 )
-TYPEDDICT_ITEM: Final = ErrorCode(
+TYPEDDICT_ITEM: Final[ErrorCode] = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
 HAS_TYPE: Final = ErrorCode(
