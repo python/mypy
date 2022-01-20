@@ -780,4 +780,12 @@ DISPATCH_TYPE_FALLBACK_SUBTYPE: Final = ErrorMessage(
     "Dispatch type {} must be subtype of fallback function first argument {}"
 )
 
+# misc/proper_plugin.py
+ISINSTANCE_ON_UNEXPANDED_TYPE: Final = ErrorMessage(
+    "Never apply isinstance() to unexpanded types; use mypy.types.get_proper_type() first"
+)
+REDUNDANT_GET_PROPER_TYPE: Final = ErrorMessage("Redundant call to get_proper_type()")
+
+
+# test-data/type_anal_hook.py
 INVALID_SIGNAL_TYPE: Final = ErrorMessage('Invalid "Signal" type (expected "Signal[[t, ...]]")')
