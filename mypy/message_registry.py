@@ -227,7 +227,7 @@ UNSUPPORTED_OPERAND_FOR_INVERT: Final = ErrorMessage(
     "Unsupported operand type for ~ ({})", codes.OPERATOR
 )
 TYPE_NOT_GENERIC_OR_INDEXABLE: Final = ErrorMessage("The type {} is not generic and not indexable")
-TYPE_NOT_INDEXABLE: Final = ErrorMessage("Value of type {} is not indexable", codes.INDxEX)
+TYPE_NOT_INDEXABLE: Final = ErrorMessage("Value of type {} is not indexable", codes.INDEX)
 UNSUPPORTED_TARGET_INDEXED_ASSIGNMENT: Final = ErrorMessage(
     "Unsupported target for indexed assignment ({})", codes.INDEX
 )
