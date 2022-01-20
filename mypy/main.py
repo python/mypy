@@ -870,6 +870,10 @@ def process_options(args: List[str],
         '--explicit-package-bases', default=False,
         help="Use current directory and MYPYPATH to determine module names of files passed",
         group=code_group)
+    add_invertible_flag(
+        '--fast-module-lookup', default=False,
+        help="Enable fast path for finding modules within input sources",
+        group=code_group)
     code_group.add_argument(
         "--exclude",
         action="append",
