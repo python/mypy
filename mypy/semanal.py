@@ -4787,7 +4787,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
 
-        node_node = node.node
+        node_node: Optional[SymbolNode] = node.node
         if self.is_class_scope() and isinstance(node_node, (FuncBase, Var)):
             # Imports inside class scope do not produce methods.
             # We construct a Var so as to treat them more like assignments.
