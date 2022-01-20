@@ -200,7 +200,7 @@ class MessageBuilder:
         """Report an error message (unless disabled)."""
         # TODO(tushar): Remove `str` support after full migration
         if isinstance(msg, ErrorMessage):
-            self.report(msg, context, 'error', code=code, file=file,
+            self.report(msg.value, context, 'error', code=msg.code, file=file,
                         origin=origin, allow_dups=allow_dups)
             return
 
