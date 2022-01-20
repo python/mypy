@@ -4788,13 +4788,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert not module_hidden or not module_public
 
         symbol_node: Optional[SymbolNode] = node.node
+        # I promise this type checks; I'm just making mypyc issues go away.
+        # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
+        # when it can also be a FuncBase.
+        symbol_node_any: Any = cast(Any, symbol_node)
         if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
             # We construct a new node to represent this symbol and set its `info` attribute
             # to `self.type`. Note that imports inside class scope do not produce methods, so
             # in all cases constructing a Var gets us the assignment like behaviour we want.
             existing = self.current_symbol_table().get(name)
-            # I promise this type checks; I'm just making mypyc issues go away.
-            symbol_node_any: Any = cast(Any, symbol_node)
             if (
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var, so check for possible redefinitions here.
