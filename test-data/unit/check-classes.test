@@ -7161,6 +7161,22 @@ reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
 [file mod.py]
 foo: int
 
+[case testClassScopeImportFunctionAlias]
+class Foo:
+    from mod import foo
+    bar = foo
+
+    from mod import const_foo
+    const_bar = const_foo
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo.const_foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.const_bar)  # N: Revealed type is "builtins.int"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+const_foo: int
+
 [case testClassScopeImportModuleStar]
 class Foo:
     from mod import *

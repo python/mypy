@@ -4787,15 +4787,26 @@ class SemanticAnalyzer(NodeVisitor[None],
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
 
-        node_node: Optional[SymbolNode] = node.node
-        if self.is_class_scope() and isinstance(node_node, (FuncBase, Var)):
-            # Imports inside class scope do not produce methods.
-            # We construct a Var so as to treat them more like assignments.
-            node_node = Var(node_node.name, node_node.type)
-            assert self.type is not None
-            node_node.info = self.type
+        symbol_node: Optional[SymbolNode] = node.node
+        if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
+            # We construct a new node to represent this symbol and set its `info` attribute
+            # to `self.type`. Note that imports inside class scope do not produce methods, so
+            # in all cases constructing a Var gets us the assignment like behaviour we want.
+            existing = self.current_symbol_table().get(name)
+            if (
+                existing is not None
+                and isinstance(existing.node, Var)
+                and existing.type == symbol_node.type
+            ):
+                # The redefinition checks in `add_symbol_table_node` don't work for our
+                # constructed Var, so check for possible redefinitions here.
+                symbol_node = existing.node
+            else:
+                symbol_node = Var(symbol_node.name, symbol_node.type)
+                assert self.type is not None
+                symbol_node.info = self.type
 
-        symbol = SymbolTableNode(node.kind, node_node,
+        symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
