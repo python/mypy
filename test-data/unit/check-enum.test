@@ -1926,4 +1926,10 @@ class ThreeDataTypesAndMixin(First, Second, Third, enum.Enum, Mixin): # E: Only 
                                                         # E: # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third" \
                                                         # E: No base classes are allowed after "enum.Enum"
     pass
+
+class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class FromEnumAndOther2(Correct2, Second):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
 [builtins fixtures/tuple.pyi]
