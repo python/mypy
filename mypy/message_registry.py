@@ -406,10 +406,12 @@ OVERLOAD_INCOMPATIBLE_RETURN_TYPES: Final = ErrorMessage(
     "Overloaded function signatures {} and {} overlap with incompatible return types"
 )
 OVERLOAD_SIGNATURE_WILL_NEVER_MATCH: Final = ErrorMessage(
-    "Overloaded function signature {index2} will never be matched: signature {index1}'s parameter type(s) are the same or broader"
+    "Overloaded function signature {index2} will never be matched: signature {index1}'s parameter"
+    " type(s) are the same or broader"
 )
 OVERLOAD_INCONSISTENT_TYPEVARS: Final = ErrorMessage(
-    "Overloaded function implementation cannot satisfy signature {} due to inconsistencies in how they use type variables"
+    "Overloaded function implementation cannot satisfy signature {} due to inconsistencies in how"
+    " they use type variables"
 )
 OVERLOAD_INCONSISTENT_ARGS: Final = ErrorMessage(
     "Overloaded function implementation does not accept all possible arguments of signature {}"
