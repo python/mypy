@@ -44,11 +44,12 @@ from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
     ProperType
 )
+from mypy.message_registry import ErrorMessage
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
     TypeConverter, parse_type_comment, parse_type_ignore_tag,
-    TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
+    TYPE_IGNORE_PATTERN
 )
 from mypy.options import Options
 from mypy.util import bytes_to_human_readable_repr
@@ -176,9 +177,9 @@ class ASTConverter:
 
         self.type_ignores: Dict[int, List[str]] = {}
 
-    def fail(self, msg: str, line: int, column: int, blocker: bool = True) -> None:
+    def fail(self, msg: ErrorMessage, line: int, column: int, blocker: bool = True) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
+            self.errors.report(line, column, msg.value, blocker=blocker, code=msg.code)
 
     def visit(self, node: Optional[AST]) -> Any:  # same as in typed_ast stub
         if node is None:
@@ -353,7 +354,7 @@ class ASTConverter:
             if parsed is not None:
                 self.type_ignores[ti.lineno] = parsed
             else:
-                self.fail(INVALID_TYPE_IGNORE, ti.lineno, -1)
+                self.fail(message_registry.INVALID_TYPE_IGNORE, ti.lineno, -1)
         body = self.fix_function_overloads(self.translate_stmt_list(mod.body, module=True))
         return MypyFile(body,
                         self.imports,
@@ -408,7 +409,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = message_registry.TYPE_COMMENT_SYNTAX_ERROR_VALUE.format(stripped_type)
                 self.fail(err_msg, lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
@@ -423,13 +424,12 @@ class ASTConverter:
         if any(arg_types) or return_type:
             if len(arg_types) != 1 and any(isinstance(t, EllipsisType)
                                            for t in arg_types):
-                self.fail("Ellipses cannot accompany other argument types "
-                          "in function type signature", lineno, n.col_offset)
+                self.fail(message_registry.ELLIPSIS_WITH_OTHER_TYPEARGS, lineno, n.col_offset)
             elif len(arg_types) > len(arg_kinds):
-                self.fail('Type signature has too many arguments', lineno, n.col_offset,
+                self.fail(message_registry.TYPE_SIGNATURE_TOO_MANY_ARGS, lineno, n.col_offset,
                           blocker=False)
             elif len(arg_types) < len(arg_kinds):
-                self.fail('Type signature has too few arguments', lineno, n.col_offset,
+                self.fail(message_registry.TYPE_SIGNATURE_TOO_FEW_ARGS, lineno, n.col_offset,
                           blocker=False)
             else:
                 any_type = AnyType(TypeOfAny.unannotated)
@@ -526,7 +526,7 @@ class ASTConverter:
                 arg.pos_only = True
 
         # We don't have any context object to give, but we have closed around the line num
-        def fail_arg(msg: str, arg: None) -> None:
+        def fail_arg(msg: ErrorMessage, arg: None) -> None:
             self.fail(msg, line, 0)
         check_arg_names(names, [None] * len(names), fail_arg)
 
@@ -568,7 +568,7 @@ class ASTConverter:
                     tag: Optional[str] = cast(Any, extra_ignore).group(1)
                     ignored = parse_type_ignore_tag(tag)
                     if ignored is None:
-                        self.fail(INVALID_TYPE_IGNORE, converter.line, -1)
+                        self.fail(message_registry.INVALID_TYPE_IGNORE, converter.line, -1)
                     else:
                         self.type_ignores[converter.line] = ignored
                 return typ
@@ -705,7 +705,7 @@ class ASTConverter:
             elif isinstance(item.name, Name):
                 vs.append(self.set_line(NameExpr(item.name.id), item))
             else:
-                self.fail('Sorry, "except <expr>, <anything but a name>" is not supported',
+                self.fail(message_registry.EXCEPT_EXPR_NOTNAME_UNSUPPORTED,
                           item.lineno, item.col_offset)
                 vs.append(None)
         types = [self.visit(h.type) for h in handlers]

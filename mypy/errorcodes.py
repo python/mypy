@@ -28,8 +28,10 @@ class ErrorCode:
         return '<ErrorCode {}>'.format(self.code)
 
 
-ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
-NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
+ATTR_DEFINED: Final[ErrorCode] = ErrorCode(
+    "attr-defined", "Check that attribute exists", "General"
+)
+NAME_DEFINED: Final[ErrorCode] = ErrorCode("name-defined", "Check that name is defined", "General")
 CALL_ARG: Final[ErrorCode] = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
@@ -37,7 +39,9 @@ ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "Genera
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
-VALID_TYPE: Final = ErrorCode("valid-type", "Check that type (annotation) is valid", "General")
+VALID_TYPE: Final[ErrorCode] = ErrorCode(
+    "valid-type", "Check that type (annotation) is valid", "General"
+)
 VAR_ANNOTATED: Final = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
@@ -53,7 +57,9 @@ RETURN_VALUE: Final[ErrorCode] = ErrorCode(
 ASSIGNMENT: Final = ErrorCode(
     "assignment", "Check that assigned value is compatible with target", "General"
 )
-TYPE_ARG: Final = ErrorCode("type-arg", "Check that generic type arguments are present", "General")
+TYPE_ARG: Final[ErrorCode] = ErrorCode(
+    "type-arg", "Check that generic type arguments are present", "General"
+)
 TYPE_VAR: Final = ErrorCode("type-var", "Check that type variable values are valid", "General")
 UNION_ATTR: Final = ErrorCode(
     "union-attr", "Check that attribute exists in each item of a union", "General"
@@ -75,14 +81,16 @@ HAS_TYPE: Final = ErrorCode(
 IMPORT: Final = ErrorCode(
     "import", "Require that imported module can be found or has stubs", "General"
 )
-NO_REDEF: Final = ErrorCode("no-redef", "Check that each name is defined once", "General")
+NO_REDEF: Final[ErrorCode] = ErrorCode(
+    "no-redef", "Check that each name is defined once", "General"
+)
 FUNC_RETURNS_VALUE: Final = ErrorCode(
     "func-returns-value", "Check that called function returns a value in value context", "General"
 )
 ABSTRACT: Final = ErrorCode(
     "abstract", "Prevent instantiation of classes with abstract attributes", "General"
 )
-VALID_NEWTYPE: Final = ErrorCode(
+VALID_NEWTYPE: Final[ErrorCode] = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
 STRING_FORMATTING: Final = ErrorCode(
@@ -133,10 +141,10 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
     "General",
     default_enabled=False,
 )
-NAME_MATCH: Final = ErrorCode(
+NAME_MATCH: Final[ErrorCode] = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
-NO_OVERLOAD_IMPL: Final = ErrorCode(
+NO_OVERLOAD_IMPL: Final[ErrorCode] = ErrorCode(
     "no-overload-impl",
     "Check that overloaded functions outside stub files have an implementation",
     "General",
@@ -144,7 +152,7 @@ NO_OVERLOAD_IMPL: Final = ErrorCode(
 
 
 # Syntax errors are often blocking.
-SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+SYNTAX: Final[ErrorCode] = ErrorCode("syntax", "Report syntax errors", "General")
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
