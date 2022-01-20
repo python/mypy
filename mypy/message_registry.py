@@ -235,8 +235,8 @@ FORMAT_STR_INVALID_CONVERSION_TYPE: Final = ErrorMessage(
     'Invalid conversion type "{}", must be one of "r", "s" or "a"', codes.STRING_FORMATTING
 )
 FORMAT_STR_BYTES_USE_REPR: Final = ErrorMessage(
-    "On Python 3 formatting \"b'abc'\" with \"{}\" produces \"b'abc'\", not 'abc'; use"
-    " '{!r}'.format(b'abc') if this is desired behavior",
+    'On Python 3 formatting "b\'abc\'" with "{}" produces "b\'abc\'", not "abc"; use'
+    ' "{!r}" if this is desired behavior',
     codes.STR_BYTES_PY3,
 )
 FORMAT_STR_BYTES_USE_REPR_OLD: Final = ErrorMessage(
@@ -355,7 +355,7 @@ MODULE_MISSING_ATTIRBUTE: Final = ErrorMessage(
 )
 NO_IMPLICIT_REEXPORT: Final = ErrorMessage(
     'Module "{}" does not explicitly export attribute "{}"; implicit reexport disabled',
-    codes.ATTR_DEFINED
+    codes.ATTR_DEFINED,
 )
 INCORRECT_RELATIVE_IMPORT: Final = ErrorMessage("Relative import climbs too many namespaces")
 INVALID_TYPE_ALIAS_TARGET: Final = ErrorMessage(
