@@ -235,7 +235,7 @@ FORMAT_STR_INVALID_CONVERSION_TYPE: Final = ErrorMessage(
     'Invalid conversion type "{}", must be one of "r", "s" or "a"', codes.STRING_FORMATTING
 )
 FORMAT_STR_BYTES_USE_REPR: Final = ErrorMessage(
-    "On Python 3 '{}'.format(b'abc') produces \"b'abc'\", not 'abc'; use '{!r}'.format(b'abc')"
+    "On Python 3 formatting \"b'abc'\" produces \"b'abc'\", not 'abc'; use '{!r}'.format(b'abc')"
     " if this is desired behavior",
     codes.STR_BYTES_PY3,
 )
