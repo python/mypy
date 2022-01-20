@@ -3292,6 +3292,17 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.check_typevarlike_name(call, name, s):
             return False
 
+        # ParamSpec is different from a regular TypeVar:
+        # arguments are not semantically valid. But, allowed in runtime.
+        # So, we need to warn users about possible invalid usage.
+        if len(call.args) > 1:
+            self.fail(
+                "ParamSpec accepts only a single argument, {} given".format(
+                    len(call.args),
+                ),
+                s,
+            )
+
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
