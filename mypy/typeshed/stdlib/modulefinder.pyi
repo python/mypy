@@ -1,6 +1,6 @@
 import sys
 from types import CodeType
-from typing import IO, Any, Container, Iterable, Iterator, Sequence, Tuple
+from typing import IO, Any, Container, Iterable, Iterator, Sequence
 
 LOAD_CONST: int  # undocumented
 IMPORT_NAME: int  # undocumented
@@ -19,7 +19,6 @@ def ReplacePackage(oldname: str, newname: str) -> None: ...
 
 class Module:  # undocumented
     def __init__(self, name: str, file: str | None = ..., path: str | None = ...) -> None: ...
-    def __repr__(self) -> str: ...
 
 class ModuleFinder:
 
@@ -62,7 +61,7 @@ class ModuleFinder:
     def find_all_submodules(self, m: Module) -> Iterable[str]: ...  # undocumented
     def import_module(self, partname: str, fqname: str, parent: Module) -> Module | None: ...  # undocumented
     def load_module(self, fqname: str, fp: IO[str], pathname: str, file_info: tuple[str, str, str]) -> Module: ...  # undocumented
-    def scan_opcodes(self, co: CodeType) -> Iterator[tuple[str, Tuple[Any, ...]]]: ...  # undocumented
+    def scan_opcodes(self, co: CodeType) -> Iterator[tuple[str, tuple[Any, ...]]]: ...  # undocumented
     def scan_code(self, co: CodeType, m: Module) -> None: ...  # undocumented
     def load_package(self, fqname: str, pathname: str) -> Module: ...  # undocumented
     def add_module(self, fqname: str) -> Module: ...  # undocumented

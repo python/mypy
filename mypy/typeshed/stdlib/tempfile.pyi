@@ -2,7 +2,7 @@ import os
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, Tuple, Type, Union, overload
+from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -169,7 +169,7 @@ class _TemporaryFileWrapper(Generic[AnyStr], IO[AnyStr]):
     delete: bool
     def __init__(self, file: IO[AnyStr], name: str, delete: bool = ...) -> None: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, exc: Type[BaseException] | None, value: BaseException | None, tb: TracebackType | None) -> bool | None: ...
+    def __exit__(self, exc: type[BaseException] | None, value: BaseException | None, tb: TracebackType | None) -> bool | None: ...
     def __getattr__(self, name: str) -> Any: ...
     def close(self) -> None: ...
     # These methods don't exist directly on this object, but
@@ -206,7 +206,7 @@ class SpooledTemporaryFile(IO[AnyStr]):
     @property
     def encoding(self) -> str: ...  # undocumented
     @property
-    def newlines(self) -> str | Tuple[str, ...] | None: ...  # undocumented
+    def newlines(self) -> str | tuple[str, ...] | None: ...  # undocumented
     # bytes needs to go first, as default mode is to open as bytes
     if sys.version_info >= (3, 8):
         @overload
@@ -293,7 +293,7 @@ class SpooledTemporaryFile(IO[AnyStr]):
     def rollover(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     # These methods are copied from the abstract methods of IO, because
     # SpooledTemporaryFile implements IO.
@@ -346,7 +346,7 @@ class TemporaryDirectory(Generic[AnyStr]):
     def cleanup(self) -> None: ...
     def __enter__(self) -> AnyStr: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...

@@ -3,7 +3,7 @@ from _typeshed import ReadableBuffer, Self, WriteableBuffer
 from collections.abc import Iterable
 from enum import IntEnum, IntFlag
 from io import RawIOBase
-from typing import Any, BinaryIO, TextIO, TypeVar, overload
+from typing import Any, BinaryIO, TextIO, overload
 from typing_extensions import Literal
 
 # Ideally, we'd just do "from _socket import *". Unfortunately, socket
@@ -366,6 +366,8 @@ if sys.platform == "linux" and sys.version_info >= (3, 9):
         SO_J1939_PROMISC as SO_J1939_PROMISC,
         SO_J1939_SEND_PRIO as SO_J1939_SEND_PRIO,
     )
+if sys.platform == "linux" and sys.version_info >= (3, 10):
+    from _socket import IPPROTO_MPTCP as IPPROTO_MPTCP
 if sys.platform == "win32":
     from _socket import (
         RCVALL_IPLEVEL as RCVALL_IPLEVEL,
@@ -377,8 +379,6 @@ if sys.platform == "win32":
         SIO_LOOPBACK_FAST_PATH as SIO_LOOPBACK_FAST_PATH,
         SIO_RCVALL as SIO_RCVALL,
     )
-
-_T = TypeVar("_T")
 
 # Re-exported from errno
 EBADF: int
@@ -544,7 +544,7 @@ class socket(_socket.socket):
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(self, *args: object) -> None: ...
-    def dup(self: _T) -> _T: ...  # noqa: F811
+    def dup(self: Self) -> Self: ...  # noqa: F811
     def accept(self) -> tuple[socket, _RetAddress]: ...
     # Note that the makefile's documented windows-specific behavior is not represented
     # mode strings with duplicates are intentionally excluded
@@ -570,9 +570,9 @@ class socket(_socket.socket):
     ) -> BinaryIO: ...
     def sendfile(self, file: BinaryIO, offset: int = ..., count: int | None = ...) -> int: ...
     @property
-    def family(self) -> AddressFamily: ...  # type: ignore
+    def family(self) -> AddressFamily: ...  # type: ignore[override]
     @property
-    def type(self) -> SocketKind: ...  # type: ignore
+    def type(self) -> SocketKind: ...  # type: ignore[override]
     def get_inheritable(self) -> bool: ...
     def set_inheritable(self, inheritable: bool) -> None: ...
 
@@ -593,7 +593,7 @@ if sys.platform == "win32":
     def socketpair(family: int = ..., type: int = ..., proto: int = ...) -> tuple[socket, socket]: ...
 
 else:
-    def socketpair(  # type: ignore
+    def socketpair(
         family: int | AddressFamily | None = ..., type: SocketType | int = ..., proto: int = ...
     ) -> tuple[socket, socket]: ...
 

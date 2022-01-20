@@ -5,21 +5,21 @@ from _typeshed import Self
 from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
-from typing import IO, Any, Callable, List, Pattern, Tuple, Type, Union
+from typing import IO, Any, Callable, Pattern, Union
 from typing_extensions import Literal
 
 # TODO: Commands should use their actual return types, not this type alias.
 #       E.g. Tuple[Literal["OK"], List[bytes]]
-_CommandResults = Tuple[str, List[Any]]
+_CommandResults = tuple[str, list[Any]]
 
-_AnyResponseData = Union[List[None], List[Union[bytes, Tuple[bytes, bytes]]]]
+_AnyResponseData = Union[list[None], list[Union[bytes, tuple[bytes, bytes]]]]
 
 _list = list  # conflicts with a method named "list"
 
 class IMAP4:
-    error: Type[Exception]
-    abort: Type[Exception]
-    readonly: Type[Exception]
+    error: type[Exception]
+    abort: type[Exception]
+    readonly: type[Exception]
     mustquote: Pattern[str]
     debug: int
     state: str
@@ -63,7 +63,7 @@ class IMAP4:
     def deleteacl(self, mailbox: str, who: str) -> _CommandResults: ...
     def enable(self, capability: str) -> _CommandResults: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, t: Type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
+    def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
     def expunge(self) -> _CommandResults: ...
     def fetch(self, message_set: str, message_parts: str) -> tuple[str, _AnyResponseData]: ...
     def getacl(self, mailbox: str) -> _CommandResults: ...

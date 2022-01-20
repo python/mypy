@@ -1,7 +1,7 @@
 from _typeshed import Self
 from collections.abc import Iterator, MutableMapping
 from types import TracebackType
-from typing import Type, TypeVar, overload
+from typing import TypeVar, overload
 
 _T = TypeVar("_T")
 _VT = TypeVar("_VT")
@@ -21,7 +21,7 @@ class Shelf(MutableMapping[str, _VT]):
     def __delitem__(self, key: str) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
     def close(self) -> None: ...
     def sync(self) -> None: ...

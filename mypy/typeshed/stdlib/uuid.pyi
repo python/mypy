@@ -1,10 +1,10 @@
 import sys
-from typing import Any, Tuple
+from typing import Any
 
 # Because UUID has properties called int and bytes we need to rename these temporarily.
 _Int = int
 _Bytes = bytes
-_FieldsType = Tuple[int, int, int, int, int, int]
+_FieldsType = tuple[int, int, int, int, int, int]
 
 if sys.version_info >= (3, 7):
     from enum import Enum

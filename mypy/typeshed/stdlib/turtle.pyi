@@ -1,24 +1,37 @@
-from tkinter import Canvas, PhotoImage
-from typing import Any, Callable, Dict, Sequence, Tuple, TypeVar, Union, overload
+from _typeshed import Self
+from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
+from typing import Any, Callable, ClassVar, Sequence, Union, overload
 
 # Note: '_Color' is the alias we use for arguments and _AnyColor is the
 # alias we use for return types. Really, these two aliases should be the
 # same, but as per the "no union returns" typeshed policy, we'll return
 # Any instead.
-_Color = Union[str, Tuple[float, float, float]]
+_Color = Union[str, tuple[float, float, float]]
 _AnyColor = Any
 
 # TODO: Replace this with a TypedDict once it becomes standardized.
-_PenState = Dict[str, Any]
+_PenState = dict[str, Any]
 
 _Speed = Union[str, float]
-_PolygonCoords = Sequence[Tuple[float, float]]
+_PolygonCoords = Sequence[tuple[float, float]]
 
 # TODO: Type this more accurately
 # Vec2D is actually a custom subclass of 'tuple'.
-Vec2D = Tuple[float, float]
+Vec2D = tuple[float, float]
 
-class TurtleScreenBase(object):
+# Does not actually inherit from Canvas, but dynamically gets all methods of Canvas
+class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]
+    bg: str
+    hscroll: Scrollbar
+    vscroll: Scrollbar
+    def __init__(
+        self, master: Misc | None, width: int = ..., height: int = ..., canvwidth: int = ..., canvheight: int = ...
+    ) -> None: ...
+    canvwidth: int
+    canvheight: int
+    def reset(self, canvwidth: int | None = ..., canvheight: int | None = ..., bg: str | None = ...) -> None: ...
+
+class TurtleScreenBase:
     cv: Canvas
     canvwidth: int
     canvheight: int
@@ -34,7 +47,7 @@ class TurtleScreenBase(object):
 class Terminator(Exception): ...
 class TurtleGraphicsError(Exception): ...
 
-class Shape(object):
+class Shape:
     def __init__(self, type_: str, data: _PolygonCoords | PhotoImage | None = ...) -> None: ...
     def addcomponent(self, poly: _PolygonCoords, fill: _Color, outline: _Color | None = ...) -> None: ...
 
@@ -92,7 +105,7 @@ class TurtleScreen(TurtleScreenBase):
     def onkeypress(self, fun: Callable[[], Any], key: str | None = ...) -> None: ...
     onkeyrelease = onkey
 
-class TNavigator(object):
+class TNavigator:
     START_ORIENTATION: dict[str, Vec2D]
     DEFAULT_MODE: str
     DEFAULT_ANGLEOFFSET: int
@@ -136,7 +149,7 @@ class TNavigator(object):
     setposition = goto
     seth = setheading
 
-class TPen(object):
+class TPen:
     def __init__(self, resizemode: str = ...) -> None: ...
     @overload
     def resizemode(self, rmode: None = ...) -> str: ...
@@ -178,7 +191,7 @@ class TPen(object):
     def isvisible(self) -> bool: ...
     # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
     @overload
-    def pen(self) -> _PenState: ...  # type: ignore
+    def pen(self) -> _PenState: ...  # type: ignore[misc]
     @overload
     def pen(
         self,
@@ -203,9 +216,9 @@ class TPen(object):
     st = showturtle
     ht = hideturtle
 
-_T = TypeVar("_T")
-
 class RawTurtle(TPen, TNavigator):
+    screen: TurtleScreen
+    screens: ClassVar[list[TurtleScreen]]
     def __init__(
         self, canvas: Canvas | TurtleScreen | None = ..., shape: str = ..., undobuffersize: int = ..., visible: bool = ...
     ) -> None: ...
@@ -213,14 +226,14 @@ class RawTurtle(TPen, TNavigator):
     def setundobuffer(self, size: int | None) -> None: ...
     def undobufferentries(self) -> int: ...
     def clear(self) -> None: ...
-    def clone(self: _T) -> _T: ...
+    def clone(self: Self) -> Self: ...
     @overload
     def shape(self, name: None = ...) -> str: ...
     @overload
     def shape(self, name: str) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore
+    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore[misc]
     @overload
     def shapesize(
         self, stretch_wid: float | None = ..., stretch_len: float | None = ..., outline: float | None = ...
@@ -231,7 +244,7 @@ class RawTurtle(TPen, TNavigator):
     def shearfactor(self, shear: float) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapetransform(self) -> tuple[float, float, float, float]: ...  # type: ignore
+    def shapetransform(self) -> tuple[float, float, float, float]: ...  # type: ignore[misc]
     @overload
     def shapetransform(
         self, t11: float | None = ..., t12: float | None = ..., t21: float | None = ..., t22: float | None = ...
@@ -247,7 +260,7 @@ class RawTurtle(TPen, TNavigator):
     # a compound stamp or not. So, as per the "no Union return" policy,
     # we return Any.
     def stamp(self) -> Any: ...
-    def clearstamp(self, stampid: int | Tuple[int, ...]) -> None: ...
+    def clearstamp(self, stampid: int | tuple[int, ...]) -> None: ...
     def clearstamps(self, n: int | None = ...) -> None: ...
     def filling(self) -> bool: ...
     def begin_fill(self) -> None: ...
@@ -258,7 +271,7 @@ class RawTurtle(TPen, TNavigator):
     def end_poly(self) -> None: ...
     def get_poly(self) -> _PolygonCoords | None: ...
     def getscreen(self) -> TurtleScreen: ...
-    def getturtle(self: _T) -> _T: ...
+    def getturtle(self: Self) -> Self: ...
     getpen = getturtle
     def onclick(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
     def onrelease(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
@@ -449,7 +462,7 @@ def isvisible() -> bool: ...
 
 # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
 @overload
-def pen() -> _PenState: ...  # type: ignore
+def pen() -> _PenState: ...  # type: ignore[misc]
 @overload
 def pen(
     pen: _PenState | None = ...,
@@ -485,7 +498,7 @@ def shape(name: str) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapesize() -> tuple[float, float, float]: ...  # type: ignore
+def shapesize() -> tuple[float, float, float]: ...  # type: ignore[misc]
 @overload
 def shapesize(stretch_wid: float | None = ..., stretch_len: float | None = ..., outline: float | None = ...) -> None: ...
 @overload
@@ -495,7 +508,7 @@ def shearfactor(shear: float) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapetransform() -> tuple[float, float, float, float]: ...  # type: ignore
+def shapetransform() -> tuple[float, float, float, float]: ...  # type: ignore[misc]
 @overload
 def shapetransform(
     t11: float | None = ..., t12: float | None = ..., t21: float | None = ..., t22: float | None = ...
@@ -512,7 +525,7 @@ def tilt(angle: float) -> None: ...
 # a compound stamp or not. So, as per the "no Union return" policy,
 # we return Any.
 def stamp() -> Any: ...
-def clearstamp(stampid: int | Tuple[int, ...]) -> None: ...
+def clearstamp(stampid: int | tuple[int, ...]) -> None: ...
 def clearstamps(n: int | None = ...) -> None: ...
 def filling() -> bool: ...
 def begin_fill() -> None: ...

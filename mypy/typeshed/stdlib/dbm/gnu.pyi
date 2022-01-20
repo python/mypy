@@ -1,10 +1,12 @@
 from _typeshed import Self
 from types import TracebackType
-from typing import Type, TypeVar, Union, overload
+from typing import TypeVar, Union, overload
 
 _T = TypeVar("_T")
 _KeyType = Union[str, bytes]
 _ValueType = Union[str, bytes]
+
+open_flags: str
 
 class error(OSError): ...
 
@@ -22,7 +24,7 @@ class _gdbm:
     def __len__(self) -> int: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     @overload
     def get(self, k: _KeyType) -> bytes | None: ...
@@ -31,7 +33,7 @@ class _gdbm:
     def keys(self) -> list[bytes]: ...
     def setdefault(self, k: _KeyType, default: _ValueType = ...) -> bytes: ...
     # Don't exist at runtime
-    __new__: None  # type: ignore
-    __init__: None  # type: ignore
+    __new__: None  # type: ignore[assignment]
+    __init__: None  # type: ignore[assignment]
 
 def open(__filename: str, __flags: str = ..., __mode: int = ...) -> _gdbm: ...

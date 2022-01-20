@@ -1,17 +1,43 @@
 import datetime
 import sys
 from time import struct_time
-from typing import Any, Iterable, Optional, Sequence, Tuple
+from typing import Any, Iterable, Optional, Sequence
+from typing_extensions import Literal
 
-_LocaleType = Tuple[Optional[str], Optional[str]]
+__all__ = [
+    "IllegalMonthError",
+    "IllegalWeekdayError",
+    "setfirstweekday",
+    "firstweekday",
+    "isleap",
+    "leapdays",
+    "weekday",
+    "monthrange",
+    "monthcalendar",
+    "prmonth",
+    "month",
+    "prcal",
+    "calendar",
+    "timegm",
+    "month_name",
+    "month_abbr",
+    "day_name",
+    "day_abbr",
+    "Calendar",
+    "TextCalendar",
+    "HTMLCalendar",
+    "LocaleTextCalendar",
+    "LocaleHTMLCalendar",
+    "weekheader",
+]
+
+_LocaleType = tuple[Optional[str], Optional[str]]
 
 class IllegalMonthError(ValueError):
     def __init__(self, month: int) -> None: ...
-    def __str__(self) -> str: ...
 
 class IllegalWeekdayError(ValueError):
     def __init__(self, weekday: int) -> None: ...
-    def __str__(self) -> str: ...
 
 def isleap(year: int) -> bool: ...
 def leapdays(y1: int, y2: int) -> int: ...
@@ -97,7 +123,7 @@ c: TextCalendar
 def setfirstweekday(firstweekday: int) -> None: ...
 def format(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
 def formatstring(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
-def timegm(tuple: Tuple[int, ...] | struct_time) -> int: ...
+def timegm(tuple: tuple[int, ...] | struct_time) -> int: ...
 
 # Data attributes
 day_name: Sequence[str]
@@ -105,13 +131,12 @@ day_abbr: Sequence[str]
 month_name: Sequence[str]
 month_abbr: Sequence[str]
 
-# Below constants are not in docs or __all__, but enough people have used them
-# they are now effectively public.
+MONDAY: Literal[0]
+TUESDAY: Literal[1]
+WEDNESDAY: Literal[2]
+THURSDAY: Literal[3]
+FRIDAY: Literal[4]
+SATURDAY: Literal[5]
+SUNDAY: Literal[6]
 
-MONDAY: int
-TUESDAY: int
-WEDNESDAY: int
-THURSDAY: int
-FRIDAY: int
-SATURDAY: int
-SUNDAY: int
+EPOCH: Literal[1970]

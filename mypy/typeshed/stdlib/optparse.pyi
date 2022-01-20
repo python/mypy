@@ -1,6 +1,6 @@
-from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, Tuple, Type, overload
+from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, overload
 
-NO_DEFAULT: Tuple[str, ...]
+NO_DEFAULT: tuple[str, ...]
 SUPPRESS_HELP: str
 SUPPRESS_USAGE: str
 
@@ -72,14 +72,14 @@ class TitledHelpFormatter(HelpFormatter):
     def format_usage(self, usage: str) -> str: ...
 
 class Option:
-    ACTIONS: Tuple[str, ...]
-    ALWAYS_TYPED_ACTIONS: Tuple[str, ...]
+    ACTIONS: tuple[str, ...]
+    ALWAYS_TYPED_ACTIONS: tuple[str, ...]
     ATTRS: list[str]
     CHECK_METHODS: list[Callable[..., Any]] | None
-    CONST_ACTIONS: Tuple[str, ...]
-    STORE_ACTIONS: Tuple[str, ...]
-    TYPED_ACTIONS: Tuple[str, ...]
-    TYPES: Tuple[str, ...]
+    CONST_ACTIONS: tuple[str, ...]
+    STORE_ACTIONS: tuple[str, ...]
+    TYPED_ACTIONS: tuple[str, ...]
+    TYPES: tuple[str, ...]
     TYPE_CHECKER: dict[str, Callable[..., Any]]
     _long_opts: list[str]
     _short_opts: list[str]
@@ -89,7 +89,7 @@ class Option:
     nargs: int
     type: Any
     callback: Callable[..., Any] | None
-    callback_args: Tuple[Any, ...] | None
+    callback_args: tuple[Any, ...] | None
     callback_kwargs: dict[str, Any] | None
     help: str | None
     metavar: str | None
@@ -119,8 +119,8 @@ class OptionContainer:
     conflict_handler: str
     defaults: dict[str, Any]
     description: Any
-    option_class: Type[Option]
-    def __init__(self, option_class: Type[Option], conflict_handler: Any, description: Any) -> None: ...
+    option_class: type[Option]
+    def __init__(self, option_class: type[Option], conflict_handler: Any, description: Any) -> None: ...
     def _check_conflict(self, option: Any) -> None: ...
     def _create_option_mappings(self) -> None: ...
     def _share_option_mappings(self, parser: OptionParser) -> None: ...
@@ -177,7 +177,7 @@ class OptionParser(OptionContainer):
         self,
         usage: str | None = ...,
         option_list: Iterable[Option] | None = ...,
-        option_class: Type[Option] = ...,
+        option_class: type[Option] = ...,
         version: str | None = ...,
         conflict_handler: str = ...,
         description: str | None = ...,

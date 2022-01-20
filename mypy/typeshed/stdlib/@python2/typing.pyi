@@ -1,4 +1,5 @@
 import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
+from _typeshed import Self
 from abc import ABCMeta, abstractmethod
 from types import CodeType, FrameType, TracebackType
 
@@ -77,7 +78,7 @@ Counter = _Alias()
 Deque = _Alias()
 
 # Predefined type variables.
-AnyStr = TypeVar("AnyStr", str, unicode)
+AnyStr = TypeVar("AnyStr", str, unicode)  # noqa: Y001
 
 # Abstract base classes.
 
@@ -462,11 +463,11 @@ class NamedTuple(Tuple[Any, ...]):
     @classmethod
     def _make(cls: Type[_T], iterable: Iterable[Any]) -> _T: ...
     def _asdict(self) -> Dict[str, Any]: ...
-    def _replace(self: _T, **kwargs: Any) -> _T: ...
+    def _replace(self: Self, **kwargs: Any) -> Self: ...
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
-    def copy(self: _T) -> _T: ...
+    def copy(self: Self) -> Self: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...

@@ -1,11 +1,11 @@
+from _typeshed import Self
 from lib2to3.pgen2.grammar import Grammar
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Callable, Iterator, Optional, Union
 
-_P = TypeVar("_P")
 _NL = Union[Node, Leaf]
-_Context = Tuple[str, int, int]
-_Results = Dict[str, _NL]
-_RawNode = Tuple[int, str, _Context, Optional[List[_NL]]]
+_Context = tuple[str, int, int]
+_Results = dict[str, _NL]
+_RawNode = tuple[int, str, _Context, Optional[list[_NL]]]
 _Convert = Callable[[Grammar, _RawNode], Any]
 
 HUGE: int
@@ -20,8 +20,8 @@ class Base:
     was_changed: bool
     was_checked: bool
     def __eq__(self, other: Any) -> bool: ...
-    def _eq(self: _P, other: _P) -> bool: ...
-    def clone(self: _P) -> _P: ...
+    def _eq(self: Self, other: Self) -> bool: ...
+    def clone(self: Self) -> Self: ...
     def post_order(self) -> Iterator[_NL]: ...
     def pre_order(self) -> Iterator[_NL]: ...
     def replace(self, new: _NL | list[_NL]) -> None: ...

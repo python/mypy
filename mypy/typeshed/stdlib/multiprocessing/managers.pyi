@@ -1,9 +1,8 @@
-# NOTE: These are incomplete!
-
 import queue
 import sys
 import threading
-from typing import Any, AnyStr, Callable, ContextManager, Generic, Iterable, Mapping, Sequence, Tuple, TypeVar
+from contextlib import AbstractContextManager
+from typing import Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar
 
 from .connection import Connection
 from .context import BaseContext
@@ -28,16 +27,15 @@ class Namespace:
 
 _Namespace = Namespace
 
-class Token(object):
+class Token:
     typeid: str | bytes | None
     address: tuple[str | bytes, int]
     id: str | bytes | int | None
     def __init__(self, typeid: bytes | str | None, address: tuple[str | bytes, int], id: str | bytes | int | None) -> None: ...
-    def __repr__(self) -> str: ...
     def __getstate__(self) -> tuple[str | bytes | None, tuple[str | bytes, int], str | bytes | int | None]: ...
     def __setstate__(self, state: tuple[str | bytes | None, tuple[str | bytes, int], str | bytes | int | None]) -> None: ...
 
-class BaseProxy(object):
+class BaseProxy:
     _address_to_local: dict[Any, Any]
     _mutex: Any
     def __init__(
@@ -51,7 +49,7 @@ class BaseProxy(object):
         manager_owned: bool = ...,
     ) -> None: ...
     def __deepcopy__(self, memo: Any | None) -> Any: ...
-    def _callmethod(self, methodname: str, args: Tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
+    def _callmethod(self, methodname: str, args: tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
     def _getvalue(self) -> Any: ...
     def __reduce__(self) -> tuple[Any, tuple[Any, Any, str, dict[Any, Any]]]: ...
 
@@ -71,7 +69,7 @@ class Server:
     def serve_forever(self) -> None: ...
     def accept_connection(self, c: Connection, name: str) -> None: ...
 
-class BaseManager(ContextManager[BaseManager]):
+class BaseManager(AbstractContextManager[BaseManager]):
     def __init__(
         self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
     ) -> None: ...
@@ -97,7 +95,7 @@ class BaseManager(ContextManager[BaseManager]):
 _dict = dict
 _list = list
 
-class SyncManager(BaseManager, ContextManager[SyncManager]):
+class SyncManager(BaseManager, AbstractContextManager[SyncManager]):
     def BoundedSemaphore(self, value: Any = ...) -> threading.BoundedSemaphore: ...
     def Condition(self, lock: Any = ...) -> threading.Condition: ...
     def Event(self) -> threading.Event: ...

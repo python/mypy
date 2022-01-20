@@ -1,7 +1,7 @@
 import unittest.case
 import unittest.result
 import unittest.suite
-from typing import Callable, TextIO, Type
+from typing import Callable, TextIO
 
 _ResultClassType = Callable[[TextIO, bool, int], unittest.result.TestResult]
 
@@ -17,7 +17,7 @@ class TextTestResult(unittest.result.TestResult):
     def printErrors(self) -> None: ...
     def printErrorList(self, flavour: str, errors: tuple[unittest.case.TestCase, str]) -> None: ...
 
-class TextTestRunner(object):
+class TextTestRunner:
     resultclass: _ResultClassType
     def __init__(
         self,
@@ -27,7 +27,7 @@ class TextTestRunner(object):
         failfast: bool = ...,
         buffer: bool = ...,
         resultclass: _ResultClassType | None = ...,
-        warnings: Type[Warning] | None = ...,
+        warnings: type[Warning] | None = ...,
         *,
         tb_locals: bool = ...,
     ) -> None: ...

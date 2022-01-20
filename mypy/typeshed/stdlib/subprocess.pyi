@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, Type, TypeVar, Union, overload
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -1008,7 +1008,7 @@ class Popen(Generic[AnyStr]):
     def kill(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...

@@ -1,14 +1,11 @@
 from types import TracebackType
-from typing import IO, Any, Callable, ContextManager, Iterable, Iterator, Optional, Type, TypeVar
-from typing_extensions import Protocol
+from typing import IO, Any, Callable, ContextManager, Iterable, Iterator, Optional, Protocol, TypeVar
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
-_T_io = TypeVar("_T_io", bound=Optional[IO[str]])
 _F = TypeVar("_F", bound=Callable[..., Any])
 
-_ExitFunc = Callable[[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]], bool]
-_CM_EF = TypeVar("_CM_EF", ContextManager[Any], _ExitFunc)
+_ExitFunc = Callable[[Optional[type[BaseException]], Optional[BaseException], Optional[TracebackType]], bool]
 
 class GeneratorContextManager(ContextManager[_T_co]):
     def __call__(self, func: _F) -> _F: ...

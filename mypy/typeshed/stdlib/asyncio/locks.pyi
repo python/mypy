@@ -1,7 +1,7 @@
 import sys
 from collections import deque
 from types import TracebackType
-from typing import Any, Awaitable, Callable, Generator, Type, TypeVar
+from typing import Any, Awaitable, Callable, Generator, TypeVar
 
 from .events import AbstractEventLoop
 from .futures import Future
@@ -13,7 +13,7 @@ if sys.version_info >= (3, 9):
         def __init__(self, lock: Lock | Semaphore) -> None: ...
         def __aenter__(self) -> Awaitable[None]: ...
         def __aexit__(
-            self, exc_type: Type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+            self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
         ) -> Awaitable[None]: ...
 
 else:
@@ -30,7 +30,7 @@ else:
         def __await__(self) -> Generator[Any, None, _ContextManager]: ...
         def __aenter__(self) -> Awaitable[None]: ...
         def __aexit__(
-            self, exc_type: Type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
+            self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None
         ) -> Awaitable[None]: ...
 
 class Lock(_ContextManagerMixin):

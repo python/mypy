@@ -1,13 +1,13 @@
 import sys
-from typing import Any, NamedTuple, Tuple
+from typing import Any, NamedTuple
 
-_TimeTuple = Tuple[int, int, int, int, int, int, int, int, int]
+_TimeTuple = tuple[int, int, int, int, int, int, int, int, int]
 
 accept2dyear: bool
 altzone: int
 daylight: int
 timezone: int
-tzname: Tuple[str, str]
+tzname: tuple[str, str]
 
 class _struct_time(NamedTuple):
     tm_year: int

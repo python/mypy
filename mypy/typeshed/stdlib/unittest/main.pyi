@@ -4,7 +4,10 @@ import unittest.loader
 import unittest.result
 import unittest.suite
 from types import ModuleType
-from typing import Any, Iterable, Protocol, Type
+from typing import Any, Iterable, Protocol
+
+MAIN_EXAMPLES: str
+MODULE_EXAMPLES: str
 
 class _TestRunner(Protocol):
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
@@ -27,7 +30,7 @@ class TestProgram:
         module: None | str | ModuleType = ...,
         defaultTest: str | Iterable[str] | None = ...,
         argv: list[str] | None = ...,
-        testRunner: Type[_TestRunner] | _TestRunner | None = ...,
+        testRunner: type[_TestRunner] | _TestRunner | None = ...,
         testLoader: unittest.loader.TestLoader = ...,
         exit: bool = ...,
         verbosity: int = ...,

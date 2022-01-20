@@ -9,18 +9,18 @@ from asyncio.tasks import Task
 from asyncio.transports import BaseTransport
 from collections.abc import Iterable
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Awaitable, Callable, Dict, Generator, Sequence, Tuple, TypeVar, Union, overload
+from typing import IO, Any, Awaitable, Callable, Generator, Sequence, TypeVar, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
     from contextvars import Context
 
 _T = TypeVar("_T")
-_Context = Dict[str, Any]
+_ProtocolT = TypeVar("_ProtocolT", bound=BaseProtocol)
+_Context = dict[str, Any]
 _ExceptionHandler = Callable[[AbstractEventLoop, _Context], Any]
 _ProtocolFactory = Callable[[], BaseProtocol]
 _SSLContext = Union[bool, None, ssl.SSLContext]
-_TransProtPair = Tuple[BaseTransport, BaseProtocol]
 
 class Server(AbstractServer):
     if sys.version_info >= (3, 7):
@@ -37,7 +37,7 @@ class Server(AbstractServer):
         def __init__(self, loop: AbstractEventLoop, sockets: list[socket]) -> None: ...
     if sys.version_info >= (3, 8):
         @property
-        def sockets(self) -> Tuple[socket, ...]: ...
+        def sockets(self) -> tuple[socket, ...]: ...
     elif sys.version_info >= (3, 7):
         @property
         def sockets(self) -> list[socket]: ...
@@ -95,7 +95,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: str = ...,
             port: int = ...,
             *,
@@ -109,11 +109,11 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             ssl_handshake_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: None = ...,
             port: None = ...,
             *,
@@ -127,12 +127,12 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             ssl_handshake_timeout: float | None = ...,
             happy_eyeballs_delay: float | None = ...,
             interleave: int | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
     elif sys.version_info >= (3, 7):
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: str = ...,
             port: int = ...,
             *,
@@ -144,11 +144,11 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: None = ...,
             port: None = ...,
             *,
@@ -160,12 +160,12 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             local_addr: None = ...,
             server_hostname: str | None = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
     else:
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: str = ...,
             port: int = ...,
             *,
@@ -176,11 +176,11 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: None = ...,
             local_addr: tuple[str, int] | None = ...,
             server_hostname: str | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
         @overload
         async def create_connection(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             host: None = ...,
             port: None = ...,
             *,
@@ -191,7 +191,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             sock: socket,
             local_addr: None = ...,
             server_hostname: str | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
     if sys.version_info >= (3, 7):
         async def sock_sendfile(
             self, sock: socket, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool | None = ...
@@ -232,12 +232,12 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         ) -> Server: ...
         async def connect_accepted_socket(
             self,
-            protocol_factory: _ProtocolFactory,
+            protocol_factory: Callable[[], _ProtocolT],
             sock: socket,
             *,
             ssl: _SSLContext = ...,
             ssl_handshake_timeout: float | None = ...,
-        ) -> _TransProtPair: ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
         async def sendfile(
             self, transport: BaseTransport, file: IO[bytes], offset: int = ..., count: int | None = ..., *, fallback: bool = ...
         ) -> int: ...
@@ -283,28 +283,47 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
             reuse_port: bool | None = ...,
         ) -> Server: ...
         async def connect_accepted_socket(
-            self, protocol_factory: _ProtocolFactory, sock: socket, *, ssl: _SSLContext = ...
-        ) -> _TransProtPair: ...
-    async def create_datagram_endpoint(
-        self,
-        protocol_factory: _ProtocolFactory,
-        local_addr: tuple[str, int] | None = ...,
-        remote_addr: tuple[str, int] | None = ...,
-        *,
-        family: int = ...,
-        proto: int = ...,
-        flags: int = ...,
-        reuse_address: bool | None = ...,
-        reuse_port: bool | None = ...,
-        allow_broadcast: bool | None = ...,
-        sock: socket | None = ...,
-    ) -> _TransProtPair: ...
+            self, protocol_factory: Callable[[], _ProtocolT], sock: socket, *, ssl: _SSLContext = ...
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
+    if sys.version_info >= (3, 11):
+        async def create_datagram_endpoint(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            local_addr: tuple[str, int] | None = ...,
+            remote_addr: tuple[str, int] | None = ...,
+            *,
+            family: int = ...,
+            proto: int = ...,
+            flags: int = ...,
+            reuse_port: bool | None = ...,
+            allow_broadcast: bool | None = ...,
+            sock: socket | None = ...,
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
+    else:
+        async def create_datagram_endpoint(
+            self,
+            protocol_factory: Callable[[], _ProtocolT],
+            local_addr: tuple[str, int] | None = ...,
+            remote_addr: tuple[str, int] | None = ...,
+            *,
+            family: int = ...,
+            proto: int = ...,
+            flags: int = ...,
+            reuse_address: bool | None = ...,
+            reuse_port: bool | None = ...,
+            allow_broadcast: bool | None = ...,
+            sock: socket | None = ...,
+        ) -> tuple[BaseTransport, _ProtocolT]: ...
     # Pipes and subprocesses.
-    async def connect_read_pipe(self, protocol_factory: _ProtocolFactory, pipe: Any) -> _TransProtPair: ...
-    async def connect_write_pipe(self, protocol_factory: _ProtocolFactory, pipe: Any) -> _TransProtPair: ...
+    async def connect_read_pipe(
+        self, protocol_factory: Callable[[], _ProtocolT], pipe: Any
+    ) -> tuple[BaseTransport, _ProtocolT]: ...
+    async def connect_write_pipe(
+        self, protocol_factory: Callable[[], _ProtocolT], pipe: Any
+    ) -> tuple[BaseTransport, _ProtocolT]: ...
     async def subprocess_shell(
         self,
-        protocol_factory: _ProtocolFactory,
+        protocol_factory: Callable[[], _ProtocolT],
         cmd: bytes | str,
         *,
         stdin: int | IO[Any] | None = ...,
@@ -317,10 +336,10 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         errors: None = ...,
         text: Literal[False, None] = ...,
         **kwargs: Any,
-    ) -> _TransProtPair: ...
+    ) -> tuple[BaseTransport, _ProtocolT]: ...
     async def subprocess_exec(
         self,
-        protocol_factory: _ProtocolFactory,
+        protocol_factory: Callable[[], _ProtocolT],
         program: Any,
         *args: Any,
         stdin: int | IO[Any] | None = ...,
@@ -332,7 +351,7 @@ class BaseEventLoop(AbstractEventLoop, metaclass=ABCMeta):
         encoding: None = ...,
         errors: None = ...,
         **kwargs: Any,
-    ) -> _TransProtPair: ...
+    ) -> tuple[BaseTransport, _ProtocolT]: ...
     def add_reader(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...
     def remove_reader(self, fd: FileDescriptorLike) -> None: ...
     def add_writer(self, fd: FileDescriptorLike, callback: Callable[..., Any], *args: Any) -> None: ...

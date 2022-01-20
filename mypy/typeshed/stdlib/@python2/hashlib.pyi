@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import Union
 
 _DataType = Union[str, unicode, bytearray, buffer, memoryview]
 
@@ -25,8 +25,8 @@ def sha256(s: _DataType = ...) -> _hash: ...
 def sha384(s: _DataType = ...) -> _hash: ...
 def sha512(s: _DataType = ...) -> _hash: ...
 
-algorithms: Tuple[str, ...]
-algorithms_guaranteed: Tuple[str, ...]
-algorithms_available: Tuple[str, ...]
+algorithms: tuple[str, ...]
+algorithms_guaranteed: tuple[str, ...]
+algorithms_available: tuple[str, ...]
 
 def pbkdf2_hmac(name: str, password: str, salt: str, rounds: int, dklen: int = ...) -> str: ...

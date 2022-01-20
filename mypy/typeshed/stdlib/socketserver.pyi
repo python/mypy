@@ -2,11 +2,10 @@ import sys
 import types
 from _typeshed import Self
 from socket import socket as _socket
-from typing import Any, BinaryIO, Callable, ClassVar, Tuple, Type, TypeVar, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Union
 
-_T = TypeVar("_T")
-_RequestType = Union[_socket, Tuple[bytes, _socket]]
-_AddressType = Union[Tuple[str, int], str]
+_RequestType = Union[_socket, tuple[bytes, _socket]]
+_AddressType = Union[tuple[str, int], str]
 
 class BaseServer:
     address_family: int
@@ -33,7 +32,7 @@ class BaseServer:
     def verify_request(self, request: _RequestType, client_address: _AddressType) -> bool: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
     def service_actions(self) -> None: ...
     def shutdown_request(self, request: _RequestType) -> None: ...  # undocumented
@@ -55,6 +54,7 @@ class TCPServer(BaseServer):
     def close_request(self, request: _RequestType) -> None: ...  # undocumented
 
 class UDPServer(BaseServer):
+    max_packet_size: ClassVar[int]
     def __init__(
         self,
         server_address: tuple[str, int],

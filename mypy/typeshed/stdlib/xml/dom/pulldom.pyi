@@ -1,4 +1,5 @@
-from typing import IO, Any, Sequence, Tuple, Union
+import sys
+from typing import IO, Any, Sequence, Union
 from typing_extensions import Literal
 from xml.dom.minidom import Document, DOMImplementation, Element, Text
 from xml.sax.handler import ContentHandler
@@ -16,7 +17,7 @@ CHARACTERS: Literal["CHARACTERS"]
 _DocumentFactory = Union[DOMImplementation, None]
 _Node = Union[Document, Element, Text]
 
-_Event = Tuple[
+_Event = tuple[
     Literal[
         Literal["START_ELEMENT"],
         Literal["END_ELEMENT"],
@@ -66,7 +67,8 @@ class DOMEventStream:
     bufsize: int
     def __init__(self, stream: IO[bytes], parser: XMLReader, bufsize: int) -> None: ...
     pulldom: Any
-    def __getitem__(self, pos): ...
+    if sys.version_info < (3, 11):
+        def __getitem__(self, pos): ...
     def __next__(self): ...
     def __iter__(self): ...
     def getEvent(self) -> _Event: ...

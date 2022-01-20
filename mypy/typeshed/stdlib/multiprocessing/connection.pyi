@@ -2,13 +2,13 @@ import socket
 import sys
 import types
 from _typeshed import Self
-from typing import Any, Iterable, Tuple, Type, Union
+from typing import Any, Iterable, Union
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
 # https://docs.python.org/3/library/multiprocessing.html#address-formats
-_Address = Union[str, Tuple[str, int]]
+_Address = Union[str, tuple[str, int]]
 
 class _ConnectionBase:
     if sys.version_info >= (3, 8):
@@ -31,7 +31,7 @@ class _ConnectionBase:
     def poll(self, timeout: float | None = ...) -> bool: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
 
 class Connection(_ConnectionBase): ...
@@ -51,7 +51,7 @@ class Listener:
     def last_accepted(self) -> _Address | None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
 
 def deliver_challenge(connection: Connection, authkey: bytes) -> None: ...

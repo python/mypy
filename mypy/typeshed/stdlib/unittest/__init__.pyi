@@ -1,5 +1,4 @@
 import sys
-from unittest.async_case import *
 
 from .case import (
     FunctionTestCase as FunctionTestCase,
@@ -10,15 +9,27 @@ from .case import (
     skipIf as skipIf,
     skipUnless as skipUnless,
 )
+from .loader import (
+    TestLoader as TestLoader,
+    defaultTestLoader as defaultTestLoader,
+    findTestCases as findTestCases,
+    getTestCaseNames as getTestCaseNames,
+    makeSuite as makeSuite,
+)
+from .main import TestProgram as TestProgram, main as main
+from .result import TestResult as TestResult
+from .runner import TextTestResult as TextTestResult, TextTestRunner as TextTestRunner
+from .signals import (
+    installHandler as installHandler,
+    registerResult as registerResult,
+    removeHandler as removeHandler,
+    removeResult as removeResult,
+)
+from .suite import BaseTestSuite as BaseTestSuite, TestSuite as TestSuite
 
 if sys.version_info >= (3, 8):
-    from .case import addModuleCleanup as addModuleCleanup
+    from unittest.async_case import *
 
-from unittest.loader import *
-from unittest.main import *
-from unittest.result import TestResult as TestResult
-from unittest.runner import *
-from unittest.signals import *
-from unittest.suite import *
+    from .case import addModuleCleanup as addModuleCleanup
 
 def load_tests(loader: TestLoader, tests: TestSuite, pattern: str | None) -> TestSuite: ...

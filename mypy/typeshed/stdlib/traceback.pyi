@@ -1,31 +1,53 @@
 import sys
 from _typeshed import SupportsWrite
 from types import FrameType, TracebackType
-from typing import IO, Any, Generator, Iterable, Iterator, List, Mapping, Optional, Tuple, Type
+from typing import IO, Any, Generator, Iterable, Iterator, Mapping, Optional, overload
 
-_PT = Tuple[str, int, str, Optional[str]]
+_PT = tuple[str, int, str, Optional[str]]
 
 def print_tb(tb: TracebackType | None, limit: int | None = ..., file: IO[str] | None = ...) -> None: ...
 
 if sys.version_info >= (3, 10):
+    @overload
     def print_exception(
-        __exc: Type[BaseException] | None,
+        __exc: type[BaseException] | None,
         value: BaseException | None = ...,
         tb: TracebackType | None = ...,
         limit: int | None = ...,
         file: IO[str] | None = ...,
         chain: bool = ...,
     ) -> None: ...
+    @overload
+    def print_exception(
+        __exc: BaseException, *, limit: int | None = ..., file: IO[str] | None = ..., chain: bool = ...
+    ) -> None: ...
+    @overload
+    def format_exception(
+        __exc: type[BaseException] | None,
+        value: BaseException | None = ...,
+        tb: TracebackType | None = ...,
+        limit: int | None = ...,
+        chain: bool = ...,
+    ) -> list[str]: ...
+    @overload
+    def format_exception(__exc: BaseException, *, limit: int | None = ..., chain: bool = ...) -> list[str]: ...
 
 else:
     def print_exception(
-        etype: Type[BaseException] | None,
+        etype: type[BaseException] | None,
         value: BaseException | None,
         tb: TracebackType | None,
         limit: int | None = ...,
         file: IO[str] | None = ...,
         chain: bool = ...,
     ) -> None: ...
+    def format_exception(
+        etype: type[BaseException] | None,
+        value: BaseException | None,
+        tb: TracebackType | None,
+        limit: int | None = ...,
+        chain: bool = ...,
+    ) -> list[str]: ...
 
 def print_exc(limit: int | None = ..., file: IO[str] | None = ..., chain: bool = ...) -> None: ...
 def print_last(limit: int | None = ..., file: IO[str] | None = ..., chain: bool = ...) -> None: ...
@@ -38,28 +60,10 @@ def format_list(extracted_list: list[FrameSummary]) -> list[str]: ...
 def print_list(extracted_list: list[FrameSummary], file: SupportsWrite[str] | None = ...) -> None: ...
 
 if sys.version_info >= (3, 10):
-    def format_exception_only(__exc: Type[BaseException] | None, value: BaseException | None = ...) -> list[str]: ...
+    def format_exception_only(__exc: type[BaseException] | None, value: BaseException | None = ...) -> list[str]: ...
 
 else:
-    def format_exception_only(etype: Type[BaseException] | None, value: BaseException | None) -> list[str]: ...
-
-if sys.version_info >= (3, 10):
-    def format_exception(
-        __exc: Type[BaseException] | None,
-        value: BaseException | None = ...,
-        tb: TracebackType | None = ...,
-        limit: int | None = ...,
-        chain: bool = ...,
-    ) -> list[str]: ...
-
-else:
-    def format_exception(
-        etype: Type[BaseException] | None,
-        value: BaseException | None,
-        tb: TracebackType | None,
-        limit: int | None = ...,
-        chain: bool = ...,
-    ) -> list[str]: ...
+    def format_exception_only(etype: type[BaseException] | None, value: BaseException | None) -> list[str]: ...
 
 def format_exc(limit: int | None = ..., chain: bool = ...) -> str: ...
 def format_tb(tb: TracebackType | None, limit: int | None = ...) -> list[str]: ...
@@ -73,7 +77,7 @@ class TracebackException:
     __context__: TracebackException
     __suppress_context__: bool
     stack: StackSummary
-    exc_type: Type[BaseException]
+    exc_type: type[BaseException]
     filename: str
     lineno: int
     text: str
@@ -82,9 +86,9 @@ class TracebackException:
     if sys.version_info >= (3, 10):
         def __init__(
             self,
-            exc_type: Type[BaseException],
+            exc_type: type[BaseException],
             exc_value: BaseException,
-            exc_traceback: TracebackType,
+            exc_traceback: TracebackType | None,
             *,
             limit: int | None = ...,
             lookup_lines: bool = ...,
@@ -105,9 +109,9 @@ class TracebackException:
     else:
         def __init__(
             self,
-            exc_type: Type[BaseException],
+            exc_type: type[BaseException],
             exc_value: BaseException,
-            exc_traceback: TracebackType,
+            exc_traceback: TracebackType | None,
             *,
             limit: int | None = ...,
             lookup_lines: bool = ...,
@@ -142,7 +146,7 @@ class FrameSummary(Iterable[Any]):
     def __getitem__(self, i: int) -> Any: ...
     def __iter__(self) -> Iterator[Any]: ...
 
-class StackSummary(List[FrameSummary]):
+class StackSummary(list[FrameSummary]):
     @classmethod
     def extract(
         cls,

@@ -1,6 +1,4 @@
-from typing import Any, Callable, Dict, Iterable, Iterator, List, TypeVar
-
-_T = TypeVar("_T", bound=Pool)
+from typing import Any, Callable, Iterable, Iterator
 
 class AsyncResult:
     def get(self, timeout: float | None = ...) -> Any: ...
@@ -22,15 +20,15 @@ class Pool(object):
         initargs: Iterable[Any] = ...,
         maxtasksperchild: int | None = ...,
     ) -> None: ...
-    def apply(self, func: Callable[..., Any], args: Iterable[Any] = ..., kwds: Dict[str, Any] = ...) -> Any: ...
+    def apply(self, func: Callable[..., Any], args: Iterable[Any] = ..., kwds: dict[str, Any] = ...) -> Any: ...
     def apply_async(
         self,
         func: Callable[..., Any],
         args: Iterable[Any] = ...,
-        kwds: Dict[str, Any] = ...,
+        kwds: dict[str, Any] = ...,
         callback: Callable[..., None] | None = ...,
     ) -> AsyncResult: ...
-    def map(self, func: Callable[..., Any], iterable: Iterable[Any] = ..., chunksize: int | None = ...) -> List[Any]: ...
+    def map(self, func: Callable[..., Any], iterable: Iterable[Any] = ..., chunksize: int | None = ...) -> list[Any]: ...
     def map_async(
         self,
         func: Callable[..., Any],

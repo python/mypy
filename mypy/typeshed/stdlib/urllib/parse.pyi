@@ -1,5 +1,5 @@
 import sys
-from typing import Any, AnyStr, Callable, Generic, Mapping, NamedTuple, Sequence, Tuple, Union, overload
+from typing import Any, AnyStr, Callable, Generic, Mapping, NamedTuple, Sequence, Union, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -21,7 +21,7 @@ class _ResultMixinBase(Generic[AnyStr]):
 class _ResultMixinStr(_ResultMixinBase[str]):
     def encode(self, encoding: str = ..., errors: str = ...) -> _ResultMixinBytes: ...
 
-class _ResultMixinBytes(_ResultMixinBase[str]):
+class _ResultMixinBytes(_ResultMixinBase[bytes]):
     def decode(self, encoding: str = ..., errors: str = ...) -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
@@ -35,7 +35,7 @@ class _NetlocResultMixinBase(Generic[AnyStr]):
 class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
 
-class _DefragResultBase(Tuple[Any, ...], Generic[AnyStr]):
+class _DefragResultBase(tuple[Any, ...], Generic[AnyStr]):
     url: AnyStr
     fragment: AnyStr
 
@@ -116,10 +116,10 @@ def urldefrag(url: bytes | None) -> DefragResultBytes: ...
 def urlencode(
     query: Mapping[Any, Any] | Mapping[Any, Sequence[Any]] | Sequence[tuple[Any, Any]] | Sequence[tuple[Any, Sequence[Any]]],
     doseq: bool = ...,
-    safe: AnyStr = ...,
+    safe: _Str = ...,
     encoding: str = ...,
     errors: str = ...,
-    quote_via: Callable[[str, AnyStr, str, str], str] = ...,
+    quote_via: Callable[[AnyStr, _Str, str, str], str] = ...,
 ) -> str: ...
 def urljoin(base: AnyStr, url: AnyStr | None, allow_fragments: bool = ...) -> AnyStr: ...
 @overload

@@ -2,22 +2,7 @@ import email.message
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import (
-    IO,
-    Any,
-    AnyStr,
-    Callable,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Protocol,
-    Sequence,
-    Type,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Iterator, Mapping, Protocol, Sequence, TypeVar, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -184,7 +169,7 @@ class _ProxyFile(Generic[AnyStr]):
     def seek(self, offset: int, whence: int = ...) -> None: ...
     def close(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, exc_type: Type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
+    def __exit__(self, exc_type: type[BaseException] | None, exc: BaseException | None, tb: TracebackType | None) -> None: ...
     def readable(self) -> bool: ...
     def writable(self) -> bool: ...
     def seekable(self) -> bool: ...

@@ -1,11 +1,11 @@
 import sys
+from _typeshed import Self
 from decimal import Decimal
 from numbers import Integral, Rational, Real
-from typing import Type, TypeVar, Union, overload
+from typing import Union, overload
 from typing_extensions import Literal
 
 _ComparableNum = Union[int, float, Decimal, Real]
-_T = TypeVar("_T")
 
 if sys.version_info < (3, 9):
     @overload
@@ -20,10 +20,10 @@ if sys.version_info < (3, 9):
 class Fraction(Rational):
     @overload
     def __new__(
-        cls: Type[_T], numerator: int | Rational = ..., denominator: int | Rational | None = ..., *, _normalize: bool = ...
-    ) -> _T: ...
+        cls: type[Self], numerator: int | Rational = ..., denominator: int | Rational | None = ..., *, _normalize: bool = ...
+    ) -> Self: ...
     @overload
-    def __new__(cls: Type[_T], __value: float | Decimal | str, *, _normalize: bool = ...) -> _T: ...
+    def __new__(cls: type[Self], __value: float | Decimal | str, *, _normalize: bool = ...) -> Self: ...
     @classmethod
     def from_float(cls, f: float) -> Fraction: ...
     @classmethod
@@ -134,6 +134,8 @@ class Fraction(Rational):
     def __le__(self, other: _ComparableNum) -> bool: ...
     def __ge__(self, other: _ComparableNum) -> bool: ...
     def __bool__(self) -> bool: ...
+    if sys.version_info >= (3, 11):
+        def __int__(self) -> int: ...
     # Not actually defined within fractions.py, but provides more useful
     # overrides
     @property

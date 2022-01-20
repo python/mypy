@@ -3,10 +3,10 @@ import sys
 from _typeshed import Self, StrPath
 from os import PathLike
 from types import TracebackType
-from typing import IO, Any, Callable, Iterable, Iterator, Protocol, Sequence, Tuple, Type, overload
+from typing import IO, Any, Callable, Iterable, Iterator, Protocol, Sequence, overload
 from typing_extensions import Literal
 
-_DateTuple = Tuple[int, int, int, int, int, int]
+_DateTuple = tuple[int, int, int, int, int, int]
 _ReadWriteMode = Literal["r", "w"]
 _ReadWriteBinaryMode = Literal["r", "w", "rb", "wb"]
 _ZipFileMode = Literal["r", "w", "x", "a"]
@@ -97,10 +97,9 @@ class ZipExtFile(io.BufferedIOBase):
             close_fileobj: Literal[False] = ...,
         ) -> None: ...
     def read(self, n: int | None = ...) -> bytes: ...
-    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
-    def __repr__(self) -> str: ...
+    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore[override]
     def peek(self, n: int = ...) -> bytes: ...
-    def read1(self, n: int | None) -> bytes: ...  # type: ignore
+    def read1(self, n: int | None) -> bytes: ...  # type: ignore[override]
     if sys.version_info >= (3, 7):
         def seek(self, offset: int, whence: int = ...) -> int: ...
 
@@ -145,7 +144,7 @@ class ZipFile:
         ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     def close(self) -> None: ...
     def getinfo(self, name: str) -> ZipInfo: ...

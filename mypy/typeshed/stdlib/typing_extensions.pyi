@@ -1,6 +1,7 @@
 import abc
 import sys
-from typing import (
+from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
+from typing import (  # noqa Y022
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     AsyncContextManager as AsyncContextManager,
@@ -22,7 +23,6 @@ from typing import (
     NewType as NewType,
     NoReturn as NoReturn,
     Text as Text,
-    Tuple,
     Type as Type,
     TypeVar,
     ValuesView,
@@ -32,7 +32,7 @@ from typing import (
 
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
-_TC = TypeVar("_TC", bound=Type[object])
+_TC = TypeVar("_TC", bound=type[object])
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any: ...
@@ -53,12 +53,17 @@ Literal: _SpecialForm = ...
 
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
+if sys.version_info < (3, 8):
+    # Technically in 3.6 this inherited from GenericMeta. But let's not reflect that, since
+    # type checkers tend to assume that Protocols all have the ABCMeta metaclass.
+    class _ProtocolMeta(abc.ABCMeta): ...
+
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: frozenset[str]
     __optional_keys__: frozenset[str]
     __total__: bool
-    def copy(self: _T) -> _T: ...
+    def copy(self: TypeshedSelf) -> TypeshedSelf: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
@@ -82,7 +87,7 @@ if sys.version_info >= (3, 7):
         localns: dict[str, Any] | None = ...,
         include_extras: bool = ...,
     ) -> dict[str, Any]: ...
-    def get_args(tp: Any) -> Tuple[Any, ...]: ...
+    def get_args(tp: Any) -> tuple[Any, ...]: ...
     def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm = ...
@@ -95,7 +100,13 @@ class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
 
 # PEP 612 support for Python < 3.9
 if sys.version_info >= (3, 10):
-    from typing import Concatenate as Concatenate, ParamSpec as ParamSpec, TypeAlias as TypeAlias, TypeGuard as TypeGuard
+    from typing import (
+        Concatenate as Concatenate,
+        ParamSpec as ParamSpec,
+        TypeAlias as TypeAlias,
+        TypeGuard as TypeGuard,
+        is_typeddict as is_typeddict,
+    )
 else:
     class ParamSpecArgs:
         __origin__: ParamSpec
@@ -105,11 +116,11 @@ else:
         def __init__(self, origin: ParamSpec) -> None: ...
     class ParamSpec:
         __name__: str
-        __bound__: Type[Any] | None
+        __bound__: type[Any] | None
         __covariant__: bool
         __contravariant__: bool
         def __init__(
-            self, name: str, *, bound: None | Type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
+            self, name: str, *, bound: None | type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
         ) -> None: ...
         @property
         def args(self) -> ParamSpecArgs: ...
@@ -118,3 +129,4 @@ else:
     Concatenate: _SpecialForm = ...
     TypeAlias: _SpecialForm = ...
     TypeGuard: _SpecialForm = ...
+    def is_typeddict(tp: object) -> bool: ...

@@ -1,5 +1,6 @@
 import abc
-from typing import (
+from _typeshed import Self
+from typing import (  # noqa Y022
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     Callable,
@@ -8,14 +9,12 @@ from typing import (
     Counter as Counter,
     DefaultDict as DefaultDict,
     Deque as Deque,
-    Dict,
     ItemsView,
     KeysView,
     Mapping,
     NewType as NewType,
     NoReturn as NoReturn,
     Text as Text,
-    Tuple,
     Type as Type,
     TypeVar,
     ValuesView,
@@ -25,7 +24,7 @@ from typing import (
 
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
-_TC = TypeVar("_TC", bound=Type[object])
+_TC = TypeVar("_TC", bound=type[object])
 
 class _SpecialForm:
     def __getitem__(self, typeargs: Any) -> Any: ...
@@ -45,7 +44,7 @@ def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
-    def copy(self: _T) -> _T: ...
+    def copy(self: Self) -> Self: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
@@ -65,10 +64,10 @@ OrderedDict = _Alias()
 
 def get_type_hints(
     obj: Callable[..., Any],
-    globalns: Dict[str, Any] | None = ...,
-    localns: Dict[str, Any] | None = ...,
+    globalns: dict[str, Any] | None = ...,
+    localns: dict[str, Any] | None = ...,
     include_extras: bool = ...,
-) -> Dict[str, Any]: ...
+) -> dict[str, Any]: ...
 
 Annotated: _SpecialForm = ...
 _AnnotatedAlias: Any = ...  # undocumented
@@ -89,11 +88,11 @@ class ParamSpecKwargs:
 
 class ParamSpec:
     __name__: str
-    __bound__: Type[Any] | None
+    __bound__: type[Any] | None
     __covariant__: bool
     __contravariant__: bool
     def __init__(
-        self, name: str, *, bound: None | Type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
+        self, name: str, *, bound: None | type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
     ) -> None: ...
     @property
     def args(self) -> ParamSpecArgs: ...

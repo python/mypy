@@ -3,14 +3,16 @@ from _typeshed import Self, SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Callable, Iterable, Iterator, TextIO, Tuple, Type
+from typing import Any, Callable, Iterable, Iterator, TextIO
 from typing_extensions import Literal
 
-MSG_OOB: int
-FTP_PORT: int
-MAXLINE: int
-CRLF: str
-B_CRLF: bytes
+__all__ = ["FTP", "error_reply", "error_temp", "error_perm", "error_proto", "all_errors"]
+
+MSG_OOB: Literal[1]
+FTP_PORT: Literal[21]
+MAXLINE: Literal[8192]
+CRLF: Literal["\r\n"]
+B_CRLF: Literal[b"\r\n"]
 
 class Error(Exception): ...
 class error_reply(Error): ...
@@ -18,7 +20,7 @@ class error_temp(Error): ...
 class error_perm(Error): ...
 class error_proto(Error): ...
 
-all_errors: Tuple[Type[Exception], ...]
+all_errors: tuple[type[Exception], ...]
 
 class FTP:
     debugging: int
@@ -33,13 +35,9 @@ class FTP:
     lastresp: str
     file: TextIO | None
     encoding: str
-
-    # The following variable is intentionally left undocumented.
-    # See https://bugs.python.org/issue43285 for relevant discussion
-    # trust_server_pasv_ipv4_address: bool
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
     source_address: tuple[str, int] | None
     if sys.version_info >= (3, 9):
