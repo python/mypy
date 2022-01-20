@@ -35,17 +35,17 @@ NAME_DEFINED: Final[ErrorCode] = ErrorCode("name-defined", "Check that name is d
 CALL_ARG: Final[ErrorCode] = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
-ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "General")
+ARG_TYPE: Final[ErrorCode] = ErrorCode("arg-type", "Check argument types in calls", "General")
 CALL_OVERLOAD: Final = ErrorCode(
     "call-overload", "Check that an overload variant matches arguments", "General"
 )
 VALID_TYPE: Final[ErrorCode] = ErrorCode(
     "valid-type", "Check that type (annotation) is valid", "General"
 )
-VAR_ANNOTATED: Final = ErrorCode(
+VAR_ANNOTATED: Final[ErrorCode] = ErrorCode(
     "var-annotated", "Require variable annotation if type can't be inferred", "General"
 )
-OVERRIDE: Final = ErrorCode(
+OVERRIDE: Final[ErrorCode] = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
 RETURN: Final[ErrorCode] = ErrorCode(
@@ -77,7 +77,7 @@ DICT_ITEM: Final[ErrorCode] = ErrorCode(
 TYPEDDICT_ITEM: Final[ErrorCode] = ErrorCode(
     "typeddict-item", "Check items when constructing TypedDict", "General"
 )
-HAS_TYPE: Final = ErrorCode(
+HAS_TYPE: Final[ErrorCode] = ErrorCode(
     "has-type", "Check that type of reference can be determined", "General"
 )
 IMPORT: Final = ErrorCode(
@@ -86,22 +86,22 @@ IMPORT: Final = ErrorCode(
 NO_REDEF: Final[ErrorCode] = ErrorCode(
     "no-redef", "Check that each name is defined once", "General"
 )
-FUNC_RETURNS_VALUE: Final = ErrorCode(
+FUNC_RETURNS_VALUE: Final[ErrorCode] = ErrorCode(
     "func-returns-value", "Check that called function returns a value in value context", "General"
 )
-ABSTRACT: Final = ErrorCode(
+ABSTRACT: Final[ErrorCode] = ErrorCode(
     "abstract", "Prevent instantiation of classes with abstract attributes", "General"
 )
 VALID_NEWTYPE: Final[ErrorCode] = ErrorCode(
     "valid-newtype", "Check that argument 2 to NewType is valid", "General"
 )
-STRING_FORMATTING: Final = ErrorCode(
+STRING_FORMATTING: Final[ErrorCode] = ErrorCode(
     "str-format", "Check that string formatting/interpolation is type-safe", "General"
 )
 STR_BYTES_PY3: Final = ErrorCode(
     "str-bytes-safe", "Warn about dangerous coercions related to bytes and string types", "General"
 )
-EXIT_RETURN: Final = ErrorCode(
+EXIT_RETURN: Final[ErrorCode] = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
 )
 LITERAL_REQ: Final = ErrorCode(
@@ -112,29 +112,29 @@ LITERAL_REQ: Final = ErrorCode(
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
-NO_UNTYPED_CALL: Final = ErrorCode(
+NO_UNTYPED_CALL: Final[ErrorCode] = ErrorCode(
     "no-untyped-call",
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
-REDUNDANT_CAST: Final = ErrorCode(
+REDUNDANT_CAST: Final[ErrorCode] = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
 )
-COMPARISON_OVERLAP: Final = ErrorCode(
+COMPARISON_OVERLAP: Final[ErrorCode] = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
 )
-NO_ANY_UNIMPORTED: Final = ErrorCode(
+NO_ANY_UNIMPORTED: Final[ErrorCode] = ErrorCode(
     "no-any-unimported", 'Reject "Any" types from unfollowed imports', "General"
 )
-NO_ANY_RETURN: Final = ErrorCode(
+NO_ANY_RETURN: Final[ErrorCode] = ErrorCode(
     "no-any-return",
     'Reject returning value with "Any" type if return type is not "Any"',
     "General",
 )
-UNREACHABLE: Final = ErrorCode(
+UNREACHABLE: Final[ErrorCode] = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
-REDUNDANT_EXPR: Final = ErrorCode(
+REDUNDANT_EXPR: Final[ErrorCode] = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
 TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
