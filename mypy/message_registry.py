@@ -243,6 +243,9 @@ TYPE_HAS_NO_ATTRIBUTE_X: Final = ErrorMessage('{} has no attribute "{}"{}', code
 ITEM_HAS_NO_ATTRIBUTE_X: Final = ErrorMessage(
     'Item {} of {} has no attribute "{}"{}', codes.UNION_ATTR
 )
+TYPEVAR_UPPER_BOUND_HAS_NO_ATTRIBUTE: Final = ErrorMessage(
+    'Item {} of the upper bound {} of type variable {} has no attribute "{}"{}', codes.UNION_ATTR
+)
 UNSUPPORTED_OPERANDS_LIKELY_UNION: Final = ErrorMessage(
     "Unsupported operand types for {} (likely involving Union)", codes.OPERATOR
 )
@@ -309,7 +312,7 @@ UNPACK_TOO_MANY_VALUES: Final = ErrorMessage(
     "Too many values to unpack ({} expected, {} provided)"
 )
 UNPACKING_STRINGS_DISALLOWED: Final = ErrorMessage("Unpacking a string is disallowed")
-TYPE_NOT_ITERABLE: Final = ErrorMessage('"{}" object is not iterable')
+TYPE_NOT_ITERABLE: Final = ErrorMessage('{} object is not iterable')
 INCOMPATIBLE_OPERATOR_ASSIGNMENT: Final = ErrorMessage(
     "Result type of {} incompatible in assignment"
 )
@@ -425,8 +428,8 @@ OPERATOR_METHOD_SIGNATURE_OVERLAP: Final = ErrorMessage(
 FORWARD_OPERATOR_NOT_CALLABLE: Final = ErrorMessage('Forward operator "{}" is not callable')
 INCOMPATIBLE_SIGNATURES: Final = ErrorMessage('Signatures of "{}" and "{}" are incompatible')
 INVALID_YIELD_FROM: Final = ErrorMessage('"yield from" can\'t be applied to {}')
-INVALID_SIGNATURE: Final = ErrorMessage('Invalid signature "{}"')
-INVALID_SIGNATURE_SPECIAL: Final = ErrorMessage('Invalid signature "{}" for "{}"')
+INVALID_SIGNATURE: Final = ErrorMessage('Invalid signature {}')
+INVALID_SIGNATURE_SPECIAL: Final = ErrorMessage('Invalid signature {} for "{}"')
 UNSUPPORTED_TYPE_TYPE: Final = ErrorMessage('Cannot instantiate type "Type[{}]"')
 REDUNDANT_CAST: Final = ErrorMessage("Redundant cast to {}", codes.REDUNDANT_CAST)
 UNFOLLOWED_IMPORT: Final = ErrorMessage(

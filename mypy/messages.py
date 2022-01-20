@@ -357,6 +357,15 @@ class MessageBuilder:
                     typ_format = '"None"'
                 self.fail(message_registry.ITEM_HAS_NO_ATTRIBUTE_X.format(
                     typ_format, orig_type_format, member, extra), context)
+            elif isinstance(original_type, TypeVarType):
+                bound = get_proper_type(original_type.upper_bound)
+                if isinstance(bound, UnionType):
+                    typ_fmt, bound_fmt = format_type_distinctly(typ, bound)
+                    original_type_fmt = format_type(original_type)
+                    self.fail(
+                        message_registry.TYPEVAR_UPPER_BOUND_HAS_NO_ATTRIBUTE.format(
+                            typ_fmt, bound_fmt, original_type_fmt, member, extra),
+                        context, code=codes.UNION_ATTR)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
@@ -638,6 +647,7 @@ class MessageBuilder:
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
         self.fail(ErrorMessage(msg, codes.CALL_ARG), context)
+        self.maybe_note_about_special_args(callee, context)
 
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
@@ -657,6 +667,19 @@ class MessageBuilder:
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(ErrorMessage(msg), context)
+        self.maybe_note_about_special_args(callee, context)
+
+    def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
+        # https://github.com/python/mypy/issues/11309
+        first_arg = callee.def_extras.get('first_arg')
+        if first_arg and first_arg not in {'self', 'cls', 'mcs'}:
+            self.note(
+                'Looks like the first special argument in a method '
+                'is not named "self", "cls", or "mcs", '
+                'maybe it is missing?',
+                context,
+            )
+
 
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
@@ -773,7 +796,7 @@ class MessageBuilder:
         self.fail(message_registry.UNPACKING_STRINGS_DISALLOWED, context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail(message_registry.TYPE_NOT_ITERABLE.format(type), context)
+        self.fail(message_registry.TYPE_NOT_ITERABLE.format(format_type(type)), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
@@ -1097,12 +1120,12 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
-        self.fail(message_registry.INVALID_SIGNATURE.format(func_type), context)
+        self.fail(message_registry.INVALID_SIGNATURE.format(format_type(func_type)), context)
 
     def invalid_signature_for_special_method(
             self, func_type: Type, context: Context, method_name: str) -> None:
-        self.fail(message_registry.INVALID_SIGNATURE_SPECIAL.format(func_type, method_name),
-                  context)
+        self.fail(message_registry.INVALID_SIGNATURE_SPECIAL.format(
+            format_type(func_type), method_name), context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.note('Revealed type is "{}"'.format(typ), context)
