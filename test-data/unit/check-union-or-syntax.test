@@ -197,7 +197,7 @@ def f(x: Union[int, str, None]) -> None:
         reveal_type(x)  # N: Revealed type is "None"
 [builtins fixtures/isinstance.pyi]
 
-[case testImplicit604TypeAliasWithCyclicImport]
+[case testImplicit604TypeAliasWithCyclicImportInStub]
 # flags: --python-version 3.10
 from was_builtins import foo
 reveal_type(foo)  # N: Revealed type is "Union[builtins.str, was_mmap.mmap]"
@@ -217,6 +217,31 @@ import was_mmap
 WriteableBuffer = was_mmap.mmap
 ReadableBuffer = str | WriteableBuffer
 [file was_typing.pyi]
+from was_builtins import *
+import was_abc
+import was_collections
+
+# TODO: Get this test to pass
+[case testImplicit604TypeAliasWithCyclicImportNotInStub-xfail]
+# flags: --python-version 3.10
+from was_builtins import foo
+reveal_type(foo)  # N: Revealed type is "Union[builtins.str, was_mmap.mmap]"
+[file was_abc.py]
+from was_builtins import *
+[file was_builtins.py]
+import was_typing
+from was_typeshed import ReadableBuffer
+foo: ReadableBuffer
+[file was_collections.py]
+from was_builtins import *
+[file was_mmap.py]
+from was_builtins import *
+class mmap: ...
+[file was_typeshed.py]
+import was_mmap
+WriteableBuffer = was_mmap.mmap
+ReadableBuffer = str | WriteableBuffer
+[file was_typing.py]
 from was_builtins import *
 import was_abc
 import was_collections
