@@ -76,7 +76,7 @@ CANNOT_ACCESS_INIT: Final = 'Cannot access "__init__" directly'
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
 INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
 BAD_CONSTRUCTOR_TYPE: Final = ErrorMessage("Unsupported decorated constructor type")
-CANNOT_ASSIGN_TO_METHOD: Final = "Cannot assign to a method"
+CANNOT_ASSIGN_TO_METHOD: Final = ErrorMessage("Cannot assign to a method", codes.ASSIGNMENT)
 CANNOT_ASSIGN_TO_TYPE: Final = ErrorMessage("Cannot assign to a type")
 INCONSISTENT_ABSTRACT_OVERLOAD: Final = ErrorMessage(
     "Overloaded method has both abstract and non-abstract variants"
@@ -268,10 +268,16 @@ TARGET_INCOMPATIBLE_TYPE: Final = ErrorMessage(
     "{} (expression has type {}, target has type {})", codes.ASSIGNMENT
 )
 VALUE_INCOMPATIBLE_TYPE: Final = ErrorMessage(
-    'Value of "{}" has incompatible type {}; expected {}'
+    'Value of "{}" has incompatible type {}; expected {}', codes.ARG_TYPE
 )
 ARGUMENT_INCOMPATIBLE_TYPE: Final = ErrorMessage(
-    'Argument {} {}has incompatible type {}; expected {}'
+    'Argument {} {}has incompatible type {}; expected {}', codes.ARG_TYPE
+)
+TYPEDDICT_VALUE_INCOMPATIBLE_TYPE: Final = ErrorMessage(
+    'Value of "{}" has incompatible type {}; expected {}', codes.TYPEDDICT_ITEM
+)
+TYPEDDICT_ARGUMENT_INCOMPATIBLE_TYPE: Final = ErrorMessage(
+    'Argument {} {}has incompatible type {}; expected {}', codes.TYPEDDICT_ITEM
 )
 LIST_ITEM_INCOMPATIBLE_TYPE: Final = ErrorMessage(
     "{} item {} has incompatible type {}; expected {}", codes.LIST_ITEM

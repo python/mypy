@@ -476,8 +476,6 @@ class MessageBuilder:
 
             target = 'to {} '.format(name)
 
-        msg = ''
-        code = codes.MISC
         notes: List[str] = []
         if callee_name == '<list>':
             name = callee_name[1:-1]
@@ -564,19 +562,23 @@ class MessageBuilder:
                     expected_type,
                     bare=True)
                 arg_label = '"{}"'.format(arg_name)
+            object_type = get_proper_type(object_type)
             if isinstance(outer_context, IndexExpr) and isinstance(outer_context.index, StrExpr):
-                msg = message_registry.VALUE_INCOMPATIBLE_TYPE.format(
+                if isinstance(object_type, TypedDictType):
+                    msg = message_registry.TYPEDDICT_VALUE_INCOMPATIBLE_TYPE
+                else:
+                    msg = message_registry.VALUE_INCOMPATIBLE_TYPE
+                msg = msg.format(
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
-                msg = message_registry.ARGUMENT_INCOMPATIBLE_TYPE.format(
+                if isinstance(object_type, TypedDictType):
+                    msg = message_registry.TYPEDDICT_ARGUMENT_INCOMPATIBLE_TYPE
+                else:
+                    msg = message_registry.ARGUMENT_INCOMPATIBLE_TYPE
+                msg = msg.format(
                     arg_label, target, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
-            object_type = get_proper_type(object_type)
-            if isinstance(object_type, TypedDictType):
-                code = codes.TYPEDDICT_ITEM
-            else:
-                code = codes.ARG_TYPE
             expected_type = get_proper_type(expected_type)
             if isinstance(expected_type, UnionType):
                 expected_types = list(expected_type.items)
@@ -588,7 +590,7 @@ class MessageBuilder:
         self.fail(msg, context)
         if notes:
             for note_msg in notes:
-                self.note(note_msg, context, code=code)
+                self.note(note_msg, context, code=msg.code)
         return msg.code
 
     def incompatible_argument_note(self,
@@ -1058,7 +1060,7 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE
                   .format(typevar_name, callable_name(callee) or 'function', format_type(typ)),
-                  context)
+                  context, code=codes.TYPE_VAR)  # TODO: migrate with TypeVar messages
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
         left_str = 'element' if kind == 'container' else 'left operand'
@@ -1231,7 +1233,7 @@ class MessageBuilder:
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
-                    pretty_seq(matches[:3], "or")), context)
+                    pretty_seq(matches[:3], "or")), context, code=codes.TYPEDDICT_ITEM)
 
     def typeddict_context_ambiguous(
             self,
