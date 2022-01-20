@@ -190,21 +190,14 @@ class MessageBuilder:
                                end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
-             msg: Union[str, ErrorMessage],
+             msg: ErrorMessage,
              context: Optional[Context],
              *,
-             code: Optional[ErrorCode] = None,
              file: Optional[str] = None,
              origin: Optional[Context] = None,
              allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
-        # TODO(tushar): Remove `str` support after full migration
-        if isinstance(msg, ErrorMessage):
-            self.report(msg.value, context, 'error', code=msg.code, file=file,
-                        origin=origin, allow_dups=allow_dups)
-            return
-
-        self.report(msg, context, 'error', code=code, file=file,
+        self.report(msg.value, context, 'error', code=msg.code, file=file,
                     origin=origin, allow_dups=allow_dups)
 
     def note(self,
@@ -365,7 +358,7 @@ class MessageBuilder:
                     self.fail(
                         message_registry.TYPEVAR_UPPER_BOUND_HAS_NO_ATTRIBUTE.format(
                             typ_fmt, bound_fmt, original_type_fmt, member, extra),
-                        context, code=codes.UNION_ATTR)
+                        context)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
@@ -1059,7 +1052,7 @@ class MessageBuilder:
                                    context: Context) -> None:
         self.fail(message_registry.INCOMPATIBLE_TYPEVAR_VALUE
                   .format(typevar_name, callable_name(callee) or 'function', format_type(typ)),
-                  context, code=codes.TYPE_VAR)  # TODO: migrate with TypeVar messages
+                  context)
 
     def dangerous_comparison(self, left: Type, right: Type, kind: str, ctx: Context) -> None:
         left_str = 'element' if kind == 'container' else 'left operand'

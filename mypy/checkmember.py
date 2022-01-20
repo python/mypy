@@ -714,7 +714,7 @@ def analyze_class_attribute_access(itype: Instance,
         if is_method:
             mx.msg.cant_assign_to_method(mx.context)
         if isinstance(node.node, TypeInfo):
-            mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE.value, mx.context)
+            mx.msg.fail(message_registry.CANNOT_ASSIGN_TO_TYPE, mx.context)
 
     # If a final attribute was declared on `self` in `__init__`, then it
     # can't be accessed on the class object.

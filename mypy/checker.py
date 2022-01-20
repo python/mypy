@@ -1897,12 +1897,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
             if self.is_final_enum_value(sym):
-                self.fail(
-                    'Cannot extend enum with existing members: "{}"'.format(
-                        base.name,
-                    ),
-                    defn,
-                )
+                self.fail(message_registry.ENUM_EXTEND_EXISTING_MEMBERS.format(base.name), defn)
                 break
 
     def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
@@ -5342,13 +5337,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         """Create a temporary node with the given, fixed type."""
         return TempNode(t, context=context)
 
-    def fail(self, msg: Union[str, ErrorMessage], context: Context, *,
-             code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, context: Context) -> None:
         """Produce an error message."""
-        if isinstance(msg, ErrorMessage):
-            self.msg.fail(msg.value, context, code=msg.code)
-            return
-        self.msg.fail(msg, context, code=code)
+        self.msg.fail(msg, context)
 
     def note(self,
              msg: str,

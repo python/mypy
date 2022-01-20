@@ -5118,23 +5118,18 @@ class SemanticAnalyzer(NodeVisitor[None],
         # no regular functions.
         return True
 
-    # TODO(tushar): remove `str` type and `code` property from here
     def fail(self,
-             msg: Union[str, ErrorMessage],
+             msg: ErrorMessage,
              ctx: Context,
              serious: bool = False,
              *,
-             code: Optional[ErrorCode] = None,
              blocker: bool = False) -> None:
         if not serious and not self.in_checked_function():
             return
         # In case it's a bug and we don't really have context
         assert ctx is not None, msg
-        if isinstance(msg, ErrorMessage):
-            self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
-                               blocker=blocker)
-            return
-        self.errors.report(ctx.get_line(), ctx.get_column(), msg, blocker=blocker, code=code)
+        self.errors.report(ctx.get_line(), ctx.get_column(), msg.value, code=msg.code,
+                           blocker=blocker)
 
     def note(self, msg: str, ctx: Context, code: Optional[ErrorCode] = None) -> None:
         if not self.in_checked_function():

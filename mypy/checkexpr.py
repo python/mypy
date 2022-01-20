@@ -4094,7 +4094,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return self.check_awaitable_expr(actual_type, e,
                                          message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
 
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: Union[str, ErrorMessage]) -> Type:
+    def check_awaitable_expr(self, t: Type, ctx: Context, msg: ErrorMessage) -> Type:
         """Check the argument to `await` and extract the type of value.
 
         Also used by `async for` and `async with`.

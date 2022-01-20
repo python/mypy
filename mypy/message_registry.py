@@ -19,6 +19,9 @@ class ErrorMessage(NamedTuple):
     def format(self, *args: object, **kwargs: object) -> "ErrorMessage":
         return ErrorMessage(self.value.format(*args, **kwargs), code=self.code)
 
+# Strings
+INCOMPATIBLE_TYPES: Final = "Incompatible types"
+INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
 
 # Invalid types
 INVALID_TYPE_RAW_ENUM_VALUE: Final = ErrorMessage(
@@ -51,17 +54,15 @@ INVALID_GENERATOR_RETURN_ITEM_TYPE: Final = ErrorMessage(
     " its third type parameter in Python 2"
 )
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
-INCOMPATIBLE_TYPES: Final = "Incompatible types"
-INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
 INCOMPATIBLE_TYPES_IN_AWAIT: Final = ErrorMessage('Incompatible types in "await"')
 INCOMPATIBLE_REDEFINITION: Final = ErrorMessage("Incompatible redefinition")
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = (
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AENTER: Final = ErrorMessage(
     'Incompatible types in "async with" for "__aenter__"'
 )
-INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
+INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = ErrorMessage(
     'Incompatible types in "async with" for "__aexit__"'
 )
-INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
+INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = ErrorMessage('Incompatible types in "async for"')
 
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
@@ -72,7 +73,7 @@ INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
-CANNOT_ACCESS_INIT: Final = 'Cannot access "__init__" directly'
+CANNOT_ACCESS_INIT: Final = ErrorMessage('Cannot access "__init__" directly')
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
 INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
 BAD_CONSTRUCTOR_TYPE: Final = ErrorMessage("Unsupported decorated constructor type")
@@ -118,7 +119,7 @@ TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
 DUPLICATE_TYPE_SIGNATURES: Final = ErrorMessage("Function has duplicate type signatures")
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")
-DESCRIPTOR_GET_NOT_CALLABLE: Final = "{}.__get__ is not callable"
+DESCRIPTOR_GET_NOT_CALLABLE: Final = ErrorMessage("{}.__get__ is not callable")
 MODULE_LEVEL_GETATTRIBUTE: Final = ErrorMessage(
     "__getattribute__ is not valid at the module level"
 )
@@ -140,29 +141,43 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 NOT_CALLABLE: Final = '{} not callable'
-PYTHON2_PRINT_FILE_TYPE: Final = (
+PYTHON2_PRINT_FILE_TYPE: Final = ErrorMessage(
     'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
+)
+ENUM_EXTEND_EXISTING_MEMBERS: Final = ErrorMessage(
+    'Cannot extend enum with existing members: "{}"'
 )
 
 # Generic
-GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
+GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = ErrorMessage(
     "Access to generic instance variables via class is ambiguous"
 )
-GENERIC_CLASS_VAR_ACCESS: Final = "Access to generic class variables is ambiguous"
+GENERIC_CLASS_VAR_ACCESS: Final = ErrorMessage("Access to generic class variables is ambiguous")
 BARE_GENERIC: Final = ErrorMessage("Missing type parameters for generic type {}", codes.TYPE_ARG)
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = ErrorMessage(
     'Implicit generic "Any". Use "{}" and specify generic parameters', codes.TYPE_ARG
 )
 
 # TypeVar
-INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
-CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = 'Type variable "{}.{}" cannot be used as an expression'
-INVALID_TYPEVAR_AS_TYPEARG: Final = 'Type variable "{}" not valid as type argument value for "{}"'
-INVALID_TYPEVAR_ARG_BOUND: Final = 'Type argument {} of "{}" must be a subtype of {}'
-INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
+INCOMPATIBLE_TYPEVAR_VALUE: Final = ErrorMessage(
+    'Value of type variable "{}" of {} cannot be {}', codes.TYPE_VAR
+)
+CANNOT_USE_TYPEVAR_AS_EXPRESSION: Final = ErrorMessage(
+    'Type variable "{}.{}" cannot be used as an expression'
+)
+INVALID_TYPEVAR_AS_TYPEARG: Final = ErrorMessage(
+    'Type variable "{}" not valid as type argument value for "{}"', codes.TYPE_VAR
+)
+INVALID_TYPEVAR_ARG_BOUND: Final = ErrorMessage(
+    'Type argument {} of "{}" must be a subtype of {}', codes.TYPE_VAR
+)
+INVALID_TYPEVAR_ARG_VALUE: Final = ErrorMessage(
+    'Invalid type argument value for "{}"', codes.TYPE_VAR
+)
 TYPEVAR_VARIANCE_DEF: Final = ErrorMessage('TypeVar "{}" may only be a literal bool')
 TYPEVAR_BOUND_MUST_BE_TYPE: Final = ErrorMessage('TypeVar "bound" must be a type')
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = ErrorMessage('Unexpected argument to "TypeVar()"')
+PARAMSPEC_INVALID_LOCATION: Final = ErrorMessage('Invalid location for ParamSpec "{}"')
 
 # FastParse
 TYPE_COMMENT_SYNTAX_ERROR_VALUE: Final = ErrorMessage(
@@ -1031,7 +1046,7 @@ CANNOT_INHERIT_FROM_FINAL: Final = ErrorMessage('Cannot inherit from final class
 DEPENDENT_FINAL_IN_CLASS_BODY: Final = ErrorMessage(
     "Final name declared in class body cannot depend on type variables"
 )
-CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
+CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = ErrorMessage(
     'Cannot access final instance attribute "{}" on class object'
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
@@ -1062,19 +1077,23 @@ ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (itera
 TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
 
 # Match Statement
-MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
-OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
-CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
+MISSING_MATCH_ARGS: Final = ErrorMessage('Class "{}" doesn\'t define "__match_args__"')
+OR_PATTERN_ALTERNATIVE_NAMES: Final = ErrorMessage("Alternative patterns bind different names")
+CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = ErrorMessage(
     "Class pattern class must not be a type alias with type parameters"
 )
-CLASS_PATTERN_TYPE_REQUIRED: Final = 'Expected type in class pattern; found "{}"'
-CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = "Too many positional patterns for class pattern"
-CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
+CLASS_PATTERN_TYPE_REQUIRED: Final = ErrorMessage('Expected type in class pattern; found "{}"')
+CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = ErrorMessage(
+    "Too many positional patterns for class pattern"
+)
+CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = ErrorMessage(
     'Keyword "{}" already matches a positional pattern'
 )
-CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
-CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
-MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
+CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = ErrorMessage('Duplicate keyword pattern "{}"')
+CLASS_PATTERN_UNKNOWN_KEYWORD: Final = ErrorMessage('Class "{}" has no attribute "{}"')
+MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = ErrorMessage(
+    'Multiple assignments to name "{}" in pattern'
+)
 
 # Plugin: attrs
 CANNOT_DETERMINE_INIT_TYPE: Final = ErrorMessage("Cannot determine __init__ type from converter")
@@ -1149,7 +1168,3 @@ ISINSTANCE_ON_UNEXPANDED_TYPE: Final = ErrorMessage(
     "Never apply isinstance() to unexpanded types; use mypy.types.get_proper_type() first"
 )
 REDUNDANT_GET_PROPER_TYPE: Final = ErrorMessage("Redundant call to get_proper_type()")
-
-
-# test-data/type_anal_hook.py
-INVALID_SIGNAL_TYPE: Final = ErrorMessage('Invalid "Signal" type (expected "Signal[[t, ...]]")')

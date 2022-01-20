@@ -1,7 +1,7 @@
 from typing import Optional, Callable
 from mypy.plugin import Plugin, MethodContext, FunctionContext
 from mypy.types import Type
-
+from mypy.message_registry import ErrorMessage
 
 class ArgKindsPlugin(Plugin):
     def get_function_hook(self, fullname: str
@@ -18,12 +18,14 @@ class ArgKindsPlugin(Plugin):
 
 
 def extract_arg_kinds_from_function(ctx: FunctionContext) -> Type:
-    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
+    error_message = ErrorMessage(str([[x.value for x in y] for y in ctx.arg_kinds]))
+    ctx.api.fail(error_message, ctx.context)
     return ctx.default_return_type
 
 
 def extract_arg_kinds_from_method(ctx: MethodContext) -> Type:
-    ctx.api.fail(str([[x.value for x in y] for y in ctx.arg_kinds]), ctx.context)
+    error_message = ErrorMessage(str([[x.value for x in y] for y in ctx.arg_kinds]))
+    ctx.api.fail(error_message, ctx.context)
     return ctx.default_return_type
 
 

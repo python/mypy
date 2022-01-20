@@ -1,5 +1,6 @@
 from typing import Optional, Callable
 
+from mypy.message_registry import ErrorMessage
 from mypy.plugin import Plugin, AttributeContext
 from mypy.types import Type, AnyType, TypeOfAny
 
@@ -18,7 +19,7 @@ def magic_field_callback(ctx: AttributeContext) -> Type:
 
 
 def nonexistent_field_callback(ctx: AttributeContext) -> Type:
-    ctx.api.fail("Field does not exist", ctx.context)
+    ctx.api.fail(ErrorMessage("Field does not exist"), ctx.context)
     return AnyType(TypeOfAny.from_error)
 
 

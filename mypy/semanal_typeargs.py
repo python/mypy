@@ -18,10 +18,9 @@ from mypy.sametypes import is_same_type
 from mypy.errors import Errors
 from mypy.scope import Scope
 from mypy.options import Options
-from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.messages import format_type
-
+from mypy.message_registry import ErrorMessage
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
     def __init__(self, errors: Errors, options: Options, is_typeshed_file: bool) -> None:
@@ -74,7 +73,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             if isinstance(tvar, TypeVarType):
                 if isinstance(arg, ParamSpecType):
                     # TODO: Better message
-                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    self.fail(message_registry.PARAMSPEC_INVALID_LOCATION.format(arg.name), t)
                     continue
                 if tvar.values:
                     if isinstance(arg, TypeVarType):
@@ -83,7 +82,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             self.fail(
                                 message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
                                     arg.name, info.name),
-                                t, code=codes.TYPE_VAR)
+                                t)
                             continue
                     else:
                         arg_values = [arg]
@@ -92,7 +91,7 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
                             format_type(arg), info.name, format_type(tvar.upper_bound)),
-                        t, code=codes.TYPE_VAR)
+                        t)
         super().visit_instance(t)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
@@ -104,15 +103,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
-                        context, code=codes.TYPE_VAR)
+                        context)
                 else:
                     class_name = '"{}"'.format(type.name)
                     actual_type_name = '"{}"'.format(actual.type.name)
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                             arg_name, class_name, actual_type_name),
-                        context,
-                        code=codes.TYPE_VAR)
+                        context)
 
-    def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
-        self.errors.report(context.get_line(), context.get_column(), msg, code=code)
+    def fail(self, msg: ErrorMessage, context: Context) -> None:
+        self.errors.report(context.get_line(), context.get_column(), msg.value, code=msg.code)
