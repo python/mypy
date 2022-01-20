@@ -508,15 +508,14 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
-            si = self.s
-            if t.type == si.type:
+            if t.type == self.s.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args: List[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, si.args):
+                    for ta, sia in zip(t.args, self.s.args):
                         args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:
