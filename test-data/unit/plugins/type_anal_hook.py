@@ -1,11 +1,11 @@
 from typing import Optional, Callable
 
+from mypy.message_registry import ErrorMessage
 from mypy.plugin import Plugin, AnalyzeTypeContext
 from mypy.types import Type, TypeList, AnyType, CallableType, TypeOfAny
 # The official name changed to NoneType but we have an alias for plugin compat reasons
 # so we'll keep testing that here.
 from mypy.types import NoneTyp
-from mypy import message_registry
 
 class TypeAnalyzePlugin(Plugin):
     def get_type_analyze_hook(self, fullname: str
@@ -18,7 +18,8 @@ class TypeAnalyzePlugin(Plugin):
 def signal_type_analyze_callback(ctx: AnalyzeTypeContext) -> Type:
     if (len(ctx.type.args) != 1
             or not isinstance(ctx.type.args[0], TypeList)):
-        ctx.api.fail(message_registry.INVALID_SIGNAL_TYPE, ctx.context)
+        ctx.api.fail(ErrorMessage('Invalid "Signal" type (expected "Signal[[t, ...]]")'),
+                     ctx.context)
         return AnyType(TypeOfAny.from_error)
 
     args = ctx.type.args[0]
