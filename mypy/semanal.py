@@ -4796,7 +4796,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             if (
                 existing is not None
                 and isinstance(existing.node, Var)
-                and existing.type == symbol_node.type
+                # Dumb clause to appease mypyc
+                and (
+                    (isinstance(symbol_node, Var) and existing.type == symbol_node.type)
+                    or (isinstance(symbol_node, FuncBase) and existing.type == symbol_node.type)
+                )
             ):
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var, so check for possible redefinitions here.
