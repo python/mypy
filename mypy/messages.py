@@ -682,7 +682,6 @@ class MessageBuilder:
                 context,
             )
 
-
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
         msg = 'Unexpected keyword argument "{}"'.format(name) + for_function(callee)
