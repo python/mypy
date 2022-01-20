@@ -1,3 +1,4 @@
+from mypy import message_registry
 from mypy.messages import format_type
 from mypy.plugins.common import add_method_to_class
 from mypy.nodes import (
@@ -9,6 +10,7 @@ from mypy.types import (
     FunctionLike
 )
 from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
+from mypy.message_registry import ErrorMessage
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final
 
@@ -71,7 +73,7 @@ def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Se
 PluginContext = Union[FunctionContext, MethodContext]
 
 
-def fail(ctx: PluginContext, msg: str, context: Optional[Context]) -> None:
+def fail(ctx: PluginContext, msg: ErrorMessage, context: Optional[Context]) -> None:
     """Emit an error message.
 
     This tries to emit an error message at the location specified by `context`, falling back to the
@@ -95,7 +97,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         if len(func_type.arg_kinds) < 1:
             fail(
                 ctx,
-                'Singledispatch function requires at least one argument',
+                message_registry.SINGLEDISPATCH_ATLEAST_ONE_ARG,
                 func_type.definition,
             )
             return ctx.default_return_type
@@ -103,7 +105,7 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
         elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
-                'First argument to singledispatch function must be a positional argument',
+                message_registry.SINGLEDISPATCH_FIRST_ARG_POSITIONAL,
                 func_type.definition,
             )
             return ctx.default_return_type
@@ -173,7 +175,7 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
 
-        fail(ctx, 'Dispatch type {} must be subtype of fallback function first argument {}'.format(
+        fail(ctx, message_registry.DISPATCH_TYPE_FALLBACK_SUBTYPE.format(
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
             ), func.definition)
         return

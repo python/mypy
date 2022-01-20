@@ -3,6 +3,7 @@ from typing import Dict, NamedTuple, Optional
 from typing_extensions import Final
 
 import mypy.plugin
+from mypy import message_registry
 from mypy.nodes import ARG_POS, ARG_STAR2, Argument, FuncItem, Var
 from mypy.plugins.common import add_method_to_class
 from mypy.types import AnyType, CallableType, get_proper_type, Type, TypeOfAny, UnboundType
@@ -32,9 +33,7 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
 
     comparison_methods = _analyze_class(ctx)
     if not comparison_methods:
-        ctx.api.fail(
-            'No ordering operation defined when using "functools.total_ordering": < > <= >=',
-            ctx.reason)
+        ctx.api.fail(message_registry.TOTAL_ORDERING_NO_OPERATOR_DEFINED, ctx.reason)
         return
 
     # prefer __lt__ to __le__ to __gt__ to __ge__

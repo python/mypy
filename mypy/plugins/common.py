@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+from mypy import message_registry
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
@@ -39,7 +40,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
     if attr_value:
         ret = ctx.api.parse_bool(attr_value)
         if ret is None:
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
+            ctx.api.fail(message_registry.ARG_MUST_BE_TRUE_OR_FALSE.format(name), expr)
             return default
         return ret
     return default

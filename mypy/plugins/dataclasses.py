@@ -3,6 +3,7 @@
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
+from mypy import message_registry
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
     Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
@@ -179,7 +180,7 @@ class DataclassTransformer:
         # Add <, >, <=, >=, but only if the class has an eq method.
         if decorator_arguments['order']:
             if not decorator_arguments['eq']:
-                ctx.api.fail('eq must be True if order is True', ctx.cls)
+                ctx.api.fail(message_registry.EQ_TRUE_IF_ORDER_TRUE, ctx.cls)
 
             for method_name in ['__lt__', '__gt__', '__le__', '__ge__']:
                 # Like for __eq__ and __ne__, we want "other" to match
@@ -196,7 +197,7 @@ class DataclassTransformer:
                 if existing_method is not None and not existing_method.plugin_generated:
                     assert existing_method.node
                     ctx.api.fail(
-                        'You may not have a custom %s method when order=True' % method_name,
+                        message_registry.DATACLASS_ORDER_METHODS_DISALLOWED.format(method_name),
                         existing_method.node,
                     )
 
@@ -245,8 +246,7 @@ class DataclassTransformer:
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                'Keyword argument "slots" for "dataclass" '
-                'is only valid in Python 3.10 and higher',
+                message_registry.DATACLASS_SLOTS_ABOVE_PY310,
                 self._ctx.reason,
             )
             return
@@ -259,9 +259,7 @@ class DataclassTransformer:
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.
             self._ctx.api.fail(
-                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
-                    self._ctx.cls.name,
-                ),
+                message_registry.DATACLASS_SLOTS_CLASH.format(self._ctx.cls.name),
                 self._ctx.cls,
             )
             return
@@ -432,7 +430,7 @@ class DataclassTransformer:
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs
                            else ctx.cls)
                 ctx.api.fail(
-                    'Attributes without a default cannot follow attributes with one',
+                    message_registry.DATACLASS_DEFAULT_ATTRS_BEFORE_NON_DEFAULT,
                     context,
                 )
 
@@ -441,7 +439,7 @@ class DataclassTransformer:
                 context = (Context(line=attr.line, column=attr.column) if attr in attrs
                            else ctx.cls)
                 ctx.api.fail(
-                    'There may not be more than one field with the KW_ONLY type',
+                    message_registry.DATACLASS_SINGLE_KW_ONLY_TYPE,
                     context,
                 )
             found_kw_sentinel = found_kw_sentinel or self._is_kw_only_type(attr.type)
@@ -537,9 +535,9 @@ def _collect_field_args(expr: Expression,
                     # This means that `field` is used with `**` unpacking,
                     # the best we can do for now is not to fail.
                     # TODO: we can infer what's inside `**` and try to collect it.
-                    message = 'Unpacking **kwargs in "field()" is not supported'
+                    message = message_registry.DATACLASS_UNPACKING_KWARGS_IN_FIELD
                 else:
-                    message = '"field()" does not accept positional arguments'
+                    message = message_registry.DATACLASS_POS_ARG_IN_FIELD
                 ctx.api.fail(message, expr)
                 return True, {}
             assert name is not None

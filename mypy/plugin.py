@@ -223,10 +223,8 @@ class CheckerPluginInterface:
         """Return the type context of the plugin"""
         raise NotImplementedError
 
-    # TODO(tushar): remove `str` type and `code` property from here
     @abstractmethod
-    def fail(self, msg: Union[str, ErrorMessage], ctx: Context, *,
-             code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
@@ -285,8 +283,8 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def fail(self, msg: Union[str, ErrorMessage], ctx: Context, serious: bool = False, *,
-             blocker: bool = False, code: Optional[ErrorCode] = None) -> None:
+    def fail(self, msg: ErrorMessage, ctx: Context, serious: bool = False, *,
+             blocker: bool = False) -> None:
         """Emit an error message at given location."""
         raise NotImplementedError
 
