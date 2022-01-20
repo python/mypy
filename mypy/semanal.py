@@ -51,7 +51,7 @@ Some important properties:
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -4793,16 +4793,18 @@ class SemanticAnalyzer(NodeVisitor[None],
             # to `self.type`. Note that imports inside class scope do not produce methods, so
             # in all cases constructing a Var gets us the assignment like behaviour we want.
             existing = self.current_symbol_table().get(name)
+            # I promise this type checks; I'm just making mypyc issues go away.
+            symbol_node_any: Any = cast(Any, symbol_node)
             if (
-                existing is not None
-                and isinstance(existing.node, Var)
-                and existing.type == symbol_node.type
-            ):
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var, so check for possible redefinitions here.
+                existing is not None
+                and isinstance(existing.node, Var)
+                and existing.type == symbol_node_any.type
+            ):
                 symbol_node = existing.node
             else:
-                symbol_node = Var(symbol_node.name, symbol_node.type)
+                symbol_node = Var(symbol_node_any.name, symbol_node_any.type)
                 assert self.type is not None
                 symbol_node.info = self.type
                 symbol_node._fullname = self.qualified_name(name)
