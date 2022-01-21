@@ -1952,7 +1952,8 @@ class UnionType(ProperType):
     def __init__(self, items: Sequence[Type], line: int = -1, column: int = -1,
                  is_evaluated: bool = True, uses_pep604_syntax: bool = False) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)
+        items = flatten_nested_unions(items)
+        self.items = reduce_proper_noreturn_types(items)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         # is_evaluated should be set to false for type comments and string literals
@@ -2575,6 +2576,17 @@ def flatten_nested_unions(types: Iterable[Type],
     return flat_items
 
 
+def reduce_proper_noreturn_types(types: Iterable[Type]) -> List[Type]:
+    """Remove one or multiple NoReturn types if there is at least one other type.
+
+    Assumes the union was flattened (except for possible union type aliases). The
+    implementation CANNOT handle type aliases, because they might not yet be expanded.
+    """
+    filtered: List[Type] = [tp for tp in types if not is_proper_noreturn_type(tp)]
+    # If nothing is left, we know there was at least one NoReturn.
+    return filtered if filtered else [UninhabitedType(is_noreturn=True)]
+
+
 def union_items(typ: Type) -> List[ProperType]:
     """Return the flattened items of a union type.
 
@@ -2609,6 +2621,11 @@ def is_optional(t: Type) -> bool:
     t = get_proper_type(t)
     return isinstance(t, UnionType) and any(isinstance(get_proper_type(e), NoneType)
                                             for e in t.items)
+
+
+def is_proper_noreturn_type(t: Type) -> bool:
+    return isinstance(t, ProperType) and \
+           isinstance(t, UninhabitedType) and t.is_noreturn
 
 
 def remove_optional(typ: Type) -> Type:

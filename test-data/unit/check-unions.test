@@ -146,8 +146,29 @@ f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int
 
 [case testUnionWithNoReturn]
 from typing import Union, NoReturn
-def f() -> Union[int, NoReturn]: ...
-reveal_type(f()) # N: Revealed type is "builtins.int"
+
+def func() -> Union[int, NoReturn]: ...
+reveal_type(func()) # N: Revealed type is "Union[builtins.int]"
+
+a: Union[NoReturn]
+reveal_type(a) # N: Revealed type is "<nothing>"
+
+b: Union[NoReturn, NoReturn]
+reveal_type(b) # N: Revealed type is "Union[<nothing>]"
+
+c: Union[str, NoReturn]
+reveal_type(c) # N: Revealed type is "Union[builtins.str]"
+
+A = Union[str, NoReturn]
+d: A
+reveal_type(d) # N: Revealed type is "Union[builtins.str]"
+
+e: Union[str, Union[NoReturn, int]]
+reveal_type(e) # N: Revealed type is "Union[builtins.str, builtins.int]"
+
+B = Union[str, int]
+f: Union[NoReturn, B]
+reveal_type(f) # N: Revealed type is "Union[Union[builtins.str, builtins.int]]"
 
 [case testUnionSimplificationGenericFunction]
 from typing import TypeVar, Union, List

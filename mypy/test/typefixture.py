@@ -46,6 +46,7 @@ class TypeFixture:
         self.anyt = AnyType(TypeOfAny.special_form)
         self.nonet = NoneType()
         self.uninhabited = UninhabitedType()
+        self.noreturn = UninhabitedType(is_noreturn=True)
 
         # Abstract class TypeInfos
 

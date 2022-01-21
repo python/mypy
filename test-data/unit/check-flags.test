@@ -385,7 +385,7 @@ from mypy_extensions import NoReturn
 def no_return() -> NoReturn: pass
 def f() -> int:
   return 0
-reveal_type(f() or no_return())  # N: Revealed type is "builtins.int"
+reveal_type(f() or no_return())  # N: Revealed type is "Union[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 [case testNoReturnVariable]

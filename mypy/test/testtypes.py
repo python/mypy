@@ -480,6 +480,12 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
 
+        self.assert_simplified_union([fx.noreturn], fx.noreturn)
+        self.assert_simplified_union([fx.noreturn, fx.noreturn], fx.noreturn)
+        self.assert_simplified_union([fx.a, fx.noreturn], UnionType([fx.a, fx.noreturn]))
+        self.assert_simplified_union([fx.lit1_inst, fx.noreturn],
+                                     UnionType([fx.lit1_inst, fx.noreturn]))
+
     def assert_simplified_union(self, original: List[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
         assert_equal(make_simplified_union(list(reversed(original))), union)

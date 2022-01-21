@@ -11,10 +11,12 @@ import itertools
 import sys
 
 from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
+    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType,
+    Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
-    AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType
+    AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type,
+    get_proper_types,
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType, is_proper_noreturn_type
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -320,6 +322,9 @@ def make_simplified_union(items: Sequence[Type],
     * [int, int] -> int
     * [int, Any] -> Union[int, Any] (Any types are not simplified away!)
     * [Any, Any] -> Any
+    * [NoReturn] -> NoReturn
+    * [int, NoReturn] -> Union[int, NoReturn] (NoReturn types are not simplified
+                                                if other types are present)
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
@@ -377,6 +382,7 @@ def make_simplified_union(items: Sequence[Type],
                     and not is_simple_literal(tj)
                     and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
                     and is_redundant_literal_instance(item, tj)  # XXX?
+                    and (not is_proper_noreturn_type(tj) or is_proper_noreturn_type(item))
             ):
                 # We found a redundant item in the union.
                 removed.add(j)
