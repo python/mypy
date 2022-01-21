@@ -1853,7 +1853,7 @@ reveal_type(apply_gen(Add5())) # N: Revealed type is "builtins.int*"
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
-                       # N: "Add5.__call__" has type "Callable[[Arg(int, 'x')], int]"
+                       # N: "Add5.__call__" has type "def __call__(self, x: int) -> int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMoreComplexCallableStructuralSubtyping]
@@ -1869,10 +1869,10 @@ class Bad1:
 class Bad2:
     def __call__(self, y: int, *rest: str) -> int: pass
 call_soon(Good())
-call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected "Callable[[int, VarArg(str)], int]" \
-                  # N: "Bad1.__call__" has type "Callable[[Arg(int, 'x'), VarArg(int)], int]"
-call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected "Callable[[int, VarArg(str)], int]" \
-                  # N: "Bad2.__call__" has type "Callable[[Arg(int, 'y'), VarArg(str)], int]"
+call_soon(Bad1()) # E: Argument 1 to "call_soon" has incompatible type "Bad1"; expected "def (x: int, *str) -> int" \
+                  # N: "Bad1.__call__" has type "def __call__(self, x: int, *rest: int) -> int"
+call_soon(Bad2()) # E: Argument 1 to "call_soon" has incompatible type "Bad2"; expected "def (x: int, *str) -> int" \
+                  # N: "Bad2.__call__" has type "def __call__(self, y: int, *rest: str) -> int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testStructuralSupportForPartial]
@@ -2423,7 +2423,7 @@ def func(caller: Caller) -> None:
     pass
 
 func(call)
-func(bad)  # E: Argument 1 to "func" has incompatible type "Callable[[int, VarArg(str)], None]"; expected "Caller"
+func(bad)  # E: Argument 1 to "func" has incompatible type "def bad(x: int, *args: str) -> None"; expected "Caller"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2519,8 +2519,8 @@ class Caller(Protocol):
 def bad(x: int, *args: str) -> None:
     pass
 
-cb: Caller = bad  # E: Incompatible types in assignment (expression has type "Callable[[int, VarArg(str)], None]", variable has type "Caller") \
-                  # N: "Caller.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
+cb: Caller = bad  # E: Incompatible types in assignment (expression has type "def bad(x: int, *args: str) -> None", variable has type "Caller") \
+                  # N: "Caller.__call__" has type "def __call__(self, x: str, *args: int) -> None"
 [builtins fixtures/tuple.pyi]
 [out]
 

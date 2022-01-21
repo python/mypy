@@ -108,7 +108,7 @@ if int():
 
 def l(x) -> None: ...
 def r(__, *, x) -> None: ...
-r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "Callable[[Any, NamedArg(Any, 'x')], None]")
+r = l # E: Incompatible types in assignment (expression has type "Callable[[Any], None]", variable has type "def r(__: Any, *, x: Any) -> None")
 
 [case testSubtypingFunctionsRequiredLeftArgNotPresent]
 
@@ -148,13 +148,13 @@ if int():
 if int():
     ff_nonames = f_nonames # reset
 if int():
-    ff = ff_nonames # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+    ff = ff_nonames # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "def f(a: int, b: str) -> None")
 if int():
     ff = f # reset
 if int():
-    gg = ff # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
+    gg = ff # E: Incompatible types in assignment (expression has type "def f(a: int, b: str) -> None", variable has type "def g(a: int, b: str = ...) -> None")
 if int():
-    gg = hh # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'aa'), DefaultArg(str, 'b')], None]", variable has type "Callable[[Arg(int, 'a'), DefaultArg(str, 'b')], None]")
+    gg = hh # E: Incompatible types in assignment (expression has type "def h(aa: int, b: str = ...) -> None", variable has type "def g(a: int, b: str = ...) -> None")
 
 [case testSubtypingFunctionsArgsKwargs]
 from typing import Any, Callable
@@ -190,7 +190,7 @@ if int():
 if int():
     ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
 if int():
-    ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
+    ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "def everything(*args: Any, **kwargs: Any) -> None")
 
 [builtins fixtures/dict.pyi]
 
@@ -223,7 +223,7 @@ gg = g
 if int():
     ff = g
 if int():
-    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "def g(a: int, b: str) -> None")
 
 [case testLackOfNamesFastparse]
 def f(__a: int, __b: str) -> None: pass
@@ -235,7 +235,7 @@ gg = g
 if int():
     ff = g
 if int():
-    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[Arg(int, 'a'), Arg(str, 'b')], None]")
+    gg = f # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "def g(a: int, b: str) -> None")
 
 [case testFunctionTypeCompatibilityWithOtherTypes]
 from typing import Callable
@@ -1815,7 +1815,7 @@ def f2(*args, **kwargs) -> int: pass
 d(f1)
 e(f2)
 d(f2)
-e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int]"; expected "Callable[[VarArg(Any), KwArg(Any)], int]"
+e(f1)  # E: Argument 1 to "e" has incompatible type "def f1(*args: Any) -> int"; expected "def (*Any, **Any) -> int"
 
 [builtins fixtures/dict.pyi]
 
@@ -1936,12 +1936,12 @@ def isf_unnamed(__i: int, __s: str) -> str:
 
 int_str_fun = isf
 int_str_fun = isf_unnamed
-int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type "Callable[[int, str], str]", variable has type "Callable[[int, Arg(str, 's')], str]")
+int_named_str_fun = isf_unnamed # E: Incompatible types in assignment (expression has type "Callable[[int, str], str]", variable has type "def (int, s: str) -> str")
 int_opt_str_fun = iosf
 int_str_fun = iosf
-int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str]", variable has type "Callable[[int, DefaultArg(str)], str]")
+int_opt_str_fun = isf # E: Incompatible types in assignment (expression has type "def isf(ii: int, ss: str) -> str", variable has type "def (int, str = ...) -> str")
 
-int_named_str_fun = isf # E: Incompatible types in assignment (expression has type "Callable[[Arg(int, 'ii'), Arg(str, 'ss')], str]", variable has type "Callable[[int, Arg(str, 's')], str]")
+int_named_str_fun = isf # E: Incompatible types in assignment (expression has type "def isf(ii: int, ss: str) -> str", variable has type "def (int, s: str) -> str")
 int_named_str_fun = iosf
 
 [builtins fixtures/dict.pyi]
@@ -1996,7 +1996,7 @@ def g4(*, y: int) -> str: pass
 f(g1)
 f(g2)
 f(g3)
-f(g4) # E: Argument 1 to "f" has incompatible type "Callable[[NamedArg(int, 'y')], str]"; expected "Callable[..., int]"
+f(g4) # E: Argument 1 to "f" has incompatible type "def g4(*, y: int) -> str"; expected "Callable[..., int]"
 
 [case testCallableWithArbitraryArgsSubtypingWithGenericFunc]
 from typing import Callable, TypeVar
@@ -2155,7 +2155,7 @@ def g(x, y): pass
 def h(x): pass
 def j(y) -> Any: pass
 f = h
-f = j # E: Incompatible types in assignment (expression has type "Callable[[Arg(Any, 'y')], Any]", variable has type "Callable[[Arg(Any, 'x')], Any]")
+f = j # E: Incompatible types in assignment (expression has type "def j(y: Any) -> Any", variable has type "def f(x: Any) -> Any")
 f = g # E: Incompatible types in assignment (expression has type "Callable[[Any, Any], Any]", variable has type "Callable[[Any], Any]")
 
 [case testRedefineFunction2]

@@ -810,8 +810,7 @@ class MessageBuilder:
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
-        self.fail('Result type of {} incompatible in assignment'.format(op),
-                  context)
+        self.fail('Result type of {} incompatible in assignment'.format(op), context)
 
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
@@ -845,13 +844,13 @@ class MessageBuilder:
                 and override is not None and isinstance(override, (CallableType, Overloaded)):
             self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
-                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            allow_dups=ALLOW_DUPS, code=code)
+                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                             allow_dups=ALLOW_DUPS, code=code)
 
             self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
-                                            add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            allow_dups=ALLOW_DUPS, code=code)
+                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
+                                             allow_dups=ALLOW_DUPS, code=code)
 
     def pretty_callable_or_overload(self,
                                     tp: Union[CallableType, Overloaded],
@@ -1230,7 +1229,7 @@ class MessageBuilder:
                 # Use list comprehension instead of set operations to preserve order.
                 missing = [key for key in expected_keys if key not in actual_set]
                 self.fail('Missing {} for TypedDict {}'.format(
-                    format_key_list(missing, short=True), format_type(typ)),
+                    format_typeddict_key_list(missing, short=True), format_type(typ)),
                     context, code=codes.TYPEDDICT_ITEM)
                 return
             else:
@@ -1239,14 +1238,14 @@ class MessageBuilder:
                     # If there are both extra and missing keys, only report extra ones for
                     # simplicity.
                     self.fail('Extra {} for TypedDict {}'.format(
-                        format_key_list(extra, short=True), format_type(typ)),
+                        format_typeddict_key_list(extra, short=True), format_type(typ)),
                         context, code=codes.TYPEDDICT_ITEM)
                     return
-        found = format_key_list(actual_keys, short=True)
+        found = format_typeddict_key_list(actual_keys, short=True)
         if not expected_keys:
             self.fail('Unexpected TypedDict {}'.format(found), context)
             return
-        expected = format_key_list(expected_keys)
+        expected = format_typeddict_key_list(expected_keys)
         if actual_keys and actual_set < expected_set:
             found = 'only {}'.format(found)
         self.fail('Expected {} but found {}'.format(expected, found), context,
@@ -1603,7 +1602,7 @@ class MessageBuilder:
         if item_cnt > 10:
             return 'Tuple[{}, {}, ... <{} more items>]'\
                     .format(format_type_bare(typ.items[0]),
-                        format_type_bare(typ.items[1]), str(item_cnt - 2))
+                            format_type_bare(typ.items[1]), str(item_cnt - 2))
         else:
             return format_type_bare(typ)
 
@@ -1653,13 +1652,19 @@ def quote_type_string(type_string: str) -> str:
 
 def format_type_inner(typ: Type,
                       verbosity: int,
-                      fullnames: Optional[Set[str]]) -> str:
+                      fullnames: Optional[Set[str]],
+                      use_pretty_callable: bool = True) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
     Args:
-      verbosity: a coarse grained control on the verbosity of the type
-      fullnames: a set of names that should be printed in full
+        verbosity: a coarse grained control on the verbosity of the type
+        fullnames: a set of names that should be printed in full
+        use_pretty_callable: use the more readable `def (...) -> t` syntax instead of
+            `Callable[...]`. Simple callable types are still shown with `Callable[...]`:
+            * Callable types with only positional arguments
+            * Callable[..., X] (a type with explicit ...)
+            * Callable types with ParamSpec
     """
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
@@ -1771,13 +1776,14 @@ def format_type_inner(typ: Type,
             if param_spec is not None:
                 return f'Callable[{param_spec.name}, {return_type}]'
             arg_strings = []
+            has_non_positional = False
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
                 if (arg_kind == ARG_POS and arg_name is None
                         or verbosity == 0 and arg_kind.is_positional()):
-
                     arg_strings.append(format(arg_type))
                 else:
+                    has_non_positional = True
                     constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
                     if arg_kind.is_star() or arg_name is None:
                         arg_strings.append("{}({})".format(
@@ -1789,6 +1795,8 @@ def format_type_inner(typ: Type,
                             format(arg_type),
                             repr(arg_name)))
 
+            if use_pretty_callable and has_non_positional:
+                return pretty_callable(func)
             return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
         else:
             # Use a simple representation for function types; proper
@@ -2206,7 +2214,7 @@ def make_inferred_type_note(context: Context,
     return ''
 
 
-def format_key_list(keys: List[str], *, short: bool = False) -> str:
+def format_typeddict_key_list(keys: List[str], *, short: bool = False) -> str:
     formatted_keys = ['"{}"'.format(key) for key in keys]
     td = '' if short else 'TypedDict '
     if len(keys) == 0:
