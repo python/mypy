@@ -406,3 +406,24 @@ with f() as x:
     pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testFinalParamSpec]
+# See https://github.com/python/mypy/issues/12033
+from typing import Generic, TypeVar
+from typing_extensions import ParamSpec, final
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+@final  # Should be ok
+class OnlyParamSpec(Generic[_P]):
+    pass
+
+@final  # Should be ok
+class MixedWithTypeVar1(Generic[_P, _T]):
+    pass
+
+@final  # Should be ok
+class MixedWithTypeVar2(Generic[_T, _P]):
+    pass
+[builtins fixtures/dict.pyi]

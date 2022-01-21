@@ -885,7 +885,10 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     # type variables of L, because generating and solving
     # constraints for the variables of L to make L a subtype of R
     # (below) treats type variables on the two sides as independent.
-    if left.variables:
+    if left.variables and not any(
+        isinstance(var, ParamSpecType)
+        for var in left.variables
+    ):
         # Apply generic type variables away in left via type inference.
         unified = unify_generic_callable(left, right, ignore_return=ignore_return)
         if unified is None:
