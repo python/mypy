@@ -828,6 +828,39 @@ class StubtestUnit(unittest.TestCase):
             error='WRONG_BOOL_2',
         )
 
+    @collect_cases
+    def test_special_subtype(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            b1: bool
+            b2: bool
+            b3: bool
+            """,
+            runtime="""
+            b1 = 0
+            b2 = 1
+            b3 = 2
+            """,
+            error="b3",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import TypedDict
+
+            class _Options(TypedDict):
+                a: str
+                b: int
+
+            opt1: _Options
+            opt2: _Options
+            """,
+            runtime="""
+            opt1 = {"some": "stuff"}
+            opt2 = 0
+            """,
+            error="opt2",
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
