@@ -522,6 +522,19 @@ class D(bytes):
 '{}'.format(D())
 [builtins fixtures/primitives.pyi]
 
+[case testFormatCallFormatTypesUnionAliasWithCustomFormat]
+from typing import Union
+
+class Date:
+    def __format__(self, spec: str) -> str: ...
+
+S = Union[str, bytes, Date]
+s: Union[int, S]
+
+'{}'.format(s)  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+f'{s}'  # E: On Python 3 formatting "b'abc'" with "{}" produces "b'abc'", not "abc"; use "{!r}" if this is desired behavior
+[builtins fixtures/primitives.pyi]
+
 [case testFormatCallFormatTypesBytesNotPy2]
 # flags: --py2
 from typing import Union, TypeVar, NewType, Generic

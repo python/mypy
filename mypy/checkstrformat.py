@@ -18,8 +18,9 @@ from typing import (
 from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 
 from mypy.types import (
-    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
-    LiteralType, get_proper_types
+    Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type,
+    TypeVarType,
+    LiteralType, get_proper_types, flatten_nested_unions
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
@@ -353,9 +354,11 @@ class StringFormatterChecker:
             if expected_type is None:
                 continue
 
-            a_type = get_proper_type(actual_type)
-            actual_items = (get_proper_types(a_type.items) if isinstance(a_type, UnionType)
-                            else [a_type])
+            p_type = get_proper_type(actual_type)
+            if isinstance(p_type, UnionType):
+                actual_items = flatten_nested_unions(p_type.items, handle_type_alias_type=True)
+            else:
+                actual_items = [p_type]
             for a_type in actual_items:
                 if custom_special_method(a_type, '__format__'):
                     continue
