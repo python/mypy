@@ -76,11 +76,20 @@ break # E: "break" outside loop
 continue # E: "continue" outside loop
 
 [case testYieldOutsideFunction]
-yield # E: "yield" outside function
+yield # E: "yield" outside function or lambda
 
 [case testYieldFromOutsideFunction]
 x = 1
-yield from x # E: "yield from" outside function
+yield from x # E: "yield from" outside function or lambda
+
+[case testYieldWithinComprehension]
+x = 1
+[(yield 1) for _ in x] # E: "yield" outside function or lambda
+
+[case testYieldFromWithinComprehension]
+x = 1
+y = 1
+[(yield from x) for _ in y] # E: "yield from" outside function or lambda
 
 [case testImportFuncDup]
 

@@ -3830,8 +3830,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        if not self.is_func_scope():  # not sure
-            self.fail('"yield from" outside function', e, serious=True, blocker=True)
+        if not self.is_func_scope() or self.is_comprehension_stack[-1]:
+            self.fail('"yield from" outside function or lambda', e, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 self.fail('"yield from" in async function', e, serious=True, blocker=True)
@@ -4215,8 +4215,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.type = analyzed
 
     def visit_yield_expr(self, expr: YieldExpr) -> None:
-        if not self.is_func_scope():
-            self.fail('"yield" outside function', expr, serious=True, blocker=True)
+        if not self.is_func_scope() or self.is_comprehension_stack[-1]:
+            self.fail('"yield" outside function or lambda', expr, serious=True, blocker=True)
         else:
             if self.function_stack[-1].is_coroutine:
                 if self.options.python_version < (3, 6):

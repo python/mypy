@@ -354,8 +354,8 @@ main:3: error: "return" outside function
 yield 1
 yield
 [out]
-main:1: error: "yield" outside function
-main:2: error: "yield" outside function
+main:1: error: "yield" outside function or lambda
+main:2: error: "yield" outside function or lambda
 
 [case testInvalidLvalues1]
 1 = 1
