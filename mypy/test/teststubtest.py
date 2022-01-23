@@ -853,12 +853,14 @@ class StubtestUnit(unittest.TestCase):
 
             opt1: _Options
             opt2: _Options
+            opt3: _Options
             """,
             runtime="""
-            opt1 = {"some": "stuff"}
-            opt2 = 0
+            opt1 = {"a": "3.", "b": 14}
+            opt2 = {"some": "stuff"}  # false negative
+            opt3 = 0
             """,
-            error="opt2",
+            error="opt3",
         )
 
 
