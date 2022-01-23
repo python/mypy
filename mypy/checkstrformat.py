@@ -20,7 +20,7 @@ from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type,
     TypeVarType,
-    LiteralType, get_proper_types, flatten_nested_unions
+    LiteralType, flatten_nested_unions
 )
 from mypy.nodes import (
     StrExpr, BytesExpr, UnicodeExpr, TupleExpr, DictExpr, Context, Expression, StarExpr, CallExpr,
