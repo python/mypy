@@ -161,3 +161,12 @@ class LastKnownValueEraser(TypeTranslator):
         # Type aliases can't contain literal values, because they are
         # always constructed as explicit types.
         return t
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        new = super().visit_union_type(t)
+        new = get_proper_type(new)
+        if isinstance(new, UnionType):
+            from mypy.typeops import make_simplified_union
+            # Erasure can result in many duplicate items; remove them.
+            new = make_simplified_union(new.items)
+        return new
