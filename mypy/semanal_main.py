@@ -307,7 +307,7 @@ def semantic_analyze_target(target: str,
     Return tuple with these items:
     - list of deferred targets
     - was some definition incomplete (need to run another pass)
-    - were any new names were defined (or placeholders replaced)
+    - were any new names defined (or placeholders replaced)
     """
     state.manager.processed_targets.append(target)
     tree = state.tree

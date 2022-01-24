@@ -3830,13 +3830,15 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        if not self.is_func_scope():  # not sure
+        if not self.is_func_scope():
             self.fail('"yield from" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield from" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            self.fail('"yield from" in async function', e, serious=True, blocker=True)
         else:
-            if self.function_stack[-1].is_coroutine:
-                self.fail('"yield from" in async function', e, serious=True, blocker=True)
-            else:
-                self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -4214,20 +4216,22 @@ class SemanticAnalyzer(NodeVisitor[None],
         if analyzed is not None:
             expr.type = analyzed
 
-    def visit_yield_expr(self, expr: YieldExpr) -> None:
+    def visit_yield_expr(self, e: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail('"yield" outside function', expr, serious=True, blocker=True)
-        else:
-            if self.function_stack[-1].is_coroutine:
-                if self.options.python_version < (3, 6):
-                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
-                else:
-                    self.function_stack[-1].is_generator = True
-                    self.function_stack[-1].is_async_generator = True
+            self.fail('"yield" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            if self.options.python_version < (3, 6):
+                self.fail('"yield" in async function', e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
-        if expr.expr:
-            expr.expr.accept(self)
+                self.function_stack[-1].is_async_generator = True
+        else:
+            self.function_stack[-1].is_generator = True
+        if e.expr:
+            e.expr.accept(self)
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():
