@@ -301,6 +301,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Do not raise an exception when a directory has no python files.
+        self.allow_empty_dir = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property
