@@ -175,14 +175,14 @@ def join_types(s: Type, t: Type, instance_joiner: Optional[InstanceJoiner] = Non
         s = mypy.typeops.true_or_false(s)
         t = mypy.typeops.true_or_false(t)
 
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
+
     if isinstance(s, AnyType):
         return s
 
     if isinstance(s, ErasedType):
         return t
-
-    if isinstance(s, UnionType) and not isinstance(t, UnionType):
-        s, t = t, s
 
     if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
