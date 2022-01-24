@@ -2336,6 +2336,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
 
+    def check_except_reachability(self, s: TryStmt) -> None:
+        """Perform except block reachability checks.
+
+        1. Check for duplicate exception clauses.
+        2. Check if super class has already been caught.
+        """
+        seen: List[Type] = []
+        for expr in s.types:
+            if expr and isinstance(expr, NameExpr) and isinstance(expr.node, TypeInfo):
+                with self.expr_checker.msg.disable_errors():
+                    typ = get_proper_type(self.check_except_handler_test(expr))
+                if isinstance(typ, AnyType):
+                    continue
+                if typ in seen:
+                    self.msg.already_caught(typ, expr)
+                    continue
+                seen_superclass = next((s for s in seen if is_subtype(typ, s)), None)
+                if seen_superclass is not None:
+                    self.msg.superclass_already_caught(typ, seen_superclass, expr)
+                    continue
+                seen.append(typ)
+
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops: Final = {
         ('builtins.list', '+'),
@@ -3607,6 +3629,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # that follows the try statement.)
             if not self.binder.is_unreachable():
                 self.accept(s.finally_body)
+
+        if self.should_report_unreachable_issues():
+            self.check_except_reachability(s)
 
     def visit_try_without_finally(self, s: TryStmt, try_frame: bool) -> None:
         """Type check a try statement, ignoring the finally block.

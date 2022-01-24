@@ -841,6 +841,38 @@ def baz(x: int) -> int:
         return x
 [builtins fixtures/exception.pyi]
 
+[case testUnreachableFlagExcepts]
+# flags: --warn-unreachable
+from typing import Type, NoReturn, Tuple
+
+def error() -> NoReturn: ...
+
+ignore: Type[Exception]
+exclude: Tuple[Type[Exception], ...]
+class ContinueOnError: pass
+
+try:
+    error()
+except ignore:
+    pass
+except exclude:
+    pass
+except ContinueOnError:            # E: Exception type must be derived from BaseException
+    pass
+except Exception:
+    pass
+except Exception as err:           # E: Except is unreachable, "Exception" has already been caught
+    pass
+except RuntimeError:               # E: Except is unreachable, superclass "Exception" of "RuntimeError" has already been caught
+    pass
+except (NotImplementedError, ):
+    pass
+except NotImplementedError:        # E: Except is unreachable, superclass "Exception" of "NotImplementedError" has already been caught
+    pass
+except NotImplementedError:        # E: Except is unreachable, superclass "Exception" of "NotImplementedError" has already been caught
+    pass
+[builtins fixtures/exception.pyi]
+
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
 # flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
 import sys
