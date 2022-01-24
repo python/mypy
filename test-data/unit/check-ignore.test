@@ -217,7 +217,7 @@ def f() -> None: pass
 [out]
 
 [case testCannotIgnoreBlockingError]
-yield  # type: ignore  # E: 'yield' outside function
+yield  # type: ignore  # E: "yield" outside function
 
 [case testIgnoreWholeModule1]
 # flags: --warn-unused-ignores
