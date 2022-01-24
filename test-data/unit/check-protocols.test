@@ -1079,6 +1079,44 @@ class C2(P):
 C()
 C2()
 
+[case testCannotInstantiateEmptyMethodExplicitProtocolSubtypes]
+from typing import Protocol
+
+class P(Protocol):
+    def meth(self) -> int:
+        pass
+
+class A(P):
+    pass
+
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "meth"
+
+class B(P):
+    def meth(self) -> int:
+        return 0
+
+B()
+
+class P2(Protocol):
+    def meth(self) -> int:
+        ...
+
+class A2(P):
+    pass
+
+A2() # E: Cannot instantiate abstract class "A2" with abstract attribute "meth"
+
+class P3(Protocol):
+    def meth(self) -> int:
+        """Docstring for meth.
+
+	This is meth."""
+
+class A3(P):
+    pass
+
+A3() # E: Cannot instantiate abstract class "A3" with abstract attribute "meth"
+
 [case testCannotInstantiateAbstractVariableExplicitProtocolSubtypes]
 from typing import Protocol
 

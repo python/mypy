@@ -60,7 +60,7 @@ from mypy.nodes import (
     ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
-    RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
+    RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt, PassStmt,
     ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
     GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
     SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
@@ -666,6 +666,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(defn, FuncDef):
                     assert isinstance(defn.type, CallableType)
                     defn.type = set_callable_name(defn.type, defn)
+
+        if (self.is_class_scope() and self.type is not None and
+                defn.type is not None and isinstance(defn.type, CallableType)):
+            # Treat empty functions in Protocol as abstract
+            # Conditions:
+            # not an overload, not a stub file, with non-None return type annatation
+            if (not self.is_stub_file and self.type.is_protocol and not defn.is_decorated and
+                    not isinstance(get_proper_type(defn.type.ret_type), (NoneType, AnyType)) and
+                    is_empty_function_body(defn.body.body)):
+                defn.is_abstract = True
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
@@ -5477,3 +5487,18 @@ def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:
             or (isinstance(a, PlaceholderNode)
                 and isinstance(b, PlaceholderNode))
             or is_same_var_from_getattr(a, b))
+
+
+def is_empty_function_body(body: List[Statement]) -> bool:
+    """Is the function body empty?
+
+    We consider it empty if it comprises a single statement which is one of
+    1. ellipsis
+    2. pass
+    3. docstring
+    """
+    if len(body) != 1:
+        return False
+    if isinstance(body[0], ExpressionStmt):
+        return isinstance(body[0].expr, (EllipsisExpr, StrExpr))
+    return isinstance(body[0], PassStmt)

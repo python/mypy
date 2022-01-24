@@ -7,7 +7,7 @@ from typing import List, Set, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Node, TypeInfo, Var, Decorator, OverloadedFuncDef, SymbolTable, CallExpr, PromoteExpr,
+    Node, TypeInfo, Var, Decorator, OverloadedFuncDef, SymbolTable, CallExpr, PromoteExpr, FuncDef
 )
 from mypy.types import Instance, Type
 from mypy.errors import Errors
@@ -78,8 +78,8 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                     func = None
             else:
                 func = node
-            if isinstance(func, Decorator):
-                fdef = func.func
+            if isinstance(func, Decorator) or (isinstance(func, FuncDef) and not typ.is_protocol):
+                fdef = func.func if isinstance(func, Decorator) else func
                 if fdef.is_abstract and name not in concrete:
                     typ.is_abstract = True
                     abstract.append(name)
