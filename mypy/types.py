@@ -2,7 +2,7 @@
 
 import copy
 import sys
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -171,7 +171,7 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
     raise NotImplementedError('unexpected .class {}'.format(classname))
 
 
-class Type(mypy.nodes.Context):
+class Type(mypy.nodes.Context, ABC):
     """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
@@ -196,6 +196,7 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
+    @abstractmethod
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
 
@@ -341,6 +342,9 @@ class TypeGuardedType(Type):
     def __init__(self, type_guard: Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
         self.type_guard = type_guard
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.type_guard.accept(visitor)
 
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
