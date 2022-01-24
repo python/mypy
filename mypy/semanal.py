@@ -3833,7 +3833,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.is_func_scope():
             self.fail('"yield from" outside function', e, serious=True, blocker=True)
         elif self.is_comprehension_stack[-1]:
-            self.fail('"yield from" inside comprehension or generator expression', e, serious=True, blocker=True)
+            self.fail('"yield from" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
         elif self.function_stack[-1].is_coroutine:
             self.fail('"yield from" in async function', e, serious=True, blocker=True)
         else:
