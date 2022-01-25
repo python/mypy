@@ -393,20 +393,24 @@ class Errors:
             info.hidden = True
             self.report_hidden_errors(info)
         self._add_error_info(file, info)
-        if info.code in original_error_codes:
-            # If there seems to be a "type: ignore" with a stale error
-            # code, report a helpful note.
-            old_code = original_error_codes[info.code].code
-            if old_code in self.ignored_lines.get(file, {}).get(info.line, []):
-                msg = 'Error code changed to {}; "type: ignore" comment may be out of date'.format(
-                    info.code.code)
-                note = ErrorInfo(
-                    info.import_ctx, info.file, info.module, info.type, info.function_or_member,
-                    info.line, info.column, 'note', msg,
-                    code=None, blocker=False, only_once=False, allow_dups=False
-                )
-
-                self._add_error_info(file, note)
+        ignored_codes = self.ignored_lines.get(file, {}).get(info.line, [])
+        if ignored_codes:
+            # Something is ignored on the line, but not this error, so maybe the error
+            # code is incorrect.
+            msg = 'Error code in "type: ignore" comment may be incorrect or out-of-date'
+            if info.code in original_error_codes:
+                # If there seems to be a "type: ignore" with a stale error
+                # code, report a more specific note.
+                old_code = original_error_codes[info.code].code
+                if old_code in ignored_codes:
+                    msg = (f'Error code changed to {info.code.code}; "type: ignore" comment ' +
+                           'may be out of date')
+            note = ErrorInfo(
+                info.import_ctx, info.file, info.module, info.type, info.function_or_member,
+                info.line, info.column, 'note', msg,
+                code=None, blocker=False, only_once=False, allow_dups=False
+            )
+            self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
         if self.many_errors_threshold < 0:
