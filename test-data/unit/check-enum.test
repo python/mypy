@@ -1868,3 +1868,17 @@ class WithOverload(enum.IntEnum):
 class SubWithOverload(WithOverload):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testEnumtValueUnionSimplification]
+from enum import IntEnum
+from typing import Any
+
+class C(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
+
+def f1(c: C) -> None:
+    x = {'x': c.value}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+[builtins fixtures/dict.pyi]
