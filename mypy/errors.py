@@ -16,7 +16,12 @@ from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
 T = TypeVar("T")
+
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+
+# Keep track of the original error code when the error code of a message is changed.
+# This is used to give notes about out-of-date "type: ignore" comments.
+original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC}
 
 
 class ErrorInfo:
@@ -388,6 +393,20 @@ class Errors:
             info.hidden = True
             self.report_hidden_errors(info)
         self._add_error_info(file, info)
+        if info.code in original_error_codes:
+            # If there seems to be a "type: ignore" with a stale error
+            # code, report a helpful note.
+            old_code = original_error_codes[info.code].code
+            if old_code in self.ignored_lines.get(file, {}).get(info.line, []):
+                msg = 'Error code changed to {}; "type: ignore" comment may be out of date'.format(
+                    info.code.code)
+                note = ErrorInfo(
+                    info.import_ctx, info.file, info.module, info.type, info.function_or_member,
+                    info.line, info.column, 'note', msg,
+                    code=None, blocker=False, only_once=False, allow_dups=False
+                )
+
+                self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
         if self.many_errors_threshold < 0:

@@ -944,3 +944,19 @@ class TensorType: ...
 t: TensorType["batch":..., float]  # type: ignore
 reveal_type(t)  # N: Revealed type is "__main__.TensorType"
 [builtins fixtures/tuple.pyi]
+
+[case testNoteAboutChangedTypedDictErrorCode]
+from typing_extensions import TypedDict
+class D(TypedDict):
+    x: int
+
+def f(d: D, s: str) -> None:
+    d[s]  # type: ignore[xyz] \
+    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required]
+    d[s] # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required]
+    d[s]  # type: ignore[misc]  \
+    # E: TypedDict key must be a string literal; expected one of ("x")  [literal-required] \
+    # N: Error code changed to literal-required; "type: ignore" comment may be out of date
+    d[s]  # type: ignore[literal-required]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
