@@ -1881,4 +1881,10 @@ class C(IntEnum):
 def f1(c: C) -> None:
     x = {'x': c.value}
     reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+
+def f2(c: C, a: Any) -> None:
+    x = {'x': c.value, 'y': a}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+    y = {'y': a, 'x': c.value}
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
 [builtins fixtures/dict.pyi]
