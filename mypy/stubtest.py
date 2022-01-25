@@ -1107,6 +1107,20 @@ def get_stub(module: str) -> Optional[nodes.MypyFile]:
     return _all_stubs.get(module)
 
 
+def _is_allowed_module_version(
+    version_info: Tuple[int, int],
+    versions: Optional[Tuple[Tuple[int, int], Optional[Tuple[int, int]]]],
+) -> bool:
+    if versions is None:
+        return True
+
+    minver, maxver = versions
+    return (
+        version_info >= minver
+        and (maxver is None or version_info <= maxver)
+    )
+
+
 def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
@@ -1117,8 +1131,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
     else:
         version_info = sys.version_info[0:2]
     for module, versions in stdlib_py_versions.items():
-        minver, maxver = versions
-        if version_info >= minver and (maxver is None or version_info <= maxver):
+        if _is_allowed_module_version(version_info, versions):
             packages.add(module)
 
     if custom_typeshed_dir:
@@ -1132,7 +1145,13 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         if path.stem == "__init__":
             path = path.parent
         module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
-        if module.split(".")[0] in packages:
+        if (
+            module.split(".")[0] in packages
+            and _is_allowed_module_version(
+                version_info,
+                stdlib_py_versions.get(module),
+            )
+        ):
             modules.append(module)
     return sorted(modules)
 
