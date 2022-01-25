@@ -394,10 +394,10 @@ class Errors:
             self.report_hidden_errors(info)
         self._add_error_info(file, info)
         ignored_codes = self.ignored_lines.get(file, {}).get(info.line, [])
-        if ignored_codes:
+        if ignored_codes and info.code:
             # Something is ignored on the line, but not this error, so maybe the error
             # code is incorrect.
-            msg = 'Error code in "type: ignore" comment may be incorrect or out-of-date'
+            msg = f'Error code "{info.code.code}" not covered by "type: ignore" comment'
             if info.code in original_error_codes:
                 # If there seems to be a "type: ignore" with a stale error
                 # code, report a more specific note.
