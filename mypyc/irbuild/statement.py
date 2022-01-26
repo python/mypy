@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
     Branch, MethodCall, Op, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ir.rtypes import RInstance, exc_rtuple
+from mypyc.ir.rtypes import RInstance, exc_rtuple, none_rprimitive
 from mypyc.primitives.generic_ops import py_delattr_op
 from mypyc.primitives.misc_ops import type_op, import_from_op
 from mypyc.primitives.exc_ops import (
@@ -582,7 +582,14 @@ def transform_with(builder: IRBuilder,
             args = [none, none, none]
 
         if is_native:
-            return builder.add(MethodCall(builder.read(mgr), "__exit__", args=args, line=line))
+            assert isinstance(mgr_v.type, RInstance)
+            return builder.gen_method_call(
+                builder.read(mgr),
+                "__exit__",
+                arg_values=args,
+                line=line, 
+                result_type=none_rprimitive,
+            )
         else:
             assert exit_ is not None
             return builder.py_call(builder.read(exit_),

@@ -416,7 +416,7 @@ L19:
 L20:
     return 1
 
-[case testWithNative]
+[case testWithNativeSimple]
 class DummyContext:
     def __enter__(self) -> None:
         pass
