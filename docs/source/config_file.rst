@@ -237,8 +237,9 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = [
-            "^file1\\.py$",  # TOML's double-quoted strings require escaping backslashes
-            '^file2\.py$',  # but TOML's single-quoted strings do not
+              "^one\.py$",  # TOML's double-quoted strings require escaping backslashes
+              'two\.pyi$',  # but TOML's single-quoted strings do not
+              '^three\.',
           ]
 
        A single, multi-line string:
@@ -247,9 +248,10 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = '''(?x)(
-              ^file1\.py$
-              |^file2\.py$,
-          )'''
+              ^one\.py$    # files named "one.py"
+              | two\.pyi$  # or files ending with "two.pyi"
+              | ^three\.   # or files starting with "three."
+          )'''  # TOML's single-quoted strings do not require escaping backslashes
 
        See :ref:`using-a-pyproject-toml`.
 
