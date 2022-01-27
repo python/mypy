@@ -1119,7 +1119,6 @@ def get_typeshed_stdlib_modules(
 ) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
-    packages = set()
     if version_info is None:
         version_info = sys.version_info[0:2]
     # Typeshed's minimum supported Python 3 is Python 3.6
@@ -1134,11 +1133,6 @@ def get_typeshed_stdlib_modules(
                 minver, maxver = stdlib_py_versions[current_module]
                 return version_info >= minver and (maxver is None or version_info <= maxver)
         return False
-
-    for module, versions in stdlib_py_versions.items():
-        minver, maxver = versions
-        if version_info >= minver and (maxver is None or version_info <= maxver):
-            packages.add(module)
 
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
