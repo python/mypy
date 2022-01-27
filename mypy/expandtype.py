@@ -109,9 +109,11 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return Instance(inst.type, inst.args, line=inst.line,
                             column=inst.column, erased=True)
         elif isinstance(repl, ParamSpecType):
-            # TODO: what if both have prefixes???
-            # (realistically, `repl` is the unification variable for `t` so this is fine)
-            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix)
+            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix.copy_modified(
+                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+            ))
         elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
             return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
                                       t.prefix.arg_kinds + repl.arg_kinds,
