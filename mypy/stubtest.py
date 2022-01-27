@@ -1122,6 +1122,16 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         version_info = (3, 6)
     else:
         version_info = sys.version_info[0:2]
+
+    def exists_in_version(module: str) -> bool:
+        parts = module.split(".")
+        for i in range(len(parts), 0, -1):
+            current_module = ".".join(parts[:i])
+            if current_module in stdlib_py_versions:
+                minver, maxver = stdlib_py_versions[current_module]
+                return version_info >= minver and (maxver is None or version_info <= maxver)
+        return False
+
     for module, versions in stdlib_py_versions.items():
         minver, maxver = versions
         if version_info >= minver and (maxver is None or version_info <= maxver):
@@ -1138,7 +1148,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         if path.stem == "__init__":
             path = path.parent
         module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
-        if module.split(".")[0] in packages:
+        if exists_in_version(module):
             modules.append(module)
     return sorted(modules)
 
