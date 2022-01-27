@@ -1126,6 +1126,7 @@ def get_typeshed_stdlib_modules(
         version_info = (3, 6)
 
     def exists_in_version(module: str) -> bool:
+        assert version_info is not None
         parts = module.split(".")
         for i in range(len(parts), 0, -1):
             current_module = ".".join(parts[:i])
