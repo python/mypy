@@ -360,6 +360,9 @@ class RequiredType(Type):
         else:
             return "NotRequired[{}]".format(self.item)
 
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.item.accept(visitor)
+
 
 class ProperType(Type):
     """Not a type alias.
