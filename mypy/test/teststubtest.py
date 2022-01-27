@@ -983,12 +983,19 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
-        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
+        assert "graphlib" not in stdlib
+        assert "formatter" in stdlib
+        assert "importlib.metadata" not in stdlib
+
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
+        assert "graphlib" in stdlib
+        assert "formatter" not in stdlib
+        assert "importlib.metadata" in stdlib
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:
