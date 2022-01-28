@@ -1276,6 +1276,17 @@ class MessageBuilder:
                 self.note("Did you mean {}?".format(
                     pretty_seq(matches[:3], "or")), context, code=codes.TYPEDDICT_ITEM)
 
+    def typeddict_key_not_required(
+            self,
+            typ: TypedDictType,
+            item_name: str,
+            context: Context) -> None:
+        type_name: str = ""
+        if not typ.is_anonymous():
+            type_name = format_type(typ) + " "
+        self.fail('TypedDict {}key "{}" is not required.'.format(
+            type_name, item_name), context, code=codes.TYPEDDICT_ITEM_ACCESS)
+
     def typeddict_context_ambiguous(
             self,
             types: List[TypedDictType],

@@ -1680,6 +1680,9 @@ class TypedDictType(ProperType):
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_typeddict_type(self)
 
+    def is_required(self, key: str) -> bool:
+        return key in self.required_keys
+
     def __hash__(self) -> int:
         return hash((frozenset(self.items.items()), self.fallback,
                      frozenset(self.required_keys)))

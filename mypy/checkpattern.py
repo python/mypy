@@ -412,7 +412,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
             result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
-                mapping_type, key, local_errors=local_errors)
+                mapping_type, key, local_errors=local_errors, is_expression=False)
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
             if local_errors.is_errors():

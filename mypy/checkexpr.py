@@ -2932,6 +2932,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def visit_index_expr(self, e: IndexExpr) -> Type:
         """Type check an index expression (base[index]).
 
+        This function is only used for *expressions* (rvalues) not for setitem
+        statements (lvalues).
+
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
@@ -2988,7 +2991,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else:
                 return self.nonliteral_tuple_index_helper(left_type, index)
         elif isinstance(left_type, TypedDictType):
-            return self.visit_typeddict_index_expr(left_type, e.index)
+            return self.visit_typeddict_index_expr(left_type, e.index, is_expression=True)
         elif (isinstance(left_type, CallableType)
               and left_type.is_type_obj() and left_type.type_object().is_enum):
             return self.visit_enum_index_expr(left_type.type_object(), e.index, e)
@@ -3081,7 +3084,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType,
                                    index: Expression,
-                                   local_errors: Optional[MessageBuilder] = None
+                                   local_errors: Optional[MessageBuilder] = None,
+                                   *,
+                                   is_expression: bool
                                    ) -> Type:
         local_errors = local_errors or self.msg
         if isinstance(index, (StrExpr, UnicodeExpr)):
@@ -3113,6 +3118,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 local_errors.typeddict_key_not_found(td_type, key_name, index)
                 return AnyType(TypeOfAny.from_error)
             else:
+                if is_expression and not td_type.is_required(key_name):
+                    local_errors.typeddict_key_not_required(td_type, key_name, index)
                 value_types.append(value_type)
         return make_simplified_union(value_types)
 
