@@ -245,3 +245,13 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
+
+# Unreachable
+ALREADY_CAUGHT: Final = ErrorMessage(
+    "Except is unreachable, {} has already been caught",
+    code=codes.UNREACHABLE,
+)
+SUPERCLASS_ALREADY_CAUGHT: Final = ErrorMessage(
+    "Except is unreachable, superclass {} of {} has already been caught",
+    code=codes.UNREACHABLE,
+)

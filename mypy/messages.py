@@ -1386,15 +1386,6 @@ class MessageBuilder:
     def unreachable_statement(self, context: Context) -> None:
         self.fail("Statement is unreachable", context, code=codes.UNREACHABLE)
 
-    def already_caught(self, typ: Type, context: Context) -> None:
-        self.fail("Except is unreachable, {} has already been caught".format(format_type(typ)),
-                  context, code=codes.UNREACHABLE)
-
-    def superclass_already_caught(self, typ: Type, super_typ: Type, context: Context) -> None:
-        self.fail("Except is unreachable, superclass {} of {} has already been caught"
-                  .format(format_type(super_typ), format_type(typ)), context,
-                  code=codes.UNREACHABLE)
-
     def redundant_left_operand(self, op_name: str, context: Context) -> None:
         """Indicates that the left operand of a boolean expression is redundant:
         it does not change the truth value of the entire condition as a whole.

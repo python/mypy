@@ -2350,11 +2350,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if isinstance(typ, AnyType):
                     continue
                 if typ in seen:
-                    self.msg.already_caught(typ, expr)
+                    self.fail(message_registry.ALREADY_CAUGHT.format(format_type(typ)), expr)
                     continue
                 seen_superclass = next((s for s in seen if is_subtype(typ, s)), None)
                 if seen_superclass is not None:
-                    self.msg.superclass_already_caught(typ, seen_superclass, expr)
+                    self.fail(message_registry.SUPERCLASS_ALREADY_CAUGHT.format(
+                            format_type(seen_superclass), format_type(typ)), expr)
                     continue
                 seen.append(typ)
 
