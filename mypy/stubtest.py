@@ -260,8 +260,12 @@ def verify_typeinfo(
     except Exception:
         if not stub.is_final:
             yield Error(
-                object_path, "cannot be subclassed at runtime, but isn't marked with @final in the stub",
-                stub, runtime, stub_desc=repr(stub))
+                object_path,
+                "cannot be subclassed at runtime, but isn't marked with @final in the stub",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
 
     # Check everything already defined in the stub
     to_check = set(stub.names)
