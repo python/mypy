@@ -7,7 +7,7 @@ from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
     Argument, AssignmentStmt, CallExpr, Context, Expression, JsonDict,
     NameExpr, RefExpr, SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr,
-    PlaceholderNode, FuncBase, ClassDef,
+    PlaceholderNode, FuncBase,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
