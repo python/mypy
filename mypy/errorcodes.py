@@ -121,7 +121,7 @@ NO_ANY_RETURN: Final = ErrorCode(
     'Reject returning value with "Any" type if return type is not "Any"',
     "General",
 )
-UNREACHABLE: Final = ErrorCode(
+UNREACHABLE: Final[ErrorCode] = ErrorCode(
     "unreachable", "Warn about unreachable statements or expressions", "General"
 )
 REDUNDANT_EXPR: Final = ErrorCode(
