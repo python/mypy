@@ -124,7 +124,7 @@ from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Di
 from mypy_extensions import trait, mypyc_attr
 
 from mypy.nodes import (
-    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind
+    Expression, Context, ClassDef, SymbolTableNode, MypyFile, CallExpr, ArgKind, TypeInfo
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
@@ -258,6 +258,12 @@ class SemanticAnalyzerPluginInterface:
         raise NotImplementedError
 
     @abstractmethod
+    def builtin_type(self, fully_qualified_name: str) -> Instance:
+        """Legacy function -- use named_type() instead."""
+        # NOTE: Do not delete this since many plugins may still use it.
+        raise NotImplementedError
+
+    @abstractmethod
     def named_type_or_none(self, fullname: str,
                            args: Optional[List[Type]] = None) -> Optional[Instance]:
         """Construct an instance of a type with given type arguments.
@@ -266,6 +272,10 @@ class SemanticAnalyzerPluginInterface:
         type name. This is possible when the qualified name includes a
         module name and the module has not been imported.
         """
+        raise NotImplementedError
+
+    @abstractmethod
+    def basic_new_typeinfo(self, name: str, basetype_or_fallback: Instance, line: int) -> TypeInfo:
         raise NotImplementedError
 
     @abstractmethod

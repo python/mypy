@@ -1081,3 +1081,42 @@ t: T
 y: List[T] = [t]
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleWithBoolNarrowsToBool]
+# flags: --warn-unreachable
+from typing import NamedTuple
+
+class C(NamedTuple):
+    x: int
+
+    def __bool__(self) -> bool:
+        pass
+
+def foo(c: C) -> None:
+    if c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+
+def bar(c: C) -> None:
+    if not c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+
+class C1(NamedTuple):
+    x: int
+
+def foo1(c: C1) -> None:
+    if c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
+    else:
+        c  # E: Statement is unreachable
+
+def bar1(c: C1) -> None:
+    if not c:
+        c  # E: Statement is unreachable
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

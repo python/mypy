@@ -128,7 +128,7 @@ class SocketHandler(Handler):
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
-    def makeSocket(self) -> socket: ...  # type: ignore
+    def makeSocket(self) -> socket: ...  # type: ignore[override]
 
 class SysLogHandler(Handler):
     LOG_EMERG: int

@@ -4,7 +4,7 @@ import sys
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
 from os import _Opener
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, TextIO, Tuple, Type
+from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, TextIO, Type
 
 DEFAULT_BUFFER_SIZE: int
 
@@ -65,7 +65,7 @@ class BufferedIOBase(IOBase):
 
 class FileIO(RawIOBase, BinaryIO):
     mode: str
-    name: StrOrBytesPath | int  # type: ignore
+    name: StrOrBytesPath | int  # type: ignore[assignment]
     def __init__(
         self, file: StrOrBytesPath | int, mode: str = ..., closefd: bool = ..., opener: _Opener | None = ...
     ) -> None: ...
@@ -87,7 +87,7 @@ class BytesIO(BufferedIOBase, BinaryIO):
     if sys.version_info >= (3, 7):
         def read1(self, __size: int | None = ...) -> bytes: ...
     else:
-        def read1(self, __size: int | None) -> bytes: ...  # type: ignore
+        def read1(self, __size: int | None) -> bytes: ...  # type: ignore[override]
 
 class BufferedReader(BufferedIOBase, BinaryIO):
     def __enter__(self: Self) -> Self: ...
@@ -96,7 +96,7 @@ class BufferedReader(BufferedIOBase, BinaryIO):
     if sys.version_info >= (3, 7):
         def read1(self, __size: int = ...) -> bytes: ...
     else:
-        def read1(self, __size: int) -> bytes: ...  # type: ignore
+        def read1(self, __size: int) -> bytes: ...  # type: ignore[override]
 
 class BufferedWriter(BufferedIOBase, BinaryIO):
     def __enter__(self: Self) -> Self: ...
@@ -110,7 +110,7 @@ class BufferedRandom(BufferedReader, BufferedWriter):
     if sys.version_info >= (3, 7):
         def read1(self, __size: int = ...) -> bytes: ...
     else:
-        def read1(self, __size: int) -> bytes: ...  # type: ignore
+        def read1(self, __size: int) -> bytes: ...  # type: ignore[override]
 
 class BufferedRWPair(BufferedIOBase):
     def __init__(self, reader: RawIOBase, writer: RawIOBase, buffer_size: int = ...) -> None: ...
@@ -119,14 +119,14 @@ class BufferedRWPair(BufferedIOBase):
 class TextIOBase(IOBase):
     encoding: str
     errors: str | None
-    newlines: str | Tuple[str, ...] | None
-    def __iter__(self) -> Iterator[str]: ...  # type: ignore
-    def __next__(self) -> str: ...  # type: ignore
+    newlines: str | tuple[str, ...] | None
+    def __iter__(self) -> Iterator[str]: ...  # type: ignore[override]
+    def __next__(self) -> str: ...  # type: ignore[override]
     def detach(self) -> BinaryIO: ...
     def write(self, __s: str) -> int: ...
-    def writelines(self, __lines: Iterable[str]) -> None: ...  # type: ignore
-    def readline(self, __size: int = ...) -> str: ...  # type: ignore
-    def readlines(self, __hint: int = ...) -> list[str]: ...  # type: ignore
+    def writelines(self, __lines: Iterable[str]) -> None: ...  # type: ignore[override]
+    def readline(self, __size: int = ...) -> str: ...  # type: ignore[override]
+    def readlines(self, __hint: int = ...) -> list[str]: ...  # type: ignore[override]
     def read(self, __size: int | None = ...) -> str: ...
     def tell(self) -> int: ...
 
@@ -160,11 +160,11 @@ class TextIOWrapper(TextIOBase, TextIO):
         ) -> None: ...
     # These are inherited from TextIOBase, but must exist in the stub to satisfy mypy.
     def __enter__(self: Self) -> Self: ...
-    def __iter__(self) -> Iterator[str]: ...  # type: ignore
-    def __next__(self) -> str: ...  # type: ignore
-    def writelines(self, __lines: Iterable[str]) -> None: ...  # type: ignore
-    def readline(self, __size: int = ...) -> str: ...  # type: ignore
-    def readlines(self, __hint: int = ...) -> list[str]: ...  # type: ignore
+    def __iter__(self) -> Iterator[str]: ...  # type: ignore[override]
+    def __next__(self) -> str: ...  # type: ignore[override]
+    def writelines(self, __lines: Iterable[str]) -> None: ...  # type: ignore[override]
+    def readline(self, __size: int = ...) -> str: ...  # type: ignore[override]
+    def readlines(self, __hint: int = ...) -> list[str]: ...  # type: ignore[override]
     def seek(self, __cookie: int, __whence: int = ...) -> int: ...
 
 class StringIO(TextIOWrapper):
@@ -179,4 +179,4 @@ class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
     def __init__(self, decoder: codecs.IncrementalDecoder | None, translate: bool, errors: str = ...) -> None: ...
     def decode(self, input: bytes | str, final: bool = ...) -> str: ...
     @property
-    def newlines(self) -> str | Tuple[str, ...] | None: ...
+    def newlines(self) -> str | tuple[str, ...] | None: ...

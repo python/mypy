@@ -107,13 +107,13 @@ class MessageBuilder:
     disable_count = 0
 
     # Hack to deduplicate error messages from union types
-    disable_type_names = 0
+    disable_type_names_count = 0
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
         self.disable_count = 0
-        self.disable_type_names = 0
+        self.disable_type_names_count = 0
 
     #
     # Helpers
@@ -122,7 +122,7 @@ class MessageBuilder:
     def copy(self) -> 'MessageBuilder':
         new = MessageBuilder(self.errors.copy(), self.modules)
         new.disable_count = self.disable_count
-        new.disable_type_names = self.disable_type_names
+        new.disable_type_names_count = self.disable_type_names_count
         return new
 
     def clean_copy(self) -> 'MessageBuilder':
@@ -144,6 +144,14 @@ class MessageBuilder:
             yield
         finally:
             self.disable_count -= 1
+
+    @contextmanager
+    def disable_type_names(self) -> Iterator[None]:
+        self.disable_type_names_count += 1
+        try:
+            yield
+        finally:
+            self.disable_type_names_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
@@ -298,7 +306,7 @@ class MessageBuilder:
                 extra = ' (not iterable)'
             elif member == '__aiter__':
                 extra = ' (not async iterable)'
-            if not self.disable_type_names:
+            if not self.disable_type_names_count:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
@@ -380,7 +388,7 @@ class MessageBuilder:
         else:
             right_str = format_type(right_type)
 
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
@@ -389,7 +397,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported left operand type for {} (some union)'.format(op)
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(
@@ -1250,7 +1258,7 @@ class MessageBuilder:
             context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
-                format_item_name_list(typ.items.keys())), context)
+                format_item_name_list(typ.items.keys())), context, code=codes.LITERAL_REQ)
 
     def typeddict_key_not_found(
             self,

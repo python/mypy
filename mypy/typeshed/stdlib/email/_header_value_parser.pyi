@@ -1,7 +1,7 @@
 import sys
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Iterable, Iterator, List, Pattern, Type, TypeVar, Union
+from typing import Any, Iterable, Iterator, Pattern, Type, TypeVar, Union
 from typing_extensions import Final
 
 _T = TypeVar("_T")
@@ -23,7 +23,7 @@ def quote_string(value: Any) -> str: ...
 if sys.version_info >= (3, 7):
     rfc2047_matcher: Pattern[str]
 
-class TokenList(List[Union[TokenList, Terminal]]):
+class TokenList(list[Union[TokenList, Terminal]]):
     token_type: str | None
     syntactic_break: bool
     ew_combine_allowed: bool
@@ -334,7 +334,7 @@ class Terminal(str):
     def pop_trailing_ws(self) -> None: ...
     @property
     def comments(self) -> list[str]: ...
-    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore
+    def __getnewargs__(self) -> tuple[str, str]: ...  # type: ignore[override]
 
 class WhiteSpaceTerminal(Terminal):
     @property
