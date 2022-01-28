@@ -691,8 +691,8 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub="class C:\n  def __init_subclass__(cls, e: int = ..., **kwargs: int) -> None: ...",
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -704,7 +704,7 @@ class StubtestUnit(unittest.TestCase):
 
     def test_not_subclassable(self) -> None:
         output = run_stubtest(
-            "class CantBeSubclassed:\n  pass",
+            "class CantBeSubclassed:\n  def __init_subclass__(cls): pass",
             "class CantBeSubclassed:\n  def __init_subclass__(cls): raise RuntimeError('nope')",
             [],
         )
