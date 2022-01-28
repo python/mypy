@@ -1933,3 +1933,23 @@ class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: Only a single data t
 class FromEnumAndOther2(Correct2, Second):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testEnumtValueUnionSimplification]
+from enum import IntEnum
+from typing import Any
+
+class C(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
+
+def f1(c: C) -> None:
+    x = {'x': c.value}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+
+def f2(c: C, a: Any) -> None:
+    x = {'x': c.value, 'y': a}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+    y = {'y': a, 'x': c.value}
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+[builtins fixtures/dict.pyi]
