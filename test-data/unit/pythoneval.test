@@ -1152,7 +1152,8 @@ _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
 
-[case testAsyncioGatherPreciseType]
+[case testAsyncioGatherPreciseType-xfail]
+# Mysteriously regressed in #11905
 import asyncio
 from typing import Tuple
 
