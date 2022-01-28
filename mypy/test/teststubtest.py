@@ -702,6 +702,17 @@ class StubtestUnit(unittest.TestCase):
                 error=None,
             )
 
+    def test_not_subclassable(self) -> None:
+        output = run_stubtest(
+            "class CantBeSubclassed:\n  pass",
+            "class CantBeSubclassed:\n  def __init_subclass__(cls): raise RuntimeError('nope')",
+            [],
+        )
+        assert (
+            "CantBeSubclassed cannot be subclassed at runtime,"
+            " but isn't marked with @final in the stub"
+        ) in output
+
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
         yield Case(
