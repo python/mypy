@@ -254,6 +254,15 @@ def verify_typeinfo(
         yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
+    try:
+        class SubClass(runtime):
+            pass
+    except Exception:
+        if not stub.is_final:
+            yield Error(
+                object_path, "cannot be subclassed at runtime, but isn't marked with @final in the stub",
+                stub, runtime, stub_desc=repr(stub))
+
     # Check everything already defined in the stub
     to_check = set(stub.names)
     # There's a reasonable case to be made that we should always check all dunders, but it's
