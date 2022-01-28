@@ -843,22 +843,12 @@ def baz(x: int) -> int:
 
 [case testUnreachableFlagExcepts]
 # flags: --warn-unreachable
-from typing import Type, NoReturn, Tuple
+from typing import Type, NoReturn
 
 def error() -> NoReturn: ...
 
-ignore: Type[Exception]
-exclude: Tuple[Type[Exception], ...]
-class ContinueOnError: pass
-
 try:
     error()
-except ignore:
-    pass
-except exclude:
-    pass
-except ContinueOnError:            # E: Exception type must be derived from BaseException
-    pass
 except Exception:
     pass
 except Exception as err:           # E: Except is unreachable, "Exception" has already been caught
@@ -870,6 +860,68 @@ except (NotImplementedError, ):
 except NotImplementedError:        # E: Except is unreachable, superclass "Exception" of "NotImplementedError" has already been caught
     pass
 except NotImplementedError:        # E: Except is unreachable, superclass "Exception" of "NotImplementedError" has already been caught
+    pass
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagIgnoreVariablesInExcept]
+# flags: --warn-unreachable
+from typing import NoReturn, Union, Type, Tuple
+
+def error() -> NoReturn: ...
+class MyError(BaseException): ...
+
+ignore: Type[Exception]
+exclude: Tuple[Type[Exception], ...]
+omit: Union[Type[RuntimeError], Type[MyError]]
+
+try:
+    error()
+except ignore:
+    pass
+except exclude:
+    pass
+except omit:
+    pass
+except RuntimeError:
+    pass
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagExceptWithUnknownBaseClass]
+# flags: --warn-unreachable
+from typing import Any, NoReturn
+
+Parent: Any
+class MyError(Parent): ...
+def error() -> NoReturn: ...
+
+try:
+    error()
+except MyError:
+    pass
+except Exception:
+    pass
+except MyError:  # E: Except is unreachable, "MyError" has already been caught
+    pass
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableFlagExceptWithError]
+# flags: --warn-unreachable
+from typing import NoReturn
+
+# The following class is not derived from 'BaseException'. Thus an error is raised
+# resulting in Any as type for the class in the exception expression. Such cases
+# must be ignored in the rest of the reachability analysis.
+class NotFromBaseException: ...
+
+def error() -> NoReturn: ...
+
+try:
+    error()
+except NotFromBaseException:   # E: Exception type must be derived from BaseException
+    pass
+except RuntimeError:
+    pass
+except NotImplementedError:    # E: Except is unreachable, superclass "RuntimeError" of "NotImplementedError" has already been caught
     pass
 [builtins fixtures/exception.pyi]
 
