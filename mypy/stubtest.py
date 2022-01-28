@@ -255,7 +255,7 @@ def verify_typeinfo(
         return
 
     try:
-        class SubClass(runtime):
+        class SubClass(runtime):  # type: ignore
             pass
     except Exception:
         if not stub.is_final:
