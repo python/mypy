@@ -1,6 +1,7 @@
 import sys
 from _tracemalloc import *
-from typing import Optional, Sequence, Tuple, Union, overload
+from typing import Optional, Sequence, Union, overload
+from typing_extensions import SupportsIndex
 
 def get_object_traceback(obj: object) -> Traceback | None: ...
 def take_snapshot() -> Snapshot: ...
@@ -34,7 +35,7 @@ class StatisticDiff:
     traceback: Traceback
     def __init__(self, traceback: Traceback, size: int, size_diff: int, count: int, count_diff: int) -> None: ...
 
-_FrameTupleT = Tuple[str, int]
+_FrameTupleT = tuple[str, int]
 
 class Frame:
     filename: str
@@ -42,9 +43,9 @@ class Frame:
     def __init__(self, frame: _FrameTupleT) -> None: ...
 
 if sys.version_info >= (3, 9):
-    _TraceTupleT = Union[Tuple[int, int, Sequence[_FrameTupleT], Optional[int]], Tuple[int, int, Sequence[_FrameTupleT]]]
+    _TraceTupleT = Union[tuple[int, int, Sequence[_FrameTupleT], Optional[int]], tuple[int, int, Sequence[_FrameTupleT]]]
 else:
-    _TraceTupleT = Tuple[int, int, Sequence[_FrameTupleT]]
+    _TraceTupleT = tuple[int, int, Sequence[_FrameTupleT]]
 
 class Trace:
     domain: int
@@ -63,7 +64,7 @@ class Traceback(Sequence[Frame]):
     else:
         def format(self, limit: int | None = ...) -> list[str]: ...
     @overload
-    def __getitem__(self, i: int) -> Frame: ...
+    def __getitem__(self, i: SupportsIndex) -> Frame: ...
     @overload
     def __getitem__(self, s: slice) -> Sequence[Frame]: ...
     def __len__(self) -> int: ...

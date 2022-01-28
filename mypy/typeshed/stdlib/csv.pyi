@@ -21,7 +21,7 @@ from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, Type, TypeVar, overload
 
 if sys.version_info >= (3, 8):
-    from typing import Dict as _DictReadMapping
+    from builtins import dict as _DictReadMapping
 else:
     from collections import OrderedDict as _DictReadMapping
 
@@ -100,7 +100,7 @@ class DictWriter(Generic[_T]):
     def writerow(self, rowdict: Mapping[_T, Any]) -> Any: ...
     def writerows(self, rowdicts: Iterable[Mapping[_T, Any]]) -> None: ...
 
-class Sniffer(object):
+class Sniffer:
     preferred: list[str]
     def __init__(self) -> None: ...
     def sniff(self, sample: str, delimiters: str | None = ...) -> Type[Dialect]: ...

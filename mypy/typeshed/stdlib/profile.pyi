@@ -1,5 +1,5 @@
 from _typeshed import StrOrBytesPath
-from typing import Any, Callable, Tuple, TypeVar
+from typing import Any, Callable, TypeVar
 
 def run(statement: str, filename: str | None = ..., sort: str | int = ...) -> None: ...
 def runctx(
@@ -8,7 +8,7 @@ def runctx(
 
 _SelfT = TypeVar("_SelfT", bound=Profile)
 _T = TypeVar("_T")
-_Label = Tuple[str, int, str]
+_Label = tuple[str, int, str]
 
 class Profile:
     bias: int
