@@ -258,7 +258,8 @@ def verify_typeinfo(
         class SubClass(runtime):  # type: ignore
             pass
     except Exception:
-        if not stub.is_final:
+        # Enum classes are implicitly @final
+        if not stub.is_final and not issubclass(runtime, enum.Enum):
             yield Error(
                 object_path,
                 "cannot be subclassed at runtime, but isn't marked with @final in the stub",
