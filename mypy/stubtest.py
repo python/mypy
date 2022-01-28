@@ -258,8 +258,15 @@ def verify_typeinfo(
         class SubClass(runtime):  # type: ignore
             pass
     except Exception:
-        # Enum classes are implicitly @final
-        if not stub.is_final and not issubclass(runtime, enum.Enum):
+        if (
+            not stub.is_final
+            # Enum classes are implicitly @final
+            and not issubclass(runtime, enum.Enum)
+            # If __init_subclass__ is defined in the class itself (but not in a
+            # base class), it clearly is meant to be subclass, but you
+            # apparently have to do something special to create a subclass without errors
+            and "__init_subclass__" not in runtime.__dict__
+        ):
             yield Error(
                 object_path,
                 "cannot be subclassed at runtime, but isn't marked with @final in the stub",
