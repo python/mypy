@@ -691,7 +691,12 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int = ..., **kwargs: int) -> None: ...",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
                 runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
