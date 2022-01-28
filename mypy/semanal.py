@@ -3297,9 +3297,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # So, we need to warn users about possible invalid usage.
         if len(call.args) > 1:
             self.fail(
-                "ParamSpec accepts only a single argument, {} given".format(
-                    len(call.args),
-                ),
+                "Only the first argument to ParamSpec has defined semantics",
                 s,
             )
 
