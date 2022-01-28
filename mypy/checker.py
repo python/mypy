@@ -2347,7 +2347,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if expr and isinstance(expr, NameExpr) and isinstance(expr.node, TypeInfo):
                 with self.expr_checker.msg.disable_errors():
                     typ = get_proper_type(self.check_except_handler_test(expr))
-                if isinstance(typ, AnyType):
+                if isinstance(typ, AnyType) or isinstance(typ, UnionType):
                     continue
                 if typ in seen:
                     self.fail(message_registry.ALREADY_CAUGHT.format(format_type(typ)), expr)
