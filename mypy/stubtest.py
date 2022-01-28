@@ -263,7 +263,7 @@ def verify_typeinfo(
             # Enum classes are implicitly @final
             and not issubclass(runtime, enum.Enum)
             # If __init_subclass__ is defined in the class itself (but not in a
-            # base class), it clearly is meant to be subclass, but you
+            # base class), it clearly is meant to be subclassable, but you
             # apparently have to do something special to create a subclass without errors
             and "__init_subclass__" not in runtime.__dict__
         ):
