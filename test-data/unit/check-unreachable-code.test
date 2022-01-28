@@ -925,6 +925,19 @@ except NotImplementedError:    # E: Except is unreachable, superclass "RuntimeEr
     pass
 [builtins fixtures/exception.pyi]
 
+[case testUnreachableExceptWithoutUnreachableFlag]
+from typing import NoReturn
+
+def error() -> NoReturn: ...
+
+try:
+    error()
+except Exception:
+    pass
+except RuntimeError:
+    pass
+[builtins fixtures/exception.pyi]
+
 [case testUnreachableFlagIgnoresSemanticAnalysisUnreachable]
 # flags: --warn-unreachable --python-version 3.7 --platform win32 --always-false FOOBAR
 import sys
