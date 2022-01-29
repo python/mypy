@@ -238,37 +238,65 @@ def typed_dict_get_signature_callback(ctx: MethodSigContext) -> CallableType:
 
 def typed_dict_get_callback(ctx: MethodContext) -> Type:
     """Infer a precise return type for TypedDict.get with literal first argument."""
-    if (isinstance(ctx.type, TypedDictType)
-            and len(ctx.arg_types) >= 1
-            and len(ctx.arg_types[0]) == 1):
-        keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
-        if keys is None:
-            return ctx.default_return_type
+    if not (
+        isinstance(ctx.type, TypedDictType)
+        and len(ctx.arg_types) >= 1
+        and len(ctx.arg_types[0]) == 1
+    ):
+        return ctx.default_return_type
 
-        output_types: List[Type] = []
-        for key in keys:
-            value_type = get_proper_type(ctx.type.items.get(key))
-            if value_type is None:
-                return ctx.default_return_type
+    keys = try_getting_str_literals(ctx.args[0][0], ctx.arg_types[0][0])
+    if keys is None:
+        return ctx.default_return_type
 
-            if len(ctx.arg_types) == 1:
-                output_types.append(value_type)
-            elif (len(ctx.arg_types) == 2 and len(ctx.arg_types[1]) == 1
-                  and len(ctx.args[1]) == 1):
-                default_arg = ctx.args[1][0]
-                if (isinstance(default_arg, DictExpr) and len(default_arg.items) == 0
-                        and isinstance(value_type, TypedDictType)):
-                    # Special case '{}' as the default for a typed dict type.
-                    output_types.append(value_type.copy_modified(required_keys=set()))
-                else:
-                    output_types.append(value_type)
-                    output_types.append(ctx.arg_types[1][0])
+    default_type: Optional[Type]
+    if len(ctx.arg_types) == 1:
+        default_type = None
+    elif len(ctx.arg_types) == 2 and len(ctx.arg_types[0]) == 1:
+        default_type = ctx.arg_types[1][0]
+    else:
+        default_type = ctx.default_return_type
 
-        if len(ctx.arg_types) == 1:
-            output_types.append(NoneType())
+    output_types: List[Type] = []
 
-        return make_simplified_union(output_types)
-    return ctx.default_return_type
+    for key in keys:
+        value_type = get_proper_type(ctx.type.items.get(key))
+        if value_type is None:
+            # It would be nice to issue a "TypedDict has no key {key}" failure here. However,
+            # we don't do this because in the case where you have a union of typeddicts, and
+            # one of them has the key but others don't, an error message is incorrect, and
+            # the plugin API has no mechanism to distinguish these cases.
+            output_types.append(default_type or NoneType())
+            continue
+
+        if ctx.type.is_required(key):
+            # Without unions we could issue an error for .get('required_key', default) because
+            # the default doesn't make sense. But because of unions, we don't do that.
+            output_types.append(value_type)
+            continue
+
+        if default_type is None:
+            output_types.extend([
+                value_type,
+                NoneType(),
+            ])
+            continue
+
+        # Special case '{}' as the default for a typed dict type.
+        if len(ctx.args[1]) == 1:
+            default_arg = ctx.args[1][0]
+            if (isinstance(default_arg, DictExpr) and len(default_arg.items) == 0
+                    and isinstance(value_type, TypedDictType)):
+
+                output_types.append(value_type.copy_modified(required_keys=set()))
+                continue
+
+        output_types.extend([
+            value_type,
+            default_type,
+        ])
+
+    return make_simplified_union(output_types)
 
 
 def typed_dict_pop_signature_callback(ctx: MethodSigContext) -> CallableType:

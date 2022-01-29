@@ -1081,7 +1081,7 @@ reveal_type(d.get(s))
 [out]
 _testTypedDictGet.py:7: note: Revealed type is "builtins.int"
 _testTypedDictGet.py:8: note: Revealed type is "builtins.str"
-_testTypedDictGet.py:9: note: Revealed type is "builtins.object*"
+_testTypedDictGet.py:9: note: Revealed type is "None"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
 _testTypedDictGet.py:10: note:     def get(self, key: str) -> object

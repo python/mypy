@@ -310,17 +310,20 @@ class TypedDict2(TypedDict, total=False):
     key: Literal['B', 'C']
 
 x: Union[TypedDict1, TypedDict2]
-if x['key'] == 'A':
+
+# NOTE: we ignore typeddict-item-access errors here because the narrowing doesn't work with .get().
+
+if x['key'] == 'A':  # type: ignore[typeddict-item-access]
     reveal_type(x)  # N: Revealed type is "TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]})"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 
-if x['key'] == 'C':
+if x['key'] == 'C':  # type: ignore[typeddict-item-access]
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"
 
-if x['key'] == 'D':
+if x['key'] == 'D':  # type: ignore[typeddict-item-access]
     reveal_type(x)  # E: Statement is unreachable
 else:
     reveal_type(x)  # N: Revealed type is "Union[TypedDict('__main__.TypedDict1', {'key'?: Union[Literal['A'], Literal['C']]}), TypedDict('__main__.TypedDict2', {'key'?: Union[Literal['B'], Literal['C']]})]"

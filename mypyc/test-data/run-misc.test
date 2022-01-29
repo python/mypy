@@ -679,6 +679,7 @@ TypeError
 10
 
 [case testClassBasedTypedDict]
+[typing fixtures/typing-full.pyi]
 from typing_extensions import TypedDict
 
 class TD(TypedDict):
@@ -709,8 +710,11 @@ def test_inherited_typed_dict() -> None:
 def test_non_total_typed_dict() -> None:
     d3 = TD3(c=3)
     d4 = TD4(a=1, b=2, c=3, d=4)
-    assert d3['c'] == 3
-    assert d4['d'] == 4
+    assert d3['c'] == 3  # type: ignore[typeddict-item-access]
+    assert d4['d'] == 4  # type: ignore[typeddict-item-access]
+    assert d3.get('c') == 3
+    assert d3.get('d') == 4
+    assert d3.get('z') is None
 
 [case testClassBasedNamedTuple]
 from typing import NamedTuple
