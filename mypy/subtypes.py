@@ -277,6 +277,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(tvar, TypeVarType):
                         if not self.check_type_parameter(lefta, righta, tvar.variance):
                             nominal = False
+                    elif isinstance(tvar, ParamSpecType):
+                        if not self.check_type_parameter(lefta, righta, COVARIANT):
+                            nominal = False
                     else:
                         if not is_equivalent(lefta, righta):
                             nominal = False
