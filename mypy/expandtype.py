@@ -138,11 +138,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # the replacement is ignored.
             if isinstance(repl, CallableType) or isinstance(repl, Parameters):
                 # Substitute *args: P.args, **kwargs: P.kwargs
-                t = t.expand_param_spec(repl)
+                prefix = param_spec.prefix
+                # we need to expand the types in the prefix, so might as well
+                # not get them in the first place
+                t = t.expand_param_spec(repl, no_prefix=True)
                 return t.copy_modified(
-                    arg_types=self.expand_types(t.arg_types),
-                    arg_kinds=t.arg_kinds,
-                    arg_names=t.arg_names,
+                    arg_types=self.expand_types(prefix.arg_types) + t.arg_types,
+                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
+                    arg_names=prefix.arg_names + t.arg_names,
                     ret_type=t.ret_type.accept(self),
                     type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None))
 
