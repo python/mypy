@@ -507,3 +507,29 @@ DerivedWithDefault: [x, y, z]
 AlwaysDefinedInBase: []
 UndefinedInDerived: []
 UndefinedInDerived2: []
+
+[case testAlwaysDefinedWithInheritance2]
+class BasePartiallyDefined:
+    def __init__(self, x: int) -> None:
+        self.a = 0
+        if x:
+            self.x = x
+
+class Derived1(BasePartiallyDefined):
+    def __init__(self, x: int) -> None:
+        super().__init__(x)
+        self.y = x
+
+class BaseUndefined:
+    x: int
+
+class DerivedAlwaysDefined(BaseUndefined):
+    def __init__(self) -> None:
+        super().__init__()
+        self.z = 0
+        self.x = 2
+[out]
+BasePartiallyDefined: [a]
+Derived1: [a, y]
+BaseUndefined: []
+DerivedAlwaysDefined: [x, z]
