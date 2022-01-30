@@ -509,6 +509,8 @@ UndefinedInDerived: []
 UndefinedInDerived2: []
 
 [case testAlwaysDefinedWithInheritance2]
+from mypy_extensions import trait
+
 class BasePartiallyDefined:
     def __init__(self, x: int) -> None:
         self.a = 0
@@ -528,8 +530,41 @@ class DerivedAlwaysDefined(BaseUndefined):
         super().__init__()
         self.z = 0
         self.x = 2
+
+@trait
+class MyTrait:
+    def f(self) -> None: pass
+
+class SimpleTraitImpl(MyTrait):
+    def __init__(self) -> None:
+        super().__init__()
+        self.x = 0
+
+@trait
+class TraitWithAttr:
+    x: int
+    y: str
+
+class TraitWithAttrImpl(TraitWithAttr):
+    def __init__(self) -> None:
+        self.y = 'x'
+
+@trait
+class TraitWithAttr2:
+    z: int
+
+class TraitWithAttrImpl2(TraitWithAttr, TraitWithAttr2):
+    def __init__(self) -> None:
+        self.y = 'x'
+        self.z = 2
 [out]
 BasePartiallyDefined: [a]
 Derived1: [a, y]
 BaseUndefined: []
 DerivedAlwaysDefined: [x, z]
+MyTrait: []
+SimpleTraitImpl: [x]
+TraitWithAttr: []
+TraitWithAttrImpl: [y]
+TraitWithAttr2: []
+TraitWithAttrImpl2: [y, z]
