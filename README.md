@@ -117,6 +117,7 @@ Mypy can be integrated into popular IDEs:
   [its own implementation of PEP 484](https://www.jetbrains.com/help/pycharm/type-hinting-in-product.html))
 * VS Code: provides [basic integration](https://code.visualstudio.com/docs/python/linting#_mypy) with mypy.
 * pre-commit: use [pre-commit mirrors-mypy](https://github.com/pre-commit/mirrors-mypy).
+* [MegaLinter](https://megalinter.github.io): Multi-Languages linter [embedding mypy](https://megalinter.github.io/latest/descriptors/python_mypy/). Use [python flavor](https://megalinter.github.io/latest/flavors/python/) for optimal performances
 
 Web site and documentation
 --------------------------
