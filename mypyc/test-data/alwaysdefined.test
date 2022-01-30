@@ -166,7 +166,7 @@ IfConditionalAndNonConditional1: [x]
 IfConditionalAndNonConditional2: []
 
 [case testAlwaysDefinedExpressions]
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, cast
 from typing_extensions import Final
 
 import other
@@ -225,6 +225,12 @@ class ModuleFinal:
         self.a = F
         self.b = other.Y
 
+class ClassFinal:
+    F: Final = 3
+
+    def __init__(self) -> None:
+        self.a = ClassFinal.F
+
 class Literals:
     def __init__(self) -> None:
         self.a = 'x'
@@ -266,6 +272,12 @@ class IsInstance:
         else:
             self.x = 3
 
+class Cast:
+    def __init__(self, x: object) -> None:
+        self.x = cast(int, x)
+        self.s = cast(str, x)
+        self.c = cast(Cast, x)
+
 def f() -> int:
     return 0
 
@@ -283,12 +295,14 @@ BinaryOps: [a, b, c, d, e, f]
 LocalsAndGlobals: [a, g]
 Booleans: [a, b, c, d, e]
 ModuleFinal: [a, b]
+ClassFinal: [F, a]
 Literals: [a, b, c]
 ListComprehension: [a]
 Helper: [x]
 AttrAccess: [x, y]
 Construct: [x]
 IsInstance: [x]
+Cast: [c, s, x]
 
 [case testAlwaysDefinedExpressions2]
 from typing import List, Tuple
@@ -360,7 +374,7 @@ Derived2: [x]
 Conditionals: [a, b]
 
 [case testAlwaysDefinedStatements]
-from typing import List, Optional
+from typing import List, Optional, Iterable
 
 class Return:
     def __init__(self, x: int) -> None:
@@ -397,6 +411,14 @@ class Assert:
         assert y < 5
         self.a = x
 
+class For:
+    def __init__(self, it: Iterable[int]) -> None:
+        self.x = 0
+        for x in it:
+            self.x += x
+        for x in it:
+            self.y = x
+
 def f() -> None:
     pass
 
@@ -405,6 +427,7 @@ Return: [x, y]
 While: [a]
 Try: [a, d]
 Assert: [a]
+For: [x]
 
 [case testAlwaysDefinedAttributeDefaults]
 class Basic:
