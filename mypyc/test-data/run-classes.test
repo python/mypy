@@ -2039,3 +2039,57 @@ def test_try_deleting_always_defined_attr() -> None:
     d: Any = D()
     with assertRaises(AttributeError):
         del d.x
+
+[case testAlwaysDefinedAttributeAndAllowInterpretedSubclasses]
+from mypy_extensions import mypyc_attr
+
+from m import define_interpreted_subclass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    x = 5
+    y: int
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+class DerivedNative(Base):
+    def __init__(self) -> None:
+        super().__init__('x')
+        self.z = 3
+
+def test_native_subclass() -> None:
+    o = DerivedNative()
+    assert o.x == 5
+    assert o.s == 'x'
+    assert o.z == 3
+
+def test_interpreted_subclass() -> None:
+    define_interpreted_subclass(Base)
+
+[file m.py]
+from testutil import assertRaises
+
+def define_interpreted_subclass(b):
+    class DerivedInterpreted1(b):
+        def __init__(self):
+            # Don't call base class __init__
+            pass
+    d1 = DerivedInterpreted1()
+    assert d1.x == 5
+    with assertRaises(AttributeError):
+        d1.y
+    with assertRaises(AttributeError):
+        d1.s
+    with assertRaises(AttributeError):
+        del d1.x
+
+    class DerivedInterpreted1(b):
+        def __init__(self):
+            super().__init__('y')
+    d2 = DerivedInterpreted1()
+    assert d2.x == 5
+    assert d2.s == 'y'
+    with assertRaises(AttributeError):
+        d2.y
+    with assertRaises(AttributeError):
+        del d2.x

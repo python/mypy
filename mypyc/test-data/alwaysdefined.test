@@ -509,7 +509,7 @@ UndefinedInDerived: []
 UndefinedInDerived2: []
 
 [case testAlwaysDefinedWithInheritance2]
-from mypy_extensions import trait
+from mypy_extensions import trait, mypyc_attr
 
 class BasePartiallyDefined:
     def __init__(self, x: int) -> None:
@@ -557,6 +557,18 @@ class TraitWithAttrImpl2(TraitWithAttr, TraitWithAttr2):
     def __init__(self) -> None:
         self.y = 'x'
         self.z = 2
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class BaseWithGeneralSubclassing:
+    x = 0
+    y: int
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+class Derived2(BaseWithGeneralSubclassing):
+    def __init__(self) -> None:
+        super().__init__('x')
+        self.z = 0
 [out]
 BasePartiallyDefined: [a]
 Derived1: [a, y]
@@ -568,3 +580,6 @@ TraitWithAttr: []
 TraitWithAttrImpl: [y]
 TraitWithAttr2: []
 TraitWithAttrImpl2: [y, z]
+BaseWithGeneralSubclassing: []
+-- TODO: 's' could also be always defined
+Derived2: [x, z]
