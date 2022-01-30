@@ -180,7 +180,8 @@ class Collections:
         self.s: Set[int] = set()
         self.d2 = {'x': x}
         self.s2 = {x}
-        self.l2 = [f()]
+        self.l2 = [f(), None] * x
+        self.t = tuple(self.l2)
 
 class Comparisons:
     def __init__(self, y: int, c: C, s: str, o: Optional[str]) -> None:
@@ -254,6 +255,17 @@ class Construct:
         self.x = Helper(1)
         self.y = Helper(self)
 
+class IsInstance:
+    def __init__(self, x: object) -> None:
+        if isinstance(x, str):
+            self.x = 0
+        elif isinstance(x, Helper):
+            self.x = 1
+        elif isinstance(x, (list, tuple)):
+            self.x = 2
+        else:
+            self.x = 3
+
 def f() -> int:
     return 0
 
@@ -265,7 +277,7 @@ Y: Final = 3
 
 [out]
 C: []
-Collections: [d, d2, l, l2, s, s2]
+Collections: [d, d2, l, l2, s, s2, t]
 Comparisons: [c1, c2, n1, n2, o1, o2, s]
 BinaryOps: [a, b, c, d, e, f]
 LocalsAndGlobals: [a, g]
@@ -276,6 +288,7 @@ ListComprehension: [a]
 Helper: [x]
 AttrAccess: [x, y]
 Construct: [x]
+IsInstance: [x]
 
 [case testAlwaysDefinedExpressions2]
 from typing import List, Tuple
