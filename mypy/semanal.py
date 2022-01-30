@@ -2177,11 +2177,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             return True
         if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
             return True
-        if (isinstance(rv, OpExpr)
-                and rv.op == '|'
-                and self.can_be_type_alias(rv.left, allow_none=True)
-                and self.can_be_type_alias(rv.right, allow_none=True)):
-            return True
+        if isinstance(rv, OpExpr) and rv.op == '|':
+            if self.is_stub_file:
+                return True
+            if (
+                self.can_be_type_alias(rv.left, allow_none=True)
+                and self.can_be_type_alias(rv.right, allow_none=True)
+            ):
+                return True
         return False
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
