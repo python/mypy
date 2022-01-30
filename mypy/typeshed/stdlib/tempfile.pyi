@@ -2,7 +2,7 @@ import os
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, Tuple, Type, Union, overload
+from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, Type, Union, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -206,7 +206,7 @@ class SpooledTemporaryFile(IO[AnyStr]):
     @property
     def encoding(self) -> str: ...  # undocumented
     @property
-    def newlines(self) -> str | Tuple[str, ...] | None: ...  # undocumented
+    def newlines(self) -> str | tuple[str, ...] | None: ...  # undocumented
     # bytes needs to go first, as default mode is to open as bytes
     if sys.version_info >= (3, 8):
         @overload

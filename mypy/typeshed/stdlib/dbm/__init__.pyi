@@ -1,6 +1,6 @@
 from _typeshed import Self
 from types import TracebackType
-from typing import Iterator, MutableMapping, Tuple, Type, Union
+from typing import Iterator, MutableMapping, Type, Union
 from typing_extensions import Literal
 
 _KeyType = Union[str, bytes]
@@ -87,7 +87,7 @@ class _Database(MutableMapping[_KeyType, bytes]):
 
 class _error(Exception): ...
 
-error = Tuple[Type[_error], Type[OSError]]
+error: tuple[Type[_error], Type[OSError]]
 
 def whichdb(filename: str) -> str: ...
 def open(file: str, flag: _TFlags = ..., mode: int = ...) -> _Database: ...

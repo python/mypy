@@ -673,6 +673,10 @@ protocols mostly follow the normal rules for generic classes. Example:
    y: Box[int] = ...
    x = y  # Error -- Box is invariant
 
+Per :pep:`PEP 544: Generic protocols <544#generic-protocols>`, ``class
+ClassName(Protocol[T])`` is allowed as a shorthand for ``class
+ClassName(Protocol, Generic[T])``.
+
 The main difference between generic protocols and ordinary generic
 classes is that mypy checks that the declared variances of generic
 type variables in a protocol match how they are used in the protocol
