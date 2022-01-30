@@ -54,9 +54,6 @@ class IPCBase:
         if sys.platform == 'win32':
             while True:
                 ov, err = _winapi.ReadFile(self.connection, size, overlapped=True)
-                # TODO: remove once typeshed supports Literal types
-                assert isinstance(ov, _winapi.Overlapped)
-                assert isinstance(err, int)
                 try:
                     if err == _winapi.ERROR_IO_PENDING:
                         timeout = int(self.timeout * 1000) if self.timeout else _winapi.INFINITE

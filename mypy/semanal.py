@@ -77,12 +77,12 @@ from mypy.nodes import (
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, FuncBase, implicit_module_attrs,
-    MatchStmt
+    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
+    MatchStmt,
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
-    StarredPattern, MappingPattern, ClassPattern
+    StarredPattern, MappingPattern, ClassPattern,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -123,7 +123,7 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_typeddict import TypedDictAnalyzer
-from mypy.semanal_enum import EnumCallAnalyzer, ENUM_BASES
+from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
     infer_reachability_of_if_statement, infer_reachability_of_match_statement,
@@ -1554,13 +1554,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
-                if self.enum_has_final_values(base):
-                    # This means that are trying to subclass a non-default
-                    # Enum class, with defined members. This is not possible.
-                    # In runtime, it will raise. We need to mark this type as final.
-                    # However, methods can be defined on a type: only values can't.
-                    # We also don't count values with annotations only.
-                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
@@ -1597,25 +1590,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.set_dummy_mro(defn.info)
             return
         self.calculate_class_mro(defn, self.object_type)
-
-    def enum_has_final_values(self, base: Instance) -> bool:
-        if (
-            base.type.is_enum
-            and base.type.fullname not in ENUM_BASES
-            and base.type.names
-            and base.type.defn
-        ):
-            for sym in base.type.names.values():
-                if isinstance(sym.node, (FuncBase, Decorator)):
-                    continue  # A method
-                if not isinstance(sym.node, Var):
-                    return True  # Can be a class
-                if self.is_stub_file or sym.node.has_explicit_value:
-                    # Corner case: assignments like `x: int` are fine in `.py` files.
-                    # But, not is `.pyi` files, because we don't know
-                    # if there's aactually a value or not.
-                    return True
-        return False
 
     def configure_tuple_base_class(self,
                                    defn: ClassDef,
@@ -3318,6 +3292,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.check_typevarlike_name(call, name, s):
             return False
 
+        # ParamSpec is different from a regular TypeVar:
+        # arguments are not semantically valid. But, allowed in runtime.
+        # So, we need to warn users about possible invalid usage.
+        if len(call.args) > 1:
+            self.fail(
+                "Only the first argument to ParamSpec has defined semantics",
+                s,
+            )
+
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
         # on the lines of process_typevar_parameters
@@ -3856,13 +3839,15 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        if not self.is_func_scope():  # not sure
+        if not self.is_func_scope():
             self.fail('"yield from" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield from" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            self.fail('"yield from" in async function', e, serious=True, blocker=True)
         else:
-            if self.function_stack[-1].is_coroutine:
-                self.fail('"yield from" in async function', e, serious=True, blocker=True)
-            else:
-                self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -4240,20 +4225,22 @@ class SemanticAnalyzer(NodeVisitor[None],
         if analyzed is not None:
             expr.type = analyzed
 
-    def visit_yield_expr(self, expr: YieldExpr) -> None:
+    def visit_yield_expr(self, e: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail('"yield" outside function', expr, serious=True, blocker=True)
-        else:
-            if self.function_stack[-1].is_coroutine:
-                if self.options.python_version < (3, 6):
-                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
-                else:
-                    self.function_stack[-1].is_generator = True
-                    self.function_stack[-1].is_async_generator = True
+            self.fail('"yield" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            if self.options.python_version < (3, 6):
+                self.fail('"yield" in async function', e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
-        if expr.expr:
-            expr.expr.accept(self)
+                self.function_stack[-1].is_async_generator = True
+        else:
+            self.function_stack[-1].is_generator = True
+        if e.expr:
+            e.expr.accept(self)
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():

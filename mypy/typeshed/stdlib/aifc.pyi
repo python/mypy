@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, NamedTuple, Tuple, Type, Union, overload
+from typing import IO, Any, NamedTuple, Type, Union, overload
 from typing_extensions import Literal
 
 class Error(Exception): ...
@@ -15,7 +15,7 @@ class _aifc_params(NamedTuple):
     compname: bytes
 
 _File = Union[str, IO[bytes]]
-_Marker = Tuple[int, int, bytes]
+_Marker = tuple[int, int, bytes]
 
 class Aifc_read:
     def __init__(self, f: _File) -> None: ...

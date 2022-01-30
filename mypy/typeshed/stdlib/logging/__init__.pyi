@@ -1,17 +1,17 @@
 import sys
 import threading
-from _typeshed import StrPath, SupportsWrite
+from _typeshed import Self, StrPath, SupportsWrite
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from io import TextIOWrapper
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Optional, Pattern, TextIO, Tuple, Type, TypeVar, Union, overload
+from typing import Any, ClassVar, Generic, Optional, Pattern, TextIO, Type, TypeVar, Union, overload
 from typing_extensions import Literal
 
-_SysExcInfoType = Union[Tuple[Type[BaseException], BaseException, Optional[TracebackType]], Tuple[None, None, None]]
+_SysExcInfoType = Union[tuple[Type[BaseException], BaseException, Optional[TracebackType]], tuple[None, None, None]]
 _ExcInfoType = Union[None, bool, _SysExcInfoType, BaseException]
-_ArgsType = Union[Tuple[object, ...], Mapping[str, object]]
+_ArgsType = Union[tuple[object, ...], Mapping[str, object]]
 _FilterType = Union[Filter, Callable[[LogRecord], int]]
 _Level = Union[int, str]
 _FormatStyle = Literal["%", "{", "$"]
@@ -27,14 +27,14 @@ def currentframe() -> FrameType: ...
 _levelToName: dict[int, str]
 _nameToLevel: dict[str, int]
 
-class Filterer(object):
+class Filterer:
     filters: list[Filter]
     def __init__(self) -> None: ...
     def addFilter(self, filter: _FilterType) -> None: ...
     def removeFilter(self, filter: _FilterType) -> None: ...
     def filter(self, record: LogRecord) -> bool: ...
 
-class Manager(object):  # undocumented
+class Manager:  # undocumented
     root: RootLogger
     disable: int
     emittedNoHandlerWarning: bool
@@ -59,7 +59,7 @@ class Logger(Filterer):
     def setLevel(self, level: _Level) -> None: ...
     def isEnabledFor(self, level: int) -> bool: ...
     def getEffectiveLevel(self) -> int: ...
-    def getChild(self, suffix: str) -> Logger: ...
+    def getChild(self: Self, suffix: str) -> Self: ...  # see python/typing#980
     if sys.version_info >= (3, 8):
         def debug(
             self,
@@ -244,14 +244,14 @@ class Logger(Filterer):
     def hasHandlers(self) -> bool: ...
     def callHandlers(self, record: LogRecord) -> None: ...  # undocumented
 
-CRITICAL: int
-FATAL: int
-ERROR: int
-WARNING: int
-WARN: int
-INFO: int
-DEBUG: int
-NOTSET: int
+CRITICAL: Literal[50]
+FATAL: Literal[50]
+ERROR: Literal[40]
+WARNING: Literal[30]
+WARN: Literal[30]
+INFO: Literal[20]
+DEBUG: Literal[10]
+NOTSET: Literal[0]
 
 class Handler(Filterer):
     level: int  # undocumented
@@ -285,7 +285,17 @@ class Formatter:
     else:
         default_msec_format: str
 
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 10):
+        def __init__(
+            self,
+            fmt: str | None = ...,
+            datefmt: str | None = ...,
+            style: _FormatStyle = ...,
+            validate: bool = ...,
+            *,
+            defaults: Mapping[str, Any] | None = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 8):
         def __init__(
             self, fmt: str | None = ..., datefmt: str | None = ..., style: _FormatStyle = ..., validate: bool = ...
         ) -> None: ...
@@ -326,6 +336,7 @@ class LogRecord:
     lineno: int
     module: str
     msecs: float
+    # Only created when logging.Formatter.format is called. See #6132.
     message: str
     msg: str
     name: str
@@ -357,7 +368,7 @@ class LoggerAdapter(Generic[_L]):
     manager: Manager  # undocumented
     if sys.version_info >= (3, 10):
         extra: Mapping[str, object] | None
-        def __init__(self, logger: _L, extra: Mapping[str, object] | None) -> None: ...
+        def __init__(self, logger: _L, extra: Mapping[str, object] | None = ...) -> None: ...
     else:
         extra: Mapping[str, object]
         def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
@@ -738,14 +749,17 @@ class RootLogger(Logger):
 
 root: RootLogger
 
-class PercentStyle(object):  # undocumented
+class PercentStyle:  # undocumented
     default_format: str
     asctime_format: str
     asctime_search: str
     if sys.version_info >= (3, 8):
         validation_pattern: Pattern[str]
     _fmt: str
-    def __init__(self, fmt: str) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = ...) -> None: ...
+    else:
+        def __init__(self, fmt: str) -> None: ...
     def usesTime(self) -> bool: ...
     if sys.version_info >= (3, 8):
         def validate(self) -> None: ...
