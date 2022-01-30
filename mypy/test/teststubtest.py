@@ -691,8 +691,13 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -701,6 +706,28 @@ class StubtestUnit(unittest.TestCase):
                 runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
+
+    def test_not_subclassable(self) -> None:
+        output = run_stubtest(
+            stub=(
+                "class CanBeSubclassed: ...\n"
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls) -> None: ...\n"
+            ),
+            runtime=(
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls): raise TypeError('nope')\n"
+                # ctypes.Array can be subclassed, but subclasses must define a few
+                # special attributes, e.g. _length_
+                "from ctypes import Array as CanBeSubclassed\n"
+            ),
+            options=[],
+        )
+        assert (
+            "CanNotBeSubclassed cannot be subclassed at runtime,"
+            " but isn't marked with @final in the stub"
+        ) in output
+        assert "CanBeSubclassed cannot be subclassed" not in output
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:

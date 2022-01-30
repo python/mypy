@@ -254,6 +254,24 @@ def verify_typeinfo(
         yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
+    try:
+        class SubClass(runtime):  # type: ignore
+            pass
+    except TypeError:
+        # Enum classes are implicitly @final
+        if not stub.is_final and not issubclass(runtime, enum.Enum):
+            yield Error(
+                object_path,
+                "cannot be subclassed at runtime, but isn't marked with @final in the stub",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+    except Exception:
+        # The class probably wants its subclasses to do something special.
+        # Examples: ctypes.Array, ctypes._SimpleCData
+        pass
+
     # Check everything already defined in the stub
     to_check = set(stub.names)
     # There's a reasonable case to be made that we should always check all dunders, but it's
