@@ -42,8 +42,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
     def visit_assign(self, op: Assign) -> GenAndKill:
-        # TODO: what if target is self?
-        return CLEAN if op.src is not self.self_reg else DIRTY
+        if op.src is self.self_reg or op.dest is self.self_reg:
+            return DIRTY
+        return CLEAN
 
     def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
         return CLEAN

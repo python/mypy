@@ -445,6 +445,18 @@ class For:
         for x in it:
             self.y = x
 
+class Assignment1:
+    def __init__(self, other: Assignment1) -> None:
+        self.x = 0
+        self = other  # Give up after assignment to self
+        self.y = 1
+
+class Assignment2:
+    def __init__(self) -> None:
+        self.x = 0
+        other = self  # Give up after self is aliased
+        self.y = other.x
+
 def f() -> None:
     pass
 
@@ -454,6 +466,8 @@ While: [a]
 Try: [a, d]
 Assert: [a]
 For: [x]
+Assignment1: [x]
+Assignment2: [x]
 
 [case testAlwaysDefinedAttributeDefaults]
 class Basic:
