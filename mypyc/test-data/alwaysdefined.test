@@ -278,6 +278,30 @@ class Cast:
         self.s = cast(str, x)
         self.c = cast(Cast, x)
 
+class PropertyAccessGetter:
+    def __init__(self, other: PropertyAccessGetter) -> None:
+        self.x = other.p
+        self.y = 1
+        self.z = self.p
+
+    @property
+    def p(self) -> int:
+        return 0
+
+class PropertyAccessSetter:
+    def __init__(self, other: PropertyAccessSetter) -> None:
+        other.p = 1
+        self.y = 1
+        self.z = self.p
+
+    @property
+    def p(self) -> int:
+        return 0
+
+    @p.setter
+    def p(self, x: int) -> None:
+        pass
+
 def f() -> int:
     return 0
 
@@ -303,6 +327,8 @@ AttrAccess: [x, y]
 Construct: [x]
 IsInstance: [x]
 Cast: [c, s, x]
+PropertyAccessGetter: [x, y]
+PropertyAccessSetter: [y]
 
 [case testAlwaysDefinedExpressions2]
 from typing import List, Tuple

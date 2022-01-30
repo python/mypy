@@ -74,14 +74,14 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         cl = op.class_type.class_ir
         if cl.get_method(op.attr):
             # Property -- calls a function
-            return DIRTY
+            return self.check_register_op(op)
         return CLEAN
 
     def visit_set_attr(self, op: SetAttr) -> GenAndKill:
         cl = op.class_type.class_ir
         if cl.get_method(op.attr):
             # Property - calls a function
-            return DIRTY
+            return self.check_register_op(op)
         return CLEAN
 
     def visit_load_static(self, op: LoadStatic) -> GenAndKill:
