@@ -2020,3 +2020,22 @@ def test_invalid_init_args() -> None:
         cls(y='x')
     with assertRaises(TypeError):
         cls(1)
+
+[case testTryDeletingAlwaysDefinedAttribute]
+from typing import Any
+from testutil import assertRaises
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+class D(C):
+    pass
+
+def test_try_deleting_always_defined_attr() -> None:
+    c: Any = C()
+    with assertRaises(AttributeError):
+        del c.x
+    d: Any = D()
+    with assertRaises(AttributeError):
+        del d.x
