@@ -1151,6 +1151,21 @@ def f(d: Union[Foo, Bar]) -> None:
     reveal_type(d)  # N: Revealed type is "TypedDict('__main__.Foo', {'tag': Literal[__main__.E.FOO], 'x': builtins.int})"
 [builtins fixtures/dict.pyi]
 
+[case testNarrowingTypedDictNotRequired]
+# flags: --strict-optional
+from typing_extensions import TypedDict
+
+class Foo(TypedDict, total=False):
+    a: str
+
+foo: Foo
+if 'a' in foo:
+    reveal_type(foo['a'])  # N: Revealed type is "builtins.str"
+else:
+    reveal_type(foo['a'])  # N: Revealed type is "builtins.str" \
+                           # E: TypedDict "Foo" key "a" is not required.
+[builtins fixtures/dict.pyi]
+
 [case testNarrowingUsingMetaclass]
 # flags: --strict-optional
 from typing import Type

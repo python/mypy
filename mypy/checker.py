@@ -4500,7 +4500,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # types of literal string or enum expressions).
 
             operands = [collapse_walrus(x) for x in node.operands]
-            operand_types = []
+            operand_types: List[Type] = []
             narrowable_operand_index_to_hash = {}
             for i, expr in enumerate(operands):
                 if expr not in type_map:
@@ -4543,6 +4543,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             partial_type_maps = []
             for operator, expr_indices in simplified_operator_list:
+                if_map: TypeMap = {}
+                else_map: TypeMap = {}
+
                 if operator in {'is', 'is not', '==', '!='}:
                     # is_valid_target:
                     #   Controls which types we're allowed to narrow exprs to. Note that
@@ -4578,8 +4581,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         expr_types = [operand_types[i] for i in expr_indices]
                         should_narrow_by_identity = all(map(has_no_custom_eq_checks, expr_types))
 
-                    if_map: TypeMap = {}
-                    else_map: TypeMap = {}
                     if should_narrow_by_identity:
                         if_map, else_map = self.refine_identity_comparison_expression(
                             operands,
@@ -4609,34 +4610,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif operator in {'in', 'not in'}:
                     assert len(expr_indices) == 2
                     left_index, right_index = expr_indices
-                    if left_index not in narrowable_operand_index_to_hash:
-                        continue
 
-                    item_type = operand_types[left_index]
-                    collection_type = operand_types[right_index]
+                    left_is_narrowable = left_index in narrowable_operand_index_to_hash
+                    right_is_narrowable = right_index in narrowable_operand_index_to_hash
 
-                    # We only try and narrow away 'None' for now
-                    if not is_optional(item_type):
-                        continue
+                    left_type = operand_types[left_index]
+                    right_type = operand_types[right_index]
 
-                    collection_item_type = get_proper_type(builtin_item_type(collection_type))
-                    if collection_item_type is None or is_optional(collection_item_type):
-                        continue
-                    if (isinstance(collection_item_type, Instance)
-                            and collection_item_type.type.fullname == 'builtins.object'):
-                        continue
-                    if is_overlapping_erased_types(item_type, collection_item_type):
-                        if_map, else_map = {operands[left_index]: remove_optional(item_type)}, {}
-                    else:
-                        continue
-                else:
-                    if_map = {}
-                    else_map = {}
+                    if left_is_narrowable:
+                        narrowed_left_type = self.refine_optional_in(left_type, right_type)
+                        if narrowed_left_type:
+                            if_map = {operands[left_index]: narrowed_left_type}
+
+                    elif right_is_narrowable:
+                        narrowed_right_type = self.refine_typeddict_in(left_type, right_type)
+                        if narrowed_right_type:
+                            if_map = {operands[right_index]: narrowed_right_type}
 
                 if operator in {'is not', '!=', 'not in'}:
                     if_map, else_map = else_map, if_map
 
-                partial_type_maps.append((if_map, else_map))
+                if if_map != {} or else_map != {}:
+                    partial_type_maps.append((if_map, else_map))
 
             return reduce_conditional_maps(partial_type_maps)
         elif isinstance(node, AssignmentExpr):
@@ -4864,6 +4859,56 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             expr = parent_expr
             expr_type = output[parent_expr] = make_simplified_union(new_parent_types)
+
+    def refine_optional_in(self,
+                           item_type: Type,
+                           collection_type: Type,
+                           ) -> Optional[Type]:
+        """
+        Check whether a condition `optional_item in collection_type` can narrow away Optional.
+
+        Returns the narrowed item_type, if any narrowing is appropriate.
+        """
+        if not is_optional(item_type):
+            return None
+
+        collection_item_type = get_proper_type(builtin_item_type(collection_type))
+        if collection_item_type is None or is_optional(collection_item_type):
+            return None
+
+        if (isinstance(collection_item_type, Instance)
+                and collection_item_type.type.fullname == 'builtins.object'):
+            return None
+        if is_overlapping_erased_types(item_type, collection_item_type):
+            return remove_optional(item_type)
+        return None
+
+    def refine_typeddict_in(self,
+                            literal_type: Type,
+                            collection_type: Type,
+                            ) -> Optional[Type]:
+        """
+        Check whether a condition `'literal' in typeddict` can narrow a non-required ite
+        into a required item.
+
+        Returns the narrowed collection_type, if any narrowing is appropriate.
+        """
+        collection_type = get_proper_type(collection_type)
+        if not isinstance(collection_type, TypedDictType):
+            return None
+
+        literals = try_getting_str_literals_from_type(literal_type)
+        if literals is None or len(literals) > 1:
+            return None
+
+        key = literals[0]
+        if key not in collection_type.items:
+            return None
+
+        if collection_type.is_required(key):
+            return None
+
+        return collection_type.copy_modified(required_keys=collection_type.required_keys | {key})
 
     def refine_identity_comparison_expression(self,
                                               operands: List[Expression],
