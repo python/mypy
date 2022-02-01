@@ -511,7 +511,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     in_desired_section = False
     try:
         results = []
-        with open(path) as f:
+        with open(path, encoding="UTF-8") as f:
             for i, line in enumerate(f):
                 line = line.strip()
                 if line.startswith('[') and line.endswith(']'):
