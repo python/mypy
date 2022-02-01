@@ -1029,11 +1029,9 @@ Sometimes you want to allow keys to be left out when creating a
    options['language'] = 'en'
 
 You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)
-``TypedDict``, since indexing using ``[]`` could fail at runtime.
-However, mypy still lets use ``[]`` with a partial ``TypedDict`` -- you
-just need to be careful with it, as it could result in a :py:exc:`KeyError`.
-Requiring :py:meth:`~dict.get` everywhere would be too cumbersome. (Note that you
-are free to use :py:meth:`~dict.get` with total ``TypedDict``\s as well.)
+``TypedDict``, since indexing using ``[]`` could fail at runtime. By default
+mypy will issue an error for this case; it is possible to disable this check
+by adding "typeddict-item-access" to the :confval:`disable_error_code` config option.
 
 Keys that aren't required are shown with a ``?`` in error messages:
 
@@ -1120,18 +1118,15 @@ Now ``BookBasedMovie`` has keys ``name``, ``year`` and ``based_on``.
 Mixing required and non-required items
 --------------------------------------
 
-In addition to allowing reuse across ``TypedDict`` types, inheritance also allows
-you to mix required and non-required (using ``total=False``) items
-in a single ``TypedDict``. Example:
+When a ``TypedDict`` has a mix of items that are required and not required,
+the ``NotRequired`` type annotation can be used to specify this for each field:
 
 .. code-block:: python
 
-   class MovieBase(TypedDict):
+   class Movie(TypedDict):
        name: str
        year: int
-
-   class Movie(MovieBase, total=False):
-       based_on: str
+       based_on: NotRequired[str]
 
 Now ``Movie`` has required keys ``name`` and ``year``, while ``based_on``
 can be left out when constructing an object. A ``TypedDict`` with a mix of required
