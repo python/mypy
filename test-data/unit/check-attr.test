@@ -1476,8 +1476,31 @@ class ToMatch:
     y: int
     z: int = attr.field(kw_only=True)
 
-reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x'], Literal['y']]"
-reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x'], Literal['y']]"
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOverrideExisting]
+# flags: --python-version 3.10
+import attr
+from typing import Final
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+# It works the same way runtime does:
+reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+
+@attr.s(auto_attribs=True)
+class WithoutMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
 [builtins fixtures/attr.pyi]
 
 [case testAttrsWithMatchArgsOldVersion]
