@@ -1465,3 +1465,25 @@ class C:
         self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgs]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    x: int
+    y: int
+    z: int = attr.field(kw_only=True)
+
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x'], Literal['y']]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x'], Literal['y']]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOldVersion]
+# flags: --python-version 3.9
+import attr
+
+@attr.s(match_args=True)
+class ToMatch: ...  # E: match_args is not supported before Python 3.10
+[builtins fixtures/attr.pyi]
