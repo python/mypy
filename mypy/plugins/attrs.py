@@ -295,7 +295,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     if ctx.api.options.python_version[:2] < (3, 10):
         if match_args:
             ctx.api.fail("match_args is not supported before Python 3.10", info.defn)
-            # We do not fail in this case,
+            # We do not cancel further steps in this case,
             # because it only affects `.__match_arg__` property.
             # Everything else should be fine.
 
@@ -765,7 +765,7 @@ def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
 def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
                     attributes: List[Attribute]) -> None:
     str_type = ctx.api.named_type('builtins.str')
-    tuple_type = TupleType(
+    match_args = TupleType(
         [
             LiteralType(attr.name, fallback=str_type)
             for attr in attributes
@@ -777,7 +777,7 @@ def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
         api=ctx.api,
         cls=ctx.cls,
         name='__match_args__',
-        typ=tuple_type,
+        typ=match_args,
         no_serialize=True,
     )
 

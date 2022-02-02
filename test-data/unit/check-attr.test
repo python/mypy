@@ -1485,5 +1485,12 @@ reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple
 import attr
 
 @attr.s(match_args=True)
-class ToMatch: ...  # E: match_args is not supported before Python 3.10
+class Wrong: ...  # E: match_args is not supported before Python 3.10
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:  # E: match_args is not supported before Python 3.10
+    x: int
+
+# Let's check that wrong `match_arg` does not break other stuff:
+reveal_type(ToMatch(x=1).x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/attr.pyi]
