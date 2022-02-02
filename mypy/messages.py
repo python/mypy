@@ -1284,7 +1284,7 @@ class MessageBuilder:
         type_name: str = ""
         if not typ.is_anonymous():
             type_name = format_type(typ) + " "
-        self.fail('TypedDict {}key "{}" is not required.'.format(
+        self.fail('TypedDict {}key "{}" is not required and might not be present.'.format(
             type_name, item_name), context, code=codes.TYPEDDICT_ITEM_ACCESS)
 
     def typeddict_context_ambiguous(

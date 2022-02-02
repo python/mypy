@@ -2223,7 +2223,7 @@ d: Outer
 
 reveal_type(d[a_key])         # N: Revealed type is "builtins.int"
 reveal_type(d[b_key])         # N: Revealed type is "builtins.str" \
-                              # E: TypedDict "Outer" key "b" is not required.
+                              # E: TypedDict "Outer" key "b" is not required and might not be present.
 reveal_type(d.get(b_key))     # N: Revealed type is "builtins.str"
 d[c_key]                      # E: TypedDict "Outer" has no key "c"
 

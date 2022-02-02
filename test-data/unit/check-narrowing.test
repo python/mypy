@@ -1163,7 +1163,7 @@ if 'a' in foo:
     reveal_type(foo['a'])  # N: Revealed type is "builtins.str"
 else:
     reveal_type(foo['a'])  # N: Revealed type is "builtins.str" \
-                           # E: TypedDict "Foo" key "a" is not required.
+                           # E: TypedDict "Foo" key "a" is not required and might not be present.
 [builtins fixtures/dict.pyi]
 
 [case testNarrowingUsingMetaclass]
