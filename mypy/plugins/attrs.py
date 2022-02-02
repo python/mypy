@@ -778,7 +778,6 @@ def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
         cls=ctx.cls,
         name='__match_args__',
         typ=match_args,
-        no_serialize=True,
     )
 
 
