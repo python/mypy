@@ -5,8 +5,8 @@ import os
 import os.path
 import sys
 
-if sys.version_info < (3, 6, 0):
-    sys.stderr.write("ERROR: You need Python 3.6 or later to use mypy.\n")
+if sys.version_info < (3, 7, 0):
+    sys.stderr.write("ERROR: You need Python 3.7 or later to use mypy.\n")
     exit(1)
 
 # we'll import stuff from the source tree, let's ensure is on the sys path
@@ -191,7 +191,6 @@ classifiers = [
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
@@ -229,7 +228,7 @@ setup(name='basedmypy',
           'python2': 'typed_ast >= 1.4.0, < 2',
           'reports': 'lxml'
       },
-      python_requires=">=3.6",
+      python_requires=">=3.7",
       include_package_data=True,
       project_urls={
           'News': 'https://github.com/KotlinIsland/basedmypy/releases',
