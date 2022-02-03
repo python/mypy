@@ -1508,12 +1508,11 @@ reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple
 import attr
 
 @attr.s(match_args=True)
-class Wrong: ...  # E: match_args is not supported before Python 3.10
+class NoMatchArgs:
+    ...
 
-@attr.s(match_args=True, auto_attribs=True)
-class ToMatch:  # E: match_args is not supported before Python 3.10
-    x: int
+n: NoMatchArgs
 
-# Let's check that wrong `match_arg` does not break other stuff:
-reveal_type(ToMatch(x=1).x)  # N: Revealed type is "builtins.int"
+reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
 [builtins fixtures/attr.pyi]

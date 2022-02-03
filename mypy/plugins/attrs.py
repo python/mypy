@@ -292,12 +292,6 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         if kw_only:
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
             return
-    if ctx.api.options.python_version[:2] < (3, 10):
-        if match_args:
-            ctx.api.fail("match_args is not supported before Python 3.10", info.defn)
-            # We do not cancel further steps in this case,
-            # because it only affects `.__match_arg__` property.
-            # Everything else should be fine.
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
@@ -315,7 +309,9 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
     if slots:
         _add_slots(ctx, attributes)
-    if match_args:
+    if match_args and ctx.api.options.python_version[:2] >= (3, 10):
+        # `.__match_args__` is only added for python3.10+, but the argument
+        # exists for earlier versions as well.
         _add_match_args(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
