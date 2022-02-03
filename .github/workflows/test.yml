@@ -43,8 +43,8 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
-        - name: Test suite with py36-ubuntu, mypyc-compiled
-          python: '3.6'
+        - name: Test suite with py37-ubuntu, mypyc-compiled
+          python: '3.7'
           arch: x64
           os: ubuntu-latest
           toxenv: py
@@ -63,17 +63,17 @@ jobs:
           os: ubuntu-latest
           toxenv: py
           tox_extra_args: "-n 2"
-        - name: mypyc runtime tests with py36-macos
-          python: '3.6'
+        - name: mypyc runtime tests with py37-macos
+          python: '3.7'
           arch: x64
           os: macos-latest
           toxenv: py
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
-        - name: mypyc runtime tests with py36-debug-build-ubuntu
-          python: '3.6.8'
+        - name: mypyc runtime tests with py37-debug-build-ubuntu
+          python: '3.7.12'
           arch: x64
           os: ubuntu-latest
-          toxenv: py36
+          toxenv: py37
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
           debug_build: true
         - name: Type check our own code (py37-ubuntu)
