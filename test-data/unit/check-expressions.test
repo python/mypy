@@ -1688,6 +1688,22 @@ main:1: note: Revealed type is "Any"
 def reveal_type(x: int) -> None: pass
 reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
 
+[case testTypingRevealType]
+from typing import reveal_type
+from typing import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[case testTypingExtensionsRevealType]
+from typing_extensions import reveal_type
+from typing_extensions import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[builtins fixtures/tuple.pyi]
+
 [case testRevealTypeVar]
 reveal_type = 1
 1 + "foo" # E: Unsupported operand types for + ("int" and "str")
