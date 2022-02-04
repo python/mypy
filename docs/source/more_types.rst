@@ -1140,7 +1140,7 @@ another ``TypedDict`` if all required keys in the other ``TypedDict`` are requir
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
 
-Required and Not Required type
+Required and NotRequired type
 -------------------------------------
 If we want to define a ``TypedDict`` object where most keys are required or most keys are potentially missing, we have two approaches:
 
