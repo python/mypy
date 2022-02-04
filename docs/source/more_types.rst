@@ -1140,6 +1140,47 @@ another ``TypedDict`` if all required keys in the other ``TypedDict`` are requir
 first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are also non-required keys
 in the first ``TypedDict``.
 
+Required and Not Required type
+-------------------------------------
+If we want to define a ``TypedDict`` object where most keys are required or most keys are potentially missing, we have two approaches:
+
+We can use ``Mixing required and non-required items`` approach where we use class that represents ``TypedDict``, and a helper class that
+inherits required or potentially-missing keys depending on the problem we have. For example, If the problem tackles the case
+where most keys are required, the ``Mixing required and non-required items`` approach is shown in the below snippet.
+
+.. code-block:: python
+
+   class MovieBase(TypedDict):
+       name: str
+       year: int
+
+   class Movie(MovieBase, total=False):
+       based_on: str
+
+This approach is cumbersome and non-intuitive, since it involves inheritance and helper class. It is more intuitive and clean
+to represents all the ``TypedDict`` keys in one place.
+
+The second option utilizes a new feature ``Required[]`` or ``NotRequired[]`` where we implicitly define keys as required or
+potentially-missing based on our preference, an example of this approach is shown in the below snippet.
+
+.. code-block:: python
+
+   class Movie(TypedDict):
+       name: str
+       year: int
+       based_on: NotRequired[str]
+
+The Required[] and NotRequired[] feature also support ``None`` value.
+
+.. code-block:: python
+
+   class Movie(TypedDict):
+       name: str
+       year: int
+       based_on: NotRequired[str|None]
+
+The ``Required`` or ``NotRequired[]`` approach is cleaner and more coherent.
+
 Unions of TypedDicts
 --------------------
 
