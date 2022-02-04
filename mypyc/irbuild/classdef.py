@@ -517,8 +517,8 @@ def add_non_ext_class_attr(builder: IRBuilder,
         if (
             cdef.info.bases
             and cdef.info.bases[0].type.fullname == 'enum.Enum'
-            # Skip "_order_" and "__order__", since Enum will remove it
-            and lvalue.name not in ('_order_', '__order__')
+            # Skip "_ignore_", "_order_" and "__order__", since Enum will remove it
+            and lvalue.name not in ('_ignore_', '_order_', '__order__')
         ):
             # Enum values are always boxed, so use object_rprimitive.
             attr_to_cache.append((lvalue, object_rprimitive))

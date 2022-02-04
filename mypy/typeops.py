@@ -715,8 +715,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             for name, symbol in typ.type.names.items():
                 if not isinstance(symbol.node, Var):
                     continue
-                # Skip "_order_" and "__order__", since Enum will remove it
-                if name in ("_order_", "__order__"):
+                # Skip "_ignore", "_order_" and "__order__", since Enum will remove it
+                if name in ("_ignore", "_order_", "__order__"):
                     continue
                 new_items.append(LiteralType(name, typ))
             # SymbolTables are really just dicts, and dicts are guaranteed to preserve

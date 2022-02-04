@@ -832,7 +832,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         mx: MemberContext,
                                         ) -> Optional[Type]:
     # Skip "_order_" and "__order__", since Enum will remove it
-    if name in ("_order_", "__order__"):
+    if name in ("_ignore_", "_order_", "__order__"):
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )

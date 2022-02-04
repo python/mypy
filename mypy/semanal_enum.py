@@ -21,7 +21,7 @@ ENUM_BASES: Final = frozenset((
     'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag',
 ))
 ENUM_SPECIAL_PROPS: Final = frozenset((
-    'name', 'value', '_name_', '_value_', '_order_', '__order__',
+    'name', 'value', '_name_', '_value_', '_ignore_', '_order_', '__order__',
     # Also attributes from `object`:
     '__module__', '__annotations__', '__doc__', '__slots__', '__dict__',
 ))
