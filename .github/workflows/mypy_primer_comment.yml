@@ -38,6 +38,9 @@ jobs:
             fs.writeFileSync("diff.zip", Buffer.from(download.data));
 
       - run: unzip diff.zip
+      # 30000 bytes is about 300 lines, posting comment fails if too long
+      - run: |
+          cat diff_*.txt | head -c 30000 | tee fulldiff.txt
 
       # Based on https://github.com/kanga333/comment-hider
       - name: Hide old comments
@@ -77,13 +80,7 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const fs = require('fs')
-            // Keep in sync with shards produced by mypy_primer workflow
-            const data = (
-              ['diff_0.txt', 'diff_1.txt', 'diff_2.txt']
-              .map(fileName => fs.readFileSync(fileName, { encoding: 'utf8' }))
-              .join('')
-              .substr(0, 30000)  // About 300 lines
-            )
+            const data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
 
             console.log("Diff from mypy_primer:")
             console.log(data)
