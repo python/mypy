@@ -2580,3 +2580,18 @@ class A:
 def f(x: int, y: int) -> int: ...
 @t.overload
 def f(x: t.Tuple[int, int]) -> int: ...
+
+
+[case testProtocol_semanal]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str:
+        ...
+
+
+[out]
+from typing import Protocol
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str: ...
