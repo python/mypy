@@ -365,7 +365,7 @@ def assert_type(typ: type, value: object) -> None:
 
 
 def parse_options(program_text: str, testcase: DataDrivenTestCase,
-                  incremental_step: int) -> Options:
+                  incremental_step: int, based: bool = False) -> Options:
     """Parse comments like '# flags: --foo' in a test case."""
     options = Options()
     flags = re.search('# flags: (.*)$', program_text, flags=re.MULTILINE)
@@ -377,6 +377,8 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
 
     if flags:
         flag_list: List[str] = flags.group(1).split()
+        if based:
+            flag_list.insert(0, '--default-return')
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
         if "--local-partial-types" in flag_list:
             flag_list.remove("--local-partial-types")
@@ -388,8 +390,12 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
     else:
         flag_list = []
         options = Options()
-        # TODO: Enable strict optional in test cases by default (requires *many* test case changes)
-        options.strict_optional = False
+        if based:
+            options.default_return = True
+        else:
+            # TODO: Enable strict optional in test cases by default
+            #  (requires *many* test case changes)
+            options.strict_optional = False
         options.error_summary = False
 
     # Allow custom python version to override testcase_pyversion.
