@@ -126,6 +126,12 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     'typing.Reversible',
 )
 
+REVEAL_TYPE_NAMES: Final = (
+    'builtins.reveal_type',
+    'typing.reveal_type',
+    'typing_extensions.reveal_type',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 

@@ -38,6 +38,9 @@ jobs:
             fs.writeFileSync("diff.zip", Buffer.from(download.data));
 
       - run: unzip diff.zip
+      # 30000 bytes is about 300 lines, posting comment fails if too long
+      - run: |
+          cat diff_*.txt | head -c 30000 | tee fulldiff.txt
 
       # Based on https://github.com/kanga333/comment-hider
       - name: Hide old comments
@@ -77,23 +80,22 @@ jobs:
           github-token: ${{secrets.GITHUB_TOKEN}}
           script: |
             const fs = require('fs')
-            // Keep in sync with shards produced by mypy_primer workflow
-            const data = (
-              ['diff_0.txt', 'diff_1.txt', 'diff_2.txt']
-              .map(fileName => fs.readFileSync(fileName, { encoding: 'utf8' }))
-              .join('')
-              .substr(0, 30000)  // About 300 lines
-            )
+            const data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
 
             console.log("Diff from mypy_primer:")
             console.log(data)
 
+            let body
             if (data.trim()) {
-              const body = 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
-              await github.issues.createComment({
-                issue_number: fs.readFileSync("pr_number.txt", { encoding: "utf8" }),
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body
-              })
+              body = 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
+            } else {
+              body = 'According to [mypy_primer](https://github.com/hauntsaninja/mypy_primer), this change has no effect on the checked open source code. 🤖🎉'
             }
+            const prNumber = parseInt(fs.readFileSync("pr_number.txt", { encoding: "utf8" }))
+            await github.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            })
+            return prNumber

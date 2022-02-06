@@ -142,7 +142,7 @@ def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Ma
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
         if node.func.is_property:
-            assert node.func.type
+            assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
 
