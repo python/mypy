@@ -42,42 +42,11 @@ jobs:
       - run: |
           cat diff_*.txt | head -c 30000 | tee fulldiff.txt
 
-      # Based on https://github.com/kanga333/comment-hider
-      - name: Hide old comments
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            const fs = require('fs')
-
-            const response = await github.issues.listComments({
-              issue_number: fs.readFileSync("pr_number.txt", { encoding: "utf8" }),
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
-            const botCommentIds = response.data
-              .filter(comment => comment.user.login === 'github-actions[bot]')
-              .map(comment => comment.node_id)
-
-            for (const id of botCommentIds) {
-              const resp = await github.graphql(`
-                mutation {
-                  minimizeComment(input: {classifier: OUTDATED, subjectId: "${id}"}) {
-                    minimizedComment {
-                      isMinimized
-                    }
-                  }
-                }
-              `)
-              if (resp.errors) {
-                throw new Error(resp.errors)
-              }
-            }
-
       - name: Post comment
+        id: post-comment
         uses: actions/github-script@v3
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
             const data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
@@ -99,3 +68,11 @@ jobs:
               body
             })
             return prNumber
+
+      - name: Hide old comments
+        # v0.3.0
+        uses: kanga333/comment-hider@bbdf5b562fbec24e6f60572d8f712017428b92e0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          leave_visible: 1
+          issue_number: ${{ steps.post-comment.outputs.result }}
