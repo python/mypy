@@ -1,11 +1,11 @@
 root = true
 
-[*.{py,c,cpp,h,rst,md,yml,json}]
+[*.{py,c,cpp,h,rst,md,yml,json,test}]
 trim_trailing_whitespace = true
 insert_final_newline = true
 indent_style = space
 
-[*.{py,c,h,json}]
+[*.{py,c,h,json,test}]
 indent_size = 4
 
 [*.yml]
