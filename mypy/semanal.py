@@ -2878,11 +2878,18 @@ class SemanticAnalyzer(NodeVisitor[None],
                     lvalue.fullname = var._fullname
                 else:
                     lvalue.fullname = lvalue.name
-                if self.is_func_scope():
-                    if unmangle(name) == '_':
-                        # Special case for assignment to local named '_': always infer 'Any'.
-                        typ = AnyType(TypeOfAny.special_form)
-                        self.store_declared_types(lvalue, typ)
+
+                # Special case for assignment to local named '_': always infer 'Any'.
+                is_special_unused = self.is_func_scope() and unmangle(name) == '_'
+
+                # Special case, `Any` is defined as `= object()` in typeshed,
+                # so we need to make it a real type variable.
+                is_typing_any = var.fullname == 'typing.Any'
+
+                if is_special_unused or is_typing_any:
+                    typ = AnyType(TypeOfAny.special_form)
+                    self.store_declared_types(lvalue, typ)
+
             if is_final and self.is_final_redefinition(kind, name):
                 self.fail("Cannot redefine an existing name as final", lvalue)
         else:
