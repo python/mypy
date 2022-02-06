@@ -1586,3 +1586,21 @@ class Foo(Enum):
 _testEnumValueWithPlaceholderNodeType.py:5: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Incompatible types in assignment (expression has type "object", variable has type "Foo")
 _testEnumValueWithPlaceholderNodeType.py:6: error: Name "Missing" is not defined
+
+[case testTupleWithDifferentArgsPy310]
+# https://github.com/python/mypy/issues/11098
+# flags: --python-version 3.10
+Correct1 = str | tuple[float, float, str]
+Correct2 = tuple[float] | str
+Correct3 = tuple[float, ...] | str
+
+RHSAlias1: type = tuple[int, int]
+RHSAlias2: type = tuple[int]
+RHSAlias3: type = tuple[int, ...]
+
+# Wrong:
+WrongTypeElement = str | tuple[float, 1]
+WrongEllipsis = tuple[float, float, ...] | str
+[out]
+_testTupleWithDifferentArgsPy310.py:12: error: Invalid type: try using Literal[1] instead? 
+_testTupleWithDifferentArgsPy310.py:13: error: Unexpected "..." 

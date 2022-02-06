@@ -728,3 +728,27 @@ from typing_extensions import TypeAlias
 A: TypeAlias = str
 [builtins fixtures/bool.pyi]
 [out]
+
+[case testTupleWithDifferentArgsPy38]
+# flags: --python-version 3.8
+NotYet1 = tuple[float]  # E: "tuple" is not subscriptable
+NotYet2 = tuple[float, float]  # E: "tuple" is not subscriptable
+[builtins fixtures/tuple.pyi]
+
+[case testTupleWithDifferentArgsStub]
+# https://github.com/python/mypy/issues/11098
+import tup
+[file tup.pyi]
+Correct1 = str | tuple[float, float, str]
+Correct2 = tuple[float] | str
+Correct3 = tuple[float, ...] | str
+
+RHSAlias1: type = tuple[int, int]
+RHSAlias2: type = tuple[int]
+RHSAlias3: type = tuple[int, ...]
+
+# Wrong:
+
+WrongTypeElement = str | tuple[float, 1]  # E: Invalid type: try using Literal[1] instead?
+WrongEllipsis = str | tuple[float, float, ...]  # E: Unexpected "..."
+[builtins fixtures/tuple.pyi]
