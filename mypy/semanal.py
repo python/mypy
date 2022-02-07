@@ -3830,8 +3830,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        if not self.is_func_scope():  # not sure
+        if not self.is_func_scope():
             self.fail(message_registry.YIELD_FROM_OUTSIDE_FUNC, e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield from" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
         elif self.function_stack[-1].is_coroutine:
             self.fail(message_registry.YIELD_FROM_IN_ASYNC_FUNC, e, serious=True, blocker=True)
         else:
