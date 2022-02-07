@@ -1,11 +1,12 @@
 """Semantic analysis of TypedDict definitions."""
 
 from mypy.backports import OrderedDict
-from typing import Optional, List, Set, Tuple
+from typing import Optional, List, Set, Tuple, Union
 from typing_extensions import Final
 
+from mypy.plugin import CheckerPluginInterface
 from mypy.types import (
-    Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType,
+    Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType, Instance
 )
 from mypy.nodes import (
     CallExpr, TypedDictExpr, Expression, NameExpr, Context, StrExpr, BytesExpr, UnicodeExpr,
@@ -362,10 +363,7 @@ class TypedDictAnalyzer:
                                  types: List[Type],
                                  required_keys: Set[str],
                                  line: int) -> TypeInfo:
-        # Prefer typing then typing_extensions if available.
-        fallback = (self.api.named_type_or_none('typing._TypedDict', []) or
-                    self.api.named_type_or_none('typing_extensions._TypedDict', []) or
-                    self.api.named_type_or_none('mypy_extensions._TypedDict', []))
+        fallback = get_anonymous_typeddict_type(self.api)
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback, line)
         info.typeddict_type = TypedDictType(OrderedDict(zip(items, types)), required_keys,
@@ -383,3 +381,11 @@ class TypedDictAnalyzer:
 
     def note(self, msg: str, ctx: Context) -> None:
         self.api.note(msg, ctx)
+
+
+def get_anonymous_typeddict_type(
+        api: Union[SemanticAnalyzerInterface, CheckerPluginInterface]) -> Optional[Instance]:
+    # Prefer typing then typing_extensions if available.
+    return (api.named_type_or_none('typing._TypedDict', []) or
+            api.named_type_or_none('typing_extensions._TypedDict', []) or
+            api.named_type_or_none('mypy_extensions._TypedDict', []))
