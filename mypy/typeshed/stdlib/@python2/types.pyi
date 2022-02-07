@@ -148,7 +148,7 @@ class FrameType:
     f_exc_traceback: None
     f_globals: Dict[str, Any]
     f_lasti: int
-    f_lineno: int
+    f_lineno: int | None
     f_locals: Dict[str, Any]
     f_restricted: bool
     f_trace: Callable[[], None]

@@ -124,6 +124,7 @@ try:
         MatchClass = ast3.MatchClass
         MatchAs = ast3.MatchAs
         MatchOr = ast3.MatchOr
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
     else:
         Match = Any
         MatchValue = Any
@@ -134,6 +135,7 @@ try:
         MatchClass = Any
         MatchAs = Any
         MatchOr = Any
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -355,7 +357,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
+    def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None

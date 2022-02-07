@@ -1,7 +1,7 @@
-from typing import Any, Dict, List, Protocol, Tuple
+from typing import Any, Protocol
 
-_ModuleGlobals = Dict[str, Any]
-_ModuleMetadata = Tuple[int, float, List[str], str]
+_ModuleGlobals = dict[str, Any]
+_ModuleMetadata = tuple[int, float, list[str], str]
 
 class _SourceLoader(Protocol):
     def __call__(self) -> str | None: ...

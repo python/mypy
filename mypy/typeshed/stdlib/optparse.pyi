@@ -1,6 +1,6 @@
-from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, Tuple, Type, overload
+from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, Type, overload
 
-NO_DEFAULT: Tuple[str, ...]
+NO_DEFAULT: tuple[str, ...]
 SUPPRESS_HELP: str
 SUPPRESS_USAGE: str
 
@@ -72,14 +72,14 @@ class TitledHelpFormatter(HelpFormatter):
     def format_usage(self, usage: str) -> str: ...
 
 class Option:
-    ACTIONS: Tuple[str, ...]
-    ALWAYS_TYPED_ACTIONS: Tuple[str, ...]
+    ACTIONS: tuple[str, ...]
+    ALWAYS_TYPED_ACTIONS: tuple[str, ...]
     ATTRS: list[str]
     CHECK_METHODS: list[Callable[..., Any]] | None
-    CONST_ACTIONS: Tuple[str, ...]
-    STORE_ACTIONS: Tuple[str, ...]
-    TYPED_ACTIONS: Tuple[str, ...]
-    TYPES: Tuple[str, ...]
+    CONST_ACTIONS: tuple[str, ...]
+    STORE_ACTIONS: tuple[str, ...]
+    TYPED_ACTIONS: tuple[str, ...]
+    TYPES: tuple[str, ...]
     TYPE_CHECKER: dict[str, Callable[..., Any]]
     _long_opts: list[str]
     _short_opts: list[str]
@@ -89,7 +89,7 @@ class Option:
     nargs: int
     type: Any
     callback: Callable[..., Any] | None
-    callback_args: Tuple[Any, ...] | None
+    callback_args: tuple[Any, ...] | None
     callback_kwargs: dict[str, Any] | None
     help: str | None
     metavar: str | None

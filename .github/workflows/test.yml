@@ -75,10 +75,15 @@ jobs:
           toxenv: py36
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
           debug_build: true
-        - name: Type check our own code
+        - name: Type check our own code (py37-ubuntu)
           python: '3.7'
           arch: x64
           os: ubuntu-latest
+          toxenv: type
+        - name: Type check our own code (py37-windows-64)
+          python: '3.7'
+          arch: x64
+          os: windows-latest
           toxenv: type
         - name: Code style with flake8
           python: '3.7'

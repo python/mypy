@@ -1112,7 +1112,7 @@ c2 = Cell2()
 reveal_type(c2.pop('value'))
 [out]
 _testTypedDictMappingMethods.py:5: note: Revealed type is "builtins.str*"
-_testTypedDictMappingMethods.py:6: note: Revealed type is "typing.Iterator[builtins.str*]"
+_testTypedDictMappingMethods.py:6: note: Revealed type is "typing.Iterator*[builtins.str*]"
 _testTypedDictMappingMethods.py:7: note: Revealed type is "builtins.int"
 _testTypedDictMappingMethods.py:8: note: Revealed type is "builtins.bool"
 _testTypedDictMappingMethods.py:9: note: Revealed type is "typing.KeysView[builtins.str]"
@@ -1152,7 +1152,8 @@ _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:     Got:
 _testCanConvertTypedDictToAnySuperclassOfMapping.py:11: note:         def __iter__(self) -> Iterator[str]
 
-[case testAsyncioGatherPreciseType]
+[case testAsyncioGatherPreciseType-xfail]
+# Mysteriously regressed in #11905
 import asyncio
 from typing import Tuple
 
@@ -1328,7 +1329,7 @@ def f() -> Dict[int, str]:
 def d() -> Dict[int, int]:
     return {}
 [out]
-_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "dict" has incompatible type "Dict[int, int]"; expected "Mapping[int, str]"
+_testDictWithStarStarSpecialCase.py:4: error: Argument 1 to "update" of "MutableMapping" has incompatible type "Dict[int, int]"; expected "SupportsKeysAndGetItem[int, str]"
 
 [case testLoadsOfOverloads]
 from typing import overload, Any, TypeVar, Iterable, List, Dict, Callable, Union

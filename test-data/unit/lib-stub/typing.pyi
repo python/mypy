@@ -47,3 +47,5 @@ class Sequence(Iterable[T_co]):
 class Mapping(Iterable[T], Generic[T, T_co]): pass
 
 def final(meth: T) -> T: pass
+
+def reveal_type(__obj: T) -> T: pass
