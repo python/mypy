@@ -2583,15 +2583,26 @@ def f(x: t.Tuple[int, int]) -> int: ...
 
 
 [case testProtocol_semanal]
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 class P(Protocol):
     def f(self, x: int, y: int) -> str:
         ...
 
+T = TypeVar('T')
+T2 = TypeVar('T2')
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2:
+        ...
+
 
 [out]
-from typing import Protocol
+from typing import Protocol, TypeVar
 
 class P(Protocol):
     def f(self, x: int, y: int) -> str: ...
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2: ...
