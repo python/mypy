@@ -3833,7 +3833,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.is_func_scope():
             self.fail(message_registry.YIELD_FROM_OUTSIDE_FUNC, e, serious=True, blocker=True)
         elif self.is_comprehension_stack[-1]:
-            self.fail('"yield from" inside comprehension or generator expression',
+            self.fail(message_registry.YIELD_FROM_IN_LISTCOMP_GENEXP,
                       e, serious=True, blocker=True)
         elif self.function_stack[-1].is_coroutine:
             self.fail(message_registry.YIELD_FROM_IN_ASYNC_FUNC, e, serious=True, blocker=True)
@@ -4218,7 +4218,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not self.is_func_scope():
             self.fail(message_registry.YIELD_OUTSIDE_FUNC, e, serious=True, blocker=True)
         elif self.is_comprehension_stack[-1]:
-            self.fail(message_registry.YIELD_IN_ASYNC_FUNC, e, serious=True, blocker=True)
+            self.fail(message_registry.YIELD_IN_LISTCOMP_GENEXP, e, serious=True, blocker=True)
         elif self.function_stack[-1].is_coroutine:
             if self.options.python_version < (3, 6):
                 self.fail(message_registry.YIELD_IN_ASYNC_FUNC, e, serious=True, blocker=True)

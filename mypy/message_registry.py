@@ -401,6 +401,12 @@ YIELD_OUTSIDE_FUNC: Final = ErrorMessage('"yield" outside function')
 YIELD_FROM_OUTSIDE_FUNC: Final = ErrorMessage('"yield from" outside function')
 YIELD_IN_ASYNC_FUNC: Final = ErrorMessage('"yield" in async function')
 YIELD_FROM_IN_ASYNC_FUNC: Final = ErrorMessage('"yield from" in async function')
+YIELD_IN_LISTCOMP_GENEXP: Final = ErrorMessage(
+    '"yield" inside comprehension or generator expression'
+)
+YIELD_FROM_IN_LISTCOMP_GENEXP: Final = ErrorMessage(
+    '"yield from" inside comprehension or generator expression'
+)
 CAST_TARGET_IS_NOT_TYPE: Final = ErrorMessage('Cast target is not a type')
 ANY_CALL_UNSUPPORTED: Final = ErrorMessage(
     'Any(...) is no longer supported. Use cast(Any, ...) instead'
