@@ -279,7 +279,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
-    match_args = _get_decorator_bool_argument(ctx, 'match_args', False)
+    match_args = _get_decorator_bool_argument(ctx, 'match_args', True)
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
@@ -769,7 +769,7 @@ def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
                     last_known_value=LiteralType(attr.name, fallback=str_type),
                 )
                 for attr in attributes
-                if not attr.kw_only
+                if not attr.kw_only and attr.init
             ],
             fallback=ctx.api.named_type('builtins.tuple'),
         )

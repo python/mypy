@@ -1474,10 +1474,33 @@ import attr
 class ToMatch:
     x: int
     y: int
+    # Not included:
     z: int = attr.field(kw_only=True)
+    i: int = attr.field(init=False)
 
 reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
 reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsDefaultCase]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(auto_attribs=True)
+class ToMatch1:
+    x: int
+    y: int
+
+t1: ToMatch1
+reveal_type(t1.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+
+@attr.define
+class ToMatch2:
+    x: int
+    y: int
+
+t2: ToMatch2
+reveal_type(t2.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
 [builtins fixtures/attr.pyi]
 
 [case testAttrsWithMatchArgsOverrideExisting]
