@@ -26,7 +26,7 @@ from mypy.options import Options, BuildType
 from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
-from mypy.version import __version__, mypy_version
+from mypy.version import __version__, __based_version__
 
 orig_stat: Final = os.stat
 MEM_PROFILE: Final = False  # If True, dump memory profile
@@ -510,9 +510,18 @@ def process_options(args: List[str],
     general_group.add_argument(
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
+    version = ".".join(str(e) for e in __based_version__[:3])
+    if __based_version__[3] == "dev":
+        version += "+dev"
+        try:
+            if __based_version__[6]:
+                version += '.' + __based_version__[-1]
+        except IndexError:
+            pass
+
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='basedmypy ' + __version__ + '\nBased on %(prog)s ' + mypy_version,
+        version=f'basedmypy {version}\nBased on %(prog)s {__version__}',
         help="Show program's version number and exit",
         stdout=stdout)
 
