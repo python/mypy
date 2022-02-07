@@ -400,19 +400,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
-                if not is_equivalent(l, r,
-                                     ignore_type_params=self.ignore_type_params):
+                if not is_subtype(l, r,
+                                  ignore_type_params=self.ignore_type_params):
                     return False
                 # Non-required key is not compatible with a required key since
                 # indexing may fail unexpectedly if a required key is missing.
-                # Required key is not compatible with a non-required key since
-                # the prior doesn't support 'del' but the latter should support
-                # it.
                 #
-                # NOTE: 'del' support is currently not implemented (#3550). We
-                #       don't want to have to change subtyping after 'del' support
-                #       lands so here we are anticipating that change.
-                if (name in left.required_keys) != (name in right.required_keys):
+                # Required key *is* compatible with a non-required key.
+                if (name in right.required_keys) and (name not in left.required_keys):
                     return False
             # (NOTE: Fallbacks don't matter.)
             return True

@@ -320,14 +320,6 @@ def convert(op: ObjectPoint) -> Point:
     return op  # E: Incompatible return value type (got "ObjectPoint", expected "Point")
 [builtins fixtures/dict.pyi]
 
-[case testCannotConvertTypedDictToSimilarTypedDictWithWiderItemTypes]
-from mypy_extensions import TypedDict
-Point = TypedDict('Point', {'x': int, 'y': int})
-ObjectPoint = TypedDict('ObjectPoint', {'x': object, 'y': object})
-def convert(p: Point) -> ObjectPoint:
-    return p  # E: Incompatible return value type (got "Point", expected "ObjectPoint")
-[builtins fixtures/dict.pyi]
-
 [case testCannotConvertTypedDictToSimilarTypedDictWithIncompatibleItemTypes]
 from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': int, 'y': int})
@@ -1121,9 +1113,41 @@ c: C
 fb(b)
 fc(c)
 fb(c)
-fb(a) # E: Argument 1 to "fb" has incompatible type "A"; expected "B"
+fb(a)
 fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
 fc(b) # E: Argument 1 to "fc" has incompatible type "B"; expected "C"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictSubtypingWithOptional]
+# flags: --strict-optional
+from typing import Optional
+from mypy_extensions import TypedDict
+A = TypedDict('A', {'x': int})
+B = TypedDict('B', {'x': Optional[int]})
+def fa(a: A) -> None: pass
+def fb(b: B) -> None: pass
+a: A
+b: B
+fb(a)
+fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
+[builtins fixtures/dict.pyi]
+
+[case testTypedDictSubtypingWithSubclass]
+# flags: --strict-optional
+from typing import Optional
+from mypy_extensions import TypedDict
+class Foo: pass
+
+class Bar(Foo): pass
+
+A = TypedDict('A', {'x': Bar})
+B = TypedDict('B', {'x': Foo})
+def fa(a: A) -> None: pass
+def fb(b: B) -> None: pass
+a: A
+b: B
+fb(a)
+fa(b) # E: Argument 1 to "fa" has incompatible type "B"; expected "A"
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictJoinWithTotalFalse]
