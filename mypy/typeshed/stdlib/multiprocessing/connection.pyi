@@ -2,13 +2,13 @@ import socket
 import sys
 import types
 from _typeshed import Self
-from typing import Any, Iterable, Tuple, Type, Union
+from typing import Any, Iterable, Type, Union
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
 # https://docs.python.org/3/library/multiprocessing.html#address-formats
-_Address = Union[str, Tuple[str, int]]
+_Address = Union[str, tuple[str, int]]
 
 class _ConnectionBase:
     if sys.version_info >= (3, 8):

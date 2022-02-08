@@ -270,7 +270,7 @@ a = A(B())
 a = A(1)  # E: Argument 1 to "A" has incompatible type "int"; expected "B"
 [builtins fixtures/tuple.pyi]
 
-[case testNewNamedTupleProperty]
+[case testNewNamedTupleProperty36]
 # flags: --python-version 3.6
 from typing import NamedTuple
 

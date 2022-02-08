@@ -52,6 +52,8 @@ class bool(int): ...
 class str: ...
 class bytes: ...
 
+class list(Sequence[T]): ...
+
 def property(f: T) -> T: ...
 def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
@@ -648,7 +650,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case("", "__all__ = []", None)  # dummy case
+        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
@@ -660,6 +662,20 @@ class StubtestUnit(unittest.TestCase):
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
+        yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
+
+    @collect_cases
+    def test_non_public_1(self) -> Iterator[Case]:
+        yield Case(stub="__all__: list[str]", runtime="", error=None)  # dummy case
+        yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
+
+    @collect_cases
+    def test_non_public_2(self) -> Iterator[Case]:
+        yield Case(
+            stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None
+        )
+        yield Case(stub="f: int", runtime="def f(): ...", error="f")
+        yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
     @collect_cases
     def test_special_dunders(self) -> Iterator[Case]:
@@ -675,8 +691,13 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -685,6 +706,28 @@ class StubtestUnit(unittest.TestCase):
                 runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
+
+    def test_not_subclassable(self) -> None:
+        output = run_stubtest(
+            stub=(
+                "class CanBeSubclassed: ...\n"
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls) -> None: ...\n"
+            ),
+            runtime=(
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls): raise TypeError('nope')\n"
+                # ctypes.Array can be subclassed, but subclasses must define a few
+                # special attributes, e.g. _length_
+                "from ctypes import Array as CanBeSubclassed\n"
+            ),
+            options=[],
+        )
+        assert (
+            "CanNotBeSubclassed cannot be subclassed at runtime,"
+            " but isn't marked with @final in the stub"
+        ) in output
+        assert "CanBeSubclassed cannot be subclassed" not in output
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -732,6 +775,119 @@ class StubtestUnit(unittest.TestCase):
                 def __init__(self, x): pass
             """,
             error="X.__init__"
+        )
+
+    @collect_cases
+    def test_good_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub=r"""
+            from typing_extensions import Literal
+
+            import enum
+            class Color(enum.Enum):
+                RED: int
+
+            NUM: Literal[1]
+            CHAR: Literal['a']
+            FLAG: Literal[True]
+            NON: Literal[None]
+            BYT1: Literal[b'abc']
+            BYT2: Literal[b'\x90']
+            ENUM: Literal[Color.RED]
+            """,
+            runtime=r"""
+            import enum
+            class Color(enum.Enum):
+                RED = 3
+
+            NUM = 1
+            CHAR = 'a'
+            NON = None
+            FLAG = True
+            BYT1 = b"abc"
+            BYT2 = b'\x90'
+            ENUM = Color.RED
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_bad_literal(self) -> Iterator[Case]:
+        yield Case("from typing_extensions import Literal", "", None)  # dummy case
+        yield Case(
+            stub="INT_FLOAT_MISMATCH: Literal[1]",
+            runtime="INT_FLOAT_MISMATCH = 1.0",
+            error="INT_FLOAT_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_INT: Literal[1]",
+            runtime="WRONG_INT = 2",
+            error="WRONG_INT",
+        )
+        yield Case(
+            stub="WRONG_STR: Literal['a']",
+            runtime="WRONG_STR = 'b'",
+            error="WRONG_STR",
+        )
+        yield Case(
+            stub="BYTES_STR_MISMATCH: Literal[b'value']",
+            runtime="BYTES_STR_MISMATCH = 'value'",
+            error="BYTES_STR_MISMATCH",
+        )
+        yield Case(
+            stub="STR_BYTES_MISMATCH: Literal['value']",
+            runtime="STR_BYTES_MISMATCH = b'value'",
+            error="STR_BYTES_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_BYTES: Literal[b'abc']",
+            runtime="WRONG_BYTES = b'xyz'",
+            error="WRONG_BYTES",
+        )
+        yield Case(
+            stub="WRONG_BOOL_1: Literal[True]",
+            runtime="WRONG_BOOL_1 = False",
+            error='WRONG_BOOL_1',
+        )
+        yield Case(
+            stub="WRONG_BOOL_2: Literal[False]",
+            runtime="WRONG_BOOL_2 = True",
+            error='WRONG_BOOL_2',
+        )
+
+    @collect_cases
+    def test_special_subtype(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            b1: bool
+            b2: bool
+            b3: bool
+            """,
+            runtime="""
+            b1 = 0
+            b2 = 1
+            b3 = 2
+            """,
+            error="b3",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import TypedDict
+
+            class _Options(TypedDict):
+                a: str
+                b: int
+
+            opt1: _Options
+            opt2: _Options
+            opt3: _Options
+            """,
+            runtime="""
+            opt1 = {"a": "3.", "b": 14}
+            opt2 = {"some": "stuff"}  # false negative
+            opt3 = 0
+            """,
+            error="opt3",
         )
 
 
@@ -854,12 +1010,19 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
-        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
+        assert "graphlib" not in stdlib
+        assert "formatter" in stdlib
+        assert "importlib.metadata" not in stdlib
+
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
+        assert "graphlib" in stdlib
+        assert "formatter" not in stdlib
+        assert "importlib.metadata" in stdlib
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:

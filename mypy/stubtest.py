@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, SPECIAL_DUNDERS
 
 
 class Missing:
@@ -200,23 +200,34 @@ def verify_mypyfile(
         yield Error(object_path, "is not a module", stub, runtime)
         return
 
-    # Check things in the stub that are public
+    # Check things in the stub
     to_check = set(
         m
         for m, o in stub.names.items()
-        # TODO: change `o.module_public` to `not o.module_hidden`
-        if o.module_public and (not m.startswith("_") or hasattr(runtime, m))
+        if not o.module_hidden and (not m.startswith("_") or hasattr(runtime, m))
     )
-    runtime_public_contents = [
-        m
-        for m in dir(runtime)
-        if not m.startswith("_")
-        # Ensure that the object's module is `runtime`, since in the absence of __all__ we don't
-        # have a good way to detect re-exports at runtime.
-        and getattr(getattr(runtime, m), "__module__", None) == runtime.__name__
-    ]
-    # Check all things declared in module's __all__, falling back to runtime_public_contents
-    to_check.update(getattr(runtime, "__all__", runtime_public_contents))
+
+    def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
+        obj = getattr(r, attr)
+        obj_mod = getattr(obj, "__module__", None)
+        if obj_mod is not None:
+            return obj_mod == r.__name__
+        return not isinstance(obj, types.ModuleType)
+
+    runtime_public_contents = (
+        runtime.__all__
+        if hasattr(runtime, "__all__")
+        else [
+            m
+            for m in dir(runtime)
+            if not m.startswith("_")
+            # Ensure that the object's module is `runtime`, since in the absence of __all__ we
+            # don't have a good way to detect re-exports at runtime.
+            and _belongs_to_runtime(runtime, m)
+        ]
+    )
+    # Check all things declared in module's __all__, falling back to our best guess
+    to_check.update(runtime_public_contents)
     to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
 
     for entry in sorted(to_check):
@@ -243,6 +254,24 @@ def verify_typeinfo(
         yield Error(object_path, "is not a type", stub, runtime, stub_desc=repr(stub))
         return
 
+    try:
+        class SubClass(runtime):  # type: ignore
+            pass
+    except TypeError:
+        # Enum classes are implicitly @final
+        if not stub.is_final and not issubclass(runtime, enum.Enum):
+            yield Error(
+                object_path,
+                "cannot be subclassed at runtime, but isn't marked with @final in the stub",
+                stub,
+                runtime,
+                stub_desc=repr(stub),
+            )
+    except Exception:
+        # The class probably wants its subclasses to do something special.
+        # Examples: ctypes.Array, ctypes._SimpleCData
+        pass
+
     # Check everything already defined in the stub
     to_check = set(stub.names)
     # There's a reasonable case to be made that we should always check all dunders, but it's
@@ -258,11 +287,14 @@ def verify_typeinfo(
             mangled_entry = "_{}{}".format(stub.name, entry)
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
-        yield from verify(
-            stub_to_verify,
-            getattr(runtime, mangled_entry, MISSING),
-            object_path + [entry],
-        )
+        try:
+            runtime_attr = getattr(runtime, mangled_entry, MISSING)
+        except Exception:
+            # Catch all exceptions in case the runtime raises an unexpected exception
+            # from __getattr__ or similar.
+            pass
+        else:
+            yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
 def _verify_static_class_methods(
@@ -885,20 +917,6 @@ def verify_typealias(
     )
 
 
-SPECIAL_DUNDERS = ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
-
-
-def is_dunder(name: str, exclude_special: bool = False) -> bool:
-    """Returns whether name is a dunder name.
-
-    :param exclude_special: Whether to return False for a couple special dunder methods.
-
-    """
-    if exclude_special and name in SPECIAL_DUNDERS:
-        return False
-    return name.startswith("__") and name.endswith("__")
-
-
 def is_probably_a_function(runtime: Any) -> bool:
     return (
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
@@ -931,6 +949,15 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
     ):
         # Pretend Literal[0, 1] is a subtype of bool to avoid unhelpful errors.
         return True
+
+    if (
+        isinstance(right, mypy.types.TypedDictType)
+        and isinstance(left, mypy.types.Instance)
+        and left.type.fullname == "builtins.dict"
+    ):
+        # Special case checks against TypedDicts
+        return True
+
     with mypy.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
@@ -1018,16 +1045,18 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return mypy.types.TupleType(items, fallback)
 
     fallback = mypy.types.Instance(type_info, [anytype() for _ in type_info.type_vars])
-    try:
-        # Literals are supposed to be only bool, int, str, bytes or enums, but this seems to work
-        # well (when not using mypyc, for which bytes and enums are also problematic).
-        return mypy.types.LiteralType(
-            value=runtime,
-            fallback=fallback,
-        )
-    except TypeError:
-        # Ask for forgiveness if we're using mypyc.
+
+    value: Union[bool, int, str]
+    if isinstance(runtime, bytes):
+        value = bytes_to_human_readable_repr(runtime)
+    elif isinstance(runtime, enum.Enum):
+        value = runtime.name
+    elif isinstance(runtime, (bool, int, str)):
+        value = runtime
+    else:
         return fallback
+
+    return mypy.types.LiteralType(value=value, fallback=fallback)
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}
@@ -1096,19 +1125,27 @@ def get_stub(module: str) -> Optional[nodes.MypyFile]:
     return _all_stubs.get(module)
 
 
-def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]:
+def get_typeshed_stdlib_modules(
+    custom_typeshed_dir: Optional[str],
+    version_info: Optional[Tuple[int, int]] = None
+) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
-    packages = set()
+    if version_info is None:
+        version_info = sys.version_info[0:2]
     # Typeshed's minimum supported Python 3 is Python 3.6
     if sys.version_info < (3, 6):
         version_info = (3, 6)
-    else:
-        version_info = sys.version_info[0:2]
-    for module, versions in stdlib_py_versions.items():
-        minver, maxver = versions
-        if version_info >= minver and (maxver is None or version_info <= maxver):
-            packages.add(module)
+
+    def exists_in_version(module: str) -> bool:
+        assert version_info is not None
+        parts = module.split(".")
+        for i in range(len(parts), 0, -1):
+            current_module = ".".join(parts[:i])
+            if current_module in stdlib_py_versions:
+                minver, maxver = stdlib_py_versions[current_module]
+                return version_info >= minver and (maxver is None or version_info <= maxver)
+        return False
 
     if custom_typeshed_dir:
         typeshed_dir = Path(custom_typeshed_dir)
@@ -1121,7 +1158,7 @@ def get_typeshed_stdlib_modules(custom_typeshed_dir: Optional[str]) -> List[str]
         if path.stem == "__init__":
             path = path.parent
         module = ".".join(path.relative_to(stdlib_dir).parts[:-1] + (path.stem,))
-        if module.split(".")[0] in packages:
+        if exists_in_version(module):
             modules.append(module)
     return sorted(modules)
 
@@ -1229,7 +1266,11 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         description="Compares stubs to objects introspected from the runtime."
     )
     parser.add_argument("modules", nargs="*", help="Modules to test")
-    parser.add_argument("--concise", action="store_true", help="Make output concise")
+    parser.add_argument(
+        "--concise",
+        action="store_true",
+        help="Makes stubtest's output more concise, one line per error",
+    )
     parser.add_argument(
         "--ignore-missing-stub",
         action="store_true",
@@ -1241,12 +1282,6 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         help="Ignore errors for whether an argument should or shouldn't be positional-only",
     )
     parser.add_argument(
-        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
-    )
-    parser.add_argument(
-        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
-    )
-    parser.add_argument(
         "--allowlist",
         "--whitelist",
         action="append",
@@ -1254,7 +1289,8 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         default=[],
         help=(
             "Use file as an allowlist. Can be passed multiple times to combine multiple "
-            "allowlists. Allowlists can be created with --generate-allowlist"
+            "allowlists. Allowlists can be created with --generate-allowlist. Allowlists "
+            "support regular expressions."
         ),
     )
     parser.add_argument(
@@ -1269,18 +1305,19 @@ def parse_options(args: List[str]) -> argparse.Namespace:
         action="store_true",
         help="Ignore unused allowlist entries",
     )
-    config_group = parser.add_argument_group(
-        title='mypy config file',
-        description="Use a config file instead of command line arguments. "
-                    "Plugins and mypy path are the only supported "
-                    "configurations.",
-    )
-    config_group.add_argument(
-        '--mypy-config-file',
+    parser.add_argument(
+        "--mypy-config-file",
+        metavar="FILE",
         help=(
-            "An existing mypy configuration file, currently used by stubtest to help "
-            "determine mypy path and plugins"
+            "Use specified mypy config file to determine mypy plugins "
+            "and mypy path"
         ),
+    )
+    parser.add_argument(
+        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+    )
+    parser.add_argument(
+        "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
 
     return parser.parse_args(args)

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import CodeType
-from typing import Any, Callable, Tuple, TypeVar
+from typing import Any, Callable, TypeVar
 
 def run(statement: str, filename: str | None = ..., sort: str | int = ...) -> None: ...
 def runctx(
@@ -9,7 +9,7 @@ def runctx(
 ) -> None: ...
 
 _T = TypeVar("_T")
-_Label = Tuple[str, int, str]
+_Label = tuple[str, int, str]
 
 class Profile:
     stats: dict[_Label, tuple[int, int, int, int, dict[_Label, tuple[int, int, int, int]]]]  # undocumented

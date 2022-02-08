@@ -727,7 +727,7 @@ f = lambda: [1]
 LambdaExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
 
-[case testLambdaWithInferredType2]
+[case testLambdaWithInferredType3]
 from typing import List, Callable
 f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass

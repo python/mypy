@@ -1,8 +1,8 @@
 import socket
 import ssl
-from typing import Any, BinaryIO, List, Pattern, Tuple, overload
+from typing import Any, BinaryIO, Pattern, overload
 
-_LongResp = Tuple[bytes, List[bytes], int]
+_LongResp = tuple[bytes, list[bytes], int]
 
 class error_proto(Exception): ...
 

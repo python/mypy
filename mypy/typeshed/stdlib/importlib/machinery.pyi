@@ -1,6 +1,10 @@
 import importlib.abc
+import sys
 import types
-from typing import Any, Callable, Sequence
+from typing import Any, Callable, Iterable, Sequence
+
+if sys.version_info >= (3, 8):
+    from importlib.metadata import DistributionFinder, PathDistribution
 
 class ModuleSpec:
     def __init__(
@@ -41,10 +45,16 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     # Loader
     @staticmethod
     def module_repr(module: types.ModuleType) -> str: ...
-    @classmethod
-    def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
-    @classmethod
-    def exec_module(cls, module: types.ModuleType) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
+        @staticmethod
+        def exec_module(module: types.ModuleType) -> None: ...
+    else:
+        @classmethod
+        def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
+        @classmethod
+        def exec_module(cls, module: types.ModuleType) -> None: ...
 
 class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
@@ -66,8 +76,12 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # Loader
     @staticmethod
     def module_repr(m: types.ModuleType) -> str: ...
-    @classmethod
-    def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
+    else:
+        @classmethod
+        def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
     @staticmethod
     def exec_module(module: types.ModuleType) -> None: ...
 
@@ -80,8 +94,18 @@ class WindowsRegistryFinder(importlib.abc.MetaPathFinder):
     ) -> ModuleSpec | None: ...
 
 class PathFinder:
-    @classmethod
-    def invalidate_caches(cls) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def invalidate_caches() -> None: ...
+    else:
+        @classmethod
+        def invalidate_caches(cls) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def find_distributions(context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
+    elif sys.version_info >= (3, 8):
+        @classmethod
+        def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
     @classmethod
     def find_spec(
         cls, fullname: str, path: Sequence[bytes | str] | None = ..., target: types.ModuleType | None = ...

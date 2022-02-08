@@ -1,11 +1,11 @@
-from typing import Callable, Generator, List, Pattern, Tuple, TypeVar
+from typing import Callable, Generator, Pattern, TypeVar
 from xml.etree.ElementTree import Element
 
 xpath_tokenizer_re: Pattern[str]
 
-_token = Tuple[str, str]
+_token = tuple[str, str]
 _next = Callable[[], _token]
-_callback = Callable[[_SelectorContext, List[Element]], Generator[Element, None, None]]
+_callback = Callable[[_SelectorContext, list[Element]], Generator[Element, None, None]]
 
 def xpath_tokenizer(pattern: str, namespaces: dict[str, str] | None = ...) -> Generator[_token, None, None]: ...
 def get_parent_map(context: _SelectorContext) -> dict[Element, Element]: ...

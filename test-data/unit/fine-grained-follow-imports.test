@@ -428,7 +428,7 @@ main.py:3: error: Missing positional argument "x" in call to "f"
 main.py:3: error: Missing positional argument "x" in call to "f"
 ==
 
-[case testFollowImportsNormalPackage-only_when_cache]
+[case testFollowImportsNormalPackage2-only_when_cache]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 
@@ -681,7 +681,7 @@ import bar
 src/bar.py:1: error: "int" not callable
 src/foo.py:2: error: "str" not callable
 
-[case testFollowImportsNormalSearchPathUpdate-only_when_cache]
+[case testFollowImportsNormalSearchPathUpdate2-only_when_cache]
 # flags: --follow-imports=normal
 # cmd: mypy main.py
 # cmd2: mypy main.py src/foo.py

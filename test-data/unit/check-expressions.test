@@ -202,32 +202,6 @@ class C:
     pass
 [builtins fixtures/tuple.pyi]
 
-[case testDivPython2]
-# flags: --python-version 2.7
-class A(object):
-    def __div__(self, other):
-        # type: (A, str) -> str
-        return 'a'
-
-a = A()
-reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
-a / 1  # E: Unsupported operand types for / ("A" and "int")
-[builtins fixtures/bool.pyi]
-
-[case testDivPython2FutureImport]
-# flags: --python-version 2.7
-from __future__ import division
-
-class A(object):
-    def __truediv__(self, other):
-        # type: (A, str) -> str
-        return 'a'
-
-a = A()
-reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
-a / 1  # E: Unsupported operand types for / ("A" and "int")
-[builtins fixtures/bool.pyi]
-
 [case testIntDiv]
 a, b, c = None, None, None # type: (A, B, C)
 if int():
@@ -1713,6 +1687,22 @@ main:1: note: Revealed type is "Any"
 [case testUserDefinedRevealType]
 def reveal_type(x: int) -> None: pass
 reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
+
+[case testTypingRevealType]
+from typing import reveal_type
+from typing import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[case testTypingExtensionsRevealType]
+from typing_extensions import reveal_type
+from typing_extensions import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[builtins fixtures/tuple.pyi]
 
 [case testRevealTypeVar]
 reveal_type = 1

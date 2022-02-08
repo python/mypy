@@ -3,6 +3,7 @@
 // These are registered in mypyc.primitives.misc_ops.
 
 #include <Python.h>
+#include "pythoncapi_compat.h"
 #include "CPy.h"
 
 PyObject *CPy_GetCoro(PyObject *obj)
@@ -148,7 +149,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     // to being type.  (This allows us to avoid needing to initialize
     // it explicitly on windows.)
     if (!Py_TYPE(template_)) {
-        Py_TYPE(template_) = &PyType_Type;
+        Py_SET_TYPE(template_, &PyType_Type);
     }
     PyTypeObject *metaclass = Py_TYPE(template_);
 
@@ -249,7 +250,7 @@ PyObject *CPyType_FromTemplate(PyObject *template,
     // the mro. It was needed for mypy.stats. I need to investigate
     // what is actually going on here.
     Py_INCREF(metaclass);
-    Py_TYPE(t) = metaclass;
+    Py_SET_TYPE(t, metaclass);
 
     if (dummy_class) {
         if (PyDict_Merge(t->ht_type.tp_dict, dummy_class->tp_dict, 0) != 0)

@@ -1416,3 +1416,15 @@ x = 1  # E: Statement is unreachable
 raise Exception
 x = 1  # E: Statement is unreachable
 [builtins fixtures/exception.pyi]
+
+[case testUnreachableNoReturnBinaryOps]
+# flags: --warn-unreachable
+from typing import NoReturn
+
+a: NoReturn
+a and 1  # E: Right operand of "and" is never evaluated
+a or 1  # E: Right operand of "or" is never evaluated
+a or a  # E: Right operand of "or" is never evaluated
+1 and a and 1  # E: Right operand of "and" is never evaluated
+a and a  # E: Right operand of "and" is never evaluated
+[builtins fixtures/exception.pyi]

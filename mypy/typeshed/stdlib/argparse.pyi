@@ -1,20 +1,5 @@
 import sys
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Generator,
-    Generic,
-    Iterable,
-    NoReturn,
-    Pattern,
-    Protocol,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    overload,
-)
+from typing import IO, Any, Callable, Generator, Generic, Iterable, NoReturn, Pattern, Protocol, Sequence, Type, TypeVar, overload
 
 _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
@@ -66,11 +51,11 @@ class _ActionsContainer:
         nargs: int | str = ...,
         const: Any = ...,
         default: Any = ...,
-        type: Callable[[str], _T] | Callable[[str], _T] | FileType = ...,
+        type: Callable[[str], _T] | FileType = ...,
         choices: Iterable[_T] | None = ...,
         required: bool = ...,
         help: str | None = ...,
-        metavar: str | Tuple[str, ...] | None = ...,
+        metavar: str | tuple[str, ...] | None = ...,
         dest: str | None = ...,
         version: str = ...,
         **kwargs: Any,
@@ -143,11 +128,11 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     @overload
     def parse_args(self, args: Sequence[str] | None = ...) -> Namespace: ...
     @overload
-    def parse_args(self, args: Sequence[str] | None, namespace: None) -> Namespace: ...  # type: ignore
+    def parse_args(self, args: Sequence[str] | None, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, args: Sequence[str] | None, namespace: _N) -> _N: ...
     @overload
-    def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore
+    def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, *, namespace: _N) -> _N: ...
     if sys.version_info >= (3, 7):
@@ -274,7 +259,7 @@ class HelpFormatter:
     def _format_text(self, text: str) -> str: ...
     def _format_action(self, action: Action) -> str: ...
     def _format_action_invocation(self, action: Action) -> str: ...
-    def _metavar_formatter(self, action: Action, default_metavar: str) -> Callable[[int], Tuple[str, ...]]: ...
+    def _metavar_formatter(self, action: Action, default_metavar: str) -> Callable[[int], tuple[str, ...]]: ...
     def _format_args(self, action: Action, default_metavar: str) -> str: ...
     def _expand_help(self, action: Action) -> str: ...
     def _iter_indented_subactions(self, action: Action) -> Generator[Action, None, None]: ...
@@ -299,7 +284,7 @@ class Action(_AttributeHolder):
     choices: Iterable[Any] | None
     required: bool
     help: str | None
-    metavar: str | Tuple[str, ...] | None
+    metavar: str | tuple[str, ...] | None
     def __init__(
         self,
         option_strings: Sequence[str],
@@ -311,7 +296,7 @@ class Action(_AttributeHolder):
         choices: Iterable[_T] | None = ...,
         required: bool = ...,
         help: str | None = ...,
-        metavar: str | Tuple[str, ...] | None = ...,
+        metavar: str | tuple[str, ...] | None = ...,
     ) -> None: ...
     def __call__(
         self, parser: ArgumentParser, namespace: Namespace, values: str | Sequence[Any] | None, option_string: str | None = ...
@@ -330,7 +315,7 @@ if sys.version_info >= (3, 9):
             choices: Iterable[_T] | None = ...,
             required: bool = ...,
             help: str | None = ...,
-            metavar: str | Tuple[str, ...] | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
         ) -> None: ...
 
 class Namespace(_AttributeHolder):
@@ -375,7 +360,7 @@ class _StoreConstAction(Action):
         default: Any = ...,
         required: bool = ...,
         help: str | None = ...,
-        metavar: str | Tuple[str, ...] | None = ...,
+        metavar: str | tuple[str, ...] | None = ...,
     ) -> None: ...
 
 # undocumented
@@ -403,7 +388,7 @@ class _AppendConstAction(Action):
         default: Any = ...,
         required: bool = ...,
         help: str | None = ...,
-        metavar: str | Tuple[str, ...] | None = ...,
+        metavar: str | tuple[str, ...] | None = ...,
     ) -> None: ...
 
 # undocumented
@@ -440,7 +425,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             dest: str = ...,
             required: bool = ...,
             help: str | None = ...,
-            metavar: str | Tuple[str, ...] | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
         ) -> None: ...
     else:
         def __init__(
@@ -450,7 +435,7 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
             parser_class: Type[_ArgumentParserT],
             dest: str = ...,
             help: str | None = ...,
-            metavar: str | Tuple[str, ...] | None = ...,
+            metavar: str | tuple[str, ...] | None = ...,
         ) -> None: ...
     # TODO: Type keyword args properly.
     def add_parser(self, name: str, **kwargs: Any) -> _ArgumentParserT: ...

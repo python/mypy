@@ -81,6 +81,57 @@ TPDICT_FB_NAMES: Final = (
     "mypy_extensions._TypedDict",
 )
 
+# Supported names of Protocol base class.
+PROTOCOL_NAMES: Final = (
+    'typing.Protocol',
+    'typing_extensions.Protocol',
+)
+
+# Supported TypeAlias names.
+TYPE_ALIAS_NAMES: Final = (
+    "typing.TypeAlias",
+    "typing_extensions.TypeAlias",
+)
+
+# Supported Final type names.
+FINAL_TYPE_NAMES: Final = (
+    'typing.Final',
+    'typing_extensions.Final',
+)
+
+# Supported @final decorator names.
+FINAL_DECORATOR_NAMES: Final = (
+    'typing.final',
+    'typing_extensions.final',
+)
+
+# Supported Literal type names.
+LITERAL_TYPE_NAMES: Final = (
+    'typing.Literal',
+    'typing_extensions.Literal',
+)
+
+# Supported Annotated type names.
+ANNOTATED_TYPE_NAMES: Final = (
+    'typing.Annotated',
+    'typing_extensions.Annotated',
+)
+
+# We use this constant in various places when checking `tuple` subtyping:
+TUPLE_LIKE_INSTANCE_NAMES: Final = (
+    'builtins.tuple',
+    'typing.Iterable',
+    'typing.Container',
+    'typing.Sequence',
+    'typing.Reversible',
+)
+
+REVEAL_TYPE_NAMES: Final = (
+    'builtins.reveal_type',
+    'typing.reveal_type',
+    'typing_extensions.reveal_type',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -289,7 +340,7 @@ class TypeAliasType(Type):
 
 
 class TypeGuardedType(Type):
-    """Only used by find_instance_check() etc."""
+    """Only used by find_isinstance_check() etc."""
 
     __slots__ = ('type_guard',)
 
@@ -299,6 +350,24 @@ class TypeGuardedType(Type):
 
     def __repr__(self) -> str:
         return "TypeGuard({})".format(self.type_guard)
+
+
+class RequiredType(Type):
+    """Required[T] or NotRequired[T]. Only usable at top-level of a TypedDict definition."""
+
+    def __init__(self, item: Type, *, required: bool) -> None:
+        super().__init__(line=item.line, column=item.column)
+        self.item = item
+        self.required = required
+
+    def __repr__(self) -> str:
+        if self.required:
+            return "Required[{}]".format(self.item)
+        else:
+            return "NotRequired[{}]".format(self.item)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.item.accept(visitor)
 
 
 class ProperType(Type):
@@ -888,6 +957,31 @@ class Instance(ProperType):
     """An instance type of form C[T1, ..., Tn].
 
     The list of type variables may be empty.
+
+    Several types has fallbacks to `Instance`. Why?
+    Because, for example `TupleTuple` is related to `builtins.tuple` instance.
+    And `FunctionLike` has `builtins.function` fallback.
+    This allows us to use types defined
+    in typeshed for our "special" and more precise types.
+
+    We used to have this helper function to get a fallback from different types.
+    Note, that it might be incomplete, since it is not used and not updated.
+    It just illustrates the concept:
+
+        def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
+            '''Returns the Instance fallback for this type if one exists or None.'''
+            if isinstance(typ, Instance):
+                return typ
+            elif isinstance(typ, TupleType):
+                return tuple_fallback(typ)
+            elif isinstance(typ, TypedDictType):
+                return typ.fallback
+            elif isinstance(typ, FunctionLike):
+                return typ.fallback
+            elif isinstance(typ, LiteralType):
+                return typ.fallback
+            return None
+
     """
 
     __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
@@ -1018,10 +1112,11 @@ class FunctionLike(ProperType):
 
     __slots__ = ('fallback',)
 
+    fallback: Instance
+
     def __init__(self, line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.can_be_false = False
-        self.fallback: Instance
 
     @abstractmethod
     def is_type_obj(self) -> bool: pass
@@ -1232,7 +1327,7 @@ class CallableType(FunctionLike):
         return sum([kind.is_positional() for kind in self.arg_kinds])
 
     def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
-        """Yields the formal arguments corresponding to this callable, ignoring *arg and **kwargs.
+        """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
 
         To handle *args and **kwargs, use the 'callable.var_args' and 'callable.kw_args' fields,
         if they are not None.
@@ -1470,7 +1565,7 @@ class TupleType(ProperType):
     Instance variables:
         items: Tuple item types
         partial_fallback: The (imprecise) underlying instance type that is used
-            for non-tuple methods. This is generally builtins.tuple[Any] for
+            for non-tuple methods. This is generally builtins.tuple[Any, ...] for
             regular tuples, but it's different for named tuples and classes with
             a tuple base class. Use mypy.typeops.tuple_fallback to calculate the
             precise fallback type derived from item types.
@@ -1485,12 +1580,31 @@ class TupleType(ProperType):
 
     def __init__(self, items: List[Type], fallback: Instance, line: int = -1,
                  column: int = -1, implicit: bool = False) -> None:
-        super().__init__(line, column)
-        self.items = items
         self.partial_fallback = fallback
+        self.items = items
         self.implicit = implicit
-        self.can_be_true = len(self.items) > 0
-        self.can_be_false = len(self.items) == 0
+        super().__init__(line, column)
+
+    def can_be_true_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() > 0
+
+    def can_be_false_default(self) -> bool:
+        if self.can_be_any_bool():
+            # Corner case: it is a `NamedTuple` with `__bool__` method defined.
+            # It can be anything: both `True` and `False`.
+            return True
+        return self.length() == 0
+
+    def can_be_any_bool(self) -> bool:
+        return bool(
+            self.partial_fallback.type
+            and self.partial_fallback.type.fullname != 'builtins.tuple'
+            and self.partial_fallback.type.names.get('__bool__')
+        )
 
     def length(self) -> int:
         return len(self.items)
@@ -1624,7 +1738,7 @@ class TypedDictType(ProperType):
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
 
-    def create_anonymous_fallback(self, *, value_type: Type) -> Instance:
+    def create_anonymous_fallback(self) -> Instance:
         anonymous = self.as_anonymous()
         return anonymous.fallback
 
@@ -2188,7 +2302,11 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.erased:
             s += '*'
         if t.args:
-            s += '[{}]'.format(self.list_str(t.args))
+            if t.type.fullname == 'builtins.tuple':
+                assert len(t.args) == 1
+                s += '[{}, ...]'.format(self.list_str(t.args))
+            else:
+                s += '[{}]'.format(self.list_str(t.args))
         if self.id_mapper:
             s += '<{}>'.format(self.id_mapper.id(t.type))
         return s
@@ -2382,9 +2500,12 @@ def strip_type(typ: Type) -> ProperType:
         return typ
 
 
-def is_named_instance(t: Type, fullname: str) -> bool:
+def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
+    if not isinstance(fullnames, tuple):
+        fullnames = (fullnames,)
+
     t = get_proper_type(t)
-    return isinstance(t, Instance) and t.type.fullname == fullname
+    return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
 TP = TypeVar('TP', bound=Type)

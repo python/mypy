@@ -28,14 +28,9 @@ class BaseBrowser:
     def open_new_tab(self, url: str) -> bool: ...
 
 class GenericBrowser(BaseBrowser):
-    args: list[str]
-    name: str
-    basename: str
     def __init__(self, name: str | Sequence[str]) -> None: ...
-    def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
 
-class BackgroundBrowser(GenericBrowser):
-    def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
+class BackgroundBrowser(GenericBrowser): ...
 
 class UnixBrowser(BaseBrowser):
     raise_opts: list[str] | None
@@ -45,59 +40,21 @@ class UnixBrowser(BaseBrowser):
     remote_action: str
     remote_action_newwin: str
     remote_action_newtab: str
-    def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
 
-class Mozilla(UnixBrowser):
-    remote_args: list[str]
-    remote_action: str
-    remote_action_newwin: str
-    remote_action_newtab: str
-    background: bool
+class Mozilla(UnixBrowser): ...
 
 class Galeon(UnixBrowser):
     raise_opts: list[str]
-    remote_args: list[str]
-    remote_action: str
-    remote_action_newwin: str
-    background: bool
 
-class Chrome(UnixBrowser):
-    remote_args: list[str]
-    remote_action: str
-    remote_action_newwin: str
-    remote_action_newtab: str
-    background: bool
-
-class Opera(UnixBrowser):
-    remote_args: list[str]
-    remote_action: str
-    remote_action_newwin: str
-    remote_action_newtab: str
-    background: bool
-
-class Elinks(UnixBrowser):
-    remote_args: list[str]
-    remote_action: str
-    remote_action_newwin: str
-    remote_action_newtab: str
-    background: bool
-    redirect_stdout: bool
-
-class Konqueror(BaseBrowser):
-    def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
-
-class Grail(BaseBrowser):
-    def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
+class Chrome(UnixBrowser): ...
+class Opera(UnixBrowser): ...
+class Elinks(UnixBrowser): ...
+class Konqueror(BaseBrowser): ...
+class Grail(BaseBrowser): ...
 
 if sys.platform == "win32":
-    class WindowsDefault(BaseBrowser):
-        def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
+    class WindowsDefault(BaseBrowser): ...
 
 if sys.platform == "darwin":
-    class MacOSX(BaseBrowser):
-        name: str
-        def __init__(self, name: str) -> None: ...
-        def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
-    class MacOSXOSAScript(BaseBrowser):
-        def __init__(self, name: str) -> None: ...
-        def open(self, url: str, new: int = ..., autoraise: bool = ...) -> bool: ...
+    class MacOSX(BaseBrowser): ...
+    class MacOSXOSAScript(BaseBrowser): ...  # In runtime this class does not have `name` and `basename`

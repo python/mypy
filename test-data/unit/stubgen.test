@@ -483,7 +483,7 @@ import re as re
 
 x: int
 
-[case testExportModule_import]
+[case testExportModule2_import]
 import re
 __all__ = ['re', 'x']
 x = 1
@@ -701,7 +701,7 @@ import x
 
 class D(x.C): ...
 
-[case testArbitraryBaseClass]
+[case testArbitraryBaseClass2]
 import x.y
 class D(x.y.C): ...
 [out]
@@ -837,7 +837,7 @@ import collections
 x: collections.defaultdict
 
 
-[case testAnnotationImports]
+[case testAnnotationImports2]
 from typing import List
 import collections
 x: List[collections.defaultdict]
