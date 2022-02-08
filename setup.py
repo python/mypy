@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 # alternative forms of installing, as suggested by README.md).
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
-from mypy.version import __version__ as version
+from mypy.version import __version__ as version, base_version
 
 description = 'Optional static typing for Python'
 long_description = '''
@@ -57,8 +57,13 @@ class CustomPythonBuild(build_py):
     def pin_version(self):
         path = os.path.join(self.build_lib, 'mypy')
         self.mkpath(path)
-        with open(os.path.join(path, 'version.py'), 'w') as stream:
+        path = os.path.join(path, 'version.py')
+        with open(path, 'r') as stream:
+            content = stream.read()
+        with open(path, 'w') as stream:
+            stream.write(content.split("# EOF")[0])
             stream.write('__version__ = "{}"\n'.format(version))
+            stream.write('base_version = "{}"\n'.format(base_version))
 
     def run(self):
         self.execute(self.pin_version, ())
