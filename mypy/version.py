@@ -7,7 +7,7 @@ from mypy import git
 # - For 1.0 we'll switch back to 1.2.3 form.
 __version_info__ = (0, 940)
 __versions_release_level__ = '+dev'  # or ''
-__version__ = '.'.join(__version_info__) + __versions_release_level__
+__version__ = '.'.join(str(v) for v in __version_info__) + __versions_release_level__
 base_version = __version__
 
 mypy_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
