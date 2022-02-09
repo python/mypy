@@ -2830,8 +2830,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             )
             manager.errors.report(
                 -1, -1,
-                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
-                "avoid checking one of them.",
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "for more info",
+                severity='note',
+            )
+            manager.errors.report(
+                -1, -1,
+                "Common resolutions include: a) using `--exclude` to avoid checking one of them, "
+                "b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or "
+                "adjusting MYPYPATH",
                 severity='note'
             )
 
@@ -2903,6 +2910,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 -1, 0,
                                 "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
                                 "for more info",
+                                severity='note',
+                            )
+                            manager.errors.report(
+                                -1, 0,
+                                "Common resolutions include: a) adding `__init__.py` somewhere, "
+                                "b) using `--explicit-package-bases` or adjusting MYPYPATH",
                                 severity='note',
                             )
                             manager.errors.raise_error()
