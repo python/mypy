@@ -132,6 +132,14 @@ REVEAL_TYPE_NAMES: Final = (
     'typing_extensions.reveal_type',
 )
 
+NEVER_NAMES: Final = (
+    'typing.NoReturn',
+    'typing_extensions.NoReturn',
+    'mypy_extensions.NoReturn',
+    'typing.Never',
+    'typing_extensions.Never',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
