@@ -156,7 +156,7 @@ z # type: ignore[name-defined]
 # flags: --enable-error-code ignore-without-code --warn-unused-ignores
 "x" # type: ignore # E: Unused "type: ignore" comment
 "y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
-z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined]
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeMissingWholeFileIgnores]
 # flags: --enable-error-code ignore-without-code
