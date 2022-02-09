@@ -276,7 +276,10 @@ Example:
 
     f = Foo('foo')
 
-    # This line has a typo that mypy can't help with as both the expected 'assignment' and 'attr-defined' are silenced
+    # This line has a typo that mypy can't help with as both:
+    # - the expected error 'assignment', and
+    # - the unexpected error 'attr-defined'
+    # are silenced.
     # Error: "type: ignore" comment without error code (currently ignored: [attr-defined])
     f.nme = 42  # type: ignore
 
