@@ -59,8 +59,8 @@ for full details, see :ref:`running-mypy`.
     pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
     directories with a given name by e.g. ``--exclude /build/`` or
     those matching a subpath with ``--exclude /project/vendor/``. To ignore
-    multiple files / directories / paths, you can combine expressions with
-    ``|``, e.g ``--exclude '/setup\.py$|/build/'``.
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
 
     Note that this flag only affects recursive directory tree discovery, that
     is, when mypy is discovering files within a directory tree or submodules of
@@ -274,7 +274,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 Disallow dynamic typing
 ***********************
 
-The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``Any`` type is used to represent a value that has a :ref:`dynamic type <dynamic-typing>`.
 The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
 a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
 
@@ -312,9 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example, you can't use a bare ``x: list``. Instead, you
+    must always write something like ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -419,7 +418,7 @@ For more details, see :ref:`no_strict_optional`.
 Configuring warnings
 ********************
 
-The follow flags enable warnings for code that is sound but is
+The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
 .. option:: --warn-redundant-casts
@@ -521,11 +520,20 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
-           ...
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. option:: --local-partial-types
 
@@ -565,8 +573,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
@@ -580,9 +593,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
@@ -849,13 +862,17 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --html-report / --xslt-html-report DIR
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --linecount-report DIR
 
@@ -877,13 +894,17 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --xml-report DIR
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 Miscellaneous
 *************

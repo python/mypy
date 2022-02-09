@@ -379,4 +379,8 @@ def test() -> None:
     source_str = "abcd"
     f = list("str:" + x for x in source_str)
     assert f == ["str:a", "str:b", "str:c", "str:d"]
+[case testNextBug]
+from typing import List, Optional
 
+def test(x: List[int]) -> None:
+    res = next((i for i in x), None)

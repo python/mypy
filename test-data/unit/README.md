@@ -82,17 +82,17 @@ Running tests and linting
 
 First install any additional dependencies needed for testing:
 
-    $ python3 -m pip install -U -r test-requirements.txt
+    python3 -m pip install -U -r test-requirements.txt
 
 You must also have a Python 2.7 binary installed that can import the `typing`
 module:
 
-    $ python2 -m pip install -U typing
+    python2 -m pip install -U typing
 
 The unit test suites are driven by the `pytest` framework. To run all mypy tests,
 run `pytest` in the mypy repository:
 
-    $ pytest -q mypy
+    pytest -q mypy
 
 This will run all tests, including integration and regression tests,
 and will verify that all stubs are valid. This may take several
@@ -106,59 +106,59 @@ Note that some tests will be disabled for older python versions.
 
 If you work on mypyc, you will want to also run mypyc tests:
 
-    $ pytest -q mypyc
+    pytest -q mypyc
 
 You can run tests from a specific module directly, a specific suite within a
 module, or a test in a suite (even if it's data-driven):
 
-    $ pytest -q mypy/test/testdiff.py
+    pytest -q mypy/test/testdiff.py
 
-    $ pytest -q mypy/test/testsemanal.py::SemAnalTypeInfoSuite
+    pytest -q mypy/test/testsemanal.py::SemAnalTypeInfoSuite
 
-    $ pytest -n0 mypy/test/testargs.py::ArgSuite::test_coherence
+    pytest -n0 mypy/test/testargs.py::ArgSuite::test_coherence
 
-    $ pytest -n0 mypy/test/testcheck.py::TypeCheckSuite::testCallingVariableWithFunctionType
+    pytest -n0 mypy/test/testcheck.py::TypeCheckSuite::testCallingVariableWithFunctionType
 
 To control which tests are run and how, you can use the `-k` switch:
 
-    $ pytest -q -k "MethodCall"
+    pytest -q -k "MethodCall"
 
 You can also run the type checker for manual testing without
 installing it by setting up the Python module search path suitably:
 
-    $ export PYTHONPATH=$PWD
-    $ python3 -m mypy PROGRAM.py
+    export PYTHONPATH=$PWD
+    python3 -m mypy PROGRAM.py
 
 You will have to manually install the `typing` module if you're running Python
 3.4 or earlier.
 
 You can also execute mypy as a module
 
-    $ python3 -m mypy PROGRAM.py
+    python3 -m mypy PROGRAM.py
 
 You can check a module or string instead of a file:
 
-    $ python3 -m mypy PROGRAM.py
-    $ python3 -m mypy -m MODULE
-    $ python3 -m mypy -c 'import MODULE'
+    python3 -m mypy PROGRAM.py
+    python3 -m mypy -m MODULE
+    python3 -m mypy -c 'import MODULE'
 
 To run mypy on itself:
 
-    $ python3 -m mypy --config-file mypy_self_check.ini -p mypy
+    python3 -m mypy --config-file mypy_self_check.ini -p mypy
 
 To run the linter:
 
-    $ flake8
+    flake8
 
 You can also run all of the above tests using `runtests.py` (this includes
 type checking mypy and linting):
 
-    $ python3 runtests.py
+    python3 runtests.py
 
 By default, this runs everything except some mypyc tests. You can give it
 arguments to control what gets run, such as `self` to run mypy on itself:
 
-    $ python3 runtests.py self
+    python3 runtests.py self
 
 Run `python3 runtests.py mypyc-extra` to run mypyc tests that are not
 enabled by default. This is typically only needed if you work on mypyc.
@@ -187,7 +187,7 @@ Debugging
 You can use interactive debuggers like `pdb` to debug failing tests. You
 need to pass the `-n0` option to disable parallelization:
 
-    $ pytest -n0 --pdb -k MethodCall
+    pytest -n0 --pdb -k MethodCall
 
 You can also write `import pdb; pdb.set_trace()` in code to enter the
 debugger.
@@ -195,7 +195,7 @@ debugger.
 The `--mypy-verbose` flag can be used to enable additional debug output from
 most tests (as if `--verbose` had been passed to mypy):
 
-    $ pytest -n0 --mypy-verbose -k MethodCall
+    pytest -n0 --mypy-verbose -k MethodCall
 
 Coverage reports
 ----------------

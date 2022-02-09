@@ -5,13 +5,15 @@ It contains class TypeInfos and Type objects.
 
 from typing import List, Optional, Tuple
 
+from mypy.semanal_shared import set_callable_name
 from mypy.types import (
-    Type, TypeVarType, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
-    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
+    Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
+    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType,
+    TypeVarLikeType
 )
 from mypy.nodes import (
-    TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
-    COVARIANT, TypeAlias
+    TypeInfo, ClassDef, FuncDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
+    COVARIANT, TypeAlias, SymbolTableNode, MDEF,
 )
 
 
@@ -62,6 +64,7 @@ class TypeFixture:
                                               typevars=['T'],
                                               variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
+        self.bool_type_info = self.make_type_info('builtins.bool')
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
@@ -154,9 +157,11 @@ class TypeFixture:
         self.lit1 = LiteralType(1, self.a)
         self.lit2 = LiteralType(2, self.a)
         self.lit3 = LiteralType("foo", self.d)
+        self.lit4 = LiteralType(4, self.a)
         self.lit1_inst = Instance(self.ai, [], last_known_value=self.lit1)
         self.lit2_inst = Instance(self.ai, [], last_known_value=self.lit2)
         self.lit3_inst = Instance(self.di, [], last_known_value=self.lit3)
+        self.lit4_inst = Instance(self.ai, [], last_known_value=self.lit4)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)
@@ -164,6 +169,15 @@ class TypeFixture:
         self.type_d = TypeType.make_normalized(self.d)
         self.type_t = TypeType.make_normalized(self.t)
         self.type_any = TypeType.make_normalized(self.anyt)
+
+        self._add_bool_dunder(self.bool_type_info)
+        self._add_bool_dunder(self.ai)
+
+    def _add_bool_dunder(self, type_info: TypeInfo) -> None:
+        signature = CallableType([], [], [], Instance(self.bool_type_info, []), self.function)
+        bool_func = FuncDef('__bool__', [], Block([]))
+        bool_func.type = set_callable_name(signature, bool_func)
+        type_info.names[bool_func.name] = SymbolTableNode(MDEF, bool_func)
 
     # Helper methods
 
@@ -223,7 +237,7 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v: List[TypeVarType] = []
+            v: List[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]

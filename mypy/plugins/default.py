@@ -9,7 +9,7 @@ from mypy.plugin import (
 from mypy.plugins.common import try_getting_str_literals
 from mypy.types import (
     FunctionLike, Type, Instance, AnyType, TypeOfAny, CallableType, NoneType, TypedDictType,
-    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType
+    TypeVarType, TPDICT_FB_NAMES, get_proper_type, LiteralType, TupleType
 )
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
@@ -23,7 +23,7 @@ class DefaultPlugin(Plugin):
                           ) -> Optional[Callable[[FunctionContext], Type]]:
         from mypy.plugins import ctypes, singledispatch
 
-        if fullname == 'contextlib.contextmanager':
+        if fullname in ('contextlib.contextmanager', 'contextlib.asynccontextmanager'):
             return contextmanager_callback
         elif fullname == 'ctypes.Array':
             return ctypes.array_constructor_callback
@@ -43,8 +43,6 @@ class DefaultPlugin(Plugin):
             return typed_dict_pop_signature_callback
         elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
             return typed_dict_update_signature_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
-            return typed_dict_delitem_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
         elif fullname == singledispatch.SINGLEDISPATCH_CALLABLE_CALL_METHOD:
@@ -61,6 +59,8 @@ class DefaultPlugin(Plugin):
             return int_pow_callback
         elif fullname == 'builtins.int.__neg__':
             return int_neg_callback
+        elif fullname in ('builtins.tuple.__mul__', 'builtins.tuple.__rmul__'):
+            return tuple_mul_callback
         elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
             return typed_dict_setdefault_callback
         elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
@@ -331,12 +331,6 @@ def typed_dict_setdefault_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def typed_dict_delitem_signature_callback(ctx: MethodSigContext) -> CallableType:
-    # Replace NoReturn as the argument type.
-    str_type = ctx.api.named_generic_type('builtins.str', [])
-    return ctx.default_signature.copy_modified(arg_types=[str_type])
-
-
 def typed_dict_delitem_callback(ctx: MethodContext) -> Type:
     """Type check TypedDict.__delitem__."""
     if (isinstance(ctx.type, TypedDictType)
@@ -413,4 +407,25 @@ def int_neg_callback(ctx: MethodContext) -> Type:
         fallback = ctx.type.fallback
         if isinstance(value, int):
             return LiteralType(value=-value, fallback=fallback)
+    return ctx.default_return_type
+
+
+def tuple_mul_callback(ctx: MethodContext) -> Type:
+    """Infer a more precise return type for tuple.__mul__ and tuple.__rmul__.
+
+    This is used to return a specific sized tuple if multiplied by Literal int
+    """
+    if not isinstance(ctx.type, TupleType):
+        return ctx.default_return_type
+
+    arg_type = get_proper_type(ctx.arg_types[0][0])
+    if isinstance(arg_type, Instance) and arg_type.last_known_value is not None:
+        value = arg_type.last_known_value.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+    elif isinstance(ctx.type, LiteralType):
+        value = arg_type.value
+        if isinstance(value, int):
+            return ctx.type.copy_modified(items=ctx.type.items * value)
+
     return ctx.default_return_type

@@ -795,6 +795,53 @@ L0:
     r0 = T.foo(self)
     return 1
 
+[case testSuperCallToObjectInitIsOmitted]
+class C:
+    def __init__(self) -> None:
+        super().__init__()
+class D: pass
+class E(D):
+    def __init__(self) -> None:
+        super().__init__()
+class F(C):
+    def __init__(self) -> None:
+        super().__init__()
+class DictSubclass(dict):
+    def __init__(self) -> None:
+        super().__init__()
+[out]
+def C.__init__(self):
+    self :: __main__.C
+L0:
+    return 1
+def E.__init__(self):
+    self :: __main__.E
+L0:
+    return 1
+def F.__init__(self):
+    self :: __main__.F
+    r0 :: None
+L0:
+    r0 = C.__init__(self)
+    return 1
+def DictSubclass.__init__(self):
+    self :: dict
+    r0 :: object
+    r1 :: str
+    r2, r3, r4 :: object
+    r5 :: str
+    r6, r7 :: object
+L0:
+    r0 = builtins :: module
+    r1 = 'super'
+    r2 = CPyObject_GetAttr(r0, r1)
+    r3 = __main__.DictSubclass :: type
+    r4 = PyObject_CallFunctionObjArgs(r2, r3, self, 0)
+    r5 = '__init__'
+    r6 = CPyObject_GetAttr(r4, r5)
+    r7 = PyObject_CallFunctionObjArgs(r6, 0)
+    return 1
+
 [case testClassVariable]
 from typing import ClassVar
 class A:

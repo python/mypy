@@ -1,4 +1,4 @@
-from typing import Dict
+import sys
 
 ENDMARKER: int
 NAME: int
@@ -59,9 +59,11 @@ ATEQUAL: int
 AWAIT: int
 ASYNC: int
 ERRORTOKEN: int
+if sys.version_info >= (3, 7):
+    COLONEQUAL: int
 N_TOKENS: int
 NT_OFFSET: int
-tok_name: Dict[int, str]
+tok_name: dict[int, str]
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...

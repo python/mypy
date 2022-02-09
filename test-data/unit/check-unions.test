@@ -144,6 +144,11 @@ f(1)
 f(None)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int]"
 
+[case testUnionWithNoReturn]
+from typing import Union, NoReturn
+def f() -> Union[int, NoReturn]: ...
+reveal_type(f()) # N: Revealed type is "builtins.int"
+
 [case testUnionSimplificationGenericFunction]
 from typing import TypeVar, Union, List
 T = TypeVar('T')
@@ -241,7 +246,7 @@ def f(x: M[C]) -> None:
     y = x.get(None)
     reveal_type(y) # N: Revealed type is "__main__.C"
 
-[case testUnionSimplificationSpecialCases]
+[case testUnionSimplificationSpecialCases2]
 from typing import Any, TypeVar, Union
 
 class C(Any): pass
@@ -556,7 +561,7 @@ reveal_type(d1)  # N: Revealed type is "Union[Any, builtins.float]"
 reveal_type(d2)  # N: Revealed type is "Union[Any, builtins.float]"
 
 e: Union[Any, Tuple[float, float], int]
-(e1, e2) = e  # E: "builtins.int" object is not iterable
+(e1, e2) = e  # E: "int" object is not iterable
 [builtins fixtures/tuple.pyi]
 
 [case testUnionMultiassignNotJoin]
@@ -694,7 +699,7 @@ reveal_type(d) # N: Revealed type is "builtins.list[builtins.int*]"
 from typing import Union
 bad: Union[int, str]
 
-x, y = bad # E: "builtins.int" object is not iterable \
+x, y = bad # E: "int" object is not iterable \
            # E: Unpacking a string is disallowed
 reveal_type(x) # N: Revealed type is "Any"
 reveal_type(y) # N: Revealed type is "Any"
@@ -1059,3 +1064,100 @@ x: Union[None, Any]
 y: Union[int, None]
 reveal_type(f(x, y)) # N: Revealed type is "Union[None, Any, builtins.int]"
 reveal_type(f(y, x)) # N: Revealed type is "Union[builtins.int, None, Any]"
+
+[case testNestedProtocolUnions]
+from typing import Union, Iterator, Iterable
+def foo(
+    values: Union[
+        Iterator[Union[
+            Iterator[Union[Iterator[int], Iterable[int]]],
+            Iterable[Union[Iterator[int], Iterable[int]]],
+        ]],
+        Iterable[Union[
+            Iterator[Union[Iterator[int], Iterable[int]]],
+            Iterable[Union[Iterator[int], Iterable[int]]],
+        ]],
+    ]
+) -> Iterator[int]:
+    for i in values:
+        for j in i:
+            for k in j:
+                yield k
+foo([[[1]]])
+[builtins fixtures/list.pyi]
+
+[case testNestedProtocolGenericUnions]
+from typing import Union, Iterator, List
+def foo(
+    values: Union[
+        Iterator[Union[
+            Iterator[Union[Iterator[int], List[int]]],
+            List[Union[Iterator[int], List[int]]],
+        ]],
+        List[Union[
+            Iterator[Union[Iterator[int], List[int]]],
+            List[Union[Iterator[int], List[int]]],
+        ]],
+    ]
+) -> Iterator[int]:
+    for i in values:
+        for j in i:
+            for k in j:
+                yield k
+foo([[[1]]])
+[builtins fixtures/list.pyi]
+
+[case testNestedProtocolGenericUnionsDeep]
+from typing import TypeVar, Union, Iterator, List
+T = TypeVar("T")
+Iter = Union[Iterator[T], List[T]]
+def foo(
+    values: Iter[Iter[Iter[Iter[Iter[int]]]]],
+) -> Iterator[int]:
+    for i in values:
+        for j in i:
+            for k in j:
+                for l in k:
+                    for m in l:
+                        yield m
+foo([[[[[1]]]]])
+[builtins fixtures/list.pyi]
+
+[case testNestedInstanceUnsimplifiedUnion]
+from typing import TypeVar, Union, Iterator, List, Any
+T = TypeVar("T")
+
+Iter = Union[Iterator[T], List[T]]
+def foo(
+    values: Iter[Union[Any, Any]],
+) -> Iterator[Any]:
+    for i in values:
+        yield i
+foo([1])
+[builtins fixtures/list.pyi]
+
+[case testNestedInstanceTypeAlias]
+from typing import TypeVar, Union, Iterator, List, Any
+T = TypeVar("T")
+
+Iter = Union[Iterator[T], List[T]]
+def foo(
+    values: Iter["Any"],
+) -> Iterator[Any]:
+    for i in values:
+        yield i
+foo([1])
+[builtins fixtures/list.pyi]
+
+[case testNestedInstanceTypeAliasUnsimplifiedUnion]
+from typing import TypeVar, Union, Iterator, List, Any
+T = TypeVar("T")
+
+Iter = Union[Iterator[T], List[T]]
+def foo(
+    values: Iter["Union[Any, Any]"],
+) -> Iterator[Any]:
+    for i in values:
+        yield i
+foo([1])
+[builtins fixtures/list.pyi]

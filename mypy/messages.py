@@ -22,9 +22,9 @@ from mypy.erasetype import erase_type
 from mypy.errors import Errors
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
-    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType, TypeVarType,
+    UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    get_proper_types
+    ParamSpecType, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -107,13 +107,13 @@ class MessageBuilder:
     disable_count = 0
 
     # Hack to deduplicate error messages from union types
-    disable_type_names = 0
+    disable_type_names_count = 0
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
         self.disable_count = 0
-        self.disable_type_names = 0
+        self.disable_type_names_count = 0
 
     #
     # Helpers
@@ -122,7 +122,7 @@ class MessageBuilder:
     def copy(self) -> 'MessageBuilder':
         new = MessageBuilder(self.errors.copy(), self.modules)
         new.disable_count = self.disable_count
-        new.disable_type_names = self.disable_type_names
+        new.disable_type_names_count = self.disable_type_names_count
         return new
 
     def clean_copy(self) -> 'MessageBuilder':
@@ -144,6 +144,14 @@ class MessageBuilder:
             yield
         finally:
             self.disable_count -= 1
+
+    @contextmanager
+    def disable_type_names(self) -> Iterator[None]:
+        self.disable_type_names_count += 1
+        try:
+            yield
+        finally:
+            self.disable_type_names_count -= 1
 
     def is_errors(self) -> bool:
         return self.errors.is_errors()
@@ -289,8 +297,8 @@ class MessageBuilder:
                 # Explain that the problem is that the type of the function is not known.
                 self.fail('Cannot call function of unknown type', context, code=codes.OPERATOR)
             else:
-                self.fail('{} not callable'.format(format_type(original_type)), context,
-                          code=codes.OPERATOR)
+                self.fail(message_registry.NOT_CALLABLE.format(
+                    format_type(original_type)), context, code=codes.OPERATOR)
         else:
             # The non-special case: a missing ordinary attribute.
             extra = ''
@@ -298,7 +306,7 @@ class MessageBuilder:
                 extra = ' (not iterable)'
             elif member == '__aiter__':
                 extra = ' (not async iterable)'
-            if not self.disable_type_names:
+            if not self.disable_type_names_count:
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
@@ -345,6 +353,16 @@ class MessageBuilder:
                 self.fail('Item {} of {} has no attribute "{}"{}'.format(
                     typ_format, orig_type_format, member, extra), context,
                     code=codes.UNION_ATTR)
+            elif isinstance(original_type, TypeVarType):
+                bound = get_proper_type(original_type.upper_bound)
+                if isinstance(bound, UnionType):
+                    typ_fmt, bound_fmt = format_type_distinctly(typ, bound)
+                    original_type_fmt = format_type(original_type)
+                    self.fail(
+                        'Item {} of the upper bound {} of type variable {} has no '
+                        'attribute "{}"{}'.format(
+                            typ_fmt, bound_fmt, original_type_fmt, member, extra),
+                        context, code=codes.UNION_ATTR)
         return AnyType(TypeOfAny.from_error)
 
     def unsupported_operand_types(self,
@@ -370,7 +388,7 @@ class MessageBuilder:
         else:
             right_str = format_type(right_type)
 
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
@@ -379,7 +397,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if self.disable_type_names:
+        if self.disable_type_names_count:
             msg = 'Unsupported left operand type for {} (some union)'.format(op)
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(
@@ -387,7 +405,7 @@ class MessageBuilder:
         self.fail(msg, context, code=codes.OPERATOR)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
-        self.fail('{} not callable'.format(format_type(typ)), context)
+        self.fail(message_registry.NOT_CALLABLE.format(format_type(typ)), context)
         return AnyType(TypeOfAny.from_error)
 
     def untyped_function_call(self, callee: CallableType, context: Context) -> Type:
@@ -639,6 +657,7 @@ class MessageBuilder:
     def too_many_arguments(self, callee: CallableType, context: Context) -> None:
         msg = 'Too many arguments' + for_function(callee)
         self.fail(msg, context, code=codes.CALL_ARG)
+        self.maybe_note_about_special_args(callee, context)
 
     def too_many_arguments_from_typed_dict(self,
                                            callee: CallableType,
@@ -658,6 +677,18 @@ class MessageBuilder:
                                       context: Context) -> None:
         msg = 'Too many positional arguments' + for_function(callee)
         self.fail(msg, context)
+        self.maybe_note_about_special_args(callee, context)
+
+    def maybe_note_about_special_args(self, callee: CallableType, context: Context) -> None:
+        # https://github.com/python/mypy/issues/11309
+        first_arg = callee.def_extras.get('first_arg')
+        if first_arg and first_arg not in {'self', 'cls', 'mcs'}:
+            self.note(
+                'Looks like the first special argument in a method '
+                'is not named "self", "cls", or "mcs", '
+                'maybe it is missing?',
+                context,
+            )
 
     def unexpected_keyword_argument(self, callee: CallableType, name: str, arg_type: Type,
                                     context: Context) -> None:
@@ -729,7 +760,6 @@ class MessageBuilder:
         self.fail('Assignment to variable{} outside except: block'.format(s), context)
 
     def no_variant_matches_arguments(self,
-                                     plausible_targets: List[CallableType],
                                      overload: Overloaded,
                                      arg_types: List[Type],
                                      context: Context,
@@ -753,8 +783,11 @@ class MessageBuilder:
             self.fail('No overload variant{} matches argument types {}'
                       .format(name_str, arg_types_str), context, code=code)
 
-        self.pretty_overload_matches(plausible_targets, overload, context, offset=2, max_items=2,
-                                     code=code)
+        self.note(
+            'Possible overload variant{}:'.format(plural_s(len(overload.items))),
+            context, code=code)
+        for item in overload.items:
+            self.note(pretty_callable(item), context, offset=4, code=code)
 
     def wrong_number_values_to_unpack(self, provided: int, expected: int,
                                       context: Context) -> None:
@@ -773,7 +806,7 @@ class MessageBuilder:
         self.fail("Unpacking a string is disallowed", context)
 
     def type_not_iterable(self, type: Type, context: Context) -> None:
-        self.fail('"{}" object is not iterable'.format(type), context)
+        self.fail('{} object is not iterable'.format(format_type(type)), context)
 
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
@@ -782,7 +815,7 @@ class MessageBuilder:
 
     def overload_signature_incompatible_with_supertype(
             self, name: str, name_in_super: str, supertype: str,
-            overload: Overloaded, context: Context) -> None:
+            context: Context) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail('Signature of "{}" incompatible with {}'.format(
             name, target), context, code=codes.OVERRIDE)
@@ -801,7 +834,6 @@ class MessageBuilder:
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
-        MAX_ITEMS = 3  # Display a max of three items for Overloaded types
         ALIGN_OFFSET = 1  # One space, to account for the difference between error and note
         OFFSET = 4  # Four spaces, so that notes will look like this:
         # error: Signature of "f" incompatible with supertype "A"
@@ -814,14 +846,12 @@ class MessageBuilder:
             self.note('Superclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(original, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
             self.note('Subclass:', context, offset=ALIGN_OFFSET + OFFSET, code=code)
             self.pretty_callable_or_overload(override, context, offset=ALIGN_OFFSET + 2 * OFFSET,
                                             add_class_or_static_decorator=INCLUDE_DECORATOR,
-                                            overload_max_items=MAX_ITEMS, allow_dups=ALLOW_DUPS,
-                                            code=code)
+                                            allow_dups=ALLOW_DUPS, code=code)
 
     def pretty_callable_or_overload(self,
                                     tp: Union[CallableType, Overloaded],
@@ -829,7 +859,6 @@ class MessageBuilder:
                                     *,
                                     offset: int = 0,
                                     add_class_or_static_decorator: bool = False,
-                                    overload_max_items: int = 1,
                                     allow_dups: bool = False,
                                     code: Optional[ErrorCode] = None) -> None:
         if isinstance(tp, CallableType):
@@ -840,7 +869,7 @@ class MessageBuilder:
             self.note(pretty_callable(tp), context,
                       offset=offset, allow_dups=allow_dups, code=code)
         elif isinstance(tp, Overloaded):
-            self.pretty_overload(tp, context, offset, overload_max_items,
+            self.pretty_overload(tp, context, offset,
                                  add_class_or_static_decorator=add_class_or_static_decorator,
                                  allow_dups=allow_dups, code=code)
 
@@ -1130,11 +1159,12 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def invalid_signature(self, func_type: Type, context: Context) -> None:
-        self.fail('Invalid signature "{}"'.format(func_type), context)
+        self.fail('Invalid signature {}'.format(format_type(func_type)), context)
 
     def invalid_signature_for_special_method(
             self, func_type: Type, context: Context, method_name: str) -> None:
-        self.fail('Invalid signature "{}" for "{}"'.format(func_type, method_name), context)
+        self.fail('Invalid signature {} for "{}"'.format(format_type(func_type), method_name),
+                  context)
 
     def reveal_type(self, typ: Type, context: Context) -> None:
         self.note('Revealed type is "{}"'.format(typ), context)
@@ -1228,7 +1258,7 @@ class MessageBuilder:
             context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
-                format_item_name_list(typ.items.keys())), context)
+                format_item_name_list(typ.items.keys())), context, code=codes.LITERAL_REQ)
 
     def typeddict_key_not_found(
             self,
@@ -1244,7 +1274,7 @@ class MessageBuilder:
             matches = best_matches(item_name, typ.items.keys())
             if matches:
                 self.note("Did you mean {}?".format(
-                    pretty_seq(matches[:3], "or")), context)
+                    pretty_seq(matches[:3], "or")), context, code=codes.TYPEDDICT_ITEM)
 
     def typeddict_context_ambiguous(
             self,
@@ -1377,9 +1407,6 @@ class MessageBuilder:
     def redundant_condition_in_if(self, truthiness: bool, context: Context) -> None:
         self.redundant_expr("If condition", truthiness, context)
 
-    def redundant_condition_in_assert(self, truthiness: bool, context: Context) -> None:
-        self.redundant_expr("Condition in assert", truthiness, context)
-
     def redundant_expr(self, description: str, truthiness: bool, context: Context) -> None:
         self.fail("{} is always {}".format(description, str(truthiness).lower()),
                   context, code=codes.REDUNDANT_EXPR)
@@ -1469,13 +1496,13 @@ class MessageBuilder:
                         self.note(pretty_callable(exp), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(exp, Overloaded)
-                        self.pretty_overload(exp, context, 2 * OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(exp, context, 2 * OFFSET, code=code)
                     self.note('Got:', context, offset=OFFSET, code=code)
                     if isinstance(got, CallableType):
                         self.note(pretty_callable(got), context, offset=2 * OFFSET, code=code)
                     else:
                         assert isinstance(got, Overloaded)
-                        self.pretty_overload(got, context, 2 * OFFSET, MAX_ITEMS, code=code)
+                        self.pretty_overload(got, context, 2 * OFFSET, code=code)
             self.print_more(conflict_types, context, OFFSET, MAX_ITEMS, code=code)
 
         # Report flag conflicts (i.e. settable vs read-only etc.)
@@ -1507,12 +1534,11 @@ class MessageBuilder:
                         tp: Overloaded,
                         context: Context,
                         offset: int,
-                        max_items: int,
                         *,
                         add_class_or_static_decorator: bool = False,
                         allow_dups: bool = False,
                         code: Optional[ErrorCode] = None) -> None:
-        for item in tp.items()[:max_items]:
+        for item in tp.items:
             self.note('@overload', context, offset=offset, allow_dups=allow_dups, code=code)
 
             if add_class_or_static_decorator:
@@ -1522,46 +1548,6 @@ class MessageBuilder:
 
             self.note(pretty_callable(item), context,
                       offset=offset, allow_dups=allow_dups, code=code)
-        left = len(tp.items()) - max_items
-        if left > 0:
-            msg = '<{} more overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=offset, allow_dups=allow_dups, code=code)
-
-    def pretty_overload_matches(self,
-                                targets: List[CallableType],
-                                func: Overloaded,
-                                context: Context,
-                                offset: int,
-                                max_items: int,
-                                code: ErrorCode) -> None:
-        if not targets:
-            targets = func.items()
-
-        shown = min(max_items, len(targets))
-        max_matching = len(targets)
-        max_available = len(func.items())
-
-        # If there are 3 matches but max_items == 2, we might as well show
-        # all three items instead of having the 3rd item be an error message.
-        if shown + 1 == max_matching:
-            shown = max_matching
-
-        self.note('Possible overload variant{}:'.format(plural_s(shown)), context, code=code)
-        for item in targets[:shown]:
-            self.note(pretty_callable(item), context, offset=2 * offset, code=code)
-
-        assert shown <= max_matching <= max_available
-        if shown < max_matching <= max_available:
-            left = max_matching - shown
-            msg = '<{} more similar overload{} not shown, out of {} total overloads>'.format(
-                left, plural_s(left), max_available)
-            self.note(msg, context, offset=2 * offset, code=code)
-        elif shown == max_matching < max_available:
-            left = max_available - shown
-            msg = '<{} more non-matching overload{} not shown>'.format(left, plural_s(left))
-            self.note(msg, context, offset=2 * offset, code=code)
-        else:
-            assert shown == max_matching == max_available
 
     def print_more(self,
                    conflicts: Sequence[Any],
@@ -1633,8 +1619,8 @@ class MessageBuilder:
         for i, (lhs_t, rhs_t) in enumerate(zip(lhs_types, rhs_types)):
             if not is_subtype(lhs_t, rhs_t):
                 if error_cnt < 3:
-                    notes.append('Expression tuple item {} has type "{}"; "{}" expected; '
-                        .format(str(i), format_type_bare(rhs_t), format_type_bare(lhs_t)))
+                    notes.append('Expression tuple item {} has type {}; {} expected; '
+                        .format(str(i), format_type(rhs_t), format_type(lhs_t)))
                 error_cnt += 1
 
         error_msg = msg + ' ({} tuple items are incompatible'.format(str(error_cnt))
@@ -1712,6 +1698,8 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
+    elif isinstance(typ, ParamSpecType):
+        return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
@@ -1771,11 +1759,17 @@ def format_type_inner(typ: Type,
         if func.is_type_obj():
             # The type of a type object type can be derived from the
             # return type (this always works).
-            return format(TypeType.make_normalized(erase_type(func.items()[0].ret_type)))
+            return format(TypeType.make_normalized(erase_type(func.items[0].ret_type)))
         elif isinstance(func, CallableType):
-            return_type = format(func.ret_type)
+            if func.type_guard is not None:
+                return_type = f'TypeGuard[{format(func.type_guard)}]'
+            else:
+                return_type = format(func.ret_type)
             if func.is_ellipsis_args:
                 return 'Callable[..., {}]'.format(return_type)
+            param_spec = func.param_spec()
+            if param_spec is not None:
+                return f'Callable[{param_spec.name}, {return_type}]'
             arg_strings = []
             for arg_name, arg_type, arg_kind in zip(
                     func.arg_names, func.arg_types, func.arg_kinds):
@@ -1866,8 +1860,7 @@ def format_type(typ: Type, verbosity: int = 0) -> str:
 
 
 def format_type_bare(typ: Type,
-                     verbosity: int = 0,
-                     fullnames: Optional[Set[str]] = None) -> str:
+                     verbosity: int = 0) -> str:
     """
     Convert a type to a relatively short string suitable for error messages.
 
@@ -2133,11 +2126,6 @@ def find_defining_module(modules: Dict[str, MypyFile], typ: CallableType) -> Opt
                 pass
         assert False, "Couldn't determine module from CallableType"
     return None
-
-
-def temp_message_builder() -> MessageBuilder:
-    """Return a message builder usable for throwaway errors (which may not format properly)."""
-    return MessageBuilder(Errors(), {})
 
 
 # For hard-coding suggested missing member alternatives.

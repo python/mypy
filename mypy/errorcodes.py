@@ -30,7 +30,7 @@ class ErrorCode:
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
-CALL_ARG: Final = ErrorCode(
+CALL_ARG: Final[ErrorCode] = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
 ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "General")
@@ -44,8 +44,10 @@ VAR_ANNOTATED: Final = ErrorCode(
 OVERRIDE: Final = ErrorCode(
     "override", "Check that method override is compatible with base class", "General"
 )
-RETURN: Final = ErrorCode("return", "Check that function always returns a value", "General")
-RETURN_VALUE: Final = ErrorCode(
+RETURN: Final[ErrorCode] = ErrorCode(
+    "return", "Check that function always returns a value", "General"
+)
+RETURN_VALUE: Final[ErrorCode] = ErrorCode(
     "return-value", "Check that return value is compatible with signature", "General"
 )
 ASSIGNMENT: Final = ErrorCode(
@@ -92,13 +94,16 @@ STR_BYTES_PY3: Final = ErrorCode(
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
 )
+LITERAL_REQ: Final = ErrorCode(
+    "literal-required", "Check that value is a literal", 'General'
+)
 
 # These error codes aren't enabled by default.
-NO_UNTYPED_DEF: Final = ErrorCode(
+NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
     "no-untyped-def", "Check that every function has an annotation", "General"
 )
 NO_UNTYPED_CALL: Final = ErrorCode(
-    'no-untyped-call',
+    "no-untyped-call",
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
@@ -122,8 +127,19 @@ UNREACHABLE: Final = ErrorCode(
 REDUNDANT_EXPR: Final = ErrorCode(
     "redundant-expr", "Warn about redundant expressions", "General", default_enabled=False
 )
+TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
+    "truthy-bool",
+    "Warn about expressions that could always evaluate to true in boolean contexts",
+    "General",
+    default_enabled=False,
+)
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
+)
+NO_OVERLOAD_IMPL: Final = ErrorCode(
+    "no-overload-impl",
+    "Check that overloaded functions outside stub files have an implementation",
+    "General",
 )
 
 

@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union
 
 from mypy import defaults
 import mypy.api as api
@@ -18,7 +18,9 @@ from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename
+from mypy.test.data import (
+    DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
+)
 from mypy.test.config import test_temp_dir
 import mypy.version
 
@@ -285,6 +287,8 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
 def testfile_pyversion(path: str) -> Tuple[int, int]:
     if path.endswith('python2.test'):
         return defaults.PYTHON2_VERSION
+    elif path.endswith('python310.test'):
+        return 3, 10
     else:
         return defaults.PYTHON3_VERSION
 
@@ -404,7 +408,7 @@ def split_lines(*streams: bytes) -> List[str]:
     ]
 
 
-def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
+def write_and_fudge_mtime(content: str, target_path: str) -> None:
     # In some systems, mtime has a resolution of 1 second which can
     # cause annoying-to-debug issues when a file has the same size
     # after a change. We manually set the mtime to circumvent this.
@@ -416,11 +420,31 @@ def copy_and_fudge_mtime(source_path: str, target_path: str) -> None:
     if os.path.isfile(target_path):
         new_time = os.stat(target_path).st_mtime + 1
 
-    # Use retries to work around potential flakiness on Windows (AppVeyor).
-    retry_on_error(lambda: shutil.copy(source_path, target_path))
+    dir = os.path.dirname(target_path)
+    os.makedirs(dir, exist_ok=True)
+    with open(target_path, "w", encoding="utf-8") as target:
+        target.write(content)
 
     if new_time:
         os.utime(target_path, times=(new_time, new_time))
+
+
+def perform_file_operations(
+        operations: List[Union[UpdateFile, DeleteFile]]) -> None:
+    for op in operations:
+        if isinstance(op, UpdateFile):
+            # Modify/create file
+            write_and_fudge_mtime(op.content, op.target_path)
+        else:
+            # Delete file/directory
+            if os.path.isdir(op.path):
+                # Sanity check to avoid unexpected deletions
+                assert op.path.startswith('tmp')
+                shutil.rmtree(op.path)
+            else:
+                # Use retries to work around potential flakiness on Windows (AppVeyor).
+                path = op.path
+                retry_on_error(lambda: os.remove(path))
 
 
 def check_test_output_files(testcase: DataDrivenTestCase,

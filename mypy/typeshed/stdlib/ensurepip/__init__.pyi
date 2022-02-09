@@ -1,9 +1,7 @@
-from typing import Optional
-
 def version() -> str: ...
 def bootstrap(
     *,
-    root: Optional[str] = ...,
+    root: str | None = ...,
     upgrade: bool = ...,
     user: bool = ...,
     altinstall: bool = ...,

@@ -26,6 +26,10 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
+# Use for "self" annotations:
+#   def __enter__(self: Self) -> Self: ...
+Self = TypeVar("Self")  # noqa Y001
+
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
 

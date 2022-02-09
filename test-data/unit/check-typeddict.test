@@ -75,6 +75,14 @@ Point = TypedDict('Point', {'x': int, 'y': int})
 p = Point(x='meaning_of_life', y=1337)  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictInstanceWithInlineTypedDict]
+from mypy_extensions import TypedDict
+D = TypedDict('D', {
+    'x': TypedDict('E', {  # E: Inline TypedDict types not supported; use assignment to define TypedDict
+        'y': int
+    })
+})
+[builtins fixtures/dict.pyi]
 
 -- Define TypedDict (Class syntax)
 
@@ -171,6 +179,21 @@ p: Point2D
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point2D', {'x': builtins.int, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
 
+[case testCannotCreateTypedDictWithDuplicateBases]
+# https://github.com/python/mypy/issues/3673
+from typing import TypedDict
+
+class A(TypedDict):
+    x: str
+    y: int
+
+class B(A, A): # E: Duplicate base class "A"
+    z: str
+
+class C(TypedDict, TypedDict): # E: Duplicate base class "TypedDict"
+    c1: int
+[typing fixtures/typing-typeddict.pyi]
+
 [case testCannotCreateTypedDictWithClassWithOtherStuff]
 # flags: --python-version 3.6
 from mypy_extensions import TypedDict
@@ -184,6 +207,19 @@ class Point(TypedDict):
 p = Point(x=42, y=1337, z='whatever')
 reveal_type(p)  # N: Revealed type is "TypedDict('__main__.Point', {'x': builtins.int, 'y': builtins.int, 'z': Any})"
 [builtins fixtures/dict.pyi]
+
+[case testCannotCreateTypedDictWithClassWithFunctionUsedToCrash]
+# https://github.com/python/mypy/issues/11079
+from typing import TypedDict
+class D(TypedDict):
+    y: int
+    def x(self, key: int):  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+        pass
+
+d = D(y=1)
+reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.int})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
 from mypy_extensions import TypedDict
@@ -1228,7 +1264,7 @@ from mypy_extensions import TypedDict
 Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
 
-[case testCannotCreateTypedDictTypeWithInvalidName]
+[case testCannotCreateTypedDictTypeWithInvalidName2]
 from mypy_extensions import TypedDict
 X = TypedDict('Y', {'x': int})  # E: First argument "Y" to TypedDict() does not match variable name "X"
 [builtins fixtures/dict.pyi]
@@ -1440,7 +1476,7 @@ T = TypeVar('T', bound='M')
 class G(Generic[T]):
     x: T
 
-yb: G[int] # E: Type argument "builtins.int" of "G" must be a subtype of "TypedDict('__main__.M', {'x': builtins.int})"
+yb: G[int] # E: Type argument "int" of "G" must be a subtype of "M"
 yg: G[M]
 z: int = G[M]().x['x']
 
@@ -1584,8 +1620,8 @@ d = None # type: Dict[Any, Any]
 
 f1(**td, **d)
 f1(**d, **td)
-f2(**td, **d) # E: Too many arguments for "f2"
-f2(**d, **td) # E: Too many arguments for "f2"
+f2(**td, **d)
+f2(**d, **td)
 [builtins fixtures/dict.pyi]
 
 [case testTypedDictNonMappingMethods]
@@ -1668,8 +1704,8 @@ s = ''
 del a[s] # E: Expected TypedDict key to be string literal
 del b[s] # E: Expected TypedDict key to be string literal
 alias = b.__delitem__
-alias('x') # E: Argument 1 has incompatible type "str"; expected "NoReturn"
-alias(s) # E: Argument 1 has incompatible type "str"; expected "NoReturn"
+alias('x')
+alias(s)
 [builtins fixtures/dict.pyi]
 
 [case testPluginUnionsOfTypedDicts]
@@ -2096,7 +2132,7 @@ class TD(TypedDict):
 
 d: TD = {b'foo': 2} # E: Expected TypedDict key to be string literal
 d[b'foo'] = 3 # E: TypedDict key must be a string literal; expected one of ("foo") \
-    # E: Argument 1 has incompatible type "bytes"; expected "str"
+    # E: Argument 1 to "__setitem__" has incompatible type "bytes"; expected "str"
 d[b'foo'] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[3] # E: TypedDict key must be a string literal; expected one of ("foo")
 d[True] # E: TypedDict key must be a string literal; expected one of ("foo")
@@ -2109,3 +2145,259 @@ from mypy_extensions import TypedDict
 Foo = TypedDict('Foo', {'camelCaseKey': str})
 value: Foo = {}  # E: Missing key "camelCaseKey" for TypedDict "Foo"
 [builtins fixtures/dict.pyi]
+
+-- Required[]
+
+[case testDoesRecognizeRequiredInTypedDictWithClass]
+from typing import TypedDict
+from typing import Required
+class Movie(TypedDict, total=False):
+    title: Required[str]
+    year: int
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesRecognizeRequiredInTypedDictWithAssignment]
+from typing import TypedDict
+from typing import Required
+Movie = TypedDict('Movie', {
+    'title': Required[str],
+    'year': int,
+}, total=False)
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowRequiredOutsideOfTypedDict]
+from typing import Required
+x: Required[int] = 42  # E: Required[] can be only used in a TypedDict definition
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesOnlyAllowRequiredInsideTypedDictAtTopLevel]
+from typing import TypedDict
+from typing import Union
+from typing import Required
+Movie = TypedDict('Movie', {
+    'title': Union[
+        Required[str],  # E: Required[] can be only used in a TypedDict definition
+        bytes
+    ],
+    'year': int,
+}, total=False)
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowRequiredInsideRequired]
+from typing import TypedDict
+from typing import Union
+from typing import Required
+Movie = TypedDict('Movie', {
+    'title': Required[Union[
+        Required[str],  # E: Required[] can be only used in a TypedDict definition
+        bytes
+    ]],
+    'year': int,
+}, total=False)
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRequiredOnlyAllowsOneItem]
+from typing import TypedDict
+from typing import Required
+class Movie(TypedDict, total=False):
+    title: Required[str, bytes]  # E: Required[] must have exactly one type argument
+    year: int
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRequiredExplicitAny]
+# flags: --disallow-any-explicit
+from typing import TypedDict
+from typing import Required
+Foo = TypedDict("Foo", {"a.x": Required[int]})
+[typing fixtures/typing-typeddict.pyi]
+
+-- NotRequired[]
+
+[case testDoesRecognizeNotRequiredInTypedDictWithClass]
+from typing import TypedDict
+from typing import NotRequired
+class Movie(TypedDict):
+    title: str
+    year: NotRequired[int]
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesRecognizeNotRequiredInTypedDictWithAssignment]
+from typing import TypedDict
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': str,
+    'year': NotRequired[int],
+})
+m = Movie(title='The Matrix')
+m = Movie()  # E: Missing key "title" for TypedDict "Movie"
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowNotRequiredOutsideOfTypedDict]
+from typing import NotRequired
+x: NotRequired[int] = 42  # E: NotRequired[] can be only used in a TypedDict definition
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesOnlyAllowNotRequiredInsideTypedDictAtTopLevel]
+from typing import TypedDict
+from typing import Union
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': Union[
+        NotRequired[str],  # E: NotRequired[] can be only used in a TypedDict definition
+        bytes
+    ],
+    'year': int,
+})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testDoesDisallowNotRequiredInsideNotRequired]
+from typing import TypedDict
+from typing import Union
+from typing import NotRequired
+Movie = TypedDict('Movie', {
+    'title': NotRequired[Union[
+        NotRequired[str],  # E: NotRequired[] can be only used in a TypedDict definition
+        bytes
+    ]],
+    'year': int,
+})
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNotRequiredOnlyAllowsOneItem]
+from typing import TypedDict
+from typing import NotRequired
+class Movie(TypedDict):
+    title: NotRequired[str, bytes]  # E: NotRequired[] must have exactly one type argument
+    year: int
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNotRequiredExplicitAny]
+# flags: --disallow-any-explicit
+from typing import TypedDict
+from typing import NotRequired
+Foo = TypedDict("Foo", {"a.x": NotRequired[int]})
+[typing fixtures/typing-typeddict.pyi]
+
+-- Union dunders
+
+[case testTypedDictUnionGetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]) -> str:
+    reveal_type(foo["z"])  # N: Revealed type is "builtins.str"
+    # ok, but type is incorrect:
+    reveal_type(foo.__getitem__("z"))  # N: Revealed type is "builtins.object*"
+
+    reveal_type(foo["a"])  # N: Revealed type is "Union[builtins.int, Any]" \
+                           # E: TypedDict "Foo2" has no key "a"
+    reveal_type(foo["b"])  # N: Revealed type is "Union[Any, builtins.int]" \
+                           # E: TypedDict "Foo1" has no key "b"
+    reveal_type(foo["missing"])  # N: Revealed type is "Any" \
+                                 # E: TypedDict "Foo1" has no key "missing" \
+                                 # E: TypedDict "Foo2" has no key "missing"
+    reveal_type(foo[1])  # N: Revealed type is "Any" \
+                         # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                         # E: TypedDict key must be a string literal; expected one of ("z", "b")
+
+    return foo["z"]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionSetItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    foo["z"] = "a"  # ok
+    foo.__setitem__("z", "a")  # ok
+
+    foo["z"] = 1  # E: Value of "z" has incompatible type "int"; expected "str"
+
+    foo["a"] = 1  # E: TypedDict "Foo2" has no key "a"
+    foo["b"] = 2  # E: TypedDict "Foo1" has no key "b"
+
+    foo["missing"] = 1  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                  # E: TypedDict key must be a string literal; expected one of ("z", "b") \
+                  # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnionDelItem]
+from typing import TypedDict, Union
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[Foo1, Foo2]):
+    del foo["z"]  # E: Key "z" of TypedDict "Foo1" cannot be deleted \
+                  # E: Key "z" of TypedDict "Foo2" cannot be deleted
+    foo.__delitem__("z")  # E: Key "z" of TypedDict "Foo1" cannot be deleted \
+                          # E: Key "z" of TypedDict "Foo2" cannot be deleted
+
+    del foo["a"]  # E: Key "a" of TypedDict "Foo1" cannot be deleted \
+                  # E: TypedDict "Foo2" has no key "a"
+    del foo["b"]  # E: TypedDict "Foo1" has no key "b" \
+                  # E: Key "b" of TypedDict "Foo2" cannot be deleted
+
+    del foo["missing"]  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    del foo[1]  # E: Expected TypedDict key to be string literal \
+                # E: Argument 1 to "__delitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictTypeVarUnionSetItem]
+from typing import TypedDict, Union, TypeVar
+
+F1 = TypeVar('F1', bound='Foo1')
+F2 = TypeVar('F2', bound='Foo2')
+
+class Foo1(TypedDict):
+    z: str
+    a: int
+class Foo2(TypedDict):
+    z: str
+    b: int
+
+def func(foo: Union[F1, F2]):
+    foo["z"] = "a"  # ok
+    foo["z"] = 1  # E: Value of "z" has incompatible type "int"; expected "str"
+
+    foo["a"] = 1  # E: TypedDict "Foo2" has no key "a"
+    foo["b"] = 2  # E: TypedDict "Foo1" has no key "b"
+
+    foo["missing"] = 1  # E: TypedDict "Foo1" has no key "missing" \
+                        # E: TypedDict "Foo2" has no key "missing"
+    foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
+                  # E: TypedDict key must be a string literal; expected one of ("z", "b") \
+                  # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

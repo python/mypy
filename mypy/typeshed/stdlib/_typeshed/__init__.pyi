@@ -3,10 +3,11 @@
 # See the README.md file in this directory for more information.
 
 import array
+import ctypes
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Container, Iterable, Protocol, Tuple, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, ClassVar, Container, Generic, Iterable, Protocol, Type, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -18,14 +19,41 @@ _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _T_contra = TypeVar("_T_contra", contravariant=True)
 
+# Use for "self" annotations:
+#   def __enter__(self: Self) -> Self: ...
+Self = TypeVar("Self")  # noqa Y001
+
 # stable
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
 
-class SupportsLessThan(Protocol):
-    def __lt__(self, __other: Any) -> bool: ...
+# stable
+class SupportsNext(Protocol[_T_co]):
+    def __next__(self) -> _T_co: ...
 
-SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
+# stable
+class SupportsAnext(Protocol[_T_co]):
+    def __anext__(self) -> Awaitable[_T_co]: ...
+
+# Comparison protocols
+
+class SupportsDunderLT(Protocol):
+    def __lt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGT(Protocol):
+    def __gt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderLE(Protocol):
+    def __le__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGE(Protocol):
+    def __ge__(self, __other: Any) -> Any: ...
+
+class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
+
+SupportsRichComparison = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
+SupportsAnyComparison = Union[SupportsDunderLE, SupportsDunderGE, SupportsDunderGT, SupportsDunderLT]
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
@@ -33,11 +61,18 @@ class SupportsDivMod(Protocol[_T_contra, _T_co]):
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
     def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
 
+class SupportsLenAndGetItem(Protocol[_T_co]):
+    def __len__(self) -> int: ...
+    def __getitem__(self, __k: int) -> _T_co: ...
+
+class SupportsTrunc(Protocol):
+    def __trunc__(self) -> int: ...
+
 # Mapping-like protocols
 
 # stable
 class SupportsItems(Protocol[_KT_co, _VT_co]):
-    def items(self) -> AbstractSet[Tuple[_KT_co, _VT_co]]: ...
+    def items(self) -> AbstractSet[tuple[_KT_co, _VT_co]]: ...
 
 # stable
 class SupportsKeysAndGetItem(Protocol[_KT, _VT_co]):
@@ -57,7 +92,6 @@ class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, 
 StrPath = Union[str, PathLike[str]]  # stable
 BytesPath = Union[bytes, PathLike[bytes]]  # stable
 StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]  # stable
-AnyPath = StrOrBytesPath  # obsolete, will be removed soon
 
 OpenTextModeUpdating = Literal[
     "r+",
@@ -149,8 +183,13 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap]  # stable
+ReadOnlyBuffer = bytes  # stable
+# Anything that implements the read-write buffer interface.
+# The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
+# for it. Instead we have to list the most common stdlib buffer classes in a Union.
+WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, ctypes._CData]  # stable
+# Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
+ReadableBuffer = Union[ReadOnlyBuffer, WriteableBuffer]  # stable
 
 # stable
 if sys.version_info >= (3, 10):
@@ -160,3 +199,20 @@ else:
     @final
     class NoneType:
         def __bool__(self) -> Literal[False]: ...
+
+# This is an internal CPython type that is like, but subtly different from, a NamedTuple
+# Subclasses of this type are found in multiple modules.
+# In typeshed, `structseq` is only ever used as a mixin in combination with a fixed-length `Tuple`
+# See discussion at #6546 & #6560
+# `structseq` classes are unsubclassable, so are all decorated with `@final`.
+class structseq(Generic[_T_co]):
+    n_fields: ClassVar[int]
+    n_unnamed_fields: ClassVar[int]
+    n_sequence_fields: ClassVar[int]
+    # The first parameter will generally only take an iterable of a specific length.
+    # E.g. `os.uname_result` takes any iterable of length exactly 5.
+    #
+    # The second parameter will accept a dict of any kind without raising an exception,
+    # but only has any meaning if you supply it a dict where the keys are strings.
+    # https://github.com/python/typeshed/pull/6560#discussion_r767149830
+    def __new__(cls: Type[_T], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> _T: ...

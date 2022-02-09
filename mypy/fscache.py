@@ -30,7 +30,6 @@ advantage of the benefits.
 
 import os
 import stat
-import sys
 from typing import Dict, List, Set
 from mypy.util import hash_digest
 from mypy_extensions import mypyc_attr
@@ -107,6 +106,9 @@ class FileSystemCache:
         dirname, basename = os.path.split(path)
         if basename != '__init__.py':
             return False
+        if not os.path.basename(dirname).isidentifier():
+            # Can't put an __init__.py in a place that's not an identifier
+            return False
         try:
             st = self.stat(dirname)
         except OSError:
@@ -141,16 +143,13 @@ class FileSystemCache:
         assert not os.path.exists(path), path  # Not cached!
         dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
-        # Get stat result as a sequence so we can modify it.
-        # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
-        seq: List[float] = list(tpl)
+        # Get stat result as a list so we can modify it.
+        seq: List[float] = list(st)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
-        tpl = tuple(seq)
-        st = os.stat_result(tpl)
+        st = os.stat_result(seq)
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
@@ -199,9 +198,6 @@ class FileSystemCache:
 
         The caller must ensure that prefix is a valid file system prefix of path.
         """
-        if sys.platform == "linux":
-            # Assume that the file system on Linux is case sensitive
-            return self.isfile(path)
         if not self.isfile(path):
             # Fast path
             return False
@@ -220,12 +216,14 @@ class FileSystemCache:
             res = False
         if res:
             # Also recursively check the other path components in case sensitive way.
-            res = self._exists_case(head, prefix)
+            res = self.exists_case(head, prefix)
         self.isfile_case_cache[path] = res
         return res
 
-    def _exists_case(self, path: str, prefix: str) -> bool:
-        """Helper to check path components in case sensitive fashion, up to prefix."""
+    def exists_case(self, path: str, prefix: str) -> bool:
+        """Return whether path exists - checking path components in case sensitive
+        fashion, up to prefix.
+        """
         if path in self.exists_case_cache:
             return self.exists_case_cache[path]
         head, tail = os.path.split(path)
@@ -242,7 +240,7 @@ class FileSystemCache:
             res = False
         if res:
             # Also recursively check other path components.
-            res = self._exists_case(head, prefix)
+            res = self.exists_case(head, prefix)
         self.exists_case_cache[path] = res
         return res
 

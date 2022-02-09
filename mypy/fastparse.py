@@ -1,12 +1,14 @@
 from mypy.util import unnamed_function
+import copy
 import re
 import sys
 import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
+
 from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
@@ -18,17 +20,21 @@ from mypy.nodes import (
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, MatchStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, TempNode, Expression, Statement,
+    AwaitExpr, TempNode, RefExpr, Expression, Statement,
     ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
+)
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern, SingletonPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -39,6 +45,7 @@ from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
 from mypy.reachability import mark_block_unreachable
+from mypy.util import bytes_to_human_readable_repr
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -105,6 +112,29 @@ try:
         # These don't exist before 3.8
         NamedExpr = Any
         Constant = Any
+
+    if sys.version_info >= (3, 10):
+        Match = ast3.Match
+        MatchValue = ast3.MatchValue
+        MatchSingleton = ast3.MatchSingleton
+        MatchSequence = ast3.MatchSequence
+        MatchStar = ast3.MatchStar
+        MatchMapping = ast3.MatchMapping
+        MatchClass = ast3.MatchClass
+        MatchAs = ast3.MatchAs
+        MatchOr = ast3.MatchOr
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
+    else:
+        Match = Any
+        MatchValue = Any
+        MatchSingleton = Any
+        MatchSequence = Any
+        MatchStar = Any
+        MatchMapping = Any
+        MatchClass = Any
+        MatchAs = Any
+        MatchOr = Any
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -130,7 +160,7 @@ TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
 INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -329,7 +359,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
+    def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
@@ -358,7 +388,8 @@ class ASTConverter:
         # ignores the whole module:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.MISC.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -1284,6 +1315,75 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
+    # Match(expr subject, match_case* cases) # python 3.10 and later
+    def visit_Match(self, n: Match) -> MatchStmt:
+        node = MatchStmt(self.visit(n.subject),
+                         [self.visit(c.pattern) for c in n.cases],
+                         [self.visit(c.guard) for c in n.cases],
+                         [self.as_required_block(c.body, n.lineno) for c in n.cases])
+        return self.set_line(node, n)
+
+    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+        node = ValuePattern(self.visit(n.value))
+        return self.set_line(node, n)
+
+    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+        node = SingletonPattern(n.value)
+        return self.set_line(node, n)
+
+    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+        patterns = [self.visit(p) for p in n.patterns]
+        stars = [p for p in patterns if isinstance(p, StarredPattern)]
+        assert len(stars) < 2
+
+        node = SequencePattern(patterns)
+        return self.set_line(node, n)
+
+    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+        if n.name is None:
+            node = StarredPattern(None)
+        else:
+            node = StarredPattern(NameExpr(n.name))
+
+        return self.set_line(node, n)
+
+    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+        keys = [self.visit(k) for k in n.keys]
+        values = [self.visit(v) for v in n.patterns]
+
+        if n.rest is None:
+            rest = None
+        else:
+            rest = NameExpr(n.rest)
+
+        node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
+
+    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+        class_ref = self.visit(n.cls)
+        assert isinstance(class_ref, RefExpr)
+        positionals = [self.visit(p) for p in n.patterns]
+        keyword_keys = n.kwd_attrs
+        keyword_values = [self.visit(p) for p in n.kwd_patterns]
+
+        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
+        return self.set_line(node, n)
+
+    # MatchAs(expr pattern, identifier name)
+    def visit_MatchAs(self, n: MatchAs) -> AsPattern:
+        if n.name is None:
+            name = None
+        else:
+            name = NameExpr(n.name)
+            name = self.set_line(name, n)
+        node = AsPattern(self.visit(n.pattern), name)
+        return self.set_line(node, n)
+
+    # MatchOr(expr* pattern)
+    def visit_MatchOr(self, n: MatchOr) -> OrPattern:
+        node = OrPattern([self.visit(pattern) for pattern in n.patterns])
+        return self.set_line(node, n)
+
 
 class TypeConverter:
     def __init__(self,
@@ -1551,22 +1651,38 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
+    def visit_Index(self, n: ast3.Index) -> Type:
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
+
+    def visit_Slice(self, n: ast3.Slice) -> Type:
+        return self.invalid_type(
+            n, note="did you mean to use ',' instead of ':' ?"
+        )
+
     # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if sys.version_info >= (3, 9):  # Really 3.9a5 or later
             sliceval: Any = n.slice
-            if (isinstance(sliceval, ast3.Slice) or
-                (isinstance(sliceval, ast3.Tuple) and
-                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+        # Python 3.8 or earlier use a different AST structure for subscripts
+        elif isinstance(n.slice, ast3.Index):
+            sliceval: Any = n.slice.value
+        elif isinstance(n.slice, ast3.Slice):
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
+            if getattr(sliceval, "col_offset", None) is None:
+                # Fix column information so that we get Python 3.9+ message order
+                sliceval.col_offset = sliceval.lower.col_offset
         else:
-            # Python 3.8 or earlier use a different AST structure for subscripts
-            if not isinstance(n.slice, Index):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
-            sliceval = n.slice.value
+            assert isinstance(n.slice, ast3.ExtSlice)
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
+                if getattr(s, "col_offset", None) is None:
+                    if isinstance(s, ast3.Index):
+                        s.col_offset = s.value.col_offset  # type: ignore
+                    elif isinstance(s, ast3.Slice):
+                        s.col_offset = s.lower.col_offset  # type: ignore
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
         if isinstance(sliceval, ast3.Tuple):
@@ -1614,17 +1730,3 @@ def stringify_name(n: AST) -> Optional[str]:
         if sv is not None:
             return "{}.{}".format(sv, n.attr)
     return None  # Can't do it.
-
-
-def bytes_to_human_readable_repr(b: bytes) -> str:
-    """Converts bytes into some human-readable representation. Unprintable
-    bytes such as the nul byte are escaped. For example:
-
-        >>> b = bytes([102, 111, 111, 10, 0])
-        >>> s = bytes_to_human_readable_repr(b)
-        >>> print(s)
-        foo\n\x00
-        >>> print(repr(s))
-        'foo\\n\\x00'
-    """
-    return repr(b)[2:-1]

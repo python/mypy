@@ -15,7 +15,7 @@ import re
 from typing import (
     cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
 )
-from typing_extensions import Final, TYPE_CHECKING
+from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
@@ -39,9 +39,9 @@ from mypy.typeops import custom_special_method
 from mypy.subtypes import is_subtype
 from mypy.parse import parse
 
-FormatStringExpr = Union[StrExpr, BytesExpr, UnicodeExpr]
-Checkers = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
-MatchMap = Dict[Tuple[int, int], Match[str]]  # span -> match
+FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
+Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
+MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
 
 
 def compile_format_re() -> Pattern[str]:
@@ -380,8 +380,9 @@ class StringFormatterChecker:
                 if (has_type_component(actual_type, 'builtins.bytes') and
                         not custom_special_method(actual_type, '__str__')):
                     self.msg.fail(
-                        "On Python 3 '{}'.format(b'abc') produces \"b'abc'\", not 'abc'; "
-                        "use '{!r}'.format(b'abc') if this is desired behavior",
+                        'On Python 3 formatting "b\'abc\'" with "{}" '
+                        'produces "b\'abc\'", not "abc"; '
+                        'use "{!r}" if this is desired behavior',
                         call, code=codes.STR_BYTES_PY3)
         if spec.flags:
             numeric_types = UnionType([self.named_type('builtins.int'),
@@ -659,7 +660,12 @@ class StringFormatterChecker:
             rep_types = [rhs_type]
 
         if len(checkers) > len(rep_types):
-            self.msg.too_few_string_formatting_arguments(replacements)
+            # Only check the fix-length Tuple type. Other Iterable types would skip.
+            if (is_subtype(rhs_type, self.chk.named_type("typing.Iterable")) and
+                    not isinstance(rhs_type, TupleType)):
+                return
+            else:
+                self.msg.too_few_string_formatting_arguments(replacements)
         elif len(checkers) < len(rep_types):
             self.msg.too_many_string_formatting_arguments(replacements)
         else:
@@ -836,8 +842,9 @@ class StringFormatterChecker:
             if self.chk.options.python_version >= (3, 0):
                 if has_type_component(typ, 'builtins.bytes'):
                     self.msg.fail(
-                        "On Python 3 '%s' % b'abc' produces \"b'abc'\", not 'abc'; "
-                        "use '%r' % b'abc' if this is desired behavior",
+                        'On Python 3 formatting "b\'abc\'" with "%s" '
+                        'produces "b\'abc\'", not "abc"; '
+                        'use "%r" if this is desired behavior',
                         context, code=codes.STR_BYTES_PY3)
                     return False
             if self.chk.options.python_version < (3, 0):

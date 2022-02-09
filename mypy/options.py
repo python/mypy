@@ -100,7 +100,7 @@ class Options:
         # top-level __init__.py to your packages.
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
-        self.exclude: str = ""
+        self.exclude: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False
@@ -286,7 +286,7 @@ class Options:
         self.package_root: List[str] = []
         self.cache_map: Dict[str, Tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
-        self.fast_exit = False
+        self.fast_exit = True
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Optional[Callable[[Any], Any]] = None

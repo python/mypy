@@ -3,7 +3,7 @@
 from typing import List, Tuple
 
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
-from mypy.erasetype import erase_type
+from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types, narrow_declared_type
@@ -11,7 +11,8 @@ from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarType, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, ProperType,
+    get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -653,8 +654,8 @@ class JoinSuite(Suite):
 
     def test_generics_contravariant(self) -> None:
         self.assert_join(self.fx_contra.ga, self.fx_contra.ga, self.fx_contra.ga)
-        self.assert_join(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.gb)
-        self.assert_join(self.fx_contra.ga, self.fx_contra.gd, self.fx_contra.gn)
+        # TODO: this can be more precise than "object", see a comment in mypy/join.py
+        self.assert_join(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.o)
         self.assert_join(self.fx_contra.ga, self.fx_contra.g2a, self.fx_contra.o)
 
     def test_generics_with_multiple_args(self) -> None:
@@ -1055,6 +1056,7 @@ class SameTypeSuite(Suite):
         self.fx = TypeFixture()
 
     def test_literal_type(self) -> None:
+        a = self.fx.a
         b = self.fx.b  # Reminder: b is a subclass of a
 
         lit1 = self.fx.lit1
@@ -1064,6 +1066,7 @@ class SameTypeSuite(Suite):
         self.assert_same(lit1, lit1)
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit1, lit2]))
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit2, lit1]))
+        self.assert_same(UnionType([a, b]), UnionType([b, a]))
         self.assert_not_same(lit1, b)
         self.assert_not_same(lit1, lit2)
         self.assert_not_same(lit1, lit3)
@@ -1090,3 +1093,46 @@ class SameTypeSuite(Suite):
                          '({} == {}) is {{}} ({{}} expected)'.format(s, t))
             assert_equal(hash(s) == hash(t), expected,
                          '(hash({}) == hash({}) is {{}} ({{}} expected)'.format(s, t))
+
+
+class RemoveLastKnownValueSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_optional(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_two_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_multiple_same_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.a])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.a, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+        t = UnionType.make_union([self.fx.a, self.fx.nonet, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet, self.fx.b])
+
+    def test_single_last_known_value(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_last_known_values_with_merge(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.lit2_inst, self.fx.lit4_inst])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.lit1_inst,
+                                  self.fx.b,
+                                  self.fx.lit2_inst,
+                                  self.fx.lit4_inst])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_generics(self) -> None:
+        t = UnionType.make_union([self.fx.ga, self.fx.gb])
+        self.assert_union_result(t, [self.fx.ga, self.fx.gb])
+
+    def assert_union_result(self, t: ProperType, expected: List[Type]) -> None:
+        t2 = remove_instance_last_known_values(t)
+        assert type(t2) is UnionType
+        assert t2.items == expected

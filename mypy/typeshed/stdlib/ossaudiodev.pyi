@@ -1,4 +1,4 @@
-from typing import Any, List, overload
+from typing import Any, overload
 from typing_extensions import Literal
 
 AFMT_AC3: int
@@ -114,8 +114,8 @@ SOUND_MIXER_TREBLE: int
 SOUND_MIXER_VIDEO: int
 SOUND_MIXER_VOLUME: int
 
-control_labels: List[str]
-control_names: List[str]
+control_labels: list[str]
+control_names: list[str]
 
 # TODO: oss_audio_device return type
 @overload

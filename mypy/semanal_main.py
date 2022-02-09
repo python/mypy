@@ -24,10 +24,10 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-import contextlib
-from typing import List, Tuple, Optional, Union, Callable, Iterator
-from typing_extensions import TYPE_CHECKING
+from typing import List, Tuple, Optional, Union, Callable
+from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
+from mypy.backports import nullcontext
 from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
 )
@@ -51,16 +51,16 @@ if TYPE_CHECKING:
     from mypy.build import Graph, State
 
 
-Patches = List[Tuple[int, Callable[[], None]]]
+Patches: _TypeAlias = List[Tuple[int, Callable[[], None]]]
 
 
 # If we perform this many iterations, raise an exception since we are likely stuck.
-MAX_ITERATIONS = 20
+MAX_ITERATIONS: Final = 20
 
 
 # Number of passes over core modules before going on to the rest of the builtin SCC.
-CORE_WARMUP = 2
-core_modules = ['typing', 'builtins', 'abc', 'collections']
+CORE_WARMUP: Final = 2
+core_modules: Final = ['typing', 'builtins', 'abc', 'collections']
 
 
 def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) -> None:
@@ -249,7 +249,7 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     """Analyze single top-level function or method.
 
     Process the body of the function (including nested functions) again and again,
-    until all names have been resolved (ot iteration limit reached).
+    until all names have been resolved (or iteration limit reached).
     """
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False
@@ -307,7 +307,7 @@ def semantic_analyze_target(target: str,
     Return tuple with these items:
     - list of deferred targets
     - was some definition incomplete (need to run another pass)
-    - were any new names were defined (or placeholders replaced)
+    - were any new names defined (or placeholders replaced)
     """
     state.manager.processed_targets.append(target)
     tree = state.tree
@@ -377,7 +377,7 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):
                     func = target.node
                 saved = (state.id, target.active_typeinfo, func)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     analyzer.recurse_into_functions = func is not None
                     target.node.accept(analyzer)
 
@@ -389,7 +389,7 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
                 saved = (module, node.node, None)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nothing():
+                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
@@ -399,8 +399,3 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:
     for module in scc:
         graph[module].check_blockers()
-
-
-@contextlib.contextmanager
-def nothing() -> Iterator[None]:
-    yield

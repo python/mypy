@@ -203,7 +203,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     fields['tp_name'] = '"{}"'.format(name)
 
     generate_full = not cl.is_trait and not cl.builtin_base
-    needs_getseters = not cl.is_generated
+    needs_getseters = cl.needs_getseters or not cl.is_generated
 
     if not cl.builtin_base:
         fields['tp_new'] = new_name

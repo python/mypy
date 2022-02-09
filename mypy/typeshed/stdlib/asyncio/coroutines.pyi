@@ -1,7 +1,20 @@
-from typing import Any, Callable, TypeVar
+import sys
+import types
+from collections.abc import Coroutine
+from typing import Any
+from typing_extensions import TypeGuard
 
-_F = TypeVar("_F", bound=Callable[..., Any])
+if sys.version_info < (3, 11):
+    from collections.abc import Callable
+    from typing import TypeVar
 
-def coroutine(func: _F) -> _F: ...
+    _F = TypeVar("_F", bound=Callable[..., Any])
+    def coroutine(func: _F) -> _F: ...
+
 def iscoroutinefunction(func: object) -> bool: ...
-def iscoroutine(obj: object) -> bool: ...
+
+if sys.version_info >= (3, 8):
+    def iscoroutine(obj: object) -> TypeGuard[Coroutine[Any, Any, Any]]: ...
+
+else:
+    def iscoroutine(obj: object) -> TypeGuard[types.GeneratorType[Any, Any, Any] | Coroutine[Any, Any, Any]]: ...

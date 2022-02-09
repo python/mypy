@@ -203,9 +203,57 @@ section of the command line docs.
     which mypy should ignore while recursively discovering files to check.
     Use forward slashes on all platforms.
 
+    .. code-block:: ini
+
+      [mypy]
+      exclude = (?x)(
+          ^one\.py$    # files named "one.py"
+          | two\.pyi$  # or files ending with "two.pyi"
+          | ^three\.   # or files starting with "three."
+        )
+
+    Crafting a single regular expression that excludes multiple files while remaining
+    human-readable can be a challenge. The above example demonstrates one approach.
+    ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
+    `ignores most whitespace and supports comments`__. The above is equivalent to:
+    ``(^one\.py$|two\.pyi$|^three\.)``.
+
+    .. __: https://docs.python.org/3/library/re.html#re.X
+
     For more details, see :option:`--exclude <mypy --exclude>`.
 
     This option may only be set in the global section (``[mypy]``).
+
+    .. note::
+
+       Note that the TOML equivalent differs slightly. It can be either a single string
+       (including a multi-line string) -- which is treated as a single regular
+       expression -- or an array of such strings. The following TOML examples are
+       equivalent to the above INI example.
+
+       Array of strings:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = [
+              "^one\.py$",  # TOML's double-quoted strings require escaping backslashes
+              'two\.pyi$',  # but TOML's single-quoted strings do not
+              '^three\.',
+          ]
+
+       A single, multi-line string:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = '''(?x)(
+              ^one\.py$    # files named "one.py"
+              | two\.pyi$  # or files ending with "two.pyi"
+              | ^three\.   # or files starting with "three."
+          )'''  # TOML's single-quoted strings do not require escaping backslashes
+
+       See :ref:`using-a-pyproject-toml`.
 
 .. confval:: namespace_packages
 
@@ -323,7 +371,7 @@ Platform configuration
     :type: string
 
     Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    program.  The string should be in the format ``MAJOR.MINOR`` --
     for example ``2.7``.  The default is the version of the Python
     interpreter used to run mypy.
 
@@ -567,6 +615,24 @@ section of the command line docs.
 
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
+    Example where this can be useful:
+
+    .. code-block:: python
+
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
+           items = [item.split() for item in items]
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. confval:: local_partial_types
 
@@ -609,6 +675,18 @@ section of the command line docs.
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
+
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
 
 
 Configuring error messages
@@ -801,7 +879,9 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: html_report / xslt_html_report
 
@@ -809,7 +889,9 @@ format into the specified directory.
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: linecount_report
 
@@ -839,7 +921,9 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: xml_report
 
@@ -847,7 +931,9 @@ format into the specified directory.
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 
 Miscellaneous
@@ -887,6 +973,8 @@ These options may only be set in the global section (``[mypy]``).
 
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
+
+.. _using-a-pyproject-toml:
 
 Using a pyproject.toml file
 ***************************
@@ -946,6 +1034,10 @@ of your repo (or append it to the end of an existing ``pyproject.toml`` file) an
     python_version = "2.7"
     warn_return_any = true
     warn_unused_configs = true
+    exclude = [
+        '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+        "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+    ]
 
     # mypy per-module options:
 

@@ -206,7 +206,7 @@ MypyFile:1(
       NameExpr(_n)
       x [_n.x])))
 
-[case testAccessingImportedModule]
+[case testAccessingImportedModule2]
 import _m
 _m._n.x
 [file _m.py]
@@ -385,7 +385,7 @@ MypyFile:1(
     NameExpr(None [builtins.None])
     m._n.c))
 
-[case testSubmodulesAndTypes]
+[case testSubmodulesAndTypes2]
 from m._n import c
 x = None # type: c
 [file m/__init__.py]

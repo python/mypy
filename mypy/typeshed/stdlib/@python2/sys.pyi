@@ -1,5 +1,5 @@
 from types import ClassType, FrameType, TracebackType
-from typing import IO, Any, Callable, Dict, List, NoReturn, Optional, Text, Tuple, Type, Union
+from typing import IO, Any, Callable, Dict, List, NoReturn, Text, Tuple, Type, Union
 
 # The following type alias are stub-only and do not exist during runtime
 _ExcInfo = Tuple[Type[BaseException], BaseException, TracebackType]
@@ -86,8 +86,8 @@ path_hooks: List[Any]
 path_importer_cache: Dict[str, Any]
 displayhook: Callable[[object], Any]
 excepthook: Callable[[Type[BaseException], BaseException, TracebackType], Any]
-exc_type: Optional[type]
-exc_value: Union[BaseException, ClassType]
+exc_type: type | None
+exc_value: BaseException | ClassType
 exc_traceback: TracebackType
 
 class _WindowsVersionType:
@@ -120,8 +120,8 @@ def getfilesystemencoding() -> str: ...  # In practice, never returns None
 def getrefcount(arg: Any) -> int: ...
 def getrecursionlimit() -> int: ...
 def getsizeof(obj: object, default: int = ...) -> int: ...
-def getprofile() -> Optional[Any]: ...
-def gettrace() -> Optional[Any]: ...
+def getprofile() -> Any | None: ...
+def gettrace() -> Any | None: ...
 def setcheckinterval(interval: int) -> None: ...  # deprecated
 def setdlopenflags(n: int) -> None: ...
 def setdefaultencoding(encoding: Text) -> None: ...  # only exists after reload(sys)

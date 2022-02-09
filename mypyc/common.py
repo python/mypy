@@ -1,5 +1,4 @@
 from mypy.util import unnamed_function
-import sys
 from typing import Dict, Any, Optional, Tuple
 import sys
 
@@ -48,6 +47,7 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
 MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
+MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [
@@ -55,9 +55,10 @@ RUNTIME_C_FILES: Final = [
     'getargs.c',
     'getargsfast.c',
     'int_ops.c',
+    'str_ops.c',
+    'bytes_ops.c',
     'list_ops.c',
     'dict_ops.c',
-    'str_ops.c',
     'set_ops.c',
     'tuple_ops.c',
     'exc_ops.c',
@@ -67,10 +68,6 @@ RUNTIME_C_FILES: Final = [
 
 
 JsonDict = Dict[str, Any]
-
-
-def decorator_helper_name(func_name: str) -> str:
-    return '__mypyc_{}_decorator_helper__'.format(func_name)
 
 
 def shared_lib_name(group_name: str) -> str:

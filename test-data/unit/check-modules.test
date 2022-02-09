@@ -1,7 +1,7 @@
 -- Type checker test cases dealing with modules and imports.
 -- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions0]
 import m
 import typing
 m.f()           # E: Missing positional argument "a" in call to "f"
@@ -14,7 +14,7 @@ class A: pass
 def f(a: A) -> None: pass
 x = A()
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions1]
 import m
 import typing
 m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
@@ -1676,10 +1676,10 @@ reveal_type(n2.b)  # N: Revealed type is "builtins.str"
 reveal_type(m3.a)  # N: Revealed type is "builtins.str"
 reveal_type(n3.b)  # N: Revealed type is "builtins.str"
 
-x, y = m  # E: "types.ModuleType" object is not iterable
+x, y = m  # E: Module object is not iterable
 x, y, z = m, n  # E: Need more than 2 values to unpack (3 expected)
 x, y = m, m, m  # E: Too many values to unpack (2 expected, 3 provided)
-x, (y, z) = m, n  # E: "types.ModuleType" object is not iterable
+x, (y, z) = m, n  # E: Module object is not iterable
 x, (y, z) = m, (n, n, n)  # E: Too many values to unpack (2 expected, 3 provided)
 
 [file m.py]
@@ -1910,6 +1910,24 @@ class C:
 
 [builtins fixtures/module.pyi]
 
+[case testReExportChildStubs3]
+from util import mod
+reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
+
+from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+
+[file package/__init__.pyi]
+from .mod import mod as mod
+
+[file package/mod.pyi]
+class mod: ...
+
+[file util.pyi]
+from package import mod as mod
+# stubs require explicit re-export
+from package import mod as internal_detail
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
@@ -2000,7 +2018,7 @@ reveal_type(has_getattr.any_attribute)
 def __getattr__(x: int, y: str) -> str: ...
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "def (builtins.int, builtins.str) -> builtins.str" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "Callable[[int, str], str]" for "__getattr__"
 main:3: note: Revealed type is "builtins.str"
 
 [builtins fixtures/module.pyi]
@@ -2014,7 +2032,7 @@ reveal_type(has_getattr.any_attribute)
 __getattr__ = 3
 
 [out]
-tmp/has_getattr.pyi:1: error: Invalid signature "builtins.int" for "__getattr__"
+tmp/has_getattr.pyi:1: error: Invalid signature "int" for "__getattr__"
 main:3: note: Revealed type is "Any"
 
 [builtins fixtures/module.pyi]
@@ -2141,7 +2159,7 @@ def make_getattr_bad() -> Callable[[], int]: ...
 __getattr__ = make_getattr_bad()
 
 [out]
-tmp/non_stub.py:4: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/non_stub.py:4: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [case testModuleLevelGetattrImportedGood]
@@ -2167,7 +2185,7 @@ from has_getattr import __getattr__
 def __getattr__() -> int: ...
 
 [out]
-tmp/has_getattr.py:1: error: Invalid signature "def () -> builtins.int" for "__getattr__"
+tmp/has_getattr.py:1: error: Invalid signature "Callable[[], int]" for "__getattr__"
 main:3: note: Revealed type is "builtins.int"
 
 [builtins fixtures/module.pyi]
@@ -2888,6 +2906,16 @@ from mystery import a, b as b, c as d
 tmp/stub.pyi:1: error: Cannot find implementation or library stub for module named "mystery"
 tmp/stub.pyi:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
+[case testPackagePath]
+import p
+reveal_type(p.__path__)  # N: Revealed type is "builtins.list[builtins.str]"
+p.m.__path__  # E: "object" has no attribute "__path__"
+
+[file p/__init__.py]
+from . import m as m
+[file p/m.py]
+[builtins fixtures/list.pyi]
+
 [case testReExportAllInStub]
 from m1 import C
 from m1 import D  # E: Module "m1" has no attribute "D"
@@ -3122,3 +3150,42 @@ main:2: error: Cannot find implementation or library stub for module named "blea
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
+
+[case testCyclicUndefinedImportWithName]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar1]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar2]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from c import *
+[file c.py]
+from a import *
+[out]
+tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar3]
+import test1
+[file test1.py]
+from dir1 import *
+[file dir1/__init__.py]
+from .test2 import *
+[file dir1/test2.py]
+from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"

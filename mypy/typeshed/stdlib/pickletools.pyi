@@ -1,7 +1,7 @@
-from typing import IO, Any, Callable, Iterator, List, MutableMapping, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Iterator, MutableMapping, Type
 
 _Reader = Callable[[IO[bytes]], Any]
-bytes_types: Tuple[Type[Any], ...]
+bytes_types: tuple[Type[Any], ...]
 
 UP_TO_NEWLINE: int
 TAKEN_FROM_ARGUMENT1: int
@@ -9,7 +9,7 @@ TAKEN_FROM_ARGUMENT4: int
 TAKEN_FROM_ARGUMENT4U: int
 TAKEN_FROM_ARGUMENT8U: int
 
-class ArgumentDescriptor(object):
+class ArgumentDescriptor:
     name: str
     n: int
     reader: _Reader
@@ -36,7 +36,7 @@ def read_uint8(f: IO[bytes]) -> int: ...
 
 uint8: ArgumentDescriptor
 
-def read_stringnl(f: IO[bytes], decode: bool = ..., stripquotes: bool = ...) -> Union[bytes, str]: ...
+def read_stringnl(f: IO[bytes], decode: bool = ..., stripquotes: bool = ...) -> bytes | str: ...
 
 stringnl: ArgumentDescriptor
 
@@ -106,11 +106,11 @@ def read_long4(f: IO[bytes]) -> int: ...
 
 long4: ArgumentDescriptor
 
-class StackObject(object):
+class StackObject:
     name: str
-    obtype: Union[Type[Any], Tuple[Type[Any], ...]]
+    obtype: Type[Any] | tuple[Type[Any], ...]
     doc: str
-    def __init__(self, name: str, obtype: Union[Type[Any], Tuple[Type[Any], ...]], doc: str) -> None: ...
+    def __init__(self, name: str, obtype: Type[Any] | tuple[Type[Any], ...], doc: str) -> None: ...
 
 pyint: StackObject
 pylong: StackObject
@@ -131,33 +131,33 @@ anyobject: StackObject
 markobject: StackObject
 stackslice: StackObject
 
-class OpcodeInfo(object):
+class OpcodeInfo:
     name: str
     code: str
-    arg: Optional[ArgumentDescriptor]
-    stack_before: List[StackObject]
-    stack_after: List[StackObject]
+    arg: ArgumentDescriptor | None
+    stack_before: list[StackObject]
+    stack_after: list[StackObject]
     proto: int
     doc: str
     def __init__(
         self,
         name: str,
         code: str,
-        arg: Optional[ArgumentDescriptor],
-        stack_before: List[StackObject],
-        stack_after: List[StackObject],
+        arg: ArgumentDescriptor | None,
+        stack_before: list[StackObject],
+        stack_after: list[StackObject],
         proto: int,
         doc: str,
     ) -> None: ...
 
-opcodes: List[OpcodeInfo]
+opcodes: list[OpcodeInfo]
 
-def genops(pickle: Union[bytes, IO[bytes]]) -> Iterator[Tuple[OpcodeInfo, Optional[Any], Optional[int]]]: ...
-def optimize(p: Union[bytes, IO[bytes]]) -> bytes: ...
+def genops(pickle: bytes | IO[bytes]) -> Iterator[tuple[OpcodeInfo, Any | None, int | None]]: ...
+def optimize(p: bytes | IO[bytes]) -> bytes: ...
 def dis(
-    pickle: Union[bytes, IO[bytes]],
-    out: Optional[IO[str]] = ...,
-    memo: Optional[MutableMapping[int, Any]] = ...,
+    pickle: bytes | IO[bytes],
+    out: IO[str] | None = ...,
+    memo: MutableMapping[int, Any] | None = ...,
     indentlevel: int = ...,
     annotate: int = ...,
 ) -> None: ...

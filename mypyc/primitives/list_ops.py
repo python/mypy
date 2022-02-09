@@ -179,11 +179,12 @@ binary_op(
     error_kind=ERR_MAGIC)
 
 # int * list
-binary_op(name='*',
-          arg_types=[int_rprimitive, list_rprimitive],
-          return_type=list_rprimitive,
-          c_function_name='CPySequence_RMultiply',
-          error_kind=ERR_MAGIC)
+binary_op(
+    name='*',
+    arg_types=[int_rprimitive, list_rprimitive],
+    return_type=list_rprimitive,
+    c_function_name='CPySequence_RMultiply',
+    error_kind=ERR_MAGIC)
 
 # list[begin:end]
 list_slice_op = custom_op(

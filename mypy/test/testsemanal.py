@@ -1,6 +1,7 @@
 """Semantic analyzer test cases"""
 
 import os.path
+import sys
 
 from typing import Dict, List
 
@@ -20,19 +21,26 @@ from mypy.options import Options
 # Semantic analyzer test cases: dump parse tree
 
 # Semantic analysis test case description files.
-semanal_files = ['semanal-basic.test',
-                 'semanal-expressions.test',
-                 'semanal-classes.test',
-                 'semanal-types.test',
-                 'semanal-typealiases.test',
-                 'semanal-modules.test',
-                 'semanal-statements.test',
-                 'semanal-abstractclasses.test',
-                 'semanal-namedtuple.test',
-                 'semanal-typeddict.test',
-                 'semenal-literal.test',
-                 'semanal-classvar.test',
-                 'semanal-python2.test']
+semanal_files = [
+    'semanal-basic.test',
+    'semanal-expressions.test',
+    'semanal-classes.test',
+    'semanal-types.test',
+    'semanal-typealiases.test',
+    'semanal-modules.test',
+    'semanal-statements.test',
+    'semanal-abstractclasses.test',
+    'semanal-namedtuple.test',
+    'semanal-typeddict.test',
+    'semenal-literal.test',
+    'semanal-classvar.test',
+    'semanal-python2.test',
+    'semanal-lambda.test',
+]
+
+
+if sys.version_info >= (3, 10):
+    semanal_files.append('semanal-python310.test')
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -101,6 +109,8 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 class SemAnalErrorSuite(DataSuite):
     files = ['semanal-errors.test']
+    if sys.version_info >= (3, 10):
+        semanal_files.append('semanal-errors-python310.test')
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)

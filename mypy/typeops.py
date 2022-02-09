@@ -12,12 +12,12 @@ import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     copy_type, TypeAliasType, TypeQuery, ParamSpecType
 )
 from mypy.nodes import (
-    FuncBase, FuncItem, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
+    FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
     Expression, StrExpr, Var, Decorator, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.maptype import map_instance_to_supertype
@@ -44,25 +44,6 @@ def tuple_fallback(typ: TupleType) -> Instance:
     return Instance(info, [join_type_list(typ.items)])
 
 
-def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
-    """Returns the Instance fallback for this type if one exists.
-
-    Otherwise, returns None.
-    """
-    if isinstance(typ, Instance):
-        return typ
-    elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
-    elif isinstance(typ, TypedDictType):
-        return typ.fallback
-    elif isinstance(typ, FunctionLike):
-        return typ.fallback
-    elif isinstance(typ, LiteralType):
-        return typ.fallback
-    else:
-        return None
-
-
 def type_object_type_from_function(signature: FunctionLike,
                                    info: TypeInfo,
                                    def_info: TypeInfo,
@@ -76,9 +57,9 @@ def type_object_type_from_function(signature: FunctionLike,
     default_self = fill_typevars(info)
     if not is_new and not info.is_newtype:
         orig_self_types = [(it.arg_types[0] if it.arg_types and it.arg_types[0] != default_self
-                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items()]
+                            and it.arg_kinds[0] == ARG_POS else None) for it in signature.items]
     else:
-        orig_self_types = [None] * len(signature.items())
+        orig_self_types = [None] * len(signature.items)
 
     # The __init__ method might come from a generic superclass 'def_info'
     # with type variables that do not map identically to the type variables of
@@ -104,7 +85,7 @@ def type_object_type_from_function(signature: FunctionLike,
         # Overloaded __init__/__new__.
         assert isinstance(signature, Overloaded)
         items: List[CallableType] = []
-        for item, orig_self in zip(signature.items(), orig_self_types):
+        for item, orig_self in zip(signature.items, orig_self_types):
             items.append(class_callable(item, info, fallback, special_sig, is_new, orig_self))
         return Overloaded(items)
 
@@ -209,11 +190,9 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
     b = B().copy()  # type: B
 
     """
-    from mypy.infer import infer_type_arguments
-
     if isinstance(method, Overloaded):
         return cast(F, Overloaded([bind_self(c, original_type, is_classmethod)
-                                   for c in method.items()]))
+                                   for c in method.items]))
     assert isinstance(method, CallableType)
     func = method
     if not func.arg_types:
@@ -230,6 +209,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
 
     variables: Sequence[TypeVarLikeType] = []
     if func.variables and supported_self_type(self_param_type):
+        from mypy.infer import infer_type_arguments
+
         if original_type is None:
             # TODO: type check method override (see #7861).
             original_type = erase_to_bound(self_param_type)
@@ -511,7 +492,7 @@ def true_or_false(t: Type) -> ProperType:
 
 
 def erase_def_to_union_or_bound(tdef: TypeVarLikeType) -> Type:
-    # TODO(shantanu): fix for ParamSpecType
+    # TODO(PEP612): fix for ParamSpecType
     if isinstance(tdef, ParamSpecType):
         return AnyType(TypeOfAny.from_error)
     assert isinstance(tdef, TypeVarType)
@@ -572,6 +553,8 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         line=fdef.line,
         column=fdef.column,
         implicit=True,
+        # We need this for better error messages, like missing `self` note:
+        definition=fdef if isinstance(fdef, FuncDef) else None,
     )
 
 
@@ -699,7 +682,7 @@ def is_singleton_type(typ: Type) -> bool:
     )
 
 
-def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
+def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
     """Attempts to recursively expand any enum Instances with the given target_fullname
     into a Union of all of its component LiteralTypes.
 
@@ -721,28 +704,37 @@ def try_expanding_enum_to_union(typ: Type, target_fullname: str) -> ProperType:
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
-        items = [try_expanding_enum_to_union(item, target_fullname) for item in typ.items]
+        items = [
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in typ.relevant_items()
+        ]
         return make_simplified_union(items, contract_literals=False)
-    elif isinstance(typ, Instance) and typ.type.is_enum and typ.type.fullname == target_fullname:
-        new_items = []
-        for name, symbol in typ.type.names.items():
-            if not isinstance(symbol.node, Var):
-                continue
-            # Skip "_order_" and "__order__", since Enum will remove it
-            if name in ("_order_", "__order__"):
-                continue
-            new_items.append(LiteralType(name, typ))
-        # SymbolTables are really just dicts, and dicts are guaranteed to preserve
-        # insertion order only starting with Python 3.7. So, we sort these for older
-        # versions of Python to help make tests deterministic.
-        #
-        # We could probably skip the sort for Python 3.6 since people probably run mypy
-        # only using CPython, but we might as well for the sake of full correctness.
-        if sys.version_info < (3, 7):
-            new_items.sort(key=lambda lit: lit.value)
-        return make_simplified_union(new_items, contract_literals=False)
-    else:
-        return typ
+    elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
+        if typ.type.is_enum:
+            new_items = []
+            for name, symbol in typ.type.names.items():
+                if not isinstance(symbol.node, Var):
+                    continue
+                # Skip "_order_" and "__order__", since Enum will remove it
+                if name in ("_order_", "__order__"):
+                    continue
+                new_items.append(LiteralType(name, typ))
+            # SymbolTables are really just dicts, and dicts are guaranteed to preserve
+            # insertion order only starting with Python 3.7. So, we sort these for older
+            # versions of Python to help make tests deterministic.
+            #
+            # We could probably skip the sort for Python 3.6 since people probably run mypy
+            # only using CPython, but we might as well for the sake of full correctness.
+            if sys.version_info < (3, 7):
+                new_items.sort(key=lambda lit: lit.value)
+            return make_simplified_union(new_items, contract_literals=False)
+        elif typ.type.fullname == "builtins.bool":
+            return make_simplified_union(
+                [LiteralType(True, typ), LiteralType(False, typ)],
+                contract_literals=False
+            )
+
+    return typ
 
 
 def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]:
@@ -751,8 +743,10 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
     Will replace the first instance of the literal with the sum type and
     remove all others.
 
-    if we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
+    If we call `try_contracting_union(Literal[Color.RED, Color.BLUE, Color.YELLOW])`,
     this function will return Color.
+
+    We also treat `Literal[True, False]` as `bool`.
     """
     proper_types = [get_proper_type(typ) for typ in types]
     sum_types: Dict[str, Tuple[Set[Any], List[int]]] = {}
@@ -760,9 +754,12 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
     for idx, typ in enumerate(proper_types):
         if isinstance(typ, LiteralType):
             fullname = typ.fallback.type.fullname
-            if typ.fallback.type.is_enum:
+            if typ.fallback.type.is_enum or isinstance(typ.value, bool):
                 if fullname not in sum_types:
-                    sum_types[fullname] = (set(get_enum_values(typ.fallback)), [])
+                    sum_types[fullname] = (set(get_enum_values(typ.fallback))
+                                           if typ.fallback.type.is_enum
+                                           else set((True, False)),
+                                           [])
                 literals, indexes = sum_types[fullname]
                 literals.discard(typ.value)
                 indexes.append(idx)
@@ -782,7 +779,7 @@ def coerce_to_literal(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
     elif isinstance(typ, Instance):
         if typ.last_known_value:
             return typ.last_known_value

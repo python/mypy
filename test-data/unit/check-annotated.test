@@ -87,7 +87,7 @@ from typing import Tuple
 from typing_extensions import Annotated
 Alias = Annotated[Tuple[int, ...], ...]
 x: Alias
-reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedAliasTypeVar]
@@ -125,4 +125,35 @@ class Meta:
 
 x = Annotated[int, Meta()]
 reveal_type(x)  # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testAnnotatedStringLiteralInFunc]
+from typing import TypeVar
+from typing_extensions import Annotated
+def f1(a: Annotated[str, "metadata"]):
+    pass
+reveal_type(f1)  # N: Revealed type is "def (a: builtins.str) -> Any"
+def f2(a: Annotated["str", "metadata"]):
+    pass
+reveal_type(f2)  # N: Revealed type is "def (a: builtins.str) -> Any"
+def f3(a: Annotated["notdefined", "metadata"]): # E: Name "notdefined" is not defined
+    pass
+T = TypeVar('T')
+def f4(a: Annotated[T, "metatdata"]):
+    pass
+reveal_type(f4)  # N: Revealed type is "def [T] (a: T`-1) -> Any"
+[builtins fixtures/tuple.pyi]
+
+[case testSliceAnnotated39]
+# flags: --python-version 3.9
+from typing_extensions import Annotated
+a: Annotated[int, 1:2]
+reveal_type(a)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testSliceAnnotated38]
+# flags: --python-version 3.8
+from typing_extensions import Annotated
+a: Annotated[int, 1:2]
+reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
