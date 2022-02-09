@@ -389,7 +389,7 @@ class ASTConverter:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.MISC.code)
+                codes.FILE.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
