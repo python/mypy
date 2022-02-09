@@ -260,8 +260,8 @@ while attempting to evaluate an object in boolean context without a concrete imp
 Check that ``# type: ignore`` include an error code [ignore-without-code]
 -------------------------------------------------------------------------
 
-Warn when an ``# type: ignore`` comment does not specify any error codes.
-This clarifies the intent of the ignore as well as ensuring that only the
+Warn when a ``# type: ignore`` comment does not specify any error codes.
+This clarifies the intent of the ignore and ensures that only the
 expected errors are silenced.
 
 Example:
