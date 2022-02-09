@@ -179,7 +179,7 @@ classifiers = [
 ]
 
 setup(name='mypy',
-      version=version,
+      version=version.__version__,
       description=description,
       long_description=long_description,
       author='Jukka Lehtosalo',
