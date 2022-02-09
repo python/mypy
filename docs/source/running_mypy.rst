@@ -26,10 +26,6 @@ Specifying code to be checked
 
 Mypy lets you specify what files it should type check in several different ways.
 
-Note that if you use namespace packages (in particular, packages without
-``__init__.py``), you'll need to specify :option:`--namespace-packages <mypy
---namespace-packages>`.
-
 1.  First, you can pass in paths to Python files and directories you
     want to type check. For example::
 
