@@ -94,7 +94,7 @@ from mypy.messages import (
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
+    NEVER_NAMES, FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType,
@@ -2227,11 +2227,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
         if isinstance(rv.node, Var):
-            return rv.node.fullname in (
-                'typing.NoReturn',
-                'typing_extensions.NoReturn',
-                'mypy_extensions.NoReturn',
-            )
+            return rv.node.fullname in NEVER_NAMES
 
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
