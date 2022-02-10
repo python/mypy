@@ -1536,3 +1536,31 @@ A(a=1, b=2)
 A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesFieldWithDefaultOverride]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    a: int = 0
+
+@dataclass
+class Correct1(A):
+    a: int = 0
+@dataclass
+class Correct2(A):
+    a: int = 1
+    b: int = 2
+
+@dataclass
+class Wrong1(A):  # E: Attributes without a default cannot follow attributes with one
+    a: int
+@dataclass
+class Wrong2(A):  # E: Attributes without a default cannot follow attributes with one
+    a: int
+    b: int
+@dataclass
+class Wrong3(A):
+    b: int  # E: Attributes without a default cannot follow attributes with one
+[builtins fixtures/dataclasses.pyi]
