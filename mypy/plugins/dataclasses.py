@@ -399,9 +399,9 @@ class DataclassTransformer:
 
             for data in info.metadata["dataclass"]["attributes"]:
                 name: str = data["name"]
-                super_attr = DataclassAttribute.deserialize(info, data, ctx.api)
-                super_attr.expand_typevar_from_subtype(ctx.cls.info)
                 if name not in known_attrs:
+                    super_attr = DataclassAttribute.deserialize(info, data, ctx.api)
+                    super_attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
                     super_attrs.append(super_attr)
                 elif all_attrs:
@@ -417,7 +417,7 @@ class DataclassTransformer:
                             # we need to check its compatibility.
                             self._validate_field(
                                 attr,
-                                found_default=super_attr.has_default,
+                                found_default=data.get("has_default", False),
                                 found_kw_sentinel=False,
                             )
                             break
