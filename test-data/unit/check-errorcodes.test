@@ -145,6 +145,25 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
 
+[case testErrorCodeMissingWhenRequired]
+# flags: --enable-error-code ignore-without-code
+"x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
+y # type: ignore # E: "type: ignore" comment without error code (currently ignored: [name-defined])  [ignore-without-code]
+z # type: ignore[name-defined]
+"a" # type: ignore[ignore-without-code]
+
+[case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
+# flags: --enable-error-code ignore-without-code --warn-unused-ignores
+"x" # type: ignore # E: Unused "type: ignore" comment
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
+
+[case testErrorCodeMissingWholeFileIgnores]
+# flags: --enable-error-code ignore-without-code
+# type: ignore  # whole file ignore
+x
+y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]

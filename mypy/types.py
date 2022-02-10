@@ -140,6 +140,14 @@ ENUM_REMOVED_PROPS: Final = (
     '__order__',
 )
 
+NEVER_NAMES: Final = (
+    'typing.NoReturn',
+    'typing_extensions.NoReturn',
+    'mypy_extensions.NoReturn',
+    'typing.Never',
+    'typing_extensions.Never',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 

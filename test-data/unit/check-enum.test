@@ -232,6 +232,20 @@ an_enum = SomeIntEnum.x
 an_enum = returns_some_int_enum()
 [out]
 
+[case testStrEnumCreation]
+# flags: --python-version 3.11
+from enum import StrEnum
+
+class MyStrEnum(StrEnum):
+    x = 'x'
+    y = 'y'
+
+reveal_type(MyStrEnum.x)  # N: Revealed type is "Literal[__main__.MyStrEnum.x]?"
+reveal_type(MyStrEnum.x.value)  # N: Revealed type is "Literal['x']?"
+reveal_type(MyStrEnum.y)  # N: Revealed type is "Literal[__main__.MyStrEnum.y]?"
+reveal_type(MyStrEnum.y.value)  # N: Revealed type is "Literal['y']?"
+[out]
+
 [case testEnumMethods]
 from enum import Enum
 

@@ -12,7 +12,7 @@ from mypy_extensions import DefaultNamedArg
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
-    Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    NEVER_NAMES, Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
@@ -348,7 +348,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('ClassVar[...] must have at most one type argument', t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
-        elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
+        elif fullname in NEVER_NAMES:
             return UninhabitedType(is_noreturn=True)
         elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
