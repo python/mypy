@@ -446,6 +446,26 @@ class Base:
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesKwOnlyOverrideInSubclass]
+# flags: --python-version 3.7
+from dataclasses import dataclass, field, KW_ONLY
+
+@dataclass
+class Base:
+    x: int
+    y: int = field(kw_only=True)
+    _: KW_ONLY
+    z: int
+
+@dataclass
+class Other(Base):
+    x: int
+    y: int
+    z: int
+
+Other(1, 2, 3)  # should be ok
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesClassmethods]
 # flags: --python-version 3.7
 from dataclasses import dataclass
