@@ -430,9 +430,8 @@ class DataclassTransformer:
         # Ensure that the KW_ONLY sentinel is only provided once
         found_kw_sentinel = False
         for attr in all_attrs:
-            # If we find any attribute that is_in_init, not kw_only, and that
-            # doesn't have a default after one that does have one,
-            # then that's an error.
+            # If the issue comes from merging different classes, report it
+            # at the class definition point.
             context = (
                 Context(line=attr.line, column=attr.column)
                 if attr in attrs
@@ -459,9 +458,11 @@ class DataclassTransformer:
     ) -> None:
         if context is None:
             context = self._ctx.cls
+
+        # If we find any attribute that is_in_init, not kw_only, and that
+        # doesn't have a default after one that does have one,
+        # then that's an error.
         if found_default and attr.is_in_init and not attr.has_default and not attr.kw_only:
-            # If the issue comes from merging different classes, report it
-            # at the class definition point.
             self._ctx.api.fail(
                 'Attributes without a default cannot follow attributes with one',
                 context,
