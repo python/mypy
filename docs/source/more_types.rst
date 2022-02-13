@@ -1141,10 +1141,10 @@ first ``TypedDict``, and all non-required keys of the other ``TypedDict`` are al
 in the first ``TypedDict``.
 
 Required and NotRequired type
--------------------------------------
+-----------------------------
 If we want to define a ``TypedDict`` object where most keys are required or most keys are potentially missing, we have two approaches:
 
-We can use ``Mixing required and non-required items`` approach where we use class that represents ``TypedDict``, and a helper class that
+We can use "Mixing required and non-required items" approach where we use class that represents ``TypedDict``, and a helper class that
 inherits required or potentially-missing keys depending on the problem we have. For example, If the problem tackles the case
 where most keys are required, the ``Mixing required and non-required items`` approach is shown in the below snippet.
 
@@ -1170,16 +1170,58 @@ potentially-missing based on our preference, an example of this approach is show
        year: int
        based_on: NotRequired[str]
 
-The Required[] and NotRequired[] feature also support ``None`` value.
+The ``Required[]`` and ``NotRequired[]`` feature also support ``None`` value.
 
 .. code-block:: python
 
    class Movie(TypedDict):
        name: str
        year: int
-       based_on: NotRequired[str|None]
+       based_on: NotRequired[str | None]
 
 The ``Required`` or ``NotRequired[]`` approach is cleaner and more coherent.
+
+Now, we will go through some examples that utilizes ``Required[]`` and ``NotRequired[]`` type.
+
+In the below example, owner is a ``TypedDict`` itself, and labeled as NotRequired key.
+
+.. code-block:: python
+
+   class Owner(TypedDict):
+       name: str
+       age: int
+
+    class Dog(TypedDict):
+       name: str
+       owner: NotRequired[Owner]
+
+But, what if we want to check if a dog has an owner or not(None).
+In the below example, owner can be None, we did mention this feature earlier.
+
+.. code-block:: python
+
+   class Owner(TypedDict):
+       name: str
+       age: int
+
+    class Dog(TypedDict):
+       name: str
+       owner: NotRequired[Owner | None]
+
+``Required[]`` seams like a useless annotation, since the default of a key to be present, but
+``Required[]`` enforces explicitness which makes it more readable and clear.
+
+An example of using ``Required[]``, where dog must have an owner.
+
+.. code-block:: python
+
+   class Owner(TypedDict):
+       name: str
+       age: int
+
+    class Dog(TypedDict):
+       name: str
+       owner: Required[Owner]
 
 Unions of TypedDicts
 --------------------
