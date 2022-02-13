@@ -1207,8 +1207,8 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
     options.use_builtins_fixtures = use_builtins_fixtures
 
     if options.config_file:
-        def set_strict_flags() -> None:  # not needed yet
-            return
+        def set_strict_flags(toplevel: bool, results: Dict[str, object]) -> None:  # not needed yet
+            print("note: set_strict_flags called with toplevel={}".format(toplevel))
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
 
     try:

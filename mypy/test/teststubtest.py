@@ -1047,3 +1047,17 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
+
+    def test_config_file_strict(self) -> None:
+        config_file = (
+            "[mypy]\n"
+            "strict = True\n"
+        )
+        output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
+        assert output == "note: set_strict_flags called with toplevel=True\n"
+        config_file = (
+            "[mypy-submodule.*]\n"
+            "strict = True\n"
+        )
+        output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
+        assert output == "note: set_strict_flags called with toplevel=False\n"

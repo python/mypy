@@ -22,7 +22,7 @@ from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
 from mypy.errors import CompileError
 from mypy.errorcodes import error_codes
-from mypy.options import Options, BuildType
+from mypy.options import Options, BuildType, PER_MODULE_OPTIONS
 from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
 from mypy.split_namespace import SplitNamespace
 
@@ -911,9 +911,10 @@ def process_options(args: List[str],
 
     options = Options()
 
-    def set_strict_flags() -> None:
+    def set_strict_flags(toplevel: bool, results: Dict[str, object]) -> None:
         for dest, value in strict_flag_assignments:
-            setattr(options, dest, value)
+            if toplevel or dest in PER_MODULE_OPTIONS:
+                results[dest] = value
 
     # Parse config file first, so command line can override.
     parse_config_file(options, set_strict_flags, config_file, stdout, stderr)
@@ -921,7 +922,8 @@ def process_options(args: List[str],
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
     if getattr(dummy, 'special-opts:strict'):  # noqa
-        set_strict_flags()
+        for dest, value in strict_flag_assignments:
+            setattr(options, dest, value)
 
     # Override cache_dir if provided in the environment
     environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')

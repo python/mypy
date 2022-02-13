@@ -1,5 +1,6 @@
 import argparse
 import configparser
+from functools import partial
 import glob as fileglob
 from io import StringIO
 import os
@@ -153,7 +154,8 @@ toml_config_types.update({
 })
 
 
-def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
+def parse_config_file(options: Options,
+                      set_strict_flags: Callable[[bool, Dict[str, object]], None],
                       filename: Optional[str],
                       stdout: Optional[TextIO] = None,
                       stderr: Optional[TextIO] = None) -> None:
@@ -205,6 +207,9 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
     os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
             os.path.abspath(config_file))
 
+    set_strict_flags_toplevel = partial(set_strict_flags, True)
+    set_strict_flags_module = partial(set_strict_flags, False)
+
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
             print("%s: No [mypy] section in config file" % file_read, file=stderr)
@@ -212,7 +217,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         section = parser['mypy']
         prefix = '%s: [%s]: ' % (file_read, 'mypy')
         updates, report_dirs = parse_section(
-            prefix, options, set_strict_flags, section, config_types, stderr)
+            prefix, options, set_strict_flags_toplevel, section, config_types, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
@@ -221,7 +226,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
         if name.startswith('mypy-'):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags, section, config_types, stderr)
+                prefix, options, set_strict_flags_module, section, config_types, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),
@@ -336,7 +341,7 @@ def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def parse_section(prefix: str, template: Options,
-                  set_strict_flags: Callable[[], None],
+                  set_strict_flags: Callable[[Dict[str, object]], None],
                   section: Mapping[str, Any],
                   config_types: Dict[str, Any],
                   stderr: TextIO = sys.stderr
@@ -416,7 +421,7 @@ def parse_section(prefix: str, template: Options,
             continue
         if key == 'strict':
             if v:
-                set_strict_flags()
+                set_strict_flags(results)
             continue
         if key == 'silent_imports':
             print("%ssilent_imports has been replaced by "
@@ -523,7 +528,7 @@ def parse_mypy_comments(
         stderr = StringIO()
         strict_found = False
 
-        def set_strict_flags() -> None:
+        def set_strict_flags(ignored: Any) -> None:
             nonlocal strict_found
             strict_found = True
 
