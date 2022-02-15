@@ -4815,7 +4815,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     symbol_node = cast(Any, copy.copy(symbol_node_any))
                 else:
                     assert False
-                assert self.type is not None
+                assert self.type is not None  # guaranteed by is_class_scope
                 symbol_node.line = context.line
                 symbol_node.column = context.column
                 symbol_node.info = self.type
