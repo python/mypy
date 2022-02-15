@@ -1,6 +1,5 @@
 import argparse
 import configparser
-from functools import partial
 import glob as fileglob
 from io import StringIO
 import os
@@ -155,7 +154,7 @@ toml_config_types.update({
 
 
 def parse_config_file(options: Options,
-                      set_strict_flags: Callable[[bool, Dict[str, object]], None],
+                      strict_flag_assignments: Sequence[Tuple[str, object]],
                       filename: Optional[str],
                       stdout: Optional[TextIO] = None,
                       stderr: Optional[TextIO] = None) -> None:
@@ -207,8 +206,8 @@ def parse_config_file(options: Options,
     os.environ['MYPY_CONFIG_FILE_DIR'] = os.path.dirname(
             os.path.abspath(config_file))
 
-    set_strict_flags_toplevel = partial(set_strict_flags, True)
-    set_strict_flags_module = partial(set_strict_flags, False)
+    def set_strict_flags(updates: Dict[str, object]) -> None:
+        updates.update(strict_flag_assignments)
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
@@ -217,16 +216,21 @@ def parse_config_file(options: Options,
         section = parser['mypy']
         prefix = '%s: [%s]: ' % (file_read, 'mypy')
         updates, report_dirs = parse_section(
-            prefix, options, set_strict_flags_toplevel, section, config_types, stderr)
+            prefix, options, set_strict_flags, section, config_types, stderr)
         for k, v in updates.items():
             setattr(options, k, v)
         options.report_dirs.update(report_dirs)
+
+    def set_strict_flags_section(updates: Dict[str, object]) -> None:
+        for dest, value in strict_flag_assignments:
+            if dest in PER_MODULE_OPTIONS:
+                updates[dest] = value
 
     for name, section in parser.items():
         if name.startswith('mypy-'):
             prefix = get_prefix(file_read, name)
             updates, report_dirs = parse_section(
-                prefix, options, set_strict_flags_module, section, config_types, stderr)
+                prefix, options, set_strict_flags_section, section, config_types, stderr)
             if report_dirs:
                 print("%sPer-module sections should not specify reports (%s)" %
                       (prefix, ', '.join(s + '_report' for s in sorted(report_dirs))),

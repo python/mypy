@@ -160,7 +160,7 @@ class FineGrainedSuite(DataSuite):
 
         for name, _ in testcase.files:
             if 'mypy.ini' in name or 'pyproject.toml' in name:
-                parse_config_file(options, lambda t, r: None, name)
+                parse_config_file(options, [], name)
                 break
 
         return options

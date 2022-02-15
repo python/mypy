@@ -1054,10 +1054,15 @@ class StubtestMiscUnit(unittest.TestCase):
             "strict = True\n"
         )
         output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
-        assert output == "note: set_strict_flags called with toplevel=True\n"
+        assert output == (
+            "note: warn_unused_configs = True [global]\n"
+            "note: warn_unused_ignores = True [global]\n"
+        )
         config_file = (
-            "[mypy-submodule.*]\n"
+            "[mypy-test_module.*]\n"
             "strict = True\n"
         )
         output = run_stubtest(stub="", runtime="", options=[], config_file=config_file)
-        assert output == "note: set_strict_flags called with toplevel=False\n"
+        assert output == (
+            "note: warn_unused_ignores = True [test_module.*]\n"
+        )

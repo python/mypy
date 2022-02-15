@@ -1205,11 +1205,21 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
     options.custom_typeshed_dir = args.custom_typeshed_dir
     options.config_file = args.mypy_config_file
     options.use_builtins_fixtures = use_builtins_fixtures
+    options.per_module_options = {}
 
     if options.config_file:
-        def set_strict_flags(toplevel: bool, results: Dict[str, object]) -> None:  # not needed yet
-            print("note: set_strict_flags called with toplevel={}".format(toplevel))
-        parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
+        strict_flags = set(['warn_unused_configs', 'warn_unused_ignores'])
+
+        strict_flag_assignments = [(dest, True) for dest in strict_flags]
+        parse_config_file(options, strict_flag_assignments, options.config_file,
+                          sys.stdout, sys.stderr)
+
+        for dest in strict_flags:
+            if getattr(options, dest, False):
+                print('note: {} = True [global]'.format(dest))
+            for glob, updates in options.per_module_options.items():
+                if updates.get(dest):
+                    print('note: {} = True [{}]'.format(dest, glob))
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
