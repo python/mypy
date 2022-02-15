@@ -4796,12 +4796,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         symbol_node_any: Any = cast(Any, symbol_node)
         if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
             # We construct a new node to represent this symbol and set its `info` attribute
-            # to `self.type`. Note that imports inside class scope do not produce methods, so
-            # in all cases constructing a Var gets us the assignment like behaviour we want.
+            # to `self.type`.
             existing = self.current_symbol_table().get(name)
             if (
                 # The redefinition checks in `add_symbol_table_node` don't work for our
-                # constructed Var, so check for possible redefinitions here.
+                # constructed Var / FuncBase, so check for possible redefinitions here.
                 existing is not None
                 and isinstance(existing.node, (FuncBase, Var))
                 and existing.type == symbol_node_any.type
