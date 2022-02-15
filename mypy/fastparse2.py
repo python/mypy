@@ -620,6 +620,7 @@ class ASTConverter:
     # Assign(expr* targets, expr value, string? type_comment)
     def visit_Assign(self, n: ast27.Assign) -> AssignmentStmt:
         typ = self.translate_type_comment(n, n.type_comment)
+        # AssignmentStmt cannot have `annotation` expression in python2.
         stmt = AssignmentStmt(self.translate_expr_list(n.targets),
                               self.visit(n.value),
                               type=typ)

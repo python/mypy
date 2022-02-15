@@ -2146,6 +2146,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             with self.enter_final_context(s.is_final_def):
                 self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
 
+        # If this assignment is annotated and we are not in stubs,
+        # then we need to be sure that this annotation will work in runtime.
+        # For example `x: 'int' | str` is a valid annotation for mypy, but it fails in runtime.
+        if not self.is_stub and s.annotation is not None:
+            with self.expr_checker.with_annotation_context(True):
+                self.expr_checker.accept(s.annotation)
+
         if s.is_alias_def:
             self.check_type_alias_rvalue(s)
 
