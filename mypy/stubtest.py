@@ -1208,7 +1208,7 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
     options.per_module_options = {}
 
     if options.config_file:
-        strict_flags = set(['warn_unused_configs', 'warn_unused_ignores'])
+        strict_flags = ['warn_unused_configs', 'warn_unused_ignores']
 
         strict_flag_assignments = [(dest, True) for dest in strict_flags]
         parse_config_file(options, strict_flag_assignments, options.config_file,
