@@ -2267,13 +2267,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue)):
                         # We hit an error on this line; don't check for any others
                         return
-                elif (is_literal_none(rvalue) and
-                        isinstance(lvalue, NameExpr) and
-                        isinstance(lvalue.node, Var) and
-                        lvalue.node.is_initialized_in_class and
-                        not new_syntax):
-                    # Allow None's to be assigned to class variables with non-Optional types.
-                    rvalue_type = lvalue_type
                 elif (isinstance(lvalue, MemberExpr) and
                         lvalue.kind is None):  # Ignore member access to modules
                     instance_type = self.expr_checker.accept(lvalue.expr)
@@ -3045,8 +3038,40 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
         ):
             if isinstance(lvalue, NameExpr):
-                inferred = cast(Var, lvalue.node)
-                assert isinstance(inferred, Var)
+                # If this is a class variable without a type annotation and
+                # there's a base class with the same name then set the type to
+                # that variable's type.
+                #
+                # We need to check lvalue.node.info.__bool__() because it can
+                # be FakeInfo.
+                type_set = False
+                if (
+                    isinstance(lvalue.node, Var) and
+                    lvalue.node.type is None and
+                    lvalue.node.info and
+                    not (lvalue.name.startswith("__") and lvalue.name.endswith("__"))
+                ):
+
+                    for base in lvalue.node.info.mro[1:]:
+                        base_type, _base_node = self.lvalue_type_from_base(lvalue.node, base)
+
+                        if base_type:
+                            # Give up on callables for now. MyPy does not deal with
+                            # them properly.
+                            # See https://github.com/microsoft/pyright/issues/2805
+                            if isinstance(get_proper_type(base_type), CallableType):
+                                break
+                            lvalue_type = base_type
+                            lvalue.node.type = lvalue_type
+                            self.store_type(lvalue, lvalue_type)
+                            type_set = True
+                            break
+
+                # If the type still isn't set, infer it to be any var.
+                if not type_set:
+                    inferred = cast(Var, lvalue.node)
+                    assert isinstance(inferred, Var)
+
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)

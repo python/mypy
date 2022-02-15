@@ -2575,7 +2575,7 @@ class A:
 class B(A):
     x = None
 
-reveal_type(B.x) # N: Revealed type is "None"
+reveal_type(B.x) # N: Revealed type is "Union[builtins.str, None]"
 
 [case testLocalPartialTypesWithInheritance2]
 # flags: --local-partial-types --strict-optional
@@ -2583,7 +2583,7 @@ class A:
     x: str
 
 class B(A):
-    x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
 
 [case testLocalPartialTypesWithAnyBaseClass]
 # flags: --local-partial-types --strict-optional
@@ -2611,8 +2611,8 @@ class C(B):
     x = None
 
 # TODO: Inferring None below is unsafe (https://github.com/python/mypy/issues/3208)
-reveal_type(B.x)  # N: Revealed type is "None"
-reveal_type(C.x)  # N: Revealed type is "None"
+reveal_type(B.x)  # N: Revealed type is "Union[builtins.str, None]"
+reveal_type(C.x)  # N: Revealed type is "Union[builtins.str, None]"
 
 [case testLocalPartialTypesWithInheritance3]
 # flags: --local-partial-types
@@ -2628,7 +2628,7 @@ class B(A):
     x = None
     x = Y()
 
-reveal_type(B.x) # N: Revealed type is "Union[__main__.Y, None]"
+reveal_type(B.x) # N: Revealed type is "Union[__main__.X, None]"
 
 [case testLocalPartialTypesBinderSpecialCase]
 # flags: --local-partial-types
@@ -2813,8 +2813,8 @@ class C(A):
     x = ['12']
 
 reveal_type(A.x) # N: Revealed type is "builtins.list[Any]"
-reveal_type(B.x) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(C.x) # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(B.x) # N: Revealed type is "builtins.list[Any]"
+reveal_type(C.x) # N: Revealed type is "builtins.list[Any]"
 
 [builtins fixtures/list.pyi]
 
@@ -2920,7 +2920,7 @@ class A:
 
 class B(A):
     x = None
-    x = 2  # E: Incompatible types in assignment (expression has type "int", base class "A" defined the type as "str")
+    x = 2  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testInheritedAttributeStrictOptional]
 # flags: --strict-optional
@@ -2928,7 +2928,7 @@ class A:
     x: str
 
 class B(A):
-    x = None  # E: Incompatible types in assignment (expression has type "None", base class "A" defined the type as "str")
+    x = None  # E: Incompatible types in assignment (expression has type "None", variable has type "str")
     x = ''
 
 [case testNeedAnnotationForCallable]
