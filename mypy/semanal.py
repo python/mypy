@@ -48,6 +48,7 @@ Some important properties:
   reduce memory use).
 """
 
+import copy
 from contextlib import contextmanager
 
 from typing import (
@@ -4788,10 +4789,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert not module_hidden or not module_public
 
         symbol_node: Optional[SymbolNode] = node.node
-        # I promise this type checks; I'm just making mypyc issues go away.
-        # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
-        # when it can also be a FuncBase.
-        symbol_node_any: Any = cast(Any, symbol_node)
         if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
             # We construct a new node to represent this symbol and set its `info` attribute
             # to `self.type`. Note that imports inside class scope do not produce methods, so
@@ -4802,12 +4799,19 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # constructed Var, so check for possible redefinitions here.
                 existing is not None
                 and isinstance(existing.node, Var)
-                and existing.type == symbol_node_any.type
+                and existing.type == symbol_node.type
             ):
                 symbol_node = existing.node
             else:
-                symbol_node = Var(symbol_node_any.name, symbol_node_any.type)
+                if isinstance(symbol_node, Var):
+                    symbol_node = Var(symbol_node.name, symbol_node.type)
+                elif isinstance(symbol_node, FuncBase):
+                    symbol_node = copy.copy(symbol_node)
+                else:
+                    assert False
                 assert self.type is not None
+                symbol_node.line = context.line
+                symbol_node.column = context.column
                 symbol_node.info = self.type
                 symbol_node._fullname = self.qualified_name(name)
 

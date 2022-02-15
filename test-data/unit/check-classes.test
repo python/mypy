@@ -7140,7 +7140,8 @@ class Foo:
     from mod import foo
 
 reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
-reveal_type(Foo().foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo().foo)  # E: Invalid self argument "Foo" to attribute function "foo" with type "Callable[[int, int], int]" \
+                        # N: Revealed type is "def (y: builtins.int) -> builtins.int"
 [file mod.py]
 def foo(x: int, y: int) -> int: ...
 
@@ -7195,7 +7196,8 @@ class Foo:
         from mod import baz
 
 reveal_type(Foo.Bar.baz)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
-reveal_type(Foo.Bar().baz)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+reveal_type(Foo.Bar().baz)  # E: Invalid self argument "Bar" to attribute function "baz" with type "Callable[[int], int]" \
+                            # N: Revealed type is "def () -> builtins.int"
 [file mod.py]
 def baz(x: int) -> int: ...
 
@@ -7219,10 +7221,10 @@ def foo(x: int, y: int) -> int: ...
 [case testClassScopeImportVarious]
 class Foo:
     from mod1 import foo
-    from mod2 import foo  # E: Name "foo" already defined (possibly by an import)
+    from mod2 import foo  # E: Name "foo" already defined on line 2
 
     from mod1 import meth1
-    def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined (possibly by an import)
+    def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
 
     def meth2(self, a: str) -> str: ...
     from mod1 import meth2  # E: Name "meth2" already defined on line 8
