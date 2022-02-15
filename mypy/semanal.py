@@ -4808,10 +4808,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             ):
                 symbol_node = existing.node
             else:
-                if isinstance(symbol_node, Var):
+                if isinstance(symbol_node_any, Var):
                     symbol_node = Var(symbol_node_any.name, symbol_node_any.type)
-                elif isinstance(symbol_node, FuncBase):
-                    symbol_node = copy.copy(symbol_node_any)
+                elif isinstance(symbol_node_any, FuncBase):
+                    # Need to cast here as a side effect of the cast for mypyc above
+                    symbol_node = cast(Any, copy.copy(symbol_node_any))
                 else:
                     assert False
                 assert self.type is not None
