@@ -52,7 +52,7 @@ import copy
 from contextlib import contextmanager
 
 from typing import (
-    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
