@@ -52,7 +52,7 @@ import copy
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -4789,6 +4789,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert not module_hidden or not module_public
 
         symbol_node: Optional[SymbolNode] = node.node
+        # I promise this type checks; I'm just making mypyc issues go away.
+        # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
+        # when it can also be a FuncBase.
+        # See also https://github.com/mypyc/mypyc/issues/892
+        symbol_node_any: Any = cast(Any, symbol_node)
         if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
             # We construct a new node to represent this symbol and set its `info` attribute
             # to `self.type`. Note that imports inside class scope do not produce methods, so
@@ -4799,14 +4804,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # constructed Var, so check for possible redefinitions here.
                 existing is not None
                 and isinstance(existing.node, (FuncBase, Var))
-                and existing.type == symbol_node.type
+                and existing.type == symbol_node_any.type
             ):
                 symbol_node = existing.node
             else:
                 if isinstance(symbol_node, Var):
-                    symbol_node = Var(symbol_node.name, symbol_node.type)
+                    symbol_node = Var(symbol_node_any.name, symbol_node_any.type)
                 elif isinstance(symbol_node, FuncBase):
-                    symbol_node = copy.copy(symbol_node)
+                    symbol_node = copy.copy(symbol_node_any)
                 else:
                     assert False
                 assert self.type is not None
