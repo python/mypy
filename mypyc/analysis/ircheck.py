@@ -9,7 +9,11 @@ from mypyc.ir.ops import (
     LoadMem, SetMem, GetElementPtr, LoadAddress, KeepAlive, Register, Integer,
     BaseAssign
 )
-from mypyc.ir.rtypes import RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray, int_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive, range_rprimitive, str_rprimitive, bytes_rprimitive, tuple_rprimitive
+from mypyc.ir.rtypes import (
+    RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray,
+    int_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
+    range_rprimitive, str_rprimitive, bytes_rprimitive, tuple_rprimitive
+)
 from mypyc.ir.func_ir import FuncIR, FUNC_STATICMETHOD
 
 
@@ -19,8 +23,11 @@ class FnError(object):
         self.desc = desc
 
     def __eq__(self, other: object) -> bool:
-        return isinstance(other, FnError) and self.source == other.source and \
-            self.desc == other.desc
+        return (
+            isinstance(other, FnError)
+            and self.source == other.source
+            and self.desc == other.desc
+        )
 
     def __repr__(self) -> str:
         return f"FnError(source={self.source}, desc={self.desc})"
@@ -34,22 +41,28 @@ def check_func_ir(fn: FuncIR) -> List[FnError]:
 
     for block in fn.blocks:
         if not block.terminated:
-            errors.append(FnError(
-                source=block.ops[-1] if block.ops else block,
-                desc="Block not terminated",
-            ))
+            errors.append(
+                FnError(
+                    source=block.ops[-1] if block.ops else block,
+                    desc="Block not terminated",
+                )
+            )
         for op in block.ops[:-1]:
             if isinstance(op, ControlOp):
-                errors.append(FnError(
-                    source=op,
-                    desc="Block has operations after control op",
-                ))
+                errors.append(
+                    FnError(
+                        source=op,
+                        desc="Block has operations after control op",
+                    )
+                )
 
             if op in op_set:
-                errors.append(FnError(
-                    source=op,
-                    desc="Func has a duplicate op",
-                ))
+                errors.append(
+                    FnError(
+                        source=op,
+                        desc="Func has a duplicate op",
+                    )
+                )
             op_set.add(op)
 
     errors.extend(check_op_sources_valid(fn))
@@ -71,8 +84,9 @@ class IrCheckException(Exception):
 def assert_func_ir_valid(fn: FuncIR) -> None:
     errors = check_func_ir(fn)
     if errors:
-        raise IrCheckException("Internal error: Generated invalid IR: \n" + "\n".join(
-            format_func(fn, [(e.source, e.desc) for e in errors])),
+        raise IrCheckException(
+            "Internal error: Generated invalid IR: \n"
+            + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors])),
         )
 
 
@@ -84,9 +98,9 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
     for block in fn.blocks:
         valid_ops.update(block.ops)
 
-        valid_registers.update([
-            op.dest for op in block.ops if isinstance(op, BaseAssign)
-        ])
+        valid_registers.update(
+            [op.dest for op in block.ops if isinstance(op, BaseAssign)]
+        )
 
     valid_registers.update(fn.arg_regs)
 
@@ -97,29 +111,41 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
                     pass
                 elif isinstance(source, Op):
                     if source not in valid_ops:
-                        errors.append(FnError(source=op, desc=f"Invalid op reference to op of type {type(source).__name__}"))
+                        errors.append(
+                            FnError(
+                                source=op,
+                                desc=f"Invalid op reference to op of type {type(source).__name__}",
+                            )
+                        )
                 elif isinstance(source, Register):
                     if source not in valid_registers:
-                        errors.append(FnError(source=op, desc=f"Invalid op reference to register {source.name}"))
+                        errors.append(
+                            FnError(
+                                source=op,
+                                desc=f"Invalid op reference to register {source.name}",
+                            )
+                        )
 
     return errors
 
 
-disjoint_types = set([
-    int_rprimitive.name,
-    bytes_rprimitive.name,
-    str_rprimitive.name,
-    dict_rprimitive.name,
-    list_rprimitive.name,
-    set_rprimitive.name,
-    tuple_rprimitive.name,
-    range_rprimitive.name,
-])
+disjoint_types = set(
+    [
+        int_rprimitive.name,
+        bytes_rprimitive.name,
+        str_rprimitive.name,
+        dict_rprimitive.name,
+        list_rprimitive.name,
+        set_rprimitive.name,
+        tuple_rprimitive.name,
+        range_rprimitive.name,
+    ]
+)
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:
     """Check if src can be assigned to dest_rtype.
-    
+
     Currently okay to have false positives.
     """
     if isinstance(dest, RUnion):
@@ -153,11 +179,16 @@ class OpChecker(OpVisitor[None]):
     def check_control_op_targets(self, op: ControlOp) -> None:
         for target in op.targets():
             if target not in self.parent_fn.blocks:
-                self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
+                self.fail(
+                    source=op, desc=f"Invalid control operation target: {target.label}"
+                )
 
     def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
         if not can_coerce_to(src, dest):
-            self.fail(source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}")
+            self.fail(
+                source=op,
+                desc=f"Cannot coerce source type {src.name} to dest type {dest.name}",
+            )
 
     def visit_goto(self, op: Goto) -> None:
         self.check_control_op_targets(op)
@@ -187,9 +218,13 @@ class OpChecker(OpVisitor[None]):
         # has an error value.
         pass
 
-    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: Tuple[object, ...]) -> None:
+    def check_tuple_items_valid_literals(
+        self, op: LoadLiteral, t: Tuple[object, ...]
+    ) -> None:
         for x in t:
-            if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
+            if x is not None and not isinstance(
+                x, (str, bytes, bool, int, float, complex, tuple)
+            ):
                 self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)
@@ -215,9 +250,13 @@ class OpChecker(OpVisitor[None]):
             self.check_tuple_items_valid_literals(op, op.value)
 
         assert expected_type is not None, "Missed a case for LoadLiteral check"
-            
+
         if op.type.name not in [expected_type, "builtins.object"]:
-            self.fail(op, f"Invalid literal value for type: value has type {expected_type}, but op has type {op.type.name}") 
+            self.fail(
+                op,
+                f"Invalid literal value for type: value has "
+                f"type {expected_type}, but op has type {op.type.name}",
+            )
 
     def visit_get_attr(self, op: GetAttr) -> None:
         # Nothing to do.
