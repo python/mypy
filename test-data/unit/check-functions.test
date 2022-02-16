@@ -2605,3 +2605,8 @@ def foo() -> None:
     pass
 
 reveal_type(foo()) # N: Revealed type is "None"
+
+[case testAnyArgument]
+def a(b: any): pass # E: Function "builtins.any" is not valid as a type \
+                    # N: Perhaps you meant "typing.Any" instead of "any"?
+[builtins fixtures/any.pyi]

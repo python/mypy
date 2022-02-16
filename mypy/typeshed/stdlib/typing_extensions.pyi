@@ -22,7 +22,6 @@ from typing import (
     NewType as NewType,
     NoReturn as NoReturn,
     Text as Text,
-    Tuple,
     Type as Type,
     TypeVar,
     ValuesView,
@@ -53,6 +52,11 @@ Literal: _SpecialForm = ...
 
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
+if sys.version_info < (3, 8):
+    # Technically in 3.6 this inherited from GenericMeta. But let's not reflect that, since
+    # type checkers tend to assume that Protocols all have the ABCMeta metaclass.
+    class _ProtocolMeta(abc.ABCMeta): ...
+
 # Internal mypy fallback type for all typed dicts (does not exist at runtime)
 class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: frozenset[str]
@@ -82,7 +86,7 @@ if sys.version_info >= (3, 7):
         localns: dict[str, Any] | None = ...,
         include_extras: bool = ...,
     ) -> dict[str, Any]: ...
-    def get_args(tp: Any) -> Tuple[Any, ...]: ...
+    def get_args(tp: Any) -> tuple[Any, ...]: ...
     def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm = ...

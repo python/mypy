@@ -9,10 +9,11 @@ from _typeshed import (
     Self,
     StrOrBytesPath,
     StrPath,
+    structseq,
 )
 from builtins import OSError
+from contextlib import AbstractContextManager
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper as _TextIOWrapper
-from posix import listdir as listdir, times_result
 from subprocess import Popen
 from typing import (
     IO,
@@ -20,17 +21,14 @@ from typing import (
     AnyStr,
     BinaryIO,
     Callable,
-    ContextManager,
     Generic,
     Iterable,
     Iterator,
-    List,
     Mapping,
     MutableMapping,
     NoReturn,
     Protocol,
     Sequence,
-    Tuple,
     TypeVar,
     Union,
     overload,
@@ -92,6 +90,9 @@ if sys.platform != "win32":
     P_PGID: int
     P_ALL: int
 
+    if sys.platform == "linux" and sys.version_info >= (3, 9):
+        P_PIDFD: int
+
     WEXITED: int
     WSTOPPED: int
     WNOWAIT: int
@@ -101,6 +102,12 @@ if sys.platform != "win32":
     CLD_TRAPPED: int
     CLD_CONTINUED: int
 
+    if sys.version_info >= (3, 9):
+        CLD_KILLED: int
+        CLD_STOPPED: int
+
+    # TODO: SCHED_RESET_ON_FORK not available on darwin?
+    # TODO: SCHED_BATCH and SCHED_IDLE are linux only?
     SCHED_OTHER: int  # some flavors of Unix
     SCHED_BATCH: int  # some flavors of Unix
     SCHED_IDLE: int  # some flavors of Unix
@@ -119,6 +126,8 @@ if sys.platform != "win32":
 
 if sys.platform == "linux":
     RTLD_DEEPBIND: int
+    GRND_NONBLOCK: int
+    GRND_RANDOM: int
 
 SEEK_SET: int
 SEEK_CUR: int
@@ -161,6 +170,24 @@ O_NOATIME: int  # Gnu extension if in C library
 O_PATH: int  # Gnu extension if in C library
 O_TMPFILE: int  # Gnu extension if in C library
 O_LARGEFILE: int  # Gnu extension if in C library
+O_ACCMODE: int  # TODO: when does this exist?
+
+if sys.platform != "win32" and sys.platform != "darwin":
+    # posix, but apparently missing on macos
+    ST_APPEND: int
+    ST_MANDLOCK: int
+    ST_NOATIME: int
+    ST_NODEV: int
+    ST_NODIRATIME: int
+    ST_NOEXEC: int
+    ST_RELATIME: int
+    ST_SYNCHRONOUS: int
+    ST_WRITE: int
+
+if sys.platform != "win32":
+    NGROUPS_MAX: int
+    ST_NOSUID: int
+    ST_RDONLY: int
 
 curdir: str
 pardir: str
@@ -210,7 +237,7 @@ class _Environ(MutableMapping[AnyStr, AnyStr], Generic[AnyStr]):
             putenv: Callable[[AnyStr, AnyStr], None],
             unsetenv: Callable[[AnyStr, AnyStr], None],
         ) -> None: ...
-    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore
+    def setdefault(self, key: AnyStr, value: AnyStr) -> AnyStr: ...  # type: ignore[override]
     def copy(self) -> dict[AnyStr, AnyStr]: ...
     def __delitem__(self, key: AnyStr) -> None: ...
     def __getitem__(self, key: AnyStr) -> AnyStr: ...
@@ -262,55 +289,84 @@ TMP_MAX: int  # Undocumented, but used by tempfile
 
 # ----- os classes (structures) -----
 @final
-class stat_result:
-    # For backward compatibility, the return value of stat() is also
-    # accessible as a tuple of at least 10 integers giving the most important
-    # (and portable) members of the stat structure, in the order st_mode,
-    # st_ino, st_dev, st_nlink, st_uid, st_gid, st_size, st_atime, st_mtime,
-    # st_ctime. More items may be added at the end by some implementations.
-
-    st_mode: int  # protection bits,
-    st_ino: int  # inode number,
-    st_dev: int  # device,
-    st_nlink: int  # number of hard links,
-    st_uid: int  # user id of owner,
-    st_gid: int  # group id of owner,
-    st_size: int  # size of file, in bytes,
-    st_atime: float  # time of most recent access,
-    st_mtime: float  # time of most recent content modification,
-    st_ctime: float  # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows)
-    st_atime_ns: int  # time of most recent access, in nanoseconds
-    st_mtime_ns: int  # time of most recent content modification in nanoseconds
-    st_ctime_ns: int  # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows) in nanoseconds
-    if sys.version_info >= (3, 8) and sys.platform == "win32":
-        st_reparse_tag: int
+class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, float, float, float]):
+    # The constructor of this class takes an iterable of variable length (though it must be at least 10).
+    #
+    # However, this class behaves like a tuple of 10 elements,
+    # no matter how long the iterable supplied to the constructor is.
+    # https://github.com/python/typeshed/pull/6560#discussion_r767162532
+    #
+    # The 10 elements always present are st_mode, st_ino, st_dev, st_nlink,
+    # st_uid, st_gid, st_size, st_atime, st_mtime, st_ctime.
+    #
+    # More items may be added at the end by some implementations.
+    @property
+    def st_mode(self) -> int: ...  # protection bits,
+    @property
+    def st_ino(self) -> int: ...  # inode number,
+    @property
+    def st_dev(self) -> int: ...  # device,
+    @property
+    def st_nlink(self) -> int: ...  # number of hard links,
+    @property
+    def st_uid(self) -> int: ...  # user id of owner,
+    @property
+    def st_gid(self) -> int: ...  # group id of owner,
+    @property
+    def st_size(self) -> int: ...  # size of file, in bytes,
+    @property
+    def st_atime(self) -> float: ...  # time of most recent access,
+    @property
+    def st_mtime(self) -> float: ...  # time of most recent content modification,
+    # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows)
+    @property
+    def st_ctime(self) -> float: ...
+    @property
+    def st_atime_ns(self) -> int: ...  # time of most recent access, in nanoseconds
+    @property
+    def st_mtime_ns(self) -> int: ...  # time of most recent content modification in nanoseconds
+    # platform dependent (time of most recent metadata change on Unix, or the time of creation on Windows) in nanoseconds
+    @property
+    def st_ctime_ns(self) -> int: ...
     if sys.platform == "win32":
-        st_file_attributes: int
-    def __getitem__(self, i: int) -> int: ...
-    # not documented
-    def __init__(self, tuple: Tuple[int, ...]) -> None: ...
-    # On some Unix systems (such as Linux), the following attributes may also
-    # be available:
-    st_blocks: int  # number of blocks allocated for file
-    st_blksize: int  # filesystem blocksize
-    st_rdev: int  # type of device if an inode device
-    st_flags: int  # user defined flags for file
-
-    # On other Unix systems (such as FreeBSD), the following attributes may be
-    # available (but may be only filled out if root tries to use them):
-    st_gen: int  # file generation number
-    st_birthtime: int  # time of file creation
-
-    # On Mac OS systems, the following attributes may also be available:
-    st_rsize: int
-    st_creator: int
-    st_type: int
+        @property
+        def st_file_attributes(self) -> int: ...
+        if sys.version_info >= (3, 8):
+            @property
+            def st_reparse_tag(self) -> int: ...
+    else:
+        @property
+        def st_blocks(self) -> int: ...  # number of blocks allocated for file
+        @property
+        def st_blksize(self) -> int: ...  # filesystem blocksize
+        @property
+        def st_rdev(self) -> int: ...  # type of device if an inode device
+        if sys.platform != "linux":
+            # These properties are available on MacOS, but not on Windows or Ubuntu.
+            # On other Unix systems (such as FreeBSD), the following attributes may be
+            # available (but may be only filled out if root tries to use them):
+            @property
+            def st_gen(self) -> int: ...  # file generation number
+            @property
+            def st_birthtime(self) -> int: ...  # time of file creation
+    if sys.platform == "darwin":
+        @property
+        def st_flags(self) -> int: ...  # user defined flags for file
+    # Atributes documented as sometimes appearing, but deliberately omitted from the stub: `st_creator`, `st_rsize`, `st_type`.
+    # See https://github.com/python/typeshed/pull/6560#issuecomment-991253327
 
 @runtime_checkable
 class PathLike(Protocol[_AnyStr_co]):
     def __fspath__(self) -> _AnyStr_co: ...
-    if sys.version_info >= (3, 9):
-        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
+
+@overload
+def listdir(path: str | None = ...) -> list[str]: ...
+@overload
+def listdir(path: bytes) -> list[bytes]: ...
+@overload
+def listdir(path: int) -> list[str]: ...
+@overload
+def listdir(path: PathLike[str]) -> list[str]: ...
 
 _FdOrAnyPath = Union[int, StrOrBytesPath]
 
@@ -330,45 +386,55 @@ class DirEntry(Generic[AnyStr]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-if sys.platform != "win32":
-    _Tuple10Int = Tuple[int, int, int, int, int, int, int, int, int, int]
-    _Tuple11Int = Tuple[int, int, int, int, int, int, int, int, int, int, int]
-    if sys.version_info >= (3, 7):
-        # f_fsid was added in https://github.com/python/cpython/pull/4571
-        @final
-        class statvfs_result(_Tuple10Int):  # Unix only
-            def __new__(cls, seq: _Tuple10Int | _Tuple11Int, dict: dict[str, int] = ...) -> statvfs_result: ...
-            n_fields: int
-            n_sequence_fields: int
-            n_unnamed_fields: int
+if sys.version_info >= (3, 7):
+    @final
+    class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, int, int, int, int]):
+        @property
+        def f_bsize(self) -> int: ...
+        @property
+        def f_frsize(self) -> int: ...
+        @property
+        def f_blocks(self) -> int: ...
+        @property
+        def f_bfree(self) -> int: ...
+        @property
+        def f_bavail(self) -> int: ...
+        @property
+        def f_files(self) -> int: ...
+        @property
+        def f_ffree(self) -> int: ...
+        @property
+        def f_favail(self) -> int: ...
+        @property
+        def f_flag(self) -> int: ...
+        @property
+        def f_namemax(self) -> int: ...
+        @property
+        def f_fsid(self) -> int: ...
 
-            f_bsize: int
-            f_frsize: int
-            f_blocks: int
-            f_bfree: int
-            f_bavail: int
-            f_files: int
-            f_ffree: int
-            f_favail: int
-            f_flag: int
-            f_namemax: int
-            f_fsid: int
-    else:
-        class statvfs_result(_Tuple10Int):  # Unix only
-            n_fields: int
-            n_sequence_fields: int
-            n_unnamed_fields: int
-
-            f_bsize: int
-            f_frsize: int
-            f_blocks: int
-            f_bfree: int
-            f_bavail: int
-            f_files: int
-            f_ffree: int
-            f_favail: int
-            f_flag: int
-            f_namemax: int
+else:
+    @final
+    class statvfs_result(structseq[int], tuple[int, int, int, int, int, int, int, int, int, int]):
+        @property
+        def f_bsize(self) -> int: ...
+        @property
+        def f_frsize(self) -> int: ...
+        @property
+        def f_blocks(self) -> int: ...
+        @property
+        def f_bfree(self) -> int: ...
+        @property
+        def f_bavail(self) -> int: ...
+        @property
+        def f_files(self) -> int: ...
+        @property
+        def f_ffree(self) -> int: ...
+        @property
+        def f_favail(self) -> int: ...
+        @property
+        def f_flag(self) -> int: ...
+        @property
+        def f_namemax(self) -> int: ...
 
 # ----- os function stubs -----
 def fsencode(filename: StrOrBytesPath) -> bytes: ...
@@ -385,9 +451,20 @@ def getpid() -> int: ...
 def getppid() -> int: ...
 def strerror(__code: int) -> str: ...
 def umask(__mask: int) -> int: ...
+@final
+class uname_result(structseq[str], tuple[str, str, str, str, str]):
+    @property
+    def sysname(self) -> str: ...
+    @property
+    def nodename(self) -> str: ...
+    @property
+    def release(self) -> str: ...
+    @property
+    def version(self) -> str: ...
+    @property
+    def machine(self) -> str: ...
 
 if sys.platform != "win32":
-    # Unix only
     def ctermid() -> str: ...
     def getegid() -> int: ...
     def geteuid() -> int: ...
@@ -417,7 +494,6 @@ if sys.platform != "win32":
     def getsid(__pid: int) -> int: ...
     def setsid() -> None: ...
     def setuid(__uid: int) -> None: ...
-    from posix import uname_result
     def uname() -> uname_result: ...
 
 @overload
@@ -433,7 +509,7 @@ if sys.platform != "win32":
 
 def putenv(__name: bytes | str, __value: bytes | str) -> None: ...
 
-if sys.platform != "win32":
+if sys.platform != "win32" or sys.version_info >= (3, 9):
     def unsetenv(__name: bytes | str) -> None: ...
 
 _Opener = Callable[[str, int], int]
@@ -527,7 +603,9 @@ else:
     def dup2(fd: int, fd2: int, inheritable: bool = ...) -> None: ...
 
 def fstat(fd: int) -> stat_result: ...
+def ftruncate(__fd: int, __length: int) -> None: ...
 def fsync(fd: FileDescriptorLike) -> None: ...
+def isatty(__fd: int) -> bool: ...
 def lseek(__fd: int, __position: int, __how: int) -> int: ...
 def open(path: StrOrBytesPath, flags: int, mode: int = ..., *, dir_fd: int | None = ...) -> int: ...
 def pipe() -> tuple[int, int]: ...
@@ -537,22 +615,29 @@ if sys.platform != "win32":
     # Unix only
     def fchmod(fd: int, mode: int) -> None: ...
     def fchown(fd: int, uid: int, gid: int) -> None: ...
-    if sys.platform != "darwin":
-        def fdatasync(fd: FileDescriptorLike) -> None: ...  # Unix only, not Mac
     def fpathconf(__fd: int, __name: str | int) -> int: ...
     def fstatvfs(__fd: int) -> statvfs_result: ...
-    def ftruncate(__fd: int, __length: int) -> None: ...
     def get_blocking(__fd: int) -> bool: ...
     def set_blocking(__fd: int, __blocking: bool) -> None: ...
-    def isatty(__fd: int) -> bool: ...
     def lockf(__fd: int, __command: int, __length: int) -> None: ...
     def openpty() -> tuple[int, int]: ...  # some flavors of Unix
     if sys.platform != "darwin":
-        def pipe2(flags: int) -> tuple[int, int]: ...  # some flavors of Unix
+        def fdatasync(fd: FileDescriptorLike) -> None: ...
+        def pipe2(__flags: int) -> tuple[int, int]: ...  # some flavors of Unix
         def posix_fallocate(fd: int, offset: int, length: int) -> None: ...
         def posix_fadvise(fd: int, offset: int, length: int, advice: int) -> None: ...
     def pread(__fd: int, __length: int, __offset: int) -> bytes: ...
     def pwrite(__fd: int, __buffer: bytes, __offset: int) -> int: ...
+    if sys.platform != "darwin":
+        if sys.version_info >= (3, 10):
+            RWF_APPEND: int  # docs say available on 3.7+, stubtest says otherwise
+        if sys.version_info >= (3, 7):
+            def preadv(__fd: int, __buffers: Iterable[bytes], __offset: int, __flags: int = ...) -> int: ...
+            def pwritev(__fd: int, __buffers: Iterable[bytes], __offset: int, __flags: int = ...) -> int: ...
+            RWF_DSYNC: int
+            RWF_SYNC: int
+            RWF_HIPRI: int
+            RWF_NOWAIT: int
     @overload
     def sendfile(out_fd: int, in_fd: int, offset: int | None, count: int) -> int: ...
     @overload
@@ -569,9 +654,11 @@ if sys.platform != "win32":
     def writev(__fd: int, __buffers: Sequence[bytes]) -> int: ...
 
 @final
-class terminal_size(Tuple[int, int]):
-    columns: int
-    lines: int
+class terminal_size(structseq[int], tuple[int, int]):
+    @property
+    def columns(self) -> int: ...
+    @property
+    def lines(self) -> int: ...
 
 def get_terminal_size(fd: int = ...) -> terminal_size: ...
 def get_inheritable(__fd: int) -> bool: ...
@@ -596,17 +683,14 @@ def getcwd() -> str: ...
 def getcwdb() -> bytes: ...
 def chmod(path: _FdOrAnyPath, mode: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> None: ...
 
-if sys.platform != "win32":
+if sys.platform != "win32" and sys.platform != "linux":
     def chflags(path: StrOrBytesPath, flags: int, follow_symlinks: bool = ...) -> None: ...  # some flavors of Unix
-    def chown(
-        path: _FdOrAnyPath, uid: int, gid: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...
-    ) -> None: ...  # Unix only
-
-if sys.platform != "win32":
-    # Unix only
-    def chroot(path: StrOrBytesPath) -> None: ...
     def lchflags(path: StrOrBytesPath, flags: int) -> None: ...
     def lchmod(path: StrOrBytesPath, mode: int) -> None: ...
+
+if sys.platform != "win32":
+    def chroot(path: StrOrBytesPath) -> None: ...
+    def chown(path: _FdOrAnyPath, uid: int, gid: int, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> None: ...
     def lchown(path: StrOrBytesPath, uid: int, gid: int) -> None: ...
 
 def link(
@@ -640,7 +724,7 @@ def renames(old: StrOrBytesPath, new: StrOrBytesPath) -> None: ...
 def replace(src: StrOrBytesPath, dst: StrOrBytesPath, *, src_dir_fd: int | None = ..., dst_dir_fd: int | None = ...) -> None: ...
 def rmdir(path: StrOrBytesPath, *, dir_fd: int | None = ...) -> None: ...
 
-class _ScandirIterator(Iterator[DirEntry[AnyStr]], ContextManager[_ScandirIterator[AnyStr]]):
+class _ScandirIterator(Iterator[DirEntry[AnyStr]], AbstractContextManager[_ScandirIterator[AnyStr]]):
     def __next__(self) -> DirEntry[AnyStr]: ...
     def close(self) -> None: ...
 
@@ -744,14 +828,14 @@ def execlpe(file: StrOrBytesPath, __arg0: StrOrBytesPath, *args: Any) -> NoRetur
 # in practice, and doing so would explode the number of combinations in this already long union.
 # All these combinations are necessary due to list being invariant.
 _ExecVArgs = Union[
-    Tuple[StrOrBytesPath, ...],
-    List[bytes],
-    List[str],
-    List[PathLike[Any]],
-    List[Union[bytes, str]],
-    List[Union[bytes, PathLike[Any]]],
-    List[Union[str, PathLike[Any]]],
-    List[Union[bytes, str, PathLike[Any]]],
+    tuple[StrOrBytesPath, ...],
+    list[bytes],
+    list[str],
+    list[PathLike[Any]],
+    list[Union[bytes, str]],
+    list[Union[bytes, PathLike[Any]]],
+    list[Union[str, PathLike[Any]]],
+    list[Union[bytes, str, PathLike[Any]]],
 ]
 _ExecEnv = Union[Mapping[bytes, Union[bytes, str]], Mapping[str, Union[bytes, str]]]
 
@@ -773,7 +857,7 @@ if sys.platform != "win32":
 
 class _wrap_close(_TextIOWrapper):
     def __init__(self, stream: _TextIOWrapper, proc: Popen[str]) -> None: ...
-    def close(self) -> int | None: ...  # type: ignore
+    def close(self) -> int | None: ...  # type: ignore[override]
 
 def popen(cmd: str, mode: str = ..., buffering: int = ...) -> _wrap_close: ...
 def spawnl(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
@@ -788,6 +872,19 @@ else:
     def spawnve(__mode: int, __path: StrOrBytesPath, __argv: _ExecVArgs, __env: _ExecEnv) -> int: ...
 
 def system(command: StrOrBytesPath) -> int: ...
+@final
+class times_result(structseq[float], tuple[float, float, float, float, float]):
+    @property
+    def user(self) -> float: ...
+    @property
+    def system(self) -> float: ...
+    @property
+    def children_user(self) -> float: ...
+    @property
+    def children_system(self) -> float: ...
+    @property
+    def elapsed(self) -> float: ...
+
 def times() -> times_result: ...
 def waitpid(__pid: int, __options: int) -> tuple[int, int]: ...
 
@@ -795,14 +892,24 @@ if sys.platform == "win32":
     def startfile(path: StrOrBytesPath, operation: str | None = ...) -> None: ...
 
 else:
-    # Unix only
     def spawnlp(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: StrOrBytesPath) -> int: ...
     def spawnlpe(mode: int, file: StrOrBytesPath, arg0: StrOrBytesPath, *args: Any) -> int: ...  # Imprecise signature
     def spawnvp(mode: int, file: StrOrBytesPath, args: _ExecVArgs) -> int: ...
     def spawnvpe(mode: int, file: StrOrBytesPath, args: _ExecVArgs, env: _ExecEnv) -> int: ...
     def wait() -> tuple[int, int]: ...  # Unix only
     if sys.platform != "darwin":
-        from posix import waitid_result
+        @final
+        class waitid_result(structseq[int], tuple[int, int, int, int, int]):
+            @property
+            def si_pid(self) -> int: ...
+            @property
+            def si_uid(self) -> int: ...
+            @property
+            def si_signo(self) -> int: ...
+            @property
+            def si_status(self) -> int: ...
+            @property
+            def si_code(self) -> int: ...
         def waitid(idtype: int, ident: int, options: int) -> waitid_result: ...
     def wait3(options: int) -> tuple[int, int, Any]: ...
     def wait4(pid: int, options: int) -> tuple[int, int, Any]: ...
@@ -815,10 +922,42 @@ else:
     def WSTOPSIG(status: int) -> int: ...
     def WTERMSIG(status: int) -> int: ...
     if sys.version_info >= (3, 8):
-        from posix import posix_spawn as posix_spawn, posix_spawnp as posix_spawnp
+        def posix_spawn(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        def posix_spawnp(
+            path: StrOrBytesPath,
+            argv: _ExecVArgs,
+            env: _ExecEnv,
+            *,
+            file_actions: Sequence[tuple[Any, ...]] | None = ...,
+            setpgroup: int | None = ...,
+            resetids: bool = ...,
+            setsid: bool = ...,
+            setsigmask: Iterable[int] = ...,
+            setsigdef: Iterable[int] = ...,
+            scheduler: tuple[Any, sched_param] | None = ...,
+        ) -> int: ...
+        POSIX_SPAWN_OPEN: int
+        POSIX_SPAWN_CLOSE: int
+        POSIX_SPAWN_DUP2: int
 
 if sys.platform != "win32":
-    from posix import sched_param
+    @final
+    class sched_param(structseq[int], tuple[int]):
+        def __new__(cls, sched_priority: int) -> sched_param: ...
+        @property
+        def sched_priority(self) -> int: ...
     def sched_get_priority_min(policy: int) -> int: ...  # some flavors of Unix
     def sched_get_priority_max(policy: int) -> int: ...  # some flavors of Unix
     def sched_yield() -> None: ...  # some flavors of Unix
@@ -880,3 +1019,6 @@ if sys.version_info >= (3, 8):
         MFD_HUGE_2GB: int
         MFD_HUGE_16GB: int
         def memfd_create(name: str, flags: int = ...) -> int: ...
+
+if sys.version_info >= (3, 9):
+    def waitstatus_to_exitcode(status: int) -> int: ...

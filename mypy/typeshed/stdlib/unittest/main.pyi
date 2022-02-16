@@ -6,6 +6,9 @@ import unittest.suite
 from types import ModuleType
 from typing import Any, Iterable, Protocol, Type
 
+MAIN_EXAMPLES: str
+MODULE_EXAMPLES: str
+
 class _TestRunner(Protocol):
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
 

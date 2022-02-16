@@ -1,6 +1,7 @@
 import sys
+from sre_constants import *
 from sre_constants import _NamedIntConstant as _NIC, error as _Error
-from typing import Any, Iterable, List, Match, Optional, Pattern as _Pattern, Tuple, Union, overload
+from typing import Any, Iterable, Match, Optional, Pattern as _Pattern, Union, overload
 
 SPECIAL_CHARS: str
 REPEAT_CHARS: str
@@ -12,6 +13,8 @@ WHITESPACE: frozenset[str]
 ESCAPES: dict[str, tuple[_NIC, int]]
 CATEGORIES: dict[str, tuple[_NIC, _NIC] | tuple[_NIC, list[tuple[_NIC, _NIC]]]]
 FLAGS: dict[str, int]
+if sys.version_info >= (3, 7):
+    TYPE_FLAGS: int
 GLOBAL_FLAGS: int
 
 class Verbose(Exception): ...
@@ -24,7 +27,7 @@ class _State:
     def __init__(self) -> None: ...
     @property
     def groups(self) -> int: ...
-    def opengroup(self, name: str = ...) -> int: ...
+    def opengroup(self, name: str | None = ...) -> int: ...
     def closegroup(self, gid: int, p: SubPattern) -> None: ...
     def checkgroup(self, gid: int) -> bool: ...
     def checklookbehindgroup(self, gid: int, source: Tokenizer) -> None: ...
@@ -34,12 +37,12 @@ if sys.version_info >= (3, 8):
 else:
     Pattern = _State
 
-_OpSubpatternType = Tuple[Optional[int], int, int, SubPattern]
-_OpGroupRefExistsType = Tuple[int, SubPattern, SubPattern]
-_OpInType = List[Tuple[_NIC, int]]
-_OpBranchType = Tuple[None, List[SubPattern]]
+_OpSubpatternType = tuple[Optional[int], int, int, SubPattern]
+_OpGroupRefExistsType = tuple[int, SubPattern, SubPattern]
+_OpInType = list[tuple[_NIC, int]]
+_OpBranchType = tuple[None, list[SubPattern]]
 _AvType = Union[_OpInType, _OpBranchType, Iterable[SubPattern], _OpGroupRefExistsType, _OpSubpatternType]
-_CodeType = Tuple[_NIC, _AvType]
+_CodeType = tuple[_NIC, _AvType]
 
 class SubPattern:
     data: list[_CodeType]
@@ -82,8 +85,8 @@ class Tokenizer:
 
 def fix_flags(src: str | bytes, flags: int) -> int: ...
 
-_TemplateType = Tuple[List[Tuple[int, int]], List[Optional[str]]]
-_TemplateByteType = Tuple[List[Tuple[int, int]], List[Optional[bytes]]]
+_TemplateType = tuple[list[tuple[int, int]], list[Optional[str]]]
+_TemplateByteType = tuple[list[tuple[int, int]], list[Optional[bytes]]]
 if sys.version_info >= (3, 8):
     def parse(str: str, flags: int = ..., state: State | None = ...) -> SubPattern: ...
     @overload

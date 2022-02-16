@@ -255,3 +255,34 @@ no error in practice. In such case, it might be prudent to annotate ``items: Seq
 This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
 except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+
+
+Check that ``# type: ignore`` include an error code [ignore-without-code]
+-------------------------------------------------------------------------
+
+Warn when a ``# type: ignore`` comment does not specify any error codes.
+This clarifies the intent of the ignore and ensures that only the
+expected errors are silenced.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: enable-error-code ignore-without-code
+
+    class Foo:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    f = Foo('foo')
+
+    # This line has a typo that mypy can't help with as both:
+    # - the expected error 'assignment', and
+    # - the unexpected error 'attr-defined'
+    # are silenced.
+    # Error: "type: ignore" comment without error code (currently ignored: [attr-defined])
+    f.nme = 42  # type: ignore
+
+    # This line warns correctly about the typo in the attribute name
+    # Error: "Foo" has no attribute "nme"; maybe "name"?
+    f.nme = 42  # type: ignore[assignment]

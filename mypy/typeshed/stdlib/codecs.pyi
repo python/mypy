@@ -2,8 +2,13 @@ import sys
 import types
 from _typeshed import Self
 from abc import abstractmethod
-from typing import IO, Any, BinaryIO, Callable, Generator, Iterable, Iterator, Protocol, TextIO, Tuple, Type, TypeVar, overload
+from typing import IO, Any, BinaryIO, Callable, Generator, Iterable, Iterator, Protocol, TextIO, Type, TypeVar, overload
 from typing_extensions import Literal
+
+BOM32_BE: bytes
+BOM32_LE: bytes
+BOM64_BE: bytes
+BOM64_LE: bytes
 
 # TODO: this only satisfies the most common interface, where
 # bytes is the raw form and str is the cooked form.
@@ -53,11 +58,11 @@ _BytesToBytesEncodingT = Literal[
 @overload
 def encode(obj: bytes, encoding: _BytesToBytesEncodingT, errors: str = ...) -> bytes: ...
 @overload
-def encode(obj: str, encoding: Literal["rot13", "rot_13"] = ..., errors: str = ...) -> str: ...  # type: ignore
+def encode(obj: str, encoding: Literal["rot13", "rot_13"] = ..., errors: str = ...) -> str: ...  # type: ignore[misc]
 @overload
 def encode(obj: str, encoding: str = ..., errors: str = ...) -> bytes: ...
 @overload
-def decode(obj: bytes, encoding: _BytesToBytesEncodingT, errors: str = ...) -> bytes: ...  # type: ignore
+def decode(obj: bytes, encoding: _BytesToBytesEncodingT, errors: str = ...) -> bytes: ...  # type: ignore[misc]
 @overload
 def decode(obj: str, encoding: Literal["rot13", "rot_13"] = ..., errors: str = ...) -> str: ...
 @overload
@@ -66,7 +71,7 @@ def lookup(__encoding: str) -> CodecInfo: ...
 def utf_16_be_decode(__data: bytes, __errors: str | None = ..., __final: bool = ...) -> tuple[str, int]: ...  # undocumented
 def utf_16_be_encode(__str: str, __errors: str | None = ...) -> tuple[bytes, int]: ...  # undocumented
 
-class CodecInfo(Tuple[_Encoder, _Decoder, _StreamReader, _StreamWriter]):
+class CodecInfo(tuple[_Encoder, _Decoder, _StreamReader, _StreamWriter]):
     @property
     def encode(self) -> _Encoder: ...
     @property

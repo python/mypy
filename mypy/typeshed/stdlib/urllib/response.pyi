@@ -2,7 +2,7 @@ import sys
 from _typeshed import Self
 from email.message import Message
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable, Tuple, Type, TypeVar
+from typing import IO, Any, BinaryIO, Callable, Iterable, Type, TypeVar
 
 _AIUT = TypeVar("_AIUT", bound=addbase)
 
@@ -37,7 +37,7 @@ class addbase(BinaryIO):
 
 class addclosehook(addbase):
     closehook: Callable[..., object]
-    hookargs: Tuple[Any, ...]
+    hookargs: tuple[Any, ...]
     def __init__(self, fp: IO[bytes], closehook: Callable[..., object], *hookargs: Any) -> None: ...
 
 class addinfo(addbase):
