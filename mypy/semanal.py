@@ -4806,7 +4806,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 and isinstance(existing.node, (FuncBase, Var))
                 and existing.type == cast(Any, symbol_node).type
             ):
-                symbol_node = existing.node
+                symbol_node = cast(SymbolNode, existing.node)
             else:
                 # Construct the new node
                 constructed_node = cast(Any, copy.copy(symbol_node))
