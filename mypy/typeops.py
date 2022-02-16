@@ -413,6 +413,10 @@ def is_truthy_type(t: ProperType) -> bool:
     )
 
 
+def _is_final_truthy_type(t: ProperType) -> bool:
+    return is_truthy_type(t) and (not isinstance(t, Instance) or t.type.is_final)
+
+
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
     t = get_proper_type(t)
 
@@ -435,7 +439,7 @@ def true_only(t: Type) -> ProperType:
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
         return UninhabitedType(line=t.line, column=t.column)
-    elif not t.can_be_false or is_truthy_type(t):
+    elif not t.can_be_false or _is_final_truthy_type(t):
         # All values of t are already True-ish, so true_only is idempotent in this case
         return t
     elif isinstance(t, UnionType):
@@ -462,7 +466,7 @@ def false_only(t: Type) -> ProperType:
     """
     t = get_proper_type(t)
 
-    if not t.can_be_false or is_truthy_type(t):
+    if not t.can_be_false or _is_final_truthy_type(t):
         if state.strict_optional:
             # All values of t are True-ish, so there are no false values in it
             return UninhabitedType(line=t.line)
