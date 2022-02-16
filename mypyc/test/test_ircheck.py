@@ -149,6 +149,17 @@ class TestIrcheck(unittest.TestCase):
         for src, dest in invalid_cases:
             assert not can_coerce_to(src, dest)
 
+    def test_duplicate_op(self) -> None:
+        arg_reg = Register(type=int32_rprimitive, name="r1")
+        assign = Assign(dest=arg_reg, src=Integer(value=5, rtype=int32_rprimitive))
+        block = self.basic_block([assign, assign, Return(value=NONE_VALUE)])
+        fn = FuncIR(
+            decl=self.func_decl(name="func_1"),
+            arg_regs=[],
+            blocks=[block],
+        )
+        assert_has_error(fn, FnError(source=assign, desc="Func has a duplicate op"))
+
     def test_pprint(self) -> None:
         block_1 = self.basic_block([Return(value=NONE_VALUE)])
         goto = Goto(label=block_1)
