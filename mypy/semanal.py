@@ -4809,11 +4809,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         if self.is_class_scope():
             # I promise this type checks; I'm just making mypyc issues go away.
             # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
-            # when it can also be a FuncBase. Once fixed, casts in the following can be removed.
+            # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
             # See also https://github.com/mypyc/mypyc/issues/892
             f = cast(Any, lambda x: x)
             if isinstance(f(symbol_node), (FuncBase, Var)):
-                assert symbol_node is not None
                 # For imports in class scope, we construct a new node to represent the symbol and
                 # set its `info` attribute to `self.type`.
                 existing = self.current_symbol_table().get(name)
@@ -4827,7 +4826,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     symbol_node = existing.node
                 else:
                     # Construct the new node
-                    constructed_node = f(copy.copy(symbol_node))
+                    constructed_node = copy.copy(f(symbol_node))
                     assert self.type is not None  # guaranteed by is_class_scope
                     constructed_node.line = context.line
                     constructed_node.column = context.column
