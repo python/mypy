@@ -4792,33 +4792,30 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         # I promise this type checks; I'm just making mypyc issues go away.
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
-        # when it can also be a FuncBase.
+        # when it can also be a FuncBase. Once fixed, the casts in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
-        symbol_node_any: Any = cast(Any, symbol_node)
-        if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
+        if self.is_class_scope() and isinstance((lambda x: x)(symbol_node), (FuncBase, Var)):
+            assert isinstance(symbol_node, SymbolNode)
             # For imports in class scope, we construct a new node to represent the symbol and set
             # its `info` attribute to `self.type`.
             existing = self.current_symbol_table().get(name)
-            node_to_add: Any  # Union[FuncBase, Var]
             if (
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var / FuncBase, so check for possible redefinitions here.
                 existing is not None
                 and isinstance(existing.node, (FuncBase, Var))
-                and existing.type == symbol_node_any.type
+                and existing.type == cast(Any, symbol_node).type
             ):
-                node_to_add = cast(Any, existing.node)
+                symbol_node = existing.node
             else:
                 # Construct the new node
-                node_to_add = copy.copy(symbol_node_any)
+                constructed_node = cast(Any, copy.copy(symbol_node))
                 assert self.type is not None  # guaranteed by is_class_scope
-                node_to_add.line = context.line
-                node_to_add.column = context.column
-                node_to_add.info = self.type
-                node_to_add._fullname = self.qualified_name(name)
-
-            symbol_node = node_to_add
-            assert isinstance(symbol_node, SymbolNode)
+                constructed_node.line = context.line
+                constructed_node.column = context.column
+                constructed_node.info = self.type
+                constructed_node._fullname = self.qualified_name(name)
+                symbol_node = constructed_node
 
         symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
