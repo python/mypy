@@ -4810,12 +4810,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 node_to_add = cast(Any, existing.node)
             else:
                 # Construct the new node
-                if isinstance(symbol_node_any, Var):
-                    node_to_add = cast(Any, Var(symbol_node_any.name, symbol_node_any.type))
-                elif isinstance(symbol_node_any, FuncBase):
-                    node_to_add = copy.copy(symbol_node_any)
-                else:
-                    assert False
+                node_to_add = copy.copy(symbol_node_any)
                 assert self.type is not None  # guaranteed by is_class_scope
                 node_to_add.line = context.line
                 node_to_add.column = context.column
