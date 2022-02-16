@@ -4798,6 +4798,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # We construct a new node to represent this symbol and set its `info` attribute
             # to `self.type`.
             existing = self.current_symbol_table().get(name)
+            node_to_add: Union[FuncBase, Var]
             if (
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var / FuncBase, so check for possible redefinitions here.
@@ -4805,20 +4806,22 @@ class SemanticAnalyzer(NodeVisitor[None],
                 and isinstance(existing.node, (FuncBase, Var))
                 and existing.type == symbol_node_any.type
             ):
-                symbol_node = existing.node
+                node_to_add = existing.node
             else:
                 if isinstance(symbol_node_any, Var):
-                    symbol_node = Var(symbol_node_any.name, symbol_node_any.type)
+                    node_to_add = Var(symbol_node_any.name, symbol_node_any.type)
                 elif isinstance(symbol_node_any, FuncBase):
-                    # Need to cast here as a side effect of the cast for mypyc above
-                    symbol_node = cast(Any, copy.copy(symbol_node_any))
+                    node_to_add = copy.copy(symbol_node_any)
                 else:
                     assert False
                 assert self.type is not None  # guaranteed by is_class_scope
-                symbol_node.line = context.line
-                symbol_node.column = context.column
-                symbol_node.info = self.type
-                symbol_node._fullname = self.qualified_name(name)
+                node_to_add.line = context.line
+                node_to_add.column = context.column
+                node_to_add.info = self.type
+                node_to_add._fullname = self.qualified_name(name)
+
+            assert isinstance(node_to_add, SymbolNode)
+            symbol_node = node_to_add
 
         symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
