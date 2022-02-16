@@ -64,7 +64,7 @@ In particular, look for:
 - [documentation issues](https://github.com/python/mypy/labels/documentation)
 
 You do not need to ask for permission to work on any of these issues.
-Just [fix the issue yourself, try to add a unit test](#running-tests) and
+Just fix the issue yourself, [try to add a unit test](#running-tests) and
 [open a pull request](#submitting-changes).
 
 To get help fixing a specific issue, it's often best to comment on the issue
