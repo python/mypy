@@ -517,6 +517,8 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
+    if sys.platform == "win32":
+        assert False, "curses is not available on Windows"
     set_color = ''.join([cup[:-1].decode(), 'm'])
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
@@ -580,7 +582,7 @@ class FancyFormatter:
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if not CURSES_ENABLED:
+        if sys.platform == "win32" or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".

@@ -17,7 +17,7 @@ class TextTestResult(unittest.result.TestResult):
     def printErrors(self) -> None: ...
     def printErrorList(self, flavour: str, errors: tuple[unittest.case.TestCase, str]) -> None: ...
 
-class TextTestRunner(object):
+class TextTestRunner:
     resultclass: _ResultClassType
     def __init__(
         self,

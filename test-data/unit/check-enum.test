@@ -232,6 +232,20 @@ an_enum = SomeIntEnum.x
 an_enum = returns_some_int_enum()
 [out]
 
+[case testStrEnumCreation]
+# flags: --python-version 3.11
+from enum import StrEnum
+
+class MyStrEnum(StrEnum):
+    x = 'x'
+    y = 'y'
+
+reveal_type(MyStrEnum.x)  # N: Revealed type is "Literal[__main__.MyStrEnum.x]?"
+reveal_type(MyStrEnum.x.value)  # N: Revealed type is "Literal['x']?"
+reveal_type(MyStrEnum.y)  # N: Revealed type is "Literal[__main__.MyStrEnum.y]?"
+reveal_type(MyStrEnum.y.value)  # N: Revealed type is "Literal['y']?"
+[out]
+
 [case testEnumMethods]
 from enum import Enum
 
@@ -1868,3 +1882,23 @@ class WithOverload(enum.IntEnum):
 class SubWithOverload(WithOverload):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
+
+[case testEnumtValueUnionSimplification]
+from enum import IntEnum
+from typing import Any
+
+class C(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
+
+def f1(c: C) -> None:
+    x = {'x': c.value}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+
+def f2(c: C, a: Any) -> None:
+    x = {'x': c.value, 'y': a}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+    y = {'y': a, 'x': c.value}
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+[builtins fixtures/dict.pyi]
