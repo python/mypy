@@ -493,7 +493,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'
             if name == 'builtins.any':
-                notes.append('Perhaps you meant "Any" instead of "any"?')
+                notes.append('Perhaps you meant "typing.Any" instead of "any"?')
             else:
                 notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
         elif isinstance(sym.node, MypyFile):
