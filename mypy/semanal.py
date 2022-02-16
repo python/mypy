@@ -4814,8 +4814,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             f = cast(Any, lambda x: x)
             if isinstance(f(symbol_node), (FuncBase, Var)):
                 assert symbol_node is not None
-                # For imports in class scope, we construct a new node to represent the symbol and set
-                # its `info` attribute to `self.type`.
+                # For imports in class scope, we construct a new node to represent the symbol and
+                # set its `info` attribute to `self.type`.
                 existing = self.current_symbol_table().get(name)
                 if (
                     # The redefinition checks in `add_symbol_table_node` don't work for our
