@@ -58,7 +58,7 @@ from mypy.typeops import (
     try_getting_str_literals_from_type, try_getting_int_literals_from_type,
     tuple_fallback, is_singleton_type, try_expanding_sum_type_to_union,
     true_only, false_only, function_type, get_type_vars, custom_special_method,
-    is_literal_type_like,
+    is_literal_type_like, is_truthy_type
 )
 from mypy import message_registry
 from mypy.message_registry import ErrorMessage
@@ -4302,27 +4302,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return None, {}
 
-    def _is_truthy_type(self, t: ProperType) -> bool:
-        return (
-            (
-                isinstance(t, Instance) and
-                bool(t.type) and
-                not t.type.has_readable_member('__bool__') and
-                not t.type.has_readable_member('__len__')
-            )
-            or isinstance(t, FunctionLike)
-            or (
-                isinstance(t, UnionType) and
-                all(self._is_truthy_type(t) for t in get_proper_types(t.items))
-            )
-        )
-
     def _check_for_truthy_type(self, t: Type, expr: Expression) -> None:
         if not state.strict_optional:
             return  # if everything can be None, all bets are off
 
         t = get_proper_type(t)
-        if not self._is_truthy_type(t):
+        if not is_truthy_type(t):
             return
 
         def format_expr_type() -> str:
@@ -4686,7 +4671,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         original_vartype = type_map[node]
         self._check_for_truthy_type(original_vartype, node)
         vartype = try_expanding_sum_type_to_union(original_vartype, "builtins.bool")
-
         if_type = true_only(vartype)
         else_type = false_only(vartype)
         if_map = (

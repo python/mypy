@@ -397,6 +397,22 @@ def make_simplified_union(items: Sequence[Type],
     return UnionType.make_union(simplified_set, line, column)
 
 
+def is_truthy_type(t: ProperType) -> bool:
+    return (
+        (
+            isinstance(t, Instance) and
+            bool(t.type) and
+            not t.type.has_readable_member('__bool__') and
+            not t.type.has_readable_member('__len__')
+        )
+        or isinstance(t, FunctionLike)
+        or (
+            isinstance(t, UnionType) and
+            all(is_truthy_type(t) for t in get_proper_types(t.items))
+        )
+    )
+
+
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
     t = get_proper_type(t)
 
@@ -419,7 +435,7 @@ def true_only(t: Type) -> ProperType:
     if not t.can_be_true:
         # All values of t are False-ish, so there are no true values in it
         return UninhabitedType(line=t.line, column=t.column)
-    elif not t.can_be_false:
+    elif not t.can_be_false or is_truthy_type(t):
         # All values of t are already True-ish, so true_only is idempotent in this case
         return t
     elif isinstance(t, UnionType):
@@ -446,7 +462,7 @@ def false_only(t: Type) -> ProperType:
     """
     t = get_proper_type(t)
 
-    if not t.can_be_false:
+    if not t.can_be_false or is_truthy_type(t):
         if state.strict_optional:
             # All values of t are True-ish, so there are no false values in it
             return UninhabitedType(line=t.line)
