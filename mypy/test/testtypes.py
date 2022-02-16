@@ -409,6 +409,12 @@ class TypeOpsSuite(Suite):
         assert not to.items[0].can_be_false
         assert to.items[1] is tup_type
 
+    def test_true_only_of_truthy_type(self) -> None:
+        to = true_only(self.fx.b)
+        assert_equal(self.fx.b, to)
+        un = true_only(self.fx.a)
+        assert_type(UninhabitedType, un)
+
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
         with strict_optional_set(True):
             fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
@@ -450,6 +456,10 @@ class TypeOpsSuite(Suite):
             assert not fo.items[0].can_be_true
             assert fo.items[0].can_be_false
             assert fo.items[1] is tup_type
+
+    def test_false_only_of_truthy_type_is_uninhabited(self) -> None:
+        fo = false_only(self.fx.b)
+        assert_type(UninhabitedType, fo)
 
     def test_simplified_union(self) -> None:
         fx = self.fx
