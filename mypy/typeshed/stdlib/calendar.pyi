@@ -1,9 +1,9 @@
 import datetime
 import sys
 from time import struct_time
-from typing import Any, Iterable, Optional, Sequence, Tuple
+from typing import Any, Iterable, Optional, Sequence
 
-_LocaleType = Tuple[Optional[str], Optional[str]]
+_LocaleType = tuple[Optional[str], Optional[str]]
 
 class IllegalMonthError(ValueError):
     def __init__(self, month: int) -> None: ...
@@ -97,7 +97,7 @@ c: TextCalendar
 def setfirstweekday(firstweekday: int) -> None: ...
 def format(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
 def formatstring(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
-def timegm(tuple: Tuple[int, ...] | struct_time) -> int: ...
+def timegm(tuple: tuple[int, ...] | struct_time) -> int: ...
 
 # Data attributes
 day_name: Sequence[str]

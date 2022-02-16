@@ -691,8 +691,13 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -701,6 +706,28 @@ class StubtestUnit(unittest.TestCase):
                 runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
+
+    def test_not_subclassable(self) -> None:
+        output = run_stubtest(
+            stub=(
+                "class CanBeSubclassed: ...\n"
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls) -> None: ...\n"
+            ),
+            runtime=(
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls): raise TypeError('nope')\n"
+                # ctypes.Array can be subclassed, but subclasses must define a few
+                # special attributes, e.g. _length_
+                "from ctypes import Array as CanBeSubclassed\n"
+            ),
+            options=[],
+        )
+        assert (
+            "CanNotBeSubclassed cannot be subclassed at runtime,"
+            " but isn't marked with @final in the stub"
+        ) in output
+        assert "CanBeSubclassed cannot be subclassed" not in output
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -828,6 +855,41 @@ class StubtestUnit(unittest.TestCase):
             error='WRONG_BOOL_2',
         )
 
+    @collect_cases
+    def test_special_subtype(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            b1: bool
+            b2: bool
+            b3: bool
+            """,
+            runtime="""
+            b1 = 0
+            b2 = 1
+            b3 = 2
+            """,
+            error="b3",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import TypedDict
+
+            class _Options(TypedDict):
+                a: str
+                b: int
+
+            opt1: _Options
+            opt2: _Options
+            opt3: _Options
+            """,
+            runtime="""
+            opt1 = {"a": "3.", "b": 14}
+            opt2 = {"some": "stuff"}  # false negative
+            opt3 = 0
+            """,
+            error="opt3",
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -948,12 +1010,19 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
-        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
+        assert "graphlib" not in stdlib
+        assert "formatter" in stdlib
+        assert "importlib.metadata" not in stdlib
+
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
+        assert "graphlib" in stdlib
+        assert "formatter" not in stdlib
+        assert "importlib.metadata" in stdlib
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:

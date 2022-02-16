@@ -1,9 +1,9 @@
 import sys
-from typing import List, Optional, Tuple
+from typing import Optional
 
 if sys.platform == "win32":
 
-    _SequenceType = List[Tuple[str, Optional[str], int]]
+    _SequenceType = list[tuple[str, Optional[str], int]]
 
     AdminExecuteSequence: _SequenceType
     AdminUISequence: _SequenceType

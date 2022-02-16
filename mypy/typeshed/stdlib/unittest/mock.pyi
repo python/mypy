@@ -1,27 +1,61 @@
 import sys
-from typing import Any, Callable, Generic, Iterable, List, Mapping, Sequence, Tuple, Type, TypeVar, overload
+from typing import Any, Awaitable, Callable, Generic, Iterable, Mapping, Sequence, Type, TypeVar, overload
 
 _T = TypeVar("_T")
 _TT = TypeVar("_TT", bound=Type[Any])
 _R = TypeVar("_R")
 
-__all__ = [
-    "Mock",
-    "MagicMock",
-    "patch",
-    "sentinel",
-    "DEFAULT",
-    "ANY",
-    "call",
-    "create_autospec",
-    "AsyncMock",
-    "FILTER_DIR",
-    "NonCallableMock",
-    "NonCallableMagicMock",
-    "mock_open",
-    "PropertyMock",
-    "seal",
-]
+if sys.version_info >= (3, 8):
+    __all__ = (
+        "Mock",
+        "MagicMock",
+        "patch",
+        "sentinel",
+        "DEFAULT",
+        "ANY",
+        "call",
+        "create_autospec",
+        "AsyncMock",
+        "FILTER_DIR",
+        "NonCallableMock",
+        "NonCallableMagicMock",
+        "mock_open",
+        "PropertyMock",
+        "seal",
+    )
+elif sys.version_info >= (3, 7):
+    __all__ = (
+        "Mock",
+        "MagicMock",
+        "patch",
+        "sentinel",
+        "DEFAULT",
+        "ANY",
+        "call",
+        "create_autospec",
+        "FILTER_DIR",
+        "NonCallableMock",
+        "NonCallableMagicMock",
+        "mock_open",
+        "PropertyMock",
+        "seal",
+    )
+else:
+    __all__ = (
+        "Mock",
+        "MagicMock",
+        "patch",
+        "sentinel",
+        "DEFAULT",
+        "ANY",
+        "call",
+        "create_autospec",
+        "FILTER_DIR",
+        "NonCallableMock",
+        "NonCallableMagicMock",
+        "mock_open",
+        "PropertyMock",
+    )
 __version__: str
 
 FILTER_DIR: Any
@@ -39,7 +73,7 @@ class _Sentinel:
 sentinel: Any
 DEFAULT: Any
 
-class _Call(Tuple[Any, ...]):
+class _Call(tuple[Any, ...]):
     def __new__(
         cls, value: Any = ..., name: Any | None = ..., parent: Any | None = ..., two: bool = ..., from_kall: bool = ...
     ) -> Any: ...
@@ -53,25 +87,22 @@ class _Call(Tuple[Any, ...]):
     __ne__: Any
     def __call__(self, *args: Any, **kwargs: Any) -> _Call: ...
     def __getattr__(self, attr: Any) -> Any: ...
-    def count(self, *args: Any, **kwargs: Any) -> Any: ...
-    def index(self, *args: Any, **kwargs: Any) -> Any: ...
+    if sys.version_info >= (3, 8):
+        @property
+        def args(self): ...
+        @property
+        def kwargs(self): ...
     def call_list(self) -> Any: ...
 
 call: _Call
 
-class _CallList(List[_Call]):
+class _CallList(list[_Call]):
     def __contains__(self, value: Any) -> bool: ...
-
-class _MockIter:
-    obj: Any
-    def __init__(self, obj: Any) -> None: ...
-    def __iter__(self) -> Any: ...
-    def __next__(self) -> Any: ...
 
 class Base:
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
-class NonCallableMock(Base, Any):  # type: ignore
+class NonCallableMock(Base, Any):
     def __new__(__cls, *args: Any, **kw: Any) -> NonCallableMock: ...
     def __init__(
         self,
@@ -124,7 +155,7 @@ class NonCallableMock(Base, Any):  # type: ignore
     call_args_list: _CallList
     mock_calls: _CallList
     def _format_mock_call_signature(self, args: Any, kwargs: Any) -> str: ...
-    def _call_matcher(self, _call: Tuple[_Call, ...]) -> _Call: ...
+    def _call_matcher(self, _call: tuple[_Call, ...]) -> _Call: ...
     def _get_child_mock(self, **kw: Any) -> NonCallableMock: ...
 
 class CallableMixin(Base):
@@ -143,7 +174,10 @@ class CallableMixin(Base):
         _new_parent: Any | None = ...,
         **kwargs: Any,
     ) -> None: ...
-    def __call__(_mock_self, *args: Any, **kwargs: Any) -> Any: ...
+    if sys.version_info >= (3, 8):
+        def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+    else:
+        def __call__(_mock_self, *args: Any, **kwargs: Any) -> Any: ...
 
 class Mock(CallableMixin, NonCallableMock): ...
 
@@ -162,25 +196,45 @@ class _patch(Generic[_T]):
     additional_patchers: Any
     # If new==DEFAULT, self is _patch[Any]. Ideally we'd be able to add an overload for it so that self is _patch[MagicMock],
     # but that's impossible with the current type system.
-    def __init__(
-        self: _patch[_T],
-        getter: Callable[[], Any],
-        attribute: str,
-        new: _T,
-        spec: Any | None,
-        create: bool,
-        spec_set: Any | None,
-        autospec: Any | None,
-        new_callable: Any | None,
-        kwargs: Mapping[str, Any],
-    ) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __init__(
+            self: _patch[_T],
+            getter: Callable[[], Any],
+            attribute: str,
+            new: _T,
+            spec: Any | None,
+            create: bool,
+            spec_set: Any | None,
+            autospec: Any | None,
+            new_callable: Any | None,
+            kwargs: Mapping[str, Any],
+            *,
+            unsafe: bool = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self: _patch[_T],
+            getter: Callable[[], Any],
+            attribute: str,
+            new: _T,
+            spec: Any | None,
+            create: bool,
+            spec_set: Any | None,
+            autospec: Any | None,
+            new_callable: Any | None,
+            kwargs: Mapping[str, Any],
+        ) -> None: ...
     def copy(self) -> _patch[_T]: ...
     @overload
     def __call__(self, func: _TT) -> _TT: ...
     @overload
     def __call__(self, func: Callable[..., _R]) -> Callable[..., _R]: ...
+    if sys.version_info >= (3, 8):
+        def decoration_helper(self, patched, args, keywargs): ...
     def decorate_class(self, klass: _TT) -> _TT: ...
     def decorate_callable(self, func: Callable[..., _R]) -> Callable[..., _R]: ...
+    if sys.version_info >= (3, 8):
+        def decorate_async_callable(self, func: Callable[..., Awaitable[_R]]) -> Callable[..., Awaitable[_R]]: ...
     def get_original(self) -> tuple[Any, bool]: ...
     target: Any
     temp_original: Any
@@ -210,7 +264,7 @@ class _patcher:
         # Ideally we'd be able to add an overload for it so that the return type is _patch[MagicMock],
         # but that's impossible with the current type system.
         @overload
-        def __call__(  # type: ignore
+        def __call__(  # type: ignore[misc]
             self,
             target: Any,
             new: _T,
@@ -222,7 +276,7 @@ class _patcher:
             **kwargs: Any,
         ) -> _patch[_T]: ...
         @overload
-        def __call__(  # type: ignore
+        def __call__(
             self,
             target: Any,
             *,
@@ -235,7 +289,7 @@ class _patcher:
         ) -> _patch[MagicMock | AsyncMock]: ...
     else:
         @overload
-        def __call__(  # type: ignore
+        def __call__(  # type: ignore[misc]
             self,
             target: Any,
             new: _T,
@@ -247,7 +301,7 @@ class _patcher:
             **kwargs: Any,
         ) -> _patch[_T]: ...
         @overload
-        def __call__(  # type: ignore
+        def __call__(
             self,
             target: Any,
             *,
@@ -260,7 +314,7 @@ class _patcher:
         ) -> _patch[MagicMock]: ...
     if sys.version_info >= (3, 8):
         @overload
-        def object(  # type: ignore
+        def object(  # type: ignore[misc]
             self,
             target: Any,
             attribute: str,
@@ -273,7 +327,7 @@ class _patcher:
             **kwargs: Any,
         ) -> _patch[_T]: ...
         @overload
-        def object(  # type: ignore
+        def object(
             self,
             target: Any,
             attribute: str,
@@ -287,7 +341,7 @@ class _patcher:
         ) -> _patch[MagicMock | AsyncMock]: ...
     else:
         @overload
-        def object(  # type: ignore
+        def object(  # type: ignore[misc]
             self,
             target: Any,
             attribute: str,
@@ -300,7 +354,7 @@ class _patcher:
             **kwargs: Any,
         ) -> _patch[_T]: ...
         @overload
-        def object(  # type: ignore
+        def object(
             self,
             target: Any,
             attribute: str,
@@ -357,10 +411,11 @@ if sys.version_info >= (3, 8):
 class MagicProxy:
     name: Any
     parent: Any
-    def __init__(self, name: Any, parent: Any) -> None: ...
-    def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
-    def create_mock(self) -> Any: ...
-    def __get__(self, obj: Any, _type: Any | None = ...) -> Any: ...
+    def __init__(self, name, parent) -> None: ...
+    if sys.version_info < (3, 8):
+        def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
+    def create_mock(self): ...
+    def __get__(self, obj, _type: Any | None = ...): ...
 
 class _ANY:
     def __eq__(self, other: Any) -> bool: ...

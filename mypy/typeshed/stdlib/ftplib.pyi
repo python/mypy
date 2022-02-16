@@ -3,7 +3,7 @@ from _typeshed import Self, SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Callable, Iterable, Iterator, TextIO, Tuple, Type
+from typing import Any, Callable, Iterable, Iterator, TextIO, Type
 from typing_extensions import Literal
 
 MSG_OOB: int
@@ -18,7 +18,7 @@ class error_temp(Error): ...
 class error_perm(Error): ...
 class error_proto(Error): ...
 
-all_errors: Tuple[Type[Exception], ...]
+all_errors: tuple[Type[Exception], ...]
 
 class FTP:
     debugging: int
@@ -33,10 +33,6 @@ class FTP:
     lastresp: str
     file: TextIO | None
     encoding: str
-
-    # The following variable is intentionally left undocumented.
-    # See https://bugs.python.org/issue43285 for relevant discussion
-    # trust_server_pasv_ipv4_address: bool
     def __enter__(self: Self) -> Self: ...
     def __exit__(
         self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
