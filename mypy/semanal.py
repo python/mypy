@@ -4789,14 +4789,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         assert not module_hidden or not module_public
 
         symbol_node: Optional[SymbolNode] = node.node
+
         # I promise this type checks; I'm just making mypyc issues go away.
         # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
         # when it can also be a FuncBase.
         # See also https://github.com/mypyc/mypyc/issues/892
         symbol_node_any: Any = cast(Any, symbol_node)
         if self.is_class_scope() and isinstance(symbol_node, (FuncBase, Var)):
-            # We construct a new node to represent this symbol and set its `info` attribute
-            # to `self.type`.
+            # For imports in class scope, we construct a new node to represent the symbol and set
+            # its `info` attribute to `self.type`.
             existing = self.current_symbol_table().get(name)
             node_to_add: Union[FuncBase, Var]
             if (
@@ -4808,6 +4809,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             ):
                 node_to_add = existing.node
             else:
+                # Construct the new node
                 if isinstance(symbol_node_any, Var):
                     node_to_add = Var(symbol_node_any.name, symbol_node_any.type)
                 elif isinstance(symbol_node_any, FuncBase):
