@@ -1,5 +1,5 @@
 """Utilities for checking that internal ir is valid and consistent."""
-from typing import List, Union, Set
+from typing import List, Union, Set, Tuple
 from mypyc.ir.pprint import format_func
 from mypyc.ir.ops import (
     OpVisitor, BasicBlock, Op, ControlOp, Goto, Branch, Return, Unreachable,
@@ -10,7 +10,7 @@ from mypyc.ir.ops import (
     BaseAssign
 )
 from mypyc.ir.rtypes import RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray, int_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive, range_rprimitive, str_rprimitive, bytes_rprimitive, tuple_rprimitive
-from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.func_ir import FuncIR, FUNC_STATICMETHOD
 
 
 class FnError(object):
@@ -36,6 +36,12 @@ def check_func_ir(fn: FuncIR) -> List[FnError]:
                 source=block.ops[-1] if block.ops else block,
                 desc="Block not terminated",
             ))
+        for op in block.ops[:-1]:
+            if isinstance(op, ControlOp):
+                errors.append(FnError(
+                    source=op,
+                    desc="Block has operations after control op",
+                ))
 
     errors.extend(check_op_sources_valid(fn))
     if errors:
@@ -154,6 +160,8 @@ class OpChecker(OpVisitor[None]):
         self.check_type_coercion(op, op.value.type, self.parent_fn.decl.sig.ret_type)
 
     def visit_unreachable(self, op: Unreachable) -> None:
+        # Unreachables are checked at a higher level since validation
+        # requires access to the entire basic block.
         pass
 
     def visit_assign(self, op: Assign) -> None:
@@ -165,17 +173,52 @@ class OpChecker(OpVisitor[None]):
             self.check_type_coercion(op, src.type, op.dest.type.item_type)
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
+        # Currently it is assumed that all types have an error value.
+        # Once this is fixed we can validate that the rtype here actually
+        # has an error value.
         pass
+
+    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: Tuple[object, ...]) -> None:
+        for x in t:
+            if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
+                self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
+            if isinstance(x, tuple):
+                self.check_tuple_items_valid_literals(op, x)
 
     def visit_load_literal(self, op: LoadLiteral) -> None:
-        pass
+        expected_type = None
+        if op.value is None:
+            expected_type = "builtins.object"
+        elif isinstance(op.value, int):
+            expected_type = "builtins.int"
+        elif isinstance(op.value, str):
+            expected_type = "builtins.str"
+        elif isinstance(op.value, bytes):
+            expected_type = "builtins.bytes"
+        elif isinstance(op.value, bool):
+            expected_type = "builtins.object"
+        elif isinstance(op.value, float):
+            expected_type = "builtins.float"
+        elif isinstance(op.value, complex):
+            expected_type = "builtins.object"
+        elif isinstance(op.value, tuple):
+            expected_type = "builtins.tuple"
+            self.check_tuple_items_valid_literals(op, op.value)
+
+        assert expected_type is not None, "Missed a case for LoadLiteral check"
+            
+        if op.type.name not in [expected_type, "builtins.object"]:
+            self.fail(op, f"Invalid literal value for type: value has type {expected_type}, but op has type {op.type.name}") 
 
     def visit_get_attr(self, op: GetAttr) -> None:
+        # Nothing to do.
         pass
 
     def visit_set_attr(self, op: SetAttr) -> None:
+        # Nothing to do.
         pass
 
+    # Static operations cannot be checked at the function level.
     def visit_load_static(self, op: LoadStatic) -> None:
         pass
 
@@ -183,22 +226,41 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_tuple_get(self, op: TupleGet) -> None:
+        # Nothing to do.
         pass
 
     def visit_tuple_set(self, op: TupleSet) -> None:
+        # Nothing to do.
         pass
 
     def visit_inc_ref(self, op: IncRef) -> None:
+        # Nothing to do.
         pass
 
     def visit_dec_ref(self, op: DecRef) -> None:
+        # Nothing to do.
         pass
 
     def visit_call(self, op: Call) -> None:
-        pass
+        # Length is checked in constructor, and return type is set
+        # in a way that can't be incorrect
+        for arg_value, arg_runtime in zip(op.args, op.fn.sig.args):
+            self.check_type_coercion(op, arg_value.type, arg_runtime.type)
 
     def visit_method_call(self, op: MethodCall) -> None:
-        pass
+        # Similar to above, but we must look up method first.
+        method_decl = op.receiver_type.class_ir.method_decl(op.method)
+        if method_decl.kind == FUNC_STATICMETHOD:
+            decl_index = 0
+        else:
+            decl_index = 1
+
+        if len(op.args) + decl_index != len(method_decl.sig.args):
+            self.fail(op, "Incorrect number of args for method call.")
+
+        # Skip the receiver argument (self)
+        for arg_value, arg_runtime in zip(op.args, method_decl.sig.args[decl_index:]):
+            self.check_type_coercion(op, arg_value.type, arg_runtime.type)
 
     def visit_cast(self, op: Cast) -> None:
         pass

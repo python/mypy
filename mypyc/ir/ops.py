@@ -495,6 +495,7 @@ class Call(RegisterOp):
         super().__init__(line)
         self.fn = fn
         self.args = list(args)
+        assert len(self.args) == len(fn.sig.args)
         self.type = fn.sig.ret_type
 
     def sources(self) -> List[Value]:
