@@ -54,6 +54,12 @@ You can also use `tox` to run tests, for instance:
 tox -e py
 ```
 
+The easiest way to run a single test is:
+```
+pytest -n0 -k 'test_name'
+```
+There's more useful information on writing and running tests [here](test-data/unit/README.md)
+
 ## First time contributors
 
 If you're looking for things to help with, browse our [issue tracker](https://github.com/python/mypy/issues)!
