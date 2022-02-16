@@ -4799,7 +4799,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # For imports in class scope, we construct a new node to represent the symbol and set
             # its `info` attribute to `self.type`.
             existing = self.current_symbol_table().get(name)
-            node_to_add: Union[FuncBase, Var]
+            node_to_add: Any  # Union[FuncBase, Var]
             if (
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var / FuncBase, so check for possible redefinitions here.
@@ -4822,8 +4822,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 node_to_add.info = self.type
                 node_to_add._fullname = self.qualified_name(name)
 
-            assert isinstance(node_to_add, SymbolNode)
             symbol_node = node_to_add
+            assert isinstance(symbol_node, SymbolNode)
 
         symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
