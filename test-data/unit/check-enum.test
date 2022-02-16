@@ -1902,3 +1902,12 @@ def f2(c: C, a: Any) -> None:
     y = {'y': a, 'x': c.value}
     reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
 [builtins fixtures/dict.pyi]
+
+[case testEnumIgnoreIsDeleted]
+from enum import Enum
+
+class C(Enum):
+    _ignore_ = 'X'
+
+C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
+[typing fixtures/typing-medium.pyi]

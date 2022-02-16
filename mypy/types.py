@@ -132,6 +132,14 @@ REVEAL_TYPE_NAMES: Final = (
     'typing_extensions.reveal_type',
 )
 
+# Attributes that can optionally be defined in the body of a subclass of
+# enum.Enum but are removed from the class __dict__ by EnumMeta.
+ENUM_REMOVED_PROPS: Final = (
+    '_ignore_',
+    '_order_',
+    '__order__',
+)
+
 NEVER_NAMES: Final = (
     'typing.NoReturn',
     'typing_extensions.NoReturn',
