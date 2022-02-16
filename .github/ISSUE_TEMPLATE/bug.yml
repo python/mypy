@@ -25,7 +25,7 @@ body:
       label: Command-line flags
   - type: input
     attributes:
-      label: Configuration options from `pyptoject.toml` (and other config files)
+      label: Configuration options from `pyproject.toml` (and other config files)
   - type: input
     attributes:
       label: Python version used
