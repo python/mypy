@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, SPECIAL_DUNDERS
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
 
 
 class Missing:
@@ -243,6 +243,56 @@ def verify_mypyfile(
         )
 
 
+IGNORED_DUNDERS = frozenset({
+    # Very special attributes
+    "__weakref__",
+    "__slots__",
+    "__dict__",
+    "__text_signature__",
+    "__match_args__",
+    # Pickle methods
+    "__setstate__",
+    "__getstate__",
+    "__getnewargs__",
+    "__getinitargs__",
+    "__reduce_ex__",
+    # typing implementation details
+    "__parameters__",
+    "__origin__",
+    "__args__",
+    "__orig_bases__",
+    "__mro_entries__",
+    "__forward_is_class__",
+    "__forward_module__",
+    "__final__",
+    # isinstance/issubclass hooks that type-checkers don't usually care about
+    "__instancecheck__",
+    "__subclasshook__",
+    "__subclasscheck__",
+    # Dataclasses implementation details
+    "__dataclass_fields__",
+    "__dataclass_params__",
+    # ctypes weirdness
+    "__ctype_be__",
+    "__ctype_le__",
+    "__ctypes_from_outparam__",
+    # Two float methods only used internally for CPython test suite, not for public use
+    "__set_format__",
+    "__getformat__",
+    # These two are basically useless for type checkers
+    "__hash__",
+    "__getattr__",
+    "__abstractmethods__",  # For some reason, mypy doesn't infer that classes with ABCMeta as the metaclass have this inherited
+    "__doc__",  # Can only ever be str | None, who cares?
+    "__del__",  # Only ever called when an object is being deleted, who cares?
+    "__new_member__",  # If an enum class defines `__new__`, the method is renamed to be `__new_member__`
+})
+
+
+def is_private(name: str) -> bool:
+    return name.startswith("_") and not is_dunder(name)
+
+
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]], object_path: List[str]
@@ -274,11 +324,9 @@ def verify_typeinfo(
 
     # Check everything already defined in the stub
     to_check = set(stub.names)
-    # There's a reasonable case to be made that we should always check all dunders, but it's
-    # currently quite noisy. We could turn this into a denylist instead of an allowlist.
     to_check.update(
         # cast to workaround mypyc complaints
-        m for m in cast(Any, vars)(runtime) if not m.startswith("_") or m in SPECIAL_DUNDERS
+        m for m in cast(Any, vars)(runtime) if not is_private(m) and m not in IGNORED_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -713,7 +761,15 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    yield Error(object_path, "is not present in stub", stub, runtime)
+    # Do not error for an object missing from the stub
+    # If the runtime object is a types.WrapperDescriptorType
+    # and has a non-special dunder name.
+    # The vast majority of these are false positives.
+    if not (
+        isinstance(runtime, types.WrapperDescriptorType)
+        and is_dunder(runtime.__name__, exclude_special=True)
+    ):
+        yield Error(object_path, "is not present in stub", stub, runtime)
 
 
 @verify.register(nodes.Var)

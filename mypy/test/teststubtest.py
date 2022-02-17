@@ -37,6 +37,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __module__: str
     def __init__(self) -> None: pass
 class type: ...
 
@@ -678,7 +679,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
     @collect_cases
-    def test_special_dunders(self) -> Iterator[Case]:
+    def test_dunders(self) -> Iterator[Case]:
         yield Case(
             stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
             runtime="class A:\n  def __init__(self, a, bx): pass",
@@ -689,21 +690,26 @@ class StubtestUnit(unittest.TestCase):
             runtime="class B:\n  def __call__(self, c, dx): pass",
             error="B.__call__",
         )
+        yield Case(
+            stub="class C:\n  def __or__(self, other: C) -> C: ...",
+            runtime="class C: ...",
+            error="C.__or__",
+        )
         if sys.version_info >= (3, 6):
             yield Case(
                 stub=(
-                    "class C:\n"
+                    "class D:\n"
                     "  def __init_subclass__(\n"
                     "    cls, e: int = ..., **kwargs: int\n"
                     "  ) -> None: ...\n"
                 ),
-                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
+                runtime="class D:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
             yield Case(
-                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
-                runtime="class D:\n  def __class_getitem__(cls, type): ...",
+                stub="class E:\n  def __class_getitem__(cls, type: type) -> type: ...",
+                runtime="class E:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
 
