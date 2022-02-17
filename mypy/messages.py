@@ -38,7 +38,7 @@ from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
 )
-from mypy.sametypes import is_same_type
+from mypy.sametypes import is_same_type, separate_union_literals
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
@@ -1731,7 +1731,22 @@ def format_type_inner(typ: Type,
             rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
             return 'Optional[{}]'.format(format(rest[0]))
         else:
-            s = 'Union[{}]'.format(format_list(typ.items))
+            literal_items, union_items = separate_union_literals(typ)
+
+            if literal_items:
+                literal_str = 'Literal[{}]'.format(
+                    ', '.join(t.value_repr() for t in literal_items)
+                )
+
+                if len(union_items) == 1 and isinstance(union_items[0], NoneType):
+                    s = 'Optional[{}]'.format(literal_str)
+                elif union_items:
+                    s = 'Union[{}, {}]'.format(format_list(union_items), literal_str)
+                else:
+                    s = literal_str
+            else:
+                s = 'Union[{}]'.format(format_list(union_items))
+
             return s
     elif isinstance(typ, NoneType):
         return 'None'
