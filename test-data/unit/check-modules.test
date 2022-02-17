@@ -131,9 +131,9 @@ def f() -> None: pass
 [case testImportWithinClassBody2]
 import typing
 class C:
-    from m import f
+    from m import f  # E: Method must have at least one argument
     f()
-    f(C) # E: Too many arguments for "f"
+    f(C) # E: Too many arguments for "f" of "C"
 [file m.py]
 def f() -> None: pass
 [out]

@@ -568,7 +568,7 @@ MypyFile:1(
     ImportFrom:2(_x, [y])
     AssignmentStmt:3(
       NameExpr(z* [m])
-      NameExpr(y [_x.y]))))
+      NameExpr(y [__main__.A.y]))))
 
 [case testImportInClassBody2]
 class A:

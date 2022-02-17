@@ -14,7 +14,8 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -715,8 +716,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             for name, symbol in typ.type.names.items():
                 if not isinstance(symbol.node, Var):
                     continue
-                # Skip "_order_" and "__order__", since Enum will remove it
-                if name in ("_order_", "__order__"):
+                # Skip these since Enum will remove it
+                if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
             # SymbolTables are really just dicts, and dicts are guaranteed to preserve
