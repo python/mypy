@@ -256,6 +256,7 @@ IGNORED_DUNDERS = frozenset({
     "__getnewargs__",
     "__getinitargs__",
     "__reduce_ex__",
+    "__reduce__",
     # typing implementation details
     "__parameters__",
     "__origin__",

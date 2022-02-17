@@ -658,6 +658,16 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
         )
+        yield Case(
+            stub="class Y: ...",
+            runtime="__all__ += ['Y']\nclass Y:\n  def __or__(self, other): return self|other",
+            error="Y.__or__"
+        )
+        yield Case(
+            stub="class Z: ...",
+            runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
+            error=None
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -690,26 +700,21 @@ class StubtestUnit(unittest.TestCase):
             runtime="class B:\n  def __call__(self, c, dx): pass",
             error="B.__call__",
         )
-        yield Case(
-            stub="class C:\n  def __or__(self, other: C) -> C: ...",
-            runtime="class C: ...",
-            error="C.__or__",
-        )
         if sys.version_info >= (3, 6):
             yield Case(
                 stub=(
-                    "class D:\n"
+                    "class C:\n"
                     "  def __init_subclass__(\n"
                     "    cls, e: int = ..., **kwargs: int\n"
                     "  ) -> None: ...\n"
                 ),
-                runtime="class D:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
             yield Case(
-                stub="class E:\n  def __class_getitem__(cls, type: type) -> type: ...",
-                runtime="class E:\n  def __class_getitem__(cls, type): ...",
+                stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
+                runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
 
