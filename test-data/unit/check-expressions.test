@@ -2153,9 +2153,9 @@ def returns_1_or_2() -> Literal[1, 2]:
     ...
 THREE: Final = 3
 
-if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Union[Literal['a'], Literal['b']]", right operand type: "Literal['c']")
+if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Literal['a', 'b']", right operand type: "Literal['c']")
     ...
-if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Union[Literal[1], Literal[2]]", right operand type: "Literal[3]")
+if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Literal[1, 2]", right operand type: "Literal[3]")
     ...
 [builtins fixtures/bool.pyi]
 
