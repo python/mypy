@@ -282,10 +282,11 @@ IGNORED_DUNDERS = frozenset({
     # These two are basically useless for type checkers
     "__hash__",
     "__getattr__",
-    "__abstractmethods__",  # For some reason, mypy doesn't infer that classes with ABCMeta as the metaclass have this inherited
+    # For some reason, mypy doesn't infer classes with metaclass=ABCMeta inherit this attribute
+    "__abstractmethods__",
     "__doc__",  # Can only ever be str | None, who cares?
     "__del__",  # Only ever called when an object is being deleted, who cares?
-    "__new_member__",  # If an enum class defines `__new__`, the method is renamed to be `__new_member__`
+    "__new_member__",  # If an enum defines __new__, the method is renamed as __new_member__
 })
 
 
