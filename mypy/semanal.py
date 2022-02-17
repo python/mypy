@@ -48,10 +48,11 @@ Some important properties:
   reduce memory use).
 """
 
+import copy
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -78,7 +79,7 @@ from mypy.nodes import (
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt,
+    MatchStmt, FuncBase
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
@@ -4798,7 +4799,38 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_hidden: bool) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
-        symbol = SymbolTableNode(node.kind, node.node,
+
+        symbol_node: Optional[SymbolNode] = node.node
+
+        if self.is_class_scope():
+            # I promise this type checks; I'm just making mypyc issues go away.
+            # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
+            # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
+            # See also https://github.com/mypyc/mypyc/issues/892
+            f = cast(Any, lambda x: x)
+            if isinstance(f(symbol_node), (FuncBase, Var)):
+                # For imports in class scope, we construct a new node to represent the symbol and
+                # set its `info` attribute to `self.type`.
+                existing = self.current_symbol_table().get(name)
+                if (
+                    # The redefinition checks in `add_symbol_table_node` don't work for our
+                    # constructed Var / FuncBase, so check for possible redefinitions here.
+                    existing is not None
+                    and isinstance(f(existing.node), (FuncBase, Var))
+                    and f(existing.type) == f(symbol_node).type
+                ):
+                    symbol_node = existing.node
+                else:
+                    # Construct the new node
+                    constructed_node = copy.copy(f(symbol_node))
+                    assert self.type is not None  # guaranteed by is_class_scope
+                    constructed_node.line = context.line
+                    constructed_node.column = context.column
+                    constructed_node.info = self.type
+                    constructed_node._fullname = self.qualified_name(name)
+                    symbol_node = constructed_node
+
+        symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)
