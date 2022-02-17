@@ -164,6 +164,18 @@ z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Na
 x
 y # type: ignore  # ignore the lack of error code since we're ignore the whole file
 
+[case testErrorCodeMissingMultiple]
+# flags: --enable-error-code ignore-without-code --python-version 3.7
+from __future__ import annotations
+class A:
+    attr: int
+    def func(self, var: int) -> A | None: ...
+
+a: A | None
+# 'union-attr' should only be listed once (instead of twice) and list should be sorted
+a.func("invalid string").attr  # type: ignore  # E: "type: ignore" comment without error code (currently ignored: [arg-type, union-attr])  [ignore-without-code]
+[builtins fixtures/tuple.pyi]
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]

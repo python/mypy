@@ -532,7 +532,7 @@ class Errors:
                 continue
 
             codes_hint = ''
-            ignored_codes = used_ignored_lines[line]
+            ignored_codes: List[str] = sorted(set(used_ignored_lines[line]))
             if ignored_codes:
                 codes_hint = f' (currently ignored: [{", ".join(ignored_codes)}])'
 
