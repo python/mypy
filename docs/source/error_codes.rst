@@ -31,6 +31,10 @@ or config `show_error_codes = True` to display error codes. Error codes are show
    $ mypy --show-error-codes prog.py
    prog.py:1: error: "str" has no attribute "trim"  [attr-defined]
 
+It's also possible to require error codes for ``type: ignore`` comments.
+See :ref:`ignore-without-code<ignore-without-code>` for more information.
+
+
 .. _silence-error-codes:
 
 Silencing errors based on error codes
