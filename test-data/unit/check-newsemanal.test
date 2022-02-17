@@ -2722,7 +2722,7 @@ import m
 
 [file m.py]
 class C:
-    from mm import f  # E: Method must have at least one argument
+    from mm import f  # E: Unsupported class scoped import
     @dec(f)
     def m(self): pass
 
@@ -2742,7 +2742,7 @@ import m
 
 [file m/__init__.py]
 class C:
-    from m.m import f  # E: Method must have at least one argument
+    from m.m import f  # E: Unsupported class scoped import
     @dec(f)
     def m(self): pass
 
