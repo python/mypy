@@ -4810,7 +4810,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 existing is not None
                 and isinstance(f(existing.node), (FuncBase, Var))
                 and (
-                    isinstance(f(existing.type), AnyType)
+                    isinstance(get_proper_type(f(existing.type)), AnyType)
                     or f(existing.type) == f(symbol_node).type
                 )
             ):
