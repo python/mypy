@@ -257,6 +257,8 @@ except that attempting to invoke an undefined method (e.g. ``__len__``) results 
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
 
 
+.. _ignore-without-code:
+
 Check that ``# type: ignore`` include an error code [ignore-without-code]
 -------------------------------------------------------------------------
 
