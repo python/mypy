@@ -763,12 +763,12 @@ def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
     # Do not error for an object missing from the stub
-    # If the runtime object is a types.WrapperDescriptorType
+    # If the runtime object is a types.WrapperDescriptorType object
     # and has a non-special dunder name.
     # The vast majority of these are false positives.
     if not (
-        isinstance(runtime, types.WrapperDescriptorType)
-        and is_dunder(runtime.__name__, exclude_special=True)
+        isinstance(runtime, type(object.__init__))
+        and is_dunder(getattr(runtime, "__name__", ""), exclude_special=True)
     ):
         yield Error(object_path, "is not present in stub", stub, runtime)
 
