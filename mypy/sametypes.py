@@ -45,8 +45,9 @@ def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequen
     union_items = []
 
     for item in t.items:
-        if isinstance(item, LiteralType):
-            literal_items.append(item)
+        proper = get_proper_type(item)
+        if isinstance(proper, LiteralType):
+            literal_items.append(proper)
         else:
             union_items.append(item)
 

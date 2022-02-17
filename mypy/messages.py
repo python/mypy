@@ -1738,7 +1738,7 @@ def format_type_inner(typ: Type,
                     ', '.join(t.value_repr() for t in literal_items)
                 )
 
-                if len(union_items) == 1 and isinstance(union_items[0], NoneType):
+                if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
                     s = 'Optional[{}]'.format(literal_str)
                 elif union_items:
                     s = 'Union[{}, {}]'.format(format_list(union_items), literal_str)
