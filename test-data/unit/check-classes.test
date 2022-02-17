@@ -7134,3 +7134,112 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testClassScopeImportFunction]
+class Foo:
+    from mod import foo
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo().foo)  # E: Invalid self argument "Foo" to attribute function "foo" with type "Callable[[int, int], int]" \
+                        # N: Revealed type is "def (y: builtins.int) -> builtins.int"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+
+[case testClassScopeImportVariable]
+class Foo:
+    from mod import foo
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo().foo)  # N: Revealed type is "builtins.int"
+[file mod.py]
+foo: int
+
+[case testClassScopeImportModule]
+class Foo:
+    import mod
+
+reveal_type(Foo.mod)  # N: Revealed type is "builtins.object"
+reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
+[file mod.py]
+foo: int
+
+[case testClassScopeImportFunctionAlias]
+class Foo:
+    from mod import foo
+    bar = foo
+
+    from mod import const_foo
+    const_bar = const_foo
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo.const_foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.const_bar)  # N: Revealed type is "builtins.int"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+const_foo: int
+
+[case testClassScopeImportModuleStar]
+class Foo:
+    from mod import *
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+reveal_type(Foo.baz)  # E: "Type[Foo]" has no attribute "baz" \
+                      # N: Revealed type is "Any"
+[file mod.py]
+foo: int
+def bar(x: int) -> int: ...
+
+[case testClassScopeImportFunctionNested]
+class Foo:
+    class Bar:
+        from mod import baz
+
+reveal_type(Foo.Bar.baz)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+reveal_type(Foo.Bar().baz)  # E: Invalid self argument "Bar" to attribute function "baz" with type "Callable[[int], int]" \
+                            # N: Revealed type is "def () -> builtins.int"
+[file mod.py]
+def baz(x: int) -> int: ...
+
+[case testClassScopeImportUndefined]
+class Foo:
+    from unknown import foo  # E: Cannot find implementation or library stub for module named "unknown" \
+                             # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+
+[case testClassScopeImportWithFollowImports]
+# flags: --follow-imports=skip
+class Foo:
+    from mod import foo
+
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+
+[case testClassScopeImportVarious]
+class Foo:
+    from mod1 import foo
+    from mod2 import foo  # E: Name "foo" already defined on line 2
+
+    from mod1 import meth1
+    def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
+
+    def meth2(self, a: str) -> str: ...
+    from mod1 import meth2  # E: Name "meth2" already defined on line 8
+
+class Bar:
+    from mod1 import foo
+
+import mod1
+reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Bar.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(mod1.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+[file mod1.py]
+def foo(x: int, y: int) -> int: ...
+def meth1(x: int) -> int: ...
+def meth2(x: int) -> int: ...
+[file mod2.py]
+def foo(z: str) -> int: ...

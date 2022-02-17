@@ -54,6 +54,12 @@ You can also use `tox` to run tests, for instance:
 tox -e py
 ```
 
+The easiest way to run a single test is:
+```
+pytest -n0 -k 'test_name'
+```
+There's more useful information on writing and running tests [here](test-data/unit/README.md)
+
 ## First time contributors
 
 If you're looking for things to help with, browse our [issue tracker](https://github.com/python/mypy/issues)!
@@ -63,20 +69,23 @@ In particular, look for:
 - [good second issues](https://github.com/python/mypy/labels/good-second-issue)
 - [documentation issues](https://github.com/python/mypy/labels/documentation)
 
-It's also extremely easy to get started contributing to our sister project
-[typeshed](https://github.com/python/typeshed/issues) that provides type stubs
-for libraries. This is a great way to become familiar with type syntax.
-
-If you need help getting started, don't hesitate to ask on
-[gitter](https://gitter.im/python/typing).
+You do not need to ask for permission to work on any of these issues.
+Just fix the issue yourself, [try to add a unit test](#running-tests) and
+[open a pull request](#submitting-changes).
 
 To get help fixing a specific issue, it's often best to comment on the issue
-itself. The more details you provide about what you've tried and where you've
-looked, the easier it will be for you to get help.
+itself. You're much more likely to get help if you provide details about what
+you've tried and where you've looked (maintainers tend to help those who help
+themselves). [gitter](https://gitter.im/python/typing) can also be a good place
+to ask for help.
 
 Interactive debuggers like `pdb` and `ipdb` are really useful for getting
 started with the mypy codebase. This is a
 [useful tutorial](https://realpython.com/python-debugging-pdb/).
+
+It's also extremely easy to get started contributing to our sister project
+[typeshed](https://github.com/python/typeshed/issues) that provides type stubs
+for libraries. This is a great way to become familiar with type syntax.
 
 ## Submitting changes
 
