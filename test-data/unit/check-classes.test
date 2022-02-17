@@ -7159,22 +7159,42 @@ reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
 [file mod.py]
 foo: int
 
-[case testClassScopeImportFunctionAlias]
+[case testClassScopeImportAlias]
 class Foo:
-    from mod import foo  # E: Unsupported class scoped import
-    bar = foo
+    from mod import function  # E: Unsupported class scoped import
+    foo = function
 
-    from mod import const_foo
-    const_bar = const_foo
+    from mod import var1
+    bar = var1
+
+    from mod import var2
+    baz = var2
+
+    from mod import var3
+    qux = var3
 
 reveal_type(Foo.foo)  # N: Revealed type is "Any"
-reveal_type(Foo.bar)  # N: Revealed type is "Any"
-reveal_type(Foo.const_foo)  # N: Revealed type is "builtins.int"
-reveal_type(Foo.const_bar)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var1)  # N: Revealed type is "builtins.int"
+
+reveal_type(Foo.baz)  # N: Revealed type is "mod.C"
+reveal_type(Foo.var2)  # N: Revealed type is "mod.C"
+
+reveal_type(Foo.qux)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var3)  # N: Revealed type is "builtins.int"
 
 [file mod.py]
-def foo(x: int, y: int) -> int: ...
-const_foo: int
+def function(x: int, y: int) -> int: ...
+var1: int
+
+class C: ...
+var2: C
+
+A = int
+var3: A
+
 
 [case testClassScopeImportModuleStar]
 class Foo:
@@ -7249,6 +7269,10 @@ def foo(z: str) -> int: ...
 class Foo:
     from mod import meth1  # E: Unsupported class scoped import
     from mod import meth2  # E: Unsupported class scoped import
+    from mod import T
+
+reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
+                    # N: Revealed type is "Any"
 
 [file mod.pyi]
 from typing import Any, TypeVar, overload
