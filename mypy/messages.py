@@ -1664,6 +1664,9 @@ def format_type_inner(typ: Type,
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
 
+    def format_list(types: Sequence[Type]) -> str:
+        return ', '.join(format(typ) for typ in types)
+
     # TODO: show type alias names in errors.
     typ = get_proper_type(typ)
 
@@ -1686,15 +1689,10 @@ def format_type_inner(typ: Type,
         elif itype.type.fullname in reverse_builtin_aliases:
             alias = reverse_builtin_aliases[itype.type.fullname]
             alias = alias.split('.')[-1]
-            items = [format(arg) for arg in itype.args]
-            return '{}[{}]'.format(alias, ', '.join(items))
+            return '{}[{}]'.format(alias, format_list(itype.args))
         else:
             # There are type arguments. Convert the arguments to strings.
-            a: List[str] = []
-            for arg in itype.args:
-                a.append(format(arg))
-            s = ', '.join(a)
-            return '{}[{}]'.format(base_str, s)
+            return '{}[{}]'.format(base_str, format_list(itype.args))
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
@@ -1704,10 +1702,7 @@ def format_type_inner(typ: Type,
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
             return format(typ.partial_fallback)
-        items = []
-        for t in typ.items:
-            items.append(format(t))
-        s = 'Tuple[{}]'.format(', '.join(items))
+        s = 'Tuple[{}]'.format(format_list(typ.items))
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
@@ -1736,10 +1731,7 @@ def format_type_inner(typ: Type,
             rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
             return 'Optional[{}]'.format(format(rest[0]))
         else:
-            items = []
-            for t in typ.items:
-                items.append(format(t))
-            s = 'Union[{}]'.format(', '.join(items))
+            s = 'Union[{}]'.format(format_list(typ.items))
             return s
     elif isinstance(typ, NoneType):
         return 'None'
