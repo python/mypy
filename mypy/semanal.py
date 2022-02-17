@@ -4820,7 +4820,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(f(symbol_node), FuncBase):
                 # In theory we could construct a new node here as well, but in practice
                 # it doesn't work well, see #12197
-                typ = AnyType(TypeOfAny.from_error)
+                typ: ProperType = AnyType(TypeOfAny.from_error)
                 self.fail('Unsupported class scoped import', context)
             else:
                 typ = f(symbol_node).type
