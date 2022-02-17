@@ -65,7 +65,7 @@ x = None  # type: Optional[1]   # E: Invalid type: try using Literal[1] instead?
 y = None  # type: Optional[Literal[1]]
 
 reveal_type(x)  # N: Revealed type is "Union[Any, None]"
-reveal_type(y)  # N: Revealed type is "Optional[Literal[1]]"
+reveal_type(y)  # N: Revealed type is "Union[Literal[1], None]"
 [out]
 
 [case testLiteralInsideOtherTypes]
@@ -997,13 +997,13 @@ b: Literal["a", "b", "c"]
 c: Literal[1, "b", True, None]
 d: Literal[1, 1, 1]
 e: Literal[None, None, None]
-reveal_type(a)   # N: Revealed type is "Literal[1, 2, 3]"
-reveal_type(b)   # N: Revealed type is "Literal['a', 'b', 'c']"
-reveal_type(c)   # N: Revealed type is "Optional[Literal[1, 'b', True]]"
+reveal_type(a)   # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
+reveal_type(b)   # N: Revealed type is "Union[Literal['a'], Literal['b'], Literal['c']]"
+reveal_type(c)   # N: Revealed type is "Union[Literal[1], Literal['b'], Literal[True], None]"
 
 # Note: I was thinking these should be simplified, but it seems like
 # mypy doesn't simplify unions with duplicate values with other types.
-reveal_type(d)   # N: Revealed type is "Literal[1, 1, 1]"
+reveal_type(d)   # N: Revealed type is "Union[Literal[1], Literal[1], Literal[1]]"
 reveal_type(e)   # N: Revealed type is "Union[None, None, None]"
 [builtins fixtures/bool.pyi]
 [out]
@@ -1014,8 +1014,8 @@ from typing_extensions import Literal
 # Literal[1, 2, 3]. So we treat the two as being equivalent for now.
 a: Literal[1, 2, 3]
 b: Literal[(1, 2, 3)]
-reveal_type(a)  # N: Revealed type is "Literal[1, 2, 3]"
-reveal_type(b)  # N: Revealed type is "Literal[1, 2, 3]"
+reveal_type(a)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
+reveal_type(b)  # N: Revealed type is "Union[Literal[1], Literal[2], Literal[3]]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1024,7 +1024,7 @@ reveal_type(b)  # N: Revealed type is "Literal[1, 2, 3]"
 
 from typing_extensions import Literal
 a: Literal[Literal[3], 4, Literal["foo"]]
-reveal_type(a)  # N: Revealed type is "Literal[3, 4, 'foo']"
+reveal_type(a)  # N: Revealed type is "Union[Literal[3], Literal[4], Literal['foo']]"
 
 alias_for_literal = Literal[5]
 b: Literal[alias_for_literal]
@@ -1032,12 +1032,12 @@ reveal_type(b)  # N: Revealed type is "Literal[5]"
 
 another_alias = Literal[1, None]
 c: Literal[alias_for_literal, another_alias, "r"]
-reveal_type(c)  # N: Revealed type is "Union[Literal[5, 1], None, Literal['r']]"
+reveal_type(c)  # N: Revealed type is "Union[Literal[5], Literal[1], None, Literal['r']]"
 
 basic_mode = Literal["r", "w", "a"]
 basic_with_plus = Literal["r+", "w+", "a+"]
 combined: Literal[basic_mode, basic_with_plus]
-reveal_type(combined)  # N: Revealed type is "Literal['r', 'w', 'a', 'r+', 'w+', 'a+']"
+reveal_type(combined)  # N: Revealed type is "Union[Literal['r'], Literal['w'], Literal['a'], Literal['r+'], Literal['w+'], Literal['a+']]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1075,7 +1075,7 @@ d: "Literal['Foo']"
 reveal_type(d)      # N: Revealed type is "Literal['Foo']"
 
 e: Literal[Foo, 'Foo']
-reveal_type(e)      # N: Revealed type is "Literal[5, 'Foo']"
+reveal_type(e)      # N: Revealed type is "Union[Literal[5], Literal['Foo']]"
 
 Foo = Literal[5]
 [builtins fixtures/tuple.pyi]
@@ -1481,11 +1481,11 @@ h: List[Literal[1]] = []
 
 reveal_type(a)  # N: Revealed type is "builtins.list[Literal[1]]"
 reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(c)  # N: Revealed type is "builtins.list[Literal[1, 2, 3]]"
+reveal_type(c)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal[2], Literal[3]]]"
 reveal_type(d)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(e)  # N: Revealed type is "builtins.list[Literal[1, 'x']]"
+reveal_type(e)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal['x']]]"
 reveal_type(f)  # N: Revealed type is "builtins.list[builtins.object*]"
-reveal_type(g)  # N: Revealed type is "builtins.list[builtins.list[builtins.list[Literal[1, 2, 3]]]]]"
+reveal_type(g)  # N: Revealed type is "builtins.list[builtins.list[builtins.list[Union[Literal[1], Literal[2], Literal[3]]]]]"
 reveal_type(h)  # N: Revealed type is "builtins.list[Literal[1]]"
 
 lit1: Literal[1]
@@ -2123,7 +2123,7 @@ def f1(x: Literal[1], y: Literal[1]) -> None: pass
 def f2(x: Literal[1], y: Literal[2]) -> None: pass
 def f3(x: Literal[1], y: int) -> None: pass
 def f4(x: Literal[1], y: object) -> None: pass
-def f5(x: Literal[1], y: Union[Literal[1, 2]]) -> None: pass
+def f5(x: Literal[1], y: Union[Literal[1], Literal[2]]) -> None: pass
 
 reveal_type(unify(f1))  # N: Revealed type is "Literal[1]"
 reveal_type(unify(f2))  # N: Revealed type is "None"

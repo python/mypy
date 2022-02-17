@@ -1077,7 +1077,7 @@ t: T
 
 # Was error here:
 # Incompatible types in assignment (expression has type "List[Tuple[bool]]",
-# variable has type "List[Tuple[Union[Literal[True, False]]]]")
+# variable has type "List[Tuple[Union[Literal[True], Literal[False]]]]")
 y: List[T] = [t]
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
