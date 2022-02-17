@@ -135,6 +135,10 @@ NAME_MATCH: Final = ErrorCode(
 )
 UNSAFE_VARIANCE: Final = ErrorCode("unsafe-variance", "Incorrect usages of variance", "General")
 UNUSED_IGNORE: Final = ErrorCode("unused-ignore", "Ignore comment is unused", "General")
+
+DYNAMIC_TYPING: Final = ErrorCode("dynamic", "Usage of dynamic typing (Any)", "General")
+REVEAL: Final = ErrorCode("reveal", "Reveal types at check time", "General")
+
 NO_ERROR_CODE: Final = ErrorCode("no-error-code", "No error code specified in ignore comment",
                                  "General")
 

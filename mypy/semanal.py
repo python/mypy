@@ -1563,7 +1563,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         msg = 'Class cannot subclass "{}" (has type "Any")'.format(base_expr.name)
                     else:
                         msg = 'Class cannot subclass value of type "Any"'
-                    self.fail(msg, base_expr)
+                    self.fail(msg, base_expr, code=codes.DYNAMIC_TYPING)
                 info.fallback_to_any = True
             else:
                 msg = 'Invalid base class'
