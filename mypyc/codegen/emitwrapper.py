@@ -652,7 +652,7 @@ def generate_wrapper_core(fn: FuncIR,
     gen.arg_names = arg_names or [arg.name for arg in fn.args]
     gen.cleanups = cleanups or []
     gen.optional_args = optional_args or []
-    gen.traceback_code = traceback_code
+    gen.traceback_code = traceback_code or ''
 
     error = ReturnHandler('NULL') if not gen.use_goto() else GotoHandler('fail')
     gen.emit_arg_processing(error=error)
