@@ -49,6 +49,22 @@ def _style(message: str, **kwargs: Any) -> str:
     return _formatter.style(message, **kwargs)
 
 
+if sys.version_info >= (3, 7):
+    def is_dunder_slot_wrapper(obj: object) -> bool:
+        return (
+            isinstance(obj, types.WrapperDescriptorType)
+            and is_dunder(obj.__name__, exclude_special=True)
+        )
+
+else:
+    # types.WrapperDescriptorType was added in 3.7
+    def is_dunder_slot_wrapper(obj: object) -> bool:
+        return (
+            isinstance(obj, type(object.__init__))
+            and is_dunder(getattr(obj, "__name__", ""), exclude_special=True)
+        )
+
+
 class Error:
     def __init__(
         self,
@@ -249,7 +265,6 @@ IGNORED_DUNDERS = frozenset({
     "__slots__",
     "__dict__",
     "__text_signature__",
-    "__match_args__",
     # Pickle methods
     "__setstate__",
     "__getstate__",
@@ -285,6 +300,9 @@ IGNORED_DUNDERS = frozenset({
     "__getattr__",
     # For some reason, mypy doesn't infer classes with metaclass=ABCMeta inherit this attribute
     "__abstractmethods__",
+    # Ideally we'd include __match_args__ in stubs,
+    # but this currently has issues
+    "__match_args__",
     "__doc__",  # Can only ever be str | None, who cares?
     "__del__",  # Only ever called when an object is being deleted, who cares?
     "__new_member__",  # If an enum defines __new__, the method is renamed as __new_member__
@@ -767,10 +785,7 @@ def verify_none(
     # If the runtime object is a types.WrapperDescriptorType object
     # and has a non-special dunder name.
     # The vast majority of these are false positives.
-    if not (
-        isinstance(runtime, type(object.__init__))
-        and is_dunder(getattr(runtime, "__name__", ""), exclude_special=True)
-    ):
+    if not is_dunder_slot_wrapper(runtime):
         yield Error(object_path, "is not present in stub", stub, runtime)
 
 
