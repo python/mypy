@@ -1,9 +1,9 @@
 from __future__ import print_function
-"""Utilities to find the site and prefix information of a Python executable, which may be Python 2.
+"""Utilities to find the site and prefix information of a Python executable, which may be Python 3.
 
-This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
+This file MUST remain compatible with Python 3. Since we cannot make any assumptions about the
 Python being executed, this module should not use *any* dependencies outside of the standard
-library found in Python 2. This file is run each mypy run, so it should be kept as fast as
+library found in Python 3. This file is run each mypy run, so it should be kept as fast as
 possible.
 """
 import site
@@ -17,9 +17,11 @@ if MYPY:
     from typing import List, Tuple
 
 
+
 def getprefixes():
     # type: () -> Tuple[str, str]
-    return sys.base_prefix, sys.prefix
+    if(!sys.base_prefix) """if base_prefix does not exists then return prefix"""
+        return sys.prefix 
 
 
 def getsitepackages():
