@@ -7135,24 +7135,20 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
 
-[case testClassScopeImportFunction]
+[case testClassScopeImports]
 class Foo:
-    from mod import foo
+    from mod import plain_function  # E: Unsupported class scoped import
+    from mod import plain_var
 
-reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
-reveal_type(Foo().foo)  # E: Invalid self argument "Foo" to attribute function "foo" with type "Callable[[int, int], int]" \
-                        # N: Revealed type is "def (y: builtins.int) -> builtins.int"
+reveal_type(Foo.plain_function)  # N: Revealed type is "Any"
+reveal_type(Foo().plain_function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.plain_var)  # N: Revealed type is "builtins.int"
+reveal_type(Foo().plain_var)  # N: Revealed type is "builtins.int"
+
 [file mod.py]
-def foo(x: int, y: int) -> int: ...
-
-[case testClassScopeImportVariable]
-class Foo:
-    from mod import foo
-
-reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
-reveal_type(Foo().foo)  # N: Revealed type is "builtins.int"
-[file mod.py]
-foo: int
+def plain_function(x: int, y: int) -> int: ...
+plain_var: int
 
 [case testClassScopeImportModule]
 class Foo:
@@ -7163,30 +7159,52 @@ reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
 [file mod.py]
 foo: int
 
-[case testClassScopeImportFunctionAlias]
+[case testClassScopeImportAlias]
 class Foo:
-    from mod import foo
-    bar = foo
+    from mod import function  # E: Unsupported class scoped import
+    foo = function
 
-    from mod import const_foo
-    const_bar = const_foo
+    from mod import var1
+    bar = var1
 
-reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
-reveal_type(Foo.bar)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
-reveal_type(Foo.const_foo)  # N: Revealed type is "builtins.int"
-reveal_type(Foo.const_bar)  # N: Revealed type is "builtins.int"
+    from mod import var2
+    baz = var2
+
+    from mod import var3
+    qux = var3
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo.function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var1)  # N: Revealed type is "builtins.int"
+
+reveal_type(Foo.baz)  # N: Revealed type is "mod.C"
+reveal_type(Foo.var2)  # N: Revealed type is "mod.C"
+
+reveal_type(Foo.qux)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var3)  # N: Revealed type is "builtins.int"
+
 [file mod.py]
-def foo(x: int, y: int) -> int: ...
-const_foo: int
+def function(x: int, y: int) -> int: ...
+var1: int
+
+class C: ...
+var2: C
+
+A = int
+var3: A
+
 
 [case testClassScopeImportModuleStar]
 class Foo:
-    from mod import *
+    from mod import *  # E: Unsupported class scoped import
 
 reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
-reveal_type(Foo.bar)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "Any"
 reveal_type(Foo.baz)  # E: "Type[Foo]" has no attribute "baz" \
                       # N: Revealed type is "Any"
+
 [file mod.py]
 foo: int
 def bar(x: int) -> int: ...
@@ -7194,11 +7212,11 @@ def bar(x: int) -> int: ...
 [case testClassScopeImportFunctionNested]
 class Foo:
     class Bar:
-        from mod import baz
+        from mod import baz  # E: Unsupported class scoped import
 
-reveal_type(Foo.Bar.baz)  # N: Revealed type is "def (x: builtins.int) -> builtins.int"
-reveal_type(Foo.Bar().baz)  # E: Invalid self argument "Bar" to attribute function "baz" with type "Callable[[int], int]" \
-                            # N: Revealed type is "def () -> builtins.int"
+reveal_type(Foo.Bar.baz)  # N: Revealed type is "Any"
+reveal_type(Foo.Bar().baz)  # N: Revealed type is "Any"
+
 [file mod.py]
 def baz(x: int) -> int: ...
 
@@ -7221,25 +7239,48 @@ def foo(x: int, y: int) -> int: ...
 
 [case testClassScopeImportVarious]
 class Foo:
-    from mod1 import foo
-    from mod2 import foo  # E: Name "foo" already defined on line 2
+    from mod1 import foo  # E: Unsupported class scoped import
+    from mod2 import foo
 
-    from mod1 import meth1
+    from mod1 import meth1  # E: Unsupported class scoped import
     def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
 
     def meth2(self, a: str) -> str: ...
-    from mod1 import meth2  # E: Name "meth2" already defined on line 8
+    from mod1 import meth2  # E: Unsupported class scoped import \
+                            # E: Name "meth2" already defined on line 8
 
 class Bar:
-    from mod1 import foo
+    from mod1 import foo  # E: Unsupported class scoped import
 
 import mod1
-reveal_type(Foo.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
-reveal_type(Bar.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Bar.foo)  # N: Revealed type is "Any"
 reveal_type(mod1.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+
 [file mod1.py]
 def foo(x: int, y: int) -> int: ...
 def meth1(x: int) -> int: ...
 def meth2(x: int) -> int: ...
 [file mod2.py]
 def foo(z: str) -> int: ...
+
+
+[case testClassScopeImportWithError]
+class Foo:
+    from mod import meth1  # E: Unsupported class scoped import
+    from mod import meth2  # E: Unsupported class scoped import
+    from mod import T
+
+reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
+                    # N: Revealed type is "Any"
+
+[file mod.pyi]
+from typing import Any, TypeVar, overload
+
+@overload
+def meth1(self: Any, y: int) -> int: ...
+@overload
+def meth1(self: Any, y: str) -> str: ...
+
+T = TypeVar("T")
+def meth2(self: Any, y: T) -> T: ...

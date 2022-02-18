@@ -131,9 +131,10 @@ def f() -> None: pass
 [case testImportWithinClassBody2]
 import typing
 class C:
-    from m import f  # E: Method must have at least one argument
+    from m import f  # E: Unsupported class scoped import
     f()
-    f(C) # E: Too many arguments for "f" of "C"
+    # ideally, the following should error:
+    f(C)
 [file m.py]
 def f() -> None: pass
 [out]
