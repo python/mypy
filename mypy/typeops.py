@@ -9,6 +9,7 @@ from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict,
 from typing_extensions import Type as TypingType
 import itertools
 import sys
+from mypy.type_visitor import SelfTypeVisitor
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
@@ -253,15 +254,7 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
                              variables=variables,
                              ret_type=ret_type,
                              bound_args=[original_type])
-    for arg_type in res.arg_types:
-        if isinstance(arg_type, UnionType):
-            for idx, item in enumerate(arg_type.items):
-                if isinstance(item, SelfType):
-                    assert original_type is not None
-                    arg_type.items[idx] = original_type
-    if isinstance(res.ret_type, SelfType):
-        assert original_type is not None
-        res.ret_type = original_type
+    res.accept(SelfTypeVisitor(original_type))
     return cast(F, res)
 
 

@@ -146,6 +146,7 @@ def _analyze_member_access(name: str,
     if isinstance(typ, Instance):
         return analyze_instance_member_access(name, typ, mx, override_info)
     elif isinstance(typ, SelfType):
+        mx.self_type = typ.instance
         return analyze_instance_member_access(name, typ.instance, mx, override_info)
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
@@ -340,7 +341,7 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
         return _analyze_member_access(name, mx.named_type('builtins.object'), mx)
 
 
-def analyze_member_var_access(name: str,
+def analyze_member_var_access(name: str,  # what here?
                               itype: Instance,
                               info: TypeInfo,
                               mx: MemberContext) -> Type:

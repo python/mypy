@@ -370,3 +370,82 @@ class TypeQuery(SyntheticTypeVisitor[T]):
                 self.seen_aliases.add(t)
             res.append(t.accept(self))
         return self.strategy(res)
+
+
+TypeT = TypeVar("TypeT", bound=Type)
+
+
+class SelfTypeVisitor(TypeVisitor[Any]):
+    def __init__(self, self_type: Instance) -> None:
+        # NOTE this visitor will mutate `func`
+        self.self_type = self_type
+
+    def visit_unbound_type(self, t: UnboundType) -> None:
+        pass
+
+    def visit_any(self, t: AnyType) -> None:
+        pass
+
+    def visit_none_type(self, t: NoneType) -> None:
+        pass
+
+    def visit_uninhabited_type(self, t: UninhabitedType) -> None:
+        pass
+
+    def visit_erased_type(self, t: ErasedType) -> None:
+        pass
+
+    def visit_deleted_type(self, t: DeletedType) -> None:
+        pass
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        pass
+
+    def visit_self_type(self, t: SelfType) -> None:
+        pass  # should this raise?
+
+    def visit_param_spec(self, t: ParamSpecType) -> None:
+        pass
+
+    def visit_instance(self, t: Instance) -> None:
+        t.args = self.replace(t.args)
+
+    def visit_callable_type(self, t: CallableType) -> None:
+        t.arg_types = self.replace(t.arg_types)
+        t.ret_type, = self.replace([t.ret_type])
+
+    def visit_overloaded(self, t: Overloaded) -> None:
+        for item in t.items:
+            item.accept(self)
+
+    def visit_tuple_type(self, t: TupleType) -> None:
+        t.items = self.replace(t.items)
+
+    def visit_typeddict_type(self, t: TypedDictType) -> None:
+        for key, value in zip(t.items, self.replace(t.items.values())):
+            t.items[key] = value
+
+    def visit_literal_type(self, t: LiteralType) -> None:
+        pass
+
+    def visit_union_type(self, t: UnionType) -> None:
+        t.items = self.replace(t.items)
+
+    def visit_partial_type(self, t: PartialType) -> None:
+        pass
+
+    def visit_type_type(self, t: TypeType) -> None:
+        t.item, = self.replace([t.item])
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        pass  # TODO this is probably invalid
+
+    def replace(self, types: Iterable[TypeT]) -> List[TypeT]:
+        ret: List[TypeT] = []
+        for type in types:
+            if isinstance(type, SelfType):
+                type = self.self_type
+            else:
+                type.accept(self)
+            ret.append(type)  # type: ignore  # not sure if this is actually unsafe
+        return ret

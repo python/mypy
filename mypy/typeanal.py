@@ -375,10 +375,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return AnyType(TypeOfAny.from_error)
             return RequiredType(self.anal_type(t.args[0]), required=False)
         elif fullname in ('typing_extensions.Self', 'typing.Self'):
-            try:
-                bound = self.named_type(self.api.type.fullname)  # type: ignore
-            except AttributeError:
+            from mypy.semanal import SemanticAnalyzer  # circular import
+
+            if not isinstance(self.api, SemanticAnalyzer):
                 return self.fail("Self is unbound", t)
+            bound = self.named_type(self.api.type.fullname)
             return SelfType(bound, fullname, line=t.line, column=t.column)
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)

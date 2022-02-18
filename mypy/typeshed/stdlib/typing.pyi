@@ -86,7 +86,8 @@ if sys.version_info >= (3, 10):
 
 if sys.version_info >= (3, 11):
     # Self is also a (non-subscriptable) special form.
-    Self: object = ...
+    ...
+Self: object = ...
 
 # These type variables are used by the container types.
 _S = TypeVar("_S")

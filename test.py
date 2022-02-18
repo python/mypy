@@ -1,38 +1,28 @@
 from __future__ import annotations
 
-from typing import Self, TypeVar, Protocol
+from typing import Generic, TypeVar
+from typing_extensions import Self
+from abc import ABC
 
 T = TypeVar("T")
+K = TypeVar("K")
 
 
-class InstanceOf(Protocol[T]):
-    @property  # type: ignore
-    def __class__(self) -> T: ...  # type: ignore
+class ItemSet(Generic[T]):
+    def first(self) -> T: ...
 
 
-class MyMetaclass(type):
-    bar: str
-
-    def __new__(mcs: type[MyMetaclass], *args, **kwargs) -> MyMetaclass:
-        cls = super().__new__(mcs, *args, **kwargs)
-        cls.bar = "Hello"
-        return cls
-
-    def __mul__(
-        cls,
-        count: int,
-    ) -> list[InstanceOf[Self]]:
-        print(cls)
-        return [cls()] * count
-
-    def __call__(cls, *args, **kwargs) -> InstanceOf[Self]:
-        return super().__call__(*args, **kwargs)
+class BaseItem(ABC):
+    @property
+    def set(self) -> ItemSet[Self]: ...
 
 
-class Foo(metaclass=MyMetaclass):
-    THIS: int
+class FooItem(BaseItem):
+    name: str
 
-reveal_type(Foo)
-reveal_type(Foo())
-foos = Foo * 3
-reveal_type(foos)
+    def test(self) -> None: ...
+
+
+reveal_type(FooItem().set.first().name)
+reveal_type(BaseItem().set)
+reveal_type(FooItem().set.first().test())
