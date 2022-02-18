@@ -126,6 +126,20 @@ TUPLE_LIKE_INSTANCE_NAMES: Final = (
     'typing.Reversible',
 )
 
+REVEAL_TYPE_NAMES: Final = (
+    'builtins.reveal_type',
+    'typing.reveal_type',
+    'typing_extensions.reveal_type',
+)
+
+NEVER_NAMES: Final = (
+    'typing.NoReturn',
+    'typing_extensions.NoReturn',
+    'mypy_extensions.NoReturn',
+    'typing.Never',
+    'typing_extensions.Never',
+)
+
 # A placeholder used for Bogus[...] parameters
 _dummy: Final[Any] = object()
 
@@ -359,6 +373,9 @@ class RequiredType(Type):
             return "Required[{}]".format(self.item)
         else:
             return "NotRequired[{}]".format(self.item)
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.item.accept(visitor)
 
 
 class ProperType(Type):

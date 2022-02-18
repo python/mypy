@@ -1258,7 +1258,7 @@ class MessageBuilder:
             context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
-                format_item_name_list(typ.items.keys())), context)
+                format_item_name_list(typ.items.keys())), context, code=codes.LITERAL_REQ)
 
     def typeddict_key_not_found(
             self,

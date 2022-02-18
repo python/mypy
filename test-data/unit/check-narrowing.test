@@ -1227,7 +1227,7 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "<nothing>"
+        reveal_type(x)  # No output: this branch is unreachable
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):

@@ -6,7 +6,8 @@ flake8-bugbear
 flake8-pyi>=20.5
 lxml>=4.4.0; python_version<'3.11'
 psutil>=4.0
-pytest>=6.2.0,<7.0.0
+# pytest 6.2.3 does not support Python 3.10
+pytest>=6.2.4,<7.0.0
 pytest-xdist>=1.34.0,<2.0.0
 pytest-forked>=1.3.0,<2.0.0
 pytest-cov>=2.10.0,<3.0.0

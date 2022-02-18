@@ -1,6 +1,7 @@
 """Semantic analyzer test cases"""
 
 import os.path
+import sys
 
 from typing import Dict, List
 
@@ -36,6 +37,10 @@ semanal_files = [
     'semanal-python2.test',
     'semanal-lambda.test',
 ]
+
+
+if sys.version_info >= (3, 10):
+    semanal_files.append('semanal-python310.test')
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
@@ -104,6 +109,8 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
 
 class SemAnalErrorSuite(DataSuite):
     files = ['semanal-errors.test']
+    if sys.version_info >= (3, 10):
+        semanal_files.append('semanal-errors-python310.test')
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)

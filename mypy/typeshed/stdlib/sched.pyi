@@ -1,10 +1,10 @@
-from typing import Any, Callable, NamedTuple, Tuple
+from typing import Any, Callable, NamedTuple
 
 class Event(NamedTuple):
     time: float
     priority: Any
     action: Callable[..., Any]
-    argument: Tuple[Any, ...]
+    argument: tuple[Any, ...]
     kwargs: dict[str, Any]
 
 class scheduler:
@@ -14,7 +14,7 @@ class scheduler:
         time: float,
         priority: Any,
         action: Callable[..., Any],
-        argument: Tuple[Any, ...] = ...,
+        argument: tuple[Any, ...] = ...,
         kwargs: dict[str, Any] = ...,
     ) -> Event: ...
     def enter(
@@ -22,7 +22,7 @@ class scheduler:
         delay: float,
         priority: Any,
         action: Callable[..., Any],
-        argument: Tuple[Any, ...] = ...,
+        argument: tuple[Any, ...] = ...,
         kwargs: dict[str, Any] = ...,
     ) -> Event: ...
     def run(self, blocking: bool = ...) -> float | None: ...

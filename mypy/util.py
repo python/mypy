@@ -46,6 +46,26 @@ default_python2_interpreter: Final = [
     "C:\\Python27\\python.exe",
 ]
 
+SPECIAL_DUNDERS: Final = frozenset((
+    "__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__",
+))
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
+    """Returns whether name is a dunder name.
+
+    Args:
+        exclude_special: Whether to return False for a couple special dunder methods.
+
+    """
+    if exclude_special and name in SPECIAL_DUNDERS:
+        return False
+    return name.startswith("__") and name.endswith("__")
+
+
+def is_sunder(name: str) -> bool:
+    return not is_dunder(name) and name.startswith('_') and name.endswith('_')
+
 
 def split_module_names(mod_name: str) -> List[str]:
     """Return the module and all parent module names.
@@ -497,6 +517,8 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
+    if sys.platform == "win32":
+        assert False, "curses is not available on Windows"
     set_color = ''.join([cup[:-1].decode(), 'm'])
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
@@ -560,7 +582,7 @@ class FancyFormatter:
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if not CURSES_ENABLED:
+        if sys.platform == "win32" or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".

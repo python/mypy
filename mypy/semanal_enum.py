@@ -18,7 +18,7 @@ from mypy.types import get_proper_type, LiteralType
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
 ENUM_BASES: Final = frozenset((
-    'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag',
+    'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag', 'enum.StrEnum',
 ))
 ENUM_SPECIAL_PROPS: Final = frozenset((
     'name', 'value', '_name_', '_value_', '_order_', '__order__',

@@ -1,5 +1,6 @@
 import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
+from abc import abstractmethod
 from typing import (
     Any,
     Callable,
@@ -10,7 +11,6 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Tuple,
     Type,
     TypeVar,
     Union as _UnionT,
@@ -28,7 +28,7 @@ RTLD_GLOBAL: int
 RTLD_LOCAL: int
 DEFAULT_MODE: int
 
-class CDLL(object):
+class CDLL:
     _func_flags_: ClassVar[int]
     _func_restype_: ClassVar[_CData]
     _name: str
@@ -76,8 +76,8 @@ class _CDataMeta(type):
     # By default mypy complains about the following two methods, because strictly speaking cls
     # might not be a Type[_CT]. However this can never actually happen, because the only class that
     # uses _CDataMeta as its metaclass is _CData. So it's safe to ignore the errors here.
-    def __mul__(cls: Type[_CT], other: int) -> Type[Array[_CT]]: ...  # type: ignore
-    def __rmul__(cls: Type[_CT], other: int) -> Type[Array[_CT]]: ...  # type: ignore
+    def __mul__(cls: Type[_CT], other: int) -> Type[Array[_CT]]: ...  # type: ignore[misc]
+    def __rmul__(cls: Type[_CT], other: int) -> Type[Array[_CT]]: ...  # type: ignore[misc]
 
 class _CData(metaclass=_CDataMeta):
     _b_base: int
@@ -97,8 +97,8 @@ class _CData(metaclass=_CDataMeta):
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
-_ECT = Callable[[Optional[Type[_CData]], _FuncPointer, Tuple[_CData, ...]], _CData]
-_PF = _UnionT[Tuple[int], Tuple[int, str], Tuple[int, str, Any]]
+_ECT = Callable[[Optional[Type[_CData]], _FuncPointer, tuple[_CData, ...]], _CData]
+_PF = _UnionT[tuple[int], tuple[int, str], tuple[int, str, Any]]
 
 class _FuncPointer(_PointerLike, _CData):
     restype: Type[_CData] | Callable[[int], Any] | None
@@ -109,9 +109,9 @@ class _FuncPointer(_PointerLike, _CData):
     @overload
     def __init__(self, callable: Callable[..., Any]) -> None: ...
     @overload
-    def __init__(self, func_spec: tuple[str | int, CDLL], paramflags: Tuple[_PF, ...] = ...) -> None: ...
+    def __init__(self, func_spec: tuple[str | int, CDLL], paramflags: tuple[_PF, ...] = ...) -> None: ...
     @overload
-    def __init__(self, vtlb_index: int, name: str, paramflags: Tuple[_PF, ...] = ..., iid: pointer[c_int] = ...) -> None: ...
+    def __init__(self, vtlb_index: int, name: str, paramflags: tuple[_PF, ...] = ..., iid: pointer[c_int] = ...) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
 class _NamedFuncPointer(_FuncPointer):
@@ -157,7 +157,7 @@ def create_unicode_buffer(init: int | str, size: int | None = ...) -> Array[c_wc
 if sys.platform == "win32":
     def DllCanUnloadNow() -> int: ...
     def DllGetClassObject(rclsid: Any, riid: Any, ppv: Any) -> int: ...  # TODO not documented
-    def FormatError(code: int) -> str: ...
+    def FormatError(code: int = ...) -> str: ...
     def GetLastError() -> int: ...
 
 def get_errno() -> int: ...
@@ -268,8 +268,16 @@ class BigEndianStructure(Structure): ...
 class LittleEndianStructure(Structure): ...
 
 class Array(Generic[_CT], _CData):
-    _length_: int
-    _type_: Type[_CT]
+    @property
+    @abstractmethod
+    def _length_(self) -> int: ...
+    @_length_.setter
+    def _length_(self, value: int) -> None: ...
+    @property
+    @abstractmethod
+    def _type_(self) -> Type[_CT]: ...
+    @_type_.setter
+    def _type_(self, value: Type[_CT]) -> None: ...
     raw: bytes  # Note: only available if _CT == c_char
     value: Any  # Note: bytes if _CT == c_char, str if _CT == c_wchar, unavailable otherwise
     # TODO These methods cannot be annotated correctly at the moment.

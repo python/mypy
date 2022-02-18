@@ -77,7 +77,12 @@ from mypy.nodes import (
     REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, FuncBase, implicit_module_attrs,
+    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
+    MatchStmt,
+)
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern,
+    StarredPattern, MappingPattern, ClassPattern,
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.typevars import fill_typevars
@@ -89,11 +94,11 @@ from mypy.messages import (
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
+    NEVER_NAMES, FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, SelfType, TypeVarLikeType,
-    PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES,
+    get_proper_type, get_proper_types, TypeAliasType, SelfType,  TypeVarLikeType,
+    PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
     is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
@@ -118,11 +123,11 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_typeddict import TypedDictAnalyzer
-from mypy.semanal_enum import EnumCallAnalyzer, ENUM_BASES
+from mypy.semanal_enum import EnumCallAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
 from mypy.reachability import (
-    infer_reachability_of_if_statement, infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE,
-    MYPY_TRUE, MYPY_FALSE
+    infer_reachability_of_if_statement, infer_reachability_of_match_statement,
+    infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE, MYPY_TRUE, MYPY_FALSE
 )
 from mypy.mro import calculate_mro, MroError
 
@@ -919,7 +924,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             else:
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
-                    defn)
+                    defn, code=codes.NO_OVERLOAD_IMPL)
 
     def process_final_in_overload(self, defn: OverloadedFuncDef) -> None:
         """Detect the @final status of an overloaded function (and perform checks)."""
@@ -1588,13 +1593,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
                     self.fail('Cannot subclass "NewType"', defn)
-                if self.enum_has_final_values(base):
-                    # This means that are trying to subclass a non-default
-                    # Enum class, with defined members. This is not possible.
-                    # In runtime, it will raise. We need to mark this type as final.
-                    # However, methods can be defined on a type: only values can't.
-                    # We also don't count values with annotations only.
-                    base.type.is_final = True
                 base_types.append(base)
             elif isinstance(base, AnyType):
                 if self.options.disallow_subclassing_any:
@@ -1643,25 +1641,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                         else SelfType(self.named_type(defn.fullname), type.fullname)
                         for item in type.items
                     ])
-
-    def enum_has_final_values(self, base: Instance) -> bool:
-        if (
-            base.type.is_enum
-            and base.type.fullname not in ENUM_BASES
-            and base.type.names
-            and base.type.defn
-        ):
-            for sym in base.type.names.values():
-                if isinstance(sym.node, (FuncBase, Decorator)):
-                    continue  # A method
-                if not isinstance(sym.node, Var):
-                    return True  # Can be a class
-                if self.is_stub_file or sym.node.has_explicit_value:
-                    # Corner case: assignments like `x: int` are fine in `.py` files.
-                    # But, not is `.pyi` files, because we don't know
-                    # if there's aactually a value or not.
-                    return True
-        return False
 
     def configure_tuple_base_class(self,
                                    defn: ClassDef,
@@ -2249,11 +2228,14 @@ class SemanticAnalyzer(NodeVisitor[None],
             return True
         if allow_none and isinstance(rv, NameExpr) and rv.fullname == 'builtins.None':
             return True
-        if (isinstance(rv, OpExpr)
-                and rv.op == '|'
-                and self.can_be_type_alias(rv.left, allow_none=True)
-                and self.can_be_type_alias(rv.right, allow_none=True)):
-            return True
+        if isinstance(rv, OpExpr) and rv.op == '|':
+            if self.is_stub_file:
+                return True
+            if (
+                self.can_be_type_alias(rv.left, allow_none=True)
+                and self.can_be_type_alias(rv.right, allow_none=True)
+            ):
+                return True
         return False
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
@@ -2296,11 +2278,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Assignment color = Color['RED'] defines a variable, not an alias.
             return not rv.node.is_enum
         if isinstance(rv.node, Var):
-            return rv.node.fullname in (
-                'typing.NoReturn',
-                'typing_extensions.NoReturn',
-                'mypy_extensions.NoReturn',
-            )
+            return rv.node.fullname in NEVER_NAMES
 
         if isinstance(rv, NameExpr):
             n = self.lookup(rv.name, rv)
@@ -2716,7 +2694,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         pep_613 = False
         if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
-            lookup = self.lookup(s.unanalyzed_type.name, s, suppress_errors=True)
+            lookup = self.lookup_qualified(s.unanalyzed_type.name, s, suppress_errors=True)
             if lookup and lookup.fullname in TYPE_ALIAS_NAMES:
                 pep_613 = True
         if not pep_613 and s.unanalyzed_type is not None:
@@ -2922,7 +2900,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         outer = self.is_global_or_nonlocal(name)
         if kind == MDEF and isinstance(self.type, TypeInfo) and self.type.is_enum:
             # Special case: we need to be sure that `Enum` keys are unique.
-            if existing:
+            if existing is not None and not isinstance(existing.node, PlaceholderNode):
                 self.fail('Attempted to reuse member name "{}" in Enum definition "{}"'.format(
                     name, self.type.name,
                 ), lvalue)
@@ -3363,6 +3341,15 @@ class SemanticAnalyzer(NodeVisitor[None],
         name = lvalue.name
         if not self.check_typevarlike_name(call, name, s):
             return False
+
+        # ParamSpec is different from a regular TypeVar:
+        # arguments are not semantically valid. But, allowed in runtime.
+        # So, we need to warn users about possible invalid usage.
+        if len(call.args) > 1:
+            self.fail(
+                "Only the first argument to ParamSpec has defined semantics",
+                s,
+            )
 
         # PEP 612 reserves the right to define bound, covariant and contravariant arguments to
         # ParamSpec in a later PEP. If and when that happens, we should do something
@@ -3838,6 +3825,17 @@ class SemanticAnalyzer(NodeVisitor[None],
         if s.locals:
             s.locals.accept(self)
 
+    def visit_match_stmt(self, s: MatchStmt) -> None:
+        self.statement = s
+        infer_reachability_of_match_statement(s, self.options)
+        s.subject.accept(self)
+        for i in range(len(s.patterns)):
+            s.patterns[i].accept(self)
+            guard = s.guards[i]
+            if guard is not None:
+                guard.accept(self)
+            self.visit_block(s.bodies[i])
+
     #
     # Expressions
     #
@@ -3901,13 +3899,15 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.expr.accept(self)
 
     def visit_yield_from_expr(self, e: YieldFromExpr) -> None:
-        if not self.is_func_scope():  # not sure
+        if not self.is_func_scope():
             self.fail('"yield from" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield from" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            self.fail('"yield from" in async function', e, serious=True, blocker=True)
         else:
-            if self.function_stack[-1].is_coroutine:
-                self.fail('"yield from" in async function', e, serious=True, blocker=True)
-            else:
-                self.function_stack[-1].is_generator = True
+            self.function_stack[-1].is_generator = True
         if e.expr:
             e.expr.accept(self)
 
@@ -3934,7 +3934,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
-        elif refers_to_fullname(expr.callee, 'builtins.reveal_type'):
+        elif refers_to_fullname(expr.callee, REVEAL_TYPE_NAMES):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
             expr.analyzed = RevealExpr(kind=REVEAL_TYPE, expr=expr.args[0])
@@ -4285,20 +4285,22 @@ class SemanticAnalyzer(NodeVisitor[None],
         if analyzed is not None:
             expr.type = analyzed
 
-    def visit_yield_expr(self, expr: YieldExpr) -> None:
+    def visit_yield_expr(self, e: YieldExpr) -> None:
         if not self.is_func_scope():
-            self.fail('"yield" outside function', expr, serious=True, blocker=True)
-        else:
-            if self.function_stack[-1].is_coroutine:
-                if self.options.python_version < (3, 6):
-                    self.fail('"yield" in async function', expr, serious=True, blocker=True)
-                else:
-                    self.function_stack[-1].is_generator = True
-                    self.function_stack[-1].is_async_generator = True
+            self.fail('"yield" outside function', e, serious=True, blocker=True)
+        elif self.is_comprehension_stack[-1]:
+            self.fail('"yield" inside comprehension or generator expression',
+                      e, serious=True, blocker=True)
+        elif self.function_stack[-1].is_coroutine:
+            if self.options.python_version < (3, 6):
+                self.fail('"yield" in async function', e, serious=True, blocker=True)
             else:
                 self.function_stack[-1].is_generator = True
-        if expr.expr:
-            expr.expr.accept(self)
+                self.function_stack[-1].is_async_generator = True
+        else:
+            self.function_stack[-1].is_generator = True
+        if e.expr:
+            e.expr.accept(self)
 
     def visit_await_expr(self, expr: AwaitExpr) -> None:
         if not self.is_func_scope():
@@ -4306,6 +4308,46 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif not self.function_stack[-1].is_coroutine:
             self.fail('"await" outside coroutine ("async def")', expr)
         expr.expr.accept(self)
+
+    #
+    # Patterns
+    #
+
+    def visit_as_pattern(self, p: AsPattern) -> None:
+        if p.pattern is not None:
+            p.pattern.accept(self)
+        if p.name is not None:
+            self.analyze_lvalue(p.name)
+
+    def visit_or_pattern(self, p: OrPattern) -> None:
+        for pattern in p.patterns:
+            pattern.accept(self)
+
+    def visit_value_pattern(self, p: ValuePattern) -> None:
+        p.expr.accept(self)
+
+    def visit_sequence_pattern(self, p: SequencePattern) -> None:
+        for pattern in p.patterns:
+            pattern.accept(self)
+
+    def visit_starred_pattern(self, p: StarredPattern) -> None:
+        if p.capture is not None:
+            self.analyze_lvalue(p.capture)
+
+    def visit_mapping_pattern(self, p: MappingPattern) -> None:
+        for key in p.keys:
+            key.accept(self)
+        for value in p.values:
+            value.accept(self)
+        if p.rest is not None:
+            self.analyze_lvalue(p.rest)
+
+    def visit_class_pattern(self, p: ClassPattern) -> None:
+        p.class_ref.accept(self)
+        for pos in p.positionals:
+            pos.accept(self)
+        for v in p.keyword_values:
+            v.accept(self)
 
     #
     # Lookup functions

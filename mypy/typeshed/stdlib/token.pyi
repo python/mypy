@@ -71,6 +71,8 @@ if sys.version_info >= (3, 8):
     TYPE_IGNORE: int
     COLONEQUAL: int
     EXACT_TOKEN_TYPES: dict[str, int]
+if sys.version_info >= (3, 10):
+    SOFT_KEYWORD: int
 
 def ISTERMINAL(x: int) -> bool: ...
 def ISNONTERMINAL(x: int) -> bool: ...
