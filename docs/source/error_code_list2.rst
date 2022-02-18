@@ -257,6 +257,8 @@ except that attempting to invoke an undefined method (e.g. ``__len__``) results 
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
 
 
+.. _ignore-without-code:
+
 Check that ``# type: ignore`` include an error code [ignore-without-code]
 -------------------------------------------------------------------------
 
@@ -280,7 +282,7 @@ Example:
     # - the expected error 'assignment', and
     # - the unexpected error 'attr-defined'
     # are silenced.
-    # Error: "type: ignore" comment without error code (currently ignored: [attr-defined])
+    # Error: "type: ignore" comment without error code (use "type: ignore[attr-defined]" instead)
     f.nme = 42  # type: ignore
 
     # This line warns correctly about the typo in the attribute name

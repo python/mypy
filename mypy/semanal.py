@@ -51,7 +51,7 @@ Some important properties:
 from contextlib import contextmanager
 
 from typing import (
-    List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
+    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
 )
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -78,7 +78,7 @@ from mypy.nodes import (
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt,
+    MatchStmt, FuncBase
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
@@ -4851,6 +4851,48 @@ class SemanticAnalyzer(NodeVisitor[None],
                 module_hidden=module_hidden
             )
 
+    def _get_node_for_class_scoped_import(
+        self, name: str, symbol_node: Optional[SymbolNode], context: Context
+    ) -> Optional[SymbolNode]:
+        if symbol_node is None:
+            return None
+        # I promise this type checks; I'm just making mypyc issues go away.
+        # mypyc is absolutely convinced that `symbol_node` narrows to a Var in the following,
+        # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
+        # See also https://github.com/mypyc/mypyc/issues/892
+        f = cast(Any, lambda x: x)
+        if isinstance(f(symbol_node), (FuncBase, Var)):
+            # For imports in class scope, we construct a new node to represent the symbol and
+            # set its `info` attribute to `self.type`.
+            existing = self.current_symbol_table().get(name)
+            if (
+                # The redefinition checks in `add_symbol_table_node` don't work for our
+                # constructed Var / FuncBase, so check for possible redefinitions here.
+                existing is not None
+                and isinstance(f(existing.node), (FuncBase, Var))
+                and (
+                    isinstance(f(existing.type), f(AnyType))
+                    or f(existing.type) == f(symbol_node).type
+                )
+            ):
+                return existing.node
+
+            # Construct the new node
+            if isinstance(f(symbol_node), FuncBase):
+                # In theory we could construct a new node here as well, but in practice
+                # it doesn't work well, see #12197
+                typ: Optional[Type] = AnyType(TypeOfAny.from_error)
+                self.fail('Unsupported class scoped import', context)
+            else:
+                typ = f(symbol_node).type
+            symbol_node = Var(name, typ)
+            symbol_node._fullname = self.qualified_name(name)
+            assert self.type is not None  # guaranteed by is_class_scope
+            symbol_node.info = self.type
+            symbol_node.line = context.line
+            symbol_node.column = context.column
+        return symbol_node
+
     def add_imported_symbol(self,
                             name: str,
                             node: SymbolTableNode,
@@ -4859,7 +4901,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                             module_hidden: bool) -> None:
         """Add an alias to an existing symbol through import."""
         assert not module_hidden or not module_public
-        symbol = SymbolTableNode(node.kind, node.node,
+
+        symbol_node: Optional[SymbolNode] = node.node
+
+        if self.is_class_scope():
+            symbol_node = self._get_node_for_class_scoped_import(name, symbol_node, context)
+
+        symbol = SymbolTableNode(node.kind, symbol_node,
                                  module_public=module_public,
                                  module_hidden=module_hidden)
         self.add_symbol_table_node(name, symbol, context)

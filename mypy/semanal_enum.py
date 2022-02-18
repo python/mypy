@@ -13,7 +13,7 @@ from mypy.nodes import (
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
-from mypy.types import get_proper_type, LiteralType
+from mypy.types import get_proper_type, LiteralType, ENUM_REMOVED_PROPS
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
@@ -21,7 +21,7 @@ ENUM_BASES: Final = frozenset((
     'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag', 'enum.StrEnum',
 ))
 ENUM_SPECIAL_PROPS: Final = frozenset((
-    'name', 'value', '_name_', '_value_', '_order_', '__order__',
+    'name', 'value', '_name_', '_value_', *ENUM_REMOVED_PROPS,
     # Also attributes from `object`:
     '__module__', '__annotations__', '__doc__', '__slots__', '__dict__',
 ))
