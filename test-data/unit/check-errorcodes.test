@@ -148,7 +148,7 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 [case testErrorCodeMissingWhenRequired]
 # flags: --enable-error-code ignore-without-code
 "x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
-y # type: ignore # E: "type: ignore" comment without error code (use "type: ignore[name-defined]" instead)  [ignore-without-code]
+y # type: ignore # E: "type: ignore" comment without error code (consider "type: ignore[name-defined]" instead)  [ignore-without-code]
 z # type: ignore[name-defined]
 "a" # type: ignore[ignore-without-code]
 
@@ -173,7 +173,7 @@ class A:
 
 a: A | None
 # 'union-attr' should only be listed once (instead of twice) and list should be sorted
-a.func("invalid string").attr  # type: ignore  # E: "type: ignore" comment without error code (use "type: ignore[arg-type, union-attr]" instead)  [ignore-without-code]
+a.func("invalid string").attr  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[arg-type, union-attr]" instead)  [ignore-without-code]
 [builtins fixtures/tuple.pyi]
 
 [case testErrorCodeIgnoreWithExtraSpace]

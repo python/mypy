@@ -282,7 +282,7 @@ Example:
     # - the expected error 'assignment', and
     # - the unexpected error 'attr-defined'
     # are silenced.
-    # Error: "type: ignore" comment without error code (use "type: ignore[attr-defined]" instead)
+    # Error: "type: ignore" comment without error code (consider "type: ignore[attr-defined]" instead)
     f.nme = 42  # type: ignore
 
     # This line warns correctly about the typo in the attribute name
