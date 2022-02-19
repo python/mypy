@@ -1668,7 +1668,7 @@ def format_type_inner(typ: Type,
     def format_list(types: Sequence[Type]) -> str:
         return ', '.join(format(typ) for typ in types)
 
-    def format_enum_item(typ: LiteralType) -> str:
+    def format_literal_value(typ: LiteralType) -> str:
         if typ.is_enum_literal():
             underlying_type = format(typ.fallback)
             return '{}.{}'.format(underlying_type, typ.value)
@@ -1725,7 +1725,7 @@ def format_type_inner(typ: Type,
         s = 'TypedDict({{{}}})'.format(', '.join(items))
         return s
     elif isinstance(typ, LiteralType):
-        return 'Literal[{}]'.format(format_enum_item(typ))
+        return 'Literal[{}]'.format(format_literal_value(typ))
     elif isinstance(typ, UnionType):
         literal_items, union_items = separate_union_literals(typ)
 
@@ -1733,7 +1733,7 @@ def format_type_inner(typ: Type,
         # If there's just one Literal item, retain the original ordering.
         if len(literal_items) > 1:
             literal_str = 'Literal[{}]'.format(
-                ', '.join(format_enum_item(t) for t in literal_items)
+                ', '.join(format_literal_value(t) for t in literal_items)
             )
 
             if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
