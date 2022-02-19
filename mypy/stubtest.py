@@ -277,9 +277,6 @@ IGNORED_DUNDERS = frozenset({
     "__origin__",
     "__args__",
     "__orig_bases__",
-    "__mro_entries__",
-    "__forward_is_class__",
-    "__forward_module__",
     "__final__",
     # isinstance/issubclass hooks that type-checkers don't usually care about
     "__instancecheck__",
@@ -292,9 +289,6 @@ IGNORED_DUNDERS = frozenset({
     "__ctype_be__",
     "__ctype_le__",
     "__ctypes_from_outparam__",
-    # Two float methods only used internally for CPython test suite, not for public use
-    "__set_format__",
-    "__getformat__",
     # These two are basically useless for type checkers
     "__hash__",
     "__getattr__",
