@@ -1,4 +1,4 @@
-from typing import Sequence, Tuple
+from typing import Sequence
 
 from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
@@ -38,20 +38,6 @@ def simplify_union(t: Type) -> ProperType:
     if isinstance(t, UnionType):
         return make_simplified_union(t.items)
     return t
-
-
-def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequence[Type]]:
-    literal_items = []
-    union_items = []
-
-    for item in t.items:
-        proper = get_proper_type(item)
-        if isinstance(proper, LiteralType):
-            literal_items.append(proper)
-        else:
-            union_items.append(item)
-
-    return literal_items, union_items
 
 
 def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:

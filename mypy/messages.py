@@ -38,7 +38,8 @@ from mypy.subtypes import (
     is_subtype, find_member, get_member_flags,
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
 )
-from mypy.sametypes import is_same_type, separate_union_literals
+from mypy.sametypes import is_same_type
+from mypy.typeops import separate_union_literals
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
@@ -1667,6 +1668,13 @@ def format_type_inner(typ: Type,
     def format_list(types: Sequence[Type]) -> str:
         return ', '.join(format(typ) for typ in types)
 
+    def format_enum_item(typ: LiteralType) -> str:
+        if typ.is_enum_literal():
+            underlying_type = format(typ.fallback)
+            return '{}.{}'.format(underlying_type, typ.value)
+        else:
+            return typ.value_repr()
+
     # TODO: show type alias names in errors.
     typ = get_proper_type(typ)
 
@@ -1717,11 +1725,7 @@ def format_type_inner(typ: Type,
         s = 'TypedDict({{{}}})'.format(', '.join(items))
         return s
     elif isinstance(typ, LiteralType):
-        if typ.is_enum_literal():
-            underlying_type = format(typ.fallback)
-            return 'Literal[{}.{}]'.format(underlying_type, typ.value)
-        else:
-            return str(typ)
+        return 'Literal[{}]'.format(format_enum_item(typ))
     elif isinstance(typ, UnionType):
         # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
         print_as_optional = (len(typ.items) -
@@ -1735,7 +1739,7 @@ def format_type_inner(typ: Type,
 
             if literal_items:
                 literal_str = 'Literal[{}]'.format(
-                    ', '.join(t.value_repr() for t in literal_items)
+                    ', '.join(format_enum_item(t) for t in literal_items)
                 )
 
                 if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
