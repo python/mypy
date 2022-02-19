@@ -65,6 +65,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __module__: str
     def __init__(self) -> None: pass
 class type: ...
 
@@ -710,6 +711,16 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
         )
+        yield Case(
+            stub="class Y: ...",
+            runtime="__all__ += ['Y']\nclass Y:\n  def __or__(self, other): return self|other",
+            error="Y.__or__"
+        )
+        yield Case(
+            stub="class Z: ...",
+            runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
+            error=None
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -731,7 +742,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
     @collect_cases
-    def test_special_dunders(self) -> Iterator[Case]:
+    def test_dunders(self) -> Iterator[Case]:
         yield Case(
             stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
             runtime="class A:\n  def __init__(self, a, bx): pass",
