@@ -354,9 +354,14 @@ def verify_typeinfo(
         except Exception:
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
-            pass
-        else:
-            yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
+            continue
+        # Do not error for an object missing from the stub
+        # If the runtime object is a types.WrapperDescriptorType object
+        # and has a non-special dunder name.
+        # The vast majority of these are false positives.
+        if isinstance(stub_to_verify, Missing) and is_dunder_slot_wrapper(runtime_attr):
+            continue
+        yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
 def _verify_static_class_methods(
@@ -808,12 +813,7 @@ def verify_funcitem(
 def verify_none(
     stub: Missing, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    # Do not error for an object missing from the stub
-    # If the runtime object is a types.WrapperDescriptorType object
-    # and has a non-special dunder name.
-    # The vast majority of these are false positives.
-    if not is_dunder_slot_wrapper(runtime):
-        yield Error(object_path, "is not present in stub", stub, runtime)
+    yield Error(object_path, "is not present in stub", stub, runtime)
 
 
 @verify.register(nodes.Var)
