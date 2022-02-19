@@ -534,7 +534,7 @@ class Errors:
             codes_hint = ''
             ignored_codes = sorted(set(used_ignored_lines[line]))
             if ignored_codes:
-                codes_hint = f' (use "type: ignore[{", ".join(ignored_codes)}]" instead)'
+                codes_hint = f' (consider "type: ignore[{", ".join(ignored_codes)}]" instead)'
 
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
