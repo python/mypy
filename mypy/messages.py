@@ -1727,29 +1727,31 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, LiteralType):
         return 'Literal[{}]'.format(format_enum_item(typ))
     elif isinstance(typ, UnionType):
-        # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
-        print_as_optional = (len(typ.items) -
-                             sum(isinstance(get_proper_type(t), NoneType)
-                                 for t in typ.items) == 1)
-        if print_as_optional:
-            rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-            return 'Optional[{}]'.format(format(rest[0]))
-        else:
-            literal_items, union_items = separate_union_literals(typ)
+        literal_items, union_items = separate_union_literals(typ)
 
-            if literal_items:
-                literal_str = 'Literal[{}]'.format(
-                    ', '.join(format_enum_item(t) for t in literal_items)
-                )
+        # Coalesce multiple Literal[] members. This also changes output order.
+        # If there's just one Literal item, retain the original ordering.
+        if len(literal_items) > 1:
+            literal_str = 'Literal[{}]'.format(
+                ', '.join(format_enum_item(t) for t in literal_items)
+            )
 
-                if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
-                    s = 'Optional[{}]'.format(literal_str)
-                elif union_items:
-                    s = 'Union[{}, {}]'.format(format_list(union_items), literal_str)
-                else:
-                    s = literal_str
+            if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
+                return 'Optional[{}]'.format(literal_str)
+            elif union_items:
+                return 'Union[{}, {}]'.format(format_list(union_items), literal_str)
             else:
-                s = 'Union[{}]'.format(format_list(union_items))
+                return literal_str
+        else:
+            # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
+            print_as_optional = (len(typ.items) -
+                                 sum(isinstance(get_proper_type(t), NoneType)
+                                     for t in typ.items) == 1)
+            if print_as_optional:
+                rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
+                return 'Optional[{}]'.format(format(rest[0]))
+            else:
+                s = 'Union[{}]'.format(format_list(typ.items))
 
             return s
     elif isinstance(typ, NoneType):
