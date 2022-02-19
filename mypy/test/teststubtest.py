@@ -28,6 +28,34 @@ def use_tmp_dir() -> Iterator[None]:
 
 TEST_MODULE_NAME = "test_module"
 
+
+stubtest_typing_stub = """
+Any = object()
+
+class _SpecialForm:
+    def __getitem__(self, typeargs: Any) -> object: ...
+
+Callable: _SpecialForm = ...
+Generic: _SpecialForm = ...
+
+class TypeVar:
+    def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
+
+_T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+_S = TypeVar("_S", contravariant=True)
+_R = TypeVar("_R", covariant=True)
+
+class Coroutine(Generic[_T_co, _S, _R]): ...
+class Iterable(Generic[_T_co]): ...
+class Mapping(Generic[_K, _V]): ...
+class Sequence(Iterable[_T_co]): ...
+class Tuple(Sequence[_T_co]): ...
+def overload(func: _T) -> _T: ...
+"""
+
 stubtest_builtins_stub = """
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
@@ -66,6 +94,8 @@ def run_stubtest(
     with use_tmp_dir():
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
+        with open("typing.pyi", "w") as f:
+            f.write(stubtest_typing_stub)
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
@@ -170,6 +200,29 @@ class StubtestUnit(unittest.TestCase):
                 mistyped_var = 1
             """,
             error="X.mistyped_var",
+        )
+
+    @collect_cases
+    def test_coroutines(self) -> Iterator[Case]:
+        yield Case(
+            stub="async def foo() -> int: ...",
+            runtime="def foo(): return 5",
+            error="foo",
+        )
+        yield Case(
+            stub="def bar() -> int: ...",
+            runtime="async def bar(): return 5",
+            error="bar",
+        )
+        yield Case(
+            stub="def baz() -> int: ...",
+            runtime="def baz(): return 5",
+            error=None,
+        )
+        yield Case(
+            stub="async def bingo() -> int: ...",
+            runtime="async def bingo(): return 5",
+            error=None,
         )
 
     @collect_cases

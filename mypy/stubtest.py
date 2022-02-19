@@ -676,6 +676,18 @@ def _verify_signature(
         yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
 
 
+def _verify_coroutine(
+    stub: nodes.FuncItem, runtime: Any, *, runtime_is_coroutine: bool
+) -> Optional[str]:
+    if stub.is_coroutine:
+        if not runtime_is_coroutine:
+            return 'is an "async def" function in the stub, but not at runtime'
+    else:
+        if runtime_is_coroutine:
+            return 'is an "async def" function at runtime, but not in the stub'
+    return None
+
+
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
     stub: nodes.FuncItem, runtime: MaybeMissing[Any], object_path: List[str]
@@ -693,11 +705,32 @@ def verify_funcitem(
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     signature = safe_inspect_signature(runtime)
+    runtime_is_coroutine = inspect.iscoroutinefunction(runtime)
+
+    if signature:
+        stub_sig = Signature.from_funcitem(stub)
+        runtime_sig = Signature.from_inspect_signature(signature)
+        runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+    else:
+        runtime_sig_desc = None
+
+    coroutine_mismatch_error = _verify_coroutine(
+        stub,
+        runtime,
+        runtime_is_coroutine=runtime_is_coroutine
+    )
+
+    if coroutine_mismatch_error is not None:
+        yield Error(
+            object_path,
+            coroutine_mismatch_error,
+            stub,
+            runtime,
+            runtime_desc=runtime_sig_desc
+        )
+
     if not signature:
         return
-
-    stub_sig = Signature.from_funcitem(stub)
-    runtime_sig = Signature.from_inspect_signature(signature)
 
     for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
         yield Error(
@@ -705,7 +738,7 @@ def verify_funcitem(
             "is inconsistent, " + message,
             stub,
             runtime,
-            runtime_desc="def " + str(signature),
+            runtime_desc=runtime_sig_desc,
         )
 
 
