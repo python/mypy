@@ -681,10 +681,10 @@ def _verify_coroutine(
 ) -> Optional[str]:
     if stub.is_coroutine:
         if not runtime_is_coroutine:
-            return "is a coroutine function in the stub, but not at runtime"
+            return 'is an "async def" function in the stub, but not at runtime'
     else:
         if runtime_is_coroutine:
-            return "is a coroutine function at runtime, but not in the stub"
+            return 'is an "async def" function at runtime, but not in the stub'
     return None
 
 
