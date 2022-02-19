@@ -1743,7 +1743,7 @@ def format_type_inner(typ: Type,
             else:
                 return literal_str
         else:
-            # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
+            # Only print Union as Optional if the Optional wouldn't have to contain another Union
             print_as_optional = (len(typ.items) -
                                  sum(isinstance(get_proper_type(t), NoneType)
                                      for t in typ.items) == 1)
