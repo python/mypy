@@ -49,22 +49,6 @@ def _style(message: str, **kwargs: Any) -> str:
     return _formatter.style(message, **kwargs)
 
 
-if sys.version_info >= (3, 7):
-    def is_dunder_slot_wrapper(obj: object) -> bool:
-        return (
-            isinstance(obj, types.WrapperDescriptorType)
-            and is_dunder(obj.__name__, exclude_special=True)
-        )
-
-else:
-    # types.WrapperDescriptorType was added in 3.7
-    def is_dunder_slot_wrapper(obj: object) -> bool:
-        return (
-            isinstance(obj, type(object.__init__))
-            and is_dunder(getattr(obj, "__name__"), exclude_special=True)
-        )
-
-
 class Error:
     def __init__(
         self,
@@ -303,6 +287,12 @@ IGNORED_DUNDERS = frozenset({
 })
 
 
+if sys.version_info >= (3, 7):
+    _WrapperDescriptorType = types.WrapperDescriptorType
+else:
+    _WrapperDescriptorType = type(object.__init__)
+
+
 def is_private(name: str) -> bool:
     return name.startswith("_") and not is_dunder(name)
 
@@ -359,9 +349,12 @@ def verify_typeinfo(
         # If the runtime object is a types.WrapperDescriptorType object
         # and has a non-special dunder name.
         # The vast majority of these are false positives.
-        if isinstance(stub_to_verify, Missing) and is_dunder_slot_wrapper(runtime_attr):
-            continue
-        yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
+        if not (
+            isinstance(stub_to_verify, Missing)
+            and isinstance(runtime_attr, _WrapperDescriptorType)
+            and is_dunder(mangled_entry, exclude_special=True)
+        ):
+            yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
 def _verify_static_class_methods(
