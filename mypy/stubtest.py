@@ -61,7 +61,7 @@ else:
     def is_dunder_slot_wrapper(obj: object) -> bool:
         return (
             isinstance(obj, type(object.__init__))
-            and is_dunder(getattr(obj, "__name__", ""), exclude_special=True)
+            and is_dunder(getattr(obj, "__name__"), exclude_special=True)
         )
 
 
