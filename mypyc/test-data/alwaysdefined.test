@@ -400,7 +400,7 @@ Derived2: [x]
 Conditionals: [a, b]
 
 [case testAlwaysDefinedStatements]
-from typing import List, Optional, Iterable
+from typing import Any, List, Optional, Iterable
 
 class Return:
     def __init__(self, x: int) -> None:
@@ -474,6 +474,13 @@ class Assignment2:
         other = self  # Give up after self is aliased
         self.y = other.x
 
+class With:
+    def __init__(self, x: Any) -> None:
+        self.a = 0
+        with x:
+            self.b = 1
+        self.c = 2
+
 def f() -> None:
     pass
 
@@ -490,6 +497,8 @@ Assert: [a]
 For: [x]
 Assignment1: [x]
 Assignment2: [x]
+-- TODO: Why is not 'b' included?
+With: [a, c]
 
 [case testAlwaysDefinedAttributeDefaults]
 class Basic:
