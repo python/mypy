@@ -618,6 +618,8 @@ UndefinedInDerived2: []
 [case testAlwaysDefinedWithInheritance2]
 from mypy_extensions import trait, mypyc_attr
 
+from interpreted import PythonBase
+
 class BasePartiallyDefined:
     def __init__(self, x: int) -> None:
         self.a = 0
@@ -676,6 +678,16 @@ class Derived2(BaseWithGeneralSubclassing):
     def __init__(self) -> None:
         super().__init__('x')
         self.z = 0
+
+class SubclassPythonclass(PythonBase):
+    def __init__(self) -> None:
+        self.y = 1
+
+[file interpreted.py]
+class PythonBase:
+    def __init__(self) -> None:
+        self.x = 0
+
 [out]
 BasePartiallyDefined: [a]
 Derived1: [a, y]
@@ -690,6 +702,8 @@ TraitWithAttrImpl2: [y, z]
 BaseWithGeneralSubclassing: []
 -- TODO: 's' could also be always defined
 Derived2: [x, z]
+-- Always defined attribute analysis is turned off when inheriting a non-native class.
+SubclassPythonclass: []
 
 [case testAlwaysDefinedWithNesting]
 class NestedFunc:
