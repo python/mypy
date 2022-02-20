@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List, Optional, Union
 
 from mypy.nodes import (
@@ -102,14 +103,22 @@ def add_method(
                         tvar_def=tvar_def)
 
 
+class MethodType(Enum):
+    is_instance = "is_instance"  # instance method with self as first argument
+    is_class = "is_class"  # classmethod with cls as first argument
+    is_static = "is_static"  # staticmethod without self or cls as first argument
+
+
 def add_method_to_class(
         api: Union[SemanticAnalyzerPluginInterface, CheckerPluginInterface],
         cls: ClassDef,
         name: str,
         args: List[Argument],
         return_type: Type,
-        self_type: Optional[Type] = None,
+        self_type: Optional[Type] = None,  # only used if method_type = MethodType.is_instance
         tvar_def: Optional[TypeVarType] = None,
+        cls_type: Optional[Type] = None,  # only used if method_type = MethodType.is_class
+        method_type: MethodType = MethodType.is_instance,
 ) -> None:
     """Adds a new method to a class definition."""
     info = cls.info
@@ -127,9 +136,17 @@ def add_method_to_class(
     else:
         function_type = api.named_generic_type('builtins.function', [])
 
-    args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
+    if method_type is MethodType.is_instance:
+        method_args = [Argument(Var('self'), self_type, None, ARG_POS)] + args
+    elif method_type is MethodType.is_class:
+        method_args = [Argument(Var('cls'), cls_type, None, ARG_POS)] + args
+    elif method_type is MethodType.is_static:
+        method_args = args
+    else:
+        assert False, f"func_type needs to be a member of {MethodType.__name__}"
+
     arg_types, arg_names, arg_kinds = [], [], []
-    for arg in args:
+    for arg in method_args:
         assert arg.type_annotation, 'All arguments must be fully typed.'
         arg_types.append(arg.type_annotation)
         arg_names.append(arg.variable.name)
@@ -139,11 +156,16 @@ def add_method_to_class(
     if tvar_def:
         signature.variables = [tvar_def]
 
-    func = FuncDef(name, args, Block([PassStmt()]))
+    func = FuncDef(name, method_args, Block([PassStmt()]))
     func.info = info
     func.type = set_callable_name(signature, func)
     func._fullname = info.fullname + '.' + name
     func.line = info.line
+
+    if method_type is MethodType.is_class:
+        func.is_class = True
+    elif method_type is MethodType.is_static:
+        func.is_static = True
 
     # NOTE: we would like the plugin generated node to dominate, but we still
     # need to keep any existing definitions so they get semantically analyzed.
