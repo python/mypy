@@ -143,7 +143,11 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         for c in cases:
             if c.error is None:
                 continue
-            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            expected_error = c.error
+            if expected_error == "":
+                expected_error = TEST_MODULE_NAME
+            elif not expected_error.startswith(f"{TEST_MODULE_NAME}."):
+                expected_error = f"{TEST_MODULE_NAME}.{expected_error}"
             assert expected_error not in expected_errors, (
                 "collect_cases merges cases into a single stubtest invocation; we already "
                 "expect an error for {}".format(expected_error)
@@ -730,7 +734,9 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
-        yield Case(stub="__all__: list[str]", runtime="", error=None)  # dummy case
+        yield Case(
+            stub="__all__: list[str]", runtime="", error="test_module.__all__"
+        )  # dummy case
         yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
 
     @collect_cases
