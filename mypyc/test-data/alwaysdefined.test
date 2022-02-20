@@ -690,3 +690,16 @@ TraitWithAttrImpl2: [y, z]
 BaseWithGeneralSubclassing: []
 -- TODO: 's' could also be always defined
 Derived2: [x, z]
+
+[case testAlwaysDefinedWithNesting]
+class NestedFunc:
+    def __init__(self) -> None:
+        self.x = 0
+        def f() -> None:
+            self.y = 0
+        f()
+        self.z = 1
+[out]
+-- TODO: Support nested functions.
+NestedFunc: []
+f___init___NestedFunc_obj: []
