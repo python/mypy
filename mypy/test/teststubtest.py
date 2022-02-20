@@ -708,7 +708,12 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
+        # __all__ present at runtime, but not in stub -> error
+        yield Case(stub="", runtime="__all__ = []", error="__all__")
+        # If runtime has __all__ but stub does not,
+        # we should raise an error with the module name itself
+        # if there are any names defined in the stub that are not in the runtime __all__
+        yield Case(stub="_Z = int", runtime="", error="")
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it

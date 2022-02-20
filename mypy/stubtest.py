@@ -15,7 +15,7 @@ import types
 import warnings
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
 
 from typing_extensions import Type
 
@@ -194,6 +194,42 @@ def verify(
     yield Error(object_path, "is an unknown mypy node", stub, runtime)
 
 
+def _verify_exported_names(
+    object_path: List[str], stub: nodes.MypyFile, runtime_all_as_set: Set[str]
+) -> Iterator[Error]:
+    public_names_in_stub = {
+        m
+        for m, o in stub.names.items()
+        if o.module_public and m not in IGNORED_MODULE_DUNDERS
+    }
+    if not runtime_all_as_set.symmetric_difference(public_names_in_stub):
+        return
+    sorted_runtime_names = sorted(
+        runtime_all_as_set,
+        key=lambda name: ((name not in public_names_in_stub), name)
+    )
+    sorted_names_in_stub = sorted(
+        public_names_in_stub,
+        key=lambda name: ((name not in runtime_all_as_set), name)
+    )
+    yield Error(
+        object_path,
+        (
+            "module: names exported from the stub "
+            "do not correspond to the names exported at runtime. "
+            "(Note: This may be due to a missing or inaccurate "
+            "`__all__` in the stub.)"
+        ),
+        # pass in MISSING instead of the stub and runtime objects,
+        # as the line numbers aren't very relevant here,
+        # and it makes for a prettier error message.
+        MISSING,
+        MISSING,
+        stub_desc=f"Names exported are: {sorted_names_in_stub}",
+        runtime_desc=f"Names exported are: {sorted_runtime_names}"
+    )
+
+
 @verify.register(nodes.MypyFile)
 def verify_mypyfile(
     stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType], object_path: List[str]
@@ -204,6 +240,14 @@ def verify_mypyfile(
     if not isinstance(runtime, types.ModuleType):
         yield Error(object_path, "is not a module", stub, runtime)
         return
+
+    runtime_all_as_set: Optional[Set[str]]
+
+    if hasattr(runtime, "__all__"):
+        runtime_all_as_set = set(runtime.__all__)
+        yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+    else:
+        runtime_all_as_set = None
 
     # Check things in the stub
     to_check = set(
@@ -223,8 +267,8 @@ def verify_mypyfile(
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
-        runtime.__all__
-        if hasattr(runtime, "__all__")
+        ["__all__", *runtime_all_as_set]
+        if runtime_all_as_set is not None
         else [
             m
             for m in dir(runtime)
