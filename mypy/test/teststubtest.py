@@ -28,6 +28,34 @@ def use_tmp_dir() -> Iterator[None]:
 
 TEST_MODULE_NAME = "test_module"
 
+
+stubtest_typing_stub = """
+Any = object()
+
+class _SpecialForm:
+    def __getitem__(self, typeargs: Any) -> object: ...
+
+Callable: _SpecialForm = ...
+Generic: _SpecialForm = ...
+
+class TypeVar:
+    def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
+
+_T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+_S = TypeVar("_S", contravariant=True)
+_R = TypeVar("_R", covariant=True)
+
+class Coroutine(Generic[_T_co, _S, _R]): ...
+class Iterable(Generic[_T_co]): ...
+class Mapping(Generic[_K, _V]): ...
+class Sequence(Iterable[_T_co]): ...
+class Tuple(Sequence[_T_co]): ...
+def overload(func: _T) -> _T: ...
+"""
+
 stubtest_builtins_stub = """
 from typing import Generic, Mapping, Sequence, TypeVar, overload
 
@@ -37,6 +65,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __module__: str
     def __init__(self) -> None: pass
 class type: ...
 
@@ -66,6 +95,8 @@ def run_stubtest(
     with use_tmp_dir():
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
+        with open("typing.pyi", "w") as f:
+            f.write(stubtest_typing_stub)
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
@@ -112,7 +143,11 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         for c in cases:
             if c.error is None:
                 continue
-            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            expected_error = c.error
+            if expected_error == "":
+                expected_error = TEST_MODULE_NAME
+            elif not expected_error.startswith(f"{TEST_MODULE_NAME}."):
+                expected_error = f"{TEST_MODULE_NAME}.{expected_error}"
             assert expected_error not in expected_errors, (
                 "collect_cases merges cases into a single stubtest invocation; we already "
                 "expect an error for {}".format(expected_error)
@@ -170,6 +205,29 @@ class StubtestUnit(unittest.TestCase):
                 mistyped_var = 1
             """,
             error="X.mistyped_var",
+        )
+
+    @collect_cases
+    def test_coroutines(self) -> Iterator[Case]:
+        yield Case(
+            stub="async def foo() -> int: ...",
+            runtime="def foo(): return 5",
+            error="foo",
+        )
+        yield Case(
+            stub="def bar() -> int: ...",
+            runtime="async def bar(): return 5",
+            error="bar",
+        )
+        yield Case(
+            stub="def baz() -> int: ...",
+            runtime="def baz(): return 5",
+            error=None,
+        )
+        yield Case(
+            stub="async def bingo() -> int: ...",
+            runtime="async def bingo(): return 5",
+            error=None,
         )
 
     @collect_cases
@@ -657,6 +715,16 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
         )
+        yield Case(
+            stub="class Y: ...",
+            runtime="__all__ += ['Y']\nclass Y:\n  def __or__(self, other): return self|other",
+            error="Y.__or__"
+        )
+        yield Case(
+            stub="class Z: ...",
+            runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
+            error=None
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
@@ -666,7 +734,9 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
-        yield Case(stub="__all__: list[str]", runtime="", error=None)  # dummy case
+        yield Case(
+            stub="__all__: list[str]", runtime="", error="test_module.__all__"
+        )  # dummy case
         yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
 
     @collect_cases
@@ -678,7 +748,7 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
     @collect_cases
-    def test_special_dunders(self) -> Iterator[Case]:
+    def test_dunders(self) -> Iterator[Case]:
         yield Case(
             stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
             runtime="class A:\n  def __init__(self, a, bx): pass",
@@ -691,8 +761,13 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -701,6 +776,28 @@ class StubtestUnit(unittest.TestCase):
                 runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
+
+    def test_not_subclassable(self) -> None:
+        output = run_stubtest(
+            stub=(
+                "class CanBeSubclassed: ...\n"
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls) -> None: ...\n"
+            ),
+            runtime=(
+                "class CanNotBeSubclassed:\n"
+                "  def __init_subclass__(cls): raise TypeError('nope')\n"
+                # ctypes.Array can be subclassed, but subclasses must define a few
+                # special attributes, e.g. _length_
+                "from ctypes import Array as CanBeSubclassed\n"
+            ),
+            options=[],
+        )
+        assert (
+            "CanNotBeSubclassed cannot be subclassed at runtime,"
+            " but isn't marked with @final in the stub"
+        ) in output
+        assert "CanBeSubclassed cannot be subclassed" not in output
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -983,12 +1080,19 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
-        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
+        assert "graphlib" not in stdlib
+        assert "formatter" in stdlib
+        assert "importlib.metadata" not in stdlib
+
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
+        assert "graphlib" in stdlib
+        assert "formatter" not in stdlib
+        assert "importlib.metadata" in stdlib
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:

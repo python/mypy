@@ -29,8 +29,8 @@ _compression: 3.6-
 _csv: 2.7-
 _curses: 2.7-
 _decimal: 3.6-
-_dummy_thread: 3.6-
-_dummy_threading: 2.7-
+_dummy_thread: 3.6-3.8
+_dummy_threading: 2.7-3.8
 _heapq: 2.7-
 _imp: 3.6-
 _json: 2.7-
@@ -103,8 +103,9 @@ decimal: 2.7-
 difflib: 2.7-
 dis: 2.7-
 distutils: 2.7-
+distutils.command.bdist_msi: 2.7-3.10
 doctest: 2.7-
-dummy_threading: 2.7-
+dummy_threading: 2.7-3.8
 email: 2.7-
 encodings: 2.7-
 ensurepip: 2.7-
@@ -138,6 +139,7 @@ imghdr: 2.7-
 imp: 2.7-
 importlib: 2.7-
 importlib.metadata: 3.8-
+importlib.metadata._meta: 3.10-
 importlib.resources: 3.7-
 inspect: 2.7-
 io: 2.7-
@@ -259,6 +261,7 @@ typing: 3.5-
 typing_extensions: 2.7-
 unicodedata: 2.7-
 unittest: 2.7-
+unittest._log: 3.9-
 urllib: 2.7-
 uu: 2.7-
 uuid: 2.7-

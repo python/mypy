@@ -1,8 +1,8 @@
 from _typeshed import StrOrBytesPath
 from types import FrameType, TracebackType
-from typing import IO, Any, Callable, Optional, Tuple, Type
+from typing import IO, Any, Callable, Optional, Type
 
-_ExcInfo = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_ExcInfo = tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
 
 def reset() -> str: ...  # undocumented
 def small(text: str) -> str: ...  # undocumented

@@ -1465,3 +1465,77 @@ class C:
         self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
 [builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgs]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    x: int
+    y: int
+    # Not included:
+    z: int = attr.field(kw_only=True)
+    i: int = attr.field(init=False)
+
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsDefaultCase]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(auto_attribs=True)
+class ToMatch1:
+    x: int
+    y: int
+
+t1: ToMatch1
+reveal_type(t1.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+
+@attr.define
+class ToMatch2:
+    x: int
+    y: int
+
+t2: ToMatch2
+reveal_type(t2.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOverrideExisting]
+# flags: --python-version 3.10
+import attr
+from typing import Final
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+# It works the same way runtime does:
+reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+
+@attr.s(auto_attribs=True)
+class WithoutMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOldVersion]
+# flags: --python-version 3.9
+import attr
+
+@attr.s(match_args=True)
+class NoMatchArgs:
+    ...
+
+n: NoMatchArgs
+
+reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+[builtins fixtures/attr.pyi]
