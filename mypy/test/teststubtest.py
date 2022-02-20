@@ -730,7 +730,9 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
-        yield Case(stub="__all__: list[str]", runtime="", error="test_module.__all__")  # dummy case
+        yield Case(
+            stub="__all__: list[str]", runtime="", error="test_module.__all__"
+        )  # dummy case
         yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
 
     @collect_cases
