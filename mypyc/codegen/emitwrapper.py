@@ -710,7 +710,6 @@ class WrapperGenerator:
 
     def __init__(self, cl: Optional[ClassIR], emitter: Emitter) -> None:
         self.cl = cl
-        self.cl_name_prefix = cl.name_prefix(emitter.names) if cl else ''
         self.emitter = emitter
         self.cleanups: List[str] = []
         self.optional_args: List[RuntimeArg] = []
@@ -732,7 +731,7 @@ class WrapperGenerator:
         """Return the name of the wrapper function."""
         return '{}{}{}'.format(DUNDER_PREFIX,
                                self.target_name,
-                               self.cl_name_prefix)
+                               self.cl.name_prefix(self.emitter.names) if self.cl else '')
 
     def use_goto(self) -> bool:
         """Do we use a goto for error handling (instead of straight return)?"""
