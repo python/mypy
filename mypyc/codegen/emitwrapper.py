@@ -261,7 +261,7 @@ def generate_dunder_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     protocol slot. This specifically means that the arguments are taken as *PyObjects and returned
     as *PyObjects.
     """
-    gen = WrapperGenerator(cl.name_prefix(emitter.names), emitter)
+    gen = WrapperGenerator(cl, emitter)
     gen.set_target(fn)
     gen.emit_header()
     gen.emit_arg_processing()
@@ -278,7 +278,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
     Both arguments and the return value are PyObject *.
     """
-    gen = WrapperGenerator(cl.name_prefix(emitter.names), emitter)
+    gen = WrapperGenerator(cl, emitter)
     gen.set_target(fn)
     gen.arg_names = ['left', 'right']
     wrapper_name = gen.wrapper_name()
@@ -647,7 +647,7 @@ def generate_wrapper_core(fn: FuncIR,
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.
     """
-    gen = WrapperGenerator('', emitter)
+    gen = WrapperGenerator(None, emitter)
     gen.set_target(fn)
     gen.arg_names = arg_names or [arg.name for arg in fn.args]
     gen.cleanups = cleanups or []
@@ -708,8 +708,9 @@ class WrapperGenerator:
 
     # TODO: Use this for more wrappers
 
-    def __init__(self, cl_name_prefix: str, emitter: Emitter) -> None:
-        self.cl_name_prefix = cl_name_prefix
+    def __init__(self, cl: Optional[ClassIR], emitter: Emitter) -> None:
+        self.cl = cl
+        self.cl_name_prefix = cl.name_prefix(emitter.names) if cl else ''
         self.emitter = emitter
         self.cleanups: List[str] = []
         self.optional_args: List[RuntimeArg] = []
