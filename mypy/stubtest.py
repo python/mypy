@@ -144,6 +144,11 @@ class Error:
         return "".join(output)
 
 
+# ====================
+# Core logic
+# ====================
+
+
 def test_module(module_name: str) -> Iterator[Error]:
     """Tests a given module's stub against introspecting it at runtime.
 
@@ -204,7 +209,7 @@ def verify_mypyfile(
     to_check = set(
         m
         for m, o in stub.names.items()
-        if not o.module_hidden and (not m.startswith("_") or hasattr(runtime, m))
+        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
     )
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
@@ -220,7 +225,7 @@ def verify_mypyfile(
         else [
             m
             for m in dir(runtime)
-            if not m.startswith("_")
+            if not is_probably_private(m)
             # Ensure that the object's module is `runtime`, since in the absence of __all__ we
             # don't have a good way to detect re-exports at runtime.
             and _belongs_to_runtime(runtime, m)
@@ -228,7 +233,7 @@ def verify_mypyfile(
     )
     # Check all things declared in module's __all__, falling back to our best guess
     to_check.update(runtime_public_contents)
-    to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
+    to_check.difference_update(IGNORED_MODULE_DUNDERS)
 
     for entry in sorted(to_check):
         stub_entry = stub.names[entry].node if entry in stub.names else MISSING
@@ -243,58 +248,10 @@ def verify_mypyfile(
         )
 
 
-IGNORED_DUNDERS = frozenset({
-    # Very special attributes
-    "__weakref__",
-    "__slots__",
-    "__dict__",
-    "__text_signature__",
-    # Pickle methods
-    "__setstate__",
-    "__getstate__",
-    "__getnewargs__",
-    "__getinitargs__",
-    "__reduce_ex__",
-    "__reduce__",
-    # typing implementation details
-    "__parameters__",
-    "__origin__",
-    "__args__",
-    "__orig_bases__",
-    "__final__",
-    # isinstance/issubclass hooks that type-checkers don't usually care about
-    "__instancecheck__",
-    "__subclasshook__",
-    "__subclasscheck__",
-    # Dataclasses implementation details
-    "__dataclass_fields__",
-    "__dataclass_params__",
-    # ctypes weirdness
-    "__ctype_be__",
-    "__ctype_le__",
-    "__ctypes_from_outparam__",
-    # These two are basically useless for type checkers
-    "__hash__",
-    "__getattr__",
-    # For some reason, mypy doesn't infer classes with metaclass=ABCMeta inherit this attribute
-    "__abstractmethods__",
-    # Ideally we'd include __match_args__ in stubs,
-    # but this currently has issues
-    "__match_args__",
-    "__doc__",  # Can only ever be str | None, who cares?
-    "__del__",  # Only ever called when an object is being deleted, who cares?
-    "__new_member__",  # If an enum defines __new__, the method is renamed as __new_member__
-})
-
-
 if sys.version_info >= (3, 7):
     _WrapperDescriptorType = types.WrapperDescriptorType
 else:
     _WrapperDescriptorType = type(object.__init__)
-
-
-def is_private(name: str) -> bool:
-    return name.startswith("_") and not is_dunder(name)
 
 
 @verify.register(nodes.TypeInfo)
@@ -330,7 +287,9 @@ def verify_typeinfo(
     to_check = set(stub.names)
     to_check.update(
         # cast to workaround mypyc complaints
-        m for m in cast(Any, vars)(runtime) if not is_private(m) and m not in IGNORED_DUNDERS
+        m
+        for m in cast(Any, vars)(runtime)
+        if not is_probably_private(m) and m not in ALLOW_MISSING_CLASS_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -1009,6 +968,78 @@ def verify_typealias(
     )
 
 
+# ====================
+# Helpers
+# ====================
+
+
+IGNORED_MODULE_DUNDERS = frozenset(
+    {
+        "__file__",
+        "__doc__",
+        "__name__",
+        "__builtins__",
+        "__package__",
+        "__cached__",
+        "__loader__",
+        "__spec__",
+        "__path__",  # mypy adds __path__ to packages, but C packages don't have it
+        "__getattr__",  # resulting behaviour might be typed explicitly
+        # TODO: remove the following from this list
+        "__author__",
+        "__version__",
+        "__copyright__",
+    }
+)
+
+ALLOW_MISSING_CLASS_DUNDERS = frozenset(
+    {
+        # Special attributes
+        "__dict__",
+        "__text_signature__",
+        "__weakref__",
+        "__del__",  # Only ever called when an object is being deleted, who cares?
+        # These two are basically useless for type checkers
+        "__hash__",
+        "__getattr__",  # resulting behaviour might be typed explicitly
+        # isinstance/issubclass hooks that type-checkers don't usually care about
+        "__instancecheck__",
+        "__subclasshook__",
+        "__subclasscheck__",
+        # Pickle methods
+        "__setstate__",
+        "__getstate__",
+        "__getnewargs__",
+        "__getinitargs__",
+        "__reduce_ex__",
+        "__reduce__",
+        # ctypes weirdness
+        "__ctype_be__",
+        "__ctype_le__",
+        "__ctypes_from_outparam__",
+        # mypy limitations
+        "__abstractmethods__",  # Classes with metaclass=ABCMeta inherit this attribute
+        "__new_member__",  # If an enum defines __new__, the method is renamed as __new_member__
+        "__dataclass_fields__",  # Generated by dataclasses
+        "__dataclass_params__",  # Generated by dataclasses
+        "__doc__",  # mypy's semanal for namedtuples assumes this is str, not Optional[str]
+        # typing implementation details, consider removing some of these:
+        "__parameters__",
+        "__origin__",
+        "__args__",
+        "__orig_bases__",
+        "__final__",
+        # Consider removing these:
+        "__match_args__",
+        "__slots__",
+    }
+)
+
+
+def is_probably_private(name: str) -> bool:
+    return name.startswith("_") and not is_dunder(name)
+
+
 def is_probably_a_function(runtime: Any) -> bool:
     return (
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
@@ -1149,6 +1180,11 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         return fallback
 
     return mypy.types.LiteralType(value=value, fallback=fallback)
+
+
+# ====================
+# Build and entrypoint
+# ====================
 
 
 _all_stubs: Dict[str, nodes.MypyFile] = {}
