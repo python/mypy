@@ -214,7 +214,10 @@ def verify_mypyfile(
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         obj = getattr(r, attr)
-        obj_mod = getattr(obj, "__module__", None)
+        try:
+            obj_mod = getattr(obj, "__module__", None)
+        except Exception:
+            return False
         if obj_mod is not None:
             return obj_mod == r.__name__
         return not isinstance(obj, types.ModuleType)
@@ -241,11 +244,13 @@ def verify_mypyfile(
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
-        yield from verify(
-            stub_entry,
-            getattr(runtime, entry, MISSING),
-            object_path + [entry],
-        )
+        try:
+            runtime_entry = getattr(runtime, entry, MISSING)
+        except Exception:
+            # Catch all exceptions in case the runtime raises an unexpected exception
+            # from __getattr__ or similar.
+            continue
+        yield from verify(stub_entry, runtime_entry, object_path + [entry])
 
 
 if sys.version_info >= (3, 7):
