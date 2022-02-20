@@ -376,7 +376,6 @@ class TestRunSeparate(TestRun):
     This puts other.py and other_b.py into a compilation group named "stuff".
     Any files not mentioned in the comment will get single-file groups.
     """
-
     separate = True
     test_name_suffix = '_separate'
     files = [
