@@ -72,7 +72,7 @@ from mypyc.ir.class_ir import ClassIR
 from mypyc.analysis.dataflow import (
     BaseAnalysisVisitor, AnalysisResult, get_cfg, CFG, MAYBE_ANALYSIS, run_analysis
 )
-from mypyc.analysis.defined import analyze_self_leaks
+from mypyc.analysis.selfleaks import analyze_self_leaks
 
 
 def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
