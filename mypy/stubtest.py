@@ -1287,7 +1287,8 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
     if args.check_typeshed:
         assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        annoying_modules = {"antigravity", "this"}
+        # typeshed added a stub for __main__, but that causes stubtest to check itself
+        annoying_modules = {"antigravity", "this", "__main__"}
         modules = [m for m in modules if m not in annoying_modules]
 
     assert modules, "No modules to check"
