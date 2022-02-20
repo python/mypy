@@ -135,8 +135,8 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     always_defined = {a for a in always_defined if not cl.is_deletable(a)}
 
     cl._always_initialized_attrs = always_defined
-    if always_defined:
-        print(cl.name, sorted(always_defined))
+    #if always_defined:
+    #    print(cl.name, sorted(always_defined))
 
     mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
 
