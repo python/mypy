@@ -1405,9 +1405,9 @@ class E(Enum):
 
 e: E
 a: Literal[E.A, E.B, E.C] = e
-b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.B]]")
-c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
-b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
+b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.B]")
+c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.C]")
+b = a  # E: Incompatible types in assignment (expression has type "Literal[E.A, E.B, E.C]", variable has type "Literal[E.A, E.B]")
 [builtins fixtures/bool.pyi]
 
 [case testIntEnumWithNewTypeValue]
