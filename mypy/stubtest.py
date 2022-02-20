@@ -217,7 +217,7 @@ def _verify_exported_names(
         (
             "module: names exported from the stub "
             "do not correspond to the names exported at runtime. "
-            "(Note: This may be due to a missing or inaccurate "
+            "(Note: This is probably due to an inaccurate "
             "`__all__` in the stub.)"
         ),
         # pass in MISSING instead of the stub and runtime objects,
@@ -245,7 +245,11 @@ def verify_mypyfile(
 
     if hasattr(runtime, "__all__"):
         runtime_all_as_set = set(runtime.__all__)
-        yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+        if "__all__" in stub.names:
+            # Only verify the contents of the stub's __all__
+            # if the stub actually defines __all__
+            # Otherwise we end up with duplicate errors when __all__ is missing
+            yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
     else:
         runtime_all_as_set = None
 
@@ -267,16 +271,16 @@ def verify_mypyfile(
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
-        ["__all__", *runtime_all_as_set]
+        runtime_all_as_set | {"__all__"}
         if runtime_all_as_set is not None
-        else [
+        else {
             m
             for m in dir(runtime)
             if not is_probably_private(m)
             # Ensure that the object's module is `runtime`, since in the absence of __all__ we
             # don't have a good way to detect re-exports at runtime.
             and _belongs_to_runtime(runtime, m)
-        ]
+        }
     )
     # Check all things declared in module's __all__, falling back to our best guess
     to_check.update(runtime_public_contents)
