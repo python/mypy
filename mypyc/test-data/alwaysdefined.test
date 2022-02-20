@@ -430,6 +430,10 @@ class Try:
         except:
             self.c = x
         self.d = 0
+        try:
+            self.e = x[0]
+        except:
+            self.e = 1
 
 class Assert:
     def __init__(self, x: Optional[str], y: int) -> None:
@@ -463,6 +467,9 @@ def f() -> None:
 [out]
 Return: [x, y]
 While: [a]
+-- We could infer 'e' as always defined, but this is tricky, since always defined attribute
+-- analysis must be performed earlier than exception handling transform. This would be
+-- easy to infer *after* exception handling transform.
 Try: [a, d]
 Assert: [a]
 For: [x]
