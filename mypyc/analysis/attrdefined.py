@@ -7,7 +7,7 @@ attribute before initialization, and it can't be deletable.
 
 We can assume that the value is always defined when reading an always
 defined attribute. Otherwise we'll need to raise AttributeError if the
-value is undefined.
+value is undefined (i.e. has the error value).
 
 We use data flow analysis to figure out attributes that are always
 defined. Example:
@@ -25,7 +25,7 @@ In this example, the attributes 'x' and 'y' are always defined, but 'z'
 is not. The analysis assumes that we know that there won't be any subclasses.
 
 The analysis also works if there is a known, closed set of subclasses.
-An attribute defined in a base class is can only be always defined if it's
+An attribute defined in a base class can only be always defined if it's
 also always defined in all subclasses.
 
 As soon as __init__ contains an op that can 'leak' self to another
@@ -43,10 +43,19 @@ called code could read an uninitialized attribute. Example:
 Now we won't infer 'x' as always defined, since 'foo' might read 'x'
 before initialization.
 
+As an exception to the above limitation, we perform inter-procedural
+analysis of super().__init__ calls, since these are very common.
+
 Our analysis is somewhat optimistic. We assume that nobody calls a
 method of a partially uninitialized object through gc.get_objects(), in
 particular. Code like this could potentially cause a segfault with a null
-pointer dereference.
+pointer dereference. This seems very unlikely to be an issue in practice,
+however.
+
+Accessing an attribute via getattr always checks for undefined attributes
+and thus works if the object is partially uninitialized. This can be used
+as a workaround if somebody ever needs to inspect partially uninitialized
+objects via gc.get_objects().
 
 The analysis runs after IR building as a separate pass. Since we only
 run this on __init__ methods, this analysis pass will be fairly quick.
