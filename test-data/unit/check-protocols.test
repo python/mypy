@@ -2869,3 +2869,23 @@ f(Lst3(c))  # E: Argument 1 to "f" has incompatible type "Lst3[Lst3[Str]]"; expe
 
 [builtins fixtures/list.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testMatchProtocolAgainstOverloadWithMultipleMatchingItems]
+from typing import Protocol, overload, TypeVar, Any
+
+_T_co = TypeVar("_T_co", covariant=True)
+_T = TypeVar("_T")
+
+class SupportsRound(Protocol[_T_co]):
+    @overload
+    def __round__(self) -> int: ...
+    @overload
+    def __round__(self, __ndigits: int) -> _T_co: ...
+
+class C:
+    # This matches both overload items of SupportsRound
+    def __round__(self, __ndigits: int = ...) -> int: ...
+
+def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
+
+round(C(), 1)
