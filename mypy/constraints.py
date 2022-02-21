@@ -659,8 +659,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
         res: List[Constraint] = []
-        for t in template.items:
-            res.extend(infer_constraints(t, self.actual, self.direction))
+        if isinstance(self.actual, CallableType):
+            item = find_matching_overload_item(template, self.actual)
+            res.extend(infer_constraints(item, self.actual, self.direction))
+        else:
+            for t in template.items:
+                res.extend(infer_constraints(t, self.actual, self.direction))
         return res
 
     def visit_type_type(self, template: TypeType) -> List[Constraint]:
