@@ -162,6 +162,7 @@ def add_attribute_to_class(
         name: str,
         typ: Type,
         final: bool = False,
+        no_serialize: bool = False,
 ) -> None:
     """
     Adds a new attribute to a class definition.
@@ -180,7 +181,12 @@ def add_attribute_to_class(
     node.info = info
     node.is_final = final
     node._fullname = info.fullname + '.' + name
-    info.names[name] = SymbolTableNode(MDEF, node, plugin_generated=True)
+    info.names[name] = SymbolTableNode(
+        MDEF,
+        node,
+        plugin_generated=True,
+        no_serialize=no_serialize,
+    )
 
 
 def deserialize_and_fixup_type(

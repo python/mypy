@@ -232,6 +232,20 @@ an_enum = SomeIntEnum.x
 an_enum = returns_some_int_enum()
 [out]
 
+[case testStrEnumCreation]
+# flags: --python-version 3.11
+from enum import StrEnum
+
+class MyStrEnum(StrEnum):
+    x = 'x'
+    y = 'y'
+
+reveal_type(MyStrEnum.x)  # N: Revealed type is "Literal[__main__.MyStrEnum.x]?"
+reveal_type(MyStrEnum.x.value)  # N: Revealed type is "Literal['x']?"
+reveal_type(MyStrEnum.y)  # N: Revealed type is "Literal[__main__.MyStrEnum.y]?"
+reveal_type(MyStrEnum.y.value)  # N: Revealed type is "Literal['y']?"
+[out]
+
 [case testEnumMethods]
 from enum import Enum
 
@@ -1391,9 +1405,9 @@ class E(Enum):
 
 e: E
 a: Literal[E.A, E.B, E.C] = e
-b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.B]]")
-c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Union[Literal[E.A], Literal[E.C]]")
-b = a  # E: Incompatible types in assignment (expression has type "Union[Literal[E.A], Literal[E.B], Literal[E.C]]", variable has type "Union[Literal[E.A], Literal[E.B]]")
+b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.B]")
+c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.C]")
+b = a  # E: Incompatible types in assignment (expression has type "Literal[E.A, E.B, E.C]", variable has type "Literal[E.A, E.B]")
 [builtins fixtures/bool.pyi]
 
 [case testIntEnumWithNewTypeValue]
@@ -1888,3 +1902,12 @@ def f2(c: C, a: Any) -> None:
     y = {'y': a, 'x': c.value}
     reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
 [builtins fixtures/dict.pyi]
+
+[case testEnumIgnoreIsDeleted]
+from enum import Enum
+
+class C(Enum):
+    _ignore_ = 'X'
+
+C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
+[typing fixtures/typing-medium.pyi]

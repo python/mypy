@@ -25,7 +25,7 @@ import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, SPECIAL_DUNDERS
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
 
 
 class Missing:
@@ -144,6 +144,11 @@ class Error:
         return "".join(output)
 
 
+# ====================
+# Core logic
+# ====================
+
+
 def test_module(module_name: str) -> Iterator[Error]:
     """Tests a given module's stub against introspecting it at runtime.
 
@@ -204,12 +209,15 @@ def verify_mypyfile(
     to_check = set(
         m
         for m, o in stub.names.items()
-        if not o.module_hidden and (not m.startswith("_") or hasattr(runtime, m))
+        if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
     )
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         obj = getattr(r, attr)
-        obj_mod = getattr(obj, "__module__", None)
+        try:
+            obj_mod = getattr(obj, "__module__", None)
+        except Exception:
+            return False
         if obj_mod is not None:
             return obj_mod == r.__name__
         return not isinstance(obj, types.ModuleType)
@@ -220,7 +228,7 @@ def verify_mypyfile(
         else [
             m
             for m in dir(runtime)
-            if not m.startswith("_")
+            if not is_probably_private(m)
             # Ensure that the object's module is `runtime`, since in the absence of __all__ we
             # don't have a good way to detect re-exports at runtime.
             and _belongs_to_runtime(runtime, m)
@@ -228,7 +236,7 @@ def verify_mypyfile(
     )
     # Check all things declared in module's __all__, falling back to our best guess
     to_check.update(runtime_public_contents)
-    to_check.difference_update({"__file__", "__doc__", "__name__", "__builtins__", "__package__"})
+    to_check.difference_update(IGNORED_MODULE_DUNDERS)
 
     for entry in sorted(to_check):
         stub_entry = stub.names[entry].node if entry in stub.names else MISSING
@@ -236,11 +244,19 @@ def verify_mypyfile(
             # Don't recursively check exported modules, since that leads to infinite recursion
             continue
         assert stub_entry is not None
-        yield from verify(
-            stub_entry,
-            getattr(runtime, entry, MISSING),
-            object_path + [entry],
-        )
+        try:
+            runtime_entry = getattr(runtime, entry, MISSING)
+        except Exception:
+            # Catch all exceptions in case the runtime raises an unexpected exception
+            # from __getattr__ or similar.
+            continue
+        yield from verify(stub_entry, runtime_entry, object_path + [entry])
+
+
+if sys.version_info >= (3, 7):
+    _WrapperDescriptorType = types.WrapperDescriptorType
+else:
+    _WrapperDescriptorType = type(object.__init__)
 
 
 @verify.register(nodes.TypeInfo)
@@ -274,11 +290,11 @@ def verify_typeinfo(
 
     # Check everything already defined in the stub
     to_check = set(stub.names)
-    # There's a reasonable case to be made that we should always check all dunders, but it's
-    # currently quite noisy. We could turn this into a denylist instead of an allowlist.
     to_check.update(
         # cast to workaround mypyc complaints
-        m for m in cast(Any, vars)(runtime) if not m.startswith("_") or m in SPECIAL_DUNDERS
+        m
+        for m in cast(Any, vars)(runtime)
+        if not is_probably_private(m) and m not in ALLOW_MISSING_CLASS_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -292,8 +308,16 @@ def verify_typeinfo(
         except Exception:
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
-            pass
-        else:
+            continue
+        # Do not error for an object missing from the stub
+        # If the runtime object is a types.WrapperDescriptorType object
+        # and has a non-special dunder name.
+        # The vast majority of these are false positives.
+        if not (
+            isinstance(stub_to_verify, Missing)
+            and isinstance(runtime_attr, _WrapperDescriptorType)
+            and is_dunder(mangled_entry, exclude_special=True)
+        ):
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
 
 
@@ -594,7 +618,6 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
-            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional-only '
@@ -677,6 +700,18 @@ def _verify_signature(
         yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
 
 
+def _verify_coroutine(
+    stub: nodes.FuncItem, runtime: Any, *, runtime_is_coroutine: bool
+) -> Optional[str]:
+    if stub.is_coroutine:
+        if not runtime_is_coroutine:
+            return 'is an "async def" function in the stub, but not at runtime'
+    else:
+        if runtime_is_coroutine:
+            return 'is an "async def" function at runtime, but not in the stub'
+    return None
+
+
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
     stub: nodes.FuncItem, runtime: MaybeMissing[Any], object_path: List[str]
@@ -694,11 +729,32 @@ def verify_funcitem(
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
     signature = safe_inspect_signature(runtime)
+    runtime_is_coroutine = inspect.iscoroutinefunction(runtime)
+
+    if signature:
+        stub_sig = Signature.from_funcitem(stub)
+        runtime_sig = Signature.from_inspect_signature(signature)
+        runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+    else:
+        runtime_sig_desc = None
+
+    coroutine_mismatch_error = _verify_coroutine(
+        stub,
+        runtime,
+        runtime_is_coroutine=runtime_is_coroutine
+    )
+
+    if coroutine_mismatch_error is not None:
+        yield Error(
+            object_path,
+            coroutine_mismatch_error,
+            stub,
+            runtime,
+            runtime_desc=runtime_sig_desc
+        )
+
     if not signature:
         return
-
-    stub_sig = Signature.from_funcitem(stub)
-    runtime_sig = Signature.from_inspect_signature(signature)
 
     for message in _verify_signature(stub_sig, runtime_sig, function_name=stub.name):
         yield Error(
@@ -706,7 +762,7 @@ def verify_funcitem(
             "is inconsistent, " + message,
             stub,
             runtime,
-            runtime_desc="def " + str(signature),
+            runtime_desc=runtime_sig_desc,
         )
 
 
@@ -917,6 +973,78 @@ def verify_typealias(
     )
 
 
+# ====================
+# Helpers
+# ====================
+
+
+IGNORED_MODULE_DUNDERS = frozenset(
+    {
+        "__file__",
+        "__doc__",
+        "__name__",
+        "__builtins__",
+        "__package__",
+        "__cached__",
+        "__loader__",
+        "__spec__",
+        "__path__",  # mypy adds __path__ to packages, but C packages don't have it
+        "__getattr__",  # resulting behaviour might be typed explicitly
+        # TODO: remove the following from this list
+        "__author__",
+        "__version__",
+        "__copyright__",
+    }
+)
+
+ALLOW_MISSING_CLASS_DUNDERS = frozenset(
+    {
+        # Special attributes
+        "__dict__",
+        "__text_signature__",
+        "__weakref__",
+        "__del__",  # Only ever called when an object is being deleted, who cares?
+        # These two are basically useless for type checkers
+        "__hash__",
+        "__getattr__",  # resulting behaviour might be typed explicitly
+        # isinstance/issubclass hooks that type-checkers don't usually care about
+        "__instancecheck__",
+        "__subclasshook__",
+        "__subclasscheck__",
+        # Pickle methods
+        "__setstate__",
+        "__getstate__",
+        "__getnewargs__",
+        "__getinitargs__",
+        "__reduce_ex__",
+        "__reduce__",
+        # ctypes weirdness
+        "__ctype_be__",
+        "__ctype_le__",
+        "__ctypes_from_outparam__",
+        # mypy limitations
+        "__abstractmethods__",  # Classes with metaclass=ABCMeta inherit this attribute
+        "__new_member__",  # If an enum defines __new__, the method is renamed as __new_member__
+        "__dataclass_fields__",  # Generated by dataclasses
+        "__dataclass_params__",  # Generated by dataclasses
+        "__doc__",  # mypy's semanal for namedtuples assumes this is str, not Optional[str]
+        # typing implementation details, consider removing some of these:
+        "__parameters__",
+        "__origin__",
+        "__args__",
+        "__orig_bases__",
+        "__final__",
+        # Consider removing these:
+        "__match_args__",
+        "__slots__",
+    }
+)
+
+
+def is_probably_private(name: str) -> bool:
+    return name.startswith("_") and not is_dunder(name)
+
+
 def is_probably_a_function(runtime: Any) -> bool:
     return (
         isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
@@ -1059,6 +1187,11 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     return mypy.types.LiteralType(value=value, fallback=fallback)
 
 
+# ====================
+# Build and entrypoint
+# ====================
+
+
 _all_stubs: Dict[str, nodes.MypyFile] = {}
 
 
@@ -1195,7 +1328,8 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
     if args.check_typeshed:
         assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
-        annoying_modules = {"antigravity", "this"}
+        # typeshed added a stub for __main__, but that causes stubtest to check itself
+        annoying_modules = {"antigravity", "this", "__main__"}
         modules = [m for m in modules if m not in annoying_modules]
 
     assert modules, "No modules to check"
