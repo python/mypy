@@ -2807,6 +2807,27 @@ class MyClass:
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 
+[case testProtocolAndTypeVariableSpecialCase]
+from typing import TypeVar, Iterable, Optional, Callable, Protocol
+
+T_co = TypeVar('T_co', covariant=True)
+
+class SupportsNext(Protocol[T_co]):
+    def __next__(self) -> T_co: ...
+
+N = TypeVar("N", bound=SupportsNext, covariant=True)
+
+class SupportsIter(Protocol[T_co]):
+    def __iter__(self) -> T_co: ...
+
+def f(i: SupportsIter[N]) -> N: ...
+
+I = TypeVar('I', bound=Iterable)
+
+def g(x: I, y: Iterable) -> None:
+    f(x)
+    f(y)
+
 [case testMatchProtocolAgainstOverloadWithAmbiguity]
 from typing import TypeVar, Protocol, Union, Generic, overload
 

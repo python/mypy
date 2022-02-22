@@ -513,6 +513,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return infer_constraints(template,
                                      mypy.typeops.tuple_fallback(actual),
                                      self.direction)
+        elif isinstance(actual, TypeVarType):
+            if not actual.values:
+                return infer_constraints(template, actual.upper_bound, self.direction)
+            return []
         else:
             return []
 
