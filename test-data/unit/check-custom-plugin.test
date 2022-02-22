@@ -946,7 +946,7 @@ reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
 
-[case testClassAttrPluginMetaclass]
+[case testClassAttrPluginMetaclassAnyBase]
 # flags: --config-file tmp/mypy.ini
 
 from typing import Any, Type
@@ -954,6 +954,24 @@ class M(type):
     attr = 'test'
 
 B: Any
+class Cls(B, metaclass=M):
+    pass
+
+reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginMetaclassRegularBase]
+# flags: --config-file tmp/mypy.ini
+
+from typing import Any, Type
+class M(type):
+    attr = 'test'
+
+class B:
+    attr = None
+
 class Cls(B, metaclass=M):
     pass
 

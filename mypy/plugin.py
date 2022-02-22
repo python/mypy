@@ -677,7 +677,7 @@ class Plugin(CommonPluginApi):
 
             Cls.x
 
-        get_class_attribute_hook is called with '__main__.Cls.x'.
+        get_class_attribute_hook is called with '__main__.Cls.x' as fullname.
         """
         return None
 
