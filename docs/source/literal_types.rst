@@ -1,7 +1,10 @@
+Literal types and Enums
+=======================
+
 .. _literal_types:
 
 Literal types
-=============
+-------------
 
 Literal types let you indicate that an expression is equal to some specific
 primitive value. For example, if we annotate a variable with type ``Literal["foo"]``,
@@ -369,3 +372,118 @@ whatever type the parameter has. For example, ``Literal[3]`` is treated as a
 subtype of ``int`` and so will inherit all of ``int``'s methods directly. This
 means that ``Literal[3].__add__`` accepts the same arguments and has the same
 return type as ``int.__add__``.
+
+
+Enums
+-----
+
+Mypy has special support for :py:class:`enum.Enum` and its subclasses:
+:py:class:`enum.IntEnum`, :py:class:`enum.Flag`, and :py:class:`enum.IntFlag`.
+
+.. code-block:: python
+
+  from enum import Enum
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+  reveal_type(Direction.up)  # Revealed type is "Literal[Direction.up]?"
+  reveal_type(Direction.down)  # Revealed type is "Literal[Direction.down]?"
+
+You can use enums to annotate types as you would expect:
+
+.. code-block:: python
+
+  class Movement:
+      def __init__(self, direction: Direction, speed: float) -> None:
+          self.direction = direction
+          self.speed = speed
+
+  Movement(Direction.up, 5.0)  # ok
+  Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
+
+Exhaustive checks
+*****************
+
+Similiar to ``Literal`` types ``Enum`` supports exhaustive checks.
+Let's start with a definition:
+
+.. code-block:: python
+
+  from enum import Enum
+  from typing import NoReturn
+
+  def assert_never(value: NoReturn) -> NoReturn:
+      # This also works in runtime as well:
+      assert False, 'This code should never be reached, got: {0}'.format(value)
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+Now, let's define an exhaustive check:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction is Direction.up:
+          reveal_type(direction)  # N: Revealed type is "Literal[ex.Direction.up]"
+          print('Going up!')
+          return
+      elif direction is Direction.down:
+          print('Down')
+          return
+      assert_never(direction)
+
+And then test that it raises an error when some cases are not covered:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction == Direction.up:
+          print('Going up!')
+          return
+      assert_never(direction)  # E: Argument 1 to "assert_never" has incompatible type "Direction"; expected "NoReturn"
+
+Extra Enum checks
+*****************
+
+Mypy also tries to support special features of ``Enum``
+the same way Python's runtime does.
+
+Extra checks:
+
+- Any ``Enum`` class with values is implicitly :ref:`final <final_attrs>`.
+  This is what happens in CPython:
+
+  .. code-block:: python
+
+    >>> class AllDirection(Direction):
+    ...     left = 'left'
+    ...     right = 'right'
+    Traceback (most recent call last):
+      ...
+    TypeError: Other: cannot extend enumeration 'Some'
+
+  We do the same thing:
+
+  .. code-block:: python
+
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+        left = 'left'
+        right = 'right'
+
+- All ``Enum`` fields are implictly ``final`` as well.
+
+  .. code-block:: python
+
+    Direction.up = '^'  # E: Cannot assign to final attribute "up"
+
+- All field names are checked to be unique.
+
+  .. code-block:: python
+
+     class Some(Enum):
+        x = 1
+        x = 2  # E: Attempted to reuse member name "x" in Enum definition "Some"
