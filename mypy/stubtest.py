@@ -723,8 +723,9 @@ def verify_funcitem(
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
         runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+        stub_desc = f'def {stub_sig!r}'
     else:
-        runtime_sig_desc, stub_sig = None, None
+        runtime_sig_desc, stub_desc = None, None
 
     # Don't raise an error if the stub is a coroutine, but the runtime isn't.
     # That results in false positives.
@@ -735,7 +736,7 @@ def verify_funcitem(
             'is an "async def" function at runtime, but not in the stub',
             stub,
             runtime,
-            stub_desc=f'def {stub_sig!r}',
+            stub_desc=stub_desc,
             runtime_desc=runtime_sig_desc
         )
 
