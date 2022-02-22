@@ -489,7 +489,7 @@ Extra checks:
         x = 1
         x = 2  # E: Attempted to reuse member name "x" in Enum definition "Some"
 
-- Base classes have no conflicts and mixing types are correct.
+- Base classes have no conflicts and mixin types are correct.
 
   .. code-block:: python
 
