@@ -2806,3 +2806,86 @@ class MyClass:
         assert isinstance(self, MyProtocol)
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testMatchProtocolAgainstOverloadWithAmbiguity]
+from typing import TypeVar, Protocol, Union, Generic, overload
+
+T = TypeVar("T", covariant=True)
+
+class slice: pass
+
+class GetItem(Protocol[T]):
+    def __getitem__(self, k: int) -> T: ...
+
+class Str:  # Resembles 'str'
+    def __getitem__(self, k: Union[int, slice]) -> Str: ...
+
+class Lst(Generic[T]):  # Resembles 'list'
+    def __init__(self, x: T): ...
+    @overload
+    def __getitem__(self, k: int) -> T: ...
+    @overload
+    def __getitem__(self, k: slice) -> Lst[T]: ...
+    def __getitem__(self, k): pass
+
+def f(x: GetItem[GetItem[Str]]) -> None: ...
+
+a: Lst[Str]
+f(Lst(a))
+
+class Lst2(Generic[T]):
+    def __init__(self, x: T): ...
+    # The overload items are tweaked but still compatible
+    @overload
+    def __getitem__(self, k: Str) -> None: ...
+    @overload
+    def __getitem__(self, k: slice) -> Lst2[T]: ...
+    @overload
+    def __getitem__(self, k: Union[int, str]) -> T: ...
+    def __getitem__(self, k): pass
+
+b: Lst2[Str]
+f(Lst2(b))
+
+class Lst3(Generic[T]):  # Resembles 'list'
+    def __init__(self, x: T): ...
+    # The overload items are no longer compatible (too narrow argument type)
+    @overload
+    def __getitem__(self, k: slice) -> Lst3[T]: ...
+    @overload
+    def __getitem__(self, k: bool) -> T: ...
+    def __getitem__(self, k): pass
+
+c: Lst3[Str]
+f(Lst3(c))  # E: Argument 1 to "f" has incompatible type "Lst3[Lst3[Str]]"; expected "GetItem[GetItem[Str]]" \
+# N: Following member(s) of "Lst3[Lst3[Str]]" have conflicts: \
+# N:     Expected:                  \
+# N:         def __getitem__(self, int) -> GetItem[Str] \
+# N:     Got:                       \
+# N:         @overload              \
+# N:         def __getitem__(self, slice) -> Lst3[Lst3[Str]] \
+# N:         @overload              \
+# N:         def __getitem__(self, bool) -> Lst3[Str]
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testMatchProtocolAgainstOverloadWithMultipleMatchingItems]
+from typing import Protocol, overload, TypeVar, Any
+
+_T_co = TypeVar("_T_co", covariant=True)
+_T = TypeVar("_T")
+
+class SupportsRound(Protocol[_T_co]):
+    @overload
+    def __round__(self) -> int: ...
+    @overload
+    def __round__(self, __ndigits: int) -> _T_co: ...
+
+class C:
+    # This matches both overload items of SupportsRound
+    def __round__(self, __ndigits: int = ...) -> int: ...
+
+def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
+
+round(C(), 1)
