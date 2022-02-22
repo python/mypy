@@ -490,7 +490,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             message = message_registry.VARIABLE_NOT_VALID_TYPE
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = message_registry.FUNCTION_NOT_VALID_TYPE
-            notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
             if name == 'builtins.any':
                 notes.append('Perhaps you meant "typing.Any" instead of "any"?')
             elif name == 'builtins.callable':
