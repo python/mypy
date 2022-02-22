@@ -7134,3 +7134,153 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testClassScopeImports]
+class Foo:
+    from mod import plain_function  # E: Unsupported class scoped import
+    from mod import plain_var
+
+reveal_type(Foo.plain_function)  # N: Revealed type is "Any"
+reveal_type(Foo().plain_function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.plain_var)  # N: Revealed type is "builtins.int"
+reveal_type(Foo().plain_var)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+def plain_function(x: int, y: int) -> int: ...
+plain_var: int
+
+[case testClassScopeImportModule]
+class Foo:
+    import mod
+
+reveal_type(Foo.mod)  # N: Revealed type is "builtins.object"
+reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
+[file mod.py]
+foo: int
+
+[case testClassScopeImportAlias]
+class Foo:
+    from mod import function  # E: Unsupported class scoped import
+    foo = function
+
+    from mod import var1
+    bar = var1
+
+    from mod import var2
+    baz = var2
+
+    from mod import var3
+    qux = var3
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo.function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var1)  # N: Revealed type is "builtins.int"
+
+reveal_type(Foo.baz)  # N: Revealed type is "mod.C"
+reveal_type(Foo.var2)  # N: Revealed type is "mod.C"
+
+reveal_type(Foo.qux)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var3)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+def function(x: int, y: int) -> int: ...
+var1: int
+
+class C: ...
+var2: C
+
+A = int
+var3: A
+
+
+[case testClassScopeImportModuleStar]
+class Foo:
+    from mod import *  # E: Unsupported class scoped import
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "Any"
+reveal_type(Foo.baz)  # E: "Type[Foo]" has no attribute "baz" \
+                      # N: Revealed type is "Any"
+
+[file mod.py]
+foo: int
+def bar(x: int) -> int: ...
+
+[case testClassScopeImportFunctionNested]
+class Foo:
+    class Bar:
+        from mod import baz  # E: Unsupported class scoped import
+
+reveal_type(Foo.Bar.baz)  # N: Revealed type is "Any"
+reveal_type(Foo.Bar().baz)  # N: Revealed type is "Any"
+
+[file mod.py]
+def baz(x: int) -> int: ...
+
+[case testClassScopeImportUndefined]
+class Foo:
+    from unknown import foo  # E: Cannot find implementation or library stub for module named "unknown" \
+                             # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+
+[case testClassScopeImportWithFollowImports]
+# flags: --follow-imports=skip
+class Foo:
+    from mod import foo
+
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+
+[case testClassScopeImportVarious]
+class Foo:
+    from mod1 import foo  # E: Unsupported class scoped import
+    from mod2 import foo
+
+    from mod1 import meth1  # E: Unsupported class scoped import
+    def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
+
+    def meth2(self, a: str) -> str: ...
+    from mod1 import meth2  # E: Unsupported class scoped import \
+                            # E: Name "meth2" already defined on line 8
+
+class Bar:
+    from mod1 import foo  # E: Unsupported class scoped import
+
+import mod1
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Bar.foo)  # N: Revealed type is "Any"
+reveal_type(mod1.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+
+[file mod1.py]
+def foo(x: int, y: int) -> int: ...
+def meth1(x: int) -> int: ...
+def meth2(x: int) -> int: ...
+[file mod2.py]
+def foo(z: str) -> int: ...
+
+
+[case testClassScopeImportWithError]
+class Foo:
+    from mod import meth1  # E: Unsupported class scoped import
+    from mod import meth2  # E: Unsupported class scoped import
+    from mod import T
+
+reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
+                    # N: Revealed type is "Any"
+
+[file mod.pyi]
+from typing import Any, TypeVar, overload
+
+@overload
+def meth1(self: Any, y: int) -> int: ...
+@overload
+def meth1(self: Any, y: str) -> str: ...
+
+T = TypeVar("T")
+def meth2(self: Any, y: T) -> T: ...

@@ -1,17 +1,17 @@
 import sys
-from typing import Any, Callable, Mapping, Tuple
+from typing import Any, Callable, Mapping
 
 class BaseProcess:
     name: str
     daemon: bool
     authkey: bytes
-    _identity: Tuple[int, ...]  # undocumented
+    _identity: tuple[int, ...]  # undocumented
     def __init__(
         self,
         group: None = ...,
         target: Callable[..., Any] | None = ...,
         name: str | None = ...,
-        args: Tuple[Any, ...] = ...,
+        args: tuple[Any, ...] = ...,
         kwargs: Mapping[str, Any] = ...,
         *,
         daemon: bool | None = ...,

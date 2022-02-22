@@ -73,21 +73,35 @@ def create_environ(python_version: str) -> Dict[str, str]:
         'MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=2 PIP_NO_BUILD_ISOLATION=no'
     )
 
-    # lxml is slow to build wheels for new releases, so allow installing reqs to fail
-    # if we failed to install lxml, we'll skip tests, but allow the build to succeed
-    env['CIBW_BEFORE_TEST'] = (
-        'pip install -r {project}/mypy/test-requirements.txt || true'
-    )
+    # lxml doesn't have a wheel for Python 3.10 on the manylinux image we use.
+    # lxml has historically been slow to support new Pythons as well.
+    env['CIBW_BEFORE_TEST'] = """
+      (
+      grep -v lxml {project}/mypy/test-requirements.txt > /tmp/test-requirements.txt
+      && cp {project}/mypy/mypy-requirements.txt /tmp/mypy-requirements.txt
+      && cp {project}/mypy/build-requirements.txt /tmp/build-requirements.txt
+      && pip install -r /tmp/test-requirements.txt
+      )
+    """.replace('\n', ' ')
+    # lxml currently has wheels on Windows and doesn't have grep, so special case
+    env['CIBW_BEFORE_TEST_WINDOWS'] = "pip install -r {project}/mypy/test-requirements.txt"
 
     # pytest looks for configuration files in the parent directories of where the tests live.
     # since we are trying to run the tests from their installed location, we copy those into
     # the venv. Ew ew ew.
+    # We don't run tests that need lxml since we don't install lxml
+    # We don't run external mypyc tests since there's some issue with compilation on the
+    # manylinux image we use.
     env['CIBW_TEST_COMMAND'] = """
-      ( ! pip list | grep lxml ) || (
+      (
       DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))')
-      && TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR
-      && MYPY_TEST_PREFIX='{project}/mypy' pytest $TEST_DIR
+
+      && MYPY_TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPY_TEST_DIR -k 'not (reports.test or testreports)'
+
+      && MYPYC_TEST_DIR=$(python -c 'import mypyc.test; print(mypyc.test.__path__[0])')
+      && MYPY_TEST_PREFIX='{project}/mypy' pytest $MYPYC_TEST_DIR -k 'not test_external'
       )
     """.replace('\n', ' ')
 
@@ -95,7 +109,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
     # previously didn't run any tests on windows wheels, so this is a net win.
     env['CIBW_TEST_COMMAND_WINDOWS'] = """
       bash -c "
-      ( ! pip list | grep lxml ) || (
+      (
       DIR=$(python -c 'import mypy, os; dn = os.path.dirname; print(dn(dn(mypy.__path__[0])))')
       && TEST_DIR=$(python -c 'import mypy.test; print(mypy.test.__path__[0])')
       && cp '{project}/mypy/pytest.ini' '{project}/mypy/conftest.py' $DIR

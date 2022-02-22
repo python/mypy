@@ -16,7 +16,8 @@ from mypy.nodes import (
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
-    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr
+    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr,
+    MatchStmt
 )
 
 from mypyc.ir.ops import Value
@@ -178,6 +179,9 @@ class IRBuilderVisitor(IRVisitor):
     def visit_nonlocal_decl(self, stmt: NonlocalDecl) -> None:
         # Pure declaration -- no runtime effect
         pass
+
+    def visit_match_stmt(self, stmt: MatchStmt) -> None:
+        self.bail("Match statements are not yet supported", stmt.line)
 
     # Expressions
 

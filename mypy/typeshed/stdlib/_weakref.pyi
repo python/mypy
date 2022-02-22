@@ -11,6 +11,7 @@ _T = TypeVar("_T")
 @final
 class CallableProxyType(Generic[_C]):  # "weakcallableproxy"
     def __getattr__(self, attr: str) -> Any: ...
+    __call__: _C
 
 @final
 class ProxyType(Generic[_T]):  # "weakproxy"

@@ -1,15 +1,16 @@
 import numbers
+import sys
 from types import TracebackType
-from typing import Any, Container, NamedTuple, Sequence, Tuple, Type, TypeVar, Union, overload
+from typing import Any, Container, NamedTuple, Sequence, Type, TypeVar, Union, overload
 
 _Decimal = Union[Decimal, int]
-_DecimalNew = Union[Decimal, float, str, Tuple[int, Sequence[int], int]]
+_DecimalNew = Union[Decimal, float, str, tuple[int, Sequence[int], int]]
 _ComparableNum = Union[Decimal, float, numbers.Rational]
 _DecimalT = TypeVar("_DecimalT", bound=Decimal)
 
 class DecimalTuple(NamedTuple):
     sign: int
-    digits: Tuple[int, ...]
+    digits: tuple[int, ...]
     exponent: int
 
 ROUND_DOWN: str
@@ -21,6 +22,8 @@ ROUND_UP: str
 ROUND_HALF_DOWN: str
 ROUND_05UP: str
 
+if sys.version_info >= (3, 7):
+    HAVE_CONTEXTVAR: bool
 HAVE_THREADS: bool
 MAX_EMAX: int
 MAX_PREC: int
@@ -46,7 +49,7 @@ def setcontext(__context: Context) -> None: ...
 def getcontext() -> Context: ...
 def localcontext(ctx: Context | None = ...) -> _ContextManager: ...
 
-class Decimal(object):
+class Decimal:
     def __new__(cls: Type[_DecimalT], value: _DecimalNew = ..., context: Context | None = ...) -> _DecimalT: ...
     @classmethod
     def from_float(cls, __f: float) -> Decimal: ...
@@ -148,7 +151,7 @@ class Decimal(object):
     def __deepcopy__(self, __memo: Any) -> Decimal: ...
     def __format__(self, __specifier: str, __context: Context | None = ...) -> str: ...
 
-class _ContextManager(object):
+class _ContextManager:
     new_context: Context
     saved_context: Context
     def __init__(self, new_context: Context) -> None: ...
@@ -157,7 +160,7 @@ class _ContextManager(object):
 
 _TrapType = Type[DecimalException]
 
-class Context(object):
+class Context:
     prec: int
     rounding: str
     Emin: int
@@ -181,7 +184,7 @@ class Context(object):
     # __setattr__() only allows to set a specific set of attributes,
     # already defined above.
     def __delattr__(self, __name: str) -> None: ...
-    def __reduce__(self) -> tuple[Type[Context], Tuple[Any, ...]]: ...
+    def __reduce__(self) -> tuple[Type[Context], tuple[Any, ...]]: ...
     def clear_flags(self) -> None: ...
     def clear_traps(self) -> None: ...
     def copy(self) -> Context: ...

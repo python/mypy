@@ -3,7 +3,7 @@ import sys
 from _typeshed import FileDescriptorLike, Self
 from abc import ABCMeta, abstractmethod
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Awaitable, Callable, Dict, Generator, Sequence, Tuple, TypeVar, Union, overload
+from typing import IO, Any, Awaitable, Callable, Generator, Sequence, TypeVar, Union, overload
 from typing_extensions import Literal
 
 from .base_events import Server
@@ -17,11 +17,11 @@ if sys.version_info >= (3, 7):
     from contextvars import Context
 
 _T = TypeVar("_T")
-_Context = Dict[str, Any]
+_Context = dict[str, Any]
 _ExceptionHandler = Callable[[AbstractEventLoop, _Context], Any]
 _ProtocolFactory = Callable[[], BaseProtocol]
 _SSLContext = Union[bool, None, ssl.SSLContext]
-_TransProtPair = Tuple[BaseTransport, BaseProtocol]
+_TransProtPair = tuple[BaseTransport, BaseProtocol]
 
 class Handle:
     _cancelled = False

@@ -48,11 +48,13 @@ altsep: str
 if sys.version_info < (3, 7) and sys.platform == "win32":
     def splitunc(p: AnyStr) -> tuple[AnyStr, AnyStr]: ...  # deprecated
 
-# Similar to posixpath, but have slightly different argument names
+# First parameter is not actually pos-only,
+# but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
+# as the parameter name is different in posixpath.join()
 @overload
-def join(path: StrPath, *paths: StrPath) -> str: ...
+def join(__path: StrPath, *paths: StrPath) -> str: ...
 @overload
-def join(path: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(__path: BytesPath, *paths: BytesPath) -> bytes: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 10):

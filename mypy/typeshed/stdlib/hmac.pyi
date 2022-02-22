@@ -7,6 +7,9 @@ from typing import Any, AnyStr, Callable, Union, overload
 _Hash = Any
 _DigestMod = Union[str, Callable[[], _Hash], ModuleType]
 
+trans_5C: bytes
+trans_36: bytes
+
 digest_size: None
 
 if sys.version_info >= (3, 8):

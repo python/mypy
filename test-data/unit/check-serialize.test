@@ -1030,8 +1030,8 @@ x: Tuple[int, ...]
 y: tuple
 [builtins fixtures/tuple.pyi]
 [out2]
-tmp/a.py:2: note: Revealed type is "builtins.tuple[builtins.int]"
-tmp/a.py:3: note: Revealed type is "builtins.tuple[Any]"
+tmp/a.py:2: note: Revealed type is "builtins.tuple[builtins.int, ...]"
+tmp/a.py:3: note: Revealed type is "builtins.tuple[Any, ...]"
 
 [case testSerializeNone]
 import a

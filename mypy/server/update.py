@@ -485,13 +485,6 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
         process_fresh_modules(graph, to_process, manager)
 
 
-def fix_fg_dependencies(manager: BuildManager, deps: Dict[str, Set[str]]) -> None:
-    """Populate the dependencies with stuff that build may have missed"""
-    # This means the root module and typestate
-    merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), deps)
-    # TypeState.add_all_protocol_deps(deps)
-
-
 # The result of update_module_isolated when no blockers, with these items:
 #
 # - Id of the changed module (can be different from the module argument)

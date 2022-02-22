@@ -12,9 +12,10 @@ import sys
 
 from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType, TypedDictType,
+    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -42,25 +43,6 @@ def tuple_fallback(typ: TupleType) -> Instance:
     if info.fullname != 'builtins.tuple':
         return typ.partial_fallback
     return Instance(info, [join_type_list(typ.items)])
-
-
-def try_getting_instance_fallback(typ: ProperType) -> Optional[Instance]:
-    """Returns the Instance fallback for this type if one exists.
-
-    Otherwise, returns None.
-    """
-    if isinstance(typ, Instance):
-        return typ
-    elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
-    elif isinstance(typ, TypedDictType):
-        return typ.fallback
-    elif isinstance(typ, FunctionLike):
-        return typ.fallback
-    elif isinstance(typ, LiteralType):
-        return typ.fallback
-    else:
-        return None
 
 
 def type_object_type_from_function(signature: FunctionLike,
@@ -723,7 +705,10 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
     typ = get_proper_type(typ)
 
     if isinstance(typ, UnionType):
-        items = [try_expanding_sum_type_to_union(item, target_fullname) for item in typ.items]
+        items = [
+            try_expanding_sum_type_to_union(item, target_fullname)
+            for item in typ.relevant_items()
+        ]
         return make_simplified_union(items, contract_literals=False)
     elif isinstance(typ, Instance) and typ.type.fullname == target_fullname:
         if typ.type.is_enum:
@@ -731,8 +716,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             for name, symbol in typ.type.names.items():
                 if not isinstance(symbol.node, Var):
                     continue
-                # Skip "_order_" and "__order__", since Enum will remove it
-                if name in ("_order_", "__order__"):
+                # Skip these since Enum will remove it
+                if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
             # SymbolTables are really just dicts, and dicts are guaranteed to preserve
@@ -795,7 +780,7 @@ def coerce_to_literal(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
     elif isinstance(typ, Instance):
         if typ.last_known_value:
             return typ.last_known_value
@@ -861,3 +846,18 @@ def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> 
         return True
 
     return False
+
+
+def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequence[Type]]:
+    """Separate literals from other members in a union type."""
+    literal_items = []
+    union_items = []
+
+    for item in t.items:
+        proper = get_proper_type(item)
+        if isinstance(proper, LiteralType):
+            literal_items.append(proper)
+        else:
+            union_items.append(item)
+
+    return literal_items, union_items
