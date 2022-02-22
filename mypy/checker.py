@@ -1837,6 +1837,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             for base in defn.info.mro[1:-1]:  # we don't need self and `object`
                 if base.is_enum and base.fullname not in ENUM_BASES:
                     self.check_final_enum(defn, base)
+            self.check_enum_bases(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1930,6 +1931,38 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.is_stub or sym.node.has_explicit_value:
             return True
         return False
+
+    def check_enum_bases(self, defn: ClassDef) -> None:
+        enum_base: Optional[Instance] = None
+        data_base: Optional[Instance] = None
+        for base in defn.info.bases:
+            if enum_base is None and base.type.fullname in ENUM_BASES:
+                enum_base = base
+                continue
+            elif enum_base is not None:
+                self.fail(
+                    'No base classes are allowed after "{}"'.format(enum_base),
+                    defn,
+                )
+                break
+
+            # This might not be 100% correct, because runtime `__new__`
+            # and `__new__` from `typeshed` are sometimes different,
+            # but it is good enough.
+            new_method = base.type.get('__new__')
+            if (data_base is None
+                    and enum_base is None  # data type is always before `Enum`
+                    and new_method
+                    and new_method.node
+                    and new_method.node.fullname != 'builtins.object.__new__'):
+                data_base = base
+                continue
+            elif data_base is not None:
+                self.fail(
+                    'Only a single data type mixin is allowed for Enum subtypes, '
+                    'found extra "{}"'.format(base),
+                    defn,
+                )
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

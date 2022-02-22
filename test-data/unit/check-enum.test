@@ -1883,6 +1883,71 @@ class SubWithOverload(WithOverload):  # Should pass
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testEnumBaseClassesOrder]
+import enum
+
+# Base types:
+
+class First:
+    def __new__(cls, val):
+        pass
+
+class Second:
+    def __new__(cls, val):
+        pass
+
+class Third:
+    def __new__(cls, val):
+        pass
+
+class Mixin:
+    pass
+
+# Correct Enums:
+
+class Correct1(Mixin, First, enum.Enum):
+    pass
+
+class Correct2(First, enum.Enum):
+    pass
+
+class Correct3(Mixin, enum.Enum):
+    pass
+
+class RegularClass(Mixin, First, Second):
+    pass
+
+# Wrong Enums:
+
+class MixinAfterEnum1(enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum"
+    pass
+
+class MixinAfterEnum2(First, enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum"
+    pass
+
+class TwoDataTypes(First, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class TwoDataTypesAndIntEnumMixin(First, Second, enum.IntEnum, Mixin):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                                        # E: No base classes are allowed after "enum.IntEnum"
+    pass
+
+class ThreeDataTypes(First, Second, Third, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                        # E: # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
+    pass
+
+class ThreeDataTypesAndMixin(First, Second, Third, enum.Enum, Mixin): # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                        # E: # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third" \
+                                                        # E: No base classes are allowed after "enum.Enum"
+    pass
+
+class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class FromEnumAndOther2(Correct2, Second):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+[builtins fixtures/tuple.pyi]
+
 [case testEnumtValueUnionSimplification]
 from enum import IntEnum
 from typing import Any
