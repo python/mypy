@@ -298,7 +298,7 @@ class DataclassTransformer:
                     self._ctx.api,
                     self._ctx.cls,
                     name='__hash__',
-                    attr_type=NoneType(),
+                    typ=NoneType(),
                 )
         elif not unsafe_hash and eq and frozen:
             # "Frozen, so hashable, allows override"
