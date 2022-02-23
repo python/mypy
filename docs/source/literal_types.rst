@@ -378,7 +378,8 @@ Enums
 -----
 
 Mypy has special support for :py:class:`enum.Enum` and its subclasses:
-:py:class:`enum.IntEnum`, :py:class:`enum.Flag`, and :py:class:`enum.IntFlag`.
+:py:class:`enum.IntEnum`, :py:class:`enum.Flag`, :py:class:`enum.IntFlag`,
+and :py:class:`enum.StrEnum`.
 
 .. code-block:: python
 
@@ -487,3 +488,14 @@ Extra checks:
      class Some(Enum):
         x = 1
         x = 2  # E: Attempted to reuse member name "x" in Enum definition "Some"
+
+- Base classes have no conflicts and mixin types are correct.
+
+  .. code-block:: python
+
+    class WrongEnum(str, int, enum.Enum):
+        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "int"
+        ...
+
+    class MixinAfterEnum(enum.Enum, Mixin): # E: No base classes are allowed after "enum.Enum"
+        ...
