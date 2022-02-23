@@ -19,7 +19,7 @@ if MYPY:
 
 def getprefixes():
     # type: () -> Tuple[str, str]
-    return sys.base_prefix, sys.prefix
+    return getattr(sys, "base_prefix", sys.prefix), sys.prefix
 
 
 def getsitepackages():
