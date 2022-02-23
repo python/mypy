@@ -258,7 +258,8 @@ class MypyFile(SymbolNode):
 
     __slots__ = ('_fullname', 'path', 'defs', 'alias_deps',
                  'is_bom', 'names', 'imports', 'ignored_lines', 'is_stub',
-                 'is_cache_skeleton', 'is_partial_stub_package', 'plugin_deps')
+                 'is_cache_skeleton', 'is_partial_stub_package', 'plugin_deps',
+                 'future_import_flags')
 
     # Fully qualified module name
     _fullname: Bogus[str]
@@ -287,6 +288,8 @@ class MypyFile(SymbolNode):
     is_partial_stub_package: bool
     # Plugin-created dependencies
     plugin_deps: Dict[str, Set[str]]
+    # Future imports defined in this file. Populated during semantic analysis.
+    future_import_flags: Set[str]
 
     def __init__(self,
                  defs: List[Statement],
@@ -309,6 +312,7 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.future_import_flags = set()
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -331,6 +335,9 @@ class MypyFile(SymbolNode):
     def is_package_init_file(self) -> bool:
         return len(self.path) != 0 and os.path.basename(self.path).startswith('__init__.')
 
+    def is_future_flag_set(self, flag: str) -> bool:
+        return flag in self.future_import_flags
+
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',
                 '_fullname': self._fullname,
@@ -338,6 +345,7 @@ class MypyFile(SymbolNode):
                 'is_stub': self.is_stub,
                 'path': self.path,
                 'is_partial_stub_package': self.is_partial_stub_package,
+                'future_import_flags': list(self.future_import_flags),
                 }
 
     @classmethod
@@ -350,6 +358,7 @@ class MypyFile(SymbolNode):
         tree.path = data['path']
         tree.is_partial_stub_package = data['is_partial_stub_package']
         tree.is_cache_skeleton = True
+        tree.future_import_flags = set(data['future_import_flags'])
         return tree
 
 
