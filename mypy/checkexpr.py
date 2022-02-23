@@ -2414,7 +2414,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            return '__truediv__' if 'division' in self.chk.future_import_flags else '__div__'
+            return (
+                '__truediv__'
+                if self.chk.tree.is_future_flag_set('division')
+                else '__div__'
+            )
         else:
             return operators.op_methods[op]
 

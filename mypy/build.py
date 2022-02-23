@@ -2191,9 +2191,6 @@ class State:
             self._type_checker = TypeChecker(
                 manager.errors, manager.modules, self.options,
                 self.tree, self.xpath, manager.plugin,
-                self.manager.semantic_analyzer.future_import_flags.get(
-                    self.tree.fullname, set(),
-                ),
             )
         return self._type_checker
 
