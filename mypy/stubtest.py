@@ -197,36 +197,34 @@ def verify(
 def _verify_exported_names(
     object_path: List[str], stub: nodes.MypyFile, runtime_all_as_set: Set[str]
 ) -> Iterator[Error]:
-    public_names_in_stub = {
-        m
-        for m, o in stub.names.items()
-        if o.module_public and m not in IGNORED_MODULE_DUNDERS
-    }
-    if not runtime_all_as_set.symmetric_difference(public_names_in_stub):
+    public_names_in_stub = {m for m, o in stub.names.items() if o.module_public}
+    names_in_stub_not_runtime = sorted(public_names_in_stub - runtime_all_as_set)
+    names_in_runtime_not_stub = sorted(runtime_all_as_set - public_names_in_stub)
+    if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
         return
-    sorted_runtime_names = sorted(
-        runtime_all_as_set,
-        key=lambda name: ((name not in public_names_in_stub), name)
-    )
-    sorted_names_in_stub = sorted(
-        public_names_in_stub,
-        key=lambda name: ((name not in runtime_all_as_set), name)
-    )
     yield Error(
         object_path,
         (
             "module: names exported from the stub "
-            "do not correspond to the names exported at runtime. "
-            "(Note: This is probably due to an inaccurate "
-            "`__all__` in the stub.)"
+            "do not correspond to the names exported at runtime.\n"
+            "(Note: This is probably either due to an inaccurate "
+            "`__all__` in the stub, "
+            "or due to a name being declared in `__all__` "
+            "but not actually defined in the stub.)"
         ),
         # pass in MISSING instead of the stub and runtime objects,
         # as the line numbers aren't very relevant here,
         # and it makes for a prettier error message.
-        MISSING,
-        MISSING,
-        stub_desc=f"Names exported are: {sorted_names_in_stub}",
-        runtime_desc=f"Names exported are: {sorted_runtime_names}"
+        stub_object=MISSING,
+        runtime_object=MISSING,
+        stub_desc=(
+            f"Names exported in the stub but not at runtime: "
+            f"{names_in_stub_not_runtime}"
+        ),
+        runtime_desc=(
+            f"Names exported at runtime but not in the stub: "
+            f"{names_in_runtime_not_stub}"
+        )
     )
 
 
