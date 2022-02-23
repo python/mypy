@@ -365,7 +365,7 @@ class TestRunSeparate(TestRun):
     """Run the main multi-module tests in separate compilation mode.
 
     In this mode there are multiple compilation groups, which are compiled
-    incrementally. Each group is compiled to separate C file, and these C
+    incrementally. Each group is compiled to a separate C file, and these C
     files are compiled separately.
 
     Each compiled module is placed into a separate compilation group, unless
