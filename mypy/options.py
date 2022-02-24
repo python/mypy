@@ -116,7 +116,11 @@ class Options:
         self.legacy = False
         self.write_baseline = False
         self.baseline_file = defaults.BASELINE_FILE
+        # TODO make this a tuple or something that will make comparisons easier
+        self.baseline_format = "default"
+        self.auto_baseline = True
         self.default_return = False
+        self.targets: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = flip_if_not_based(True)
