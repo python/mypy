@@ -1336,7 +1336,8 @@ class MessageBuilder:
     def untyped_decorated_function(self, typ: Type, context: Context) -> None:
         typ = get_proper_type(typ)
         if isinstance(typ, AnyType):
-            self.fail("Function is untyped after decorator transformation", context, code=codes.DYNAMIC_TYPING)
+            self.fail("Function is untyped after decorator transformation", context,
+                      code=codes.DYNAMIC_TYPING)
         else:
             self.fail('Type of decorated function contains type "Any" ({})'.format(
                 format_type(typ)), context, code=codes.DYNAMIC_TYPING)

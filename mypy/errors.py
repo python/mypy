@@ -121,26 +121,6 @@ ErrorTuple = Tuple[Optional[str],
                    Optional[ErrorCode]]
 
 
-def filter_prefix(error_map: Dict[str, List[ErrorInfo]]) -> Dict[str, List[ErrorInfo]]:
-    """Convert absolute paths to relative paths in an error_map"""
-    result = {
-        Path(file).resolve().relative_to(Path.cwd()).as_posix(): errors
-        for file, errors in error_map.items()
-    }
-    for errors in result.values():
-        for error in errors:
-            error.origin = remove_path_prefix(
-                error.origin[0], os.getcwd()).replace(os.sep, "/"), *error.origin[1:]
-            error.file = remove_path_prefix(error.file, os.getcwd()).replace(os.sep, "/")
-            error.import_ctx = [
-                (
-                    remove_path_prefix(import_ctx[0], os.getcwd()).replace(os.sep, "/"),
-                    import_ctx[1],
-                ) for import_ctx in error.import_ctx
-            ]
-    return result
-
-
 class BaselineError(TypedDict):
     line: int
     code: str
@@ -204,9 +184,9 @@ class Errors:
     seen_import_error = False
 
     # Error baseline
-    baseline: Dict[str, List[BaselineError]] = {}
+    baseline: Dict[str, List[BaselineError]]
     # All detected errors before baseline filter
-    all_errors: Dict[str, List[ErrorInfo]] = {}
+    all_errors: Dict[str, List[ErrorInfo]]
 
     def __init__(self,
                  show_error_context: bool = False,
@@ -232,6 +212,8 @@ class Errors:
 
     def initialize(self) -> None:
         self.error_info_map = OrderedDict()
+        self.all_errors = {}
+        self.baseline = {}
         self.flushed_files = set()
         self.import_ctx = []
         self.function_or_member = [None]
@@ -281,6 +263,11 @@ class Errors:
         else:
             file = os.path.normpath(file)
             return remove_path_prefix(file, self.ignore_prefix)
+
+    def simple_path(self, file: str) -> str:
+        """Always transform to simple path"""
+        file = os.path.normpath(file)
+        return remove_path_prefix(file, self.ignore_prefix)
 
     def set_file(self, file: str,
                  module: Optional[str],
@@ -625,7 +612,7 @@ class Errors:
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
-    def file_messages(self, path: str) -> List[str]:
+    def file_messages(self, path: str, all_errors: bool = False) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
@@ -637,6 +624,8 @@ class Errors:
         if self.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
+        if all_errors:
+            return self.format_messages(self.all_errors[path], source_lines)
         return self.format_messages(self.error_info_map[path], source_lines)
 
     def new_messages(self) -> List[str]:
@@ -798,54 +787,87 @@ class Errors:
 
     def save_baseline(self, file: Path) -> None:
         """Create/update a file that stores all errors"""
+        if not self.all_errors:
+            if not file.exists():
+                return
+            file.unlink()
+            print("No errors, baseline file removed")
+            return
         if not file.parent.exists():
             file.parent.mkdir()
         json.dump(
             {
-                file: [
+                self.simple_path(file): [
                     {
                         "line": error.line,
                         "code": error.code and error.code.code,
-                        "message": error.message
-                    } for error in errors
+                        "message": error.message,
+                        "target": error.target,
+                    } for error in self.sort_messages(errors)
+                    # don't store reveal errors
+                    if error.code != codes.REVEAL
                 ]
-                for file, errors in filter_prefix(self.error_info_map).items()
+                for file, errors in self.all_errors.items()
             },
             file.open("w"),
             indent=2,
+            sort_keys=True,
         )
 
     def load_baseline(self, file: Path) -> bool:
-        """Load baseline errors from baseline file"""
+        """Load baseline errors from baseline file
+
+        :raises JSONDecodeError: if the file contains invalid JSON
+        """
 
         if not file.exists():
             return False
         self.baseline = json.load(file.open("r"))
         return True
 
-    def filter_baseline(self) -> None:
+    def filter_baseline(self, path: str) -> None:
         """Remove baseline errors from the error_info_map"""
-
-        self.all_errors = self.error_info_map.copy()
-        for file, errors in self.error_info_map.items():
-            baseline_errors = self.baseline.get(
-                Path(file).resolve().relative_to(Path.cwd()).as_posix())
-            if not baseline_errors:
+        if path not in self.error_info_map:
+            return
+        if path not in self.all_errors:
+            self.all_errors[path] = self.error_info_map[path]
+        baseline_errors = self.baseline.get(self.simple_path(path))
+        if not baseline_errors:
+            return
+        new_errors = []
+        # first pass for exact matches
+        for error in self.sort_messages(self.error_info_map[path]):
+            if error.code == codes.REVEAL:
                 continue
-            new_errors = []
-            for error in errors:
-                for baseline_error in baseline_errors:
-                    if (
-                        error.line == baseline_error["line"] and
-                            (error.code and error.code.code) == baseline_error["code"]
-                            or clean_baseline_message(error.message) ==
-                            clean_baseline_message(baseline_error["message"]) and
-                            abs(error.line - baseline_error["line"]) < 50
-                    ):
-                        break
-                else:
-                    new_errors.append(error)
-            self.error_info_map[file] = new_errors
+            for i, baseline_error in enumerate(baseline_errors):
+                if (
+                    error.line == baseline_error["line"] and
+                        clean_baseline_message(error.message) ==
+                        clean_baseline_message(baseline_error["message"])
+                ):
+                    del baseline_errors[i]
+                    break
+            else:
+                new_errors.append(error)
+        # second pass for rough matches
+        new_errors, temp = [], new_errors
+        for error in temp:
+            if error.code == codes.REVEAL:
+                new_errors.append(error)
+                continue
+            for i, baseline_error in enumerate(baseline_errors):
+                if (
+                    error.line == baseline_error["line"] and
+                        (error.code and error.code.code) == baseline_error["code"]
+                        or clean_baseline_message(error.message) ==
+                        clean_baseline_message(baseline_error["message"]) and
+                        abs(error.line - baseline_error["line"]) < 100
+                ):
+                    del baseline_errors[i]
+                    break
+            else:
+                new_errors.append(error)
+        self.error_info_map[path] = new_errors
 
 
 def clean_baseline_message(message: str) -> str:

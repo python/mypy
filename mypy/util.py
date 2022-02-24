@@ -708,12 +708,15 @@ class FancyFormatter:
 
     def format_error(
         self, n_errors: int, n_files: int, n_sources: int, *,
-        blockers: bool = False, use_color: bool = True
+        blockers: bool = False, use_color: bool = True, new_errors: int = -1
     ) -> str:
         """Format a short summary in case of errors."""
 
-        msg = 'Found {} error{} in {} file{}'.format(
+        msg = 'Found {} error{} {}in {} file{}'.format(
             n_errors, 's' if n_errors != 1 else '',
+            f'({new_errors} new error{"s" if new_errors != 1 else ""}) '
+            if new_errors != -1
+            else '',
             n_files, 's' if n_files != 1 else ''
         )
         if blockers:

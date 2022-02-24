@@ -114,10 +114,24 @@ def main(script_path: Optional[str],
         code = 2 if blockers else 1
     if options.error_summary:
         if messages:
+            if options.write_baseline and res:
+                new_errors = 0
+                for errors in res.manager.errors.error_info_map.values():
+                    new_errors += len(
+                        [error for error in res.manager.errors.remove_duplicates(
+                            res.manager.errors.render_messages(
+                                res.manager.errors.sort_messages(
+                                    [error for error in errors if not error.hidden]
+                                )
+                            )
+                        ) if error[3] == "error"]
+                    )
+            else:
+                new_errors = -1
             n_errors, n_files = util.count_stats(messages)
             if n_errors:
                 summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers,
+                    n_errors, n_files, len(sources), new_errors=new_errors, blockers=blockers,
                     use_color=options.color_output
                 )
                 stdout.write(summary + '\n')
@@ -129,6 +143,7 @@ def main(script_path: Optional[str],
         stdout.write(
             formatter.style("Baseline successfully written to {}\n".format(options.baseline_file),
                             "green", bold=True))
+        stdout.flush()
         code = 0
 
     if options.install_types and not options.non_interactive:
@@ -163,8 +178,9 @@ def run_build(sources: List[BuildSource],
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         if options.pretty:
             new_messages = formatter.fit_in_terminal(new_messages)
-        messages.extend(new_messages)
-        if options.non_interactive:
+        if not options.write_baseline or serious:
+            messages.extend(new_messages)
+        if options.non_interactive or (options.write_baseline and serious):
             # Collect messages and possibly show them later.
             return
         f = stderr if serious else stdout
@@ -509,6 +525,9 @@ def process_options(args: List[str],
         '--baseline-file', action='store',
         help="Use baseline info in the given file"
              "(defaults to '{}')".format(defaults.BASELINE_FILE))
+    add_invertible_flag(
+        '--no-auto-baseline', default=True, group=based_group,
+        dest="auto_baseline", help="Don't update the baseline automatically.")
     based_group.add_argument(
         '--legacy', action='store_true',
         help="Disable all based functionality")
@@ -1144,7 +1163,7 @@ def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options
             td, serious, messages, options.junit_xml, py_version, options.platform)
 
 
-def fail(msg: str, stderr: TextIO, options: Options) -> None:
+def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
     stderr.write('%s\n' % msg)
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)

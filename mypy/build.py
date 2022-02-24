@@ -21,7 +21,9 @@ import stat
 import sys
 import time
 import types
+from json import JSONDecodeError
 from pathlib import Path
+from sys import stderr
 
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
@@ -61,7 +63,7 @@ from mypy.renaming import VariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
 from mypy.stubinfo import legacy_bundled_packages, is_legacy_bundled_package
-from mypy import errorcodes as codes, defaults
+from mypy import errorcodes as codes, defaults, util
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of
@@ -188,6 +190,8 @@ def build(sources: List[BuildSource],
         # Patch it up to contain either none or all none of the messages,
         # depending on whether we are flushing errors.
         serious = not e.use_stdout
+        # don't write anything if there was a compile error
+        options.write_baseline = False
         flush_errors(e.messages, serious)
         e.messages = messages
         raise
@@ -2696,6 +2700,27 @@ def dispatch(sources: List[BuildSource],
         dump_graph(graph, stdout)
         return graph
 
+    if manager.options.baseline_file:
+        from mypy import main
+
+        formatter = util.FancyFormatter(stdout, stderr, manager.options.show_error_codes)
+
+        try:
+            res = manager.errors.load_baseline(Path(manager.options.baseline_file))
+        except JSONDecodeError:
+            msg = formatter.style(
+                f"error: Baseline file ({manager.options.baseline_file!r}) contains invalid JSON",
+                'red', bold=True
+            )
+            main.fail(msg, stderr, manager.options)
+
+        if not res and manager.options.baseline_file != defaults.BASELINE_FILE:
+            msg = formatter.style(
+                f"error: Baseline file ({manager.options.baseline_file!r}) not found", 'red',
+                bold=True
+            )
+            main.fail(msg, stderr, manager.options)
+
     # Fine grained dependencies that didn't have an associated module in the build
     # are serialized separately, so we read them after we load the graph.
     # We need to read them both for running in daemon mode and if we are generating
@@ -3054,6 +3079,12 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)
 
+    if manager.options.baseline_file and (
+        manager.options.write_baseline or
+        not manager.errors.num_messages() and manager.options.auto_baseline
+    ):
+        manager.errors.save_baseline(Path(manager.options.baseline_file))
+
     sccs_left = len(fresh_scc_queue)
     nodes_left = sum(len(scc) for scc in fresh_scc_queue)
     manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
@@ -3169,16 +3200,18 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         for id in stale:
             graph[id].transitive_error = True
     for id in stale:
-        if not manager.options.write_baseline and manager.options.baseline_file:
-            res = manager.errors.load_baseline(Path(manager.options.baseline_file))
-            if not res and manager.options.baseline_file != defaults.BASELINE_FILE:
-                print("Baseline file not found")
-                raise Exception("Baseline file not found")
-        if manager.errors.baseline:
-            manager.errors.filter_baseline()
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
-        if manager.options.write_baseline and manager.options.baseline_file:
-            manager.errors.save_baseline(Path(manager.options.baseline_file))
+        manager.errors.filter_baseline(graph[id].xpath)
+        # show new errors only
+        manager.flush_errors(
+            manager.errors.file_messages(graph[id].xpath),
+            False,
+        )
+        if manager.options.write_baseline:
+            # collect but don't show old errors
+            manager.flush_errors(
+                manager.errors.file_messages(graph[id].xpath, True),
+                True,
+            )
         graph[id].write_cache()
         graph[id].mark_as_rechecked()
 
