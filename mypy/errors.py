@@ -1,14 +1,13 @@
-import json
 import os.path
 import re
 import sys
 import traceback
 
-from pathlib import Path
+from copy import deepcopy
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union, cast
 from typing_extensions import Final, Literal, NoReturn, TypedDict
 
 from mypy.scope import Scope
@@ -25,7 +24,13 @@ allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
 
 # Keep track of the original error code when the error code of a message is changed.
 # This is used to give notes about out-of-date "type: ignore" comments.
-original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC}
+original_error_codes: Final = {
+    codes.LITERAL_REQ: codes.MISC,
+    codes.NO_ANY_EXPR: codes.MISC,
+    codes.NO_ANY_EXPLICIT: codes.MISC,
+    codes.NO_SUBCLASS_ANY: codes.MISC,
+    codes.NO_ANY_DECORATED: codes.MISC,
+}
 
 
 class ErrorInfo:
@@ -82,6 +87,9 @@ class ErrorInfo:
     # by mypy daemon)
     hidden = False
 
+    # Any note messages that are associated with this error
+    notes: List['ErrorInfo']
+
     def __init__(self,
                  import_ctx: List[Tuple[str, int]],
                  file: str,
@@ -113,6 +121,7 @@ class ErrorInfo:
         self.allow_dups = allow_dups
         self.origin = origin or (file, line, line)
         self.target = target
+        self.notes = []
 
 
 # Type used internally to represent errors:
@@ -178,30 +187,31 @@ class ErrorWatcher:
         return self._filtered
 
 
-def filter_prefix(error_map: Dict[str, List[ErrorInfo]]) -> Dict[str, List[ErrorInfo]]:
-    """Convert absolute paths to relative paths in an error_map"""
-    result = {
-        Path(file).resolve().relative_to(Path.cwd()).as_posix(): errors
-        for file, errors in error_map.items()
-    }
-    for errors in result.values():
-        for error in errors:
-            error.origin = remove_path_prefix(
-                error.origin[0], os.getcwd()).replace(os.sep, "/"), *error.origin[1:]
-            error.file = remove_path_prefix(error.file, os.getcwd()).replace(os.sep, "/")
-            error.import_ctx = [
-                (
-                    remove_path_prefix(import_ctx[0], os.getcwd()).replace(os.sep, "/"),
-                    import_ctx[1],
-                ) for import_ctx in error.import_ctx
-            ]
-    return result
+class StoredBaselineError(TypedDict):
+    """Structure of an error while stored in a 1.3 baseline"""
+    code: Optional[str]
+    column: int
+    message: str
+    offset: int
+    target: Optional[str]
 
 
 class BaselineError(TypedDict):
+    code: Optional[str]
+    column: int
     line: int
-    code: str
     message: str
+    target: Optional[str]
+
+
+class UnknownBaselineError(TypedDict, total=False):
+    """Could be a 1.2 or a 1.3 error"""
+    code: Optional[str]
+    column: int
+    line: int
+    message: str
+    offset: int
+    target: Optional[str]
 
 
 class Errors:
@@ -266,9 +276,12 @@ class Errors:
     _watchers: List[ErrorWatcher] = []
 
     # Error baseline
-    baseline: Dict[str, List[BaselineError]] = {}
+    original_baseline: Dict[str, List[UnknownBaselineError]]
+    baseline: Dict[str, List[BaselineError]]
+    # baseline metadata
+    baseline_targets: List[str]
     # All detected errors before baseline filter
-    all_errors: Dict[str, List[ErrorInfo]] = {}
+    all_errors: Dict[str, List[ErrorInfo]]
 
     def __init__(self,
                  show_error_context: bool = False,
@@ -294,6 +307,10 @@ class Errors:
 
     def initialize(self) -> None:
         self.error_info_map = OrderedDict()
+        self.all_errors = {}
+        self.original_baseline = {}
+        self.baseline = {}
+        self.baseline_targets = []
         self.flushed_files = set()
         self.import_ctx = []
         self.function_or_member = [None]
@@ -323,6 +340,11 @@ class Errors:
         else:
             file = os.path.normpath(file)
             return remove_path_prefix(file, self.ignore_prefix)
+
+    def common_path(self, file: str) -> str:
+        """Convert path to a cross platform standard for use with baseline"""
+        file = os.path.normpath(file)
+        return remove_path_prefix(file, self.ignore_prefix).replace("\\", "/")
 
     def set_file(self, file: str,
                  module: Optional[str],
@@ -377,7 +399,8 @@ class Errors:
                allow_dups: bool = False,
                origin_line: Optional[int] = None,
                offset: int = 0,
-               end_line: Optional[int] = None) -> None:
+               end_line: Optional[int] = None,
+               notes: Optional[List[str]] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -423,6 +446,14 @@ class Errors:
                          origin=(self.file, origin_line, end_line),
                          target=self.current_target())
         self.add_error_info(info)
+        for msg in notes or ():
+            note = ErrorInfo(
+                info.import_ctx, info.file, info.module, info.type, info.function_or_member,
+                info.line, info.column, 'note', msg,
+                code=info.code, blocker=False, only_once=False, allow_dups=False
+            )
+            self.add_error_info(note)
+            info.notes.append(note)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files
@@ -507,6 +538,7 @@ class Errors:
                 info.line, info.column, 'note', msg,
                 code=None, blocker=False, only_once=False, allow_dups=False
             )
+            info.notes.append(note)
             self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
@@ -728,7 +760,7 @@ class Errors:
                     a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
         return a
 
-    def file_messages(self, path: str) -> List[str]:
+    def file_messages(self, path: str, all_errors: bool = False) -> List[str]:
         """Return a string list of new error messages from a given file.
 
         Use a form suitable for displaying to the user.
@@ -740,6 +772,8 @@ class Errors:
         if self.pretty:
             assert self.read_source
             source_lines = self.read_source(path)
+        if all_errors:
+            return self.format_messages(self.all_errors[path], source_lines)
         return self.format_messages(self.error_info_map[path], source_lines)
 
     def new_messages(self) -> List[str]:
@@ -901,56 +935,100 @@ class Errors:
             i += 1
         return res
 
-    def save_baseline(self, file: Path) -> None:
-        """Create/update a file that stores all errors"""
-        if not file.parent.exists():
-            file.parent.mkdir()
-        json.dump(
-            {
-                file: [
-                    {
-                        "line": error.line,
-                        "code": error.code and error.code.code,
-                        "message": error.message
-                    } for error in errors
-                ]
-                for file, errors in filter_prefix(self.error_info_map).items()
-            },
-            file.open("w"),
-            indent=2,
-        )
+    def initialize_baseline(
+        self, errors: Dict[str, List[UnknownBaselineError]],
+        targets: List[str], baseline_format: str
+    ) -> None:
+        """Initialize the baseline properties"""
+        self.original_baseline = deepcopy(errors)
+        if baseline_format == "1.3":
+            for file in errors.values():
+                previous = 0
+                for error in file:
+                    previous = error["line"] = error["offset"] + previous
+        baseline_errors = cast(Dict[str, List[BaselineError]], errors)
+        self.baseline = baseline_errors
+        self.baseline_targets = targets
 
-    def load_baseline(self, file: Path) -> bool:
-        """Load baseline errors from baseline file"""
+    def prepare_baseline_errors(self, baseline_format: str) -> Dict[
+        str, List[UnknownBaselineError]
+    ]:
+        """Create a dict representing the error portion of an error baseline file"""
+        result: Dict[str, List[UnknownBaselineError]] = {
+            self.common_path(file): [
+                {
+                    "code": error.code.code if error.code else None,
+                    "column": error.column,
+                    "line": error.line,
+                    "message": error.message,
+                    "target": error.target,
+                } for error in self.sort_messages(errors)
+                # don't store reveal errors
+                if error.code != codes.REVEAL
+            ]
+            for file, errors in self.all_errors.items()
+        }
+        if baseline_format == "1.3":
+            for file in result.values():
+                previous = 0
+                for error in file:
+                    error["offset"] = error["line"] - previous
+                    previous = error["line"]
+                    del error["line"]
+        return result
 
-        if not file.exists():
-            return False
-        self.baseline = json.load(file.open("r"))
-        return True
-
-    def filter_baseline(self) -> None:
+    def filter_baseline(self, path: str) -> None:
         """Remove baseline errors from the error_info_map"""
-
-        self.all_errors = self.error_info_map.copy()
-        for file, errors in self.error_info_map.items():
-            baseline_errors = self.baseline.get(
-                Path(file).resolve().relative_to(Path.cwd()).as_posix())
-            if not baseline_errors:
+        if path not in self.error_info_map:
+            return
+        if path not in self.all_errors:
+            self.all_errors[path] = self.error_info_map[path]
+        baseline_errors = self.baseline.get(self.common_path(path))
+        if not baseline_errors:
+            return
+        new_errors = []
+        ignored_notes = []
+        # first pass for exact matches
+        for error in self.sort_messages(self.error_info_map[path]):
+            if error.code == codes.REVEAL:
+                new_errors.append(error)
                 continue
-            new_errors = []
-            for error in errors:
-                for baseline_error in baseline_errors:
-                    if (
-                        error.line == baseline_error["line"] and
-                            (error.code and error.code.code) == baseline_error["code"]
-                            or clean_baseline_message(error.message) ==
-                            clean_baseline_message(baseline_error["message"]) and
-                            abs(error.line - baseline_error["line"]) < 50
-                    ):
-                        break
-                else:
-                    new_errors.append(error)
-            self.error_info_map[file] = new_errors
+            if id(error) in ignored_notes:
+                continue
+            for i, baseline_error in enumerate(baseline_errors):
+                if (
+                    error.line == baseline_error["line"] and
+                        clean_baseline_message(error.message) ==
+                        clean_baseline_message(baseline_error["message"])
+                ):
+                    ignored_notes.extend([id(note) for note in error.notes])
+                    del baseline_errors[i]
+                    break
+            else:
+                new_errors.append(error)
+        # second pass for rough matches
+        new_errors, temp = [], new_errors
+        ignored_notes = []
+        for error in temp:
+            if error.code == codes.REVEAL:
+                new_errors.append(error)
+                continue
+            if id(error) in ignored_notes:
+                continue
+            for i, baseline_error in enumerate(baseline_errors):
+                if (
+                    error.line == baseline_error["line"] and
+                        (error.code and error.code.code) == baseline_error["code"]
+                        or clean_baseline_message(error.message) ==
+                        clean_baseline_message(baseline_error["message"]) and
+                        abs(error.line - baseline_error["line"]) < 100
+                ):
+                    ignored_notes.extend([id(note) for note in error.notes])
+                    del baseline_errors[i]
+                    break
+            else:
+                new_errors.append(error)
+        self.error_info_map[path] = new_errors
 
 
 def clean_baseline_message(message: str) -> str:
