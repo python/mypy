@@ -510,21 +510,21 @@ class VariableRenameVisitor2(TraverserVisitor):
         self.bad.pop()
 
     def reject_redefinition_of_vars_in_scope(self) -> None:
-        # TODO
-        pass
+        self.record_bad('*')
 
     def record_bad(self, name: str) -> None:
         self.bad[-1].add(name)
 
     def flush_refs(self) -> None:
-        for name, refs in self.refs[-1].items():
-            if len(refs) <= 1 or name in self.bad[-1]:
-                continue
-            # At module top level, don't rename the final definition,
-            # as it may be publicly visible.
-            to_rename = refs[:-1]
-            for i, item in enumerate(to_rename):
-                self.rename_refs(item, i)
+        if '*' not in self.bad[-1]:
+            for name, refs in self.refs[-1].items():
+                if len(refs) <= 1 or name in self.bad[-1]:
+                    continue
+                # At module top level, don't rename the final definition,
+                # as it may be publicly visible.
+                to_rename = refs[:-1]
+                for i, item in enumerate(to_rename):
+                    self.rename_refs(item, i)
         self.refs.pop()
 
     def rename_refs(self, names: List[NameExpr], index: int) -> None:

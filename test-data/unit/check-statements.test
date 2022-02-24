@@ -1615,6 +1615,90 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
+[case testWithStatementScope3]
+from m import A, B
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+def f() -> None:
+    pass  # Don't support function definition in the middle
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope4]
+from m import A, B
+
+def f() -> None:
+    pass  # function before with is unsupported
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope5]
+from m import A, B
+
+with A() as x:
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+def f() -> None:
+    pass  # function after with is unsupported
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope6]
+from m import A, B
+
+with A() as x:
+    def f() -> None:
+        pass  # Function within with is unsupported
+
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
 
 -- Chained assignment
 -- ------------------
