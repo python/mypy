@@ -392,3 +392,144 @@ class VariableRenameVisitor(TraverserVisitor):
         else:
             # Assigns to an existing variable.
             return False
+
+
+class VariableRenameVisitor2(TraverserVisitor):
+    def __init__(self) -> None:
+        self.bound_vars = set()
+        self.bad: List[Set[str]] = []
+        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
+
+    def visit_mypy_file(self, file_node: MypyFile) -> None:
+        """Rename variables within a file.
+
+        This is the main entry point to this class.
+        """
+        #self.clear()
+        with self.enter_scope():
+            for d in file_node.defs:
+                d.accept(self)
+
+    def visit_func_def(self, fdef: FuncDef) -> None:
+        self.reject_redefinition_of_vars_in_scope()
+
+        with self.enter_scope():
+            for arg in fdef.arguments:
+                self.record_bad(arg.variable.name)
+
+            super().visit_func_def(fdef)
+            print('refs', self.refs)
+            print('bad', self.bad)
+
+    #def visit_class_def(self, cdef: ClassDef) -> None:
+    #    self.reject_redefinition_of_vars_in_scope()
+    #    with self.enter_scope():
+    #        super().visit_class_def(cdef)
+
+    def visit_with_stmt(self, stmt: WithStmt) -> None:
+        for expr in stmt.expr:
+            expr.accept(self)
+        names = []
+        for target in stmt.target:
+            if target is not None:
+                assert isinstance(target, NameExpr)
+                name = target.name
+                d = self.refs[-1]
+                if name not in d:
+                    d[name] = []
+                d[name].append([])
+                self.bound_vars.add(name)
+                names.append(name)
+
+                #self.analyze_lvalue(target)
+        super().visit_with_stmt(stmt)
+        for name in names:
+            self.bound_vars.remove(name)
+
+    #def visit_import(self, imp: Import) -> None:
+    #    for id, as_id in imp.ids:
+    #        self.record_bad(as_id or id)
+
+    #def visit_import_from(self, imp: ImportFrom) -> None:
+    #    for id, as_id in imp.names:
+    #        self.record_bad(as_id or id, False)
+
+    #def visit_match_stmt(self, s: MatchStmt) -> None:
+    #    for i in range(len(s.patterns)):
+    #        s.patterns[i].accept(self)
+    #        guard = s.guards[i]
+    #        if guard is not None:
+    #            guard.accept(self)
+    #        # We already entered a block, so visit this block's statements directly
+    #        for stmt in s.bodies[i].body:
+    #            stmt.accept(self)
+
+    #def visit_capture_pattern(self, p: AsPattern) -> None:
+    #    if p.name is not None:
+    #        self.analyze_lvalue(p.name)
+
+    def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
+        if isinstance(lvalue, NameExpr):
+            name = lvalue.name
+            is_new = self.record_assignment(name, True)
+            if is_new:
+                self.handle_def(lvalue)
+            else:
+                self.handle_refine(lvalue)
+            if is_nested:
+                # This allows these to be redefined freely even if never read. Multiple
+                # assignment like "x, _ _ = y" defines dummy variables that are never read.
+                self.handle_ref(lvalue)
+        elif isinstance(lvalue, (ListExpr, TupleExpr)):
+            for item in lvalue.items:
+                self.analyze_lvalue(item, is_nested=True)
+        elif isinstance(lvalue, MemberExpr):
+            lvalue.expr.accept(self)
+        elif isinstance(lvalue, IndexExpr):
+            lvalue.base.accept(self)
+            lvalue.index.accept(self)
+        elif isinstance(lvalue, StarExpr):
+            # Propagate is_nested since in a typical use case like "x, *rest = ..." 'rest' may
+            # be freely reused.
+            self.analyze_lvalue(lvalue.expr, is_nested=is_nested)
+
+    def visit_name_expr(self, expr: NameExpr) -> None:
+        name = expr.name
+        if name in self.bound_vars:
+            # record ref
+            self.refs[-1][name][-1].append(expr)
+        else:
+            self.record_bad(name)
+
+    @contextmanager
+    def enter_scope(self) -> Iterator[None]:
+        self.bad.append(set())
+        self.refs.append({})
+        yield None
+        self.flush_refs()
+        self.bad.pop()
+
+    def reject_redefinition_of_vars_in_scope(self) -> None:
+        # TODO
+        pass
+
+    def record_bad(self, name: str) -> None:
+        self.bad[-1].add(name)
+
+    def flush_refs(self) -> None:
+        for name, refs in self.refs[-1].items():
+            if len(refs) <= 1 or name in self.bad[-1]:
+                continue
+            # At module top level, don't rename the final definition,
+            # as it may be publicly visible.
+            to_rename = refs[:-1]
+            for i, item in enumerate(to_rename):
+                self.rename_refs(item, i)
+        self.refs.pop()
+
+    def rename_refs(self, names: List[NameExpr], index: int) -> None:
+        name = names[0].name
+        print('renaming', name)
+        new_name = name + "'" * (index + 1)
+        for expr in names:
+            expr.name = new_name

@@ -1571,35 +1571,49 @@ class C3:
     def __exit__(self, x, y, z) -> Optional[bool]: pass
 [builtins fixtures/bool.pyi]
 
-[case testWithStatementScopeSeparate]
-class A:
-    def __enter__(self) -> A: pass
-    def __exit__(self, x, y, z) -> None: pass
-class B:
-    def __enter__(self) -> B: pass
-    def __exit__(self, x, y, z) -> None: pass
+[case testWithStatementScope1]
+from m import A, B
 
-def f() -> None:
+def f1() -> None:
     with A() as x:
-        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x)  # N: Revealed type is "m.A"
     with B() as x:
-        reveal_type(x)  # N: Revealed type is "__main__.B"
+        reveal_type(x)  # N: Revealed type is "m.B"
 
-[case testWithStatementScopeWidening]
-class A:
-    def __enter__(self) -> A: pass
-    def __exit__(self, x, y, z) -> None: pass
-class B:
-    def __enter__(self) -> B: pass
-    def __exit__(self, x, y, z) -> None: pass
-
-def f() -> None:
+def f2() -> None:
     with A() as x:
-        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x)  # N: Revealed type is "m.A"
     y = x  # Use outside with makes the scope function-level
     with B() as x: \
         # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        reveal_type(x)  # N: Revealed type is "__main__.A"
+        reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope2]
+from m import A, B
+
+def f2() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "m.A"
+    y = x  # Use outside with makes the scope function-level
+    with B() as x: \
+        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        reveal_type(x)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
 
 
 -- Chained assignment
