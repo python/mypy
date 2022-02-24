@@ -1555,7 +1555,6 @@ class LiteralReturn:
         return False
 [builtins fixtures/bool.pyi]
 
-
 [case testWithStmtBoolExitReturnInStub]
 import stub
 
@@ -1571,6 +1570,36 @@ class C2:
 class C3:
     def __exit__(self, x, y, z) -> Optional[bool]: pass
 [builtins fixtures/bool.pyi]
+
+[case testWithStatementScopeSeparate]
+class A:
+    def __enter__(self) -> A: pass
+    def __exit__(self, x, y, z) -> None: pass
+class B:
+    def __enter__(self) -> B: pass
+    def __exit__(self, x, y, z) -> None: pass
+
+def f() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    with B() as x:
+        reveal_type(x)  # N: Revealed type is "__main__.B"
+
+[case testWithStatementScopeWidening]
+class A:
+    def __enter__(self) -> A: pass
+    def __exit__(self, x, y, z) -> None: pass
+class B:
+    def __enter__(self) -> B: pass
+    def __exit__(self, x, y, z) -> None: pass
+
+def f() -> None:
+    with A() as x:
+        reveal_type(x)  # N: Revealed type is "__main__.A"
+    y = x  # Use outside with makes the scope function-level
+    with B() as x: \
+        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        reveal_type(x)  # N: Revealed type is "__main__.A"
 
 
 -- Chained assignment
