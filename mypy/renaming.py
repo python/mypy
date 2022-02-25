@@ -422,10 +422,10 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
         # Short names of variables bound in with statements using "as"
         # in a surrounding scope
         self.bound_vars: List[str] = []
-        # Names that can't be safely renamed, per scope ('*' means that
+        # Stack of names that can't be safely renamed, per scope ('*' means that
         # no names can be renamed)
         self.skipped: List[Set[str]] = []
-        # References to variables that we may need to rename. List of
+        # References to variables that we may need to rename. Stack of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
         self.refs: List[Dict[str, List[List[NameExpr]]]] = []
