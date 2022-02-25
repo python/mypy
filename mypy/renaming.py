@@ -262,14 +262,8 @@ class VariableRenameVisitor(TraverserVisitor):
                 # as it will be publicly visible outside the module.
                 to_rename = refs[:-1]
             for i, item in enumerate(to_rename):
-                self.rename_refs(item, i)
+                rename_refs(item, i)
         self.refs.pop()
-
-    def rename_refs(self, names: List[NameExpr], index: int) -> None:
-        name = names[0].name
-        new_name = name + "'" * (index + 1)
-        for expr in names:
-            expr.name = new_name
 
     # Helpers for determining which assignments define new variables
 
@@ -500,11 +494,12 @@ class VariableRenameVisitor2(TraverserVisitor):
                 # as it may be publicly visible.
                 to_rename = refs[:-1]
                 for i, item in enumerate(to_rename):
-                    self.rename_refs(item, i)
+                    rename_refs(item, i)
         self.refs.pop()
 
-    def rename_refs(self, names: List[NameExpr], index: int) -> None:
-        name = names[0].name
-        new_name = name + "'" * (index + 1)
-        for expr in names:
-            expr.name = new_name
+
+def rename_refs(names: List[NameExpr], index: int) -> None:
+    name = names[0].name
+    new_name = name + "'" * (index + 1)
+    for expr in names:
+        expr.name = new_name
