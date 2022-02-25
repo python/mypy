@@ -388,10 +388,46 @@ class VariableRenameVisitor(TraverserVisitor):
             return False
 
 
-class VariableRenameVisitor2(TraverserVisitor):
+class LimitedVariableRenameVisitor(TraverserVisitor):
+    """Perform some limited variable renaming in with statements.
+
+    This allows reusing a variable in multiple with statements with
+    different types. For example, the two instances of 'x' can have
+    incompatible types:
+
+       with C() as x:
+           f(x)
+       with D() as x:
+           g(x)
+
+    The above code gets renamed conceptually into this (not valid Python!):
+
+       with C() as x':
+           f(x')
+       with D() as x:
+           g(x)
+
+    If there's a reference to a variable defined in 'with' outside the
+    statement, or if there's any trickiness around variable visibility
+    (e.g. function definitions), we give up and won't perform renaming.
+
+    The main use case is to allow binding both readable and writable
+    binary files into the same variable. These have different types:
+
+        with open(fnam, 'rb') as f: ...
+        with open(fnam, 'wb') as f: ...
+    """
+
     def __init__(self) -> None:
+        # Short names of variables bound in with statements using "as"
+        # in a surrounding scope
         self.bound_vars: List[str] = []
-        self.bad: List[Set[str]] = []
+        # Names that can't be safely renamed, per scope ('*' means that
+        # no names can be renamed)
+        self.skipped: List[Set[str]] = []
+        # References to variables that we may need to rename. List of
+        # scopes; each scope is a mapping from name to list of collections
+        # of names that refer to the same logical variable.
         self.refs: List[Dict[str, List[List[NameExpr]]]] = []
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
@@ -407,7 +443,7 @@ class VariableRenameVisitor2(TraverserVisitor):
         self.reject_redefinition_of_vars_in_scope()
         with self.enter_scope():
             for arg in fdef.arguments:
-                self.record_bad(arg.variable.name)
+                self.record_skipped(arg.variable.name)
             super().visit_func_def(fdef)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
@@ -418,7 +454,7 @@ class VariableRenameVisitor2(TraverserVisitor):
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
             expr.accept(self)
-        n = len(self.bound_vars)
+        old_len = len(self.bound_vars)
         for target in stmt.target:
             if target is not None:
                 self.analyze_lvalue(target)
@@ -427,30 +463,34 @@ class VariableRenameVisitor2(TraverserVisitor):
                 target.accept(self)
         stmt.body.accept(self)
 
-        while len(self.bound_vars) > n:
+        while len(self.bound_vars) > old_len:
             self.bound_vars.pop()
 
     def visit_import(self, imp: Import) -> None:
+        # We don't support renaming imports
         for id, as_id in imp.ids:
-            self.record_bad(as_id or id)
+            self.record_skipped(as_id or id)
 
     def visit_import_from(self, imp: ImportFrom) -> None:
+        # We don't support renaming imports
         for id, as_id in imp.names:
-            self.record_bad(as_id or id)
+            self.record_skipped(as_id or id)
 
     def visit_import_all(self, imp: ImportAll) -> None:
-        self.record_bad('*')
+        # Give up, since we don't know all imported names yet
+        self.reject_redefinition_of_vars_in_scope()
 
     def analyze_lvalue(self, lvalue: Lvalue) -> None:
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
             if name in self.bound_vars:
+                # Name bound in a surrounding with statement, so it can be renamed
                 self.visit_name_expr(lvalue)
             else:
-                d = self.refs[-1]
-                if name not in d:
-                    d[name] = []
-                d[name].append([])
+                var_info = self.refs[-1]
+                if name not in var_info:
+                    var_info[name] = []
+                var_info[name].append([])
                 self.bound_vars.append(name)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
@@ -469,33 +509,33 @@ class VariableRenameVisitor2(TraverserVisitor):
             # Record reference so that it can be renamed later
             self.refs[-1][name][-1].append(expr)
         else:
-            self.record_bad(name)
+            self.record_skipped(name)
 
     @contextmanager
     def enter_scope(self) -> Iterator[None]:
-        self.bad.append(set())
+        self.skipped.append(set())
         self.refs.append({})
         yield None
         self.flush_refs()
-        self.bad.pop()
 
     def reject_redefinition_of_vars_in_scope(self) -> None:
-        self.record_bad('*')
+        self.record_skipped('*')
 
-    def record_bad(self, name: str) -> None:
-        self.bad[-1].add(name)
+    def record_skipped(self, name: str) -> None:
+        self.skipped[-1].add(name)
 
     def flush_refs(self) -> None:
-        if '*' not in self.bad[-1]:
-            for name, refs in self.refs[-1].items():
-                if len(refs) <= 1 or name in self.bad[-1]:
+        ref_dict = self.refs.pop()
+        skipped = self.skipped.pop()
+        if '*' not in skipped:
+            for name, refs in ref_dict.items():
+                if len(refs) <= 1 or name in skipped:
                     continue
                 # At module top level we must not rename the final definition,
-                # as it may be publicly visible.
+                # as it may be publicly visible
                 to_rename = refs[:-1]
                 for i, item in enumerate(to_rename):
                     rename_refs(item, i)
-        self.refs.pop()
 
 
 def rename_refs(names: List[NameExpr], index: int) -> None:
