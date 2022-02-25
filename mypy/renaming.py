@@ -446,13 +446,13 @@ class VariableRenameVisitor2(TraverserVisitor):
         for name in names:
             self.bound_vars.remove(name)
 
-    #def visit_import(self, imp: Import) -> None:
-    #    for id, as_id in imp.ids:
-    #        self.record_bad(as_id or id)
+    def visit_import(self, imp: Import) -> None:
+        for id, as_id in imp.ids:
+            self.record_bad(as_id or id)
 
-    #def visit_import_from(self, imp: ImportFrom) -> None:
-    #    for id, as_id in imp.names:
-    #        self.record_bad(as_id or id, False)
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        for id, as_id in imp.names:
+            self.record_bad(as_id or id)
 
     #def visit_match_stmt(self, s: MatchStmt) -> None:
     #    for i in range(len(s.patterns)):
