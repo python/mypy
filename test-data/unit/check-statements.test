@@ -1571,7 +1571,7 @@ class C3:
     def __exit__(self, x, y, z) -> Optional[bool]: pass
 [builtins fixtures/bool.pyi]
 
-[case testWithStatementScope1]
+[case testWithStmtScopeBasics]
 from m import A, B
 
 def f1() -> None:
@@ -1596,26 +1596,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope2]
-from m import A, B
-
-def f2() -> None:
-    with A() as x:
-        reveal_type(x)  # N: Revealed type is "m.A"
-    y = x  # Use outside with makes the scope function-level
-    with B() as x: \
-        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        reveal_type(x)  # N: Revealed type is "m.A"
-
-[file m.pyi]
-class A:
-    def __enter__(self) -> A: ...
-    def __exit__(self, x, y, z) -> None: ...
-class B:
-    def __enter__(self) -> B: ...
-    def __exit__(self, x, y, z) -> None: ...
-
-[case testWithStatementScope3]
+[case testWithStmtScopeAndFuncDef]
 from m import A, B
 
 with A() as x:
@@ -1636,7 +1617,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope4]
+[case testWithStmtScopeAndFuncDef2]
 from m import A, B
 
 def f() -> None:
@@ -1657,7 +1638,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope5]
+[case testWithStmtScopeAndFuncDef3]
 from m import A, B
 
 with A() as x:
@@ -1678,7 +1659,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope6]
+[case testWithStmtScopeAndFuncDef4]
 from m import A, B
 
 with A() as x:
@@ -1699,7 +1680,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope7Imports]
+[case testWithStmtScopeAndImport1]
 from m import A, B, x
 
 with A() as x: \
@@ -1710,8 +1691,6 @@ with B() as x:
     reveal_type(x)  # N: Revealed type is "m.B"
 
 [file m.pyi]
-from typing import Any
-
 x: B
 
 class A:
@@ -1721,7 +1700,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope8Imports]
+[case testWithStmtScopeAndImport2]
 from m import A, B
 import m as x
 
@@ -1734,8 +1713,6 @@ with B() as x: \
     pass
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1744,7 +1721,7 @@ class B:
     def __exit__(self, x, y, z) -> None: ...
 [builtins fixtures/module.pyi]
 
-[case testWithStatementScope9ImportStar]
+[case testWithStmtScopeAndImportStar]
 from m import A, B
 from m import *
 
@@ -1756,8 +1733,6 @@ with B() as x: \
     pass
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1765,7 +1740,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope10NestedWith]
+[case testWithStmtScopeNestedWith1]
 from m import A, B
 
 with A() as x:
@@ -1779,8 +1754,6 @@ with B() as x:
         reveal_type(x)  # N: Revealed type is "m.B"
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1788,7 +1761,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope11NestedWith]
+[case testWithStmtScopeNestedWith2]
 from m import A, B
 
 with A() as x:
@@ -1798,8 +1771,6 @@ with A() as x:
         reveal_type(y)  # N: Revealed type is "m.B"
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1807,7 +1778,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope12Outer]
+[case testWithStmtScopeInnerAndOuterScopes]
 from m import A, B
 
 x = A()  # Outer scope should have no impact
@@ -1827,8 +1798,6 @@ with A() as x:
     pass
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1836,7 +1805,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope13]
+[case testWithStmtScopeMultipleContextManagers]
 from m import A, B
 
 with A() as x, B() as y:
@@ -1847,8 +1816,6 @@ with B() as x, A() as y:
     reveal_type(y)  # N: Revealed type is "m.A"
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
@@ -1856,7 +1823,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope14]
+[case testWithStmtScopeMultipleAssignment]
 from m import A, B
 
 with A() as (x, y):
@@ -1867,7 +1834,7 @@ with B() as [x, y]:
     reveal_type(y)  # N: Revealed type is "builtins.str"
 
 [file m.pyi]
-from typing import Any, Tuple
+from typing import Tuple
 
 class A:
     def __enter__(self) -> Tuple[A, int]: ...
@@ -1877,7 +1844,7 @@ class B:
     def __exit__(self, x, y, z) -> None: ...
 [builtins fixtures/tuple.pyi]
 
-[case testWithStatementScope15]
+[case testWithStmtScopeComplexAssignments]
 from m import A, B, f
 
 with A() as x:
@@ -1897,8 +1864,6 @@ with B() as f(y)[0]:
     pass
 
 [file m.pyi]
-from typing import Any
-
 def f(x): ...
 
 class A:
@@ -1908,7 +1873,7 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
-[case testWithStatementScope16]
+[case testWithStmtScopeAndClass]
 from m import A, B
 
 with A() as x:
@@ -1925,8 +1890,6 @@ with B() as x: \
     pass
 
 [file m.pyi]
-from typing import Any
-
 class A:
     def __enter__(self) -> A: ...
     def __exit__(self, x, y, z) -> None: ...
