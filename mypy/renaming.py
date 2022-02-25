@@ -507,7 +507,9 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
         name = expr.name
         if name in self.bound_vars:
             # Record reference so that it can be renamed later
-            self.refs[-1][name][-1].append(expr)
+            for scope in reversed(self.refs):
+                if name in scope:
+                    scope[name][-1].append(expr)
         else:
             self.record_skipped(name)
 

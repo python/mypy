@@ -1897,6 +1897,44 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
+[case testWithStmtScopeInnerScopeReference]
+from m import A, B
+
+with A() as x:
+    def f() -> A:
+        return x
+    f()
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStmtScopeAndLambda]
+from m import A, B
+
+# This is technically not correct, since the lambda can outlive the with
+# statement, but this behavior seems more intuitive.
+
+with A() as x:
+    lambda: reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x:
+    pass
+[file m.pyi]
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
 
 -- Chained assignment
 -- ------------------
