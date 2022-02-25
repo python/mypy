@@ -405,21 +405,16 @@ class VariableRenameVisitor2(TraverserVisitor):
 
         This is the main entry point to this class.
         """
-        #self.clear()
         with self.enter_scope():
             for d in file_node.defs:
                 d.accept(self)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
-
         with self.enter_scope():
             for arg in fdef.arguments:
                 self.record_bad(arg.variable.name)
-
             super().visit_func_def(fdef)
-            print('refs', self.refs)
-            print('bad', self.bad)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
@@ -477,7 +472,7 @@ class VariableRenameVisitor2(TraverserVisitor):
     def visit_name_expr(self, expr: NameExpr) -> None:
         name = expr.name
         if name in self.bound_vars:
-            # record ref
+            # Record reference so that it can be renamed later
             self.refs[-1][name][-1].append(expr)
         else:
             self.record_bad(name)
@@ -501,7 +496,7 @@ class VariableRenameVisitor2(TraverserVisitor):
             for name, refs in self.refs[-1].items():
                 if len(refs) <= 1 or name in self.bad[-1]:
                     continue
-                # At module top level, don't rename the final definition,
+                # At module top level we must not rename the final definition,
                 # as it may be publicly visible.
                 to_rename = refs[:-1]
                 for i, item in enumerate(to_rename):
@@ -510,7 +505,6 @@ class VariableRenameVisitor2(TraverserVisitor):
 
     def rename_refs(self, names: List[NameExpr], index: int) -> None:
         name = names[0].name
-        print('renaming', name)
         new_name = name + "'" * (index + 1)
         for expr in names:
             expr.name = new_name
