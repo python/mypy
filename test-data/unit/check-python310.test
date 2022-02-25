@@ -1175,3 +1175,44 @@ def foo(value) -> int:  # E: Missing return statement
       return 1
     case 2:
       return 2
+
+[case testWithStatementScopeAndMatchStatement]
+from m import A, B
+
+with A() as x:
+    pass
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as y:
+    pass
+with B() as y: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as z:
+    pass
+with B() as z: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as zz:
+    pass
+with B() as zz: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+match x:
+    case str(y) as z:
+        zz = y
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...

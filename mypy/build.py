@@ -56,7 +56,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
-from mypy.renaming import VariableRenameVisitor
+from mypy.renaming import VariableRenameVisitor, LimitedVariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
 from mypy.stubinfo import legacy_bundled_packages, is_legacy_bundled_package
@@ -2119,9 +2119,12 @@ class State:
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
-        if options.allow_redefinition:
-            # Perform renaming across the AST to allow variable redefinitions
-            self.tree.accept(VariableRenameVisitor())
+        if not self.tree.is_stub:
+            # Always perform some low-key variable renaming
+            self.tree.accept(LimitedVariableRenameVisitor())
+            if options.allow_redefinition:
+                # Perform more renaming across the AST to allow variable redefinitions
+                self.tree.accept(VariableRenameVisitor())
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
