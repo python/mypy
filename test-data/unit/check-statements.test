@@ -1856,6 +1856,27 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
+[case testWithStatementScope14]
+from m import A, B
+
+with A() as (x, y):
+    reveal_type(x)  # N: Revealed type is "m.A"
+    reveal_type(y)  # N: Revealed type is "builtins.int"
+with B() as [x, y]:
+    reveal_type(x)  # N: Revealed type is "m.B"
+    reveal_type(y)  # N: Revealed type is "builtins.str"
+
+[file m.pyi]
+from typing import Any, Tuple
+
+class A:
+    def __enter__(self) -> Tuple[A, int]: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> Tuple[B, str]: ...
+    def __exit__(self, x, y, z) -> None: ...
+[builtins fixtures/tuple.pyi]
+
 
 -- Chained assignment
 -- ------------------

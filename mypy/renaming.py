@@ -429,29 +429,16 @@ class VariableRenameVisitor2(TraverserVisitor):
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
             expr.accept(self)
-        n = 0
+        n = len(self.bound_vars)
         for target in stmt.target:
             if target is not None:
-                assert isinstance(target, NameExpr)
-                name = target.name
-                if name in self.bound_vars:
-                    self.visit_name_expr(target)
-                else:
-                    d = self.refs[-1]
-                    if name not in d:
-                        d[name] = []
-                    d[name].append([])
-                    self.bound_vars.append(name)
-                    n += 1
-
-                #self.analyze_lvalue(target)
-
+                self.analyze_lvalue(target)
         for target in stmt.target:
             if target:
                 target.accept(self)
         stmt.body.accept(self)
 
-        for _ in range(n):
+        while len(self.bound_vars) > n:
             self.bound_vars.pop()
 
     def visit_import(self, imp: Import) -> None:
@@ -479,30 +466,27 @@ class VariableRenameVisitor2(TraverserVisitor):
     #    if p.name is not None:
     #        self.analyze_lvalue(p.name)
 
-    def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
+    def analyze_lvalue(self, lvalue: Lvalue) -> None:
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
-            is_new = self.record_assignment(name, True)
-            if is_new:
-                self.handle_def(lvalue)
+            if name in self.bound_vars:
+                self.visit_name_expr(lvalue)
             else:
-                self.handle_refine(lvalue)
-            if is_nested:
-                # This allows these to be redefined freely even if never read. Multiple
-                # assignment like "x, _ _ = y" defines dummy variables that are never read.
-                self.handle_ref(lvalue)
+                d = self.refs[-1]
+                if name not in d:
+                    d[name] = []
+                d[name].append([])
+                self.bound_vars.append(name)
         elif isinstance(lvalue, (ListExpr, TupleExpr)):
             for item in lvalue.items:
-                self.analyze_lvalue(item, is_nested=True)
+                self.analyze_lvalue(item)
         elif isinstance(lvalue, MemberExpr):
             lvalue.expr.accept(self)
         elif isinstance(lvalue, IndexExpr):
             lvalue.base.accept(self)
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
-            # Propagate is_nested since in a typical use case like "x, *rest = ..." 'rest' may
-            # be freely reused.
-            self.analyze_lvalue(lvalue.expr, is_nested=is_nested)
+            self.analyze_lvalue(lvalue.expr)
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         name = expr.name
