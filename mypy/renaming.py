@@ -466,20 +466,6 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
         while len(self.bound_vars) > old_len:
             self.bound_vars.pop()
 
-    def visit_import(self, imp: Import) -> None:
-        # We don't support renaming imports
-        for id, as_id in imp.ids:
-            self.record_skipped(as_id or id)
-
-    def visit_import_from(self, imp: ImportFrom) -> None:
-        # We don't support renaming imports
-        for id, as_id in imp.names:
-            self.record_skipped(as_id or id)
-
-    def visit_import_all(self, imp: ImportAll) -> None:
-        # Give up, since we don't know all imported names yet
-        self.reject_redefinition_of_vars_in_scope()
-
     def analyze_lvalue(self, lvalue: Lvalue) -> None:
         if isinstance(lvalue, NameExpr):
             name = lvalue.name
@@ -502,6 +488,20 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
             lvalue.index.accept(self)
         elif isinstance(lvalue, StarExpr):
             self.analyze_lvalue(lvalue.expr)
+
+    def visit_import(self, imp: Import) -> None:
+        # We don't support renaming imports
+        for id, as_id in imp.ids:
+            self.record_skipped(as_id or id)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        # We don't support renaming imports
+        for id, as_id in imp.names:
+            self.record_skipped(as_id or id)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        # Give up, since we don't know all imported names yet
+        self.reject_redefinition_of_vars_in_scope()
 
     def visit_name_expr(self, expr: NameExpr) -> None:
         name = expr.name
