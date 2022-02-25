@@ -1836,6 +1836,26 @@ class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
 
+[case testWithStatementScope13]
+from m import A, B
+
+with A() as x, B() as y:
+    reveal_type(x)  # N: Revealed type is "m.A"
+    reveal_type(y)  # N: Revealed type is "m.B"
+with B() as x, A() as y:
+    reveal_type(x)  # N: Revealed type is "m.B"
+    reveal_type(y)  # N: Revealed type is "m.A"
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
 
 -- Chained assignment
 -- ------------------
