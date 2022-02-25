@@ -1744,6 +1744,28 @@ class B:
     def __exit__(self, x, y, z) -> None: ...
 [builtins fixtures/module.pyi]
 
+[case testWithStatementScope9ImportStar]
+from m import A, B
+from m import *
+
+with A() as x:
+    pass
+
+with B() as x: \
+     # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+[builtins fixtures/module.pyi]
+
 
 -- Chained assignment
 -- ------------------

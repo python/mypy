@@ -5,7 +5,7 @@ from typing_extensions import Final
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
     WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, MatchStmt, StarExpr,
-    ImportFrom, MemberExpr, IndexExpr, Import, ClassDef
+    ImportFrom, MemberExpr, IndexExpr, Import, ImportAll, ClassDef
 )
 from mypy.patterns import AsPattern
 from mypy.traverser import TraverserVisitor
@@ -453,6 +453,9 @@ class VariableRenameVisitor2(TraverserVisitor):
     def visit_import_from(self, imp: ImportFrom) -> None:
         for id, as_id in imp.names:
             self.record_bad(as_id or id)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        self.record_bad('*')
 
     #def visit_match_stmt(self, s: MatchStmt) -> None:
     #    for i in range(len(s.patterns)):
