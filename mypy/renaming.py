@@ -421,10 +421,10 @@ class VariableRenameVisitor2(TraverserVisitor):
             print('refs', self.refs)
             print('bad', self.bad)
 
-    #def visit_class_def(self, cdef: ClassDef) -> None:
-    #    self.reject_redefinition_of_vars_in_scope()
-    #    with self.enter_scope():
-    #        super().visit_class_def(cdef)
+    def visit_class_def(self, cdef: ClassDef) -> None:
+        self.reject_redefinition_of_vars_in_scope()
+        with self.enter_scope():
+            super().visit_class_def(cdef)
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:

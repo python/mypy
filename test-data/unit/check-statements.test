@@ -1897,9 +1897,35 @@ with B() as f(y)[0]:
     pass
 
 [file m.pyi]
-from typing import Any, Tuple
+from typing import Any
 
 def f(x): ...
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope16]
+from m import A, B
+
+with A() as x:
+    pass
+
+class C:
+    with A() as y:
+        pass
+    with B() as y:
+        pass
+
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+[file m.pyi]
+from typing import Any
 
 class A:
     def __enter__(self) -> A: ...
