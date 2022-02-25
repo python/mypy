@@ -2186,8 +2186,10 @@ class State:
         if not self._type_checker:
             assert self.tree is not None, "Internal error: must be called on parsed file only"
             manager = self.manager
-            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                             self.tree, self.xpath, manager.plugin)
+            self._type_checker = TypeChecker(
+                manager.errors, manager.modules, self.options,
+                self.tree, self.xpath, manager.plugin,
+            )
         return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
@@ -2368,6 +2370,13 @@ class State:
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_errors(self.xpath)
+
+    def generate_ignore_without_code_notes(self) -> None:
+        if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
+            self.manager.errors.generate_ignore_without_code_errors(
+                self.xpath,
+                self.options.warn_unused_ignores,
+            )
 
 
 # Module import and diagnostic glue
@@ -2830,8 +2839,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             )
             manager.errors.report(
                 -1, -1,
-                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
-                "avoid checking one of them.",
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "for more info",
+                severity='note',
+            )
+            manager.errors.report(
+                -1, -1,
+                "Common resolutions include: a) using `--exclude` to avoid checking one of them, "
+                "b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or "
+                "adjusting MYPYPATH",
                 severity='note'
             )
 
@@ -2903,6 +2919,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 -1, 0,
                                 "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
                                 "for more info",
+                                severity='note',
+                            )
+                            manager.errors.report(
+                                -1, 0,
+                                "Common resolutions include: a) adding `__init__.py` somewhere, "
+                                "b) using `--explicit-package-bases` or adjusting MYPYPATH",
                                 severity='note',
                             )
                             manager.errors.raise_error()
@@ -3155,6 +3177,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
+        graph[id].generate_ignore_without_code_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True

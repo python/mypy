@@ -354,7 +354,10 @@ class FrameType:
     f_code: CodeType
     f_globals: dict[str, Any]
     f_lasti: int
-    f_lineno: int | None
+    # see discussion in #6769: f_lineno *can* sometimes be None,
+    # but you should probably file a bug report with CPython if you encounter it being None in the wild.
+    # An `int | None` annotation here causes too many false-positive errors.
+    f_lineno: int | Any
     f_locals: dict[str, Any]
     f_trace: Callable[[FrameType, str, Any], Any] | None
     if sys.version_info >= (3, 7):
