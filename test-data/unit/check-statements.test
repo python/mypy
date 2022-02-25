@@ -1877,6 +1877,37 @@ class B:
     def __exit__(self, x, y, z) -> None: ...
 [builtins fixtures/tuple.pyi]
 
+[case testWithStatementScope15]
+from m import A, B, f
+
+with A() as x:
+    pass
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+with B() as f(x).x:
+    pass
+
+with A() as y:
+    pass
+with B() as y: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+with B() as f(y)[0]:
+    pass
+
+[file m.pyi]
+from typing import Any, Tuple
+
+def f(x): ...
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
 
 -- Chained assignment
 -- ------------------
