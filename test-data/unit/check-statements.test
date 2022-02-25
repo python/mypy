@@ -1764,7 +1764,48 @@ class A:
 class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
-[builtins fixtures/module.pyi]
+
+[case testWithStatementScope10NestedWith]
+from m import A, B
+
+with A() as x:
+    with B() as x: \
+        # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+        reveal_type(x)  # N: Revealed type is "m.A"
+
+with B() as x:
+    with A() as x: \
+        # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+        reveal_type(x)  # N: Revealed type is "m.B"
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
+
+[case testWithStatementScope11NestedWith]
+from m import A, B
+
+with A() as x:
+    with A() as y:
+        reveal_type(y)  # N: Revealed type is "m.A"
+    with B() as y:
+        reveal_type(y)  # N: Revealed type is "m.B"
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
 
 
 -- Chained assignment

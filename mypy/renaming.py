@@ -396,7 +396,7 @@ class VariableRenameVisitor(TraverserVisitor):
 
 class VariableRenameVisitor2(TraverserVisitor):
     def __init__(self) -> None:
-        self.bound_vars = set()
+        self.bound_vars: List[str] = []
         self.bad: List[Set[str]] = []
         self.refs: List[Dict[str, List[List[NameExpr]]]] = []
 
@@ -429,22 +429,30 @@ class VariableRenameVisitor2(TraverserVisitor):
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
             expr.accept(self)
-        names = []
+        n = 0
         for target in stmt.target:
             if target is not None:
                 assert isinstance(target, NameExpr)
                 name = target.name
-                d = self.refs[-1]
-                if name not in d:
-                    d[name] = []
-                d[name].append([])
-                self.bound_vars.add(name)
-                names.append(name)
+                if name in self.bound_vars:
+                    self.visit_name_expr(target)
+                else:
+                    d = self.refs[-1]
+                    if name not in d:
+                        d[name] = []
+                    d[name].append([])
+                    self.bound_vars.append(name)
+                    n += 1
 
                 #self.analyze_lvalue(target)
-        super().visit_with_stmt(stmt)
-        for name in names:
-            self.bound_vars.remove(name)
+
+        for target in stmt.target:
+            if target:
+                target.accept(self)
+        stmt.body.accept(self)
+
+        for _ in range(n):
+            self.bound_vars.pop()
 
     def visit_import(self, imp: Import) -> None:
         for id, as_id in imp.ids:
