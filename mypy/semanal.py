@@ -226,7 +226,6 @@ class SemanticAnalyzer(NodeVisitor[None],
     errors: Errors  # Keeps track of generated errors
     plugin: Plugin  # Mypy plugin for special casing of library features
     statement: Optional[Statement] = None  # Statement/definition being analyzed
-    future_import_flags: Set[str]
 
     # Mapping from 'async def' function definitions to their return type wrapped as a
     # 'Coroutine[Any, Any, T]'. Used to keep track of whether a function definition's
@@ -290,8 +289,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         # Trace line numbers for every file where deferral happened during analysis of
         # current SCC or top-level function.
         self.deferral_debug_context: List[Tuple[str, int]] = []
-
-        self.future_import_flags: Set[str] = set()
 
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
@@ -5374,10 +5371,12 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def set_future_import_flags(self, module_name: str) -> None:
         if module_name in FUTURE_IMPORTS:
-            self.future_import_flags.add(FUTURE_IMPORTS[module_name])
+            self.modules[self.cur_mod_id].future_import_flags.add(
+                FUTURE_IMPORTS[module_name],
+            )
 
     def is_future_flag_set(self, flag: str) -> bool:
-        return flag in self.future_import_flags
+        return self.modules[self.cur_mod_id].is_future_flag_set(flag)
 
 
 class HasPlaceholders(TypeQuery[bool]):

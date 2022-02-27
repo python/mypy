@@ -567,7 +567,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if local_errors.is_errors() or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
                 self.msg.fail(message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword),
-                              value)
+                              pattern)
 
             inner_type, inner_rest_type, inner_captures = self.accept(pattern, key_type)
             if is_uninhabited(inner_type):

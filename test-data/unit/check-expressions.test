@@ -202,6 +202,70 @@ class C:
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testDivPython2]
+# flags: --python-version 2.7
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImport]
+# flags: --python-version 2.7
+from __future__ import division
+
+class A(object):
+    def __truediv__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImportNotLeaking]
+# flags: --python-version 2.7
+import m1
+
+[file m1.py]
+import m2
+
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[file m2.py]
+from __future__ import division
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImportNotLeaking2]
+# flags: --python-version 2.7
+import m1
+
+[file m1.py]
+import m2
+
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[file m2.py]
+# empty
+[builtins fixtures/bool.pyi]
+
 [case testIntDiv]
 a, b, c = None, None, None # type: (A, B, C)
 if int():
