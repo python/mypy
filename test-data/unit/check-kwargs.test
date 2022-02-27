@@ -353,7 +353,7 @@ class A: pass
 # flags: --strict-optional
 from typing import Dict, Any, Optional
 def f(**kwargs: 'A') -> None: pass
-d = None # type: Dict[A, A]
+d = {} # type: Dict[A, A]
 f(**d)         # E: Keywords must be strings
 f(**A())       # E: Argument after ** must be a mapping, not "A"
 class A: pass
