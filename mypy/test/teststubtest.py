@@ -210,14 +210,15 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_coroutines(self) -> Iterator[Case]:
         yield Case(
-            stub="async def foo() -> int: ...",
-            runtime="def foo(): return 5",
-            error="foo",
-        )
-        yield Case(
             stub="def bar() -> int: ...",
             runtime="async def bar(): return 5",
             error="bar",
+        )
+        # Don't error for this one -- we get false positives otherwise
+        yield Case(
+            stub="async def foo() -> int: ...",
+            runtime="def foo(): return 5",
+            error=None,
         )
         yield Case(
             stub="def baz() -> int: ...",
