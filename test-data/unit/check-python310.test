@@ -1304,7 +1304,7 @@ match m:
     case _:
         reveal_type(m)  # N: Revealed type is "Union[Literal[__main__.Medal.silver], Literal[__main__.Medal.bronze]]"
 
-[case testLiteralPatternEnumCustomEquals]
+[case testLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
 class Medal(Enum):
     gold = 1
