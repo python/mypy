@@ -1287,6 +1287,7 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Literal[1]]"
     case r2:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
+[builtins fixtures/tuple.pyi]
 
 [case testLiteralPatternEnumNegativeNarrowing]
 from enum import Enum
