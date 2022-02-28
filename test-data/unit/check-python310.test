@@ -1152,6 +1152,7 @@ match m:
 [builtins fixtures/isinstancelist.pyi]
 
 -- Exhaustiveness --
+
 [case testUnionNegativeNarrowing]
 from typing import Union
 
@@ -1207,6 +1208,13 @@ def g(value: int | None) -> int:
             return 0
         case None:
             return 1
+
+def b(value: bool) -> int:
+    match value:
+        case True:
+            return 2
+        case False:
+            return 3
 
 [case testMiscNonExhaustiveReturn]
 class C:
@@ -1415,15 +1423,13 @@ def b1(x: bool) -> None:
     match x:
         case True:
             return
-    # Possibly we could have Literal[False] here?
-    reveal_type(x)  # N: Revealed type is "builtins.bool"
+    reveal_type(x)  # N: Revealed type is "Literal[False]"
 
 def b2(x: bool) -> None:
     match x:
         case False:
             return
-    # Possibly we could have Literal[True] here?
-    reveal_type(x)  # N: Revealed type is "builtins.bool"
+    reveal_type(x)  # N: Revealed type is "Literal[True]"
 
 def e1(x: Medal) -> None:
     match x:
@@ -1448,3 +1454,30 @@ def s(x: str) -> None:
         case 'x':
             return
     reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def union(x: str | bool) -> None:
+    match x:
+        case True:
+            return
+    reveal_type(x)  # N: Revealed type is "Union[builtins.str, Literal[False]]"
+
+[case testMatchAssertFalseToSilenceFalsePositives]
+class C:
+    a: int | str
+
+def f(c: C) -> int:
+    match c:
+        case C(a=int()):
+            return 0
+        case C(a=str()):
+            return 1
+        case _:
+            assert False
+
+def g(c: C) -> int:
+    match c:
+        case C(a=int()):
+            return 0
+        case C(a=str()):
+            return 1
+    assert False
