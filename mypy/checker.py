@@ -1838,6 +1838,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if base.is_enum and base.fullname not in ENUM_BASES:
                     self.check_final_enum(defn, base)
             self.check_enum_bases(defn)
+            self.check_enum_new(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1934,9 +1935,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_enum_bases(self, defn: ClassDef) -> None:
         enum_base: Optional[Instance] = None
-        data_base: Optional[Instance] = None
         for base in defn.info.bases:
-            if enum_base is None and base.type.fullname in ENUM_BASES:
+            if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
             elif enum_base is not None:
@@ -1946,23 +1946,36 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 break
 
-            # This might not be 100% correct, because runtime `__new__`
-            # and `__new__` from `typeshed` are sometimes different,
-            # but it is good enough.
-            new_method = base.type.get('__new__')
-            if (data_base is None
-                    and enum_base is None  # data type is always before `Enum`
-                    and new_method
-                    and new_method.node
-                    and new_method.node.fullname != 'builtins.object.__new__'):
-                data_base = base
-                continue
-            elif data_base is not None:
+    def check_enum_new(self, defn: ClassDef) -> None:
+        def has_new_method(info: TypeInfo) -> bool:
+            new_method = info.get('__new__')
+            return bool(
+                new_method
+                and new_method.node
+                and new_method.node.fullname != 'builtins.object.__new__'
+            )
+
+        has_new = False
+        for base in defn.info.bases:
+            candidate = False
+
+            if base.type.is_enum:
+                # If we have an `Enum`, then we need to check all its bases.
+                candidate = any(
+                    not b.is_enum and has_new_method(b)
+                    for b in base.type.mro[1:-1]
+                )
+            else:
+                candidate = has_new_method(base.type)
+
+            if candidate and has_new:
                 self.fail(
                     'Only a single data type mixin is allowed for Enum subtypes, '
                     'found extra "{}"'.format(base),
                     defn,
                 )
+            elif candidate:
+                has_new = True
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared

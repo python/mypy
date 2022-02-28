@@ -1905,6 +1905,9 @@ class Mixin:
 
 # Correct Enums:
 
+class Correct0(enum.Enum):
+    pass
+
 class Correct1(Mixin, First, enum.Enum):
     pass
 
@@ -1917,7 +1920,28 @@ class Correct3(Mixin, enum.Enum):
 class RegularClass(Mixin, First, Second):
     pass
 
+# Correct inheritance:
+
+class _InheritingDataAndMixin(Correct1):
+    pass
+
+class _CorrectWithData(First, Correct0):
+    pass
+
+class _CorrectWithDataAndMixin(Mixin, First, Correct0):
+    pass
+
+class _CorrectWithMixin(Mixin, Correct2):
+    pass
+
 # Wrong Enums:
+
+class TwoDataTypesViaInheritance(Second, Correct2):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2"
+    pass
+
+class TwoDataTypesViaInheritanceAndMixin(Second, Correct2, Mixin):  # E: No base classes are allowed after "__main__.Correct2" \
+                                                                    # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2"
+    pass
 
 class MixinAfterEnum1(enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum"
     pass
@@ -1928,27 +1952,56 @@ class MixinAfterEnum2(First, enum.Enum, Mixin):  # E: No base classes are allowe
 class TwoDataTypes(First, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
     pass
 
-class TwoDataTypesAndIntEnumMixin(First, Second, enum.IntEnum, Mixin):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
-                                                                        # E: No base classes are allowed after "enum.IntEnum"
+class TwoDataTypesAndIntEnumMixin(First, Second, enum.IntEnum, Mixin):  # E: No base classes are allowed after "enum.IntEnum" \
+                                                                        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
     pass
 
 class ThreeDataTypes(First, Second, Third, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
-                                                        # E: # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
+                                                        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
     pass
 
-class ThreeDataTypesAndMixin(First, Second, Third, enum.Enum, Mixin): # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
-                                                        # E: # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third" \
-                                                        # E: No base classes are allowed after "enum.Enum"
+class ThreeDataTypesAndMixin(First, Second, Third, enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum" \
+                                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
     pass
 
-class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: No base classes are allowed after "__main__.Correct2" \
+                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
     pass
 
-class FromEnumAndOther2(Correct2, Second):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+class FromEnumAndOther2(Correct2, Second):  # E: No base classes are allowed after "__main__.Correct2" \
+                                            # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
     pass
 [builtins fixtures/tuple.pyi]
 
-[case testEnumtValueUnionSimplification]
+[case testRegression12258]
+from enum import Enum
+
+class MyEnum(Enum): ...
+
+class BytesEnum(bytes, MyEnum): ...  # Should be ok
+[builtins fixtures/tuple.pyi]
+
+[case testEnumWithNewHierarchy]
+import enum
+
+class A:
+    def __new__(cls, val): ...
+class B(A):
+    def __new__(cls, val): ...
+class C:
+    def __new__(cls, val): ...
+
+class E1(A, enum.Enum): ...
+class E2(B, enum.Enum): ...
+
+# Errors:
+
+class W1(C, E1): ...  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.E1"
+class W2(C, E2): ...  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.E2"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumValueUnionSimplification]
 from enum import IntEnum
 from typing import Any
 
