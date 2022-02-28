@@ -1936,7 +1936,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         enum_base: Optional[Instance] = None
         data_base: Optional[Instance] = None
         for base in defn.info.bases:
-            if enum_base is None and base.type.fullname in ENUM_BASES:
+            if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
             elif enum_base is not None:
