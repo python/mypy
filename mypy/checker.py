@@ -5676,9 +5676,9 @@ def conditional_types(current_type: Type,
             target = get_proper_type(target)
             if isinstance(target, LiteralType) and target.is_enum_literal():
                 enum_name = target.fallback.type.fullname
-                current_type = try_expanding_enum_to_union(current_type,
-                                                           enum_name,
-                                                           ignore_custom_equals=False)
+                current_type = try_expanding_sum_type_to_union(current_type,
+                                                               enum_name,
+                                                               ignore_custom_equals=False)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
         if isinstance(proposed_type, AnyType):
