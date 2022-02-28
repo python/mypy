@@ -1185,13 +1185,57 @@ def foo(value) -> int:
     case _:
       return 2
 
-[case testNoneExhaustiveReturn]
+[case testNonExhaustiveReturn]
 def foo(value) -> int:  # E: Missing return statement
   match value:
     case "bar":
       return 1
     case 2:
       return 2
+
+[case testMoreExhaustiveReturnChecking]
+def f(value: int | str | None) -> int:  # E: Missing return statement
+    match value:
+        case int():
+            return 0
+        case None:
+            return 1
+
+def g(value: int | None) -> int:
+    match value:
+        case int():
+            return 0
+        case None:
+            return 1
+
+[case testMiscNonExhaustiveReturn-skip]
+class C:
+    a: int | str
+
+def f(c: C) -> int:  # E: Missing return statement
+    match c:
+        case C(a=int()):
+            return 0
+        case C(a=str()):
+            return 1
+
+def g(x: list[str]) -> int:  # E: Missing return statement
+    match x:
+        case [a]:
+            return 0
+        case [a, b]:
+            return 1
+
+def h(x: dict[str, int]) -> int:  # E: Missing return statement
+    match x:
+        case {'x': a}:
+            return 0
+
+def ff(x: bool) -> int:  # E: Missing return statement
+    match x:
+        case True:
+            return 0
+[builtins fixtures/dict.pyi]
 
 [case testWithStatementScopeAndMatchStatement]
 from m import A, B
@@ -1238,33 +1282,33 @@ class B:
 from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
 
-value: int
-match value:
-    case 1:
-        pass
-    case 2:
-        pass
-    case o:
-        assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
+def f(value: int) -> int:  # E: Missing return statement
+    match value:
+        case 1:
+            return 0
+        case 2:
+            return 1
+        case o:
+            assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
 
 [case testExhaustiveNoError]
 from typing import NoReturn, Union, Literal
 def assert_never(x: NoReturn) -> None: ...
 
-value: Union[Literal[1], Literal[2]]
-match value:
-    case 1:
-        pass
-    case 2:
-        pass
-    case o:
-        assert_never(o)
+def f(value: Literal[1] | Literal[2]) -> int:
+    match value:
+        case 1:
+            return 0
+        case 2:
+            return 1
+        case o:
+            assert_never(o)
 [typing fixtures/typing-medium.pyi]
 
 [case testSequencePatternNegativeNarrowing]
 from typing import Union, Sequence, Tuple
 
-m1: Sequence[Union[int, str]]
+m1: Sequence[int | str]
 
 match m1:
     case [int()]:
@@ -1272,7 +1316,7 @@ match m1:
     case r:
         reveal_type(m1)  # N: Revealed type is "typing.Sequence[Union[builtins.int, builtins.str]]"
 
-m2: Tuple[Union[int, str]]
+m2: Tuple[int | str]
 
 match m2:
     case (int(),):
@@ -1296,13 +1340,23 @@ class Medal(Enum):
     silver = 2
     bronze = 3
 
-m: Medal
+def f(m: Medal) -> int:
+    match m:
+        case Medal.gold:
+            reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+            return 0
+        case _:
+            reveal_type(m)  # N: Revealed type is "Union[Literal[__main__.Medal.silver], Literal[__main__.Medal.bronze]]"
+            return 1
 
-match m:
-    case Medal.gold:
-        reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
-    case _:
-        reveal_type(m)  # N: Revealed type is "Union[Literal[__main__.Medal.silver], Literal[__main__.Medal.bronze]]"
+def g(m: Medal) -> int:
+    match m:
+        case Medal.gold:
+            return 0
+        case Medal.silver:
+            return 1
+        case Medal.bronze:
+            return 2
 
 [case testLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
@@ -1320,3 +1374,12 @@ match m:
         reveal_type(m)  # N: Revealed type is "Literal[__main__.Medal.gold]"
     case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
+
+[case testNarrowUsingPatternGuardSpecialCase]
+def f(x: int | str) -> int:  # E: Missing return statement
+    match x:
+        case x if isinstance(x, str):
+            return 0
+        case int():
+            return 1
+[builtins fixtures/isinstance.pyi]
