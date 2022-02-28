@@ -1208,7 +1208,7 @@ def g(value: int | None) -> int:
         case None:
             return 1
 
-[case testMiscNonExhaustiveReturn-skip]
+[case testMiscNonExhaustiveReturn]
 class C:
     a: int | str
 
@@ -1383,3 +1383,68 @@ def f(x: int | str) -> int:  # E: Missing return statement
         case int():
             return 1
 [builtins fixtures/isinstance.pyi]
+
+[case testNarrowingDownUnionPartially]
+# flags: --strict-optional
+
+def f(x: int | str) -> None:
+    match x:
+        case int():
+            return
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def g(x: int | str | None) -> None:
+    match x:
+        case int() | None:
+            return
+    reveal_type(x)  # N: Revealed type is "builtins.str"
+
+def h(x: int | str | None) -> None:
+    match x:
+        case int() | str():
+            return
+    reveal_type(x)  # N: Revealed type is "None"
+
+[case testNarrowDownUsingLiteralMatch]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+
+def b1(x: bool) -> None:
+    match x:
+        case True:
+            return
+    # Possibly we could have Literal[False] here?
+    reveal_type(x)  # N: Revealed type is "builtins.bool"
+
+def b2(x: bool) -> None:
+    match x:
+        case False:
+            return
+    # Possibly we could have Literal[True] here?
+    reveal_type(x)  # N: Revealed type is "builtins.bool"
+
+def e1(x: Medal) -> None:
+    match x:
+        case Medal.gold:
+            return
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Medal.silver]"
+
+def e2(x: Medal) -> None:
+    match x:
+        case Medal.silver:
+            return
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Medal.gold]"
+
+def i(x: int) -> None:
+    match x:
+        case 1:
+            return
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+def s(x: str) -> None:
+    match x:
+        case 'x':
+            return
+    reveal_type(x)  # N: Revealed type is "builtins.str"
