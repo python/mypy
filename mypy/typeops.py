@@ -683,16 +683,6 @@ def is_singleton_type(typ: Type) -> bool:
     )
 
 
-def enum_has_custom_equals(enum: Instance) -> bool:
-    assert enum.type.is_enum
-    for typ in enum.type.mro:
-        if typ.fullname == "enum.Enum":
-            return False
-        if "__eq__" in typ.names:
-            return True
-    assert False
-
-
 def try_expanding_sum_type_to_union(typ: Type,
                                     target_fullname: str,
                                     *,
