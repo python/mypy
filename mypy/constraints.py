@@ -537,6 +537,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             return infer_constraints(template,
                                      mypy.typeops.tuple_fallback(actual),
                                      self.direction)
+        elif isinstance(actual, TypeVarType):
+            if not actual.values:
+                return infer_constraints(template, actual.upper_bound, self.direction)
+            return []
         else:
             return []
 
@@ -698,8 +702,12 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         return res
 
     def visit_overloaded(self, template: Overloaded) -> List[Constraint]:
+        if isinstance(self.actual, CallableType):
+            items = find_matching_overload_items(template, self.actual)
+        else:
+            items = template.items
         res: List[Constraint] = []
-        for t in template.items:
+        for t in items:
             res.extend(infer_constraints(t, self.actual, self.direction))
         return res
 
@@ -741,3 +749,22 @@ def find_matching_overload_item(overloaded: Overloaded, template: CallableType) 
     # Fall back to the first item if we can't find a match. This is totally arbitrary --
     # maybe we should just bail out at this point.
     return items[0]
+
+
+def find_matching_overload_items(overloaded: Overloaded,
+                                 template: CallableType) -> List[CallableType]:
+    """Like find_matching_overload_item, but return all matches, not just the first."""
+    items = overloaded.items
+    res = []
+    for item in items:
+        # Return type may be indeterminate in the template, so ignore it when performing a
+        # subtype check.
+        if mypy.subtypes.is_callable_compatible(item, template,
+                                                is_compat=mypy.subtypes.is_subtype,
+                                                ignore_return=True):
+            res.append(item)
+    if not res:
+        # Falling back to all items if we can't find a match is pretty arbitrary, but
+        # it maintains backward compatibility.
+        res = items[:]
+    return res

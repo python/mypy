@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Pattern, Tuple, TypeVar
+from typing import Pattern, TypeVar
 
 _T = TypeVar("_T", bound=Version)
 
@@ -31,7 +31,7 @@ class StrictVersion(Version):
 class LooseVersion(Version):
     component_re: Pattern[str]
     vstring: str
-    version: Tuple[str | int, ...]
+    version: tuple[str | int, ...]
     def __init__(self, vstring: str | None = ...) -> None: ...
     def parse(self: _T, vstring: str) -> _T: ...
     def __str__(self) -> str: ...

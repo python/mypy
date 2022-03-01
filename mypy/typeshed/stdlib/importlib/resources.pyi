@@ -23,3 +23,6 @@ if sys.version_info >= (3, 9):
     from importlib.abc import Traversable
     def files(package: Package) -> Traversable: ...
     def as_file(path: Traversable) -> AbstractContextManager[Path]: ...
+
+if sys.version_info >= (3, 10):
+    from importlib.abc import ResourceReader as ResourceReader

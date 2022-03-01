@@ -57,7 +57,7 @@ class MiniFieldStorage:
 
 _list = list
 
-class FieldStorage(object):
+class FieldStorage:
     FieldStorageClass: _type | None
     keep_blank_values: int
     strict_parsing: int

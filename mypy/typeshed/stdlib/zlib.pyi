@@ -1,12 +1,16 @@
 from array import array
 from typing import Any
+from typing_extensions import Literal
 
 DEFLATED: int
 DEF_MEM_LEVEL: int
 MAX_WBITS: int
 ZLIB_VERSION: str
+Z_NO_COMPRESSION: Literal[0]
+Z_PARTIAL_FLUSH: Literal[1]
 Z_BEST_COMPRESSION: int
 Z_BEST_SPEED: int
+Z_BLOCK: Literal[5]
 Z_DEFAULT_COMPRESSION: int
 Z_DEFAULT_STRATEGY: int
 Z_FILTERED: int
@@ -17,6 +21,7 @@ Z_HUFFMAN_ONLY: int
 Z_NO_FLUSH: int
 Z_RLE: int
 Z_SYNC_FLUSH: int
+Z_TREES: Literal[6]
 DEF_BUF_SIZE: int
 ZLIB_RUNTIME_VERSION: str
 

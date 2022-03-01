@@ -3,6 +3,16 @@ from typing_extensions import ParamSpec
 P = ParamSpec('P')
 [builtins fixtures/tuple.pyi]
 
+[case testInvalidParamSpecDefinitions]
+from typing import ParamSpec
+
+P1 = ParamSpec("P1", covariant=True)  # E: Only the first argument to ParamSpec has defined semantics
+P2 = ParamSpec("P2", contravariant=True)  # E: Only the first argument to ParamSpec has defined semantics
+P3 = ParamSpec("P3", bound=int)  # E: Only the first argument to ParamSpec has defined semantics
+P4 = ParamSpec("P4", int, str)  # E: Only the first argument to ParamSpec has defined semantics
+P5 = ParamSpec("P5", covariant=True, bound=int)  # E: Only the first argument to ParamSpec has defined semantics
+[builtins fixtures/tuple.pyi]
+
 [case testParamSpecLocations]
 from typing import Callable, List
 from typing_extensions import ParamSpec, Concatenate

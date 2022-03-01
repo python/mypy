@@ -14,7 +14,8 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -715,8 +716,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             for name, symbol in typ.type.names.items():
                 if not isinstance(symbol.node, Var):
                     continue
-                # Skip "_order_" and "__order__", since Enum will remove it
-                if name in ("_order_", "__order__"):
+                # Skip these since Enum will remove it
+                if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
             # SymbolTables are really just dicts, and dicts are guaranteed to preserve
@@ -845,3 +846,18 @@ def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> 
         return True
 
     return False
+
+
+def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequence[Type]]:
+    """Separate literals from other members in a union type."""
+    literal_items = []
+    union_items = []
+
+    for item in t.items:
+        proper = get_proper_type(item)
+        if isinstance(proper, LiteralType):
+            literal_items.append(proper)
+        else:
+            union_items.append(item)
+
+    return literal_items, union_items

@@ -6,6 +6,8 @@ _T = TypeVar("_T")
 _KeyType = Union[str, bytes]
 _ValueType = Union[str, bytes]
 
+open_flags: str
+
 class error(OSError): ...
 
 # Actual typename gdbm, not exposed by the implementation
@@ -31,7 +33,7 @@ class _gdbm:
     def keys(self) -> list[bytes]: ...
     def setdefault(self, k: _KeyType, default: _ValueType = ...) -> bytes: ...
     # Don't exist at runtime
-    __new__: None  # type: ignore
-    __init__: None  # type: ignore
+    __new__: None  # type: ignore[assignment]
+    __init__: None  # type: ignore[assignment]
 
 def open(__filename: str, __flags: str = ..., __mode: int = ...) -> _gdbm: ...

@@ -5,7 +5,7 @@ from _typeshed import Self, StrOrBytesPath, StrPath
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
-from typing import IO, Protocol, Tuple, Type, TypeVar, overload
+from typing import IO, Protocol, Type, TypeVar, overload
 from typing_extensions import Literal
 
 _TF = TypeVar("_TF", bound=TarFile)
@@ -62,10 +62,10 @@ DEFAULT_FORMAT: int
 
 # tarfile constants
 
-SUPPORTED_TYPES: Tuple[bytes, ...]
-REGULAR_TYPES: Tuple[bytes, ...]
-GNU_TYPES: Tuple[bytes, ...]
-PAX_FIELDS: Tuple[str, ...]
+SUPPORTED_TYPES: tuple[bytes, ...]
+REGULAR_TYPES: tuple[bytes, ...]
+GNU_TYPES: tuple[bytes, ...]
+PAX_FIELDS: tuple[str, ...]
 PAX_NUMBER_FIELDS: dict[str, type]
 PAX_NAME_FIELDS: set[str]
 
