@@ -355,8 +355,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                                      star_pos: Optional[int],
                                      num_types: int
                                      ) -> List[Type]:
-        """
-        Undoes the contraction done by contract_starred_pattern_types.
+        """Undoes the contraction done by contract_starred_pattern_types.
 
         For example if the sequence pattern is [a, *b, c] and types [bool, int, str] are extended
         to lenght 4 the result is [bool, int, int, str].

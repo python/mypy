@@ -4089,11 +4089,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subject_type, DeletedType):
                 self.msg.deleted_as_rvalue(subject_type, s)
 
+            # We infer types of patterns twice. The first pass is used
+            # to infer the types of capture variables. The type of a
+            # capture variable may depend on multiple patterns (it
+            # will be a union of all capture types). This pass ignores
+            # guard expressions.
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
-
             type_maps: List[TypeMap] = [t.captures for t in pattern_types]
             inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
+            # The second pass narrows down the types and type checks bodies.
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(s.subject,
                                                                                  subject_type)
@@ -4136,7 +4141,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> Dict[Var, Type]:
         all_captures: Dict[Var, List[Tuple[NameExpr, Type]]] = defaultdict(list)
-        inferred_types: Dict[Var, Type] = {}
         for tm in type_maps:
             if tm is not None:
                 for expr, typ in tm.items():
@@ -4145,6 +4149,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         assert isinstance(node, Var)
                         all_captures[node].append((expr, typ))
 
+        inferred_types: Dict[Var, Type] = {}
         for var, captures in all_captures.items():
             already_exists = False
             types: List[Type] = []
