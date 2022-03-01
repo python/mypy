@@ -1455,6 +1455,19 @@ def f(x: A) -> None:
             reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "C">"
     reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
 
+[case testMatchWithBreakAndContinue]
+# flags: --strict-optional
+def f(x: int | str | None) -> None:
+    i = int()
+    while i:
+        match x:
+            case int():
+                continue
+            case str():
+                break
+        reveal_type(x)  # N: Revealed type is "None"
+    reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
+
 -- Misc
 
 [case testMatchAndWithStatementScope]
