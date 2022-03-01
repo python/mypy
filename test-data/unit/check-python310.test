@@ -1,5 +1,6 @@
 -- Capture Pattern --
-[case testCapturePatternType]
+
+[case testMatchCapturePatternType]
 class A: ...
 m: A
 
@@ -7,16 +8,16 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "__main__.A"
 
-
 -- Literal Pattern --
-[case testLiteralPatternNarrows]
+
+[case testMatchLiteralPatternNarrows]
 m: object
 
 match m:
     case 1:
         reveal_type(m)  # N: Revealed type is "Literal[1]"
 
-[case testLiteralPatternAlreadyNarrower-skip]
+[case testMatchLiteralPatternAlreadyNarrower-skip]
 m: bool
 
 match m:
@@ -24,7 +25,7 @@ match m:
         reveal_type(m)  # This should probably be unreachable, but isn't detected as such.
 [builtins fixtures/primitives.pyi]
 
-[case testLiteralPatternUnreachable]
+[case testMatchLiteralPatternUnreachable]
 # primitives are needed because otherwise mypy doesn't see that int and str are incompatible
 m: int
 
@@ -33,9 +34,9 @@ match m:
         reveal_type(m)
 [builtins fixtures/primitives.pyi]
 
-
 -- Value Pattern --
-[case testValuePatternNarrows]
+
+[case testMatchValuePatternNarrows]
 import b
 m: object
 
@@ -45,7 +46,7 @@ match m:
 [file b.py]
 b: int
 
-[case testValuePatternAlreadyNarrower]
+[case testMatchValuePatternAlreadyNarrower]
 import b
 m: bool
 
@@ -55,7 +56,7 @@ match m:
 [file b.py]
 b: int
 
-[case testValuePatternIntersect]
+[case testMatchValuePatternIntersect]
 import b
 
 class A: ...
@@ -68,7 +69,7 @@ match m:
 class B: ...
 b: B
 
-[case testValuePatternUnreachable]
+[case testMatchValuePatternUnreachable]
 # primitives are needed because otherwise mypy doesn't see that int and str are incompatible
 import b
 
@@ -81,9 +82,9 @@ match m:
 b: str
 [builtins fixtures/primitives.pyi]
 
-
 -- Sequence Pattern --
-[case testSequencePatternCaptures]
+
+[case testMatchSequencePatternCaptures]
 from typing import List
 m: List[int]
 
@@ -92,7 +93,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.int*"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternCapturesStarred]
+[case testMatchSequencePatternCapturesStarred]
 from typing import Sequence
 m: Sequence[int]
 
@@ -102,7 +103,7 @@ match m:
         reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternNarrowsInner]
+[case testMatchSequencePatternNarrowsInner]
 from typing import Sequence
 m: Sequence[object]
 
@@ -110,7 +111,7 @@ match m:
     case [1, True]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
-[case testSequencePatternNarrowsOuter]
+[case testMatchSequencePatternNarrowsOuter]
 from typing import Sequence
 m: object
 
@@ -118,7 +119,7 @@ match m:
     case [1, True]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
-[case testSequencePatternAlreadyNarrowerInner]
+[case testMatchSequencePatternAlreadyNarrowerInner]
 from typing import Sequence
 m: Sequence[bool]
 
@@ -126,7 +127,7 @@ match m:
     case [1, True]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
-[case testSequencePatternAlreadyNarrowerOuter]
+[case testMatchSequencePatternAlreadyNarrowerOuter]
 from typing import Sequence
 m: Sequence[object]
 
@@ -134,7 +135,7 @@ match m:
     case [1, True]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.int]"
 
-[case testSequencePatternAlreadyNarrowerBoth]
+[case testMatchSequencePatternAlreadyNarrowerBoth]
 from typing import Sequence
 m: Sequence[bool]
 
@@ -142,7 +143,7 @@ match m:
     case [1, True]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[builtins.bool]"
 
-[case testNestedSequencePatternNarrowsInner]
+[case testMatchNestedSequencePatternNarrowsInner]
 from typing import Sequence
 m: Sequence[Sequence[object]]
 
@@ -150,7 +151,7 @@ match m:
     case [[1], [True]]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
-[case testNestedSequencePatternNarrowsOuter]
+[case testMatchNestedSequencePatternNarrowsOuter]
 from typing import Sequence
 m: object
 
@@ -158,7 +159,7 @@ match m:
     case [[1], [True]]:
         reveal_type(m)  # N: Revealed type is "typing.Sequence[typing.Sequence[builtins.int]]"
 
-[case testSequencePatternDoesntNarrowInvariant]
+[case testMatchSequencePatternDoesntNarrowInvariant]
 from typing import List
 m: List[object]
 
@@ -167,7 +168,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternMatches]
+[case testMatchSequencePatternMatches]
 import array, collections
 from typing import Sequence, Iterable
 
@@ -230,8 +231,7 @@ match m11:
 [builtins fixtures/primitives.pyi]
 [typing fixtures/typing-full.pyi]
 
-
-[case testSequencePatternCapturesTuple]
+[case testMatchSequencePatternCapturesTuple]
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -243,7 +243,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleTooLong]
+[case testMatchSequencePatternTupleTooLong]
 from typing import Tuple
 m: Tuple[int, str]
 
@@ -254,7 +254,7 @@ match m:
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleTooShort]
+[case testMatchSequencePatternTupleTooShort]
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -264,7 +264,7 @@ match m:
         reveal_type(b)
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleNarrows]
+[case testMatchSequencePatternTupleNarrows]
 from typing import Tuple
 m: Tuple[object, object]
 
@@ -273,7 +273,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Tuple[Literal[1], Literal['str']]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleStarred]
+[case testMatchSequencePatternTupleStarred]
 from typing import Tuple
 m: Tuple[int, str, bool]
 
@@ -285,7 +285,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
 [builtins fixtures/list.pyi]
 
-[case testSequencePatternTupleStarredUnion]
+[case testMatchSequencePatternTupleStarredUnion]
 from typing import Tuple
 m: Tuple[int, str, float, bool]
 
@@ -297,8 +297,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
 [builtins fixtures/list.pyi]
 
-
-[case testSequencePatternTupleStarredTooShort]
+[case testMatchSequencePatternTupleStarredTooShort]
 from typing import Tuple
 m: Tuple[int]
 reveal_type(m)  # N: Revealed type is "Tuple[builtins.int]"
@@ -310,7 +309,7 @@ match m:
         reveal_type(c)
 [builtins fixtures/list.pyi]
 
-[case testNonMatchingSequencePattern]
+[case testMatchNonMatchingSequencePattern]
 from typing import List
 
 x: List[int]
@@ -318,7 +317,7 @@ match x:
     case [str()]:
         pass
 
-[case testSequenceUnion-skip]
+[case testMatchSequenceUnion-skip]
 from typing import List, Union
 m: Union[List[List[str]], str]
 
@@ -328,7 +327,8 @@ match m:
 [builtins fixtures/list.pyi]
 
 -- Mapping Pattern --
-[case testMappingPatternCaptures]
+
+[case testMatchMappingPatternCaptures]
 from typing import Dict
 import b
 m: Dict[str, int]
@@ -342,7 +342,7 @@ match m:
 b: str
 [builtins fixtures/dict.pyi]
 
-[case testMappingPatternCapturesWrongKeyType]
+[case testMatchMappingPatternCapturesWrongKeyType]
 # This is not actually unreachable, as a subclass of dict could accept keys with different types
 from typing import Dict
 import b
@@ -357,7 +357,7 @@ match m:
 b: int
 [builtins fixtures/dict.pyi]
 
-[case testMappingPatternCapturesTypedDict]
+[case testMatchMappingPatternCapturesTypedDict]
 from typing import TypedDict
 
 class A(TypedDict):
@@ -378,7 +378,7 @@ match m:
         reveal_type(v5)  # N: Revealed type is "builtins.object*"
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMappingPatternCapturesTypedDictWithLiteral]
+[case testMatchMappingPatternCapturesTypedDictWithLiteral]
 from typing import TypedDict
 import b
 
@@ -405,7 +405,7 @@ b: Literal["b"] = "b"
 o: Final[str] = "o"
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMappingPatternCapturesTypedDictWithNonLiteral]
+[case testMatchMappingPatternCapturesTypedDictWithNonLiteral]
 from typing import TypedDict
 import b
 
@@ -423,7 +423,7 @@ from typing import Final, Literal
 a: str
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMappingPatternCapturesTypedDictUnreachable]
+[case testMatchMappingPatternCapturesTypedDictUnreachable]
 # TypedDict keys are always str, so this is actually unreachable
 from typing import TypedDict
 import b
@@ -443,7 +443,7 @@ match m:
 b: int
 [typing fixtures/typing-typeddict.pyi]
 
-[case testMappingPatternCaptureRest]
+[case testMatchMappingPatternCaptureRest]
 m: object
 
 match m:
@@ -451,7 +451,7 @@ match m:
         reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.object, builtins.object]"
 [builtins fixtures/dict.pyi]
 
-[case testMappingPatternCaptureRestFromMapping]
+[case testMatchMappingPatternCaptureRestFromMapping]
 from typing import Mapping
 
 m: Mapping[str, int]
@@ -461,10 +461,11 @@ match m:
         reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
 [builtins fixtures/dict.pyi]
 
--- Mapping patterns currently don't narrow --
+-- Mapping patterns currently do not narrow --
 
 -- Class Pattern --
-[case testClassPatternCapturePositional]
+
+[case testMatchClassPatternCapturePositional]
 from typing import Final
 
 class A:
@@ -480,7 +481,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternMemberClassCapturePositional]
+[case testMatchClassPatternMemberClassCapturePositional]
 import b
 
 m: b.A
@@ -498,7 +499,7 @@ class A:
     b: int
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternCaptureKeyword]
+[case testMatchClassPatternCaptureKeyword]
 class A:
     a: str
     b: int
@@ -510,7 +511,7 @@ match m:
         reveal_type(i)  # N: Revealed type is "builtins.str"
         reveal_type(j)  # N: Revealed type is "builtins.int"
 
-[case testClassPatternCaptureSelf]
+[case testMatchClassPatternCaptureSelf]
 m: object
 
 match m:
@@ -538,7 +539,7 @@ match m:
         reveal_type(k)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
-[case testClassPatternNarrowSelfCapture]
+[case testMatchClassPatternNarrowSelfCapture]
 m: object
 
 match m:
@@ -566,7 +567,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
-[case testClassPatternCaptureDataclass]
+[case testMatchClassPatternCaptureDataclass]
 from dataclasses import dataclass
 
 @dataclass
@@ -582,7 +583,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dataclasses.pyi]
 
-[case testClassPatternCaptureDataclassNoMatchArgs]
+[case testMatchClassPatternCaptureDataclassNoMatchArgs]
 from dataclasses import dataclass
 
 @dataclass(match_args=False)
@@ -597,7 +598,7 @@ match m:
         pass
 [builtins fixtures/dataclasses.pyi]
 
-[case testClassPatternCaptureDataclassPartialMatchArgs]
+[case testMatchClassPatternCaptureDataclassPartialMatchArgs]
 from dataclasses import dataclass, field
 
 @dataclass
@@ -614,7 +615,7 @@ match m:
         reveal_type(k)  # N: Revealed type is "builtins.str"
 [builtins fixtures/dataclasses.pyi]
 
-[case testClassPatternCaptureNamedTupleInline]
+[case testMatchClassPatternCaptureNamedTupleInline]
 from collections import namedtuple
 
 A = namedtuple("A", ["a", "b"])
@@ -627,7 +628,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/list.pyi]
 
-[case testClassPatternCaptureNamedTupleInlineTyped]
+[case testMatchClassPatternCaptureNamedTupleInlineTyped]
 from typing import NamedTuple
 
 A = NamedTuple("A", [("a", str), ("b", int)])
@@ -640,7 +641,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
-[case testClassPatternCaptureNamedTupleClass]
+[case testMatchClassPatternCaptureNamedTupleClass]
 from typing import NamedTuple
 
 class A(NamedTuple):
@@ -655,7 +656,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternCaptureGeneric]
+[case testMatchClassPatternCaptureGeneric]
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -670,7 +671,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A[Any]"
         reveal_type(i)  # N: Revealed type is "Any"
 
-[case testClassPatternCaptureGenericAlreadyKnown]
+[case testMatchClassPatternCaptureGenericAlreadyKnown]
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -685,7 +686,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
         reveal_type(i)  # N: Revealed type is "builtins.int*"
 
-[case testClassPatternCaptureFilledGenericTypeAlias]
+[case testMatchClassPatternCaptureFilledGenericTypeAlias]
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -701,7 +702,7 @@ match m:
     case B(a=i):  # E: Class pattern class must not be a type alias with type parameters
         reveal_type(i)
 
-[case testClassPatternCaptureGenericTypeAlias]
+[case testMatchClassPatternCaptureGenericTypeAlias]
 from typing import Generic, TypeVar
 
 T = TypeVar('T')
@@ -717,7 +718,7 @@ match m:
     case B(a=i):
         pass
 
-[case testClassPatternNarrows]
+[case testMatchClassPatternNarrows]
 from typing import Final
 
 class A:
@@ -734,7 +735,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternNarrowsUnion]
+[case testMatchClassPatternNarrowsUnion]
 from typing import Final, Union
 
 class A:
@@ -770,7 +771,7 @@ match m:
         reveal_type(l)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternAlreadyNarrower]
+[case testMatchClassPatternAlreadyNarrower]
 from typing import Final
 
 class A:
@@ -790,7 +791,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.B"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternIntersection]
+[case testMatchClassPatternIntersection]
 from typing import Final
 
 class A:
@@ -808,7 +809,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">1"
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternNonexistentKeyword]
+[case testMatchClassPatternNonexistentKeyword]
 class A: ...
 
 m: object
@@ -818,7 +819,7 @@ match m:
         reveal_type(m)  # N: Revealed type is "__main__.A"
         reveal_type(j)  # N: Revealed type is "Any"
 
-[case testClassPatternDuplicateKeyword]
+[case testMatchClassPatternDuplicateKeyword]
 class A:
     a: str
 
@@ -828,7 +829,7 @@ match m:
     case A(a=i, a=j):  # E: Duplicate keyword pattern "a"
         pass
 
-[case testClassPatternDuplicateImplicitKeyword]
+[case testMatchClassPatternDuplicateImplicitKeyword]
 from typing import Final
 
 class A:
@@ -842,7 +843,7 @@ match m:
         pass
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternTooManyPositionals]
+[case testMatchClassPatternTooManyPositionals]
 from typing import Final
 
 class A:
@@ -857,7 +858,7 @@ match m:
         pass
 [builtins fixtures/tuple.pyi]
 
-[case testClassPatternIsNotType]
+[case testMatchClassPatternIsNotType]
 a = 1
 m: object
 
@@ -866,7 +867,7 @@ match m:
         reveal_type(i)
         reveal_type(j)
 
-[case testClassPatternNestedGenerics]
+[case testMatchClassPatternNestedGenerics]
 # From cpython test_patma.py
 x = [[{0: 0}]]
 match x:
@@ -878,7 +879,7 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 reveal_type(z)  # N: Revealed type is "builtins.int*"
 [builtins fixtures/dict.pyi]
 
-[case testNonFinalMatchArgs]
+[case testMatchNonFinalMatchArgs]
 class A:
     __match_args__ = ("a", "b")  # N: __match_args__ must be final for checking of match statements to work
     a: str
@@ -892,7 +893,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
-[case testAnyTupleMatchArgs]
+[case testMatchAnyTupleMatchArgs]
 from typing import Tuple, Any
 
 class A:
@@ -909,7 +910,7 @@ match m:
         reveal_type(k)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
-[case testNonLiteralMatchArgs]
+[case testMatchNonLiteralMatchArgs]
 from typing import Final
 
 b: str = "b"
@@ -928,7 +929,7 @@ match m:
         reveal_type(j)  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
 
-[case testExternalMatchArgs]
+[case testMatchExternalMatchArgs]
 from typing import Final, Literal
 
 args: Final = ("a", "b")
@@ -947,9 +948,9 @@ class B:
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
 
-
 -- As Pattern --
-[case testAsPattern]
+
+[case testMatchAsPattern]
 m: int
 
 match m:
@@ -957,51 +958,51 @@ match m:
         reveal_type(x)  # N: Revealed type is "builtins.int"
         reveal_type(l)  # N: Revealed type is "builtins.int"
 
-[case testAsPatternNarrows]
+[case testMatchAsPatternNarrows]
 m: object
 
 match m:
     case int() as l:
         reveal_type(l)  # N: Revealed type is "builtins.int"
 
-[case testAsPatternCapturesOr]
+[case testMatchAsPatternCapturesOr]
 m: object
 
 match m:
     case 1 | 2 as n:
         reveal_type(n)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
 
-[case testAsPatternAlreadyNarrower]
+[case testMatchAsPatternAlreadyNarrower]
 m: bool
 
 match m:
     case int() as l:
         reveal_type(l)  # N: Revealed type is "builtins.bool"
 
-
 -- Or Pattern --
-[case testOrPatternNarrows]
+
+[case testMatchOrPatternNarrows]
 m: object
 
 match m:
     case 1 | 2:
         reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal[2]]"
 
-[case testOrPatternNarrowsStr]
+[case testMatchOrPatternNarrowsStr]
 m: object
 
 match m:
     case "foo" | "bar":
         reveal_type(m)  # N: Revealed type is "Union[Literal['foo'], Literal['bar']]"
 
-[case testOrPatternNarrowsUnion]
+[case testMatchOrPatternNarrowsUnion]
 m: object
 
 match m:
     case 1 | "foo":
         reveal_type(m)  # N: Revealed type is "Union[Literal[1], Literal['foo']]"
 
-[case testOrPatterCapturesMissing]
+[case testMatchOrPatterCapturesMissing]
 from typing import List
 m: List[int]
 
@@ -1011,7 +1012,7 @@ match m:
         reveal_type(y)  # N: Revealed type is "builtins.int*"
 [builtins fixtures/list.pyi]
 
-[case testOrPatternCapturesJoin]
+[case testMatchOrPatternCapturesJoin]
 m: object
 
 match m:
@@ -1019,9 +1020,9 @@ match m:
         reveal_type(x)  # N: Revealed type is "typing.Iterable[Any]"
 [builtins fixtures/dict.pyi]
 
-
 -- Interactions --
-[case testCapturePatternMultipleCases]
+
+[case testMatchCapturePatternMultipleCases]
 m: object
 
 match m:
@@ -1032,7 +1033,7 @@ match m:
 
 reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str]"
 
-[case testCapturePatternMultipleCaptures]
+[case testMatchCapturePatternMultipleCaptures]
 from typing import Iterable
 
 m: Iterable[int]
@@ -1042,7 +1043,7 @@ match m:
         reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
-[case testCapturePatternPreexistingSame]
+[case testMatchCapturePatternPreexistingSame]
 a: int
 m: int
 
@@ -1050,7 +1051,7 @@ match m:
     case a:
         reveal_type(a)  # N: Revealed type is "builtins.int"
 
-[case testCapturePatternPreexistingNarrows]
+[case testMatchCapturePatternPreexistingNarrows]
 a: int
 m: bool
 
@@ -1062,7 +1063,7 @@ reveal_type(a)  # N: Revealed type is "builtins.bool"
 a = 3
 reveal_type(a)  # N: Revealed type is "builtins.int"
 
-[case testCapturePatternPreexistingIncompatible]
+[case testMatchCapturePatternPreexistingIncompatible]
 a: str
 m: int
 
@@ -1072,7 +1073,7 @@ match m:
 
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
-[case testCapturePatternPreexistingIncompatibleLater]
+[case testMatchCapturePatternPreexistingIncompatibleLater]
 a: str
 m: object
 
@@ -1084,9 +1085,9 @@ match m:
 
 reveal_type(a)  # N: Revealed type is "builtins.str"
 
-
 -- Guards --
-[case testSimplePatternGuard]
+
+[case testMatchSimplePatternGuard]
 m: str
 
 def guard() -> bool: ...
@@ -1095,21 +1096,21 @@ match m:
     case a if guard():
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
-[case testAlwaysTruePatternGuard]
+[case testMatchAlwaysTruePatternGuard]
 m: str
 
 match m:
     case a if True:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
-[case testAlwaysFalsePatternGuard]
+[case testMatchAlwaysFalsePatternGuard]
 m: str
 
 match m:
     case a if False:
         reveal_type(a)
 
-[case testRedefiningPatternGuard]
+[case testMatchRedefiningPatternGuard]
 # flags: --strict-optional
 m: str
 
@@ -1117,14 +1118,14 @@ match m:
     case a if a := 1:  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
         reveal_type(a)  # N: Revealed type is "<nothing>"
 
-[case testAssigningPatternGuard]
+[case testMatchAssigningPatternGuard]
 m: str
 
 match m:
     case a if a := "test":
         reveal_type(a)  # N: Revealed type is "builtins.str"
 
-[case testNarrowingPatternGuard]
+[case testMatchNarrowingPatternGuard]
 m: object
 
 match m:
@@ -1132,7 +1133,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "builtins.str"
 [builtins fixtures/isinstancelist.pyi]
 
-[case testIncompatiblePatternGuard]
+[case testMatchIncompatiblePatternGuard]
 class A: ...
 class B: ...
 
@@ -1143,7 +1144,7 @@ match m:
         reveal_type(a)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
 [builtins fixtures/isinstancelist.pyi]
 
-[case testUnreachablePatternGuard]
+[case testMatchUnreachablePatternGuard]
 m: str
 
 match m:
@@ -1153,7 +1154,7 @@ match m:
 
 -- Exhaustiveness --
 
-[case testUnionNegativeNarrowing]
+[case testMatchUnionNegativeNarrowing]
 from typing import Union
 
 m: Union[str, int]
@@ -1166,7 +1167,7 @@ match m:
         reveal_type(b)  # N: Revealed type is "builtins.int"
         reveal_type(m)  # N: Revealed type is "builtins.int"
 
-[case testOrPatternNegativeNarrowing]
+[case testMatchOrPatternNegativeNarrowing]
 from typing import Union
 
 m: Union[str, bytes, int]
@@ -1178,7 +1179,7 @@ match m:
     case b:
         reveal_type(b)  # N: Revealed type is "builtins.int"
 
-[case testExhaustiveReturn]
+[case testMatchExhaustiveReturn]
 def foo(value) -> int:
   match value:
     case "bar":
@@ -1186,7 +1187,7 @@ def foo(value) -> int:
     case _:
       return 2
 
-[case testNonExhaustiveReturn]
+[case testMatchNonExhaustiveReturn]
 def foo(value) -> int:  # E: Missing return statement
   match value:
     case "bar":
@@ -1194,14 +1195,7 @@ def foo(value) -> int:  # E: Missing return statement
     case 2:
       return 2
 
-[case testMoreExhaustiveReturnChecking]
-def f(value: int | str | None) -> int:  # E: Missing return statement
-    match value:
-        case int():
-            return 0
-        case None:
-            return 1
-
+[case testMatchMoreExhaustiveReturnCases]
 def g(value: int | None) -> int:
     match value:
         case int():
@@ -1216,77 +1210,43 @@ def b(value: bool) -> int:
         case False:
             return 3
 
-[case testMiscNonExhaustiveReturn]
+[case testMatchMiscNonExhaustiveReturn]
 class C:
     a: int | str
 
-def f(c: C) -> int:  # E: Missing return statement
+def f1(value: int | str | None) -> int:  # E: Missing return statement
+    match value:
+        case int():
+            return 0
+        case None:
+            return 1
+
+def f2(c: C) -> int:  # E: Missing return statement
     match c:
         case C(a=int()):
             return 0
         case C(a=str()):
             return 1
 
-def g(x: list[str]) -> int:  # E: Missing return statement
+def f3(x: list[str]) -> int:  # E: Missing return statement
     match x:
         case [a]:
             return 0
         case [a, b]:
             return 1
 
-def h(x: dict[str, int]) -> int:  # E: Missing return statement
+def f4(x: dict[str, int]) -> int:  # E: Missing return statement
     match x:
         case {'x': a}:
             return 0
 
-def ff(x: bool) -> int:  # E: Missing return statement
+def f5(x: bool) -> int:  # E: Missing return statement
     match x:
         case True:
             return 0
 [builtins fixtures/dict.pyi]
 
-[case testWithStatementScopeAndMatchStatement]
-from m import A, B
-
-with A() as x:
-    pass
-with B() as x: \
-    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    pass
-
-with A() as y:
-    pass
-with B() as y: \
-    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    pass
-
-with A() as z:
-    pass
-with B() as z: \
-    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    pass
-
-with A() as zz:
-    pass
-with B() as zz: \
-    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-    pass
-
-match x:
-    case str(y) as z:
-        zz = y
-
-[file m.pyi]
-from typing import Any
-
-class A:
-    def __enter__(self) -> A: ...
-    def __exit__(self, x, y, z) -> None: ...
-class B:
-    def __enter__(self) -> B: ...
-    def __exit__(self, x, y, z) -> None: ...
-
-[case testNonExhaustiveError]
+[case testMatchNonExhaustiveError]
 from typing import NoReturn
 def assert_never(x: NoReturn) -> None: ...
 
@@ -1299,7 +1259,7 @@ def f(value: int) -> int:  # E: Missing return statement
         case o:
             assert_never(o)  # E: Argument 1 to "assert_never" has incompatible type "int"; expected "NoReturn"
 
-[case testExhaustiveNoError]
+[case testMatchExhaustiveNoError]
 from typing import NoReturn, Union, Literal
 def assert_never(x: NoReturn) -> None: ...
 
@@ -1313,7 +1273,7 @@ def f(value: Literal[1] | Literal[2]) -> int:
             assert_never(o)
 [typing fixtures/typing-medium.pyi]
 
-[case testSequencePatternNegativeNarrowing]
+[case testMatchSequencePatternNegativeNarrowing]
 from typing import Union, Sequence, Tuple
 
 m1: Sequence[int | str]
@@ -1341,7 +1301,7 @@ match m3:
         reveal_type(m3)  # N: Revealed type is "Tuple[Union[builtins.int, builtins.str]]"
 [builtins fixtures/tuple.pyi]
 
-[case testLiteralPatternEnumNegativeNarrowing]
+[case testMatchLiteralPatternEnumNegativeNarrowing]
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -1366,7 +1326,7 @@ def g(m: Medal) -> int:
         case Medal.bronze:
             return 2
 
-[case testLiteralPatternEnumCustomEquals-skip]
+[case testMatchLiteralPatternEnumCustomEquals-skip]
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -1383,7 +1343,7 @@ match m:
     case _:
         reveal_type(m)  # N: Revealed type is "__main__.Medal"
 
-[case testNarrowUsingPatternGuardSpecialCase]
+[case testMatchNarrowUsingPatternGuardSpecialCase]
 def f(x: int | str) -> int:  # E: Missing return statement
     match x:
         case x if isinstance(x, str):
@@ -1392,7 +1352,7 @@ def f(x: int | str) -> int:  # E: Missing return statement
             return 1
 [builtins fixtures/isinstance.pyi]
 
-[case testNarrowingDownUnionPartially]
+[case testMatchNarrowDownUnionPartially]
 # flags: --strict-optional
 
 def f(x: int | str) -> None:
@@ -1413,7 +1373,7 @@ def h(x: int | str | None) -> None:
             return
     reveal_type(x)  # N: Revealed type is "None"
 
-[case testNarrowDownUsingLiteralMatch]
+[case testMatchNarrowDownUsingLiteralMatch]
 from enum import Enum
 class Medal(Enum):
     gold = 1
@@ -1481,3 +1441,46 @@ def g(c: C) -> int:
         case C(a=str()):
             return 1
     assert False
+
+-- Misc
+
+[case testMatchAndWithStatementScope]
+from m import A, B
+
+with A() as x:
+    pass
+with B() as x: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as y:
+    pass
+with B() as y: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as z:
+    pass
+with B() as z: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+with A() as zz:
+    pass
+with B() as zz: \
+    # E: Incompatible types in assignment (expression has type "B", variable has type "A")
+    pass
+
+match x:
+    case str(y) as z:
+        zz = y
+
+[file m.pyi]
+from typing import Any
+
+class A:
+    def __enter__(self) -> A: ...
+    def __exit__(self, x, y, z) -> None: ...
+class B:
+    def __enter__(self) -> B: ...
+    def __exit__(self, x, y, z) -> None: ...
