@@ -1442,6 +1442,19 @@ def g(c: C) -> int:
             return 1
     assert False
 
+[case testMatchAsPatternIntersection-skip]
+class A: pass
+class B: pass
+class C: pass
+
+def f(x: A) -> None:
+    match x:
+        case B() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        case C() as y:
+            reveal_type(y)  # N: Revealed type is "__main__.<subclass of "A" and "C">"
+    reveal_type(y)  # N: Revealed type is "Union[__main__.<subclass of "A" and "B">, __main__.<subclass of "A" and "C">]"
+
 -- Misc
 
 [case testMatchAndWithStatementScope]
