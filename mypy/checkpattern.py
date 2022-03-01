@@ -1,4 +1,5 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
+
 from collections import defaultdict
 from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
 from typing_extensions import Final
@@ -56,7 +57,7 @@ PatternType = NamedTuple(
     'PatternType',
     [
         ('type', Type),  # The type the match subject can be narrowed to
-        ('rest_type', Type),
+        ('rest_type', Type),  # The remaining type if the pattern didn't match
         ('captures', Dict[Expression, Type]),  # The variables captured by the pattern
     ])
 

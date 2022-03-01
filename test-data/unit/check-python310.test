@@ -64,7 +64,7 @@ m: A
 
 match m:
     case b.b:
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "A" and "B">1"
 [file b.py]
 class B: ...
 b: B
@@ -804,9 +804,9 @@ m: B
 
 match m:
     case A():
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">2"
     case A(i, j):
-        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">1"
+        reveal_type(m)  # N: Revealed type is "__main__.<subclass of "B" and "A">3"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchClassPatternNonexistentKeyword]

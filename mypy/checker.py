@@ -4089,18 +4089,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subject_type, DeletedType):
                 self.msg.deleted_as_rvalue(subject_type, s)
 
-            # We have to check each pattern twice. Once ignoring the guard statement to infer
-            # the capture types and once with then to narrow the subject.
-            # In addition PatternChecker adds intersection types to the scope. We only want that
-            # to happen on the second pass, so we copy the SymbolTable beforehand.
-            curr_module = self.scope.stack[0]
-            assert isinstance(curr_module, MypyFile)
-            names = curr_module.names.copy()
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
-            curr_module.names = names
 
             type_maps: List[TypeMap] = [t.captures for t in pattern_types]
-            inferred_names = self.infer_variable_types_from_type_maps(type_maps)
+            inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
             for p, g, b in zip(s.patterns, s.guards, s.bodies):
                 current_subject_type = self.expr_checker.narrow_type_from_binder(s.subject,
@@ -4118,7 +4110,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             pattern_type.rest_type
                         )
                         self.remove_capture_conflicts(pattern_type.captures,
-                                                      inferred_names)
+                                                      inferred_types)
                         self.push_type_map(pattern_map)
                         self.push_type_map(pattern_type.captures)
                     if g is not None:
@@ -4144,7 +4136,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> Dict[Var, Type]:
         all_captures: Dict[Var, List[Tuple[NameExpr, Type]]] = defaultdict(list)
-        inferred_names: Dict[Var, Type] = {}
+        inferred_types: Dict[Var, Type] = {}
         for tm in type_maps:
             if tm is not None:
                 for expr, typ in tm.items():
@@ -4166,23 +4158,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                           msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
                                           subtype_label="pattern captures type",
                                           supertype_label="variable has type"):
-                        inferred_names[var] = previous_type
+                        inferred_types[var] = previous_type
 
             if not already_exists:
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
-                inferred_names[var] = new_type
+                inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
-        return inferred_names
+        return inferred_types
 
-    def remove_capture_conflicts(self, type_map: TypeMap, inferred_names: Dict[Var, Type]) -> None:
+    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: Dict[Var, Type]) -> None:
         if type_map is not None:
             for expr, typ in type_map.copy().items():
                 if isinstance(expr, NameExpr):
                     node = expr.node
                     assert isinstance(node, Var)
-                    if node not in inferred_names or not is_subtype(typ, inferred_names[node]):
+                    if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
                         del type_map[expr]
 
     def make_fake_typeinfo(self,
