@@ -117,8 +117,13 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
             # if the paramspec is *P.args or **P.kwargs:
             if t.flavor != ParamSpecFlavor.BARE:
+                assert isinstance(repl, CallableType), "Should not be able to get here."
                 # Is this always the right thing to do?
-                return repl.param_spec().with_flavor(t.flavor)
+                param_spec = repl.param_spec()
+                if param_spec:
+                    return param_spec.with_flavor(t.flavor)
+                else:
+                    return repl
             else:
                 return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
                                           t.prefix.arg_kinds + repl.arg_kinds,
