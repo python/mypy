@@ -693,6 +693,7 @@ def get_var(expr: Expression) -> Var:
 
 
 def get_type_range(typ: Type) -> 'mypy.checker.TypeRange':
+    typ = get_proper_type(typ)
     if (isinstance(typ, Instance)
             and typ.last_known_value
             and isinstance(typ.last_known_value.value, bool)):
