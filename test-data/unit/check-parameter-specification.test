@@ -746,3 +746,74 @@ def f(c: C[P]) -> None:
     p2 = p1.add_str()
     reveal_type(p2)  # N: Revealed type is "__main__.C[Concatenate[builtins.int, builtins.str, P`-1]]"
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralJoin]
+from typing import Generic, Callable, Union
+from typing_extensions import ParamSpec
+
+
+_P = ParamSpec("_P")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None:
+        self.target = target
+
+def func(
+    action: Union[Job[int], Callable[[int], None]],
+) -> None:
+    job = action if isinstance(action, Job) else Job(action)
+    reveal_type(job)  # N: Revealed type is "__main__.Job[[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testApplyParamSpecToParamSpecLiterals]
+from typing import TypeVar, Generic, Callable
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+class Job(Generic[_P, _R_co]):
+    def __init__(self, target: Callable[_P, _R_co]) -> None:
+        self.target = target
+
+def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+    ...
+
+
+def func(job: Job[[int, str], None]) -> None:
+    run_job(job, 42, "Hello")
+    run_job(job, "Hello", 42)  # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
+                               # E: Argument 3 to "run_job" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+
+[case testExpandNonBareParamSpecAgainstCallable]
+from typing import Callable, TypeVar, Any
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+def simple_decorator(callable: CallableT) -> CallableT:
+    # set some attribute on 'callable'
+    return callable
+
+
+class A:
+    @simple_decorator
+    def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        ...
+
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`-2, *_P.args, **_P.kwargs) -> _R`-2"
+
+# TODO: _R`<n> keeps flip-flopping between 5 (?), 13, 14, 15. Spooky.
+# reveal_type(A().func)  $ N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`13, *_P.args, **_P.kwargs) -> _R`13"
+
+def f(x: int) -> int:
+    ...
+
+reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int*"
+
+# TODO: this should reveal `int`
+reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

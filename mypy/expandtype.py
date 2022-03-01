@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters
+    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor
 )
 
 
@@ -115,9 +115,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 arg_names=t.prefix.arg_names + repl.prefix.arg_names,
             ))
         elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
-            return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
-                                      t.prefix.arg_kinds + repl.arg_kinds,
-                                      t.prefix.arg_names + repl.arg_names)
+            # if the paramspec is *P.args or **P.kwargs:
+            if t.flavor != ParamSpecFlavor.BARE:
+                # Is this always the right thing to do?
+                return repl.param_spec().with_flavor(t.flavor)
+            else:
+                return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
+                                          t.prefix.arg_kinds + repl.arg_kinds,
+                                          t.prefix.arg_names + repl.arg_names)
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl

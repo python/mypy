@@ -257,7 +257,10 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return self.default(self.s)
 
     def visit_parameters(self, t: Parameters) -> ProperType:
-        raise NotImplementedError("joining two paramspec literals is not supported yet")
+        if self.s == t:
+            return t
+        else:
+            return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):

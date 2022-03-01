@@ -1030,11 +1030,11 @@ class ClassDef(Statement):
 
     @classmethod
     def deserialize(self, data: JsonDict) -> 'ClassDef':
-        # TODO: Does this have to work with ParamSpecType too?
         assert data['.class'] == 'ClassDef'
         res = ClassDef(data['name'],
                        Block([]),
-                       [mypy.types.TypeVarType.deserialize(v) for v in data['type_vars']],
+                       # https://github.com/python/mypy/issues/12257
+                       [mypy.types.deserialize_type(v) for v in data['type_vars']],
                        )
         res.fullname = data['fullname']
         return res

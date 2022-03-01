@@ -1196,8 +1196,11 @@ class Parameters(ProperType):
                  arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
                  *,
-                 is_ellipsis_args: bool = False
+                 is_ellipsis_args: bool = False,
+                 line: int = -1,
+                 column: int = -1
                  ) -> None:
+        super().__init__(line, column)
         self.arg_types = list(arg_types)
         self.arg_kinds = arg_kinds
         self.arg_names = list(arg_names)
@@ -1328,6 +1331,21 @@ class Parameters(ProperType):
             [ArgKind(x) for x in data['arg_kinds']],
             data['arg_names'],
         )
+
+    def __hash__(self) -> int:
+        return hash((self.is_ellipsis_args, tuple(self.arg_types),
+                     tuple(self.arg_names), tuple(self.arg_kinds)))
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, Parameters) or isinstance(other, CallableType):
+            return (
+                self.arg_types == other.arg_types and
+                self.arg_names == other.arg_names and
+                self.arg_kinds == other.arg_kinds and
+                self.is_ellipsis_args == other.is_ellipsis_args
+            )
+        else:
+            return NotImplemented
 
 
 class CallableType(FunctionLike):
