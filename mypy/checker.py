@@ -4174,7 +4174,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return inferred_types
 
     def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: Dict[Var, Type]) -> None:
-        if type_map is not None:
+        if type_map:
             for expr, typ in type_map.copy().items():
                 if isinstance(expr, NameExpr):
                     node = expr.node
@@ -5675,8 +5675,7 @@ def conditional_types(current_type: Type,
                                                     or isinstance(target.value, bool)):
                 enum_name = target.fallback.type.fullname
                 current_type = try_expanding_sum_type_to_union(current_type,
-                                                               enum_name,
-                                                               ignore_custom_equals=False)
+                                                               enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
         if isinstance(proposed_type, AnyType):
