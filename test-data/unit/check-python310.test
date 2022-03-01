@@ -1442,6 +1442,14 @@ def g(c: C) -> int:
             return 1
     assert False
 
+[case testMatchAsPatternExhaustiveness]
+def f(x: int | str) -> int:
+    match x:
+        case int() as n:
+            return n
+        case str() as s:
+            return 1
+
 [case testMatchAsPatternIntersection-skip]
 class A: pass
 class B: pass
