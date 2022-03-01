@@ -1476,6 +1476,16 @@ def f(x: int | str | None) -> None:
         reveal_type(x)  # N: Revealed type is "None"
     reveal_type(x)  # N: Revealed type is "Union[builtins.int, builtins.str, None]"
 
+[case testMatchNarrowDownWithStarred-skip]
+from typing import List
+def f(x: List[int] | int) -> None:
+    match x:
+        case [*y]:
+            reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int*]"
+            return
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/list.pyi]
+
 -- Misc
 
 [case testMatchAndWithStatementScope]
