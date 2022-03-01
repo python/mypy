@@ -59,7 +59,6 @@ legacy_bundled_packages = {
     'maxminddb': StubInfo('types-maxminddb'),
     'mock': StubInfo('types-mock'),
     'OpenSSL': StubInfo('types-pyOpenSSL'),
-    'orjson': StubInfo('types-orjson', py_version=3),
     'paramiko': StubInfo('types-paramiko'),
     'pathlib2': StubInfo('types-pathlib2', py_version=2),
     'pkg_resources': StubInfo('types-setuptools', py_version=3),
