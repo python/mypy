@@ -3091,8 +3091,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
         ):
             if isinstance(lvalue, NameExpr):
-                inferred = cast(Var, lvalue.node)
-                assert isinstance(inferred, Var)
+                # If the attribute is defined in a base, use that type.
+                base_type = self.try_setting_type_from_baseclass(lvalue)
+                if base_type:
+                    lvalue_type = base_type
+                else:
+                    inferred = cast(Var, lvalue.node)
+                    assert isinstance(inferred, Var)
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)
@@ -3134,6 +3139,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         elif isinstance(s, MemberExpr):
             return s.is_inferred_def
         return False
+
+    # Attempt to find a type declaration in a base class
+    def try_setting_type_from_baseclass(self, lvalue: NameExpr) -> Optional[Type]:
+        lvalue_node = lvalue.node
+        if (isinstance(lvalue_node, Var) and lvalue.kind in (MDEF, None)
+                and len(lvalue_node.info.bases) > 0):  # None for Vars defined via self
+            for base in lvalue_node.info.mro[1:]:
+                base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
+                if base_type:
+                    lvalue_node.type = base_type
+                    self.store_type(lvalue, base_type)
+                    return base_type
+
+        return None
 
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
                             init_type: Type, context: Context) -> None:
