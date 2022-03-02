@@ -547,7 +547,7 @@ class ASTConverter:
                     # Add bare IfStmt (without overloads) to ret
                     # Required for mypy to be able to still check conditions
                     for if_stmt in skipped_if_stmts:
-                        ASTConverter._strip_contents_from_if_stmt(if_stmt)
+                        self._strip_contents_from_if_stmt(if_stmt)
                         ret.append(if_stmt)
                     skipped_if_stmts = []
                 if len(current_overload) == 1:
@@ -585,7 +585,7 @@ class ASTConverter:
             # Add bare IfStmt (without overloads) to ret
             # Required for mypy to be able to still check conditions
             for if_stmt in skipped_if_stmts:
-                ASTConverter._strip_contents_from_if_stmt(if_stmt)
+                self._strip_contents_from_if_stmt(if_stmt)
                 ret.append(if_stmt)
         if len(current_overload) == 1:
             ret.append(current_overload[0])
@@ -650,18 +650,17 @@ class ASTConverter:
             return stmt.else_body
         return None
 
-    @staticmethod
-    def _strip_contents_from_if_stmt(stmt: IfStmt) -> None:
+    def _strip_contents_from_if_stmt(self, stmt: IfStmt) -> None:
         """Remove contents from IfStmt.
 
         Needed to still be able to check the conditions after the contents
-        have been merged with the surrunding function overloads.
+        have been merged with the surrounding function overloads.
         """
         if len(stmt.body) == 1:
             stmt.body[0].body = []
         if stmt.else_body and len(stmt.else_body.body) == 1:
             if isinstance(stmt.else_body.body[0], IfStmt):
-                ASTConverter._strip_contents_from_if_stmt(stmt.else_body.body[0])
+                self._strip_contents_from_if_stmt(stmt.else_body.body[0])
             else:
                 stmt.else_body.body = []
 
