@@ -1264,7 +1264,8 @@ Point = TypedDict('Point', {int: int, int: int})  # E: Invalid TypedDict() field
 
 [case testCannotCreateTypedDictTypeWithInvalidItemType]
 from mypy_extensions import TypedDict
-Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid type: try using Literal[1] instead?
+Point = TypedDict('Point', {'x': 1, 'y': 1})  # E: Invalid type: try using Literal[1] instead? \
+                                              # E: Invalid type: try using Literal[1] instead?
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateTypedDictTypeWithInvalidName2]
@@ -1642,7 +1643,8 @@ a.clear() # E: "A" has no attribute "clear"
 a.setdefault('invalid', 1) # E: TypedDict "A" has no key "invalid"
 reveal_type(a.setdefault('x', 1)) # N: Revealed type is "builtins.int"
 reveal_type(a.setdefault('y', [])) # N: Revealed type is "builtins.list[builtins.int]"
-a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
+a.setdefault('y', '') # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]" \
+    # E: Argument 2 to "setdefault" of "TypedDict" has incompatible type "str"; expected "List[int]"
 x = ''
 a.setdefault(x, 1) # E: Expected TypedDict key to be string literal
 alias = a.setdefault
