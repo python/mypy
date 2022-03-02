@@ -3432,8 +3432,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            [key_type, value_type])
                         del partial_types[var]
 
+    def type_requires_usage(self, typ: Type) -> Optional[str]:
+        """Some types require usage in all cases. The classic example is
+        an unused coroutine.
+
+        In the case that it does require usage, returns a note to attach
+        to the error message.
+        """
+        if isinstance(typ, Instance):
+            if typ.type.get("__await__") is not None:
+                return "Are you missing an await?"
+        return None
+
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        expr_type = self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        error_note = self.type_requires_usage(expr_type)
+        if error_note:
+            self.fail(message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s)
+            self.note(error_note, s)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
