@@ -5430,6 +5430,7 @@ from typing import overload
 class A: ...
 class B: ...
 class C: ...
+class D: ...
 
 # -----
 # Test basic overload merging
@@ -5474,6 +5475,35 @@ reveal_type(f3(C()))  # E: No overload variant of "f3" matches argument type "C"
     # N:     def f3(g: A) -> A \
     # N:     def f3(g: B) -> B \
     # N: Revealed type is "Any"
+
+if True:
+    @overload
+    def f4(g: A) -> A: ...
+if True:
+    @overload
+    def f4(g: B) -> B: ...
+@overload
+def f4(g: C) -> C: ...
+def f4(g): ...
+reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f4(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f4(C()))  # N: Revealed type is "__main__.C"
+
+if True:
+    @overload
+    def f5(g: A) -> A: ...
+@overload
+def f5(g: B) -> B: ...
+if True:
+    @overload
+    def f5(g: C) -> C: ...
+@overload
+def f5(g: D) -> D: ...
+def f5(g): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
+reveal_type(f5(D()))  # N: Revealed type is "__main__.D"
 
 [case testOverloadIfSysVersion]
 # flags: --python-version 3.9
