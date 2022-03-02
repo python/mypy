@@ -104,15 +104,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_inc_ref(self, op: IncRef) -> str:
         s = self.format('inc_ref %r', op.src)
-        # TODO: Remove bool check (it's unboxed)
-        if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
+        if is_int_rprimitive(op.src.type):
             s += ' :: {}'.format(short_name(op.src.type.name))
         return s
 
     def visit_dec_ref(self, op: DecRef) -> str:
         s = self.format('%sdec_ref %r', 'x' if op.is_xdec else '', op.src)
-        # TODO: Remove bool check (it's unboxed)
-        if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
+        if is_int_rprimitive(op.src.type):
             s += ' :: {}'.format(short_name(op.src.type.name))
         return s
 
