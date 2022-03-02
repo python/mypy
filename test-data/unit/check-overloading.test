@@ -5463,7 +5463,8 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 def f3(g: A) -> A: ...
 @overload
 def f3(g: B) -> B: ...
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f3(g: C) -> C: ...
 def f3(g): ...
@@ -5777,7 +5778,8 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
 elif True:
@@ -5795,7 +5797,8 @@ reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B"
 
 @overload  # E: Single overload definition, multiple required
 def f4(x: A) -> A: ...
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f4(x: B) -> B: ...
 else:
@@ -5816,6 +5819,7 @@ class A: ...
 class B: ...
 class C: ...
 class D: ...
+class E: ...
 
 # -----
 # Match the first always-true block
@@ -5844,7 +5848,8 @@ def f2(x: A) -> A: ...
 if False:
     @overload
     def f2(x: B) -> B: ...
-elif maybe_true:  # E: Name "maybe_true" is not defined
+elif maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                  # E: Name "maybe_true" is not defined
     @overload
     def f2(x: C) -> C: ...
 else:
@@ -5859,7 +5864,8 @@ reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C"
 
 @overload  # E: Single overload definition, multiple required
 def f3(x: A) -> A: ...
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f3(x: B) -> B: ...
 elif False:
@@ -5874,6 +5880,30 @@ reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B"
     # N: Possible overload variant: \
     # N:     def f3(x: A) -> A \
     # N: Revealed type is "Any"
+
+def g(bool_var: bool) -> None:
+    @overload
+    def f4(x: A) -> A: ...
+    if bool_var:  # E: Condition cannot be inferred, unable to merge overloads
+        @overload
+        def f4(x: B) -> B: ...
+    elif maybe_true:  # E: Name "maybe_true" is not defined
+            # No 'Condition cannot be inferred' error here since it's already
+            # emitted on the first condition, 'bool_var', above.
+        @overload
+        def f4(x: C) -> C: ...
+    else:
+        @overload
+        def f4(x: D) -> D: ...
+    @overload
+    def f4(x: E) -> E: ...
+    def f4(x): ...
+    reveal_type(f4(E()))  # N: Revealed type is "__main__.E"
+    reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
+        # N: Possible overload variants: \
+        # N:     def f4(x: A) -> A \
+        # N:     def f4(x: E) -> E \
+        # N: Revealed type is "Any"
 
 [case testOverloadIfSkipUnknownExecution]
 # flags: --always-true True
@@ -5891,13 +5921,15 @@ class D: ...
 
 @overload  # E: Single overload definition, multiple required
 def f1(x: A) -> A: ...
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f1(x: B) -> B: ...
 def f1(x): ...
 reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
 
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f2(x: A) -> A: ...
 @overload
@@ -5914,14 +5946,16 @@ reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A"
 if True:
     @overload  # E: Single overload definition, multiple required
     def f3(x: A) -> A: ...
-    if maybe_true:  # E: Name "maybe_true" is not defined
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
         @overload
         def f3(x: B) -> B: ...
     def f3(x): ...
 reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
 
 if True:
-    if maybe_true:  # E: Name "maybe_true" is not defined
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
         @overload
         def f4(x: A) -> A: ...
     @overload
@@ -6178,10 +6212,12 @@ reveal_type(f8(C()))  # E: No overload variant of "f8" matches argument type "C"
     # N:     def f8(x: B) -> B \
     # N: Revealed type is "Any"
 
-if maybe_true:  # E: Name "maybe_true" is not defined
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
     @overload
     def f9(x: A) -> A: ...
-if another_maybe_true:  # E: Name "another_maybe_true" is not defined
+if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                        # E: Name "another_maybe_true" is not defined
     @overload
     def f9(x: B) -> B: ...
 @overload
@@ -6197,10 +6233,12 @@ reveal_type(f9(A()))  # E: No overload variant of "f9" matches argument type "A"
 reveal_type(f9(C()))  # N: Revealed type is "__main__.C"
 
 if True:
-    if maybe_true:  # E: Name "maybe_true" is not defined
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
         @overload
         def f10(x: A) -> A: ...
-    if another_maybe_true:  # E: Name "another_maybe_true" is not defined
+    if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                            # E: Name "another_maybe_true" is not defined
         @overload
         def f10(x: B) -> B: ...
     @overload

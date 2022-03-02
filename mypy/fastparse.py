@@ -344,9 +344,19 @@ class ASTConverter:
              msg: str,
              line: int,
              column: int,
-             blocker: bool = True) -> None:
+             blocker: bool = True,
+             code: codes.ErrorCode = codes.SYNTAX) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
+            self.errors.report(line, column, msg, blocker=blocker, code=code)
+
+    def fail_merge_overload(self, node: IfStmt) -> None:
+        self.fail(
+            "Condition can't be inferred, unable to merge overloads",
+            line=node.line,
+            column=node.column,
+            blocker=False,
+            code=codes.MISC,
+        )
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -479,10 +489,12 @@ class ASTConverter:
         last_if_stmt: Optional[IfStmt] = None
         last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
         last_if_stmt_overload_name: Optional[str] = None
+        last_if_unknown_truth_value: Optional[IfStmt] = None
         skipped_if_stmts: List[IfStmt] = []
         for stmt in stmts:
             if_overload_name: Optional[str] = None
             if_block_with_overload: Optional[Block] = None
+            if_unknown_truth_value: Optional[IfStmt] = None
             if (
                 isinstance(stmt, IfStmt)
                 and len(stmt.body[0].body) == 1
@@ -495,7 +507,8 @@ class ASTConverter:
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt)
                 if if_overload_name is not None:
-                    if_block_with_overload = self._get_executable_if_block_with_overloads(stmt)
+                    if_block_with_overload, if_unknown_truth_value = \
+                        self._get_executable_if_block_with_overloads(stmt)
 
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
@@ -510,6 +523,9 @@ class ASTConverter:
                     else:
                         current_overload.append(last_if_overload)
                     last_if_stmt, last_if_overload = None, None
+                if last_if_unknown_truth_value:
+                    self.fail_merge_overload(last_if_unknown_truth_value)
+                    last_if_unknown_truth_value = None
                 current_overload.append(stmt)
             elif (
                 current_overload_name is not None
@@ -522,6 +538,8 @@ class ASTConverter:
                 # or function definitions.
                 skipped_if_stmts.append(stmt)
                 if if_block_with_overload is None:
+                    if if_unknown_truth_value is not None:
+                        self.fail_merge_overload(if_unknown_truth_value)
                     continue
                 if last_if_overload is not None:
                     # Last stmt was an IfStmt with same overload name
@@ -542,6 +560,7 @@ class ASTConverter:
                     ret.append(last_if_stmt)
                     last_if_stmt_overload_name = current_overload_name
                     last_if_stmt, last_if_overload = None, None
+                    last_if_unknown_truth_value = None
 
                 if current_overload and current_overload_name == last_if_stmt_overload_name:
                     # Remove last stmt (IfStmt) from ret if the overload names matched
@@ -580,6 +599,7 @@ class ASTConverter:
                             Union[Decorator, FuncDef, OverloadedFuncDef],
                             if_block_with_overload.body[0]
                         )
+                    last_if_unknown_truth_value = if_unknown_truth_value
                 else:
                     current_overload = []
                     current_overload_name = None
@@ -630,29 +650,40 @@ class ASTConverter:
 
         return None
 
-    def _get_executable_if_block_with_overloads(self, stmt: IfStmt) -> Optional[Block]:
+    def _get_executable_if_block_with_overloads(
+        self, stmt: IfStmt
+    ) -> Tuple[Optional[Block], Optional[IfStmt]]:
         """Return block from IfStmt that will get executed.
 
-        Only returns block if sure that alternative blocks are unreachable.
+        Return
+            0 -> A block if sure that alternative blocks are unreachable.
+            1 -> An IfStmt if the reachability of it can't be inferred,
+                 i.e. the truth value is unknown.
         """
         infer_reachability_of_if_statement(stmt, self.options)
+        if (
+            stmt.else_body is None
+            and stmt.body[0].is_unreachable is True
+        ):
+            # always False condition with no else
+            return None, None
         if (
             stmt.else_body is None
             or stmt.body[0].is_unreachable is False
             and stmt.else_body.is_unreachable is False
         ):
             # The truth value is unknown, thus not conclusive
-            return None
+            return None, stmt
         if stmt.else_body.is_unreachable is True:
             # else_body will be set unreachable if condition is always True
-            return stmt.body[0]
+            return stmt.body[0], None
         if stmt.body[0].is_unreachable is True:
             # body will be set unreachable if condition is always False
             # else_body can contain an IfStmt itself (for elif) -> do a recursive check
             if isinstance(stmt.else_body.body[0], IfStmt):
                 return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
-            return stmt.else_body
-        return None
+            return stmt.else_body, None
+        return None, stmt
 
     def _strip_contents_from_if_stmt(self, stmt: IfStmt) -> None:
         """Remove contents from IfStmt.
