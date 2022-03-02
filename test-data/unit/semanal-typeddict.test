@@ -1,18 +1,6 @@
 -- Create Type
 
 -- TODO: Implement support for this syntax.
---[case testCanCreateTypedDictTypeWithKeywordArguments]
---from mypy_extensions import TypedDict
---Point = TypedDict('Point', x=int, y=int)
---[builtins fixtures/dict.pyi]
---[out]
---MypyFile:1(
---  ImportFrom:1(mypy_extensions, [TypedDict])
---  AssignmentStmt:2(
---    NameExpr(Point* [__main__.Point])
---    TypedDictExpr:2(Point)))
-
--- TODO: Implement support for this syntax.
 --[case testCanCreateTypedDictTypeWithDictCall]
 --from mypy_extensions import TypedDict
 --Point = TypedDict('Point', dict(x=int, y=int))
