@@ -6153,11 +6153,11 @@ reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
 reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
 
 # Test from check-functions - testUnconditionalRedefinitionOfConditionalFunction
-# If IfStmt only contains FuncDef, block is ignore if uncertain about execution
-# Necessary to be able to ignore always-false cases
+# Don't merge If blocks if they appear before any overloads
+# and don't contain any overloads themselves.
 if maybe_true:  # E: Name "maybe_true" is not defined
     def f6(x): ...
-def f6(x): ...
+def f6(x): ...  # E: Name "f6" already defined on line 61
 
 if maybe_true:  # E: Name "maybe_true" is not defined
     pass  # Some other node

@@ -1400,9 +1400,8 @@ def top() -> None:
 from typing import Any
 x = None # type: Any
 if x:
-    pass  # some other node
     def f(): pass
-def f(): pass # E: Name "f" already defined on line 5
+def f(): pass # E: Name "f" already defined on line 4
 
 [case testIncompatibleConditionalFunctionDefinition]
 from typing import Any
@@ -1647,9 +1646,8 @@ from typing import Any
 x = None # type: Any
 class A:
     if x:
-        pass  # Some other node
         def f(self): pass
-    def f(self): pass # E: Name "f" already defined on line 6
+    def f(self): pass # E: Name "f" already defined on line 5
 
 [case testIncompatibleConditionalMethodDefinition]
 from typing import Any

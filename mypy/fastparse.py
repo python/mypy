@@ -486,7 +486,11 @@ class ASTConverter:
             if (
                 isinstance(stmt, IfStmt)
                 and len(stmt.body[0].body) == 1
-                and isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+                and (
+                    isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                    or current_overload_name is not None
+                    and isinstance(stmt.body[0].body[0], FuncDef)
+                )
             ):
                 # Check IfStmt block to determine if function overloads can be merged
                 if_overload_name = self._check_ifstmt_for_overloads(stmt)
