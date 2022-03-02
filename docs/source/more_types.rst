@@ -581,6 +581,114 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
    to returning ``Any`` only if the input arguments also contain ``Any``.
 
 
+Conditional overloads
+---------------------
+
+Sometimes it's useful to define overloads conditionally.
+Common use cases are types which aren't available at runtime or only in
+a certain Python version. All existing overload rules still apply.
+E.g. if overloads are defined, at least 2 are required.
+
+.. note::
+
+    Mypy can only infer a limited number of conditions.
+    Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
+    :ref:`version_and_platform_checks`, and :option:`--always-true <mypy --always-true>` / :option:`--always-false <mypy --always-false>` values.
+    It's thus recommended to keep these conditions as simple as possible.
+
+.. code-block:: python
+
+    from typing import TYPE_CHECKING, Any, overload
+
+    if TYPE_CHECKING:
+        class A: ...
+        class B: ...
+
+
+    if TYPE_CHECKING:
+        @overload
+        def func(var: A) -> A: ...
+
+        @overload
+        def func(var: B) -> B: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(A()))  # Revealed type is "A"
+
+.. code-block:: python
+
+    # flags: --python-version 3.10
+    import sys
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+    class C: ...
+    class D: ...
+
+
+    if sys.version_info < (3, 7):
+        @overload
+        def func(var: A) -> A: ...
+
+    elif sys.version_info >= (3, 10):
+        @overload
+        def func(var: B) -> B: ...
+
+    else:
+        @overload
+        def func(var: C) -> C: ...
+
+    @overload
+    def func(var: D) -> D: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(B()))  # Revealed type is "B"
+    reveal_type(func(C()))  # No overload variant of "func" matches argument type "C"
+        # Possible overload variants:
+        #     def func(var: B) -> B
+        #     def func(var: D) -> D
+        # Revealed type is "Any"
+
+
+.. note::
+
+    In the last example Mypy is executed with
+    :option:`--python-version 3.10 <mypy --python-version>`.
+    Because of that the condition ``sys.version_info >= (3, 10)`` will match and
+    the overload for ``B`` will be added.
+    The overloads for ``A`` and ``C`` are ignored!
+    The overload for ``D`` isn't defined conditionally and thus also added.
+
+In case Mypy can't infer a condition to be always True or always False, an error will be emitted.
+
+.. code-block:: python
+
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+
+
+    def g(bool_var: bool) -> None:
+        if bool_var:  # Condition can't be inferred, unable to merge overloads
+            @overload
+            def func(var: A) -> A: ...
+
+            @overload
+            def func(var: B) -> B: ...
+
+        def func(var: Any) -> Any: ...
+
+        reveal_type(func(A()))  # Revealed type is "Any"
+
+
 .. _advanced_self:
 
 Advanced uses of self-types
