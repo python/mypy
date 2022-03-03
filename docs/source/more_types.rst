@@ -593,7 +593,7 @@ For example, there must be at least two overloads.
 
     Mypy can only infer a limited number of conditions.
     Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
-    :ref:`version_and_platform_checks`, and :option:`--always-true <mypy --always-true>`
+    :ref:`version_and_platform_checks`, :option:`--always-true <mypy --always-true>`,
     and :option:`--always-false <mypy --always-false>` values.
 
 .. code-block:: python
@@ -666,7 +666,8 @@ For example, there must be at least two overloads.
     The overloads for ``A`` and ``C`` are ignored!
     The overload for ``D`` is not defined conditionally and thus is also added.
 
-When mypy cannot infer a condition to be always True or always False, an error is emitted.
+When mypy cannot infer a condition to be always ``True`` or always ``False``,
+an error is emitted.
 
 .. code-block:: python
 
