@@ -584,17 +584,17 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
 Conditional overloads
 ---------------------
 
-Sometimes it's useful to define overloads conditionally.
-Common use cases are types which aren't available at runtime or only in
-a certain Python version. All existing overload rules still apply.
-E.g. if overloads are defined, at least 2 are required.
+Sometimes it is useful to define overloads conditionally.
+Common use cases include types that are unavailable at runtime or that
+only exist in a certain Python version. All existing overload rules still apply.
+For example, there must be at least two overloads.
 
 .. note::
 
     Mypy can only infer a limited number of conditions.
     Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
-    :ref:`version_and_platform_checks`, and :option:`--always-true <mypy --always-true>` / :option:`--always-false <mypy --always-false>` values.
-    It's thus recommended to keep these conditions as simple as possible.
+    :ref:`version_and_platform_checks`, and :option:`--always-true <mypy --always-true>`
+    and :option:`--always-false <mypy --always-false>` values.
 
 .. code-block:: python
 
@@ -659,14 +659,14 @@ E.g. if overloads are defined, at least 2 are required.
 
 .. note::
 
-    In the last example Mypy is executed with
+    In the last example, mypy is executed with
     :option:`--python-version 3.10 <mypy --python-version>`.
-    Because of that the condition ``sys.version_info >= (3, 10)`` will match and
+    Therefore, the condition ``sys.version_info >= (3, 10)`` will match and
     the overload for ``B`` will be added.
     The overloads for ``A`` and ``C`` are ignored!
-    The overload for ``D`` isn't defined conditionally and thus also added.
+    The overload for ``D`` is not defined conditionally and thus is also added.
 
-In case Mypy can't infer a condition to be always True or always False, an error will be emitted.
+When mypy cannot infer a condition to be always True or always False, an error is emitted.
 
 .. code-block:: python
 
