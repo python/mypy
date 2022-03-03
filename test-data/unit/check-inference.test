@@ -2813,8 +2813,8 @@ class C(A):
     x = ['12']
 
 reveal_type(A.x) # N: Revealed type is "builtins.list[Any]"
-reveal_type(B.x) # N: Revealed type is "builtins.list[builtins.int]"
-reveal_type(C.x) # N: Revealed type is "builtins.list[builtins.str]"
+reveal_type(B.x) # N: Revealed type is "builtins.list[Any]"
+reveal_type(C.x) # N: Revealed type is "builtins.list[Any]"
 
 [builtins fixtures/list.pyi]
 
@@ -3255,3 +3255,20 @@ reveal_type(x)  # N: Revealed type is "builtins.bytes*"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes*"
 [builtins fixtures/dict.pyi]
+
+[case testInferHintFromBase]
+from typing import Union, List
+
+class A: pass
+class B: pass
+
+U = Union[A, B]
+
+class Base:
+    variable1 : List[U] = []
+    variable2 : List[U] = []
+
+class Derived(Base):
+    variable1 = [A()]
+    variable2 = variable1
+[out]

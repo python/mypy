@@ -2376,7 +2376,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_indexed_assignment(index_lvalue, rvalue, lvalue)
 
             if inferred:
-                rvalue_type = self.expr_checker.accept(rvalue)
+                type_hint = None
+                if isinstance(lvalue, NameExpr):
+                    inferred_node = lvalue.node
+                    if (lvalue.kind in (MDEF, None) and  # None for Vars defined via self
+                            len(inferred_node.info.bases) > 0):
+                        for base in inferred_node.info.mro[1:]:
+                            base_type, base_node = self.lvalue_type_from_base(inferred_node, base)
+
+                            if base_type:
+                                type_hint = base_type
+                                break
+
+                rvalue_type = self.expr_checker.accept(rvalue, type_hint)
                 if not inferred.is_final:
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
