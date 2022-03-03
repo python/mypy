@@ -4033,39 +4033,6 @@ class B(A):
     a = 1
 [out]
 
-[case testInferBaseTypeInSubclass]
-from typing import Union, List
-
-class A: pass
-class B: pass
-
-class Base:
-    variable1 : List[Union[A, B]] = []
-    variable2 : List[Union[A, B]] = []
-
-class Derived(Base):
-    variable1 = [A()]
-    variable2 = variable1
-[out]
-
-[case testInferBaseTypeFailAssignment]
-from typing import Union, List
-
-class A: pass
-class B: pass
-
-class Base:
-    variable1 : List[A] = []
-    variable2 : List[Union[A, B]] = []
-
-class Derived(Base):
-    variable1 = [A()]
-    variable2 = variable1
-[out]
-main:12: error: Incompatible types in assignment (expression has type "List[A]", variable has type "List[Union[A, B]]")
-main:12: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
-main:12: note: Consider using "Sequence" instead, which is covariant
-
 [case testVariableSubclassAssignMismatch]
 class A:
     a = 1  # type: int

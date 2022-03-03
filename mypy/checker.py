@@ -3091,13 +3091,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             not isinstance(lvalue, NameExpr) or isinstance(lvalue.node, Var)
         ):
             if isinstance(lvalue, NameExpr):
-                # If the attribute is defined in a base, use that type.
-                base_type = self.try_setting_type_from_baseclass(lvalue)
-                if base_type:
-                    lvalue_type = base_type
-                else:
-                    inferred = cast(Var, lvalue.node)
-                    assert isinstance(inferred, Var)
+                inferred = cast(Var, lvalue.node)
+                assert isinstance(inferred, Var)
             else:
                 assert isinstance(lvalue, MemberExpr)
                 self.expr_checker.accept(lvalue.expr)
@@ -3140,20 +3135,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return s.is_inferred_def
         return False
 
-    # Attempt to find a type declaration in a base class
-    def try_setting_type_from_baseclass(self, lvalue: NameExpr) -> Optional[Type]:
-        lvalue_node = lvalue.node
-        if (isinstance(lvalue_node, Var) and lvalue.kind in (MDEF, None)
-                and len(lvalue_node.info.bases) > 0):  # None for Vars defined via self
-            for base in lvalue_node.info.mro[1:]:
-                base_type, base_node = self.lvalue_type_from_base(lvalue_node, base)
-                if base_type:
-                    lvalue_node.type = base_type
-                    self.store_type(lvalue, base_type)
-                    return base_type
-
-        return None
-
     def infer_variable_type(self, name: Var, lvalue: Lvalue,
                             init_type: Type, context: Context) -> None:
         """Infer the type of initialized variables from initializer type."""
@@ -3176,11 +3157,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
+            base_type = self.try_infer_lvalue_var_type_from_bases(name, lvalue)
+            if base_type:
+                self.set_inferred_type(name, lvalue, strip_type(base_type))
 
-            # Make the type more general (strip away function names etc.).
-            init_type = strip_type(init_type)
+            else:
+                # Make the type more general (strip away function names etc.).
+                init_type = strip_type(init_type)
 
-            self.set_inferred_type(name, lvalue, init_type)
+                self.set_inferred_type(name, lvalue, init_type)
 
     def infer_partial_type(self, name: Var, lvalue: Lvalue, init_type: Type) -> bool:
         init_type = get_proper_type(init_type)
@@ -3214,6 +3199,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.set_inferred_type(name, lvalue, partial_type)
         self.partial_types[-1].map[name] = lvalue
         return True
+
+    def try_infer_lvalue_var_type_from_bases(self, name: Var, lvalue: Lvalue) -> Optional[Type]:
+        if (isinstance(lvalue, RefExpr) and lvalue.kind in (MDEF, None)
+                and len(name.info.bases) > 0):  # None for Vars defined via self
+            for base in name.info.mro[1:]:
+                base_type, base_node = self.lvalue_type_from_base(name, base)
+                if base_type:
+                    return base_type
+
+        return None
 
     def is_valid_defaultdict_partial_value_type(self, t: ProperType) -> bool:
         """Check if t can be used as the basis for a partial defaultdict value type.
