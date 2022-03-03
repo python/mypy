@@ -4175,7 +4175,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: Dict[Var, Type]) -> None:
         if type_map:
-            for expr, typ in type_map.copy().items():
+            for expr, typ in list(type_map.items()):
                 if isinstance(expr, NameExpr):
                     node = expr.node
                     assert isinstance(node, Var)
