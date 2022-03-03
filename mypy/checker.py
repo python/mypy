@@ -3200,7 +3200,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types[-1].map[name] = lvalue
         return True
 
-    def try_infer_lvalue_var_type_from_explicit_base_member(self, name: Var, lvalue: Lvalue) -> Optional[Type]:
+    def try_infer_lvalue_var_type_from_explicit_base_member(
+        self, name: Var, lvalue: Lvalue
+    ) -> Optional[Type]:
         if (isinstance(lvalue, RefExpr) and lvalue.kind in (MDEF, None)
                 and len(name.info.bases) > 0):  # None for Vars defined via self
             for base in name.info.mro[1:]:
