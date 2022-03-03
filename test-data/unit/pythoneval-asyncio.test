@@ -78,7 +78,7 @@ def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
 
 loop = asyncio.get_event_loop()
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
+_ = asyncio.Task(slow_operation(future))
 loop.run_until_complete(future)
 print(future.result())
 loop.close()
@@ -102,7 +102,7 @@ def got_result(future: 'Future[str]') -> None:
 
 loop = asyncio.get_event_loop() # type: AbstractEventLoop
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Here create a task with the function. (The Task need a Future[T] as first argument)
+_ = asyncio.Task(slow_operation(future))  # Here create a task with the function. (The Task need a Future[T] as first argument)
 future.add_done_callback(got_result)  # and assign the callback to the future
 try:
     loop.run_forever()
@@ -314,7 +314,7 @@ def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
 
 loop = asyncio.get_event_loop()
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
+_ = asyncio.Task(slow_operation(future))
 loop.run_until_complete(future)
 print(future.result())
 loop.close()
@@ -334,7 +334,7 @@ def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
 
 loop = asyncio.get_event_loop()
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Error
+_ = asyncio.Task(slow_operation(future))  # Error
 loop.run_until_complete(future)
 print(future.result())
 loop.close()
@@ -353,7 +353,7 @@ def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
 
 loop = asyncio.get_event_loop()
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))  # Error
+_ = asyncio.Task(slow_operation(future))  # Error
 loop.run_until_complete(future)
 print(future.result())
 loop.close()
@@ -378,7 +378,7 @@ def got_result(future: 'Future[int]') -> None:
 
 loop = asyncio.get_event_loop() # type: AbstractEventLoop
 future = asyncio.Future()  # type: Future[str]
-asyncio.Task(slow_operation(future))
+_ = asyncio.Task(slow_operation(future))
 future.add_done_callback(got_result)  # Error
 
 try:
