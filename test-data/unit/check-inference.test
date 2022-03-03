@@ -3304,3 +3304,10 @@ class B:
 
 reveal_type(B.x)  # N: Revealed type is "__main__.Derived"
 [out]
+
+[case testDontInferFromObject]
+class A:
+    __doc__ = __doc__ if __doc__ else "No docs"
+
+reveal_type(A.__doc__)  # N: Revealed type is "builtins.str"
+[out]

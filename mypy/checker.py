@@ -3206,9 +3206,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (isinstance(lvalue, RefExpr) and lvalue.kind in (MDEF, None)
                 and len(name.info.bases) > 0):  # None for Vars defined via self
             for base in name.info.mro[1:]:
-                base_type, base_node = self.lvalue_type_from_base(name, base)
-                if isinstance(base_node, Var) and not base_node.is_inferred and base_type:
-                    return base_type
+                if base.fullname != "builtins.object":
+                    base_type, base_node = self.lvalue_type_from_base(name, base)
+                    if isinstance(base_node, Var) and not base_node.is_inferred and base_type:
+                        return base_type
 
         return None
 
