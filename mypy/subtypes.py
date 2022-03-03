@@ -1237,13 +1237,11 @@ def _is_proper_subtype(left: Type, right: Type, *,
 class ProperSubtypeVisitor(TypeVisitor[bool]):
     def __init__(self, right: Type, *,
                  ignore_promotions: bool = False,
-                 ignore_last_known_value: bool = False,
                  erase_instances: bool = False,
                  keep_erased_types: bool = False) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
         self.ignore_promotions = ignore_promotions
-        self.ignore_last_known_value = ignore_last_known_value
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self._subtype_kind = ProperSubtypeVisitor.build_subtype_kind(
@@ -1299,10 +1297,6 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
-            if not self.ignore_last_known_value:
-                if right.last_known_value is not None and \
-                        right.last_known_value != left.last_known_value:
-                    return False
             if not self.ignore_promotions:
                 for base in left.type.mro:
                     if base._promote and self._is_proper_subtype(base._promote, right):
