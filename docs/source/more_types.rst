@@ -593,7 +593,7 @@ For example, there must be at least two overloads.
 
     Mypy can only infer a limited number of conditions.
     Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
-    :ref:`version_and_platform_checks`, :option:`--always-true <mypy --always-true>`
+    :ref:`version_and_platform_checks`, :option:`--always-true <mypy --always-true>`,
     and :option:`--always-false <mypy --always-false>` values.
 
 .. code-block:: python
