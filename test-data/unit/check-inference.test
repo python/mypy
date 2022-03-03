@@ -2813,8 +2813,8 @@ class C(A):
     x = ['12']
 
 reveal_type(A.x) # N: Revealed type is "builtins.list[Any]"
-reveal_type(B.x) # N: Revealed type is "builtins.list[Any]"
-reveal_type(C.x) # N: Revealed type is "builtins.list[Any]"
+reveal_type(B.x) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(C.x) # N: Revealed type is "builtins.list[builtins.str]"
 
 [builtins fixtures/list.pyi]
 
@@ -3269,6 +3269,9 @@ class Base:
 class Derived(Base):
     variable1 = [A()]
     variable2 = variable1
+
+reveal_type(Derived.variable1)  # N: Revealed type is "builtins.list[Union[__main__.A, __main__.B]]"
+reveal_type(Derived.variable2)  # N: Revealed type is "builtins.list[Union[__main__.A, __main__.B]]"
 [out]
 
 [case testInferBaseTypeFailAssignment]
@@ -3288,3 +3291,16 @@ class Derived(Base):
 main:12: error: Incompatible types in assignment (expression has type "List[A]", base class "Base" defined the type as "List[Union[A, B]]")
 main:12: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 main:12: note: Consider using "Sequence" instead, which is covariant
+
+[case testDontInferNonExplicitBase]
+class Base: pass
+class Derived: pass
+
+class A:
+    x = Base()
+
+class B:
+    x = Derived()
+
+reveal_type(B.x)  # N: Revealed type is "__main__.Derived"
+[out]

@@ -3157,7 +3157,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name.type = AnyType(TypeOfAny.from_error)
         else:
             # Infer type of the target.
-            base_type = self.try_infer_lvalue_var_type_from_bases(name, lvalue)
+            base_type = self.try_infer_lvalue_var_type_from_explicit_base_member(name, lvalue)
             if base_type:
                 self.set_inferred_type(name, lvalue, strip_type(base_type))
 
@@ -3200,12 +3200,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_types[-1].map[name] = lvalue
         return True
 
-    def try_infer_lvalue_var_type_from_bases(self, name: Var, lvalue: Lvalue) -> Optional[Type]:
+    def try_infer_lvalue_var_type_from_explicit_base_member(self, name: Var, lvalue: Lvalue) -> Optional[Type]:
         if (isinstance(lvalue, RefExpr) and lvalue.kind in (MDEF, None)
                 and len(name.info.bases) > 0):  # None for Vars defined via self
             for base in name.info.mro[1:]:
                 base_type, base_node = self.lvalue_type_from_base(name, base)
-                if base_type:
+                if isinstance(base_node, Var) and not base_node.is_inferred and base_type:
                     return base_type
 
         return None
