@@ -16,13 +16,20 @@ from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
-def use_tmp_dir() -> Iterator[None]:
+def use_tmp_dir(mod_name: str) -> Iterator[None]:
     current = os.getcwd()
+    current_syspath = sys.path[:]
     with tempfile.TemporaryDirectory() as tmp:
         try:
             os.chdir(tmp)
+            if sys.path[0] != tmp:
+                sys.path.insert(0, tmp)
             yield
         finally:
+            sys.path = current_syspath[:]
+            if mod_name in sys.modules:
+                del sys.modules[mod_name]
+
             os.chdir(current)
 
 
@@ -92,7 +99,7 @@ def staticmethod(f: T) -> T: ...
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
-    with use_tmp_dir():
+    with use_tmp_dir(TEST_MODULE_NAME):
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
         with open("typing.pyi", "w") as f:
@@ -105,11 +112,6 @@ def run_stubtest(
             with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
-        if sys.path[0] != ".":
-            sys.path.insert(0, ".")
-        if TEST_MODULE_NAME in sys.modules:
-            del sys.modules[TEST_MODULE_NAME]
-
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(
