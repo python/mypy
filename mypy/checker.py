@@ -2377,9 +2377,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if inferred:
                 type_hint = None
-                if isinstance(lvalue, NameExpr):
+                if isinstance(lvalue, RefExpr):
                     inferred_node = lvalue.node
-                    if (lvalue.kind in (MDEF, None) and  # None for Vars defined via self
+                    if (isinstance(inferred_node, Var) and
+                            lvalue.kind in (MDEF, None) and  # None for Vars defined via self
                             len(inferred_node.info.bases) > 0):
                         for base in inferred_node.info.mro[1:]:
                             base_type, base_node = self.lvalue_type_from_base(inferred_node, base)
