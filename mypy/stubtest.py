@@ -1060,7 +1060,7 @@ def is_probably_a_function(runtime: Any) -> bool:
 
 
 def is_read_only_property(runtime: object) -> bool:
-    return isinstance(runtime, property) and property.fset is None
+    return isinstance(runtime, property) and runtime.fset is None
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
