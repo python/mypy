@@ -118,7 +118,7 @@ def run_stubtest(
                 use_builtins_fixtures=True
             )
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(tmp_dir + "/", "")
+        return output.getvalue().replace(tmp_dir + os.sep, "")
 
 
 class Case:
