@@ -3271,4 +3271,3 @@ class Base:
 class Derived(Base):
     variable1 = [A()]
     variable2 = variable1
-[out]
