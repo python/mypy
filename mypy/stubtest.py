@@ -772,8 +772,7 @@ def verify_var(
 
     if (
         stub.is_initialized_in_class
-        and isinstance(runtime, property)
-        and runtime.fset is None
+        and is_read_only_property(runtime)
         and (stub.is_settable_property or not stub.is_property)
     ):
         yield Error(
@@ -816,14 +815,13 @@ def verify_overloadedfuncdef(
 
     if stub.is_property:
         # Any property with a setter is represented as an OverloadedFuncDef
-        if isinstance(runtime, property):
-            if runtime.fset is None:
-                yield Error(
-                    object_path,
-                    "is read-only at runtime but not in the stub",
-                    stub,
-                    runtime
-                )
+        if is_read_only_property(runtime):
+            yield Error(
+                object_path,
+                "is read-only at runtime but not in the stub",
+                stub,
+                runtime
+            )
         return
 
     if not is_probably_a_function(runtime):
@@ -1059,6 +1057,10 @@ def is_probably_a_function(runtime: Any) -> bool:
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
     )
+
+
+def is_read_only_property(runtime: object) -> bool:
+    return isinstance(runtime, property) and property.fset is None
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
