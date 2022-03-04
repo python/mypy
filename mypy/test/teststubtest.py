@@ -7,7 +7,6 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -16,7 +15,7 @@ from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
-def use_tmp_dir(mod_name: str) -> Iterator[None]:
+def use_tmp_dir(mod_name: str) -> Iterator[str]:
     current = os.getcwd()
     current_syspath = sys.path[:]
     with tempfile.TemporaryDirectory() as tmp:
