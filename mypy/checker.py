@@ -5156,7 +5156,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       code: Optional[ErrorCode] = None,
                       outer_context: Optional[Context] = None) -> bool:
         """Generate an error if the subtype is not compatible with supertype."""
-        if is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype, options=self.options):
             return True
 
         if isinstance(msg, ErrorMessage):

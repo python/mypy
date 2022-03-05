@@ -463,9 +463,15 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = mapped_arg.prefix
-                            suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
-                                                          suffix.arg_kinds[len(prefix.arg_kinds):],
-                                                          suffix.arg_names[len(prefix.arg_names):])
+
+                            if isinstance(suffix, CallableType):
+                                from_concatenate = bool(prefix.arg_types) or suffix.from_concatenate
+                                suffix = suffix.copy_modified(from_concatenate=from_concatenate)
+
+                            suffix = suffix.copy_modified(
+                                suffix.arg_types[len(prefix.arg_types):],
+                                suffix.arg_kinds[len(prefix.arg_kinds):],
+                                suffix.arg_names[len(prefix.arg_names):])
                             res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
                             res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
@@ -495,9 +501,15 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = template_arg.prefix
-                            suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
-                                                          suffix.arg_kinds[len(prefix.arg_kinds):],
-                                                          suffix.arg_names[len(prefix.arg_names):])
+
+                            if isinstance(suffix, CallableType):
+                                from_concatenate = bool(prefix.arg_types) or suffix.from_concatenate
+                                suffix = suffix.copy_modified(from_concatenate=from_concatenate)
+
+                            suffix = suffix.copy_modified(
+                                suffix.arg_types[len(prefix.arg_types):],
+                                suffix.arg_kinds[len(prefix.arg_kinds):],
+                                suffix.arg_names[len(prefix.arg_names):])
                             res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
                         elif isinstance(suffix, ParamSpecType):
                             res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
