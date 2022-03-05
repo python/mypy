@@ -458,16 +458,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                 mapped_arg, instance_arg, neg_op(self.direction)))
                     elif isinstance(tvar, ParamSpecType) and isinstance(mapped_arg, ParamSpecType):
                         suffix = get_proper_type(instance_arg)
+
+                        if isinstance(suffix, CallableType):
+                            prefix = mapped_arg.prefix
+                            from_concat = bool(prefix.arg_types) or suffix.from_concatenate
+                            suffix = suffix.copy_modified(from_concatenate=from_concat)
+
                         if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = mapped_arg.prefix
-
-                            if isinstance(suffix, CallableType):
-                                from_concatenate = bool(prefix.arg_types) or suffix.from_concatenate
-                                suffix = suffix.copy_modified(from_concatenate=from_concatenate)
-
                             suffix = suffix.copy_modified(
                                 suffix.arg_types[len(prefix.arg_types):],
                                 suffix.arg_kinds[len(prefix.arg_kinds):],
@@ -496,15 +497,17 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     elif (isinstance(tvar, ParamSpecType) and
                           isinstance(template_arg, ParamSpecType)):
                         suffix = get_proper_type(mapped_arg)
+
+                        if isinstance(suffix, CallableType):
+                            prefix = template_arg.prefix
+                            from_concat = bool(prefix.arg_types) or suffix.from_concatenate
+                            suffix = suffix.copy_modified(from_concatenate=from_concat)
+
                         if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
                             prefix = template_arg.prefix
-
-                            if isinstance(suffix, CallableType):
-                                from_concatenate = bool(prefix.arg_types) or suffix.from_concatenate
-                                suffix = suffix.copy_modified(from_concatenate=from_concatenate)
 
                             suffix = suffix.copy_modified(
                                 suffix.arg_types[len(prefix.arg_types):],

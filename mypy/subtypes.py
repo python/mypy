@@ -1053,7 +1053,9 @@ def are_parameters_compatible(left: Union[Parameters, CallableType],
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
-            if name is None or kind.is_star() or name in right_names or not strict_concatenate_check:
+            if (name is None or kind.is_star()
+                    or name in right_names
+                    or not strict_concatenate_check):
                 continue
             left_only_names.add(name)
 

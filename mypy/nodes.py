@@ -1034,7 +1034,8 @@ class ClassDef(Statement):
         res = ClassDef(data['name'],
                        Block([]),
                        # https://github.com/python/mypy/issues/12257
-                       [cast(mypy.types.TypeVarLikeType, mypy.types.deserialize_type(v)) for v in data['type_vars']],
+                       [cast(mypy.types.TypeVarLikeType, mypy.types.deserialize_type(v))
+                        for v in data['type_vars']],
                        )
         res.fullname = data['fullname']
         return res

@@ -573,6 +573,7 @@ reveal_type(f(n))  # N: Revealed type is "def (builtins.int, builtins.bytes) -> 
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecConcatenateNamedArgs]
+# flags: --strict-concatenate
 # this is one noticeable deviation from PEP but I believe it is for the better
 from typing_extensions import ParamSpec, Concatenate
 from typing import Callable, TypeVar
@@ -594,10 +595,35 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 f2(lambda x: 42)(42, x=42)
 [builtins fixtures/tuple.pyi]
 [out]
+main:10: error: invalid syntax
+[out version>=3.8]
+main:17: error: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
+main:17: note: This may be because "result" has arguments named: "x"
+
+[case testNonStrictParamSpecConcatenateNamedArgs]
+# this is one noticeable deviation from PEP but I believe it is for the better
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Accepted
+
+def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Rejected -> Accepted
+
+# reason for rejection:
+f2(lambda x: 42)(42, x=42)
+[builtins fixtures/tuple.pyi]
+[out]
 main:9: error: invalid syntax
 [out version>=3.8]
-main:16: error: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
-main:16: note: This may be because "result" has arguments named: "x"
 
 [case testParamSpecConcatenateWithTypeVar]
 from typing_extensions import ParamSpec, Concatenate
@@ -840,7 +866,8 @@ class A:
         ...
 
 reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`-1, None]) -> __main__.Job[_P`-1, None]"
-reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+# TODO: flakey, _P`4 alternates around.
+# reveal_type(A().func)  $ N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
 reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[def (x: Any), None]"
 
 def f(x: int, y: int) -> None: ...
