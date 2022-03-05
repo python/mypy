@@ -3,8 +3,9 @@
 ## [Unreleased]
 ### Added
 - `default_return` option to imply unannotated return type as `None`.
-- Specific error code for dynamic/Any errors
+- Specific error codes for `Any` errors
 - Automatic baseline mode, if there are no new errors then write.
+- Ignore baseline with `mypy --baseline-file= src`
 ### Enhancements
 - Baseline will ignore reveals (`reveal_type` and `reveal_locals`).
 - `--write-baseline` will report total and new errors.
