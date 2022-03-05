@@ -288,13 +288,14 @@ def verify_typeinfo(
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
 
-    # Check everything already defined in the stub
+    # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
+    # Check all public things on the runtime class
     to_check.update(
         # cast to workaround mypyc complaints
         m
         for m in cast(Any, vars)(runtime)
-        if not is_probably_private(m) and m not in ALLOW_MISSING_CLASS_DUNDERS
+        if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -629,6 +630,7 @@ def _verify_signature(
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and stub_arg.variable.name.startswith("__")
+            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional or keyword '
@@ -985,16 +987,16 @@ IGNORED_MODULE_DUNDERS = frozenset(
     }
 )
 
-ALLOW_MISSING_CLASS_DUNDERS = frozenset(
+IGNORABLE_CLASS_DUNDERS = frozenset(
     {
         # Special attributes
         "__dict__",
         "__text_signature__",
         "__weakref__",
         "__del__",  # Only ever called when an object is being deleted, who cares?
-        # These two are basically useless for type checkers
         "__hash__",
         "__getattr__",  # resulting behaviour might be typed explicitly
+        "__setattr__",  # defining this on a class can cause worse type checking
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
