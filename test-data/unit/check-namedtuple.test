@@ -673,7 +673,7 @@ Node = NamedTuple('Node', [
         ('children', Tuple['Node', ...]), # E: Cannot resolve name "Node" (possible cyclic definition)
     ])
 n: Node
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.Node]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.Node]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT2]
@@ -689,7 +689,7 @@ class B(NamedTuple):
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
@@ -1058,5 +1058,65 @@ def bad2() -> NamedTuple:
 def bad3() -> NamedTuple:
     return (1, 2)  # E: Incompatible return value type (got "Tuple[int, int]", expected "NamedTuple")
 
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testBoolInTuplesRegression]
+# https://github.com/python/mypy/issues/11701
+from typing import NamedTuple, Literal, List, Tuple
+
+C = NamedTuple("C", [("x", Literal[True, False])])
+
+T = Tuple[Literal[True, False]]
+
+# Was error here:
+# Incompatible types in assignment (expression has type "List[C]", variable has type "List[C]")
+x: List[C] = [C(True)]
+
+t: T
+
+# Was error here:
+# Incompatible types in assignment (expression has type "List[Tuple[bool]]",
+# variable has type "List[Tuple[Union[Literal[True], Literal[False]]]]")
+y: List[T] = [t]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleWithBoolNarrowsToBool]
+# flags: --warn-unreachable
+from typing import NamedTuple
+
+class C(NamedTuple):
+    x: int
+
+    def __bool__(self) -> bool:
+        pass
+
+def foo(c: C) -> None:
+    if c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+
+def bar(c: C) -> None:
+    if not c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C]"
+
+class C1(NamedTuple):
+    x: int
+
+def foo1(c: C1) -> None:
+    if c:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
+    else:
+        c  # E: Statement is unreachable
+
+def bar1(c: C1) -> None:
+    if not c:
+        c  # E: Statement is unreachable
+    else:
+        reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]

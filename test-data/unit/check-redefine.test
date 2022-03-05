@@ -498,7 +498,8 @@ def _(arg: str):
 def _(arg: int) -> int:
     return 'a' # E: Incompatible return value type (got "str", expected "int")
 
-[case testCallingUnderscoreFunctionIsNotAllowed]
+[case testCallingUnderscoreFunctionIsNotAllowed-skip]
+# Skipped because of https://github.com/python/mypy/issues/11774
 def _(arg: str) -> None:
     pass
 

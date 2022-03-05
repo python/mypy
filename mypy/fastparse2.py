@@ -47,10 +47,11 @@ from mypy.types import (
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
-    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
+    TypeConverter, parse_type_comment, parse_type_ignore_tag,
     TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
+from mypy.util import bytes_to_human_readable_repr
 from mypy.reachability import mark_block_unreachable
 
 try:
@@ -216,7 +217,7 @@ class ASTConverter:
         if (module and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.MISC.code)
+                codes.FILE.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]

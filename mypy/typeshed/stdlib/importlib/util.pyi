@@ -1,5 +1,6 @@
 import importlib.abc
 import importlib.machinery
+import sys
 import types
 from _typeshed import StrOrBytesPath
 from typing import Any, Callable
@@ -7,9 +8,9 @@ from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
 
-def module_for_loader(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...  # type: ignore
-def set_loader(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...  # type: ignore
-def set_package(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...  # type: ignore
+def module_for_loader(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...
+def set_loader(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...
+def set_package(fxn: Callable[_P, types.ModuleType]) -> Callable[_P, types.ModuleType]: ...
 def resolve_name(name: str, package: str | None) -> str: ...
 
 MAGIC_NUMBER: bytes
@@ -36,3 +37,6 @@ class LazyLoader(importlib.abc.Loader):
     def factory(cls, loader: importlib.abc.Loader) -> Callable[..., LazyLoader]: ...
     def create_module(self, spec: importlib.machinery.ModuleSpec) -> types.ModuleType | None: ...
     def exec_module(self, module: types.ModuleType) -> None: ...
+
+if sys.version_info >= (3, 7):
+    def source_hash(source_bytes: bytes) -> int: ...

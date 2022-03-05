@@ -1,14 +1,14 @@
 import socket
 import sys
 from types import TracebackType
-from typing import Any, BinaryIO, Iterable, NoReturn, Tuple, Type, Union, overload
+from typing import Any, BinaryIO, Iterable, NoReturn, Type, Union, overload
 
 if sys.version_info >= (3, 8):
     # These are based in socket, maybe move them out into _typeshed.pyi or such
-    _Address = Union[Tuple[Any, ...], str]
+    _Address = Union[tuple[Any, ...], str]
     _RetAddress = Any
     _WriteBuffer = Union[bytearray, memoryview]
-    _CMSG = Tuple[int, int, bytes]
+    _CMSG = tuple[int, int, bytes]
     class TransportSocket:
         def __init__(self, sock: socket.socket) -> None: ...
         def _na(self, what: str) -> None: ...

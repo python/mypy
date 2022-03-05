@@ -846,7 +846,7 @@ def func(x: Literal['foo', 'bar', '  foo  ']) -> None: ...
 func('foo')
 func('bar')
 func('  foo  ')
-func('baz')       # E: Argument 1 to "func" has incompatible type "Literal['baz']"; expected "Union[Literal['foo'], Literal['bar'], Literal['  foo  ']]"
+func('baz')       # E: Argument 1 to "func" has incompatible type "Literal['baz']"; expected "Literal['foo', 'bar', '  foo  ']"
 
 a: Literal['foo']
 b: Literal['bar']
@@ -860,7 +860,7 @@ func(b)
 func(c)
 func(d)
 func(e)
-func(f)  # E: Argument 1 to "func" has incompatible type "Union[Literal['foo'], Literal['bar'], Literal['baz']]"; expected "Union[Literal['foo'], Literal['bar'], Literal['  foo  ']]"
+func(f)  # E: Argument 1 to "func" has incompatible type "Literal['foo', 'bar', 'baz']"; expected "Literal['foo', 'bar', '  foo  ']"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1129,8 +1129,8 @@ d: int
 
 foo(a)
 foo(b)
-foo(c)  # E: Argument 1 to "foo" has incompatible type "Union[Literal[4], Literal[5]]"; expected "Union[Literal[1], Literal[2], Literal[3]]"
-foo(d)  # E: Argument 1 to "foo" has incompatible type "int"; expected "Union[Literal[1], Literal[2], Literal[3]]"
+foo(c)  # E: Argument 1 to "foo" has incompatible type "Literal[4, 5]"; expected "Literal[1, 2, 3]"
+foo(d)  # E: Argument 1 to "foo" has incompatible type "int"; expected "Literal[1, 2, 3]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1144,7 +1144,7 @@ c: Literal[4, 'foo']
 
 foo(a)
 foo(b)
-foo(c)  # E: Argument 1 to "foo" has incompatible type "Union[Literal[4], Literal['foo']]"; expected "int"
+foo(c)  # E: Argument 1 to "foo" has incompatible type "Literal[4, 'foo']"; expected "int"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1248,19 +1248,19 @@ class Contravariant(Generic[T_contra]): pass
 a1: Invariant[Literal[1]]
 a2: Invariant[Literal[1, 2]]
 a3: Invariant[Literal[1, 2, 3]]
-a2 = a1  # E: Incompatible types in assignment (expression has type "Invariant[Literal[1]]", variable has type "Invariant[Union[Literal[1], Literal[2]]]")
-a2 = a3  # E: Incompatible types in assignment (expression has type "Invariant[Union[Literal[1], Literal[2], Literal[3]]]", variable has type "Invariant[Union[Literal[1], Literal[2]]]")
+a2 = a1  # E: Incompatible types in assignment (expression has type "Invariant[Literal[1]]", variable has type "Invariant[Literal[1, 2]]")
+a2 = a3  # E: Incompatible types in assignment (expression has type "Invariant[Literal[1, 2, 3]]", variable has type "Invariant[Literal[1, 2]]")
 
 b1: Covariant[Literal[1]]
 b2: Covariant[Literal[1, 2]]
 b3: Covariant[Literal[1, 2, 3]]
 b2 = b1
-b2 = b3  # E: Incompatible types in assignment (expression has type "Covariant[Union[Literal[1], Literal[2], Literal[3]]]", variable has type "Covariant[Union[Literal[1], Literal[2]]]")
+b2 = b3  # E: Incompatible types in assignment (expression has type "Covariant[Literal[1, 2, 3]]", variable has type "Covariant[Literal[1, 2]]")
 
 c1: Contravariant[Literal[1]]
 c2: Contravariant[Literal[1, 2]]
 c3: Contravariant[Literal[1, 2, 3]]
-c2 = c1  # E: Incompatible types in assignment (expression has type "Contravariant[Literal[1]]", variable has type "Contravariant[Union[Literal[1], Literal[2]]]")
+c2 = c1  # E: Incompatible types in assignment (expression has type "Contravariant[Literal[1]]", variable has type "Contravariant[Literal[1, 2]]")
 c2 = c3
 [builtins fixtures/tuple.pyi]
 [out]
@@ -1275,12 +1275,12 @@ def bar(x: Sequence[Literal[1, 2]]) -> None: pass
 a: List[Literal[1]]
 b: List[Literal[1, 2, 3]]
 
-foo(a)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1]]"; expected "List[Union[Literal[1], Literal[2]]]" \
+foo(a)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1]]"; expected "List[Literal[1, 2]]" \
         # N: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance \
         # N: Consider using "Sequence" instead, which is covariant
-foo(b)  # E: Argument 1 to "foo" has incompatible type "List[Union[Literal[1], Literal[2], Literal[3]]]"; expected "List[Union[Literal[1], Literal[2]]]"
+foo(b)  # E: Argument 1 to "foo" has incompatible type "List[Literal[1, 2, 3]]"; expected "List[Literal[1, 2]]"
 bar(a)
-bar(b)  # E: Argument 1 to "bar" has incompatible type "List[Union[Literal[1], Literal[2], Literal[3]]]"; expected "Sequence[Union[Literal[1], Literal[2]]]"
+bar(b)  # E: Argument 1 to "bar" has incompatible type "List[Literal[1, 2, 3]]"; expected "Sequence[Literal[1, 2]]"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -1363,9 +1363,9 @@ x = b  # E: Incompatible types in assignment (expression has type "str", variabl
 y = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Literal[True]")
 z = d  # This is ok: Literal[None] and None are equivalent.
 
-combined = a  # E: Incompatible types in assignment (expression has type "int", variable has type "Union[Literal[1], Literal['foo'], Literal[True], None]")
-combined = b  # E: Incompatible types in assignment (expression has type "str", variable has type "Union[Literal[1], Literal['foo'], Literal[True], None]")
-combined = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Union[Literal[1], Literal['foo'], Literal[True], None]")
+combined = a  # E: Incompatible types in assignment (expression has type "int", variable has type "Optional[Literal[1, 'foo', True]]")
+combined = b  # E: Incompatible types in assignment (expression has type "str", variable has type "Optional[Literal[1, 'foo', True]]")
+combined = c  # E: Incompatible types in assignment (expression has type "bool", variable has type "Optional[Literal[1, 'foo', True]]")
 combined = d  # Also ok, for similar reasons.
 
 e: Literal[1] = 1
@@ -1392,9 +1392,9 @@ a: Literal[1] = 2           # E: Incompatible types in assignment (expression ha
 b: Literal["foo"] = "bar"   # E: Incompatible types in assignment (expression has type "Literal['bar']", variable has type "Literal['foo']")
 c: Literal[True] = False    # E: Incompatible types in assignment (expression has type "Literal[False]", variable has type "Literal[True]")
 
-d: Literal[1, 2] = 3                # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Union[Literal[1], Literal[2]]")
-e: Literal["foo", "bar"] = "baz"    # E: Incompatible types in assignment (expression has type "Literal['baz']", variable has type "Union[Literal['foo'], Literal['bar']]")
-f: Literal[True, 4] = False         # E: Incompatible types in assignment (expression has type "Literal[False]", variable has type "Union[Literal[True], Literal[4]]")
+d: Literal[1, 2] = 3                # E: Incompatible types in assignment (expression has type "Literal[3]", variable has type "Literal[1, 2]")
+e: Literal["foo", "bar"] = "baz"    # E: Incompatible types in assignment (expression has type "Literal['baz']", variable has type "Literal['foo', 'bar']")
+f: Literal[True, 4] = False         # E: Incompatible types in assignment (expression has type "Literal[False]", variable has type "Literal[True, 4]")
 
 [builtins fixtures/primitives.pyi]
 [out]
@@ -1504,7 +1504,7 @@ reveal_type(arr3)  # N: Revealed type is "builtins.list[builtins.int*]"
 reveal_type(arr4)  # N: Revealed type is "builtins.list[builtins.object*]"
 reveal_type(arr5)  # N: Revealed type is "builtins.list[builtins.object*]"
 
-bad: List[Literal[1, 2]] = [1, 2, 3]  # E: List item 2 has incompatible type "Literal[3]"; expected "Union[Literal[1], Literal[2]]"
+bad: List[Literal[1, 2]] = [1, 2, 3]  # E: List item 2 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
 
 [builtins fixtures/list.pyi]
 [out]
@@ -1619,19 +1619,19 @@ reveal_type(func(a))  # N: Revealed type is "Union[__main__.A, __main__.C]"
 reveal_type(func(b))  # N: Revealed type is "__main__.B"
 reveal_type(func(c))  # N: Revealed type is "Union[__main__.B, __main__.A]"
 reveal_type(func(d))  # N: Revealed type is "__main__.B" \
-                      # E: Argument 1 to "func" has incompatible type "Union[Literal[6], Literal[7]]"; expected "Union[Literal[3], Literal[4], Literal[5], Literal[6]]"
+                      # E: Argument 1 to "func" has incompatible type "Literal[6, 7]"; expected "Literal[3, 4, 5, 6]"
 
 reveal_type(func(e))  # E: No overload variant of "func" matches argument type "int" \
                       # N: Possible overload variants: \
                       # N:     def func(x: Literal[-40]) -> A \
-                      # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
+                      # N:     def func(x: Literal[3, 4, 5, 6]) -> B \
                       # N:     def func(x: Literal['foo']) -> C \
                       # N: Revealed type is "Any"
 
-reveal_type(func(f))  # E: No overload variant of "func" matches argument type "Union[Literal[7], Literal['bar']]" \
+reveal_type(func(f))  # E: No overload variant of "func" matches argument type "Literal[7, 'bar']" \
                       # N: Possible overload variants: \
                       # N:     def func(x: Literal[-40]) -> A \
-                      # N:     def func(x: Union[Literal[3], Literal[4], Literal[5], Literal[6]]) -> B \
+                      # N:     def func(x: Literal[3, 4, 5, 6]) -> B \
                       # N:     def func(x: Literal['foo']) -> C \
                       # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
@@ -1657,7 +1657,7 @@ reveal_type(f(1))  # N: Revealed type is "builtins.int"
 reveal_type(f(2))  # N: Revealed type is "builtins.int"
 reveal_type(f(y))  # N: Revealed type is "builtins.object"
 reveal_type(f(z))  # N: Revealed type is "builtins.int" \
-                   # E: Argument 1 to "f" has incompatible type "Union[Literal[1], Literal[2], Literal['three']]"; expected "Union[Literal[1], Literal[2]]"
+                   # E: Argument 1 to "f" has incompatible type "Literal[1, 2, 'three']"; expected "Literal[1, 2]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -1726,8 +1726,8 @@ def f(x):
 
 x: Literal['a', 'b']
 y: Literal['a', 'b']
-f(x, y)  # E: Argument 1 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
-         # E: Argument 2 to "f" has incompatible type "Union[Literal['a'], Literal['b']]"; expected "Literal['a']" \
+f(x, y)  # E: Argument 1 to "f" has incompatible type "Literal['a', 'b']"; expected "Literal['a']" \
+         # E: Argument 2 to "f" has incompatible type "Literal['a', 'b']"; expected "Literal['a']" \
 [builtins fixtures/tuple.pyi]
 [out]
 

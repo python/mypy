@@ -2695,6 +2695,35 @@ b = a.bar
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
+[case testDecoratedGetAttribute]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattribute__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattribute__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
+
 [case testGetattributeSignature]
 class A:
     def __getattribute__(self, x: str) -> A: pass
@@ -2721,6 +2750,35 @@ b = a.bar
 [builtins fixtures/tuple.pyi]
 [out]
 main:9: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+
+[case testDecoratedGetattr]
+from typing import Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[..., int]:
+    return f
+
+class A:
+    @decorator
+    def __getattr__(self, x: str) -> A:
+        return A()
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __getattr__(self, x: str) -> A:
+        return A()
+
+a: A
+b: B
+
+a1: A = a.foo
+b1: B = a.bar  # E: Incompatible types in assignment (expression has type "A", variable has type "B")
+a2: A = b.baz  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+b2: B = b.roo  # E: Incompatible types in assignment (expression has type "int", variable has type "B")
+[builtins fixtures/tuple.pyi]
 
 [case testGetattrWithGetitem]
 class A:
@@ -2827,6 +2885,35 @@ class Sub(Super):
 s = Sub()
 s.success = 4
 s.fail = 'fail'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+
+[case testDecoratedSetattr]
+from typing import Any, Callable, TypeVar
+
+T = TypeVar('T', bound=Callable)
+
+def decorator(f: T) -> T:
+    return f
+
+def bad(f: Callable) -> Callable[[Any, str, int], None]:
+    return f
+
+class A:
+    @decorator
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+class B:
+    @bad  # We test that type will be taken from decorated type, not node itself
+    def __setattr__(self, k: str, v: str) -> None:
+        pass
+
+a: A
+a.foo = 'a'
+a.bar = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+
+b: B
+b.good = 1
+b.bad = 'a'  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
 
 [case testSetattrSignature]
 from typing import Any
@@ -6157,6 +6244,85 @@ class C:
         reveal_type(self.spec)  # N: Revealed type is "__main__.B"
 [builtins fixtures/bool.pyi]
 
+[case testDecoratedDunderGet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[..., int]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr2:
+    @change
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+class Descr3:
+    @untyped
+    def __get__(self, obj: T, typ: Type[T]) -> A: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+reveal_type(c.spec1)  # N: Revealed type is "__main__.A"
+reveal_type(c.spec2)  # N: Revealed type is "builtins.int"
+reveal_type(c.spec3)  # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testDecoratedDunderSet]
+from typing import Any, Callable, TypeVar, Type
+
+F = TypeVar('F', bound=Callable)
+T = TypeVar('T')
+
+def decorator(f: F) -> F:
+    return f
+
+def change(f: Callable) -> Callable[[Any, Any, int], None]:
+    pass
+
+def untyped(f):
+    return f
+
+class A: ...
+
+class Descr1:
+    @decorator
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr2:
+    @change
+    def __set__(self, obj: T, value: A) -> None: ...
+class Descr3:
+    @untyped
+    def __set__(self, obj: T, value: A) -> None: ...
+
+class C:
+    spec1 = Descr1()
+    spec2 = Descr2()
+    spec3 = Descr3()
+
+c: C
+c.spec1 = A()
+c.spec1 = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "A")
+c.spec2 = A()  # E: Incompatible types in assignment (expression has type "A", variable has type "int")
+c.spec2 = 1
+c.spec3 = A()
+c.spec3 = 1
+[builtins fixtures/bool.pyi]
+
 [case testClassLevelImport]
 # flags: --ignore-missing-imports
 class Test:
@@ -6338,7 +6504,7 @@ class C(B):
 [out]
 main:4: error: Incompatible types in assignment (expression has type "str", base class "B" defined the type as "int")
 
-[case testIgnorePrivateMethodsTypeCheck]
+[case testIgnorePrivateMethodsTypeCheck2]
 class A:
     def __foo_(self) -> int: ...
 class B:
@@ -7009,3 +7175,153 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 [case testUndefinedBaseclassInNestedClass]
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
+
+[case testClassScopeImports]
+class Foo:
+    from mod import plain_function  # E: Unsupported class scoped import
+    from mod import plain_var
+
+reveal_type(Foo.plain_function)  # N: Revealed type is "Any"
+reveal_type(Foo().plain_function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.plain_var)  # N: Revealed type is "builtins.int"
+reveal_type(Foo().plain_var)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+def plain_function(x: int, y: int) -> int: ...
+plain_var: int
+
+[case testClassScopeImportModule]
+class Foo:
+    import mod
+
+reveal_type(Foo.mod)  # N: Revealed type is "builtins.object"
+reveal_type(Foo.mod.foo)  # N: Revealed type is "builtins.int"
+[file mod.py]
+foo: int
+
+[case testClassScopeImportAlias]
+class Foo:
+    from mod import function  # E: Unsupported class scoped import
+    foo = function
+
+    from mod import var1
+    bar = var1
+
+    from mod import var2
+    baz = var2
+
+    from mod import var3
+    qux = var3
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo.function)  # N: Revealed type is "Any"
+
+reveal_type(Foo.bar)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var1)  # N: Revealed type is "builtins.int"
+
+reveal_type(Foo.baz)  # N: Revealed type is "mod.C"
+reveal_type(Foo.var2)  # N: Revealed type is "mod.C"
+
+reveal_type(Foo.qux)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.var3)  # N: Revealed type is "builtins.int"
+
+[file mod.py]
+def function(x: int, y: int) -> int: ...
+var1: int
+
+class C: ...
+var2: C
+
+A = int
+var3: A
+
+
+[case testClassScopeImportModuleStar]
+class Foo:
+    from mod import *  # E: Unsupported class scoped import
+
+reveal_type(Foo.foo)  # N: Revealed type is "builtins.int"
+reveal_type(Foo.bar)  # N: Revealed type is "Any"
+reveal_type(Foo.baz)  # E: "Type[Foo]" has no attribute "baz" \
+                      # N: Revealed type is "Any"
+
+[file mod.py]
+foo: int
+def bar(x: int) -> int: ...
+
+[case testClassScopeImportFunctionNested]
+class Foo:
+    class Bar:
+        from mod import baz  # E: Unsupported class scoped import
+
+reveal_type(Foo.Bar.baz)  # N: Revealed type is "Any"
+reveal_type(Foo.Bar().baz)  # N: Revealed type is "Any"
+
+[file mod.py]
+def baz(x: int) -> int: ...
+
+[case testClassScopeImportUndefined]
+class Foo:
+    from unknown import foo  # E: Cannot find implementation or library stub for module named "unknown" \
+                             # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+
+[case testClassScopeImportWithFollowImports]
+# flags: --follow-imports=skip
+class Foo:
+    from mod import foo
+
+reveal_type(Foo().foo)  # N: Revealed type is "Any"
+[file mod.py]
+def foo(x: int, y: int) -> int: ...
+
+[case testClassScopeImportVarious]
+class Foo:
+    from mod1 import foo  # E: Unsupported class scoped import
+    from mod2 import foo
+
+    from mod1 import meth1  # E: Unsupported class scoped import
+    def meth1(self, a: str) -> str: ...  # E: Name "meth1" already defined on line 5
+
+    def meth2(self, a: str) -> str: ...
+    from mod1 import meth2  # E: Unsupported class scoped import \
+                            # E: Name "meth2" already defined on line 8
+
+class Bar:
+    from mod1 import foo  # E: Unsupported class scoped import
+
+import mod1
+reveal_type(Foo.foo)  # N: Revealed type is "Any"
+reveal_type(Bar.foo)  # N: Revealed type is "Any"
+reveal_type(mod1.foo)  # N: Revealed type is "def (x: builtins.int, y: builtins.int) -> builtins.int"
+
+[file mod1.py]
+def foo(x: int, y: int) -> int: ...
+def meth1(x: int) -> int: ...
+def meth2(x: int) -> int: ...
+[file mod2.py]
+def foo(z: str) -> int: ...
+
+
+[case testClassScopeImportWithError]
+class Foo:
+    from mod import meth1  # E: Unsupported class scoped import
+    from mod import meth2  # E: Unsupported class scoped import
+    from mod import T
+
+reveal_type(Foo.T)  # E: Type variable "Foo.T" cannot be used as an expression \
+                    # N: Revealed type is "Any"
+
+[file mod.pyi]
+from typing import Any, TypeVar, overload
+
+@overload
+def meth1(self: Any, y: int) -> int: ...
+@overload
+def meth1(self: Any, y: str) -> str: ...
+
+T = TypeVar("T")
+def meth2(self: Any, y: T) -> T: ...

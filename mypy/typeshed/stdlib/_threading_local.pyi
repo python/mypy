@@ -1,7 +1,7 @@
-from typing import Any, Dict
+from typing import Any
 from weakref import ReferenceType
 
-localdict = Dict[Any, Any]
+localdict = dict[Any, Any]
 
 class _localimpl:
     key: str

@@ -936,6 +936,26 @@ if False:
     reveal_type(x)
 [builtins fixtures/exception.pyi]
 
+[case testNeverVariants]
+from typing import Never
+from typing_extensions import Never as TENever
+from typing import NoReturn
+from typing_extensions import NoReturn as TENoReturn
+from mypy_extensions import NoReturn as MENoReturn
+
+bottom1: Never
+reveal_type(bottom1)  # N: Revealed type is "<nothing>"
+bottom2: TENever
+reveal_type(bottom2)  # N: Revealed type is "<nothing>"
+bottom3: NoReturn
+reveal_type(bottom3)  # N: Revealed type is "<nothing>"
+bottom4: TENoReturn
+reveal_type(bottom4)  # N: Revealed type is "<nothing>"
+bottom5: MENoReturn
+reveal_type(bottom5)  # N: Revealed type is "<nothing>"
+
+[builtins fixtures/tuple.pyi]
+
 [case testUnreachableFlagExpressions]
 # flags: --warn-unreachable
 def foo() -> bool: ...
@@ -1415,4 +1435,16 @@ x = 1  # E: Statement is unreachable
 # flags: --warn-unreachable
 raise Exception
 x = 1  # E: Statement is unreachable
+[builtins fixtures/exception.pyi]
+
+[case testUnreachableNoReturnBinaryOps]
+# flags: --warn-unreachable
+from typing import NoReturn
+
+a: NoReturn
+a and 1  # E: Right operand of "and" is never evaluated
+a or 1  # E: Right operand of "or" is never evaluated
+a or a  # E: Right operand of "or" is never evaluated
+1 and a and 1  # E: Right operand of "and" is never evaluated
+a and a  # E: Right operand of "and" is never evaluated
 [builtins fixtures/exception.pyi]

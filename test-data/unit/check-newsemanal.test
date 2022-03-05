@@ -2314,7 +2314,7 @@ reveal_type(x)  # N: Revealed type is "builtins.int"
 
 C = int
 
-[case testNewAnalyzerCastForward2]
+[case testNewAnalyzerCastForward3]
 from typing import cast, NamedTuple
 
 x = cast('C', None)
@@ -2722,7 +2722,7 @@ import m
 
 [file m.py]
 class C:
-    from mm import f
+    from mm import f  # E: Unsupported class scoped import
     @dec(f)
     def m(self): pass
 
@@ -2742,7 +2742,7 @@ import m
 
 [file m/__init__.py]
 class C:
-    from m.m import f
+    from m.m import f  # E: Unsupported class scoped import
     @dec(f)
     def m(self): pass
 
