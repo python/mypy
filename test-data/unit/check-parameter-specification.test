@@ -817,3 +817,68 @@ reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int*"
 # TODO: this should reveal `int`
 reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecConstraintOnOtherParamSpec]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+def simple_decorator(callable: CallableT) -> CallableT:
+    ...
+
+class Job(Generic[_P, _R_co]):
+    def __init__(self, target: Callable[_P, _R_co]) -> None:
+        ...
+
+
+class A:
+    @simple_decorator
+    def func(self, action: Job[_P, None]) -> Job[_P, None]:
+        ...
+
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`-1, None]) -> __main__.Job[_P`-1, None]"
+reveal_type(A().func)  # N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[def (x: Any), None]"
+
+def f(x: int, y: int) -> None: ...
+reveal_type(A().func(Job(f)))  # N: Revealed type is "__main__.Job[def (x: builtins.int, y: builtins.int), None]"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintBetweenParamSpecFunctions1]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+def simple_decorator(callable: Callable[_P, _R_co]) -> Callable[_P, _R_co]: ...
+class Job(Generic[_P]): ...
+
+
+@simple_decorator
+def func(action: Job[_P], /) -> Callable[_P, None]:
+    ...
+
+reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintBetweenParamSpecFunctions2]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+
+def simple_decorator(callable: CallableT) -> CallableT: ...
+class Job(Generic[_P]): ...
+
+
+@simple_decorator
+def func(action: Job[_P], /) -> Callable[_P, None]:
+    ...
+
+reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
+[builtins fixtures/tuple.pyi]

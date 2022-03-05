@@ -1031,18 +1031,10 @@ class ClassDef(Statement):
     @classmethod
     def deserialize(self, data: JsonDict) -> 'ClassDef':
         assert data['.class'] == 'ClassDef'
-
-        tvs_ = [mypy.types.deserialize_type(v) for v in data['type_vars']]
-        tvs = []
-        for tv in tvs_:
-            # mypy tells me to expand `tv`, which isn't necessary I believe?
-            assert isinstance(tv, mypy.types.TypeVarLikeType)  # type: ignore[misc]
-            tvs.append(tv)
-
         res = ClassDef(data['name'],
                        Block([]),
                        # https://github.com/python/mypy/issues/12257
-                       tvs,
+                       [cast(mypy.types.TypeVarLikeType, mypy.types.deserialize_type(v)) for v in data['type_vars']],
                        )
         res.fullname = data['fullname']
         return res

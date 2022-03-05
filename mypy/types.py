@@ -1653,16 +1653,23 @@ class CallableType(FunctionLike):
     def expand_param_spec(self,
                           c: Union['CallableType', Parameters],
                           no_prefix: bool = False) -> 'CallableType':
+        if isinstance(c, CallableType):
+            variables = c.variables
+        else:
+            variables = []
+
         if no_prefix:
             return self.copy_modified(arg_types=c.arg_types,
                                       arg_kinds=c.arg_kinds,
                                       arg_names=c.arg_names,
-                                      is_ellipsis_args=c.is_ellipsis_args)
+                                      is_ellipsis_args=c.is_ellipsis_args,
+                                      variables=variables + self.variables)
         else:
             return self.copy_modified(arg_types=self.arg_types[:-2] + c.arg_types,
                                       arg_kinds=self.arg_kinds[:-2] + c.arg_kinds,
                                       arg_names=self.arg_names[:-2] + c.arg_names,
-                                      is_ellipsis_args=c.is_ellipsis_args)
+                                      is_ellipsis_args=c.is_ellipsis_args,
+                                      variables=variables + self.variables)
 
     def __hash__(self) -> int:
         return hash((self.ret_type, self.is_type_obj(),

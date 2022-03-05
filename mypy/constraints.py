@@ -467,6 +467,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                                                           suffix.arg_kinds[len(prefix.arg_kinds):],
                                                           suffix.arg_names[len(prefix.arg_names):])
                             res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+                        elif isinstance(suffix, ParamSpecType):
+                            res.append(Constraint(mapped_arg.id, SUPERTYPE_OF, suffix))
+
                 return res
             elif (self.direction == SUPERTYPE_OF and
                     instance.type.has_base(template.type.fullname)):
@@ -495,6 +498,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             suffix = suffix.copy_modified(suffix.arg_types[len(prefix.arg_types):],
                                                           suffix.arg_kinds[len(prefix.arg_kinds):],
                                                           suffix.arg_names[len(prefix.arg_names):])
+                            res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
+                        elif isinstance(suffix, ParamSpecType):
                             res.append(Constraint(template_arg.id, SUPERTYPE_OF, suffix))
                 return res
             if (template.type.is_protocol and self.direction == SUPERTYPE_OF and
@@ -586,27 +591,32 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                         # Negate direction due to function argument type contravariance.
                         res.extend(infer_constraints(t, a, neg_op(self.direction)))
             else:
-                # TODO: Direction
-                # TODO: check the prefixes match
-                prefix = param_spec.prefix
-                prefix_len = len(prefix.arg_types)
-                res.append(Constraint(param_spec.id,
-                                      SUBTYPE_OF,
-                                      cactual.copy_modified(
-                                        arg_types=cactual.arg_types[prefix_len:],
-                                        arg_kinds=cactual.arg_kinds[prefix_len:],
-                                        arg_names=cactual.arg_names[prefix_len:],
-                                        ret_type=NoneType())))
-                # compare prefixes
-                cactual_prefix = cactual.copy_modified(
-                    arg_types=cactual.arg_types[:prefix_len],
-                    arg_kinds=cactual.arg_kinds[:prefix_len],
-                    arg_names=cactual.arg_names[:prefix_len])
+                # sometimes, it appears we try to get constraints between two paramspec callables?
+                cactual_ps = cactual.param_spec()
+                if cactual_ps:
+                    res.append(Constraint(param_spec.id, SUBTYPE_OF, cactual_ps))
+                else:
+                    # TODO: Direction
+                    # TODO: check the prefixes match
+                    prefix = param_spec.prefix
+                    prefix_len = len(prefix.arg_types)
+                    res.append(Constraint(param_spec.id,
+                                          SUBTYPE_OF,
+                                          cactual.copy_modified(
+                                            arg_types=cactual.arg_types[prefix_len:],
+                                            arg_kinds=cactual.arg_kinds[prefix_len:],
+                                            arg_names=cactual.arg_names[prefix_len:],
+                                            ret_type=NoneType())))
+                    # compare prefixes
+                    cactual_prefix = cactual.copy_modified(
+                        arg_types=cactual.arg_types[:prefix_len],
+                        arg_kinds=cactual.arg_kinds[:prefix_len],
+                        arg_names=cactual.arg_names[:prefix_len])
 
-                # TODO: see above "FIX" comments for param_spec is None case
-                # TODO: this assume positional arguments
-                for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
-                    res.extend(infer_constraints(t, a, neg_op(self.direction)))
+                    # TODO: see above "FIX" comments for param_spec is None case
+                    # TODO: this assume positional arguments
+                    for t, a in zip(prefix.arg_types, cactual_prefix.arg_types):
+                        res.extend(infer_constraints(t, a, neg_op(self.direction)))
 
             template_ret_type, cactual_ret_type = template.ret_type, cactual.ret_type
             if template.type_guard is not None:
