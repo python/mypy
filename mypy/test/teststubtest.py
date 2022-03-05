@@ -608,6 +608,21 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
+            class Y:
+                @property
+                def read_only_attr(self) -> int: ...
+                @read_only_attr.setter
+                def read_only_attr(self, val: int) -> None: ...
+            """,
+            runtime="""
+            class Y:
+                @property
+                def read_only_attr(self): return 5
+            """,
+            error="Y.read_only_attr",
+        )
+        yield Case(
+            stub="""
             class Z:
                 @property
                 def read_write_attr(self) -> int: ...
