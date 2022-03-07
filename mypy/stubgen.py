@@ -649,9 +649,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # type "UnboundType" and will not match.
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     annotation = ": {}".format(self.print_annotation(annotated_type))
+
+            if kind.is_named() and not any(arg.startswith('*') for arg in args):
+                args.append('*')
+
             if arg_.initializer:
-                if kind.is_named() and not any(arg.startswith('*') for arg in args):
-                    args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
                     if typename == '':
