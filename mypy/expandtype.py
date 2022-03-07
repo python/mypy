@@ -125,9 +125,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 else:
                     return repl
             else:
-                return repl.copy_modified(t.prefix.arg_types + repl.arg_types,
-                                          t.prefix.arg_kinds + repl.arg_kinds,
-                                          t.prefix.arg_names + repl.arg_names)
+                return Parameters(t.prefix.arg_types + repl.arg_types,
+                                  t.prefix.arg_kinds + repl.arg_kinds,
+                                  t.prefix.arg_names + repl.arg_names)
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl

@@ -99,7 +99,7 @@ class C(Generic[P]):
 
 def f(x: int, y: str) -> None: ...
 
-reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: builtins.str)]"
+reveal_type(C(f))  # N: Revealed type is "__main__.C[[x: builtins.int, y: builtins.str]]"
 reveal_type(C(f).m)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
 [builtins fixtures/dict.pyi]
 
@@ -141,7 +141,7 @@ def dec() -> Callable[[Callable[P, R]], W[P, R]]:
 @dec()
 def f(a: int, b: str) -> None: ...
 
-reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: builtins.str), None]"
+reveal_type(f)  # N: Revealed type is "__main__.W[[a: builtins.int, b: builtins.str], None]"
 reveal_type(f(1, ''))  # N: Revealed type is "None"
 reveal_type(f.x)  # N: Revealed type is "builtins.int"
 
@@ -663,7 +663,7 @@ bar(abc)
 [out]
 main:11: error: invalid syntax
 [out version>=3.8]
-main:14: note: Revealed type is "__main__.Foo[def (builtins.int, b: builtins.str)]"
+main:14: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
 
 [case testSolveParamSpecWithSelfType]
 from typing_extensions import ParamSpec, Concatenate
@@ -868,10 +868,10 @@ class A:
 reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`-1, None]) -> __main__.Job[_P`-1, None]"
 # TODO: flakey, _P`4 alternates around.
 # reveal_type(A().func)  $ N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
-reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[def (x: Any), None]"
+reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
 
 def f(x: int, y: int) -> None: ...
-reveal_type(A().func(Job(f)))  # N: Revealed type is "__main__.Job[def (x: builtins.int, y: builtins.int), None]"
+reveal_type(A().func(Job(f)))  # N: Revealed type is "__main__.Job[[x: builtins.int, y: builtins.int], None]"
 [builtins fixtures/tuple.pyi]
 
 [case testConstraintBetweenParamSpecFunctions1]
@@ -911,20 +911,21 @@ reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def 
 [builtins fixtures/tuple.pyi]
 
 [case testConstraintsBetweenConcatenatePrefixes]
-from typing import Any, Callable, Coroutine, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 from typing_extensions import Concatenate, ParamSpec
 
 _P = ParamSpec("_P")
 _T = TypeVar("_T")
 
+class Awaitable(Generic[_T]): ...
 
 def adds_await() -> Callable[
     [Callable[Concatenate[_T, _P], None]],
-    Callable[Concatenate[_T, _P], Coroutine[Any, Any, None]],
+    Callable[Concatenate[_T, _P], Awaitable[None]],
 ]:
     def decorator(
         func: Callable[Concatenate[_T, _P], None],
-    ) -> Callable[Concatenate[_T, _P], Coroutine[Any, Any, None]]:
+    ) -> Callable[Concatenate[_T, _P], Awaitable[None]]:
         ...
 
     return decorator  # we want `_T` and `_P` to refer to the same things.
