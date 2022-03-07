@@ -930,3 +930,49 @@ def adds_await() -> Callable[
 
     return decorator  # we want `_T` and `_P` to refer to the same things.
 [builtins fixtures/tuple.pyi]
+
+[case testParamSpecVariance]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None: ...
+    def into_callable(self) -> Callable[_P, None]: ...
+
+class A:
+    def func(self, var: int) -> None: ...
+    def other_func(self, job: Job[[int]]) -> None: ...
+
+
+job = Job(A().func)
+reveal_type(job)  # N: Revealed type is "__main__.Job[[var: builtins.int]]"
+A().other_func(job)  # This should NOT error (despite the keyword)
+
+# and yet the keyword should remain
+job.into_callable()(var=42)
+job.into_callable()(x=42)  # E: Unexpected keyword argument "x"
+
+# similar for other functions
+def f1(n: object) -> None: ...
+def f2(n: int) -> None: ...
+def f3(n: bool) -> None: ...
+
+# just like how this is legal...
+a1: Callable[[bool], None]
+a1 = f3
+a1 = f2
+a1 = f1
+
+# ... this is also legal
+a2: Job[[bool]]
+a2 = Job(f3)
+a2 = Job(f2)
+a2 = Job(f1)
+
+# and this is not legal
+def f4(n: bytes) -> None: ...
+a1 = f4  # E: Incompatible types in assignment (expression has type "Callable[[bytes], None]", variable has type "Callable[[bool], None]")
+a2 = Job(f4)  # E: Argument 1 to "Job" has incompatible type "Callable[[bytes], None]"; expected "Callable[[bool], None]"
+[builtins fixtures/tuple.pyi]

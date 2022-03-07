@@ -290,7 +290,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not self.check_type_parameter(lefta, righta, tvar.variance):
                             nominal = False
                     else:
-                        if not is_equivalent(lefta, righta, options=self.options):
+                        if not self.check_type_parameter(lefta, righta, COVARIANT):
                             nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
