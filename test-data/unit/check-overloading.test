@@ -5421,3 +5421,884 @@ def f_f(arg: str) -> None: ...
 @Bad2()  # E: "Bad2" not callable
 def f_f(arg): ...
 [builtins fixtures/dict.pyi]
+
+
+[case testOverloadIfBasic]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Test basic overload merging
+# -----
+
+@overload
+def f1(g: A) -> A: ...
+if True:
+    @overload
+    def f1(g: B) -> B: ...
+def f1(g): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: A) -> A: ...
+@overload
+def f2(g: B) -> B: ...
+if False:
+    @overload
+    def f2(g: C) -> C: ...
+def f2(g): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f2(g: A) -> A \
+    # N:     def f2(g: B) -> B \
+    # N: Revealed type is "Any"
+
+@overload
+def f3(g: A) -> A: ...
+@overload
+def f3(g: B) -> B: ...
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f3(g: C) -> C: ...
+def f3(g): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(C()))  # E: No overload variant of "f3" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f3(g: A) -> A \
+    # N:     def f3(g: B) -> B \
+    # N: Revealed type is "Any"
+
+if True:
+    @overload
+    def f4(g: A) -> A: ...
+if True:
+    @overload
+    def f4(g: B) -> B: ...
+@overload
+def f4(g: C) -> C: ...
+def f4(g): ...
+reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f4(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f4(C()))  # N: Revealed type is "__main__.C"
+
+if True:
+    @overload
+    def f5(g: A) -> A: ...
+@overload
+def f5(g: B) -> B: ...
+if True:
+    @overload
+    def f5(g: C) -> C: ...
+@overload
+def f5(g: D) -> D: ...
+def f5(g): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
+reveal_type(f5(D()))  # N: Revealed type is "__main__.D"
+
+[case testOverloadIfSysVersion]
+# flags: --python-version 3.9
+from typing import overload
+import sys
+
+class A: ...
+class B: ...
+class C: ...
+
+# -----
+# "Real" world example
+# Test overload merging for sys.version_info
+# -----
+
+@overload
+def f1(g: A) -> A: ...
+if sys.version_info >= (3, 9):
+    @overload
+    def f1(g: B) -> B: ...
+def f1(g): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: A) -> A: ...
+@overload
+def f2(g: B) -> B: ...
+if sys.version_info >= (3, 10):
+    @overload
+    def f2(g: C) -> C: ...
+def f2(g): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f2(g: A) -> A \
+    # N:     def f2(g: B) -> B \
+    # N: Revealed type is "Any"
+[builtins fixtures/ops.pyi]
+
+[case testOverloadIfMerging]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+
+# -----
+# Test overload merging
+# -----
+
+@overload
+def f1(g: A) -> A: ...
+if True:
+    # Some comment
+    @overload
+    def f1(g: B) -> B: ...
+def f1(g): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+
+@overload
+def f2(g: A) -> A: ...
+if True:
+    @overload
+    def f2(g: bytes) -> B: ...
+    @overload
+    def f2(g: B) -> C: ...
+def f2(g): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(B()))  # N: Revealed type is "__main__.C"
+
+@overload
+def f3(g: A) -> A: ...
+@overload
+def f3(g: B) -> B: ...
+if True:
+    def f3(g): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+
+if True:
+    @overload
+    def f4(g: A) -> A: ...
+@overload
+def f4(g: B) -> B: ...
+def f4(g): ...
+reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f4(B()))  # N: Revealed type is "__main__.B"
+
+if True:
+    # Some comment
+    @overload
+    def f5(g: A) -> A: ...
+    @overload
+    def f5(g: B) -> B: ...
+def f5(g): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
+
+[case testOverloadIfNotMerging]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+
+# -----
+# Don't merge if IfStmt contains nodes other than overloads
+# -----
+
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def f1(g: A) -> A: ...
+@overload
+def f1(g: B) -> B: ...
+if True:
+    @overload  # E: Name "f1" already defined on line 12 \
+               # E: Single overload definition, multiple required
+    def f1(g: C) -> C: ...
+    pass  # Some other action
+def f1(g): ...  # E: Name "f1" already defined on line 12
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(C()))  # E: No overload variant of "f1" matches argument type "C" \
+                          # N: Possible overload variants: \
+                          # N:     def f1(g: A) -> A \
+                          # N:     def f1(g: B) -> B \
+                          # N: Revealed type is "Any"
+
+if True:
+    pass  # Some other action
+    @overload  # E: Single overload definition, multiple required
+    def f2(g: A) -> A: ...
+@overload  # E: Name "f2" already defined on line 26
+def f2(g: B) -> B: ...
+@overload
+def f2(g: C) -> C: ...
+def f2(g): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(C()))  # N: Revealed type is "__main__.A" \
+    # E: Argument 1 to "f2" has incompatible type "C"; expected "A"
+
+[case testOverloadIfOldStyle]
+# flags: --always-false var_false --always-true var_true
+from typing import overload
+
+class A: ...
+class B: ...
+
+# -----
+# Test old style to make sure it still works
+# -----
+
+var_true = True
+var_false = False
+
+if var_false:
+    @overload
+    def f1(g: A) -> A: ...
+    @overload
+    def f1(g: B) -> B: ...
+    def f1(g): ...
+elif var_true:
+    @overload
+    def f1(g: A) -> A: ...
+    @overload
+    def f1(g: B) -> B: ...
+    def f1(g): ...
+else:
+    @overload
+    def f1(g: A) -> A: ...
+    @overload
+    def f1(g: B) -> B: ...
+    def f1(g): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+
+[case testOverloadIfElse]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Match the first always-true block
+# -----
+
+@overload
+def f1(x: A) -> A: ...
+if True:
+    @overload
+    def f1(x: B) -> B: ...
+elif False:
+    @overload
+    def f1(x: C) -> C: ...
+else:
+    @overload
+    def f1(x: D) -> D: ...
+def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f1(C()))  # E: No overload variant of "f1" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f1(x: A) -> A \
+    # N:     def f1(x: B) -> B \
+    # N: Revealed type is "Any"
+
+@overload
+def f2(x: A) -> A: ...
+if False:
+    @overload
+    def f2(x: B) -> B: ...
+elif True:
+    @overload
+    def f2(x: C) -> C: ...
+else:
+    @overload
+    def f2(x: D) -> D: ...
+def f2(x): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(B()))  # E: No overload variant of "f2" matches argument type "B" \
+    # N: Possible overload variants: \
+    # N:     def f2(x: A) -> A \
+    # N:     def f2(x: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f2(C()))  # N: Revealed type is "__main__.C"
+
+@overload
+def f3(x: A) -> A: ...
+if False:
+    @overload
+    def f3(x: B) -> B: ...
+elif False:
+    @overload
+    def f3(x: C) -> C: ...
+else:
+    @overload
+    def f3(x: D) -> D: ...
+def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(C()))  # E: No overload variant of "f3" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f3(x: A) -> A \
+    # N:     def f3(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f3(D()))  # N: Revealed type is "__main__.D"
+
+[case testOverloadIfElse2]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Match the first always-true block
+# Don't merge overloads if can't be certain about execution of block
+# -----
+
+@overload
+def f1(x: A) -> A: ...
+if True:
+    @overload
+    def f1(x: B) -> B: ...
+else:
+    @overload
+    def f1(x: D) -> D: ...
+def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f1(D()))  # E: No overload variant of "f1" matches argument type "D" \
+    # N: Possible overload variants: \
+    # N:     def f1(x: A) -> A \
+    # N:     def f1(x: B) -> B \
+    # N: Revealed type is "Any"
+
+@overload
+def f2(x: A) -> A: ...
+if True:
+    @overload
+    def f2(x: B) -> B: ...
+elif maybe_true:
+    @overload
+    def f2(x: C) -> C: ...
+else:
+    @overload
+    def f2(x: D) -> D: ...
+def f2(x): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f2(x: A) -> A \
+    # N:     def f2(x: B) -> B \
+    # N: Revealed type is "Any"
+
+@overload  # E: Single overload definition, multiple required
+def f3(x: A) -> A: ...
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f3(x: B) -> B: ...
+elif True:
+    @overload
+    def f3(x: C) -> C: ...
+else:
+    @overload
+    def f3(x: D) -> D: ...
+def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B" \
+    # N: Possible overload variant: \
+    # N:     def f3(x: A) -> A \
+    # N: Revealed type is "Any"
+
+@overload  # E: Single overload definition, multiple required
+def f4(x: A) -> A: ...
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f4(x: B) -> B: ...
+else:
+    @overload
+    def f4(x: D) -> D: ...
+def f4(x): ...
+reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
+    # N: Possible overload variant: \
+    # N:     def f4(x: A) -> A \
+    # N: Revealed type is "Any"
+
+[case testOverloadIfElse3]
+# flags: --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+class E: ...
+
+# -----
+# Match the first always-true block
+# Don't merge overloads if can't be certain about execution of block
+# -----
+
+@overload
+def f1(x: A) -> A: ...
+if False:
+    @overload
+    def f1(x: B) -> B: ...
+else:
+    @overload
+    def f1(x: D) -> D: ...
+def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # E: No overload variant of "f1" matches argument type "B" \
+    # N: Possible overload variants: \
+    # N:     def f1(x: A) -> A \
+    # N:     def f1(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f1(D()))  # N: Revealed type is "__main__.D"
+
+@overload  # E: Single overload definition, multiple required
+def f2(x: A) -> A: ...
+if False:
+    @overload
+    def f2(x: B) -> B: ...
+elif maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                  # E: Name "maybe_true" is not defined
+    @overload
+    def f2(x: C) -> C: ...
+else:
+    @overload
+    def f2(x: D) -> D: ...
+def f2(x): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(C()))  # E: No overload variant of "f2" matches argument type "C" \
+    # N: Possible overload variant: \
+    # N:     def f2(x: A) -> A \
+    # N: Revealed type is "Any"
+
+@overload  # E: Single overload definition, multiple required
+def f3(x: A) -> A: ...
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f3(x: B) -> B: ...
+elif False:
+    @overload
+    def f3(x: C) -> C: ...
+else:
+    @overload
+    def f3(x: D) -> D: ...
+def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(B()))  # E: No overload variant of "f3" matches argument type "B" \
+    # N: Possible overload variant: \
+    # N:     def f3(x: A) -> A \
+    # N: Revealed type is "Any"
+
+def g(bool_var: bool) -> None:
+    @overload
+    def f4(x: A) -> A: ...
+    if bool_var:  # E: Condition cannot be inferred, unable to merge overloads
+        @overload
+        def f4(x: B) -> B: ...
+    elif maybe_true:  # E: Name "maybe_true" is not defined
+            # No 'Condition cannot be inferred' error here since it's already
+            # emitted on the first condition, 'bool_var', above.
+        @overload
+        def f4(x: C) -> C: ...
+    else:
+        @overload
+        def f4(x: D) -> D: ...
+    @overload
+    def f4(x: E) -> E: ...
+    def f4(x): ...
+    reveal_type(f4(E()))  # N: Revealed type is "__main__.E"
+    reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
+        # N: Possible overload variants: \
+        # N:     def f4(x: A) -> A \
+        # N:     def f4(x: E) -> E \
+        # N: Revealed type is "Any"
+
+[case testOverloadIfSkipUnknownExecution]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# If blocks should be skipped if execution can't be certain
+# Overload name must match outer name
+# -----
+
+@overload  # E: Single overload definition, multiple required
+def f1(x: A) -> A: ...
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f1(x: B) -> B: ...
+def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f2(x: A) -> A: ...
+@overload
+def f2(x: B) -> B: ...
+@overload
+def f2(x: C) -> C: ...
+def f2(x): ...
+reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f2(x: B) -> B \
+    # N:     def f2(x: C) -> C \
+    # N: Revealed type is "Any"
+
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def f3(x: A) -> A: ...
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
+        @overload
+        def f3(x: B) -> B: ...
+    def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+
+if True:
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
+        @overload
+        def f4(x: A) -> A: ...
+    @overload
+    def f4(x: B) -> B: ...
+    @overload
+    def f4(x: C) -> C: ...
+    def f4(x): ...
+reveal_type(f4(A()))  # E: No overload variant of "f4" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f4(x: B) -> B \
+    # N:     def f4(x: C) -> C \
+    # N: Revealed type is "Any"
+
+[case testOverloadIfDontSkipUnrelatedOverload]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Don't skip if block if overload name doesn't match outer name
+# -----
+
+@overload  # E: Single overload definition, multiple required
+def f1(x: A) -> A: ...
+if maybe_true:  # E: Name "maybe_true" is not defined
+    @overload  # E: Single overload definition, multiple required
+    def g1(x: B) -> B: ...
+def f1(x): ...  # E: Name "f1" already defined on line 13
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+
+if maybe_true:  # E: Name "maybe_true" is not defined
+    @overload  # E: Single overload definition, multiple required
+    def g2(x: A) -> A: ...
+@overload
+def f2(x: B) -> B: ...
+@overload
+def f2(x: C) -> C: ...
+def f2(x): ...
+reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f2(x: B) -> B \
+    # N:     def f2(x: C) -> C \
+    # N: Revealed type is "Any"
+
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def f3(x: A) -> A: ...
+    if maybe_true:  # E: Name "maybe_true" is not defined
+        @overload  # E: Single overload definition, multiple required
+        def g3(x: B) -> B: ...
+    def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+
+if True:
+    if maybe_true:  # E: Name "maybe_true" is not defined
+        @overload  # E: Single overload definition, multiple required
+        def g4(x: A) -> A: ...
+    @overload
+    def f4(x: B) -> B: ...
+    @overload
+    def f4(x: C) -> C: ...
+    def f4(x): ...
+reveal_type(f4(A()))  # E: No overload variant of "f4" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f4(x: B) -> B \
+    # N:     def f4(x: C) -> C \
+    # N: Revealed type is "Any"
+
+[case testOverloadIfNotMergingDifferentNames]
+# flags: --always-true True
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Don't merge overloads if IfStmts contains overload with different name
+# -----
+
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def f1(x: A) -> A: ...
+@overload
+def f1(x: B) -> B: ...
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def g1(x: C) -> C: ...
+def f1(x): ...  # E: Name "f1" already defined on line 13
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(C()))  # E: No overload variant of "f1" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f1(x: A) -> A \
+    # N:     def f1(x: B) -> B \
+    # N: Revealed type is "Any"
+
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def g2(x: A) -> A: ...
+@overload
+def f2(x: B) -> B: ...
+@overload
+def f2(x: C) -> C: ...
+def f2(x): ...
+reveal_type(f2(A()))  # E: No overload variant of "f2" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f2(x: B) -> B \
+    # N:     def f2(x: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
+
+if True:
+    if True:
+        @overload  # E: Single overload definition, multiple required
+        def g3(x: A) -> A: ...
+    @overload
+    def f3(x: B) -> B: ...
+    @overload
+    def f3(x: C) -> C: ...
+    def f3(x): ...
+reveal_type(f3(A()))  # E: No overload variant of "f3" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f3(x: B) -> B \
+    # N:     def f3(x: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+
+[case testOverloadIfSplitFunctionDef]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+# -----
+# Test split FuncDefs
+# -----
+
+@overload
+def f1(x: A) -> A: ...
+@overload
+def f1(x: B) -> B: ...
+if True:
+    def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+
+@overload
+def f2(x: A) -> A: ...
+@overload
+def f2(x: B) -> B: ...
+if False:
+    def f2(x): ...
+else:
+    def f2(x): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+
+@overload  # E: An overloaded function outside a stub file must have an implementation
+def f3(x: A) -> A: ...
+@overload
+def f3(x: B) -> B: ...
+if True:
+    def f3(x): ...   # E: Name "f3" already defined on line 31
+else:
+    pass  # some other node
+    def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+
+[case testOverloadIfMixed]
+# flags: --always-true True --always-false False
+from typing import overload, TYPE_CHECKING
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+if maybe_var:  # E: Name "maybe_var" is not defined
+    pass
+if True:
+    @overload
+    def f1(x: A) -> A: ...
+@overload
+def f1(x: B) -> B: ...
+def f1(x): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+
+if True:
+    @overload
+    def f2(x: A) -> A: ...
+    @overload
+    def f2(x: B) -> B: ...
+def f2(x): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
+
+if True:
+    @overload
+    def f3(x: A) -> A: ...
+    @overload
+    def f3(x: B) -> B: ...
+    def f3(x): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+
+# Don't crash with AssignmentStmt if elif
+@overload  # E: Single overload definition, multiple required
+def f4(x: A) -> A: ...
+if False:
+    @overload
+    def f4(x: B) -> B: ...
+elif True:
+    var = 1
+def f4(x): ...  # E: Name "f4" already defined on line 39
+
+if TYPE_CHECKING:
+    @overload
+    def f5(x: A) -> A: ...
+    @overload
+    def f5(x: B) -> B: ...
+def f5(x): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # N: Revealed type is "__main__.B"
+
+# Test from check-functions - testUnconditionalRedefinitionOfConditionalFunction
+# Don't merge If blocks if they appear before any overloads
+# and don't contain any overloads themselves.
+if maybe_true:  # E: Name "maybe_true" is not defined
+    def f6(x): ...
+def f6(x): ...  # E: Name "f6" already defined on line 61
+
+if maybe_true:  # E: Name "maybe_true" is not defined
+    pass  # Some other node
+    def f7(x): ...
+def f7(x): ...  # E: Name "f7" already defined on line 66
+
+@overload
+def f8(x: A) -> A: ...
+@overload
+def f8(x: B) -> B: ...
+if False:
+    def f8(x: C) -> C: ...
+def f8(x): ...
+reveal_type(f8(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f8(C()))  # E: No overload variant of "f8" matches argument type "C" \
+    # N: Possible overload variants: \
+    # N:     def f8(x: A) -> A \
+    # N:     def f8(x: B) -> B \
+    # N: Revealed type is "Any"
+
+if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                # E: Name "maybe_true" is not defined
+    @overload
+    def f9(x: A) -> A: ...
+if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                        # E: Name "another_maybe_true" is not defined
+    @overload
+    def f9(x: B) -> B: ...
+@overload
+def f9(x: C) -> C: ...
+@overload
+def f9(x: D) -> D: ...
+def f9(x): ...
+reveal_type(f9(A()))  # E: No overload variant of "f9" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f9(x: C) -> C \
+    # N:     def f9(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f9(C()))  # N: Revealed type is "__main__.C"
+
+if True:
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
+        @overload
+        def f10(x: A) -> A: ...
+    if another_maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                            # E: Name "another_maybe_true" is not defined
+        @overload
+        def f10(x: B) -> B: ...
+    @overload
+    def f10(x: C) -> C: ...
+    @overload
+    def f10(x: D) -> D: ...
+    def f10(x): ...
+reveal_type(f10(A()))  # E: No overload variant of "f10" matches argument type "A" \
+    # N: Possible overload variants: \
+    # N:     def f10(x: C) -> C \
+    # N:     def f10(x: D) -> D \
+    # N: Revealed type is "Any"
+reveal_type(f10(C()))  # N: Revealed type is "__main__.C"
+
+if some_var:  # E: Name "some_var" is not defined
+    pass
+@overload
+def f11(x: A) -> A: ...
+@overload
+def f11(x: B) -> B: ...
+def f11(x): ...
+reveal_type(f11(A()))  # N: Revealed type is "__main__.A"
+
+if True:
+    if some_var:  # E: Name "some_var" is not defined
+        pass
+    @overload
+    def f12(x: A) -> A: ...
+    @overload
+    def f12(x: B) -> B: ...
+    def f12(x): ...
+reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
+[typing fixtures/typing-medium.pyi]

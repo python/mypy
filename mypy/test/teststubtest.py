@@ -7,7 +7,6 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -16,13 +15,20 @@ from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
-def use_tmp_dir() -> Iterator[None]:
+def use_tmp_dir(mod_name: str) -> Iterator[str]:
     current = os.getcwd()
+    current_syspath = sys.path[:]
     with tempfile.TemporaryDirectory() as tmp:
         try:
             os.chdir(tmp)
-            yield
+            if sys.path[0] != tmp:
+                sys.path.insert(0, tmp)
+            yield tmp
         finally:
+            sys.path = current_syspath[:]
+            if mod_name in sys.modules:
+                del sys.modules[mod_name]
+
             os.chdir(current)
 
 
@@ -92,7 +98,7 @@ def staticmethod(f: T) -> T: ...
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
-    with use_tmp_dir():
+    with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
         with open("typing.pyi", "w") as f:
@@ -105,21 +111,14 @@ def run_stubtest(
             with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
-        if sys.path[0] != ".":
-            sys.path.insert(0, ".")
-        if TEST_MODULE_NAME in sys.modules:
-            del sys.modules[TEST_MODULE_NAME]
-
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(
                 parse_options([TEST_MODULE_NAME] + options),
                 use_builtins_fixtures=True
             )
-
-        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
+        return output.getvalue().replace(tmp_dir + os.sep, "")
 
 
 class Case:
@@ -778,27 +777,18 @@ class StubtestUnit(unittest.TestCase):
                 error=None,
             )
 
-    def test_not_subclassable(self) -> None:
-        output = run_stubtest(
-            stub=(
-                "class CanBeSubclassed: ...\n"
-                "class CanNotBeSubclassed:\n"
-                "  def __init_subclass__(cls) -> None: ...\n"
-            ),
-            runtime=(
-                "class CanNotBeSubclassed:\n"
-                "  def __init_subclass__(cls): raise TypeError('nope')\n"
-                # ctypes.Array can be subclassed, but subclasses must define a few
-                # special attributes, e.g. _length_
-                "from ctypes import Array as CanBeSubclassed\n"
-            ),
-            options=[],
+    @collect_cases
+    def test_not_subclassable(self) -> Iterator[Case]:
+        yield Case(
+            stub="class CanBeSubclassed: ...",
+            runtime="class CanBeSubclassed: ...",
+            error=None,
         )
-        assert (
-            "CanNotBeSubclassed cannot be subclassed at runtime,"
-            " but isn't marked with @final in the stub"
-        ) in output
-        assert "CanBeSubclassed cannot be subclassed" not in output
+        yield Case(
+            stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
+            runtime="class CannotBeSubclassed:\n  def __init_subclass__(cls): raise TypeError",
+            error="CannotBeSubclassed",
+        )
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -1112,7 +1102,7 @@ class StubtestMiscUnit(unittest.TestCase):
             "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
-        assert output == (
+        assert remove_color_code(output) == (
             "error: test_module.temp variable differs from runtime type Literal[5]\n"
             "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
         )
