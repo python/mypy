@@ -4089,36 +4089,57 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subject_type, DeletedType):
                 self.msg.deleted_as_rvalue(subject_type, s)
 
+            # We infer types of patterns twice. The first pass is used
+            # to infer the types of capture variables. The type of a
+            # capture variable may depend on multiple patterns (it
+            # will be a union of all capture types). This pass ignores
+            # guard expressions.
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
-
             type_maps: List[TypeMap] = [t.captures for t in pattern_types]
-            self.infer_variable_types_from_type_maps(type_maps)
+            inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
-            for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
+            # The second pass narrows down the types and type checks bodies.
+            for p, g, b in zip(s.patterns, s.guards, s.bodies):
+                current_subject_type = self.expr_checker.narrow_type_from_binder(s.subject,
+                                                                                 subject_type)
+                pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     if b.is_unreachable or isinstance(get_proper_type(pattern_type.type),
                                                       UninhabitedType):
                         self.push_type_map(None)
+                        else_map: TypeMap = {}
                     else:
-                        self.binder.put(s.subject, pattern_type.type)
+                        pattern_map, else_map = conditional_types_to_typemaps(
+                            s.subject,
+                            pattern_type.type,
+                            pattern_type.rest_type
+                        )
+                        self.remove_capture_conflicts(pattern_type.captures,
+                                                      inferred_types)
+                        self.push_type_map(pattern_map)
                         self.push_type_map(pattern_type.captures)
                     if g is not None:
-                        gt = get_proper_type(self.expr_checker.accept(g))
+                        with self.binder.frame_context(can_skip=True, fall_through=3):
+                            gt = get_proper_type(self.expr_checker.accept(g))
 
-                        if isinstance(gt, DeletedType):
-                            self.msg.deleted_as_rvalue(gt, s)
+                            if isinstance(gt, DeletedType):
+                                self.msg.deleted_as_rvalue(gt, s)
 
-                        if_map, _ = self.find_isinstance_check(g)
+                            guard_map, guard_else_map = self.find_isinstance_check(g)
+                            else_map = or_conditional_maps(else_map, guard_else_map)
 
-                        self.push_type_map(if_map)
-                    self.accept(b)
+                            self.push_type_map(guard_map)
+                            self.accept(b)
+                    else:
+                        self.accept(b)
+                self.push_type_map(else_map)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
 
-    def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> None:
+    def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> Dict[Var, Type]:
         all_captures: Dict[Var, List[Tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
@@ -4128,28 +4149,38 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         assert isinstance(node, Var)
                         all_captures[node].append((expr, typ))
 
+        inferred_types: Dict[Var, Type] = {}
         for var, captures in all_captures.items():
-            conflict = False
+            already_exists = False
             types: List[Type] = []
             for expr, typ in captures:
                 types.append(typ)
 
-                previous_type, _, inferred = self.check_lvalue(expr)
+                previous_type, _, _ = self.check_lvalue(expr)
                 if previous_type is not None:
-                    conflict = True
-                    self.check_subtype(typ, previous_type, expr,
-                                       msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
-                                       subtype_label="pattern captures type",
-                                       supertype_label="variable has type")
-                    for type_map in type_maps:
-                        if type_map is not None and expr in type_map:
-                            del type_map[expr]
+                    already_exists = True
+                    if self.check_subtype(typ, previous_type, expr,
+                                          msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
+                                          subtype_label="pattern captures type",
+                                          supertype_label="variable has type"):
+                        inferred_types[var] = previous_type
 
-            if not conflict:
+            if not already_exists:
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
+                inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
+        return inferred_types
+
+    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: Dict[Var, Type]) -> None:
+        if type_map:
+            for expr, typ in list(type_map.items()):
+                if isinstance(expr, NameExpr):
+                    node = expr.node
+                    assert isinstance(node, Var)
+                    if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
+                        del type_map[expr]
 
     def make_fake_typeinfo(self,
                            curr_module_fullname: str,
@@ -5637,6 +5668,14 @@ def conditional_types(current_type: Type,
     None means no new information can be inferred. If default is set it is returned
     instead."""
     if proposed_type_ranges:
+        if len(proposed_type_ranges) == 1:
+            target = proposed_type_ranges[0].item
+            target = get_proper_type(target)
+            if isinstance(target, LiteralType) and (target.is_enum_literal()
+                                                    or isinstance(target.value, bool)):
+                enum_name = target.fallback.type.fullname
+                current_type = try_expanding_sum_type_to_union(current_type,
+                                                               enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
         if isinstance(proposed_type, AnyType):
