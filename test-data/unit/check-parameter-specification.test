@@ -909,3 +909,23 @@ def func(action: Job[_P], /) -> Callable[_P, None]:
 
 reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
 [builtins fixtures/tuple.pyi]
+
+[case testConstraintsBetweenConcatenatePrefixes]
+from typing import Any, Callable, Coroutine, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+
+def adds_await() -> Callable[
+    [Callable[Concatenate[_T, _P], None]],
+    Callable[Concatenate[_T, _P], Coroutine[Any, Any, None]],
+]:
+    def decorator(
+        func: Callable[Concatenate[_T, _P], None],
+    ) -> Callable[Concatenate[_T, _P], Coroutine[Any, Any, None]]:
+        ...
+
+    return decorator  # we want `_T` and `_P` to refer to the same things.
+[builtins fixtures/tuple.pyi]
