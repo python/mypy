@@ -454,8 +454,8 @@ class FindModuleCache:
         """
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
         if os.path.isfile(metadata_fnam):
-            with open(metadata_fnam, encoding="utf-8") as f:
-                metadata = tomllib.loads(f.read())
+            with open(metadata_fnam, "rb") as f:
+                metadata = tomllib.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:
