@@ -773,10 +773,12 @@ class Server:
         if self.options.error_summary:
             summary: Optional[str] = None
             if messages:
-                n_errors, n_files = count_stats(messages)
+                n_errors, n_notes, n_files = count_stats(messages)
                 if n_errors:
                     summary = self.formatter.format_error(n_errors, n_files, n_sources,
                                                           use_color=use_color)
+                elif n_notes == len(messages):
+                    summary = self.formatter.format_success(n_sources, use_color)
             else:
                 summary = self.formatter.format_success(n_sources, use_color)
             if summary:
