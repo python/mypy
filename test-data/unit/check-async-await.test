@@ -801,6 +801,7 @@ async def precise2(futures: Iterable[Awaitable[int]]) -> None:
 [typing fixtures/typing-async.pyi]
 
 [case testUnusedAwaitable]
+# flags: --show-error-codes --enable-error-code unused-awaitable
 from typing import Iterable
 
 async def foo() -> None:
@@ -816,10 +817,10 @@ class B:
         return 0
 
 def bar() -> None:
-    foo()  # E: Value of type "Coroutine[Any, Any, None]" must be used \
-           # N: Are you missing an await?
-    A()  # E: Value of type "A" must be used \
+    A()  # E: Value of type "A" must be used  [unused-awaitable] \
          # N: Are you missing an await?
+    foo()  # E: Value of type "Coroutine[Any, Any, None]" must be used  [unused-coroutine] \
+           # N: Are you missing an await?
     B()
 
 [builtins fixtures/async_await.pyi]
