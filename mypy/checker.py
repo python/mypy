@@ -3454,7 +3454,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         error_note_and_code = self.type_requires_usage(expr_type)
         if error_note_and_code:
             error_note, code = error_note_and_code
-            self.fail(message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s, code=code)
+            self.fail(
+                message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s, code=code
+            )
             self.note(error_note, s, code=code)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
