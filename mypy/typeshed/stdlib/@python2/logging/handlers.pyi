@@ -1,7 +1,7 @@
 from _typeshed import StrPath
 from logging import FileHandler, Handler, LogRecord
 from socket import SocketKind, SocketType
-from typing import Any, ClassVar, Dict, List, Tuple
+from typing import Any, ClassVar
 
 DEFAULT_TCP_LOGGING_PORT: int
 DEFAULT_UDP_LOGGING_PORT: int
@@ -84,14 +84,14 @@ class SysLogHandler(Handler):
     LOG_LOCAL5: int
     LOG_LOCAL6: int
     LOG_LOCAL7: int
-    address: Tuple[str, int] | str  # undocumented
+    address: tuple[str, int] | str  # undocumented
     unixsocket: bool  # undocumented
     socktype: SocketKind  # undocumented
     facility: int  # undocumented
-    priority_names: ClassVar[Dict[str, int]]  # undocumented
-    facility_names: ClassVar[Dict[str, int]]  # undocumented
-    priority_map: ClassVar[Dict[str, str]]  # undocumented
-    def __init__(self, address: Tuple[str, int] | str = ..., facility: int = ..., socktype: SocketKind | None = ...) -> None: ...
+    priority_names: ClassVar[dict[str, int]]  # undocumented
+    facility_names: ClassVar[dict[str, int]]  # undocumented
+    priority_map: ClassVar[dict[str, str]]  # undocumented
+    def __init__(self, address: tuple[str, int] | str = ..., facility: int = ..., socktype: SocketKind | None = ...) -> None: ...
     def encodePriority(self, facility: int | str, priority: int | str) -> int: ...
     def mapPriority(self, levelName: str) -> str: ...
 
@@ -106,17 +106,17 @@ class SMTPHandler(Handler):
     # TODO `secure` can also be an empty tuple
     def __init__(
         self,
-        mailhost: str | Tuple[str, int],
+        mailhost: str | tuple[str, int],
         fromaddr: str,
-        toaddrs: List[str],
+        toaddrs: list[str],
         subject: str,
-        credentials: Tuple[str, str] | None = ...,
-        secure: Tuple[str] | Tuple[str, str] | None = ...,
+        credentials: tuple[str, str] | None = ...,
+        secure: tuple[str] | tuple[str, str] | None = ...,
     ) -> None: ...
     def getSubject(self, record: LogRecord) -> str: ...
 
 class BufferingHandler(Handler):
-    buffer: List[LogRecord]
+    buffer: list[LogRecord]
     def __init__(self, capacity: int) -> None: ...
     def shouldFlush(self, record: LogRecord) -> bool: ...
 
@@ -126,4 +126,4 @@ class MemoryHandler(BufferingHandler):
 
 class HTTPHandler(Handler):
     def __init__(self, host: str, url: str, method: str = ...) -> None: ...
-    def mapLogRecord(self, record: LogRecord) -> Dict[str, Any]: ...
+    def mapLogRecord(self, record: LogRecord) -> dict[str, Any]: ...

@@ -4,6 +4,8 @@ from _typeshed import StrPath
 from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
 from typing_extensions import ParamSpec
 
+__all__ = ["Trace", "CoverageResults"]
+
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
 _localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
@@ -46,6 +48,7 @@ class Trace:
         def runfunc(self, __func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...
     else:
         def runfunc(self, func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...
+
     def file_module_function_of(self, frame: types.FrameType) -> _fileModuleFunction: ...
     def globaltrace_trackcallers(self, frame: types.FrameType, why: str, arg: Any) -> None: ...
     def globaltrace_countfuncs(self, frame: types.FrameType, why: str, arg: Any) -> None: ...

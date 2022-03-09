@@ -1,6 +1,7 @@
 import sys
 from _typeshed import Self
-from typing import IO, Any, NamedTuple, NoReturn, Union
+from typing import IO, Any, NamedTuple, NoReturn, Union, overload
+from typing_extensions import Literal
 
 _File = Union[str, IO[bytes]]
 
@@ -72,7 +73,11 @@ class Au_write:
     def writeframes(self, data: bytes) -> None: ...
     def close(self) -> None: ...
 
-# Returns a Au_read if mode is rb and Au_write if mode is wb
+@overload
+def open(f: _File, mode: Literal["r", "rb"]) -> Au_read: ...
+@overload
+def open(f: _File, mode: Literal["w", "wb"]) -> Au_write: ...
+@overload
 def open(f: _File, mode: str | None = ...) -> Any: ...
 
 if sys.version_info < (3, 9):

@@ -1,38 +1,38 @@
-from typing import Any, Dict, Iterable, List, Match, Optional, Pattern as _Pattern, Set, Tuple, Union
+from typing import Any, Iterable, Match, Optional, Pattern as _Pattern, Union
 
 SPECIAL_CHARS: str
 REPEAT_CHARS: str
-DIGITS: Set[Any]
-OCTDIGITS: Set[Any]
-HEXDIGITS: Set[Any]
-WHITESPACE: Set[Any]
-ESCAPES: Dict[str, Tuple[str, int]]
-CATEGORIES: Dict[str, Tuple[str, str] | Tuple[str, List[Tuple[str, str]]]]
-FLAGS: Dict[str, int]
+DIGITS: set[Any]
+OCTDIGITS: set[Any]
+HEXDIGITS: set[Any]
+WHITESPACE: set[Any]
+ESCAPES: dict[str, tuple[str, int]]
+CATEGORIES: dict[str, tuple[str, str] | tuple[str, list[tuple[str, str]]]]
+FLAGS: dict[str, int]
 
 class Pattern:
     flags: int
-    open: List[int]
+    open: list[int]
     groups: int
-    groupdict: Dict[str, int]
+    groupdict: dict[str, int]
     lookbehind: int
     def __init__(self) -> None: ...
     def opengroup(self, name: str = ...) -> int: ...
     def closegroup(self, gid: int) -> None: ...
     def checkgroup(self, gid: int) -> bool: ...
 
-_OpSubpatternType = Tuple[Optional[int], int, int, SubPattern]
-_OpGroupRefExistsType = Tuple[int, SubPattern, SubPattern]
-_OpInType = List[Tuple[str, int]]
-_OpBranchType = Tuple[None, List[SubPattern]]
+_OpSubpatternType = tuple[Optional[int], int, int, SubPattern]
+_OpGroupRefExistsType = tuple[int, SubPattern, SubPattern]
+_OpInType = list[tuple[str, int]]
+_OpBranchType = tuple[None, list[SubPattern]]
 _AvType = Union[_OpInType, _OpBranchType, Iterable[SubPattern], _OpGroupRefExistsType, _OpSubpatternType]
 _CodeType = Union[str, _AvType]
 
 class SubPattern:
     pattern: str
-    data: List[_CodeType]
+    data: list[_CodeType]
     width: int | None
-    def __init__(self, pattern, data: List[_CodeType] = ...) -> None: ...
+    def __init__(self, pattern, data: list[_CodeType] = ...) -> None: ...
     def dump(self, level: int = ...) -> None: ...
     def __len__(self) -> int: ...
     def __delitem__(self, index: int | slice) -> None: ...
@@ -48,7 +48,7 @@ class Tokenizer:
     def __init__(self, string: str) -> None: ...
     def match(self, char: str, skip: int = ...) -> int: ...
     def get(self) -> str | None: ...
-    def tell(self) -> Tuple[int, str | None]: ...
+    def tell(self) -> tuple[int, str | None]: ...
     def seek(self, index: int) -> None: ...
 
 def isident(char: str) -> bool: ...
@@ -56,7 +56,7 @@ def isdigit(char: str) -> bool: ...
 def isname(name: str) -> bool: ...
 def parse(str: str, flags: int = ..., pattern: Pattern = ...) -> SubPattern: ...
 
-_Template = Tuple[List[Tuple[int, int]], List[Optional[int]]]
+_Template = tuple[list[tuple[int, int]], list[Optional[int]]]
 
 def parse_template(source: str, pattern: _Pattern[Any]) -> _Template: ...
 def expand_template(template: _Template, match: Match[Any]) -> str: ...

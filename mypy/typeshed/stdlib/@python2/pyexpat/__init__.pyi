@@ -1,12 +1,12 @@
 import pyexpat.errors as errors
 import pyexpat.model as model
 from _typeshed import SupportsRead
-from typing import Any, Callable, Dict, List, Optional, Text, Tuple
+from typing import Any, Callable, Optional, Text
 
 EXPAT_VERSION: str  # undocumented
-version_info: Tuple[int, int, int]  # undocumented
+version_info: tuple[int, int, int]  # undocumented
 native_encoding: str  # undocumented
-features: List[Tuple[str, int]]  # undocumented
+features: list[tuple[str, int]]  # undocumented
 
 class ExpatError(Exception):
     code: int
@@ -19,7 +19,7 @@ XML_PARAM_ENTITY_PARSING_NEVER: int
 XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
 XML_PARAM_ENTITY_PARSING_ALWAYS: int
 
-_Model = Tuple[int, int, Optional[str], Tuple[Any, ...]]
+_Model = tuple[int, int, Optional[str], tuple[Any, ...]]
 
 class XMLParserType(object):
     def Parse(self, __data: Text | bytes, __isfinal: bool = ...) -> int: ...
@@ -48,8 +48,8 @@ class XMLParserType(object):
     EndDoctypeDeclHandler: Callable[[], Any] | None
     ElementDeclHandler: Callable[[str, _Model], Any] | None
     AttlistDeclHandler: Callable[[str, str, str, str | None, bool], Any] | None
-    StartElementHandler: Callable[[str, Dict[str, str]], Any] | Callable[[str, List[str]], Any] | Callable[
-        [str, Dict[str, str], List[str]], Any
+    StartElementHandler: Callable[[str, dict[str, str]], Any] | Callable[[str, list[str]], Any] | Callable[
+        [str, dict[str, str], list[str]], Any
     ] | None
     EndElementHandler: Callable[[str], Any] | None
     ProcessingInstructionHandler: Callable[[str, str], Any] | None
@@ -71,5 +71,5 @@ def ErrorString(__code: int) -> str: ...
 
 # intern is undocumented
 def ParserCreate(
-    encoding: Text | None = ..., namespace_separator: Text | None = ..., intern: Dict[str, Any] | None = ...
+    encoding: Text | None = ..., namespace_separator: Text | None = ..., intern: dict[str, Any] | None = ...
 ) -> XMLParserType: ...

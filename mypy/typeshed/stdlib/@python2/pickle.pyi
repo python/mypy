@@ -1,7 +1,7 @@
-from typing import IO, Any, Callable, Iterator, Optional, Tuple, Type, Union
+from typing import IO, Any, Callable, Iterator, Optional, Union
 
 HIGHEST_PROTOCOL: int
-bytes_types: Tuple[Type[Any], ...]  # undocumented
+bytes_types: tuple[type[Any], ...]  # undocumented
 
 def dump(obj: Any, file: IO[bytes], protocol: int | None = ...) -> None: ...
 def dumps(obj: Any, protocol: int | None = ...) -> bytes: ...
@@ -14,10 +14,10 @@ class UnpicklingError(PickleError): ...
 
 _reducedtype = Union[
     str,
-    Tuple[Callable[..., Any], Tuple[Any, ...]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
 ]
 
 class Pickler:

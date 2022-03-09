@@ -2,6 +2,8 @@ import email.message
 from email.policy import Policy
 from typing import Optional, Union
 
+__all__ = ["MIMEBase"]
+
 _ParamsType = Union[str, None, tuple[str, Optional[str], str]]
 
 class MIMEBase(email.message.Message):

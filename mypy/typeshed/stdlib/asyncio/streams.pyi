@@ -1,9 +1,68 @@
 import sys
-from _typeshed import StrPath
+from _typeshed import Self, StrPath
 from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional
 
 from . import events, protocols, transports
 from .base_events import Server
+
+if sys.platform == "win32":
+    if sys.version_info >= (3, 8):
+        __all__ = ("StreamReader", "StreamWriter", "StreamReaderProtocol", "open_connection", "start_server")
+    elif sys.version_info >= (3, 7):
+        __all__ = (
+            "StreamReader",
+            "StreamWriter",
+            "StreamReaderProtocol",
+            "open_connection",
+            "start_server",
+            "IncompleteReadError",
+            "LimitOverrunError",
+        )
+    else:
+        __all__ = [
+            "StreamReader",
+            "StreamWriter",
+            "StreamReaderProtocol",
+            "open_connection",
+            "start_server",
+            "IncompleteReadError",
+            "LimitOverrunError",
+        ]
+else:
+    if sys.version_info >= (3, 8):
+        __all__ = (
+            "StreamReader",
+            "StreamWriter",
+            "StreamReaderProtocol",
+            "open_connection",
+            "start_server",
+            "open_unix_connection",
+            "start_unix_server",
+        )
+    elif sys.version_info >= (3, 7):
+        __all__ = (
+            "StreamReader",
+            "StreamWriter",
+            "StreamReaderProtocol",
+            "open_connection",
+            "start_server",
+            "IncompleteReadError",
+            "LimitOverrunError",
+            "open_unix_connection",
+            "start_unix_server",
+        )
+    else:
+        __all__ = [
+            "StreamReader",
+            "StreamWriter",
+            "StreamReaderProtocol",
+            "open_connection",
+            "start_server",
+            "IncompleteReadError",
+            "LimitOverrunError",
+            "open_unix_connection",
+            "start_unix_server",
+        ]
 
 _ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Optional[Awaitable[None]]]
 
@@ -12,6 +71,7 @@ if sys.version_info < (3, 8):
         expected: int | None
         partial: bytes
         def __init__(self, partial: bytes, expected: int | None) -> None: ...
+
     class LimitOverrunError(Exception):
         consumed: int
         def __init__(self, message: str, consumed: int) -> None: ...
@@ -114,10 +174,11 @@ class StreamWriter:
     if sys.version_info >= (3, 7):
         def is_closing(self) -> bool: ...
         async def wait_closed(self) -> None: ...
+
     def get_extra_info(self, name: str, default: Any = ...) -> Any: ...
     async def drain(self) -> None: ...
 
-class StreamReader:
+class StreamReader(AsyncIterator[bytes]):
     def __init__(self, limit: int = ..., loop: events.AbstractEventLoop | None = ...) -> None: ...
     def exception(self) -> Exception: ...
     def set_exception(self, exc: Exception) -> None: ...
@@ -129,5 +190,5 @@ class StreamReader:
     async def readuntil(self, separator: bytes = ...) -> bytes: ...
     async def read(self, n: int = ...) -> bytes: ...
     async def readexactly(self, n: int) -> bytes: ...
-    def __aiter__(self) -> AsyncIterator[bytes]: ...
+    def __aiter__(self: Self) -> Self: ...
     async def __anext__(self) -> bytes: ...

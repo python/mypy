@@ -4,6 +4,9 @@ import tkinter
 from typing import Any, Union, overload
 from typing_extensions import Literal, TypedDict
 
+if sys.version_info >= (3, 9):
+    __all__ = ["NORMAL", "ROMAN", "BOLD", "ITALIC", "nametofont", "Font", "families", "names"]
+
 NORMAL: Literal["normal"]
 ROMAN: Literal["roman"]
 BOLD: Literal["bold"]
@@ -101,6 +104,7 @@ class Font:
     @overload
     def metrics(self, *, displayof: tkinter.Misc | None = ...) -> _MetricsDict: ...
     def measure(self, text: str, displayof: tkinter.Misc | None = ...) -> int: ...
+    def __eq__(self, other: object) -> bool: ...
 
 def families(root: tkinter.Misc | None = ..., displayof: tkinter.Misc | None = ...) -> tuple[str, ...]: ...
 def names(root: tkinter.Misc | None = ...) -> tuple[str, ...]: ...

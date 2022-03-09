@@ -1,10 +1,13 @@
 from typing import IO, Any, Union
+from typing_extensions import Literal
+
+__all__ = ["binhex", "hexbin", "Error"]
 
 class Error(Exception): ...
 
-REASONABLY_LARGE: int
-LINELEN: int
-RUNCHAR: bytes
+REASONABLY_LARGE: Literal[32768]
+LINELEN: Literal[64]
+RUNCHAR: Literal[b"\x90"]
 
 class FInfo:
     def __init__(self) -> None: ...

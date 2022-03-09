@@ -1,5 +1,9 @@
+import sys
 from tkinter import Widget
 from typing import Any, Mapping
+
+if sys.version_info >= (3, 9):
+    __all__ = ["Dialog"]
 
 DIALOG_ICON: str
 

@@ -3,6 +3,24 @@ import sys
 from email.charset import Charset
 from typing import Optional, Union, overload
 
+__all__ = [
+    "collapse_rfc2231_value",
+    "decode_params",
+    "decode_rfc2231",
+    "encode_rfc2231",
+    "formataddr",
+    "formatdate",
+    "format_datetime",
+    "getaddresses",
+    "make_msgid",
+    "mktime_tz",
+    "parseaddr",
+    "parsedate",
+    "parsedate_tz",
+    "parsedate_to_datetime",
+    "unquote",
+]
+
 _ParamType = Union[str, tuple[Optional[str], Optional[str], str]]
 _PDTZ = tuple[int, int, int, int, int, int, int, int, int, Optional[int]]
 

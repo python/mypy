@@ -1,25 +1,27 @@
 import types
 from _typeshed import StrPath
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, TypeVar
+from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
+from typing_extensions import ParamSpec
 
 _T = TypeVar("_T")
+_P = ParamSpec("_P")
 _localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
-_fileModuleFunction = Tuple[str, Optional[str], str]
+_fileModuleFunction = tuple[str, Optional[str], str]
 
 class CoverageResults:
     def __init__(
         self,
-        counts: Dict[Tuple[str, int], int] | None = ...,
-        calledfuncs: Dict[_fileModuleFunction, int] | None = ...,
+        counts: dict[tuple[str, int], int] | None = ...,
+        calledfuncs: dict[_fileModuleFunction, int] | None = ...,
         infile: StrPath | None = ...,
-        callers: Dict[Tuple[_fileModuleFunction, _fileModuleFunction], int] | None = ...,
+        callers: dict[tuple[_fileModuleFunction, _fileModuleFunction], int] | None = ...,
         outfile: StrPath | None = ...,
     ) -> None: ...  # undocumented
     def update(self, other: CoverageResults) -> None: ...
     def write_results(self, show_missing: bool = ..., summary: bool = ..., coverdir: StrPath | None = ...) -> None: ...
     def write_results_file(
         self, path: StrPath, lines: Sequence[str], lnotab: Any, lines_hit: Mapping[int, int], encoding: str | None = ...
-    ) -> Tuple[int, int]: ...
+    ) -> tuple[int, int]: ...
 
 class Trace:
     def __init__(
@@ -38,7 +40,7 @@ class Trace:
     def runctx(
         self, cmd: str | types.CodeType, globals: Mapping[str, Any] | None = ..., locals: Mapping[str, Any] | None = ...
     ) -> None: ...
-    def runfunc(self, func: Callable[..., _T], *args: Any, **kw: Any) -> _T: ...
+    def runfunc(self, func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...
     def file_module_function_of(self, frame: types.FrameType) -> _fileModuleFunction: ...
     def globaltrace_trackcallers(self, frame: types.FrameType, why: str, arg: Any) -> None: ...
     def globaltrace_countfuncs(self, frame: types.FrameType, why: str, arg: Any) -> None: ...

@@ -273,7 +273,8 @@ if sys.platform != "win32":
         from os import CLD_KILLED as CLD_KILLED, CLD_STOPPED as CLD_STOPPED, waitstatus_to_exitcode as waitstatus_to_exitcode
 
         if sys.platform == "linux":
-            from os import P_PIDFD as P_PIDFD
+            from os import P_PIDFD as P_PIDFD, pidfd_open as pidfd_open
+
     if sys.version_info >= (3, 8):
         from os import (
             POSIX_SPAWN_CLOSE as POSIX_SPAWN_CLOSE,
@@ -302,6 +303,7 @@ if sys.platform != "win32":
                 MFD_HUGE_MASK as MFD_HUGE_MASK,
                 MFD_HUGE_SHIFT as MFD_HUGE_SHIFT,
                 MFD_HUGETLB as MFD_HUGETLB,
+                copy_file_range as copy_file_range,
                 memfd_create as memfd_create,
             )
     if sys.version_info >= (3, 7):

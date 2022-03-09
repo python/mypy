@@ -1,18 +1,17 @@
 import sys
-import typing
 from typing import Any, ClassVar
 from typing_extensions import Literal
 
-PyCF_ONLY_AST: int
+PyCF_ONLY_AST: Literal[1024]
 if sys.version_info >= (3, 8):
-    PyCF_TYPE_COMMENTS: int
-    PyCF_ALLOW_TOP_LEVEL_AWAIT: int
+    PyCF_TYPE_COMMENTS: Literal[4096]
+    PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
 
 _identifier = str
 
 class AST:
-    _attributes: ClassVar[typing.Tuple[str, ...]]
-    _fields: ClassVar[typing.Tuple[str, ...]]
+    _attributes: ClassVar[tuple[str, ...]]
+    _fields: ClassVar[tuple[str, ...]]
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
     # TODO: Not all nodes have all of the following attributes
     lineno: int
@@ -26,8 +25,10 @@ class mod(AST): ...
 
 if sys.version_info >= (3, 8):
     class type_ignore(AST): ...
+
     class TypeIgnore(type_ignore):
         tag: str
+
     class FunctionType(mod):
         argtypes: list[expr]
         returns: expr
@@ -229,12 +230,16 @@ class JoinedStr(expr):
 if sys.version_info < (3, 8):
     class Num(expr):  # Deprecated in 3.8; use Constant
         n: complex
+
     class Str(expr):  # Deprecated in 3.8; use Constant
         s: str
+
     class Bytes(expr):  # Deprecated in 3.8; use Constant
         s: bytes
+
     class NameConstant(expr):  # Deprecated in 3.8; use Constant
         value: Any
+
     class Ellipsis(expr): ...  # Deprecated in 3.8; use Constant
 
 class Constant(expr):
@@ -268,6 +273,7 @@ class Slice(_SliceT):
 if sys.version_info < (3, 9):
     class ExtSlice(slice):
         dims: list[slice]
+
     class Index(slice):
         value: expr
 
@@ -298,6 +304,7 @@ if sys.version_info < (3, 9):
     class AugLoad(expr_context): ...
     class AugStore(expr_context): ...
     class Param(expr_context): ...
+
     class Suite(mod):
         body: list[stmt]
 
@@ -381,32 +388,42 @@ if sys.version_info >= (3, 10):
     class Match(stmt):
         subject: expr
         cases: list[match_case]
+
     class pattern(AST): ...
     # Without the alias, Pyright complains variables named pattern are recursively defined
     _pattern = pattern
+
     class match_case(AST):
         pattern: _pattern
         guard: expr | None
         body: list[stmt]
+
     class MatchValue(pattern):
         value: expr
+
     class MatchSingleton(pattern):
         value: Literal[True, False, None]
+
     class MatchSequence(pattern):
         patterns: list[pattern]
+
     class MatchStar(pattern):
         name: _identifier | None
+
     class MatchMapping(pattern):
         keys: list[expr]
         patterns: list[pattern]
         rest: _identifier | None
+
     class MatchClass(pattern):
         cls: expr
         patterns: list[pattern]
         kwd_attrs: list[_identifier]
         kwd_patterns: list[pattern]
+
     class MatchAs(pattern):
         pattern: _pattern | None
         name: _identifier | None
+
     class MatchOr(pattern):
         patterns: list[pattern]

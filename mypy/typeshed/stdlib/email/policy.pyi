@@ -5,6 +5,8 @@ from email.header import Header
 from email.message import Message
 from typing import Any, Callable
 
+__all__ = ["Compat32", "compat32", "Policy", "EmailPolicy", "default", "strict", "SMTP", "HTTP"]
+
 class Policy(metaclass=ABCMeta):
     max_line_length: int | None
     linesep: str

@@ -1,4 +1,4 @@
-from typing import Any, BinaryIO, Callable, List, Protocol, Text, Union, overload
+from typing import Any, BinaryIO, Callable, Protocol, Text, Union, overload
 
 class _ReadableBinary(Protocol):
     def tell(self) -> int: ...
@@ -12,4 +12,4 @@ def what(file: _File, h: None = ...) -> str | None: ...
 @overload
 def what(file: Any, h: bytes) -> str | None: ...
 
-tests: List[Callable[[bytes, BinaryIO | None], str | None]]
+tests: list[Callable[[bytes, BinaryIO | None], str | None]]

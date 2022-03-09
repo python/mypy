@@ -4,6 +4,8 @@ from lib2to3.pytree import _NL, _Convert
 from logging import Logger
 from typing import IO, Any, Iterable
 
+__all__ = ["Driver", "load_grammar"]
+
 class Driver:
     grammar: Grammar
     logger: Logger

@@ -1,10 +1,16 @@
 import sys
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence, Type
+from typing import Any, Container, Iterable, Sequence
 from typing_extensions import Literal
 
 if sys.platform == "win32":
-    from _msi import _Database
+    from _msi import (
+        CreateRecord as CreateRecord,
+        FCICreate as FCICreate,
+        OpenDatabase as OpenDatabase,
+        UuidCreate as UuidCreate,
+        _Database,
+    )
 
     AMD64: bool
     if sys.version_info < (3, 7):
@@ -22,6 +28,7 @@ if sys.platform == "win32":
     type_nullable: Literal[0x1000]
     type_key: Literal[0x2000]
     knownbits: Literal[0x3FFF]
+
     class Table:
 
         name: str
@@ -30,12 +37,14 @@ if sys.platform == "win32":
         def add_field(self, index: int, name: str, type: int) -> None: ...
         def sql(self) -> str: ...
         def create(self, db: _Database) -> None: ...
+
     class _Unspecified: ...
+
     def change_sequence(
         seq: Sequence[tuple[str, str | None, int]],
         action: str,
-        seqno: int | Type[_Unspecified] = ...,
-        cond: str | Type[_Unspecified] = ...,
+        seqno: int | type[_Unspecified] = ...,
+        cond: str | type[_Unspecified] = ...,
     ) -> None: ...
     def add_data(db: _Database, table: str, values: Iterable[tuple[Any, ...]]) -> None: ...
     def add_stream(db: _Database, name: str, path: str) -> None: ...
@@ -45,6 +54,7 @@ if sys.platform == "win32":
     def add_tables(db: _Database, module: ModuleType) -> None: ...
     def make_id(str: str) -> str: ...
     def gen_uuid() -> str: ...
+
     class CAB:
 
         name: str
@@ -56,6 +66,7 @@ if sys.platform == "win32":
         def append(self, full: str, file: str, logical: str) -> tuple[int, str]: ...
         def commit(self, db: _Database) -> None: ...
     _directories: set[str]
+
     class Directory:
 
         db: _Database
@@ -91,11 +102,12 @@ if sys.platform == "win32":
         def add_file(self, file: str, src: str | None = ..., version: str | None = ..., language: str | None = ...) -> str: ...
         def glob(self, pattern: str, exclude: Container[str] | None = ...) -> list[str]: ...
         def remove_pyc(self) -> None: ...
+
     class Binary:
 
         name: str
         def __init__(self, fname: str) -> None: ...
-        def __repr__(self) -> str: ...
+
     class Feature:
 
         id: str
@@ -112,6 +124,7 @@ if sys.platform == "win32":
             attributes: int = ...,
         ) -> None: ...
         def set_current(self) -> None: ...
+
     class Control:
 
         dlg: Dialog
@@ -120,12 +133,14 @@ if sys.platform == "win32":
         def event(self, event: str, argument: str, condition: str = ..., ordering: int | None = ...) -> None: ...
         def mapping(self, event: str, attribute: str) -> None: ...
         def condition(self, action: str, condition: str) -> None: ...
+
     class RadioButtonGroup(Control):
 
         property: str
         index: int
         def __init__(self, dlg: Dialog, name: str, property: str) -> None: ...
         def add(self, name: str, x: int, y: int, w: int, h: int, text: str, value: str | None = ...) -> None: ...
+
     class Dialog:
 
         db: _Database

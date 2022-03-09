@@ -2,6 +2,8 @@ from email.mime.nonmultipart import MIMENonMultipart
 from email.policy import Policy
 from typing import Callable, Optional, Union
 
+__all__ = ["MIMEImage"]
+
 _ParamsType = Union[str, None, tuple[str, Optional[str], str]]
 
 class MIMEImage(MIMENonMultipart):

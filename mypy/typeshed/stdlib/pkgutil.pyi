@@ -3,6 +3,21 @@ from _typeshed import SupportsRead
 from importlib.abc import Loader, MetaPathFinder, PathEntryFinder
 from typing import IO, Any, Callable, Iterable, Iterator, NamedTuple
 
+__all__ = [
+    "get_importer",
+    "iter_importers",
+    "get_loader",
+    "find_loader",
+    "walk_packages",
+    "iter_modules",
+    "get_data",
+    "ImpImporter",
+    "ImpLoader",
+    "read_code",
+    "extend_path",
+    "ModuleInfo",
+]
+
 class ModuleInfo(NamedTuple):
     module_finder: MetaPathFinder | PathEntryFinder
     name: str
@@ -18,7 +33,7 @@ class ImpLoader:
 
 def find_loader(fullname: str) -> Loader | None: ...
 def get_importer(path_item: str) -> PathEntryFinder | None: ...
-def get_loader(module_or_name: str) -> Loader: ...
+def get_loader(module_or_name: str) -> Loader | None: ...
 def iter_importers(fullname: str = ...) -> Iterator[MetaPathFinder | PathEntryFinder]: ...
 def iter_modules(path: Iterable[str] | None = ..., prefix: str = ...) -> Iterator[ModuleInfo]: ...
 def read_code(stream: SupportsRead[bytes]) -> Any: ...  # undocumented

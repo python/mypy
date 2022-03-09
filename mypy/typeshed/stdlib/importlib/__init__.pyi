@@ -2,6 +2,8 @@ from importlib.abc import Loader
 from types import ModuleType
 from typing import Mapping, Sequence
 
+__all__ = ["__import__", "import_module", "invalidate_caches", "reload"]
+
 # Signature of `builtins.__import__` should be kept identical to `importlib.__import__`
 def __import__(
     name: str,

@@ -3,7 +3,7 @@ import pydoc
 import socketserver
 import sys
 from datetime import datetime
-from typing import Any, Callable, Iterable, Mapping, Pattern, Protocol, Type, Union
+from typing import Any, Callable, Iterable, Mapping, Pattern, Protocol, Union
 from xmlrpc.client import Fault
 
 # TODO: Recursive type on tuple, list, dict
@@ -48,6 +48,7 @@ class SimpleXMLRPCDispatcher:  # undocumented
         def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
     else:
         def register_function(self, function: _DispatchProtocol, name: str | None = ...) -> Callable[..., Any]: ...
+
     def register_introspection_functions(self) -> None: ...
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(
@@ -81,7 +82,7 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,
@@ -97,7 +98,7 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,
@@ -150,7 +151,7 @@ class DocXMLRPCServer(SimpleXMLRPCServer, XMLRPCDocGenerator):
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,

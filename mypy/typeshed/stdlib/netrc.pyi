@@ -1,6 +1,8 @@
 from _typeshed import StrOrBytesPath
 from typing import Optional
 
+__all__ = ["netrc", "NetrcParseError"]
+
 class NetrcParseError(Exception):
     filename: str | None
     lineno: int | None

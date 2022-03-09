@@ -1,6 +1,8 @@
 import sys
 from typing import BinaryIO, Union
 
+__all__ = ["Error", "encode", "decode"]
+
 _File = Union[str, BinaryIO]
 
 class Error(Exception): ...

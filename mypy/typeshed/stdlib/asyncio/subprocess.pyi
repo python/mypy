@@ -5,6 +5,11 @@ from asyncio import events, protocols, streams, transports
 from typing import IO, Any, Callable, Union
 from typing_extensions import Literal
 
+if sys.version_info >= (3, 7):
+    __all__ = ("create_subprocess_exec", "create_subprocess_shell")
+else:
+    __all__ = ["create_subprocess_exec", "create_subprocess_shell"]
+
 if sys.version_info >= (3, 8):
     _ExecArg = StrOrBytesPath
 else:

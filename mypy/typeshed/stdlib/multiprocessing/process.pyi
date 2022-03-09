@@ -1,6 +1,11 @@
 import sys
 from typing import Any, Callable, Mapping
 
+if sys.version_info >= (3, 8):
+    __all__ = ["BaseProcess", "current_process", "active_children", "parent_process"]
+else:
+    __all__ = ["BaseProcess", "current_process", "active_children"]
+
 class BaseProcess:
     name: str
     daemon: bool
@@ -22,6 +27,7 @@ class BaseProcess:
     if sys.version_info >= (3, 7):
         def kill(self) -> None: ...
         def close(self) -> None: ...
+
     def join(self, timeout: float | None = ...) -> None: ...
     def is_alive(self) -> bool: ...
     @property

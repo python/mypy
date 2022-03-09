@@ -1,9 +1,9 @@
 import asynchat
 import asyncore
 import socket
-from typing import Any, List, Text, Tuple, Type
+from typing import Any, Text
 
-_Address = Tuple[str, int]  # (host, port)
+_Address = tuple[str, int]  # (host, port)
 
 class SMTPChannel(asynchat.async_chat):
     COMMAND: int
@@ -22,24 +22,24 @@ class SMTPChannel(asynchat.async_chat):
     def smtp_DATA(self, arg: str) -> None: ...
 
 class SMTPServer(asyncore.dispatcher):
-    channel_class: Type[SMTPChannel]
+    channel_class: type[SMTPChannel]
 
     data_size_limit: int
     enable_SMTPUTF8: bool
     def __init__(self, localaddr: _Address, remoteaddr: _Address, data_size_limit: int = ...) -> None: ...
     def handle_accepted(self, conn: socket.socket, addr: Any) -> None: ...
     def process_message(
-        self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: bytes | str, **kwargs: Any
+        self, peer: _Address, mailfrom: str, rcpttos: list[Text], data: bytes | str, **kwargs: Any
     ) -> str | None: ...
 
 class DebuggingServer(SMTPServer): ...
 
 class PureProxy(SMTPServer):
     def process_message(  # type: ignore
-        self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: bytes | str
+        self, peer: _Address, mailfrom: str, rcpttos: list[Text], data: bytes | str
     ) -> str | None: ...
 
 class MailmanProxy(PureProxy):
     def process_message(  # type: ignore
-        self, peer: _Address, mailfrom: str, rcpttos: List[Text], data: bytes | str
+        self, peer: _Address, mailfrom: str, rcpttos: list[Text], data: bytes | str
     ) -> str | None: ...

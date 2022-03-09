@@ -4,6 +4,8 @@ from urllib.request import OpenerDirector
 from xml.dom.expatbuilder import ExpatBuilder, ExpatBuilderNS
 from xml.dom.minidom import Node
 
+__all__ = ["DOMBuilder", "DOMEntityResolver", "DOMInputSource"]
+
 # UNKNOWN TYPES:
 # - `Options.errorHandler`.
 #       The same as `_DOMBuilderErrorHandlerType`?

@@ -1,4 +1,32 @@
 import sys
+from _typeshed import StrPath
+
+__all__ = [
+    "getlocale",
+    "getdefaultlocale",
+    "getpreferredencoding",
+    "Error",
+    "setlocale",
+    "resetlocale",
+    "localeconv",
+    "strcoll",
+    "strxfrm",
+    "str",
+    "atof",
+    "atoi",
+    "format",
+    "format_string",
+    "currency",
+    "normalize",
+    "LC_CTYPE",
+    "LC_COLLATE",
+    "LC_MESSAGES",
+    "LC_TIME",
+    "LC_MONETARY",
+    "LC_NUMERIC",
+    "LC_ALL",
+    "CHAR_MAX",
+]
 
 # This module defines a function "str()", which is why "str" can't be used
 # as a type annotation or type alias.
@@ -102,6 +130,17 @@ def delocalize(string: _str) -> _str: ...
 def atof(string: _str, func: Callable[[_str], float] = ...) -> float: ...
 def atoi(string: _str) -> int: ...
 def str(val: float) -> _str: ...
+
+# native gettext functions
+# https://docs.python.org/3/library/locale.html#access-to-message-catalogs
+# https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Modules/_localemodule.c#L626
+if sys.platform == "linux" or sys.platform == "darwin":
+    def gettext(__msg: _str) -> _str: ...
+    def dgettext(__domain: _str | None, __msg: _str) -> _str: ...
+    def dcgettext(__domain: _str | None, __msg: _str, __category: int) -> _str: ...
+    def textdomain(__domain: _str | None) -> _str: ...
+    def bindtextdomain(__domain: _str, __dir: StrPath | None) -> _str: ...
+    def bind_textdomain_codeset(__domain: _str, __codeset: _str | None) -> _str | None: ...
 
 locale_alias: dict[_str, _str]  # undocumented
 locale_encoding_alias: dict[_str, _str]  # undocumented

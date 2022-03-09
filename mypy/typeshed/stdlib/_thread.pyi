@@ -2,7 +2,7 @@ import sys
 from _typeshed import structseq
 from threading import Thread
 from types import TracebackType
-from typing import Any, Callable, NoReturn, Optional, Type
+from typing import Any, Callable, NoReturn, Optional
 from typing_extensions import final
 
 error = RuntimeError
@@ -18,7 +18,7 @@ class LockType:
     def locked(self) -> bool: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
 
 def start_new_thread(function: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any] = ...) -> int: ...
@@ -34,10 +34,10 @@ if sys.version_info >= (3, 8):
     def get_native_id() -> int: ...  # only available on some platforms
     @final
     class _ExceptHookArgs(
-        structseq[Any], tuple[Type[BaseException], Optional[BaseException], Optional[TracebackType], Optional[Thread]]
+        structseq[Any], tuple[type[BaseException], Optional[BaseException], Optional[TracebackType], Optional[Thread]]
     ):
         @property
-        def exc_type(self) -> Type[BaseException]: ...
+        def exc_type(self) -> type[BaseException]: ...
         @property
         def exc_value(self) -> BaseException | None: ...
         @property
