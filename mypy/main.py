@@ -492,9 +492,11 @@ def process_options(args: List[str],
     general_group.add_argument(
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
+
+    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__,
+        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout)
 
