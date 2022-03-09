@@ -47,6 +47,11 @@ class Sequence(Iterable[T_co]):
 # Mapping type is oversimplified intentionally.
 class Mapping(Iterable[T], Generic[T, T_co]): pass
 
+class Awaitable(Protocol[T]):
+    def __await__(self) -> Generator[Any, Any, T]: pass
+
+class Coroutine(Awaitable[V], Generic[T, U, V]): pass
+
 def final(meth: T) -> T: pass
 
 def reveal_type(__obj: T) -> T: pass

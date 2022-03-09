@@ -4546,7 +4546,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
         ret = self.lookup_fully_qualified_or_none(fullname)
-        assert ret is not None
+        assert ret is not None, fullname
         return ret
 
     def lookup_fully_qualified_or_none(self, fullname: str) -> Optional[SymbolTableNode]:
