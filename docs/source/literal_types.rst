@@ -436,7 +436,7 @@ You can use enums to annotate types as you would expect:
 Exhaustiveness checking
 ***********************
 
-Similiar to ``Literal`` types, ``Enum`` supports exhaustiveness checking.
+Similar to ``Literal`` types, ``Enum`` supports exhaustiveness checking.
 Let's start with a definition:
 
 .. code-block:: python
