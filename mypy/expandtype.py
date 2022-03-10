@@ -127,7 +127,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             else:
                 return Parameters(t.prefix.arg_types + repl.arg_types,
                                   t.prefix.arg_kinds + repl.arg_kinds,
-                                  t.prefix.arg_names + repl.arg_names)
+                                  t.prefix.arg_names + repl.arg_names,
+                                  variables=t.prefix.variables + repl.variables)
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl

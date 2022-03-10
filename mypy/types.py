@@ -1189,13 +1189,15 @@ class Parameters(ProperType):
                  'arg_kinds',
                  'arg_names',
                  'min_args',
-                 'is_ellipsis_args')
+                 'is_ellipsis_args',
+                 'variables')
 
     def __init__(self,
                  arg_types: Sequence[Type],
                  arg_kinds: List[ArgKind],
                  arg_names: Sequence[Optional[str]],
                  *,
+                 variables: Optional[Sequence[TypeVarLikeType]] = None,
                  is_ellipsis_args: bool = False,
                  line: int = -1,
                  column: int = -1
@@ -1207,12 +1209,14 @@ class Parameters(ProperType):
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
         self.min_args = arg_kinds.count(ARG_POS)
         self.is_ellipsis_args = is_ellipsis_args
+        self.variables = variables or []
 
     def copy_modified(self,
                       arg_types: Bogus[Sequence[Type]] = _dummy,
                       arg_kinds: Bogus[List[ArgKind]] = _dummy,
                       arg_names: Bogus[Sequence[Optional[str]]] = _dummy,
                       *,
+                      variables: Bogus[Sequence[TypeVarLikeType]] = _dummy,
                       is_ellipsis_args: Bogus[bool] = _dummy
                       ) -> 'Parameters':
         return Parameters(
@@ -1220,7 +1224,8 @@ class Parameters(ProperType):
             arg_kinds=arg_kinds if arg_kinds is not _dummy else self.arg_kinds,
             arg_names=arg_names if arg_names is not _dummy else self.arg_names,
             is_ellipsis_args=(is_ellipsis_args if is_ellipsis_args is not _dummy
-                              else self.is_ellipsis_args)
+                              else self.is_ellipsis_args),
+            variables=variables if variables is not _dummy else self.variables
         )
 
     # the following are copied from CallableType. Is there a way to decrease code duplication?
@@ -1321,6 +1326,7 @@ class Parameters(ProperType):
                 'arg_types': [t.serialize() for t in self.arg_types],
                 'arg_kinds': [int(x.value) for x in self.arg_kinds],
                 'arg_names': self.arg_names,
+                'variables': [tv.serialize() for tv in self.variables],
                 }
 
     @classmethod
@@ -1330,6 +1336,7 @@ class Parameters(ProperType):
             [deserialize_type(t) for t in data['arg_types']],
             [ArgKind(x) for x in data['arg_kinds']],
             data['arg_names'],
+            variables=[deserialize_type(tv) for tv in data['variables']],
         )
 
     def __hash__(self) -> int:
@@ -1653,10 +1660,7 @@ class CallableType(FunctionLike):
     def expand_param_spec(self,
                           c: Union['CallableType', Parameters],
                           no_prefix: bool = False) -> 'CallableType':
-        if isinstance(c, CallableType):
-            variables = c.variables
-        else:
-            variables = []
+        variables = c.variables
 
         if no_prefix:
             return self.copy_modified(arg_types=c.arg_types,

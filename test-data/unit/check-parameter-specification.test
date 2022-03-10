@@ -456,7 +456,6 @@ reveal_type(k(n))  # N: Revealed type is "__main__.Z[[builtins.str]]"
 # literals can be matched in arguments
 def kb(a: Z[[bytes]]) -> Z[[str]]: ...
 
-# TODO: return type is a bit weird, return Any
 reveal_type(kb(n))  # N: Revealed type is "__main__.Z[[builtins.str]]" \
                     # E: Argument 1 to "kb" has incompatible type "Z[[int]]"; expected "Z[[bytes]]"
 
@@ -802,17 +801,17 @@ class Job(Generic[_P, _R_co]):
     def __init__(self, target: Callable[_P, _R_co]) -> None:
         self.target = target
 
-def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None:
+def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None: # N: "run_job" defined here
     ...
 
 
 def func(job: Job[[int, str], None]) -> None:
     run_job(job, 42, "Hello")
-    run_job(job, "Hello", 42)  # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
-                               # E: Argument 3 to "run_job" has incompatible type "int"; expected "str"
+    run_job(job, "Hello", 42) # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
+                              # E: Argument 3 to "run_job" has incompatible type "int"; expected "str"
     run_job(job, 42, msg="Hello")  # E: Unexpected keyword argument "msg" for "run_job"
-    run_job(job, "Hello")   # Too few arguments for "run_job"
-                            # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
+    run_job(job, "Hello") # E: Too few arguments for "run_job" \
+                          # E: Argument 2 to "run_job" has incompatible type "str"; expected "int"
 
 def func2(job: Job[..., None]) -> None:
     run_job(job, 42, "Hello")
@@ -895,7 +894,7 @@ class Job(Generic[_P]): ...
 
 
 @simple_decorator
-def func(action: Job[_P], /) -> Callable[_P, None]:
+def func(__action: Job[_P]) -> Callable[_P, None]:
     ...
 
 reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
@@ -913,7 +912,7 @@ class Job(Generic[_P]): ...
 
 
 @simple_decorator
-def func(action: Job[_P], /) -> Callable[_P, None]:
+def func(__action: Job[_P]) -> Callable[_P, None]:
     ...
 
 reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
@@ -941,7 +940,7 @@ def adds_await() -> Callable[
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecVariance]
-from typing import Callable, TypeVar, Generic
+from typing import Callable, Generic
 from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")
@@ -984,4 +983,38 @@ a2 = Job(f1)
 def f4(n: bytes) -> None: ...
 a1 = f4  # E: Incompatible types in assignment (expression has type "Callable[[bytes], None]", variable has type "Callable[[bool], None]")
 a2 = Job(f4)  # E: Argument 1 to "Job" has incompatible type "Callable[[bytes], None]"; expected "Callable[[bool], None]"
+
+# nor is this:
+a4: Job[[int]]
+a4 = Job(f3)  # E: Argument 1 to "Job" has incompatible type "Callable[[bool], None]"; expected "Callable[[int], None]"
+a4 = Job(f2)
+a4 = Job(f1)
+
+# just like this:
+a3: Callable[[int], None]
+a3 = f3  # E: Incompatible types in assignment (expression has type "Callable[[bool], None]", variable has type "Callable[[int], None]")
+a3 = f2
+a3 = f1
+[builtins fixtures/tuple.pyi]
+
+[case testGenericsInInferredParamspec]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None: ...
+    def into_callable(self) -> Callable[_P, None]: ...
+
+def generic_f(x: _T) -> None: ...
+
+j = Job(generic_f)
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
+
+jf = j.into_callable()
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
+reveal_type(jf(1))  # N: Revealed type is "None"
+
 [builtins fixtures/tuple.pyi]
