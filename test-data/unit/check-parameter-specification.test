@@ -810,6 +810,15 @@ def func(job: Job[[int, str], None]) -> None:
     run_job(job, 42, "Hello")
     run_job(job, "Hello", 42)  # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
                                # E: Argument 3 to "run_job" has incompatible type "int"; expected "str"
+    run_job(job, 42, msg="Hello")  # E: Unexpected keyword argument "msg" for "run_job"
+    run_job(job, "Hello")   # Too few arguments for "run_job"
+                            # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
+
+def func2(job: Job[..., None]) -> None:
+    run_job(job, 42, "Hello")
+    run_job(job, "Hello", 42)
+    run_job(job, 42, msg="Hello")
+    run_job(job, x=42, msg="Hello")
 [builtins fixtures/tuple.pyi]
 
 [case testExpandNonBareParamSpecAgainstCallable]

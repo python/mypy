@@ -847,8 +847,8 @@ Any(arg=str)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
 
 [case testTypeListAsType]
 
-def f(x:[int, str]) -> None:  # E: Bracketed expression "[...]" is not valid as a type \
-                              # N: Did you mean "List[...]"?
+def f(x:[int, str]) -> None: # E: Bracketed expression "[...]" is not valid as a type \
+                             # N: Did you mean "List[...]"?
     pass
 [out]
 
