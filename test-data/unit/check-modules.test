@@ -3190,3 +3190,35 @@ from dir1 import *
 from .test2 import *
 [file dir1/test2.py]
 from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
+
+[case testIncompatibleOverrideFromCachedModuleIncremental]
+import b
+[file a.py]
+class Foo:
+    def frobnicate(self, *args, **kwargs): pass
+[file b.py]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self) -> None: pass
+[file b.py.2]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass
+[file b.py.3]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[out1]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self) -> None
+[out2]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None
