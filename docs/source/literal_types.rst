@@ -359,6 +359,35 @@ mypy will spot the error:
       # expected "NoReturn"
       assert_never(x)
 
+If runtime checking against unexpected values is not needed, you can
+leave out the ``assert_never`` call in the above example, and mypy
+will still generate an error about function ``validate`` returning
+without a value:
+
+.. code-block:: python
+
+  PossibleValues = Literal['one', 'two', 'three']
+
+  # Error: Missing return statement
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x == 'two':
+          return False
+
+Exhaustiveness checking is also supported for match statements (Python 3.10 and later):
+
+.. code-block:: python
+
+  def validate(x: PossibleValues) -> bool:
+      match x:
+          case 'one':
+              return True
+          case 'two':
+              return False
+      assert_never(x)
+
+
 Limitations
 ***********
 
@@ -404,10 +433,10 @@ You can use enums to annotate types as you would expect:
   Movement(Direction.up, 5.0)  # ok
   Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
 
-Exhaustiveness checks
-*********************
+Exhaustiveness checking
+***********************
 
-Similiar to ``Literal`` types, ``Enum`` supports exhaustiveness checks.
+Similiar to ``Literal`` types, ``Enum`` supports exhaustiveness checking.
 Let's start with a definition:
 
 .. code-block:: python
@@ -447,6 +476,8 @@ If we forget to handle one of the cases, mypy will generate an error:
           print('Going up!')
           return
       assert_never(direction)  # E: Argument 1 to "assert_never" has incompatible type "Direction"; expected "NoReturn"
+
+Exhaustiveness checking is also supported for match statements (Python 3.10 and later).
 
 Extra Enum checks
 *****************
