@@ -874,14 +874,16 @@ value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a 
     :ref:`reveal_type() <reveal-type>` displays the inferred static type of
     an expression.
 
-If you want to use coroutines in Python 3.4, which does not support
-the ``async def`` syntax, you can instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-decorator to convert a generator into a coroutine.
+If you use coroutines in code that was written for Python 3.4, which
+does not support the ``async def`` syntax, you would instead use the
+:py:func:`@asyncio.coroutine <asyncio.coroutine>` decorator to convert
+a generator into a coroutine.
 
-Note that we set the ``YieldType`` of the generator to be ``Any`` in the
-following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
-coroutine shouldn't have to know or care about what precisely that type is.
+Note that we set the first type argument (``YieldType``) of the
+generator to be ``Any`` in the following example. This is because the
+exact yield type is an implementation detail of the coroutine runner
+(e.g. the :py:mod:`asyncio` event loop) and your coroutine shouldn't
+have to know or care about what precisely that type is.
 
 .. code-block:: python
 
@@ -920,7 +922,7 @@ will be a value of type :py:class:`Awaitable[T] <typing.Awaitable>`.
           return "placeholder"
 
    However, mypy currently does not support converting functions into
-   coroutines. Support for this feature will be added in a future version, but
+   coroutines. Support for this feature may be added in a future version, but
    for now, you can manually force the function to be a generator by doing
    something like this:
 
@@ -994,12 +996,6 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
    loop = asyncio.get_event_loop()
    loop.run_until_complete(countdown_4("Serenity", 5))
    loop.close()
-
-For a more concrete example, the mypy repo has a toy webcrawler that
-demonstrates how to work with coroutines. One version
-`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
-and one
-`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
 
 .. _typeddict:
 

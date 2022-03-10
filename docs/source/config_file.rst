@@ -201,7 +201,7 @@ section of the command line docs.
 
     A regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
-    Use forward slashes on all platforms.
+    Use forward slashes (``/``) as directory separators on all platforms.
 
     .. code-block:: ini
 
@@ -237,7 +237,7 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = [
-              "^one\.py$",  # TOML's double-quoted strings require escaping backslashes
+              "^one\\.py$",  # TOML's double-quoted strings require escaping backslashes
               'two\.pyi$',  # but TOML's single-quoted strings do not
               '^three\.',
           ]

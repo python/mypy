@@ -292,8 +292,8 @@ using ``isinstance()``:
 This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.
 
-Exhaustiveness checks
-*********************
+Exhaustiveness checking
+***********************
 
 You may want to check that some code covers all possible
 ``Literal`` or ``Enum`` cases. Example:
@@ -404,10 +404,10 @@ You can use enums to annotate types as you would expect:
   Movement(Direction.up, 5.0)  # ok
   Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
 
-Exhaustive checks
-*****************
+Exhaustiveness checks
+*********************
 
-Similiar to ``Literal`` types ``Enum`` supports exhaustive checks.
+Similiar to ``Literal`` types, ``Enum`` supports exhaustiveness checks.
 Let's start with a definition:
 
 .. code-block:: python
@@ -423,21 +423,22 @@ Let's start with a definition:
       up = 'up'
       down = 'down'
 
-Now, let's define an exhaustive check:
+Now, let's use an exhaustiveness check:
 
 .. code-block:: python
 
   def choose_direction(direction: Direction) -> None:
       if direction is Direction.up:
-          reveal_type(direction)  # N: Revealed type is "Literal[ex.Direction.up]"
+          reveal_type(direction)  # N: Revealed type is "Literal[Direction.up]"
           print('Going up!')
           return
       elif direction is Direction.down:
           print('Down')
           return
+      # This line is never reached
       assert_never(direction)
 
-And then test that it raises an error when some cases are not covered:
+If we forget to handle one of the cases, mypy will generate an error:
 
 .. code-block:: python
 
@@ -451,9 +452,7 @@ Extra Enum checks
 *****************
 
 Mypy also tries to support special features of ``Enum``
-the same way Python's runtime does.
-
-Extra checks:
+the same way Python's runtime does:
 
 - Any ``Enum`` class with values is implicitly :ref:`final <final_attrs>`.
   This is what happens in CPython:
@@ -467,7 +466,7 @@ Extra checks:
       ...
     TypeError: Other: cannot extend enumeration 'Some'
 
-  We do the same thing:
+  Mypy also catches this error:
 
   .. code-block:: python
 
