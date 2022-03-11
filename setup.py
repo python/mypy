@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 # alternative forms of installing, as suggested by README.md).
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
-from mypy.version import setup_compute_version
+from mypy.version import __version__ as version
 
 description = 'Optional static typing for Python'
 long_description = '''
@@ -31,8 +31,6 @@ actually having to run it.  Mypy has a powerful type system with
 features such as type inference, gradual typing, generics and union
 types.
 '''.lstrip()
-
-version = setup_compute_version()
 
 
 def find_package_data(base, globs, root='mypy'):
