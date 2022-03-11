@@ -98,7 +98,7 @@ LITERAL_REQ: Final = ErrorCode(
     "literal-required", "Check that value is a literal", 'General'
 )
 UNUSED_COROUTINE: Final = ErrorCode(
-    "unused-coroutine", "Ensure that all coroutines are used", "Genera"
+    "unused-coroutine", "Ensure that all coroutines are used", "General"
 )
 
 # These error codes aren't enabled by default.
@@ -152,7 +152,7 @@ IGNORE_WITHOUT_CODE: Final = ErrorCode(
 )
 UNUSED_AWAITABLE: Final = ErrorCode(
     "unused-awaitable",
-    "Ensure that all coroutines are used",
+    "Ensure that all awaitable values are used",
     "General",
     default_enabled=False,
 )
