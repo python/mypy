@@ -405,7 +405,8 @@ async def g() -> NoReturn:
   await f()
 
 async def h() -> NoReturn:  # E: Implicit return in function which does not return
-  f()
+  # Purposely not evaluating coroutine
+  _ = f()
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 

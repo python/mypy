@@ -141,6 +141,7 @@ NOT_CALLABLE: Final = '{} not callable'
 PYTHON2_PRINT_FILE_TYPE: Final = (
     'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
 )
+TYPE_MUST_BE_USED: Final = 'Value of type {} must be used'
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (

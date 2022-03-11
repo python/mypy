@@ -85,7 +85,7 @@ from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
 from mypy import state, errorcodes as codes
 from mypy.traverser import has_return_statement, all_return_statements
-from mypy.errorcodes import ErrorCode
+from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
 from mypy.util import is_typeshed_file, is_dunder, is_sunder
 
 T = TypeVar('T')
@@ -3432,8 +3432,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            [key_type, value_type])
                         del partial_types[var]
 
+    def type_requires_usage(self, typ: Type) -> Optional[Tuple[str, ErrorCode]]:
+        """Some types require usage in all cases. The classic example is
+        an unused coroutine.
+
+        In the case that it does require usage, returns a note to attach
+        to the error message.
+        """
+        proper_type = get_proper_type(typ)
+        if isinstance(proper_type, Instance):
+            # We use different error codes for generic awaitable vs coroutine.
+            # Coroutines are on by default, whereas generic awaitables are not.
+            if proper_type.type.fullname == "typing.Coroutine":
+                return ("Are you missing an await?", UNUSED_COROUTINE)
+            if proper_type.type.get("__await__") is not None:
+                return ("Are you missing an await?", UNUSED_AWAITABLE)
+        return None
+
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        expr_type = self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        error_note_and_code = self.type_requires_usage(expr_type)
+        if error_note_and_code:
+            error_note, code = error_note_and_code
+            self.fail(
+                message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s, code=code
+            )
+            self.note(error_note, s, code=code)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
