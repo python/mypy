@@ -12,9 +12,9 @@ git config --global user.name "mypy wheels autopush"
 COMMIT=$(git rev-parse HEAD)
 pip install -r mypy-requirements.txt
 V=$(python3 -m mypy --version)
-V=$(echo "$V" | cut -d" " -f2)
+V=$(echo "$V" | head -n 1 | cut -d" " -f2)
 
-git clone https://${WHEELS_PUSH_TOKEN}@github.com/mypyc/mypy_mypyc-wheels.git build
+git clone https://${WHEELS_PUSH_TOKEN}@github.com/KotlinIsland/mypy_mypyc-wheels.git build
 cd build
 echo $COMMIT > mypy_commit
 git commit -am "Build wheels for mypy $V"

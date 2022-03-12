@@ -11,6 +11,7 @@ import json
 import re
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import venv
@@ -20,7 +21,7 @@ from typing import Any, Dict, Iterator, List
 from urllib.request import urlopen
 
 BASE = "https://api.github.com/repos"
-REPO = "mypyc/mypy_mypyc-wheels"
+REPO = "KotlinIsland/mypy_mypyc-wheels"
 
 
 def is_whl_or_tar(name: str) -> bool:
@@ -58,15 +59,25 @@ def check_sdist(dist: Path, version: str) -> None:
     assert version in sdist.name
     with tarfile.open(sdist) as f:
         version_py = f.extractfile(f"{sdist.name[:-len('.tar.gz')]}/mypy/version.py")
+        versionutil_py = f.extractfile(f"{sdist.name[:-len('.tar.gz')]}/mypy/versionutil.py")
         assert version_py is not None
+        assert versionutil_py is not None
         version_py_contents = version_py.read().decode("utf-8")
+        versionutil_py_contents = versionutil_py.read().decode("utf-8")
 
         # strip a git hash from our version, if necessary, since that's not present in version.py
         match = re.match(r"(.*\+dev).*$", version)
         hashless_version = match.group(1) if match else version
+        from types import ModuleType
+        version = ModuleType("version")
+        versionutil = ModuleType("versionutil")
+        exec(versionutil_py_contents, versionutil.__dict__)
+        sys.modules["mypy.versionutil"] = versionutil
+        version_py_contents = re.sub("from mypy import git\n", "", version_py_contents).split("mypy_dir ")[0]
+        exec(version_py_contents, version.__dict__)
 
         assert (
-            f"'{hashless_version}'" in version_py_contents
+            hashless_version == version.__based_version__
         ), "Version does not match version.py in sdist"
 
 
@@ -100,7 +111,7 @@ def upload_dist(dist: Path, dry_run: bool = True) -> None:
 
 
 def upload_to_pypi(version: str, dry_run: bool = True) -> None:
-    assert re.match(r"v?0\.[0-9]{3}(\+\S+)?$", version)
+    assert re.match(r"v?\d+\.\d+\.\d+(\+\S+)?(a|b|rc)\d+$", version)
     if "dev" in version:
         assert dry_run, "Must use --dry-run with dev versions of mypy"
     if version.startswith("v"):
