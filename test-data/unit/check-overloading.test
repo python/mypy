@@ -6302,3 +6302,29 @@ if True:
     def f12(x): ...
 reveal_type(f12(A()))  # N: Revealed type is "__main__.A"
 [typing fixtures/typing-medium.pyi]
+
+[case testOverloadIfUnconditionalFuncDef]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+
+# -----
+# Don't merge conditional FuncDef after unconditional one
+# -----
+
+@overload
+def f1(x: A) -> A: ...
+@overload
+def f1(x: B) -> B: ...
+def f1(x): ...
+
+@overload
+def f2(x: A) -> A: ...
+if True:
+    @overload
+    def f2(x: B) -> B: ...
+def f2(x): ...
+if True:
+    def f2(x): ...  # E: Name "f2" already defined on line 17
