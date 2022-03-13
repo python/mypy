@@ -48,13 +48,16 @@ def main(script_path: Optional[str],
          stdout: TextIO,
          stderr: TextIO,
          args: Optional[List[str]] = None,
+         clean_exit: bool = False,
          ) -> None:
     """Main entry point to the type checker.
 
     Args:
         script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
-        be used.
+            be used.
+        clean_exit: Don't hard kill the process on exit. This allows catching
+            SystemExit.
     """
     util.check_python_version('mypy')
     t0 = time.time()
@@ -66,6 +69,8 @@ def main(script_path: Optional[str],
     fscache = FileSystemCache()
     sources, options = process_options(args, stdout=stdout, stderr=stderr,
                                        fscache=fscache)
+    if clean_exit:
+        options.fast_exit = False
 
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
@@ -80,8 +85,12 @@ def main(script_path: Optional[str],
         fail("error: --install-types not supported with incremental mode disabled",
              stderr, options)
 
+    if options.install_types and options.python_executable is None:
+        fail("error: --install-types not supported without python executable or site packages",
+             stderr, options)
+
     if options.install_types and not sources:
-        install_types(options.cache_dir, formatter, non_interactive=options.non_interactive)
+        install_types(formatter, options, non_interactive=options.non_interactive)
         return
 
     res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -90,7 +99,7 @@ def main(script_path: Optional[str],
         missing_pkgs = read_types_packages_to_install(options.cache_dir, after_run=True)
         if missing_pkgs:
             # Install missing type packages and rerun build.
-            install_types(options.cache_dir, formatter, after_run=True, non_interactive=True)
+            install_types(formatter, options, after_run=True, non_interactive=True)
             fscache.flush()
             print()
             res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
@@ -117,8 +126,7 @@ def main(script_path: Optional[str],
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
-        result = install_types(options.cache_dir, formatter, after_run=True,
-                               non_interactive=False)
+        result = install_types(formatter, options, after_run=True, non_interactive=False)
         if result:
             print()
             print("note: Run mypy again for up-to-date results with installed types")
@@ -484,9 +492,11 @@ def process_options(args: List[str],
     general_group.add_argument(
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
+
+    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__,
+        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout)
 
@@ -769,7 +779,7 @@ def process_options(args: List[str],
         dest='shadow_file', action='append',
         help="When encountering SOURCE_FILE, read and type check "
              "the contents of SHADOW_FILE instead.")
-    add_invertible_flag('--fast-exit', default=False, help=argparse.SUPPRESS,
+    add_invertible_flag('--fast-exit', default=True, help=argparse.SUPPRESS,
                         group=internals_group)
 
     report_group = parser.add_argument_group(
@@ -1010,7 +1020,7 @@ def process_options(args: List[str],
         process_cache_map(parser, special_opts, options)
 
     # An explicitly specified cache_fine_grained implies local_partial_types
-    # (because otherwise the cache is not compatiable with dmypy)
+    # (because otherwise the cache is not compatible with dmypy)
     if options.cache_fine_grained:
         options.local_partial_types = True
 
@@ -1146,20 +1156,21 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
         return [line.strip() for line in f.readlines()]
 
 
-def install_types(cache_dir: str,
-                  formatter: util.FancyFormatter,
+def install_types(formatter: util.FancyFormatter,
+                  options: Options,
                   *,
                   after_run: bool = False,
                   non_interactive: bool = False) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
-    packages = read_types_packages_to_install(cache_dir, after_run)
+    packages = read_types_packages_to_install(options.cache_dir, after_run)
     if not packages:
         # If there are no missing stubs, generate no output.
         return False
     if after_run and not non_interactive:
         print()
     print('Installing missing stub packages:')
-    cmd = [sys.executable, '-m', 'pip', 'install'] + packages
+    assert options.python_executable, 'Python executable required to install types'
+    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
     print(formatter.style(' '.join(cmd), 'none', bold=True))
     print()
     if not non_interactive:

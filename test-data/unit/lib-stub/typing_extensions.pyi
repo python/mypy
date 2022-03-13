@@ -1,4 +1,4 @@
-from typing import TypeVar, Any, Mapping, Iterator, NoReturn, Dict, Type
+from typing import TypeVar, Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
 from typing import NewType as NewType
 
@@ -27,6 +27,7 @@ Concatenate: _SpecialForm
 TypeAlias: _SpecialForm
 
 TypeGuard: _SpecialForm
+Never: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
@@ -44,3 +45,5 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
+
+def reveal_type(__obj: T) -> T: pass

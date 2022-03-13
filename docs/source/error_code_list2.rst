@@ -19,10 +19,10 @@ Check that type arguments exist [type-arg]
 ------------------------------------------
 
 If you use :option:`--disallow-any-generics <mypy --disallow-any-generics>`, mypy requires that each generic
-type has values for each type argument. For example, the types ``List`` or
-``dict`` would be rejected. You should instead use types like ``List[int]`` or
-``Dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
-values. The type ``List`` is equivalent to ``List[Any]``, and so on.
+type has values for each type argument. For example, the types ``list`` or
+``dict`` would be rejected. You should instead use types like ``list[int]`` or
+``dict[str, int]``. Any omitted generic type arguments get implicit ``Any``
+values. The type ``list`` is equivalent to ``list[Any]``, and so on.
 
 Example:
 
@@ -30,10 +30,8 @@ Example:
 
     # mypy: disallow-any-generics
 
-    from typing import List
-
-    # Error: Missing type parameters for generic type "List"  [type-arg]
-    def remove_dups(items: List) -> List:
+    # Error: Missing type parameters for generic type "list"  [type-arg]
+    def remove_dups(items: list) -> list:
         ...
 
 Check that every function has an annotation [no-untyped-def]
@@ -257,3 +255,36 @@ no error in practice. In such case, it might be prudent to annotate ``items: Seq
 This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
 except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+
+
+.. _ignore-without-code:
+
+Check that ``# type: ignore`` include an error code [ignore-without-code]
+-------------------------------------------------------------------------
+
+Warn when a ``# type: ignore`` comment does not specify any error codes.
+This clarifies the intent of the ignore and ensures that only the
+expected errors are silenced.
+
+Example:
+
+.. code-block:: python
+
+    # mypy: enable-error-code ignore-without-code
+
+    class Foo:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    f = Foo('foo')
+
+    # This line has a typo that mypy can't help with as both:
+    # - the expected error 'assignment', and
+    # - the unexpected error 'attr-defined'
+    # are silenced.
+    # Error: "type: ignore" comment without error code (consider "type: ignore[attr-defined]" instead)
+    f.nme = 42  # type: ignore
+
+    # This line warns correctly about the typo in the attribute name
+    # Error: "Foo" has no attribute "nme"; maybe "name"?
+    f.nme = 42  # type: ignore[assignment]

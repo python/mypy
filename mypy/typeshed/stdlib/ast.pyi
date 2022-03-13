@@ -8,10 +8,9 @@
 # sys.
 import sys
 import typing as _typing
+from _ast import *
 from typing import Any, Iterator, TypeVar, overload
 from typing_extensions import Literal
-
-from _ast import *  # type: ignore
 
 if sys.version_info >= (3, 8):
     class Num(Constant):
@@ -168,6 +167,57 @@ if sys.version_info >= (3, 8):
     @overload
     def parse(
         source: str | bytes,
+        filename: str | bytes,
+        mode: Literal["eval"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> Expression: ...
+    @overload
+    def parse(
+        source: str | bytes,
+        filename: str | bytes,
+        mode: Literal["func_type"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> FunctionType: ...
+    @overload
+    def parse(
+        source: str | bytes,
+        filename: str | bytes,
+        mode: Literal["single"],
+        *,
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> Interactive: ...
+    @overload
+    def parse(
+        source: str | bytes,
+        *,
+        mode: Literal["eval"],
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> Expression: ...
+    @overload
+    def parse(
+        source: str | bytes,
+        *,
+        mode: Literal["func_type"],
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> FunctionType: ...
+    @overload
+    def parse(
+        source: str | bytes,
+        *,
+        mode: Literal["single"],
+        type_comments: bool = ...,
+        feature_version: None | int | _typing.Tuple[int, int] = ...,
+    ) -> Interactive: ...
+    @overload
+    def parse(
+        source: str | bytes,
         filename: str | bytes = ...,
         mode: str = ...,
         *,
@@ -178,6 +228,14 @@ if sys.version_info >= (3, 8):
 else:
     @overload
     def parse(source: str | bytes, filename: str | bytes = ..., mode: Literal["exec"] = ...) -> Module: ...
+    @overload
+    def parse(source: str | bytes, filename: str | bytes, mode: Literal["eval"]) -> Expression: ...
+    @overload
+    def parse(source: str | bytes, filename: str | bytes, mode: Literal["single"]) -> Interactive: ...
+    @overload
+    def parse(source: str | bytes, *, mode: Literal["eval"]) -> Expression: ...
+    @overload
+    def parse(source: str | bytes, *, mode: Literal["single"]) -> Interactive: ...
     @overload
     def parse(source: str | bytes, filename: str | bytes = ..., mode: str = ...) -> AST: ...
 

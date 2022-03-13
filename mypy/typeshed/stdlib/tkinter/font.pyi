@@ -1,7 +1,7 @@
 import _tkinter
 import sys
 import tkinter
-from typing import Any, List, Tuple, Union, overload
+from typing import Any, Union, overload
 from typing_extensions import Literal, TypedDict
 
 NORMAL: Literal["normal"]
@@ -15,8 +15,8 @@ _FontDescription = Union[
     # A font object constructed in Python
     Font,
     # ("Helvetica", 12, BOLD)
-    List[Any],
-    Tuple[Any, ...],
+    list[Any],
+    tuple[Any, ...],
     # A font object constructed in Tcl
     _tkinter.Tcl_Obj,
 ]
@@ -102,8 +102,8 @@ class Font:
     def metrics(self, *, displayof: tkinter.Misc | None = ...) -> _MetricsDict: ...
     def measure(self, text: str, displayof: tkinter.Misc | None = ...) -> int: ...
 
-def families(root: tkinter.Misc | None = ..., displayof: tkinter.Misc | None = ...) -> Tuple[str, ...]: ...
-def names(root: tkinter.Misc | None = ...) -> Tuple[str, ...]: ...
+def families(root: tkinter.Misc | None = ..., displayof: tkinter.Misc | None = ...) -> tuple[str, ...]: ...
+def names(root: tkinter.Misc | None = ...) -> tuple[str, ...]: ...
 
 if sys.version_info >= (3, 10):
     def nametofont(name: str, root: tkinter.Misc | None = ...) -> Font: ...

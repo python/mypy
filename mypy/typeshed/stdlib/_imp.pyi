@@ -1,6 +1,10 @@
+import sys
 import types
 from importlib.machinery import ModuleSpec
 from typing import Any
+
+if sys.version_info >= (3, 7):
+    check_hash_based_pycs: str
 
 def create_builtin(__spec: ModuleSpec) -> types.ModuleType: ...
 def create_dynamic(__spec: ModuleSpec, __file: Any = ...) -> None: ...

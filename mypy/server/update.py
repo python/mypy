@@ -485,13 +485,6 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
         process_fresh_modules(graph, to_process, manager)
 
 
-def fix_fg_dependencies(manager: BuildManager, deps: Dict[str, Set[str]]) -> None:
-    """Populate the dependencies with stuff that build may have missed"""
-    # This means the root module and typestate
-    merge_dependencies(manager.load_fine_grained_deps(FAKE_ROOT_MODULE), deps)
-    # TypeState.add_all_protocol_deps(deps)
-
-
 # The result of update_module_isolated when no blockers, with these items:
 #
 # - Id of the changed module (can be different from the module argument)
@@ -1077,7 +1070,7 @@ def lookup_target(manager: BuildManager,
         # A ClassDef target covers the body of the class and everything defined
         # within it.  To get the body we include the entire surrounding target,
         # typically a module top-level, since we don't support processing class
-        # bodies as separate entitites for simplicity.
+        # bodies as separate entities for simplicity.
         assert file is not None
         if node.fullname != target:
             # This is a reference to a different TypeInfo, likely due to a stale dependency.

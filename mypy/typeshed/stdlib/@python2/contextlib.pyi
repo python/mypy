@@ -1,6 +1,5 @@
 from types import TracebackType
-from typing import IO, Any, Callable, ContextManager, Iterable, Iterator, Optional, Type, TypeVar
-from typing_extensions import Protocol
+from typing import IO, Any, Callable, ContextManager, Iterable, Iterator, Optional, Protocol, Type, TypeVar
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)

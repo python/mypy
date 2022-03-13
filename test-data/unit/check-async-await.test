@@ -12,7 +12,7 @@ async def f() -> int:
 
 async def f() -> int:
     return 0
-reveal_type(f())  # N: Revealed type is "typing.Coroutine[Any, Any, builtins.int]"
+_ = reveal_type(f())  # N: Revealed type is "typing.Coroutine[Any, Any, builtins.int]"
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
@@ -796,6 +796,32 @@ async def precise1(futures: Iterable[Future[int]]) -> None:
 async def precise2(futures: Iterable[Awaitable[int]]) -> None:
     done, pending = await wait(futures)
     reveal_type(done)  # N: Revealed type is "builtins.list[__main__.Task[builtins.int]]"
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testUnusedAwaitable]
+# flags: --show-error-codes --enable-error-code unused-awaitable
+from typing import Iterable
+
+async def foo() -> None:
+    pass
+
+class A:
+    def __await__(self) -> Iterable[int]:
+        yield 5
+
+# Things with __getattr__ should not simply be considered awaitable.
+class B:
+    def __getattr__(self, attr) -> object:
+        return 0
+
+def bar() -> None:
+    A()  # E: Value of type "A" must be used  [unused-awaitable] \
+         # N: Are you missing an await?
+    foo()  # E: Value of type "Coroutine[Any, Any, None]" must be used  [unused-coroutine] \
+           # N: Are you missing an await?
+    B()
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

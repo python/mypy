@@ -1,10 +1,11 @@
 import sys
-from typing import Any, Callable, ClassVar, Iterable, Iterator, Mapping, Optional, Protocol, Tuple, Type, Union
+from typing import Any, Callable, ClassVar, Iterable, Iterator, Mapping, Optional, Protocol, Type, Union
+from typing_extensions import final
 
 HIGHEST_PROTOCOL: int
 DEFAULT_PROTOCOL: int
 
-bytes_types: Tuple[Type[Any], ...]  # undocumented
+bytes_types: tuple[Type[Any], ...]  # undocumented
 
 class _ReadableFileobj(Protocol):
     def read(self, __n: int) -> bytes: ...
@@ -15,6 +16,7 @@ class _WritableFileobj(Protocol):
 
 if sys.version_info >= (3, 8):
     # TODO: holistic design for buffer interface (typing.Buffer?)
+    @final
     class PickleBuffer:
         # buffer must be a buffer-providing object
         def __init__(self, buffer: Any) -> None: ...
@@ -56,10 +58,10 @@ class UnpicklingError(PickleError): ...
 
 _reducedtype = Union[
     str,
-    Tuple[Callable[..., Any], Tuple[Any, ...]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]]],
-    Tuple[Callable[..., Any], Tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
 ]
 
 class Pickler:

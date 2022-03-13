@@ -4,10 +4,9 @@
 # from _ast below when loaded in an unorthodox way by the Dropbox
 # internal Bazel integration.
 import typing as _typing
-from typing import Any, Iterator
-
 from _ast import *
 from _ast import AST, Module
+from typing import Any, Iterator
 
 def parse(source: str | unicode, filename: str | unicode = ..., mode: str | unicode = ...) -> Module: ...
 def copy_location(new_node: AST, old_node: AST) -> AST: ...

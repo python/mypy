@@ -4,8 +4,6 @@ import textwrap
 from mypy.test.helpers import Suite, assert_equal
 from mypy.report import CoberturaPackage, get_line_rate
 
-import lxml.etree as etree  # type: ignore
-
 
 class CoberturaReportSuite(Suite):
     def test_get_line_rate(self) -> None:
@@ -13,6 +11,8 @@ class CoberturaReportSuite(Suite):
         assert_equal('0.3333', get_line_rate(1, 3))
 
     def test_as_xml(self) -> None:
+        import lxml.etree as etree  # type: ignore
+
         cobertura_package = CoberturaPackage('foobar')
         cobertura_package.covered_lines = 21
         cobertura_package.total_lines = 42

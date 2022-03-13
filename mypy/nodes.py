@@ -17,6 +17,9 @@ from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
 
 from mypy.bogus_type import Bogus
 
+if TYPE_CHECKING:
+    from mypy.patterns import Pattern
+
 
 class Context:
     """Base type for objects that are valid as error message locations."""
@@ -136,6 +139,12 @@ type_aliases_source_versions: Final = {
     'typing.OrderedDict': (3, 7),
 }
 
+# This keeps track of aliases in `typing_extensions`, which we treat specially.
+typing_extensions_aliases: Final = {
+    # See: https://github.com/python/mypy/issues/11528
+    'typing_extensions.OrderedDict': 'collections.OrderedDict',
+}
+
 reverse_builtin_aliases: Final = {
     'builtins.list': 'typing.List',
     'builtins.dict': 'typing.Dict',
@@ -250,7 +259,8 @@ class MypyFile(SymbolNode):
 
     __slots__ = ('_fullname', 'path', 'defs', 'alias_deps',
                  'is_bom', 'names', 'imports', 'ignored_lines', 'is_stub',
-                 'is_cache_skeleton', 'is_partial_stub_package', 'plugin_deps')
+                 'is_cache_skeleton', 'is_partial_stub_package', 'plugin_deps',
+                 'future_import_flags')
 
     # Fully qualified module name
     _fullname: Bogus[str]
@@ -279,6 +289,8 @@ class MypyFile(SymbolNode):
     is_partial_stub_package: bool
     # Plugin-created dependencies
     plugin_deps: Dict[str, Set[str]]
+    # Future imports defined in this file. Populated during semantic analysis.
+    future_import_flags: Set[str]
 
     def __init__(self,
                  defs: List[Statement],
@@ -301,6 +313,7 @@ class MypyFile(SymbolNode):
         self.is_stub = False
         self.is_cache_skeleton = False
         self.is_partial_stub_package = False
+        self.future_import_flags = set()
 
     def local_definitions(self) -> Iterator[Definition]:
         """Return all definitions within the module (including nested).
@@ -323,6 +336,9 @@ class MypyFile(SymbolNode):
     def is_package_init_file(self) -> bool:
         return len(self.path) != 0 and os.path.basename(self.path).startswith('__init__.')
 
+    def is_future_flag_set(self, flag: str) -> bool:
+        return flag in self.future_import_flags
+
     def serialize(self) -> JsonDict:
         return {'.class': 'MypyFile',
                 '_fullname': self._fullname,
@@ -330,6 +346,7 @@ class MypyFile(SymbolNode):
                 'is_stub': self.is_stub,
                 'path': self.path,
                 'is_partial_stub_package': self.is_partial_stub_package,
+                'future_import_flags': list(self.future_import_flags),
                 }
 
     @classmethod
@@ -342,6 +359,7 @@ class MypyFile(SymbolNode):
         tree.path = data['path']
         tree.is_partial_stub_package = data['is_partial_stub_package']
         tree.is_cache_skeleton = True
+        tree.future_import_flags = set(data['future_import_flags'])
         return tree
 
 
@@ -835,6 +853,7 @@ VAR_FLAGS: Final = [
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
     'explicit_self_type', 'is_ready', 'from_module_getattr',
+    'has_explicit_value',
 ]
 
 
@@ -865,6 +884,7 @@ class Var(SymbolNode):
                  'is_suppressed_import',
                  'explicit_self_type',
                  'from_module_getattr',
+                 'has_explicit_value',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -909,6 +929,9 @@ class Var(SymbolNode):
         self.explicit_self_type = False
         # If True, this is an implicit Var created due to module-level __getattr__.
         self.from_module_getattr = False
+        # Var can be created with an explicit value `a = 1` or without one `a: int`,
+        # we need a way to tell which one is which.
+        self.has_explicit_value = False
 
     @property
     def name(self) -> str:
@@ -958,7 +981,7 @@ class ClassDef(Statement):
     name: str  # Name of the class without module prefix
     fullname: Bogus[str]  # Fully qualified name of the class
     defs: "Block"
-    type_vars: List["mypy.types.TypeVarType"]
+    type_vars: List["mypy.types.TypeVarLikeType"]
     # Base class expressions (not semantically analyzed -- can be arbitrary expressions)
     base_type_exprs: List[Expression]
     # Special base classes like Generic[...] get moved here during semantic analysis
@@ -973,7 +996,7 @@ class ClassDef(Statement):
     def __init__(self,
                  name: str,
                  defs: 'Block',
-                 type_vars: Optional[List['mypy.types.TypeVarType']] = None,
+                 type_vars: Optional[List['mypy.types.TypeVarLikeType']] = None,
                  base_type_exprs: Optional[List[Expression]] = None,
                  metaclass: Optional[Expression] = None,
                  keywords: Optional[List[Tuple[str, Expression]]] = None) -> None:
@@ -1359,6 +1382,25 @@ class WithStmt(Statement):
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_with_stmt(self)
+
+
+class MatchStmt(Statement):
+    subject: Expression
+    patterns: List['Pattern']
+    guards: List[Optional[Expression]]
+    bodies: List[Block]
+
+    def __init__(self, subject: Expression, patterns: List['Pattern'],
+                 guards: List[Optional[Expression]], bodies: List[Block]) -> None:
+        super().__init__()
+        assert len(patterns) == len(guards) == len(bodies)
+        self.subject = subject
+        self.patterns = patterns
+        self.guards = guards
+        self.bodies = bodies
+
+    def accept(self, visitor: StatementVisitor[T]) -> T:
+        return visitor.visit_match_stmt(self)
 
 
 class PrintStmt(Statement):
@@ -2682,11 +2724,13 @@ class TypeInfo(SymbolNode):
     def has_readable_member(self, name: str) -> bool:
         return self.get(name) is not None
 
-    def get_method(self, name: str) -> Optional[FuncBase]:
+    def get_method(self, name: str) -> Union[FuncBase, Decorator, None]:
         for cls in self.mro:
             if name in cls.names:
                 node = cls.names[name].node
                 if isinstance(node, FuncBase):
+                    return node
+                elif isinstance(node, Decorator):  # Two `if`s make `mypyc` happy
                     return node
                 else:
                     return None

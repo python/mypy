@@ -249,7 +249,7 @@ def process_top_level_function(analyzer: 'SemanticAnalyzer',
     """Analyze single top-level function or method.
 
     Process the body of the function (including nested functions) again and again,
-    until all names have been resolved (ot iteration limit reached).
+    until all names have been resolved (or iteration limit reached).
     """
     # We need one more iteration after incomplete is False (e.g. to report errors, if any).
     final_iteration = False
@@ -307,7 +307,7 @@ def semantic_analyze_target(target: str,
     Return tuple with these items:
     - list of deferred targets
     - was some definition incomplete (need to run another pass)
-    - were any new names were defined (or placeholders replaced)
+    - were any new names defined (or placeholders replaced)
     """
     state.manager.processed_targets.append(target)
     tree = state.tree

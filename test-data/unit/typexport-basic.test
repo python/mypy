@@ -247,7 +247,7 @@ elif not a:
 [out]
 NameExpr(3) : builtins.bool
 IntExpr(4) : Literal[1]?
-NameExpr(5) : builtins.bool
+NameExpr(5) : Literal[False]
 UnaryExpr(5) : builtins.bool
 IntExpr(6) : Literal[1]?
 
@@ -259,7 +259,7 @@ while a:
 [builtins fixtures/bool.pyi]
 [out]
 NameExpr(3) : builtins.bool
-NameExpr(4) : builtins.bool
+NameExpr(4) : Literal[True]
 
 
 -- Simple type inference
@@ -727,7 +727,7 @@ f = lambda: [1]
 LambdaExpr(3) : def () -> builtins.list[builtins.int]
 NameExpr(3) : def () -> builtins.list[builtins.int]
 
-[case testLambdaWithInferredType2]
+[case testLambdaWithInferredType3]
 from typing import List, Callable
 f = lambda x: [] # type: Callable[[B], List[A]]
 class A: pass

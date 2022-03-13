@@ -1,9 +1,13 @@
 import sys
 from _typeshed import Self
-from typing import Any, Callable, ContextManager, Generic, Iterable, Iterator, List, Mapping, TypeVar
+from contextlib import AbstractContextManager
+from typing import Any, Callable, Generic, Iterable, Iterator, Mapping, TypeVar
+from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
+
+__all__ = ["Pool", "ThreadPool"]
 
 _PT = TypeVar("_PT", bound=Pool)
 _S = TypeVar("_S")
@@ -31,7 +35,7 @@ class ApplyResult(Generic[_T]):
 # alias created during issue #17805
 AsyncResult = ApplyResult
 
-class MapResult(ApplyResult[List[_T]]):
+class MapResult(ApplyResult[list[_T]]):
     if sys.version_info >= (3, 8):
         def __init__(
             self,
@@ -62,7 +66,7 @@ class IMapIterator(Iterator[_T]):
 
 class IMapUnorderedIterator(IMapIterator[_T]): ...
 
-class Pool(ContextManager[Pool]):
+class Pool(AbstractContextManager[Pool]):
     def __init__(
         self,
         processes: int | None = ...,
@@ -107,18 +111,18 @@ class Pool(ContextManager[Pool]):
     def join(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
 
-class ThreadPool(Pool, ContextManager[ThreadPool]):
+class ThreadPool(Pool, AbstractContextManager[ThreadPool]):
     def __init__(
         self, processes: int | None = ..., initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...
     ) -> None: ...
 
 # undocumented
 if sys.version_info >= (3, 8):
-    INIT: str
-    RUN: str
-    CLOSE: str
-    TERMINATE: str
+    INIT: Literal["INIT"]
+    RUN: Literal["RUN"]
+    CLOSE: Literal["CLOSE"]
+    TERMINATE: Literal["TERMINATE"]
 else:
-    RUN: int
-    CLOSE: int
-    TERMINATE: int
+    RUN: Literal[0]
+    CLOSE: Literal[1]
+    TERMINATE: Literal[2]

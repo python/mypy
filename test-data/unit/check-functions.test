@@ -599,12 +599,12 @@ A().f('') # E: Argument 1 to "f" of "A" has incompatible type "str"; expected "i
 
 
 [case testMethodAsDataAttribute]
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: ClassVar[Callable[[A], None]]
-    g = x # type: ClassVar[Callable[[A, B], None]]
+    f = x # type: Callable[[A], None]
+    g = x # type: Callable[[A, B], None]
 a = None # type: A
 a.f()
 a.g(B())
@@ -612,37 +612,25 @@ a.f(a) # E: Too many arguments
 a.g()  # E: Too few arguments
 
 [case testMethodWithInvalidMethodAsDataAttribute]
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: ClassVar[Callable[[], None]]
-    g = x # type: ClassVar[Callable[[B], None]]
+    f = x # type: Callable[[], None]
+    g = x # type: Callable[[B], None]
 a = None # type: A
 a.f() # E: Attribute function "f" with type "Callable[[], None]" does not accept self argument
 a.g() # E: Invalid self argument "A" to attribute function "g" with type "Callable[[B], None]"
 
 [case testMethodWithDynamicallyTypedMethodAsDataAttribute]
-from typing import Any, Callable, ClassVar
+from typing import Any, Callable
 class B: pass
 x = None # type: Any
 class A:
-    f = x # type: ClassVar[Callable[[Any], Any]]
+    f = x # type: Callable[[Any], Any]
 a = None # type: A
 a.f()
 a.f(a) # E: Too many arguments
-
-[case testMethodWithInferredMethodAsDataAttribute]
-from typing import Any
-def m(self: "A") -> int: ...
-
-class A:
-    n = m
-
-a = A()
-reveal_type(a.n())  # N: Revealed type is "builtins.int"
-reveal_type(A.n(a))  # N: Revealed type is "builtins.int"
-A.n()  # E: Too few arguments
 
 [case testOverloadedMethodAsDataAttribute]
 from foo import *
@@ -685,35 +673,35 @@ a.g(B())
 a.g(a)   # E: Argument 1 has incompatible type "A[B]"; expected "B"
 
 [case testInvalidMethodAsDataAttributeInGenericClass]
-from typing import Any, TypeVar, Generic, Callable, ClassVar
+from typing import Any, TypeVar, Generic, Callable
 t = TypeVar('t')
 class B: pass
 class C: pass
 x = None # type: Any
 class A(Generic[t]):
-    f = x # type: ClassVar[Callable[[A[B]], None]]
+    f = x # type: Callable[[A[B]], None]
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
 ac.f()   # E: Invalid self argument "A[C]" to attribute function "f" with type "Callable[[A[B]], None]"
 
 [case testPartiallyTypedSelfInMethodDataAttribute]
-from typing import Any, TypeVar, Generic, Callable, ClassVar
+from typing import Any, TypeVar, Generic, Callable
 t = TypeVar('t')
 class B: pass
 class C: pass
 x = None # type: Any
 class A(Generic[t]):
-    f = x # type: ClassVar[Callable[[A], None]]
+    f = x # type: Callable[[A], None]
 ab = None # type: A[B]
 ac = None # type: A[C]
 ab.f()
 ac.f()
 
 [case testCallableDataAttribute]
-from typing import Callable, ClassVar
+from typing import Callable
 class A:
-    g = None # type: ClassVar[Callable[[A], None]]
+    g = None # type: Callable[[A], None]
     def __init__(self, f: Callable[[], None]) -> None:
         self.f = f
 a = A(None)
@@ -1497,7 +1485,7 @@ x = None # type: Any
 if x:
     def f(x: int) -> None: pass # E: All conditional function variants must have identical signatures
 
-[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1]
+[case testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2]
 from typing import Any
 def f(x: int) -> None: pass # N: "f" defined here
 x = None # type: Any
@@ -2224,7 +2212,7 @@ from typing import Callable
 class A:
     def f(self) -> None:
         # In particular, test that the error message contains "g" of "A".
-        self.g() # E: Too few arguments for "g" of "A"   
+        self.g() # E: Too few arguments for "g" of "A"
         self.g(1)
     @dec
     def g(self, x: str) -> None: pass
@@ -2241,6 +2229,12 @@ h = f if bool() else g
 reveal_type(h) # N: Revealed type is "builtins.function"
 h(7) # E: Cannot call function of unknown type
 [builtins fixtures/bool.pyi]
+
+[case testFunctionWithNameUnderscore]
+def _(x: int) -> None: pass
+
+_(1)
+_('x')  # E: Argument 1 to "_" has incompatible type "str"; expected "int"
 
 -- Positional-only arguments
 -- -------------------------
@@ -2611,3 +2605,13 @@ def foo() -> None:
     pass
 
 reveal_type(foo()) # N: Revealed type is "None"
+
+[case testAnyArgument]
+def a(b: any): pass # E: Function "builtins.any" is not valid as a type \
+                    # N: Perhaps you meant "typing.Any" instead of "any"?
+[builtins fixtures/any.pyi]
+
+[case testCallableArgument]
+def a(b: callable): pass # E: Function "builtins.callable" is not valid as a type \
+                         # N: Perhaps you meant "typing.Callable" instead of "callable"?
+[builtins fixtures/callable.pyi]

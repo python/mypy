@@ -44,6 +44,7 @@ MAGIC_METHODS_ALLOWING_KWARGS: Final = {
     "__init_subclass__",
     "__new__",
     "__call__",
+    "__setattr__",
 }
 
 BINARY_MAGIC_METHODS: Final = {

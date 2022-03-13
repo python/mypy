@@ -7,7 +7,7 @@ import ctypes
 import mmap
 import sys
 from os import PathLike
-from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, TypeVar, Union
+from typing import AbstractSet, Any, Awaitable, ClassVar, Container, Generic, Iterable, Protocol, Type, TypeVar, Union
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -35,10 +35,25 @@ class SupportsNext(Protocol[_T_co]):
 class SupportsAnext(Protocol[_T_co]):
     def __anext__(self) -> Awaitable[_T_co]: ...
 
-class SupportsLessThan(Protocol):
-    def __lt__(self, __other: Any) -> bool: ...
+# Comparison protocols
 
-SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
+class SupportsDunderLT(Protocol):
+    def __lt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGT(Protocol):
+    def __gt__(self, __other: Any) -> Any: ...
+
+class SupportsDunderLE(Protocol):
+    def __le__(self, __other: Any) -> Any: ...
+
+class SupportsDunderGE(Protocol):
+    def __ge__(self, __other: Any) -> Any: ...
+
+class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
+
+SupportsRichComparison = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
+SupportsAnyComparison = Union[SupportsDunderLE, SupportsDunderGE, SupportsDunderGT, SupportsDunderLT]
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
@@ -184,3 +199,20 @@ else:
     @final
     class NoneType:
         def __bool__(self) -> Literal[False]: ...
+
+# This is an internal CPython type that is like, but subtly different from, a NamedTuple
+# Subclasses of this type are found in multiple modules.
+# In typeshed, `structseq` is only ever used as a mixin in combination with a fixed-length `Tuple`
+# See discussion at #6546 & #6560
+# `structseq` classes are unsubclassable, so are all decorated with `@final`.
+class structseq(Generic[_T_co]):
+    n_fields: ClassVar[int]
+    n_unnamed_fields: ClassVar[int]
+    n_sequence_fields: ClassVar[int]
+    # The first parameter will generally only take an iterable of a specific length.
+    # E.g. `os.uname_result` takes any iterable of length exactly 5.
+    #
+    # The second parameter will accept a dict of any kind without raising an exception,
+    # but only has any meaning if you supply it a dict where the keys are strings.
+    # https://github.com/python/typeshed/pull/6560#discussion_r767149830
+    def __new__(cls: Type[_T], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> _T: ...

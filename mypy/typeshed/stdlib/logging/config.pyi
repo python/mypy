@@ -43,7 +43,12 @@ class _OptionalDictConfigArgs(TypedDict, total=False):
 class _DictConfigArgs(_OptionalDictConfigArgs, TypedDict):
     version: Literal[1]
 
-def dictConfig(config: _DictConfigArgs) -> None: ...
+# Accept dict[str, Any] to avoid false positives if called with a dict
+# type, since dict types are not compatible with TypedDicts.
+#
+# Also accept a TypedDict type, to allow callers to use TypedDict
+# types, and for somewhat stricter type checking of dict literals.
+def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 
 if sys.version_info >= (3, 10):
     def fileConfig(

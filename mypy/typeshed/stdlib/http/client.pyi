@@ -83,6 +83,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     headers: HTTPMessage
     version: int
     debuglevel: int
+    fp: io.BufferedReader
     closed: bool
     status: int
     reason: str
@@ -95,7 +96,7 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def read(self, amt: int | None = ...) -> bytes: ...
     def read1(self, n: int = ...) -> bytes: ...
     def readinto(self, b: WriteableBuffer) -> int: ...
-    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
+    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore[override]
     @overload
     def getheader(self, name: str) -> str | None: ...
     @overload

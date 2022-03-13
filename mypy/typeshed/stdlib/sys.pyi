@@ -1,38 +1,22 @@
 import sys
+from _typeshed import structseq
 from builtins import object as _object
-from importlib.abc import Loader, PathEntryFinder
+from importlib.abc import PathEntryFinder
 from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
-from typing import (
-    Any,
-    AsyncGenerator,
-    Callable,
-    FrozenSet,
-    NoReturn,
-    Optional,
-    Protocol,
-    Sequence,
-    TextIO,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    overload,
-)
-from typing_extensions import Literal
+from typing import Any, AsyncGenerator, Callable, NoReturn, Optional, Protocol, Sequence, TextIO, Type, TypeVar, Union, overload
+from typing_extensions import Literal, final
 
 _T = TypeVar("_T")
 
 # The following type alias are stub-only and do not exist during runtime
-_ExcInfo = Tuple[Type[BaseException], BaseException, TracebackType]
-_OptExcInfo = Union[_ExcInfo, Tuple[None, None, None]]
-_PathSequence = Sequence[Union[bytes, str]]
+_ExcInfo = tuple[Type[BaseException], BaseException, TracebackType]
+_OptExcInfo = Union[_ExcInfo, tuple[None, None, None]]
 
-# Unlike importlib.abc.MetaPathFinder, invalidate_caches() might not exist (see python docs)
+# Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
 class _MetaPathFinder(Protocol):
-    def find_module(self, fullname: str, path: _PathSequence | None) -> Loader | None: ...
-    def find_spec(self, fullname: str, path: _PathSequence | None, target: ModuleType | None = ...) -> ModuleSpec | None: ...
+    def find_spec(self, fullname: str, path: Sequence[str] | None, target: ModuleType | None = ...) -> ModuleSpec | None: ...
 
 # ----- sys variables -----
 if sys.platform != "win32":
@@ -76,7 +60,7 @@ stdin: TextIO
 stdout: TextIO
 stderr: TextIO
 if sys.version_info >= (3, 10):
-    stdlib_module_names: FrozenSet[str]
+    stdlib_module_names: frozenset[str]
 __stdin__: TextIOWrapper
 __stdout__: TextIOWrapper
 __stderr__: TextIOWrapper
@@ -149,12 +133,18 @@ class _int_info:
     bits_per_digit: int
     sizeof_digit: int
 
-class _version_info(Tuple[int, int, int, str, int]):
-    major: int
-    minor: int
-    micro: int
-    releaselevel: str
-    serial: int
+@final
+class _version_info(structseq[Any | int], tuple[int, int, int, str, int]):
+    @property
+    def major(self) -> int: ...
+    @property
+    def minor(self) -> int: ...
+    @property
+    def micro(self) -> int: ...
+    @property
+    def releaselevel(self) -> str: ...
+    @property
+    def serial(self) -> int: ...
 
 version_info: _version_info
 
@@ -164,7 +154,7 @@ def _current_frames() -> dict[int, FrameType]: ...
 def _getframe(__depth: int = ...) -> FrameType: ...
 def _debugmallocstats() -> None: ...
 def __displayhook__(value: object) -> None: ...
-def __excepthook__(type_: Type[BaseException], value: BaseException, traceback: TracebackType) -> None: ...
+def __excepthook__(type_: Type[BaseException], value: BaseException, traceback: TracebackType | None) -> None: ...
 def exc_info() -> _OptExcInfo: ...
 
 # sys.exit() accepts an optional argument of anything printable
@@ -195,7 +185,7 @@ _TraceFunc = Callable[[FrameType, str, Any], Optional[Callable[[FrameType, str, 
 def gettrace() -> _TraceFunc | None: ...
 def settrace(tracefunc: _TraceFunc | None) -> None: ...
 
-class _WinVersion(Tuple[int, int, int, int, str, int, int, int, int, Tuple[int, int, int]]):
+class _WinVersion(tuple[int, int, int, int, str, int, int, int, int, tuple[int, int, int]]):
     major: int
     minor: int
     build: int
@@ -237,12 +227,12 @@ if sys.version_info >= (3, 8):
         err_msg: str | None
         object: _object | None
     unraisablehook: Callable[[UnraisableHookArgs], Any]
-    def addaudithook(hook: Callable[[str, Tuple[Any, ...]], Any]) -> None: ...
+    def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
     def audit(__event: str, *args: Any) -> None: ...
 
 _AsyncgenHook = Optional[Callable[[AsyncGenerator[Any, Any]], None]]
 
-class _asyncgen_hooks(Tuple[_AsyncgenHook, _AsyncgenHook]):
+class _asyncgen_hooks(tuple[_AsyncgenHook, _AsyncgenHook]):
     firstiter: _AsyncgenHook
     finalizer: _AsyncgenHook
 

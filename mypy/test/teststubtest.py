@@ -7,7 +7,6 @@ import sys
 import tempfile
 import textwrap
 import unittest
-from pathlib import Path
 from typing import Any, Callable, Iterator, List, Optional
 
 import mypy.stubtest
@@ -16,17 +15,52 @@ from mypy.test.data import root_dir
 
 
 @contextlib.contextmanager
-def use_tmp_dir() -> Iterator[None]:
+def use_tmp_dir(mod_name: str) -> Iterator[str]:
     current = os.getcwd()
+    current_syspath = sys.path[:]
     with tempfile.TemporaryDirectory() as tmp:
         try:
             os.chdir(tmp)
-            yield
+            if sys.path[0] != tmp:
+                sys.path.insert(0, tmp)
+            yield tmp
         finally:
+            sys.path = current_syspath[:]
+            if mod_name in sys.modules:
+                del sys.modules[mod_name]
+
             os.chdir(current)
 
 
 TEST_MODULE_NAME = "test_module"
+
+
+stubtest_typing_stub = """
+Any = object()
+
+class _SpecialForm:
+    def __getitem__(self, typeargs: Any) -> object: ...
+
+Callable: _SpecialForm = ...
+Generic: _SpecialForm = ...
+
+class TypeVar:
+    def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
+
+_T = TypeVar("_T")
+_T_co = TypeVar("_T_co", covariant=True)
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+_S = TypeVar("_S", contravariant=True)
+_R = TypeVar("_R", covariant=True)
+
+class Coroutine(Generic[_T_co, _S, _R]): ...
+class Iterable(Generic[_T_co]): ...
+class Mapping(Generic[_K, _V]): ...
+class Sequence(Iterable[_T_co]): ...
+class Tuple(Sequence[_T_co]): ...
+def overload(func: _T) -> _T: ...
+"""
 
 stubtest_builtins_stub = """
 from typing import Generic, Mapping, Sequence, TypeVar, overload
@@ -37,6 +71,7 @@ KT = TypeVar('KT')
 VT = TypeVar('VT')
 
 class object:
+    __module__: str
     def __init__(self) -> None: pass
 class type: ...
 
@@ -52,6 +87,8 @@ class bool(int): ...
 class str: ...
 class bytes: ...
 
+class list(Sequence[T]): ...
+
 def property(f: T) -> T: ...
 def classmethod(f: T) -> T: ...
 def staticmethod(f: T) -> T: ...
@@ -61,9 +98,11 @@ def staticmethod(f: T) -> T: ...
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
 ) -> str:
-    with use_tmp_dir():
+    with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
             f.write(stubtest_builtins_stub)
+        with open("typing.pyi", "w") as f:
+            f.write(stubtest_typing_stub)
         with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
             f.write(stub)
         with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
@@ -72,21 +111,14 @@ def run_stubtest(
             with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
-        if sys.path[0] != ".":
-            sys.path.insert(0, ".")
-        if TEST_MODULE_NAME in sys.modules:
-            del sys.modules[TEST_MODULE_NAME]
-
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(
                 parse_options([TEST_MODULE_NAME] + options),
                 use_builtins_fixtures=True
             )
-
-        module_path = Path(os.getcwd()) / TEST_MODULE_NAME
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(str(module_path), TEST_MODULE_NAME)
+        return output.getvalue().replace(tmp_dir + os.sep, "")
 
 
 class Case:
@@ -110,7 +142,11 @@ def collect_cases(fn: Callable[..., Iterator[Case]]) -> Callable[..., None]:
         for c in cases:
             if c.error is None:
                 continue
-            expected_error = "{}.{}".format(TEST_MODULE_NAME, c.error)
+            expected_error = c.error
+            if expected_error == "":
+                expected_error = TEST_MODULE_NAME
+            elif not expected_error.startswith(f"{TEST_MODULE_NAME}."):
+                expected_error = f"{TEST_MODULE_NAME}.{expected_error}"
             assert expected_error not in expected_errors, (
                 "collect_cases merges cases into a single stubtest invocation; we already "
                 "expect an error for {}".format(expected_error)
@@ -168,6 +204,30 @@ class StubtestUnit(unittest.TestCase):
                 mistyped_var = 1
             """,
             error="X.mistyped_var",
+        )
+
+    @collect_cases
+    def test_coroutines(self) -> Iterator[Case]:
+        yield Case(
+            stub="def bar() -> int: ...",
+            runtime="async def bar(): return 5",
+            error="bar",
+        )
+        # Don't error for this one -- we get false positives otherwise
+        yield Case(
+            stub="async def foo() -> int: ...",
+            runtime="def foo(): return 5",
+            error=None,
+        )
+        yield Case(
+            stub="def baz() -> int: ...",
+            runtime="def baz(): return 5",
+            error=None,
+        )
+        yield Case(
+            stub="async def bingo() -> int: ...",
+            runtime="async def bingo(): return 5",
+            error=None,
         )
 
     @collect_cases
@@ -648,21 +708,47 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        yield Case("", "__all__ = []", None)  # dummy case
+        yield Case(stub="", runtime="__all__ = []", error=None)  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
         yield Case(
             stub="from mystery import A, B as B, C as D  # type: ignore", runtime="", error="B"
         )
+        yield Case(
+            stub="class Y: ...",
+            runtime="__all__ += ['Y']\nclass Y:\n  def __or__(self, other): return self|other",
+            error="Y.__or__"
+        )
+        yield Case(
+            stub="class Z: ...",
+            runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
+            error=None
+        )
 
     @collect_cases
     def test_missing_no_runtime_all(self) -> Iterator[Case]:
         yield Case(stub="", runtime="import sys", error=None)
         yield Case(stub="", runtime="def g(): ...", error="g")
+        yield Case(stub="", runtime="CONSTANT = 0", error="CONSTANT")
 
     @collect_cases
-    def test_special_dunders(self) -> Iterator[Case]:
+    def test_non_public_1(self) -> Iterator[Case]:
+        yield Case(
+            stub="__all__: list[str]", runtime="", error="test_module.__all__"
+        )  # dummy case
+        yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
+
+    @collect_cases
+    def test_non_public_2(self) -> Iterator[Case]:
+        yield Case(
+            stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None
+        )
+        yield Case(stub="f: int", runtime="def f(): ...", error="f")
+        yield Case(stub="g: int", runtime="def g(): ...", error="g")
+
+    @collect_cases
+    def test_dunders(self) -> Iterator[Case]:
         yield Case(
             stub="class A:\n  def __init__(self, a: int, b: int) -> None: ...",
             runtime="class A:\n  def __init__(self, a, bx): pass",
@@ -675,8 +761,13 @@ class StubtestUnit(unittest.TestCase):
         )
         if sys.version_info >= (3, 6):
             yield Case(
-                stub="class C:\n  def __init_subclass__(cls, e: int, **kwargs: int) -> None: ...",
-                runtime="class C:\n  def __init_subclass__(cls, e, **kwargs): pass",
+                stub=(
+                    "class C:\n"
+                    "  def __init_subclass__(\n"
+                    "    cls, e: int = ..., **kwargs: int\n"
+                    "  ) -> None: ...\n"
+                ),
+                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
                 error=None,
             )
         if sys.version_info >= (3, 9):
@@ -685,6 +776,19 @@ class StubtestUnit(unittest.TestCase):
                 runtime="class D:\n  def __class_getitem__(cls, type): ...",
                 error=None,
             )
+
+    @collect_cases
+    def test_not_subclassable(self) -> Iterator[Case]:
+        yield Case(
+            stub="class CanBeSubclassed: ...",
+            runtime="class CanBeSubclassed: ...",
+            error=None,
+        )
+        yield Case(
+            stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
+            runtime="class CannotBeSubclassed:\n  def __init_subclass__(cls): raise TypeError",
+            error="CannotBeSubclassed",
+        )
 
     @collect_cases
     def test_name_mangling(self) -> Iterator[Case]:
@@ -732,6 +836,119 @@ class StubtestUnit(unittest.TestCase):
                 def __init__(self, x): pass
             """,
             error="X.__init__"
+        )
+
+    @collect_cases
+    def test_good_literal(self) -> Iterator[Case]:
+        yield Case(
+            stub=r"""
+            from typing_extensions import Literal
+
+            import enum
+            class Color(enum.Enum):
+                RED: int
+
+            NUM: Literal[1]
+            CHAR: Literal['a']
+            FLAG: Literal[True]
+            NON: Literal[None]
+            BYT1: Literal[b'abc']
+            BYT2: Literal[b'\x90']
+            ENUM: Literal[Color.RED]
+            """,
+            runtime=r"""
+            import enum
+            class Color(enum.Enum):
+                RED = 3
+
+            NUM = 1
+            CHAR = 'a'
+            NON = None
+            FLAG = True
+            BYT1 = b"abc"
+            BYT2 = b'\x90'
+            ENUM = Color.RED
+            """,
+            error=None,
+        )
+
+    @collect_cases
+    def test_bad_literal(self) -> Iterator[Case]:
+        yield Case("from typing_extensions import Literal", "", None)  # dummy case
+        yield Case(
+            stub="INT_FLOAT_MISMATCH: Literal[1]",
+            runtime="INT_FLOAT_MISMATCH = 1.0",
+            error="INT_FLOAT_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_INT: Literal[1]",
+            runtime="WRONG_INT = 2",
+            error="WRONG_INT",
+        )
+        yield Case(
+            stub="WRONG_STR: Literal['a']",
+            runtime="WRONG_STR = 'b'",
+            error="WRONG_STR",
+        )
+        yield Case(
+            stub="BYTES_STR_MISMATCH: Literal[b'value']",
+            runtime="BYTES_STR_MISMATCH = 'value'",
+            error="BYTES_STR_MISMATCH",
+        )
+        yield Case(
+            stub="STR_BYTES_MISMATCH: Literal['value']",
+            runtime="STR_BYTES_MISMATCH = b'value'",
+            error="STR_BYTES_MISMATCH",
+        )
+        yield Case(
+            stub="WRONG_BYTES: Literal[b'abc']",
+            runtime="WRONG_BYTES = b'xyz'",
+            error="WRONG_BYTES",
+        )
+        yield Case(
+            stub="WRONG_BOOL_1: Literal[True]",
+            runtime="WRONG_BOOL_1 = False",
+            error='WRONG_BOOL_1',
+        )
+        yield Case(
+            stub="WRONG_BOOL_2: Literal[False]",
+            runtime="WRONG_BOOL_2 = True",
+            error='WRONG_BOOL_2',
+        )
+
+    @collect_cases
+    def test_special_subtype(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            b1: bool
+            b2: bool
+            b3: bool
+            """,
+            runtime="""
+            b1 = 0
+            b2 = 1
+            b3 = 2
+            """,
+            error="b3",
+        )
+        yield Case(
+            stub="""
+            from typing_extensions import TypedDict
+
+            class _Options(TypedDict):
+                a: str
+                b: int
+
+            opt1: _Options
+            opt2: _Options
+            opt3: _Options
+            """,
+            runtime="""
+            opt1 = {"a": "3.", "b": 14}
+            opt2 = {"some": "stuff"}  # false negative
+            opt3 = 0
+            """,
+            error="opt3",
         )
 
 
@@ -854,12 +1071,19 @@ class StubtestMiscUnit(unittest.TestCase):
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None)
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
-        assert ("dataclasses" in stdlib) == (sys.version_info >= (3, 7))
+        assert "graphlib" not in stdlib
+        assert "formatter" in stdlib
+        assert "importlib.metadata" not in stdlib
+
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
+        assert "graphlib" in stdlib
+        assert "formatter" not in stdlib
+        assert "importlib.metadata" in stdlib
 
     def test_signature(self) -> None:
         def f(a: int, b: int, *, c: int, d: int = 0, **kwargs: Any) -> None:
@@ -878,7 +1102,7 @@ class StubtestMiscUnit(unittest.TestCase):
             "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
-        assert output == (
+        assert remove_color_code(output) == (
             "error: test_module.temp variable differs from runtime type Literal[5]\n"
             "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
         )

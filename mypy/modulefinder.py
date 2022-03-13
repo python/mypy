@@ -12,8 +12,13 @@ import subprocess
 import sys
 from enum import Enum, unique
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
-from typing_extensions import Final
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
@@ -32,6 +37,9 @@ SearchPaths = NamedTuple(
 # Package dirs are a two-tuple of path to search and whether to verify the module
 OnePackageDir = Tuple[str, bool]
 PackageDirs = List[OnePackageDir]
+
+# Minimum and maximum Python versions for modules in stdlib as (major, minor)
+StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
@@ -126,7 +134,8 @@ class FindModuleCache:
     def __init__(self,
                  search_paths: SearchPaths,
                  fscache: Optional[FileSystemCache],
-                 options: Optional[Options]) -> None:
+                 options: Optional[Options],
+                 stdlib_py_versions: Optional[StdlibVersions] = None) -> None:
         self.search_paths = search_paths
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
@@ -139,7 +148,9 @@ class FindModuleCache:
         custom_typeshed_dir = None
         if options:
             custom_typeshed_dir = options.custom_typeshed_dir
-        self.stdlib_py_versions = load_stdlib_py_versions(custom_typeshed_dir)
+        self.stdlib_py_versions = (
+            stdlib_py_versions or load_stdlib_py_versions(custom_typeshed_dir)
+        )
         self.python_major_ver = 3 if options is None else options.python_version[0]
 
     def clear(self) -> None:
@@ -261,7 +272,12 @@ class FindModuleCache:
         of the current working directory.
         """
         working_dir = os.getcwd()
-        parent_search = FindModuleCache(SearchPaths((), (), (), ()), self.fscache, self.options)
+        parent_search = FindModuleCache(
+            SearchPaths((), (), (), ()),
+            self.fscache,
+            self.options,
+            stdlib_py_versions=self.stdlib_py_versions
+        )
         while any(file.endswith(("__init__.py", "__init__.pyi"))
                   for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
@@ -438,10 +454,8 @@ class FindModuleCache:
         """
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
         if os.path.isfile(metadata_fnam):
-            # Delay import for a possible minor performance win.
-            import tomli
-            with open(metadata_fnam, 'r', encoding="utf-8") as f:
-                metadata = tomli.load(f)
+            with open(metadata_fnam, "rb") as f:
+                metadata = tomllib.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:
@@ -791,8 +805,7 @@ def compute_search_paths(sources: List[BuildSource],
                        typeshed_path=tuple(lib_path))
 
 
-def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]
-                            ) -> Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int, int]]]]:
+def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersions:
     """Return dict with minimum and maximum Python versions of stdlib modules.
 
     The contents look like

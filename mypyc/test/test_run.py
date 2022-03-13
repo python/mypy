@@ -52,8 +52,10 @@ files = [
     'run-bench.test',
     'run-mypy-sim.test',
     'run-dunders.test',
-    'run-singledispatch.test'
+    'run-singledispatch.test',
+    'run-attrs.test',
 ]
+
 if sys.version_info >= (3, 7):
     files.append('run-python37.test')
 if sys.version_info >= (3, 8):
@@ -125,7 +127,7 @@ class TestRun(MypycDataSuite):
     base_path = test_temp_dir
     optional_out = True
     multi_file = False
-    separate = False
+    separate = False  # If True, using separate (incremental) compilation
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
@@ -242,6 +244,7 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get('MYPYC_OPT_LEVEL', 0))
+        debug_level = int(os.environ.get('MYPYC_DEBUG_LEVEL', 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -250,7 +253,8 @@ class TestRun(MypycDataSuite):
                                         separate,
                                         cfiles,
                                         self.multi_file,
-                                        opt_level))
+                                        opt_level,
+                                        debug_level))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
@@ -343,7 +347,11 @@ class TestRun(MypycDataSuite):
 
 
 class TestRunMultiFile(TestRun):
-    """Run the main multi-module tests in multi-file compilation mode."""
+    """Run the main multi-module tests in multi-file compilation mode.
+
+    In multi-file mode each module gets compiled into a separate C file,
+    but all modules (C files) are compiled together.
+    """
 
     multi_file = True
     test_name_suffix = '_multi'
@@ -354,7 +362,20 @@ class TestRunMultiFile(TestRun):
 
 
 class TestRunSeparate(TestRun):
-    """Run the main multi-module tests in separate compilation mode."""
+    """Run the main multi-module tests in separate compilation mode.
+
+    In this mode there are multiple compilation groups, which are compiled
+    incrementally. Each group is compiled to a separate C file, and these C
+    files are compiled separately.
+
+    Each compiled module is placed into a separate compilation group, unless
+    overridden by a special comment. Consider this example:
+
+      # separate: [(["other.py", "other_b.py"], "stuff")]
+
+    This puts other.py and other_b.py into a compilation group named "stuff".
+    Any files not mentioned in the comment will get single-file groups.
+    """
 
     separate = True
     test_name_suffix = '_separate'

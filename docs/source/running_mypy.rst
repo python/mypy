@@ -81,7 +81,7 @@ Note that if you use namespace packages (in particular, packages without
         $ mypy -c 'x = [1, 2]; print(x())'
 
     ...will type check the above string as a mini-program (and in this case,
-    will report that ``List[int]`` is not callable).
+    will report that ``list[int]`` is not callable).
 
 
 Reading a list of files from a file
@@ -491,7 +491,7 @@ This is computed from the following items:
 
 .. note::
 
-    You cannot point to a :pep:`561` package via the ``MYPYPATH``, it must be
+    You cannot point to a stub-only package (:pep:`561`) via the ``MYPYPATH``, it must be
     installed (see :ref:`PEP 561 support <installed-packages>`)
 
 Second, mypy searches for stub files in addition to regular Python files

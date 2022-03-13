@@ -2,11 +2,11 @@ import sys
 import types
 from _typeshed import Self
 from socket import socket as _socket
-from typing import Any, BinaryIO, Callable, ClassVar, Set, Tuple, Type, TypeVar, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Type, TypeVar, Union
 
 _T = TypeVar("_T")
-_RequestType = Union[_socket, Tuple[bytes, _socket]]
-_AddressType = Union[Tuple[str, int], str]
+_RequestType = Union[_socket, tuple[bytes, _socket]]
+_AddressType = Union[tuple[str, int], str]
 
 class BaseServer:
     address_family: int
@@ -55,6 +55,7 @@ class TCPServer(BaseServer):
     def close_request(self, request: _RequestType) -> None: ...  # undocumented
 
 class UDPServer(BaseServer):
+    max_packet_size: ClassVar[int]
     def __init__(
         self,
         server_address: tuple[str, int],
@@ -88,7 +89,7 @@ if sys.platform != "win32":
 if sys.platform != "win32":
     class ForkingMixIn:
         timeout: float | None  # undocumented
-        active_children: Set[int] | None  # undocumented
+        active_children: set[int] | None  # undocumented
         max_children: int  # undocumented
         if sys.version_info >= (3, 7):
             block_on_close: bool

@@ -600,7 +600,7 @@ a.f(B()) # E: No overload variant of "f" of "A" matches argument type "B" \
          # N:     def f(self, x: int) -> int \
          # N:     def f(self, x: str) -> str
 
-[case testOverloadedAbstractMethodVariantMissingDecorator1]
+[case testOverloadedAbstractMethodVariantMissingDecorator0]
 from foo import *
 [file foo.pyi]
 from abc import abstractmethod, ABCMeta

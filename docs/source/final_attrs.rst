@@ -119,9 +119,9 @@ annotations. Using it in any other position is an error. In particular,
 
 .. code-block:: python
 
-   x: List[Final[int]] = []  # Error!
+   x: list[Final[int]] = []  # Error!
 
-   def fun(x: Final[List[int]]) ->  None:  # Error!
+   def fun(x: Final[list[int]]) ->  None:  # Error!
        ...
 
 ``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer

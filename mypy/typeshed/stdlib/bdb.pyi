@@ -1,9 +1,9 @@
 from types import CodeType, FrameType, TracebackType
-from typing import IO, Any, Callable, Iterable, Mapping, Set, SupportsInt, Tuple, Type, TypeVar
+from typing import IO, Any, Callable, Iterable, Mapping, SupportsInt, Type, TypeVar
 
 _T = TypeVar("_T")
 _TraceDispatch = Callable[[FrameType, str, Any], Any]  # TODO: Recursive type
-_ExcInfo = Tuple[Type[BaseException], BaseException, FrameType]
+_ExcInfo = tuple[Type[BaseException], BaseException, FrameType]
 
 GENERATOR_AND_COROUTINE_FLAGS: int
 
@@ -11,7 +11,7 @@ class BdbQuit(Exception): ...
 
 class Bdb:
 
-    skip: Set[str] | None
+    skip: set[str] | None
     breaks: dict[str, list[int]]
     fncache: dict[str, str]
     frame_returning: FrameType | None

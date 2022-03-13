@@ -255,7 +255,7 @@ class AnnotationPrinter(TypeStrVisitor):
         s = t.name
         self.stubgen.import_tracker.require_name(s)
         if t.args:
-            s += '[{}]'.format(self.list_str(t.args))
+            s += '[{}]'.format(self.args_str(t.args))
         return s
 
     def visit_none_type(self, t: NoneType) -> str:
@@ -263,6 +263,22 @@ class AnnotationPrinter(TypeStrVisitor):
 
     def visit_type_list(self, t: TypeList) -> str:
         return '[{}]'.format(self.list_str(t.items))
+
+    def args_str(self, args: Iterable[Type]) -> str:
+        """Convert an array of arguments to strings and join the results with commas.
+
+        The main difference from list_str is the preservation of quotes for string
+        arguments
+        """
+        types = ['builtins.bytes', 'builtins.unicode']
+        res = []
+        for arg in args:
+            arg_str = arg.accept(self)
+            if isinstance(arg, UnboundType) and arg.original_str_fallback in types:
+                res.append("'{}'".format(arg_str))
+            else:
+                res.append(arg_str)
+        return ', '.join(res)
 
 
 class AliasPrinter(NodeVisitor[str]):
@@ -633,9 +649,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # type "UnboundType" and will not match.
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     annotation = ": {}".format(self.print_annotation(annotated_type))
+
+            if kind.is_named() and not any(arg.startswith('*') for arg in args):
+                args.append('*')
+
             if arg_.initializer:
-                if kind.is_named() and not any(arg.startswith('*') for arg in args):
-                    args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
                     if typename == '':
@@ -1061,7 +1079,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.record_name(alias or name)
 
         if self._all_:
-            # Include import froms that import names defined in __all__.
+            # Include "import from"s that import names defined in __all__.
             names = [name for name, alias in o.names
                      if name in self._all_ and alias is None and name not in IGNORED_DUNDERS]
             exported_names.update(names)
@@ -1645,7 +1663,7 @@ def parse_options(args: List[str]) -> Options:
 
     ns = parser.parse_args(args)
 
-    pyversion = defaults.PYTHON2_VERSION if ns.py2 else defaults.PYTHON3_VERSION
+    pyversion = defaults.PYTHON2_VERSION if ns.py2 else sys.version_info[:2]
     if not ns.interpreter:
         ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
     if ns.modules + ns.packages and ns.files:

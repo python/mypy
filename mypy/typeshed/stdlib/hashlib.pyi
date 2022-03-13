@@ -2,7 +2,7 @@ import sys
 from _typeshed import ReadableBuffer, Self
 from typing import AbstractSet
 
-class _Hash(object):
+class _Hash:
     @property
     def digest_size(self) -> int: ...
     @property
@@ -49,7 +49,7 @@ def pbkdf2_hmac(
     hash_name: str, password: ReadableBuffer, salt: ReadableBuffer, iterations: int, dklen: int | None = ...
 ) -> bytes: ...
 
-class _VarLenHash(object):
+class _VarLenHash:
     digest_size: int
     block_size: int
     name: str

@@ -30,7 +30,7 @@ class ErrorCode:
 
 ATTR_DEFINED: Final = ErrorCode("attr-defined", "Check that attribute exists", "General")
 NAME_DEFINED: Final = ErrorCode("name-defined", "Check that name is defined", "General")
-CALL_ARG: Final = ErrorCode(
+CALL_ARG: Final[ErrorCode] = ErrorCode(
     "call-arg", "Check number, names and kinds of arguments in calls", "General"
 )
 ARG_TYPE: Final = ErrorCode("arg-type", "Check argument types in calls", "General")
@@ -94,6 +94,12 @@ STR_BYTES_PY3: Final = ErrorCode(
 EXIT_RETURN: Final = ErrorCode(
     "exit-return", "Warn about too general return type for '__exit__'", "General"
 )
+LITERAL_REQ: Final = ErrorCode(
+    "literal-required", "Check that value is a literal", 'General'
+)
+UNUSED_COROUTINE: Final = ErrorCode(
+    "unused-coroutine", "Ensure that all coroutines are used", "General"
+)
 
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
@@ -133,10 +139,32 @@ TRUTHY_BOOL: Final[ErrorCode] = ErrorCode(
 NAME_MATCH: Final = ErrorCode(
     "name-match", "Check that type definition has consistent naming", "General"
 )
+NO_OVERLOAD_IMPL: Final = ErrorCode(
+    "no-overload-impl",
+    "Check that overloaded functions outside stub files have an implementation",
+    "General",
+)
+IGNORE_WITHOUT_CODE: Final = ErrorCode(
+    "ignore-without-code",
+    "Warn about '# type: ignore' comments which do not have error codes",
+    "General",
+    default_enabled=False,
+)
+UNUSED_AWAITABLE: Final = ErrorCode(
+    "unused-awaitable",
+    "Ensure that all awaitable values are used",
+    "General",
+    default_enabled=False,
+)
 
 
 # Syntax errors are often blocking.
 SYNTAX: Final = ErrorCode("syntax", "Report syntax errors", "General")
+
+# This is an internal marker code for a whole-file ignore. It is not intended to
+# be user-visible.
+FILE: Final = ErrorCode("file", "Internal marker for a whole file being ignored", "General")
+del error_codes[FILE.code]
 
 # This is a catch-all for remaining uncategorized errors.
 MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")

@@ -1,9 +1,9 @@
-from typing import Any, Tuple
+from typing import Any
 
 from ..cmd import Command
 
 HAS_USER_SITE: bool
-SCHEME_KEYS: Tuple[str, ...]
+SCHEME_KEYS: tuple[str, ...]
 INSTALL_SCHEMES: dict[str, dict[Any, Any]]
 
 class install(Command):

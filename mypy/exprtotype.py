@@ -10,7 +10,7 @@ from mypy.nodes import (
 from mypy.fastparse import parse_type_string
 from mypy.types import (
     Type, UnboundType, TypeList, EllipsisType, AnyType, CallableArgument, TypeOfAny,
-    RawExpressionType, ProperType, UnionType
+    RawExpressionType, ProperType, UnionType, ANNOTATED_TYPE_NAMES,
 )
 from mypy.options import Options
 
@@ -69,9 +69,7 @@ def expr_to_unanalyzed_type(expr: Expression,
             else:
                 args = [expr.index]
 
-            if isinstance(expr.base, RefExpr) and expr.base.fullname in [
-                'typing.Annotated', 'typing_extensions.Annotated'
-            ]:
+            if isinstance(expr.base, RefExpr) and expr.base.fullname in ANNOTATED_TYPE_NAMES:
                 # TODO: this is not the optimal solution as we are basically getting rid
                 # of the Annotation definition and only returning the type information,
                 # losing all the annotations.

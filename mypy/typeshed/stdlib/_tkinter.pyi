@@ -1,5 +1,6 @@
+import sys
 from typing import Any
-from typing_extensions import Literal
+from typing_extensions import Literal, final
 
 # _tkinter is meant to be only used internally by tkinter, but some tkinter
 # functions e.g. return _tkinter.Tcl_Obj objects. Tcl_Obj represents a Tcl
@@ -14,6 +15,7 @@ from typing_extensions import Literal
 #    >>> text.tag_add('foo', '1.0', 'end')
 #    >>> text.tag_ranges('foo')
 #    (<textindex object: '1.0'>, <textindex object: '2.0'>)
+@final
 class Tcl_Obj:
     string: str  # str(tclobj) returns this
     typename: str
@@ -37,6 +39,7 @@ class TclError(Exception): ...
 #
 # eval always returns str because _tkinter_tkapp_eval_impl in _tkinter.c calls
 # Tkapp_UnicodeResult, and it returns a string when it succeeds.
+@final
 class TkappType:
     # Please keep in sync with tkinter.Tk
     def call(self, __command: Any, *args: Any) -> Any: ...
@@ -66,7 +69,8 @@ class TkappType:
     quit: Any
     record: Any
     setvar: Any
-    split: Any
+    if sys.version_info < (3, 11):
+        split: Any
     splitlist: Any
     unsetvar: Any
     wantobjects: Any
