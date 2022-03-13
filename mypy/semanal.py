@@ -442,7 +442,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 sym = self.lookup_qualified("__builtins__.dict", Context(), suppress_errors=True)
                 if not sym:
                     continue
-
                 node = sym.node
                 assert isinstance(node, TypeInfo)
                 typ = Instance(node, [self.str_type(), AnyType(TypeOfAny.special_form)])
