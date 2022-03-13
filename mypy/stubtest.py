@@ -738,22 +738,27 @@ def verify_funcitem(
             getattr(runtime, "__isabstractmethod__", False)
             or (isinstance(stub, nodes.FuncDef) and stub.is_abstract)
         ):
+            error_msg = (
+                "is an \"async def\" function at runtime, "
+                "but doesn't return an awaitable in the stub"
+            )
             # Be more permissive if the method is an abstractmethod:
             # Only error if the return type of the stub isn't awaitable
             if isinstance(stub.type, mypy.types.CallableType):
                 ret_type = mypy.types.get_proper_type(stub.type.ret_type)
                 should_error = (
                     isinstance(ret_type, mypy.types.Instance)
-                    and "__await__" not in ret_type.type.names
+                    and not any("__await__" in clsdef.names for clsdef in ret_type.type.mro)
                 )
             else:
                 should_error = False
         else:
+            error_msg = 'is an "async def" function at runtime, but not in the stub'
             should_error = True
         if should_error:
             yield Error(
                 object_path,
-                'is an "async def" function at runtime, but not in the stub',
+                error_msg,
                 stub,
                 runtime,
                 stub_desc=stub_desc,
