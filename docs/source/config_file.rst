@@ -648,6 +648,14 @@ section of the command line docs.
 
     Allows disabling one or multiple error codes globally.
 
+.. confval:: enable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows enabling one or multiple error codes globally.
+
+    Note: This option will override disabled error codes from the disable_error_code option.
+
 .. confval:: implicit_reexport
 
     :type: boolean
