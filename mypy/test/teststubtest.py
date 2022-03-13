@@ -54,8 +54,11 @@ _V = TypeVar("_V")
 _S = TypeVar("_S", contravariant=True)
 _R = TypeVar("_R", covariant=True)
 
-class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
+class Generator(Iterable[_T_co], Generic[_T_co, _S, _R]): ...
+class Awaitable(Generic[_T_co]):
+    def __await__(self) -> Generator[Any, None, _T_co]: ...
+class Coroutine(Generic[_T_co, _S, _R]): ...
 class Mapping(Generic[_K, _V]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
@@ -228,6 +231,54 @@ class StubtestUnit(unittest.TestCase):
             stub="async def bingo() -> int: ...",
             runtime="async def bingo(): return 5",
             error=None,
+        )
+        # Be more permissive if it's an abstractmethod in the stub...
+        yield Case(
+            stub="""
+            from abc import abstractmethod
+            from typing import Awaitable
+            class Bar:
+                @abstractmethod
+                def abstract(self) -> Awaitable[int]: ...
+            """,
+            runtime="""
+            class Bar:
+                async def abstract(self): return 5
+            """,
+            error=None,
+        )
+        # ...and/or an abstractmethod at runtime...
+        yield Case(
+            stub="""
+            from typing import Generator, Any
+            class _CustomAwaitable:
+                def __await__(self) -> Generator[Any, Any, Any]: ...
+            class Foo:
+                def abstract(self) -> _CustomAwaitable: ...
+            """,
+            runtime="""
+            from abc import abstractmethod
+            class Foo:
+                @abstractmethod
+                async def abstract(self): return 5
+            """,
+            error=None,
+        )
+        # ...but still error if the stub's return type isn't awaitable
+        yield Case(
+            stub="""
+            from abc import abstractmethod
+            class Baz:
+                @abstractmethod
+                def abstract(self) -> int: ...
+            """,
+            runtime="""
+            from abc import abstractmethod
+            class Baz:
+                @abstractmethod
+                async def abstract(self): return 5
+            """,
+            error="Baz.abstract",
         )
 
     @collect_cases
