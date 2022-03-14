@@ -17,7 +17,7 @@ from mypy.version import __version__ as mypy_version
 # -- Project information -----------------------------------------------------
 
 project = 'mypyc'
-copyright = '2020, mypyc team'
+copyright = '2020-2022, mypyc team'
 author = 'mypyc team'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -59,7 +59,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 #     html_theme = 'furo'
 #     html_theme_path = [furo.get_html_theme_path()]
 html_theme = 'furo'
-html_theme_path = ["."]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
