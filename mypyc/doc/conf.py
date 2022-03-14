@@ -50,14 +50,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-# try:
-#     import sphinx_rtd_theme  # type: ignore
-#     import furo
-# except:
-#     html_theme = 'default'
-# else:
-#     html_theme = 'furo'
-#     html_theme_path = [furo.get_html_theme_path()]
 html_theme = 'furo'
 
 # Add any paths that contain custom static files (such as style sheets) here,
