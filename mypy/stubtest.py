@@ -978,6 +978,7 @@ IGNORED_MODULE_DUNDERS = frozenset(
         "__cached__",
         "__loader__",
         "__spec__",
+        "__annotations__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # TODO: remove the following from this list

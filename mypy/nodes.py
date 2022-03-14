@@ -106,7 +106,8 @@ implicit_module_attrs: Final = {
     '__doc__': None,  # depends on Python version, see semanal.py
     '__path__': None,  # depends on if the module is a package
     '__file__': '__builtins__.str',
-    '__package__': '__builtins__.str'
+    '__package__': '__builtins__.str',
+    '__annotations__': None,  # dict[str, Any] bounded in add_implicit_module_attrs()
 }
 
 
