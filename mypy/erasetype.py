@@ -4,7 +4,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, ParamSpecType
+    get_proper_type, get_proper_types, TypeAliasType, ParamSpecType, UnpackType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -58,6 +58,9 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
         # We must preserve the fallback type for overload resolution to work.

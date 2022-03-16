@@ -17,8 +17,9 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis,
-    TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType,
+    callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
+    LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
 )
 
 from mypy.nodes import (
@@ -377,6 +378,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
+        elif fullname in ('typing.Unpack', 'typing_extensions.Unpack'):
+            # We don't want people to try to use this yet.
+            if not self.options.enable_incomplete_features:
+                self.fail('"Unpack" is not supported by mypy yet', t)
+                return AnyType(TypeOfAny.from_error)
+            return UnpackType(
+                self.anal_type(t.args[0]), line=t.line, column=t.column,
+            )
         return None
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
@@ -557,6 +566,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope

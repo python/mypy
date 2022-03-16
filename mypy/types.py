@@ -764,6 +764,35 @@ class TypeList(ProperType):
         assert False, "Synthetic types don't serialize"
 
 
+class UnpackType(ProperType):
+    """Type operator Unpack from PEP646. Can be either with Unpack[]
+    or unpacking * syntax.
+
+    The inner type should be either a TypeVarTuple, a constant size
+    tuple, or a variable length tuple, or a union of one of those.
+    """
+    __slots__ = ["type"]
+
+    def __init__(self, typ: Type, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.type = typ
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_unpack_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "UnpackType",
+            "type": self.type.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> "UnpackType":
+        assert data[".class"] == "UnpackType"
+        typ = data["type"]
+        return UnpackType(deserialize_type(typ))
+
+
 class AnyType(ProperType):
     """The type 'Any'."""
 
@@ -2473,6 +2502,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             self.any_as_dots = False
             return type_str
         return '<alias (unfixed)>'
+
+    def visit_unpack_type(self, t: UnpackType) -> str:
+        return 'Unpack[{}]'.format(t.type.accept(self))
 
     def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)
