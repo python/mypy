@@ -255,6 +255,15 @@ section of the command line docs.
 
        See :ref:`using-a-pyproject-toml`.
 
+.. confval:: force_exclude
+
+    :type: regular expression
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Behavior is identical to :confval:`exclude`, except ``force_exclude`` also
+    applies to files and modules passed to mypy explicitly.
+
 .. confval:: namespace_packages
 
     :type: boolean

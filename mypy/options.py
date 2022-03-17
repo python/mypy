@@ -101,6 +101,8 @@ class Options:
         self.explicit_package_bases = False
         # File names, directory names or subpaths to avoid checking
         self.exclude: List[str] = []
+        # File names, directory names or subpaths to avoid checking even if explicitly specified
+        self.force_exclude: List[str] = []
 
         # disallow_any options
         self.disallow_any_generics = False

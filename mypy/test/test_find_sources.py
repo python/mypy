@@ -377,3 +377,96 @@ class SourceFinderSuite(unittest.TestCase):
             }
             fscache = FakeFSCache(files)
             assert len(find_sources(["."], options, fscache)) == len(files)
+
+    def test_find_sources_force_exclude(self) -> None:
+        options = Options()
+        options.namespace_packages = True
+
+        files = {
+            "/pkg/a1/b/c/d/e.py",
+            "/pkg/a1/b/f.py",
+            "/pkg/a2/__init__.py",
+            "/pkg/a2/b/c/d/e.py",
+            "/pkg/a2/b/f.py",
+        }
+
+        # file name
+        options.force_exclude = [r"/f\.py$"]
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("e", "/pkg/a1/b/c/d"),
+        ]
+        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == []
+        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == []
+
+        # directory name
+        options.force_exclude = ["/a1/"]
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1"], options, fscache)
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1/"], options, fscache)
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1/b"], options, fscache)
+
+        options.force_exclude = ["/a1/$"]
+        assert find_sources(["/pkg/a1"], options, fscache) == [
+            ('e', '/pkg/a1/b/c/d'), ('f', '/pkg/a1/b')
+        ]
+
+        # paths
+        options.force_exclude = ["/pkg/a1/"]
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
+            ("a2", "/pkg"),
+            ("a2.b.c.d.e", "/pkg"),
+            ("a2.b.f", "/pkg"),
+        ]
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/pkg/a1"], options, fscache)
+
+        # OR two patterns together
+        for orred in [["/(a1|a3)/"], ["a1", "a3"], ["a3", "a1"]]:
+            options.force_exclude = orred
+            fscache = FakeFSCache(files)
+            assert find_sources(["/"], options, fscache) == [
+                ("a2", "/pkg"),
+                ("a2.b.c.d.e", "/pkg"),
+                ("a2.b.f", "/pkg"),
+            ]
+
+        options.force_exclude = ["b/c/"]
+        fscache = FakeFSCache(files)
+        assert find_sources(["/"], options, fscache) == [
+            ("a2", "/pkg"),
+            ("a2.b.f", "/pkg"),
+            ("f", "/pkg/a1/b"),
+        ]
+
+        # nothing should be ignored as a result of this
+        big_exclude1 = [
+            "/pkg/a/", "/2", "/1", "/pk/", "/kg", "/g.py", "/bc", "/xxx/pkg/a2/b/f.py"
+            "xxx/pkg/a2/b/f.py",
+        ]
+        big_exclude2 = ["|".join(big_exclude1)]
+        for big_exclude in [big_exclude1, big_exclude2]:
+            options.force_exclude = big_exclude
+            fscache = FakeFSCache(files)
+            assert len(find_sources(["/"], options, fscache)) == len(files)
+
+            files = {
+                "pkg/a1/b/c/d/e.py",
+                "pkg/a1/b/f.py",
+                "pkg/a2/__init__.py",
+                "pkg/a2/b/c/d/e.py",
+                "pkg/a2/b/f.py",
+            }
+            fscache = FakeFSCache(files)
+            assert len(find_sources(["."], options, fscache)) == len(files)

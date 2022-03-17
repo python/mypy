@@ -880,7 +880,20 @@ def process_options(args: List[str],
         help=(
             "Regular expression to match file names, directory names or paths which mypy should "
             "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
-            "May be specified more than once, eg. --exclude a --exclude b"
+            "May be specified more than once, e.g. --exclude a --exclude b."
+        )
+    )
+    code_group.add_argument(
+        "--force-exclude",
+        action="append",
+        metavar="PATTERN",
+        default=[],
+        help=(
+            "Regular expression to match file names, directory names or paths which mypy should "
+            "ignore while recursively discovering files to check, e.g. --force-exclude "
+            "'/setup\\.py$'. May be specified more than once, e.g. --force-exclude a "
+            "--force-exclude b. Behavior is identical to --exclude, except also applies to files "
+            "and modules passed to mypy explicitly."
         )
     )
     code_group.add_argument(

@@ -490,7 +490,10 @@ class FindModuleCache:
             subpath = os.path.join(package_path, name)
 
             if self.options and matches_exclude(
-                subpath, self.options.exclude, self.fscache, self.options.verbosity >= 2
+                subpath,
+                self.options.exclude + self.options.force_exclude,
+                self.fscache,
+                self.options.verbosity >= 2
             ):
                 continue
 

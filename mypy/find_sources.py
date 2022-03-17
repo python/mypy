@@ -30,17 +30,19 @@ def create_source_list(paths: Sequence[str], options: Options,
     sources = []
     for path in paths:
         path = os.path.normpath(path)
-        if path.endswith(PY_EXTENSIONS):
-            # Can raise InvalidSourceList if a directory doesn't have a valid module name.
-            name, base_dir = finder.crawl_up(path)
-            sources.append(BuildSource(path, name, None, base_dir))
-        elif fscache.isdir(path):
+        if fscache.isdir(path):
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(
                     "There are no .py[i] files in directory '{}'".format(path)
                 )
             sources.extend(sub_sources)
+        elif matches_exclude(path, options.force_exclude, fscache, options.verbosity >= 2):
+            continue
+        elif path.endswith(PY_EXTENSIONS):
+            # Can raise InvalidSourceList if a directory doesn't have a valid module name.
+            name, base_dir = finder.crawl_up(path)
+            sources.append(BuildSource(path, name, None, base_dir))
         else:
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
@@ -92,6 +94,7 @@ class SourceFinder:
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
         self.exclude = options.exclude
+        self.force_exclude = options.force_exclude
         self.verbosity = options.verbosity
 
     def is_explicit_package_base(self, path: str) -> bool:
@@ -110,7 +113,7 @@ class SourceFinder:
             subpath = os.path.join(path, name)
 
             if matches_exclude(
-                subpath, self.exclude, self.fscache, self.verbosity >= 2
+                subpath, self.exclude + self.force_exclude, self.fscache, self.verbosity >= 2
             ):
                 continue
 

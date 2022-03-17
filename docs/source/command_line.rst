@@ -66,7 +66,8 @@ for full details, see :ref:`running-mypy`.
     is, when mypy is discovering files within a directory tree or submodules of
     a package to check. If you pass a file or module explicitly it will still be
     checked. For instance, ``mypy --exclude '/setup.py$'
-    but_still_check/setup.py``.
+    but_still_check/setup.py``. To ignore files and modules passed explicitly,
+    use :option:`--force-exclude` instead.
 
     In particular, ``--exclude`` does not affect mypy's :ref:`import following
     <follow-imports>`. You can use a per-module :confval:`follow_imports` config
@@ -79,6 +80,14 @@ for full details, see :ref:`running-mypy`.
     '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
     never recursively discover files with extensions other than ``.py`` or
     ``.pyi``.
+
+
+.. option:: --force-exclude
+
+    Behavior is identical to :option:`--exclude`, except ``--force-exclude`` 
+    also applies to files and modules passed to mypy explicitly. For instance,
+    ``mypy --force-exclude '/setup.py$' some_dir/setup.py`` will not check 
+    ``some_dir/setup.py``.
 
 
 Optional arguments
