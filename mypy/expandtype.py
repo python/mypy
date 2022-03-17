@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType
+    TypeAliasType, ParamSpecType, TypeVarLikeType, UnpackType
 )
 
 
@@ -110,6 +110,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return repl.with_flavor(t.flavor)
         else:
             return repl
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType) -> Type:
         param_spec = t.param_spec()

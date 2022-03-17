@@ -29,6 +29,8 @@ TypeAlias: _SpecialForm
 TypeGuard: _SpecialForm
 Never: _SpecialForm
 
+Unpack: _SpecialForm
+
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
     # Needed to make this class non-abstract. It is explicitly declared abstract in

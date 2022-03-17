@@ -8,8 +8,7 @@ from mypy.types import (
     TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeVarId, TypeQuery, is_named_instance, TypeOfAny, LiteralType,
     ProperType, ParamSpecType, get_proper_type, TypeAliasType, is_union_with_any,
-    callable_with_ellipsis,
-    TUPLE_LIKE_INSTANCE_NAMES,
+    UnpackType, callable_with_ellipsis, TUPLE_LIKE_INSTANCE_NAMES,
 )
 from mypy.maptype import map_instance_to_supertype
 import mypy.subtypes
@@ -403,6 +402,9 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     def visit_param_spec(self, template: ParamSpecType) -> List[Constraint]:
         # Can't infer ParamSpecs from component values (only via Callable[P, T]).
         return []
+
+    def visit_unpack_type(self, template: UnpackType) -> List[Constraint]:
+        raise NotImplementedError
 
     # Non-leaf types
 
