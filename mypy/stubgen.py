@@ -851,6 +851,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             base_types.append('metaclass=abc.ABCMeta')
             self.import_tracker.add_import('abc')
             self.import_tracker.require_name('abc')
+        elif self.analyzed and o.info.is_protocol:
+            type_str = 'Protocol'
+            if o.info.type_vars:
+                type_str += f'[{", ".join(o.info.type_vars)}]'
+            base_types.append(type_str)
+            self.add_typing_import('Protocol')
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')

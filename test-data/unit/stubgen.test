@@ -2581,6 +2581,30 @@ def f(x: int, y: int) -> int: ...
 @t.overload
 def f(x: t.Tuple[int, int]) -> int: ...
 
+[case testProtocol_semanal]
+from typing import Protocol, TypeVar
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str:
+        ...
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2:
+        ...
+
+[out]
+from typing import Protocol, TypeVar
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str: ...
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2: ...
+
 [case testNonDefaultKeywordOnlyArgAfterAsterisk]
 def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
 [out]
