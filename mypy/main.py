@@ -113,15 +113,15 @@ def main(script_path: Optional[str],
     if messages:
         code = 2 if blockers else 1
     if options.error_summary:
-        if messages:
-            n_errors, n_files = util.count_stats(messages)
-            if n_errors:
-                summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers,
-                    use_color=options.color_output
-                )
-                stdout.write(summary + '\n')
-        else:
+        n_errors, n_notes, n_files = util.count_stats(messages)
+        if n_errors:
+            summary = formatter.format_error(
+                n_errors, n_files, len(sources), blockers=blockers,
+                use_color=options.color_output
+            )
+            stdout.write(summary + '\n')
+        # Only notes should also output success
+        elif not messages or n_notes == len(messages):
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
