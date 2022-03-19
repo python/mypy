@@ -1536,3 +1536,43 @@ A(a=1, b=2)
 A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
+
+[case testFrozenInheritanceWithNameShadowing]
+# flags: --python-version 3.7
+# See: https://github.com/python/mypy/issues/12084
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass(frozen=True)
+class Parent:
+    __call__: Callable[..., None]
+
+    # We need to shadow `Var` with `FuncDef`
+    def __call__(self) -> None:  # type: ignore
+        ...
+
+@dataclass(frozen=True)
+class Child(Parent):
+    def __call__(self) -> None:  # should not crash here
+        ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testFrozenInheritanceWithNameShadowing_ClassDef]
+# flags: --python-version 3.7
+# See: https://github.com/python/mypy/issues/12084
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass(frozen=True)
+class Parent:
+    __call__: Callable[..., None]
+
+    # We need to shadow `Var` with `ClassDef`
+    class __call__:  # type: ignore
+        ...
+
+@dataclass(frozen=True)
+class Child(Parent):
+    def __call__(self) -> None:  # should not crash here
+        ...
+[builtins fixtures/dataclasses.pyi]

@@ -5,9 +5,9 @@ from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
-    Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
+    Argument, AssignmentStmt, CallExpr, Context, Expression, JsonDict,
     NameExpr, RefExpr, SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr,
-    PlaceholderNode
+    PlaceholderNode, FuncBase,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -298,13 +298,16 @@ class DataclassTransformer:
         # First, collect attributes belonging to the current class.
         ctx = self._ctx
         cls = self._ctx.cls
-        attrs: List[DataclassAttribute] = []
+        first_attrs: List[DataclassAttribute] = []
         known_attrs: Set[str] = set()
         kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
+        shadowing: Set[str] = set()
         for stmt in cls.defs.body:
             # Any assignment that doesn't use the new type declaration
             # syntax can be ignored out of hand.
             if not (isinstance(stmt, AssignmentStmt) and stmt.new_syntax):
+                if isinstance(stmt, FuncBase) and stmt.name in known_attrs:
+                    shadowing.add(stmt.name)
                 continue
 
             # a: int, b: str = 1, 'foo' is not supported syntax so we
@@ -371,7 +374,7 @@ class DataclassTransformer:
                 is_kw_only = bool(ctx.api.parse_bool(field_kw_only_param))
 
             known_attrs.add(lhs.name)
-            attrs.append(DataclassAttribute(
+            first_attrs.append(DataclassAttribute(
                 name=lhs.name,
                 is_in_init=is_in_init,
                 is_init_var=is_init_var,
@@ -382,6 +385,14 @@ class DataclassTransformer:
                 info=cls.info,
                 kw_only=is_kw_only,
             ))
+
+        # Now, we need to drop all items that are shadowed
+        # by methods in dataclass body. See #12084
+        attrs: List[DataclassAttribute] = [
+            attr
+            for attr in first_attrs
+            if attr.name not in shadowing
+        ]
 
         # Next, collect attributes belonging to any class in the MRO
         # as long as those attributes weren't already collected.  This
@@ -457,8 +468,9 @@ class DataclassTransformer:
             sym_node = info.names.get(attr.name)
             if sym_node is not None:
                 var = sym_node.node
-                assert isinstance(var, Var)
-                var.is_property = True
+                if isinstance(var, Var):
+                    # This can also be shadowed by a class / import. See #12084
+                    var.is_property = True
             else:
                 var = attr.to_var()
                 var.info = info
