@@ -1991,7 +1991,8 @@ x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 [case testEnableDifferentErrorCode]
 # flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
 x = 'should not be fine'
-x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+x.trim()
+y.trim()  # E: Name "y" is not defined  [name-defined]
 
 [case testEnableMultipleErrorCode]
 # flags: \
