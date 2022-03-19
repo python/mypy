@@ -209,10 +209,10 @@ class DataclassTransformer:
                     tvar_def=order_tvar_def,
                 )
 
+        self._propertize_callables(attributes)
+
         if decorator_arguments['frozen']:
             self._freeze(attributes)
-        else:
-            self._propertize_callables(attributes)
 
         if decorator_arguments['slots']:
             self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
