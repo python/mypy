@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
+import mypy.options
 from mypy import build
 from mypy import defaults
 from mypy import state
@@ -949,15 +950,15 @@ def process_options(args: List[str],
         parser.error("Cannot find config file '%s'" % config_file)
 
     if dummy.legacy:
-        import mypy.options
-
         mypy.options._based = False
 
+    based_enabled_codes = (
+        {"redundant-expr", "truthy-bool", "ignore-without-code", "unused-awaitable"}
+        if mypy.options._based else set()
+    )
     options = Options()
 
     if dummy.legacy:
-        import mypy.options
-
         mypy.options._based = True
 
     def set_strict_flags() -> None:
@@ -1015,7 +1016,7 @@ def process_options(args: List[str],
 
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
-    enabled_codes = set(options.enable_error_code)
+    enabled_codes = set(options.enable_error_code) | (based_enabled_codes - disabled_codes)
 
     valid_error_codes = set(error_codes.keys())
 

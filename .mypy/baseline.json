@@ -2256,7 +2256,7 @@
         "code": "no-any-expr",
         "column": 8,
         "message": "Expression has type \"Any\"",
-        "offset": 288,
+        "offset": 287,
         "target": "mypy.build.log_configuration"
       },
       {
@@ -3338,7 +3338,7 @@
         "code": "no-any-expr",
         "column": 42,
         "message": "Expression type contains \"Any\" (has type \"Type[CallableType]\")",
-        "offset": 320,
+        "offset": 325,
         "target": "mypy.checkexpr.ExpressionChecker.infer_lambda_type_using_context"
       },
       {
@@ -3508,7 +3508,7 @@
         "code": "no-any-expr",
         "column": 21,
         "message": "Expression type contains \"Any\" (has type \"Type[CallableType]\")",
-        "offset": 99,
+        "offset": 104,
         "target": "mypy.checkmember.add_class_tvars"
       },
       {
@@ -7477,7 +7477,7 @@
         "code": "unreachable",
         "column": 16,
         "message": "Statement is unreachable",
-        "offset": 802,
+        "offset": 791,
         "target": "mypy.errors.Errors.render_messages"
       },
       {
@@ -7521,7 +7521,7 @@
         "code": "no-any-expr",
         "column": 32,
         "message": "Expression type contains \"Any\" (has type \"Type[CallableType]\")",
-        "offset": 86,
+        "offset": 90,
         "target": "mypy.expandtype.ExpandTypeVisitor.visit_callable_type"
       },
       {
@@ -14696,7 +14696,7 @@
         "code": "no-any-expr",
         "column": 42,
         "message": "Expression type contains \"Any\" (has type \"Type[CallableType]\")",
-        "offset": 113,
+        "offset": 111,
         "target": "mypy.plugins.attrs.Attribute.argument"
       },
       {
@@ -14826,7 +14826,7 @@
         "code": "no-any-expr",
         "column": 37,
         "message": "Expression type contains \"Any\" (has type \"Dict[str, Any]\")",
-        "offset": 155,
+        "offset": 154,
         "target": "mypy.plugins.dataclasses.DataclassTransformer.transform"
       },
       {
@@ -14882,7 +14882,7 @@
         "code": "no-any-expr",
         "column": 54,
         "message": "Expression type contains \"Any\" (has type \"Type[CallableType]\")",
-        "offset": 63,
+        "offset": 61,
         "target": "mypy.plugins.dataclasses.DataclassTransformer._propertize_callables"
       }
     ],
@@ -16472,17 +16472,10 @@
         "target": "mypy.semanal.SemanticAnalyzer.analyze_lvalues"
       },
       {
-        "code": "truthy-bool",
-        "column": 15,
-        "message": "\"call\" has type \"CallExpr\" which does not implement __bool__ or __len__ so it could always be true in boolean context",
-        "offset": 934,
-        "target": "mypy.semanal.SemanticAnalyzer.extract_typevarlike_name"
-      },
-      {
         "code": "no-any-expr",
         "column": 38,
         "message": "Expression type contains \"Any\" (has type \"zip[Tuple[Any, ...]]\")",
-        "offset": 174,
+        "offset": 1106,
         "target": "mypy.semanal.SemanticAnalyzer.process_module_assignment"
       },
       {
@@ -21544,7 +21537,7 @@
         "code": "no-any-explicit",
         "column": 0,
         "message": "Explicit \"Any\" is not allowed",
-        "offset": 76,
+        "offset": 77,
         "target": "mypy.stubtest.is_probably_a_function"
       },
       {
@@ -25641,7 +25634,7 @@
         "code": "no-any-expr",
         "column": 23,
         "message": "Expression type contains \"Any\" (has type \"List[Any]\")",
-        "offset": 119,
+        "offset": 122,
         "target": "mypy.types.Instance.serialize"
       },
       {
@@ -25655,21 +25648,28 @@
         "code": "no-any-expr",
         "column": 32,
         "message": "Expression has type \"Any\"",
-        "offset": 17,
+        "offset": 18,
         "target": "mypy.types.Instance.copy_modified"
       },
       {
         "code": "no-any-expr",
-        "column": 73,
+        "column": 36,
         "message": "Expression has type \"Any\"",
         "offset": 3,
+        "target": "mypy.types.Instance.copy_modified"
+      },
+      {
+        "code": "no-any-expr",
+        "column": 56,
+        "message": "Expression has type \"Any\"",
+        "offset": 1,
         "target": "mypy.types.Instance.copy_modified"
       },
       {
         "code": "no-any-explicit",
         "column": 4,
         "message": "Explicit \"Any\" is not allowed",
-        "offset": 71,
+        "offset": 70,
         "target": "mypy.types.CallableType.__init__"
       },
       {
@@ -26397,7 +26397,7 @@
         "code": "unreachable",
         "column": 12,
         "message": "Statement is unreachable",
-        "offset": 130,
+        "offset": 132,
         "target": "mypy.types.TypeStrVisitor.visit_type_var"
       },
       {
@@ -27905,7 +27905,7 @@
         "code": "no-any-expr",
         "column": 4,
         "message": "Expression type contains \"Any\" (has type \"Tuple[Tuple[List[Any], Optional[str]], Tuple[List[str], List[str]]]\")",
-        "offset": 40,
+        "offset": 30,
         "target": "mypyc.build.mypycify"
       },
       {
@@ -28000,7 +28000,7 @@
         "code": "truthy-bool",
         "column": 11,
         "message": "Member \"ann\" has type \"object\" which does not implement __bool__ or __len__ so it could always be true in boolean context",
-        "offset": 391,
+        "offset": 353,
         "target": "mypyc.codegen.emitfunc.FunctionEmitterVisitor.visit_load_static"
       },
       {
