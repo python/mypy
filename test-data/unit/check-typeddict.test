@@ -2208,6 +2208,12 @@ class Movie(TypedDict, total=False):
     year: int
 [typing fixtures/typing-typeddict.pyi]
 
+[case testRequiredExplicitAny]
+# flags: --disallow-any-explicit
+from typing import TypedDict
+from typing import Required
+Foo = TypedDict("Foo", {"a.x": Required[int]})
+[typing fixtures/typing-typeddict.pyi]
 
 -- NotRequired[]
 
@@ -2269,6 +2275,13 @@ from typing import NotRequired
 class Movie(TypedDict):
     title: NotRequired[str, bytes]  # E: NotRequired[] must have exactly one type argument
     year: int
+[typing fixtures/typing-typeddict.pyi]
+
+[case testNotRequiredExplicitAny]
+# flags: --disallow-any-explicit
+from typing import TypedDict
+from typing import NotRequired
+Foo = TypedDict("Foo", {"a.x": NotRequired[int]})
 [typing fixtures/typing-typeddict.pyi]
 
 -- Union dunders

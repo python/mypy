@@ -909,20 +909,19 @@ L0:
 [case testDownCastSpecialCases]
 from typing import cast, Optional, Tuple
 class A: pass
-def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
+def f(o: Optional[A], n: int, t: Tuple[int, ...], tt: Tuple[int, int]) -> None:
     a = cast(A, o)
     m = cast(bool, n)
-    tt: Tuple[int, int]
     t = tt
 [out]
-def f(o, n, t):
+def f(o, n, t, tt):
     o :: union[__main__.A, None]
     n :: int
     t :: tuple
+    tt :: tuple[int, int]
     r0, a :: __main__.A
     r1 :: object
     r2, m :: bool
-    tt :: tuple[int, int]
     r3 :: object
 L0:
     r0 = cast(__main__.A, o)

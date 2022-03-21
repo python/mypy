@@ -12,12 +12,14 @@ from mypy_extensions import DefaultNamedArg
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
-    Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    NEVER_NAMES, Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType,
+    callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
+    LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
 )
 
 from mypy.nodes import (
@@ -42,10 +44,8 @@ type_constructors: Final = {
     'typing.Tuple',
     'typing.Type',
     'typing.Union',
-    'typing.Literal',
-    'typing_extensions.Literal',
-    'typing.Annotated',
-    'typing_extensions.Annotated',
+    *LITERAL_TYPE_NAMES,
+    *ANNOTATED_TYPE_NAMES,
 }
 
 ARG_KINDS_BY_CONSTRUCTOR: Final = {
@@ -70,7 +70,6 @@ def analyze_type_alias(node: Expression,
                        plugin: Plugin,
                        options: Options,
                        is_typeshed_stub: bool,
-                       allow_new_syntax: bool = False,
                        allow_placeholder: bool = False,
                        in_dynamic_func: bool = False,
                        global_scope: bool = True) -> Optional[Tuple[Type, Set[str]]]:
@@ -81,12 +80,12 @@ def analyze_type_alias(node: Expression,
     Return None otherwise. 'node' must have been semantically analyzed.
     """
     try:
-        type = expr_to_unanalyzed_type(node, options, allow_new_syntax)
+        type = expr_to_unanalyzed_type(node, options, api.is_stub_file)
     except TypeTranslationError:
         api.fail('Invalid type alias: expression is not a valid type', node)
         return None
     analyzer = TypeAnalyser(api, tvar_scope, plugin, options, is_typeshed_stub,
-                            allow_new_syntax=allow_new_syntax, defining_alias=True,
+                            defining_alias=True,
                             allow_placeholder=allow_placeholder)
     analyzer.in_dynamic_func = in_dynamic_func
     analyzer.global_scope = global_scope
@@ -127,7 +126,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                  is_typeshed_stub: bool, *,
                  defining_alias: bool = False,
                  allow_tuple_literal: bool = False,
-                 allow_new_syntax: bool = False,
                  allow_unbound_tvars: bool = False,
                  allow_placeholder: bool = False,
                  allow_required: bool = False,
@@ -144,8 +142,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Positive if we are analyzing arguments of another (outer) type
         self.nesting_level = 0
         # Should we allow new type syntax when targeting older Python versions
-        # like 'list[int]' or 'X | Y' (allowed in stubs)?
-        self.allow_new_syntax = allow_new_syntax
+        # like 'list[int]' or 'X | Y' (allowed in stubs and with `__future__` import)?
+        self.always_allow_new_syntax = (
+            self.api.is_stub_file
+            or self.api.is_future_flag_set('annotations')
+        )
         # Should we accept unbound type variables (always OK in aliases)?
         self.allow_unbound_tvars = allow_unbound_tvars or defining_alias
         # If false, record incomplete ref if we generate PlaceholderType.
@@ -202,9 +203,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if hook is not None:
                 return hook(AnalyzeTypeContext(t, t, self))
             if (fullname in get_nongen_builtins(self.options.python_version)
-                    and t.args and
-                    not self.allow_new_syntax and
-                    not self.api.is_future_flag_set("annotations")):
+                    and t.args
+                    and not self.always_allow_new_syntax):
                 self.fail(no_subscript_builtin_alias(fullname,
                                                      propose_alt=not self.defining_alias), t)
             tvar_def = self.tvar_scope.get_binding(sym)
@@ -262,7 +262,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return res
             elif isinstance(node, TypeInfo):
                 return self.analyze_type_with_type_info(node, t.args, t)
-            elif node.fullname in ("typing_extensions.TypeAlias", "typing.TypeAlias"):
+            elif node.fullname in TYPE_ALIAS_NAMES:
                 return AnyType(TypeOfAny.special_form)
             else:
                 return self.analyze_unbound_type_without_type_info(t, sym, defining_literal)
@@ -286,14 +286,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return NoneType()
         elif fullname == 'typing.Any' or fullname == 'builtins.Any':
             return AnyType(TypeOfAny.explicit)
-        elif fullname in ('typing.Final', 'typing_extensions.Final'):
+        elif fullname in FINAL_TYPE_NAMES:
             self.fail("Final can be only used as an outermost qualifier"
                       " in a variable annotation", t)
             return AnyType(TypeOfAny.from_error)
         elif (fullname == 'typing.Tuple' or
-             (fullname == 'builtins.tuple' and (self.options.python_version >= (3, 9) or
-                                                self.api.is_future_flag_set('annotations') or
-                                                self.allow_new_syntax))):
+             (fullname == 'builtins.tuple'
+                and (self.always_allow_new_syntax or self.options.python_version >= (3, 9)))):
             # Tuple is special because it is involved in builtin import cycle
             # and may be not ready when used.
             sym = self.api.lookup_fully_qualified_or_none('builtins.tuple')
@@ -326,8 +325,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif fullname == 'typing.Callable':
             return self.analyze_callable_type(t)
         elif (fullname == 'typing.Type' or
-             (fullname == 'builtins.type' and (self.options.python_version >= (3, 9) or
-                                               self.api.is_future_flag_set('annotations')))):
+             (fullname == 'builtins.type'
+                and (self.always_allow_new_syntax or self.options.python_version >= (3, 9)))):
             if len(t.args) == 0:
                 if fullname == 'typing.Type':
                     any_type = self.get_omitted_any(t)
@@ -350,11 +349,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('ClassVar[...] must have at most one type argument', t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
-        elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
+        elif fullname in NEVER_NAMES:
             return UninhabitedType(is_noreturn=True)
-        elif fullname in ('typing_extensions.Literal', 'typing.Literal'):
+        elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
-        elif fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
+        elif fullname in ANNOTATED_TYPE_NAMES:
             if len(t.args) < 2:
                 self.fail("Annotated[...] must have exactly one type argument"
                           " and at least one annotation", t)
@@ -379,6 +378,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
+        elif fullname in ('typing.Unpack', 'typing_extensions.Unpack'):
+            # We don't want people to try to use this yet.
+            if not self.options.enable_incomplete_features:
+                self.fail('"Unpack" is not supported by mypy yet', t)
+                return AnyType(TypeOfAny.from_error)
+            return UnpackType(
+                self.anal_type(t.args[0]), line=t.line, column=t.column,
+            )
         return None
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
@@ -494,7 +501,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'
-            notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
+            if name == 'builtins.any':
+                notes.append('Perhaps you meant "typing.Any" instead of "any"?')
+            elif name == 'builtins.callable':
+                notes.append('Perhaps you meant "typing.Callable" instead of "callable"?')
+            else:
+                notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
         elif isinstance(sym.node, MypyFile):
             # TODO: suggest a protocol when supported.
             message = 'Module "{}" is not valid as a type'
@@ -554,6 +566,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
@@ -704,9 +719,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_union_type(self, t: UnionType) -> Type:
         if (t.uses_pep604_syntax is True
                 and t.is_evaluated is True
-                and self.api.is_stub_file is False
-                and self.options.python_version < (3, 10)
-                and self.api.is_future_flag_set('annotations') is False):
+                and not self.always_allow_new_syntax
+                and not self.options.python_version >= (3, 10)):
             self.fail("X | Y syntax for unions requires Python 3.10", t)
         return UnionType(self.anal_array(t.items), t.line)
 
@@ -1289,9 +1303,9 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return [(name, node.node)]
         elif not self.include_callables and self._seems_like_callable(t):
             return []
-        elif node and node.fullname in ('typing_extensions.Literal', 'typing.Literal'):
+        elif node and node.fullname in LITERAL_TYPE_NAMES:
             return []
-        elif node and node.fullname in ('typing_extensions.Annotated', 'typing.Annotated'):
+        elif node and node.fullname in ANNOTATED_TYPE_NAMES and t.args:
             # Don't query the second argument to Annotated for TypeVars
             return self.query_types([t.args[0]])
         else:
@@ -1354,26 +1368,6 @@ class HasAnyFromUnimportedType(TypeQuery[bool]):
     def visit_typeddict_type(self, t: TypedDictType) -> bool:
         # typeddict is checked during TypedDict declaration, so don't typecheck it here
         return False
-
-
-def collect_any_types(t: Type) -> List[AnyType]:
-    """Return all inner `AnyType`s of type t"""
-    return t.accept(CollectAnyTypesQuery())
-
-
-class CollectAnyTypesQuery(TypeQuery[List[AnyType]]):
-    def __init__(self) -> None:
-        super().__init__(self.combine_lists_strategy)
-
-    def visit_any(self, t: AnyType) -> List[AnyType]:
-        return [t]
-
-    @classmethod
-    def combine_lists_strategy(cls, it: Iterable[List[AnyType]]) -> List[AnyType]:
-        result: List[AnyType] = []
-        for l in it:
-            result.extend(l)
-        return result
 
 
 def collect_all_inner_types(t: Type) -> List[Type]:

@@ -405,7 +405,8 @@ async def g() -> NoReturn:
   await f()
 
 async def h() -> NoReturn:  # E: Implicit return in function which does not return
-  f()
+  # Purposely not evaluating coroutine
+  _ = f()
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-async.pyi]
 
@@ -1562,17 +1563,7 @@ __all__ = ('b',)
 [out]
 main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
-[case testNoImplicitReexportStarConsideredImplicit]
-# flags: --no-implicit-reexport
-from other_module_2 import a
-[file other_module_1.py]
-a = 5
-[file other_module_2.py]
-from other_module_1 import *
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
-
-[case testNoImplicitReexportStarCanBeReexportedWithAll]
+[case testNoImplicitReexportStarConsideredExplicit]
 # flags: --no-implicit-reexport
 from other_module_2 import a
 from other_module_2 import b
@@ -1583,8 +1574,6 @@ b = 6
 from other_module_1 import *
 __all__ = ('b',)
 [builtins fixtures/tuple.pyi]
-[out]
-main:2: error: Module "other_module_2" does not explicitly export attribute "a"; implicit reexport disabled
 
 [case testNoImplicitReexportGetAttr]
 # flags: --no-implicit-reexport --python-version 3.7
@@ -2002,7 +1991,8 @@ x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
 [case testEnableDifferentErrorCode]
 # flags: --disable-error-code attr-defined --enable-error-code name-defined --show-error-code
 x = 'should not be fine'
-x.trim()  # E: "str" has no attribute "trim"  [attr-defined]
+x.trim()
+y.trim()  # E: Name "y" is not defined  [name-defined]
 
 [case testEnableMultipleErrorCode]
 # flags: \

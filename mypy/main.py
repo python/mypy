@@ -113,15 +113,15 @@ def main(script_path: Optional[str],
     if messages:
         code = 2 if blockers else 1
     if options.error_summary:
-        if messages:
-            n_errors, n_files = util.count_stats(messages)
-            if n_errors:
-                summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers,
-                    use_color=options.color_output
-                )
-                stdout.write(summary + '\n')
-        else:
+        n_errors, n_notes, n_files = util.count_stats(messages)
+        if n_errors:
+            summary = formatter.format_error(
+                n_errors, n_files, len(sources), blockers=blockers,
+                use_color=options.color_output
+            )
+            stdout.write(summary + '\n')
+        # Only notes should also output success
+        elif not messages or n_notes == len(messages):
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
@@ -492,9 +492,11 @@ def process_options(args: List[str],
     general_group.add_argument(
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
+
+    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__,
+        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout)
 
@@ -859,6 +861,8 @@ def process_options(args: List[str],
     # Modules not mentioned in the file will go through cache_dir.
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
+                        help=argparse.SUPPRESS)
+    parser.add_argument('--enable-incomplete-features', default=False,
                         help=argparse.SUPPRESS)
 
     # options specifying code to check

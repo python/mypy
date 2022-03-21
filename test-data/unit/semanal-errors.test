@@ -1435,3 +1435,19 @@ TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match
 TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
 
 [out]
+
+
+[case testBaseClassAnnotatedWithoutArgs]
+# https://github.com/python/mypy/issues/11808
+from typing_extensions import Annotated
+# Next line should not crash:
+class A(Annotated): pass  # E: Annotated[...] must have exactly one type argument and at least one annotation
+
+[case testInvalidUnpackTypes]
+from typing_extensions import Unpack
+from typing import Tuple
+
+heterogenous_tuple: Tuple[Unpack[Tuple[int, str]]]
+homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
+bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/tuple.pyi]

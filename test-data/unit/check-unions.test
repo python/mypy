@@ -144,6 +144,11 @@ f(1)
 f(None)
 f('') # E: Argument 1 to "f" has incompatible type "str"; expected "Optional[int]"
 
+[case testUnionWithNoReturn]
+from typing import Union, NoReturn
+def f() -> Union[int, NoReturn]: ...
+reveal_type(f()) # N: Revealed type is "builtins.int"
+
 [case testUnionSimplificationGenericFunction]
 from typing import TypeVar, Union, List
 T = TypeVar('T')

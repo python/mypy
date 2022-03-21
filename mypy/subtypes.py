@@ -7,7 +7,8 @@ from mypy.types import (
     Type, AnyType, UnboundType, TypeVisitor, FormalArgument, NoneType,
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
-    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType
+    FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
+    UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
 )
 import mypy.applytype
 import mypy.constraints
@@ -152,10 +153,6 @@ def _is_subtype(left: Type, right: Type,
                                       ignore_pos_arg_names=ignore_pos_arg_names,
                                       ignore_declared_variance=ignore_declared_variance,
                                       ignore_promotions=ignore_promotions))
-
-
-def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    return is_subtype(left, right, ignore_type_params=True)
 
 
 def is_equivalent(a: Type, b: Type,
@@ -330,6 +327,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
@@ -366,11 +366,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, Instance):
             if is_named_instance(right, 'typing.Sized'):
                 return True
-            elif (is_named_instance(right, 'builtins.tuple') or
-                  is_named_instance(right, 'typing.Iterable') or
-                  is_named_instance(right, 'typing.Container') or
-                  is_named_instance(right, 'typing.Sequence') or
-                  is_named_instance(right, 'typing.Reversible')):
+            elif is_named_instance(right, TUPLE_LIKE_INSTANCE_NAMES):
                 if right.args:
                     iter_type = right.args[0]
                 else:
@@ -770,7 +766,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
 
     for member in tp.protocol_members:
         typ = get_proper_type(find_member(member, instance, instance))
-        if not isinstance(typ, CallableType):
+        if not isinstance(typ, (Overloaded, CallableType)):
             result.append(member)
     return result
 
@@ -1171,6 +1167,7 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
 def covers_at_runtime(item: Type, supertype: Type, ignore_promotions: bool) -> bool:
     """Will isinstance(item, supertype) always return True at runtime?"""
     item = get_proper_type(item)
+    supertype = get_proper_type(supertype)
 
     # Since runtime type checks will ignore type arguments, erase the types.
     supertype = erase_type(supertype)
@@ -1363,6 +1360,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
@@ -1380,11 +1380,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
     def visit_tuple_type(self, left: TupleType) -> bool:
         right = self.right
         if isinstance(right, Instance):
-            if (is_named_instance(right, 'builtins.tuple') or
-                    is_named_instance(right, 'typing.Iterable') or
-                    is_named_instance(right, 'typing.Container') or
-                    is_named_instance(right, 'typing.Sequence') or
-                    is_named_instance(right, 'typing.Reversible')):
+            if is_named_instance(right, TUPLE_LIKE_INSTANCE_NAMES):
                 if not right.args:
                     return False
                 iter_type = get_proper_type(right.args[0])
@@ -1446,7 +1442,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             if right.type.fullname == 'builtins.type':
                 # TODO: Strictly speaking, the type builtins.type is considered equivalent to
                 #       Type[Any]. However, this would break the is_proper_subtype check in
-                #       conditional_type_map for cases like isinstance(x, type) when the type
+                #       conditional_types for cases like isinstance(x, type) when the type
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
             if right.type.fullname == 'builtins.object':

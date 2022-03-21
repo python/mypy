@@ -649,9 +649,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # type "UnboundType" and will not match.
                 if not isinstance(get_proper_type(annotated_type), AnyType):
                     annotation = ": {}".format(self.print_annotation(annotated_type))
+
+            if kind.is_named() and not any(arg.startswith('*') for arg in args):
+                args.append('*')
+
             if arg_.initializer:
-                if kind.is_named() and not any(arg.startswith('*') for arg in args):
-                    args.append('*')
                 if not annotation:
                     typename = self.get_str_type_of_node(arg_.initializer, True, False)
                     if typename == '':
@@ -849,6 +851,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             base_types.append('metaclass=abc.ABCMeta')
             self.import_tracker.add_import('abc')
             self.import_tracker.require_name('abc')
+        elif self.analyzed and o.info.is_protocol:
+            type_str = 'Protocol'
+            if o.info.type_vars:
+                type_str += f'[{", ".join(o.info.type_vars)}]'
+            base_types.append(type_str)
+            self.add_typing_import('Protocol')
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')

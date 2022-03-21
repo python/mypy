@@ -121,6 +121,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
+CPyTagged CPyTagged_FromVoidPtr(void *ptr);
 CPyTagged CPyTagged_FromObject(PyObject *object);
 CPyTagged CPyTagged_StealFromObject(PyObject *object);
 CPyTagged CPyTagged_BorrowFromObject(PyObject *object);

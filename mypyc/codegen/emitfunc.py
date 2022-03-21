@@ -122,10 +122,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
         negated = op.negated
+        negated_rare = False
         if true is self.next_block and op.traceback_entry is None:
             # Switch true/false since it avoids an else block.
             true, false = false, true
             negated = not negated
+            negated_rare = True
 
         neg = '!' if negated else ''
         cond = ''
@@ -150,7 +152,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         # For error checks, tell the compiler the branch is unlikely
         if op.traceback_entry is not None or op.rare:
-            cond = 'unlikely({})'.format(cond)
+            if not negated_rare:
+                cond = 'unlikely({})'.format(cond)
+            else:
+                cond = 'likely({})'.format(cond)
 
         if false is self.next_block:
             if op.traceback_entry is None:
@@ -287,17 +292,17 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
+            self.emitter.emit_undefined_attr_check(
+                attr_rtype, attr_expr, '==', unlikely=True
+            )
+            exc_class = 'PyExc_AttributeError'
+            self.emitter.emit_line(
+                'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                    exc_class, repr(op.attr), repr(cl.name)))
             if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(
-                    attr_rtype, attr_expr, '==', unlikely=True
-                )
-                exc_class = 'PyExc_AttributeError'
-                self.emitter.emit_lines(
-                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                        exc_class, repr(op.attr), repr(cl.name)),
-                    '} else {')
+                self.emitter.emit_line('} else {')
                 self.emitter.emit_inc_ref(attr_expr, attr_rtype)
-                self.emitter.emit_line('}')
+            self.emitter.emit_line('}')
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
