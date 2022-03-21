@@ -1439,12 +1439,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
     def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
-        """Check that __match_args__ is final and contains literal strings"""
-
-        if not var.is_final:
-            self.note("__match_args__ must be final for checking of match statements to work",
-                      context, code=codes.LITERAL_REQ)
-
+        """Check that __match_args__ contains literal strings"""
         typ = get_proper_type(typ)
         if not isinstance(typ, TupleType) or \
                 not all([is_string_literal(item) for item in typ.items]):
@@ -2276,7 +2271,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Defer PartialType's super type checking.
             if (isinstance(lvalue, RefExpr) and
-                    not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)):
+                    not (isinstance(lvalue_type, PartialType) and
+                         lvalue_type.type is None) and
+                    lvalue.name != '__match_args__'):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
