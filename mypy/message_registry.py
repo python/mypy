@@ -61,6 +61,9 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
 
+ASYNC_FOR_OUTSIDE_COROUTINE: Final = '"async for" outside async function'
+ASYNC_WITH_OUTSIDE_COROUTINE: Final = '"async with" outside async function'
+
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
