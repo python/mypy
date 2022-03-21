@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 ### Added
+
+## [1.3.0]
+### Added
 - `default_return` option to imply unannotated return type as `None`.
 - Specific error codes for `Any` errors
 - Automatic baseline mode, if there are no new errors then write.
