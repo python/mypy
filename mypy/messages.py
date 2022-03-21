@@ -1173,8 +1173,8 @@ class MessageBuilder:
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
         if sorted_locals:
             self.note("Revealed local types are:", context)
-            for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
-                self.note(line, context)
+            for k, v in sorted_locals.items():
+                self.note('    {}: {}'.format(k, v), context)
         else:
             self.note("There are no locals to reveal", context)
 
