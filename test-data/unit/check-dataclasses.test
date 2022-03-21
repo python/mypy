@@ -1550,4 +1550,5 @@ def func() -> None:
 
 reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
 A(a=func).a()
+A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]
