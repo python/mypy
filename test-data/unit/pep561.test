@@ -82,15 +82,6 @@ reveal_type(a)
 testTypedPkgStubs_python2.py:3: error: Module "typedpkg" has no attribute "dne"
 testTypedPkgStubs_python2.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
-[case testTypedPkgSimple_python2]
-# pkgs: typedpkg
-from typedpkg.sample import ex
-from typedpkg import dne
-a = ex([''])
-reveal_type(a)
-[out]
-testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
-
 [case testTypedPkgSimpleEgg]
 # pkgs: typedpkg; no-pip
 from typedpkg.sample import ex
