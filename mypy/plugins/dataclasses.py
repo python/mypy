@@ -467,7 +467,9 @@ class DataclassTransformer:
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
-    def _propertize_callables(self, attributes: List[DataclassAttribute], settable: bool = True) -> None:
+    def _propertize_callables(self,
+                              attributes: List[DataclassAttribute],
+                              settable: bool = True) -> None:
         """Converts all attributes with callable types to @property methods.
 
         This avoids the typechecker getting confused and thinking that
