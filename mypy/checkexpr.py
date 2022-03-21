@@ -3923,16 +3923,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
                                                  allow_none_return=allow_none_return)
 
-        # Only create a union type if the type context is a union, to be mostly
-        # compatible with older mypy versions where we always did a join.
-        #
-        # TODO: Always create a union or at least in more cases?
-        if isinstance(get_proper_type(self.type_context[-1]), UnionType):
-            res = make_simplified_union([if_type, full_context_else_type])
-        else:
-            res = join.join_types(if_type, else_type)
-
-        return res
+        return make_simplified_union([if_type, full_context_else_type])
 
     def analyze_cond_branch(self, map: Optional[Dict[Expression, Type]],
                             node: Expression, context: Optional[Type],
