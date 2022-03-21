@@ -577,8 +577,8 @@ match m:
                         # N: Revealed type is "Any"
 
 match m:
-    case xyz(y=z):  # E: Name "xyz" is not defined
-        reveal_type(y)  # E: Cannot determine type of "y" \
+    case xyz(z=x):  # E: Name "xyz" is not defined
+        reveal_type(x)  # E: Cannot determine type of "x" \
                         # N: Revealed type is "Any"
 
 [case testMatchClassPatternCaptureDataclass]
