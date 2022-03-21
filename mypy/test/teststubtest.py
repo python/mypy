@@ -547,12 +547,12 @@ class StubtestUnit(unittest.TestCase):
             stub="""
             class Good:
                 @property
-                def f(self) -> int: ...
+                def read_only_attr(self) -> int: ...
             """,
             runtime="""
             class Good:
                 @property
-                def f(self) -> int: return 1
+                def read_only_attr(self): return 1
             """,
             error=None,
         )
@@ -592,6 +592,38 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="BadReadOnly.f",
         )
+        yield Case(
+            stub="""
+            class Y:
+                @property
+                def read_only_attr(self) -> int: ...
+                @read_only_attr.setter
+                def read_only_attr(self, val: int) -> None: ...
+            """,
+            runtime="""
+            class Y:
+                @property
+                def read_only_attr(self): return 5
+            """,
+            error="Y.read_only_attr",
+        )
+        yield Case(
+            stub="""
+            class Z:
+                @property
+                def read_write_attr(self) -> int: ...
+                @read_write_attr.setter
+                def read_write_attr(self, val: int) -> None: ...
+            """,
+            runtime="""
+            class Z:
+                @property
+                def read_write_attr(self): return self._val
+                @read_write_attr.setter
+                def read_write_attr(self, val): self._val = val
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_var(self) -> Iterator[Case]:
@@ -627,6 +659,32 @@ class StubtestUnit(unittest.TestCase):
             class X:
                 def __init__(self):
                     self.f = "asdf"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Y:
+                read_only_attr: int
+            """,
+            runtime="""
+            class Y:
+                @property
+                def read_only_attr(self): return 5
+            """,
+            error="Y.read_only_attr",
+        )
+        yield Case(
+            stub="""
+            class Z:
+                read_write_attr: int
+            """,
+            runtime="""
+            class Z:
+                @property
+                def read_write_attr(self): return self._val
+                @read_write_attr.setter
+                def read_write_attr(self, val): self._val = val
             """,
             error=None,
         )

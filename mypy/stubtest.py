@@ -773,6 +773,18 @@ def verify_var(
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
+    if (
+        stub.is_initialized_in_class
+        and is_read_only_property(runtime)
+        and (stub.is_settable_property or not stub.is_property)
+    ):
+        yield Error(
+            object_path,
+            "is read-only at runtime but not in the stub",
+            stub,
+            runtime
+        )
+
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     if (
         runtime_type is not None
@@ -805,7 +817,14 @@ def verify_overloadedfuncdef(
         return
 
     if stub.is_property:
-        # We get here in cases of overloads from property.setter
+        # Any property with a setter is represented as an OverloadedFuncDef
+        if is_read_only_property(runtime):
+            yield Error(
+                object_path,
+                "is read-only at runtime but not in the stub",
+                stub,
+                runtime
+            )
         return
 
     if not is_probably_a_function(runtime):
@@ -848,7 +867,7 @@ def verify_typevarexpr(
         yield None
 
 
-def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
+def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         return
@@ -923,7 +942,7 @@ def verify_decorator(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if stub.func.is_property:
-        for message in _verify_property(stub, runtime):
+        for message in _verify_readonly_property(stub, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
@@ -1042,6 +1061,10 @@ def is_probably_a_function(runtime: Any) -> bool:
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
     )
+
+
+def is_read_only_property(runtime: object) -> bool:
+    return isinstance(runtime, property) and runtime.fset is None
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
