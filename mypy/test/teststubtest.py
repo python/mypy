@@ -548,12 +548,12 @@ class StubtestUnit(unittest.TestCase):
             stub="""
             class Good:
                 @property
-                def f(self) -> int: ...
+                def read_only_attr(self) -> int: ...
             """,
             runtime="""
             class Good:
                 @property
-                def f(self) -> int: return 1
+                def read_only_attr(self): return 1
             """,
             error=None,
         )
@@ -592,19 +592,6 @@ class StubtestUnit(unittest.TestCase):
                 f = 1
             """,
             error="BadReadOnly.f",
-        )
-        yield Case(
-            stub="""
-            class X:
-                @property
-                def read_only_attr(self) -> int: ...
-            """,
-            runtime="""
-            class X:
-                @property
-                def read_only_attr(self): return 5
-            """,
-            error=None,
         )
         yield Case(
             stub="""
