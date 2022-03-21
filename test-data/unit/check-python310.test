@@ -881,7 +881,7 @@ reveal_type(z)  # N: Revealed type is "builtins.int*"
 
 [case testMatchNonFinalMatchArgs]
 class A:
-    __match_args__ = ("a", "b")  # N: __match_args__ must be final for checking of match statements to work
+    __match_args__ = ("a", "b")
     a: str
     b: int
 
@@ -889,8 +889,8 @@ m: object
 
 match m:
     case A(i, j):
-        reveal_type(i)  # N: Revealed type is "Any"
-        reveal_type(j)  # N: Revealed type is "Any"
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchAnyTupleMatchArgs]

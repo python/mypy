@@ -2273,7 +2273,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if (isinstance(lvalue, RefExpr) and
                     not (isinstance(lvalue_type, PartialType) and
                          lvalue_type.type is None) and
-                    lvalue.name != '__match_args__'):
+                    not (isinstance(lvalue, NameExpr) and lvalue.name == '__match_args__')):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
@@ -2377,7 +2377,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if inferred:
                 rvalue_type = self.expr_checker.accept(rvalue)
-                if not inferred.is_final:
+                if not (inferred.is_final or (isinstance(lvalue, NameExpr) and
+                                              lvalue.name == '__match_args__')):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
