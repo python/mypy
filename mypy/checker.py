@@ -2278,6 +2278,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # We hit an error on this line; don't check for any others
                     return
 
+            if isinstance(lvalue, MemberExpr) and lvalue.name == '__match_args__':
+                self.fail(message_registry.CANNOT_MODIFY_MATCH_ARGS, lvalue)
+
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
                     # Try to infer a proper type for a variable with a partial None type.

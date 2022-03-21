@@ -1528,3 +1528,20 @@ class A:
 class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
+
+[case testOverrideMatchArgs]
+class AST:
+   __match_args__ = ()
+
+class stmt(AST): ...
+
+class AnnAssign(stmt):
+   __match_args__ = ('target', 'annotation', 'value', 'simple')
+
+reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.str, builtins.str]"
+
+AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
+__match_args__ = 0
+[builtins fixtures/tuple.pyi]
