@@ -2920,7 +2920,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     ) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
         name = lvalue.name
-        v = Var(lvalue.name)
+        v = Var(name)
         v.set_line(lvalue)
         v.is_inferred = inferred
         if kind == MDEF:
@@ -2929,10 +2929,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             v.is_initialized_in_class = True
             v.allow_incompatible_override = name in ALLOW_INCOMPATIBLE_OVERRIDE
         if kind != LDEF:
-            v._fullname = self.qualified_name(lvalue.name)
+            v._fullname = self.qualified_name(name)
         else:
             # fullanme should never stay None
-            v._fullname = lvalue.name
+            v._fullname = name
         v.is_ready = False  # Type not inferred yet
         v.has_explicit_value = has_explicit_value
         return v
