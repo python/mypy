@@ -886,7 +886,7 @@ def get_meminfo() -> Dict[str, Any]:
         res['memory_rss_mib'] = meminfo.rss / MiB
         res['memory_vms_mib'] = meminfo.vms / MiB
         if sys.platform == 'win32':
-            res['memory_maxrss_mib'] = meminfo.peak_wset / MiB
+            res['memory_maxrss_mib'] = meminfo.peak_wset / MiB  # type: ignore[no-any-expr, unused-ignore]  # noqa: E501
         else:
             # See https://stackoverflow.com/questions/938733/total-memory-used-by-python-process
             import resource  # Since it doesn't exist on Windows.

@@ -521,7 +521,7 @@ def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
     if sys.platform == "win32":
         assert False, "curses is not available on Windows"
-    set_color = ''.join([cup[:-1].decode(), 'm'])
+    set_color = ''.join([cup[:-1].decode(), 'm'])  # type: ignore[unreachable, unused-ignore]
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
 
@@ -567,7 +567,7 @@ class FancyFormatter:
             ENABLE_WRAP_AT_EOL_OUTPUT = 0x2
             ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x4
             STD_OUTPUT_HANDLE = -11
-            kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),
+            kernel32.SetConsoleMode(kernel32.GetStdHandle(STD_OUTPUT_HANDLE),  # type: ignore[no-any-expr, unused-ignore] # noqa: E501
                                     ENABLE_PROCESSED_OUTPUT
                                     | ENABLE_WRAP_AT_EOL_OUTPUT
                                     | ENABLE_VIRTUAL_TERMINAL_PROCESSING)
@@ -580,13 +580,13 @@ class FancyFormatter:
             self.NORMAL = '\033[0m'
             self.DIM = '\033[2m'
             return True
-        return False
+        return False    # type: ignore[unreachable, unused-ignore]
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
         if sys.platform == "win32" or not CURSES_ENABLED:
             return False
-        try:
+        try:  # type: ignore[unreachable, unused-ignore]
             # setupterm wants a fd to potentially write an "initialization sequence".
             # We override sys.stdout for the daemon API so if stdout doesn't have an fd,
             # just give it /dev/null.
