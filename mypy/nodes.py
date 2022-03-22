@@ -852,7 +852,7 @@ VAR_FLAGS: Final = [
     'is_classmethod', 'is_property', 'is_settable_property', 'is_suppressed_import',
     'is_classvar', 'is_abstract_var', 'is_final', 'final_unset_in_class', 'final_set_in_init',
     'explicit_self_type', 'is_ready', 'from_module_getattr',
-    'has_explicit_value',
+    'has_explicit_value', 'allow_incompatible_override',
 ]
 
 
@@ -884,6 +884,7 @@ class Var(SymbolNode):
                  'explicit_self_type',
                  'from_module_getattr',
                  'has_explicit_value',
+                 'allow_incompatible_override',
                  )
 
     def __init__(self, name: str, type: 'Optional[mypy.types.Type]' = None) -> None:
@@ -931,6 +932,8 @@ class Var(SymbolNode):
         # Var can be created with an explicit value `a = 1` or without one `a: int`,
         # we need a way to tell which one is which.
         self.has_explicit_value = False
+        # If True, subclasses can override this with an incompatible type.
+        self.allow_incompatible_override = False
 
     @property
     def name(self) -> str:

@@ -1536,3 +1536,19 @@ A(a=1, b=2)
 A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesMultipleInheritanceWithNonDataclass]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    prop_a: str
+
+@dataclass
+class B:
+    prop_b: bool
+
+class Derived(A, B):
+    pass
+[builtins fixtures/dataclasses.pyi]
