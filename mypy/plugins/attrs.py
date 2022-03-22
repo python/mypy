@@ -744,6 +744,7 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
     var.info = ctx.cls.info
     var.is_classvar = True
     var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
+    var.allow_incompatible_override = True
     ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
         kind=MDEF,
         node=var,
@@ -778,7 +779,6 @@ def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
             cls=ctx.cls,
             name='__match_args__',
             typ=match_args,
-            final=True,
         )
 
 

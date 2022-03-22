@@ -2112,8 +2112,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
-        if name in ('__slots__', '__deletable__'):
+        # Some attributes like __slots__ and __deletable__ are special, and the type can
+        # vary across class hierarchy.
+        if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -2475,16 +2476,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_immediate_base = direct_bases[-1] if direct_bases else None
 
             for base in lvalue_node.info.mro[1:]:
-                # Only check __slots__ against the 'object'
-                # If a base class defines a Tuple of 3 elements, a child of
-                # this class should not be allowed to define it as a Tuple of
-                # anything other than 3 elements. The exception to this rule
-                # is __slots__, where it is allowed for any child class to
-                # redefine it.
-                if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
-                    continue
-                # We don't care about the type of "__deletable__".
-                if lvalue_node.name == "__deletable__":
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
+                        not (lvalue_node.name == "__slots__" and
+                             base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):
