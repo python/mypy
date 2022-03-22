@@ -206,6 +206,11 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Enum
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+    'Assigned "__members__" will be overriden by "Enum" internally'
+)
+
 # ClassVar
 CANNOT_OVERRIDE_INSTANCE_VAR: Final = ErrorMessage(
     'Cannot override instance variable (previously declared on base class "{}") with class '
