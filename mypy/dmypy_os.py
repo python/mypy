@@ -11,7 +11,8 @@ if sys.platform == 'win32':
 
     kernel32 = ctypes.windll.kernel32
     OpenProcess: Callable[[DWORD, int, int], HANDLE] = kernel32.OpenProcess
-    GetExitCodeProcess: Callable[[HANDLE, Any], int] = kernel32.GetExitCodeProcess
+    GetExitCodeProcess: Callable[[HANDLE, Any], int] = kernel32.GetExitCodeProcess  # type: ignore[no-any-explicit, unused-ignore]  # noqa: E501
+
 else:
     import os
     import signal
