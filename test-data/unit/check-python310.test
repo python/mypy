@@ -567,6 +567,20 @@ match m:
         reveal_type(m)  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/primitives.pyi]
 
+[case testMatchInvalidClassPattern]
+m: object
+
+match m:
+    case xyz(y):  # E: Name "xyz" is not defined
+        reveal_type(m)  # N: Revealed type is "Any"
+        reveal_type(y)  # E: Cannot determine type of "y" \
+                        # N: Revealed type is "Any"
+
+match m:
+    case xyz(z=x):  # E: Name "xyz" is not defined
+        reveal_type(x)  # E: Cannot determine type of "x" \
+                        # N: Revealed type is "Any"
+
 [case testMatchClassPatternCaptureDataclass]
 from dataclasses import dataclass
 
