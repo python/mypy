@@ -400,10 +400,10 @@ class DataclassTransformer:
             for data in info.metadata["dataclass"]["attributes"]:
                 name: str = data["name"]
                 if name not in known_attrs:
-                    attr = DataclassAttribute.deserialize(info, data, ctx.api)
-                    attr.expand_typevar_from_subtype(ctx.cls.info)
+                    super_attr = DataclassAttribute.deserialize(info, data, ctx.api)
+                    super_attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
-                    super_attrs.append(attr)
+                    super_attrs.append(super_attr)
                 elif all_attrs:
                     # How early in the attribute list an attribute appears is determined by the
                     # reverse MRO, not simply MRO.
@@ -413,6 +413,13 @@ class DataclassTransformer:
                         if attr.name == name:
                             all_attrs.remove(attr)
                             super_attrs.append(attr)
+                            # When we have an override,
+                            # we need to check its compatibility.
+                            self._validate_field(
+                                attr,
+                                found_default=data.get("has_default", False),
+                                found_kw_sentinel=False,
+                            )
                             break
             all_attrs = super_attrs + all_attrs
             all_attrs.sort(key=lambda a: a.kw_only)
@@ -423,30 +430,49 @@ class DataclassTransformer:
         # Ensure that the KW_ONLY sentinel is only provided once
         found_kw_sentinel = False
         for attr in all_attrs:
-            # If we find any attribute that is_in_init, not kw_only, and that
-            # doesn't have a default after one that does have one,
-            # then that's an error.
-            if found_default and attr.is_in_init and not attr.has_default and not attr.kw_only:
-                # If the issue comes from merging different classes, report it
-                # at the class definition point.
-                context = (Context(line=attr.line, column=attr.column) if attr in attrs
-                           else ctx.cls)
-                ctx.api.fail(
-                    'Attributes without a default cannot follow attributes with one',
-                    context,
-                )
-
+            # If the issue comes from merging different classes, report it
+            # at the class definition point.
+            context = (
+                Context(line=attr.line, column=attr.column)
+                if attr in attrs
+                else ctx.cls
+            )
+            self._validate_field(
+                attr,
+                found_default=found_default,
+                found_kw_sentinel=found_kw_sentinel,
+                context=context,
+            )
             found_default = found_default or (attr.has_default and attr.is_in_init)
-            if found_kw_sentinel and self._is_kw_only_type(attr.type):
-                context = (Context(line=attr.line, column=attr.column) if attr in attrs
-                           else ctx.cls)
-                ctx.api.fail(
-                    'There may not be more than one field with the KW_ONLY type',
-                    context,
-                )
             found_kw_sentinel = found_kw_sentinel or self._is_kw_only_type(attr.type)
 
         return all_attrs
+
+    def _validate_field(
+        self,
+        attr: DataclassAttribute,
+        *,
+        found_default: bool,
+        found_kw_sentinel: bool,
+        context: Optional[Context] = None,
+    ) -> None:
+        if context is None:
+            context = self._ctx.cls
+
+        # If we find any attribute that is_in_init, not kw_only, and that
+        # doesn't have a default after one that does have one,
+        # then that's an error.
+        if found_default and attr.is_in_init and not attr.has_default and not attr.kw_only:
+            self._ctx.api.fail(
+                'Attributes without a default cannot follow attributes with one',
+                context,
+            )
+
+        if found_kw_sentinel and self._is_kw_only_type(attr.type):
+            self._ctx.api.fail(
+                'There may not be more than one field with the KW_ONLY type',
+                context,
+            )
 
     def _freeze(self, attributes: List[DataclassAttribute]) -> None:
         """Converts all attributes to @property methods in order to
