@@ -152,7 +152,8 @@ FUTURE_IMPORTS: Final = {
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
-# Subclasses can override these Var attributes with incompatible types.
+# Subclasses can override these Var attributes with incompatible types. This can also be
+# set for individual attributes using 'allow_incompatible_override' of Var.
 ALLOW_INCOMPATIBLE_OVERRIDE: Final = ('__slots__', '__deletable__', '__match_args__')
 
 

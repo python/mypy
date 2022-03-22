@@ -2461,9 +2461,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_immediate_base = direct_bases[-1] if direct_bases else None
 
             for base in lvalue_node.info.mro[1:]:
-                # The type of "__slots__" and some other attributes doesn't need to
-                # be compatible with a base class.
-                if isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override:
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
+                    not (lvalue_node.name == "__slots__" and base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):
