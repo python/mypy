@@ -2465,7 +2465,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 # be compatible with a base class. We'll still check the type of "__slots__"
                 # against "object" as an exception.
                 if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
-                    not (lvalue_node.name == "__slots__" and base.fullname == "builtins.object")):
+                        not (lvalue_node.name == "__slots__" and
+                             base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):
