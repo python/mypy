@@ -748,7 +748,7 @@ def verify_funcitem(
                 ret_type = mypy.types.get_proper_type(stub.type.ret_type)
                 should_error = (
                     isinstance(ret_type, mypy.types.Instance)
-                    and not any("__await__" in clsdef.names for clsdef in ret_type.type.mro)
+                    and not ret_type.is_awaitable
                 )
             else:
                 should_error = False
