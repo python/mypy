@@ -3445,7 +3445,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Coroutines are on by default, whereas generic awaitables are not.
             if proper_type.type.fullname == "typing.Coroutine":
                 return ("Are you missing an await?", UNUSED_COROUTINE)
-            if proper_type.type.get("__await__") is not None:
+            if proper_type.is_awaitable:
                 return ("Are you missing an await?", UNUSED_AWAITABLE)
         return None
 
