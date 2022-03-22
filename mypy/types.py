@@ -1121,6 +1121,10 @@ class Instance(ProperType):
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
+    
+    @property
+    def is_awaitable(self) -> bool:
+        return self.type.get("__await__") is not None
 
 
 class FunctionLike(ProperType):
