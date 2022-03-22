@@ -881,7 +881,7 @@ reveal_type(z)  # N: Revealed type is "builtins.int*"
 
 [case testMatchNonFinalMatchArgs]
 class A:
-    __match_args__ = ("a", "b")  # N: __match_args__ must be final for checking of match statements to work
+    __match_args__ = ("a", "b")
     a: str
     b: int
 
@@ -889,8 +889,8 @@ m: object
 
 match m:
     case A(i, j):
-        reveal_type(i)  # N: Revealed type is "Any"
-        reveal_type(j)  # N: Revealed type is "Any"
+        reveal_type(i)  # N: Revealed type is "builtins.str"
+        reveal_type(j)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testMatchAnyTupleMatchArgs]
@@ -1528,3 +1528,37 @@ class A:
 class B:
     def __enter__(self) -> B: ...
     def __exit__(self, x, y, z) -> None: ...
+
+[case testOverrideMatchArgs]
+class AST:
+   __match_args__ = ()
+
+class stmt(AST): ...
+
+class AnnAssign(stmt):
+   __match_args__ = ('target', 'annotation', 'value', 'simple')
+   target: str
+   annotation: int
+   value: str
+   simple: int
+
+reveal_type(AST.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(stmt.__match_args__)  # N: Revealed type is "Tuple[]"
+reveal_type(AnnAssign.__match_args__)  # N: Revealed type is "Tuple[Literal['target']?, Literal['annotation']?, Literal['value']?, Literal['simple']?]"
+
+AnnAssign.__match_args__ = ('a', 'b', 'c', 'd')  # E: Cannot assign to "__match_args__"
+__match_args__ = 0
+
+def f(x: AST) -> None:
+    match x:
+        case AST():
+            reveal_type(x)  # N: Revealed type is "__main__.AST"
+    match x:
+        case stmt():
+            reveal_type(x)  # N: Revealed type is "__main__.stmt"
+    match x:
+        case AnnAssign(a, b, c, d):
+            reveal_type(a)  # N: Revealed type is "builtins.str"
+            reveal_type(b)  # N: Revealed type is "builtins.int"
+            reveal_type(c)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
