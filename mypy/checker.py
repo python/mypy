@@ -2105,8 +2105,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.check_if_final_var_override_writable(name, second.node, ctx)
         # Some attributes like __slots__ and __deletable__ are special, and the type can
         # vary across class hierarchy.
-        if name in ('__slots__', '__deletable__', '__match_args__') or (
-                isinstance(second.node, Var) and second.node.allow_incompatible_override):
+        if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,

@@ -152,6 +152,9 @@ FUTURE_IMPORTS: Final = {
 # available very early on.
 CORE_BUILTIN_CLASSES: Final = ["object", "bool", "function"]
 
+# Subclasses can override these attributes with incompatible types.
+ALLOW_INCOMPATIBLE_ATTRS: Final = ('__slots__', '__deletable__', '__match_args__')
+
 
 # Used for tracking incomplete references
 Tag: _TypeAlias = int
@@ -2915,6 +2918,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         self, lvalue: NameExpr, kind: int, inferred: bool, has_explicit_value: bool,
     ) -> Var:
         """Return a Var node for an lvalue that is a name expression."""
+        name = lvalue.name
         v = Var(lvalue.name)
         v.set_line(lvalue)
         v.is_inferred = inferred
@@ -2922,6 +2926,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             assert self.type is not None
             v.info = self.type
             v.is_initialized_in_class = True
+            v.allow_incompatible_override = name in ALLOW_INCOMPATIBLE_ATTRS
         if kind != LDEF:
             v._fullname = self.qualified_name(lvalue.name)
         else:
