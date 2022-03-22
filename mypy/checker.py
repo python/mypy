@@ -1829,11 +1829,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
-            for base in defn.info.mro[1:-1]:  # we don't need self and `object`
-                if base.is_enum and base.fullname not in ENUM_BASES:
-                    self.check_final_enum(defn, base)
-            self.check_enum_bases(defn)
-            self.check_enum_new(defn)
+            self.check_enum(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1890,6 +1886,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
+
+    def check_enum(self, defn: ClassDef) -> None:
+        assert defn.info.is_enum
+        if defn.info.fullname not in ENUM_BASES:
+            for sym in defn.info.names.values():
+                if (isinstance(sym.node, Var) and sym.node.has_explicit_value and
+                        sym.node.name == '__members__'):
+                    # `__members__` will always be overwritten by `Enum` and is considered
+                    # read-only so we disallow assigning a value to it
+                    self.fail(
+                        message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node
+                    )
+        for base in defn.info.mro[1:-1]:  # we don't need self and `object`
+            if base.is_enum and base.fullname not in ENUM_BASES:
+                self.check_final_enum(defn, base)
+
+        self.check_enum_bases(defn)
+        self.check_enum_new(defn)
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():

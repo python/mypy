@@ -2029,3 +2029,54 @@ class C(Enum):
 
 C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
 [typing fixtures/typing-medium.pyi]
+
+[case testCanOverrideDunderAttributes]
+import typing
+from enum import Enum, Flag
+
+class BaseEnum(Enum):
+    __dunder__ = 1
+    __labels__: typing.Dict[int, str]
+
+class Override(BaseEnum):
+    __dunder__ = 2
+    __labels__ = {1: "1"}
+
+Override.__dunder__ = 3
+BaseEnum.__dunder__ = 3
+Override.__labels__ = {2: "2"}
+
+class FlagBase(Flag):
+    __dunder__ = 1
+    __labels__: typing.Dict[int, str]
+
+class FlagOverride(FlagBase):
+    __dunder__ = 2
+    __labels = {1: "1"}
+
+FlagOverride.__dunder__ = 3
+FlagBase.__dunder__ = 3
+FlagOverride.__labels__ = {2: "2"}
+[builtins fixtures/dict.pyi]
+
+[case testCanNotInitialize__members__]
+import typing
+from enum import Enum
+
+class WritingMembers(Enum):
+    __members__: typing.Dict[Enum, Enum] = {}  # E: Assigned "__members__" will be overriden by "Enum" internally
+
+class OnlyAnnotatedMembers(Enum):
+    __members__: typing.Dict[Enum, Enum]
+[builtins fixtures/dict.pyi]
+
+[case testCanOverrideDunderOnNonFirstBaseEnum]
+import typing
+from enum import Enum
+
+class Some:
+    __labels__: typing.Dict[int, str]
+
+class A(Some, Enum):
+    __labels__ = {1: "1"}
+[builtins fixtures/dict.pyi]
