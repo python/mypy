@@ -2,7 +2,7 @@
 -r build-requirements.txt
 attrs>=18.0
 flake8==3.9.2
-flake8-bugbear
+flake8-bugbear==22.3.20
 flake8-pyi>=20.5
 lxml>=4.4.0; python_version<'3.11'
 psutil>=4.0
