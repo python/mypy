@@ -52,8 +52,10 @@ cmds = {
     'self': [executable, '-m', 'mypy', '--config-file', 'mypy_self_check.ini', '-p', 'mypy'],
     # Lint
     'lint': ['flake8', '-j0'],
+    "format-black": ["black", "."],
+    "format-isort": ["isort", "."],
     # Fast test cases only (this is the bulk of the test suite)
-    'pytest-fast': ['pytest', '-q', '-k', 'not (%s)' % ' or '.join(ALL_NON_FAST)],
+    'pytest-fast': ['pytest', '-q', '-k', f"not ({' or '.join(ALL_NON_FAST)})"],
     # Test cases that invoke mypy (with small inputs)
     'pytest-cmdline': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
                                                           EVALUATION,
@@ -118,7 +120,7 @@ def wait_background_cmd(name: str, proc: Popen) -> int:
     print(f'run {name}: {cmds[name]}')
     if status:
         print(output.decode().rstrip())
-        print('\nFAILED: %s' % name)
+        print("\nFAILED:", name)
         if name in FAST_FAIL:
             exit(status)
     return status
@@ -128,7 +130,7 @@ def main() -> None:
     prog, *args = argv
 
     if not set(args).issubset(cmds):
-        print("usage:", prog, " ".join('[%s]' % k for k in cmds))
+        print("usage:", prog, " ".join(f"[{k}]" for k in cmds))
         print()
         print('Run the given tests. If given no arguments, run everything except'
               + ' pytest-extra and mypyc-extra.')
