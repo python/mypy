@@ -3621,6 +3621,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.visit_block_maybe(s.else_body)
 
     def visit_for_stmt(self, s: ForStmt) -> None:
+        if s.is_async:
+            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, s, code=codes.SYNTAX)
+
         self.statement = s
         s.expr.accept(self)
 
@@ -3679,6 +3683,10 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_with_stmt(self, s: WithStmt) -> None:
         self.statement = s
         types: List[Type] = []
+
+        if s.is_async:
+            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+                self.fail(message_registry.ASYNC_WITH_OUTSIDE_COROUTINE, s, code=codes.SYNTAX)
 
         if s.unanalyzed_type:
             assert isinstance(s.unanalyzed_type, ProperType)
@@ -4175,12 +4183,24 @@ class SemanticAnalyzer(NodeVisitor[None],
                 expr.types[i] = analyzed
 
     def visit_list_comprehension(self, expr: ListComprehension) -> None:
+        if any(expr.generator.is_async):
+            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+
         expr.generator.accept(self)
 
     def visit_set_comprehension(self, expr: SetComprehension) -> None:
+        if any(expr.generator.is_async):
+            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+
         expr.generator.accept(self)
 
     def visit_dictionary_comprehension(self, expr: DictionaryComprehension) -> None:
+        if any(expr.is_async):
+            if not self.is_func_scope() or not self.function_stack[-1].is_coroutine:
+                self.fail(message_registry.ASYNC_FOR_OUTSIDE_COROUTINE, expr, code=codes.SYNTAX)
+
         with self.enter(expr):
             self.analyze_comp_for(expr)
             expr.key.accept(self)

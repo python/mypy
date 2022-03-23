@@ -825,3 +825,42 @@ def bar() -> None:
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAsyncForOutsideCoroutine]
+# flags: --python-version 3.7
+
+async def g():
+    yield 0
+
+def f() -> None:
+    [x async for x in g()] # E: "async for" outside async function
+    {x async for x in g()} # E: "async for" outside async function
+    {x: True async for x in g()} # E: "async for" outside async function
+    (x async for x in g())
+    async for x in g(): ... # E: "async for" outside async function
+
+[x async for x in g()] # E: "async for" outside async function
+{x async for x in g()} # E: "async for" outside async function
+{x: True async for x in g()} # E: "async for" outside async function
+(x async for x in g())
+async for x in g(): ... # E: "async for" outside async function
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
+[case testAsyncWithOutsideCoroutine]
+# flags: --python-version 3.7
+
+class C:
+    async def __aenter__(self): pass
+    async def __aexit__(self, x, y, z): pass
+
+def f() -> None:
+    async with C() as x: # E: "async with" outside async function
+        pass
+
+async with C() as x: # E: "async with" outside async function
+    pass
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
