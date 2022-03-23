@@ -730,20 +730,19 @@ class BuildManager:
             return new_id
 
         res: List[Tuple[int, str, int]] = []
+        delayed_res: List[Tuple[int, str, int]] = []
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
                     pri = import_priority(imp, PRI_MED)
                     ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
-                        # We append the target (e.g. foo.bar.baz)
-                        # before the ancestors (e.g. foo and foo.bar)
-                        # so that, if FindModuleCache finds the target
-                        # module in a package marked with py.typed
-                        # underneath a namespace package installed in
-                        # site-packages, (gasp), that cache's
-                        # knowledge of the ancestors can be primed
-                        # when it is asked to find the target.
+                        # We append the target (e.g. foo.bar.baz) before the ancestors (e.g. foo
+                        # and foo.bar) so that, if FindModuleCache finds the target module in a
+                        # package marked with py.typed underneath a namespace package installed in
+                        # site-packages, (gasp), that cache's knowledge of the ancestors
+                        # (aka FindModuleCache.ns_ancestors) can be primed when it is asked to find
+                        # the parent.
                         res.append((pri, id, imp.line))
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
@@ -752,6 +751,7 @@ class BuildManager:
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
+                    any_are_submodules = False
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -759,6 +759,7 @@ class BuildManager:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((pri, sub_id, imp.line))
+                            any_are_submodules = True
                         else:
                             all_are_submodules = False
                     # Add cur_id as a dependency, even if all of the
@@ -768,14 +769,19 @@ class BuildManager:
                     # if all of the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
-                    # The imported module goes in after the
-                    # submodules, for the same namespace related
-                    # reasons discussed in the Import case.
-                    res.append((pri, cur_id, imp.line))
+                    # The imported module goes in after the submodules, for the same namespace
+                    # related reasons discussed in the Import case.
+                    # There is an additional twist: if none of the submodules exist,
+                    # we delay the import in case other imports of other submodules succeed.
+                    if any_are_submodules:
+                        res.append((pri, cur_id, imp.line))
+                    else:
+                        delayed_res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
 
+        res.extend(delayed_res)
         return res
 
     def is_module(self, id: str) -> bool:
@@ -2959,12 +2965,16 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # Order the SCC's nodes using a heuristic.
         # Note that ascc is a set, and scc is a list.
         scc = order_ascc(graph, ascc)
-        # If builtins is in the list, move it last.  (This is a bit of
-        # a hack, but it's necessary because the builtins module is
-        # part of a small cycle involving at least {builtins, abc,
-        # typing}.  Of these, builtins must be processed last or else
-        # some builtin objects will be incompletely processed.)
+        # Make the order of the SCC that includes 'builtins' and 'typing',
+        # among other things, predictable. Various things may  break if
+        # the order changes.
         if 'builtins' in ascc:
+            scc = sorted(scc, reverse=True)
+            # If builtins is in the list, move it last.  (This is a bit of
+            # a hack, but it's necessary because the builtins module is
+            # part of a small cycle involving at least {builtins, abc,
+            # typing}.  Of these, builtins must be processed last or else
+            # some builtin objects will be incompletely processed.)
             scc.remove('builtins')
             scc.append('builtins')
         if manager.options.verbosity >= 2:

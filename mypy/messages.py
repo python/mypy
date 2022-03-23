@@ -1171,9 +1171,12 @@ class MessageBuilder:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
-        self.note("Revealed local types are:", context)
-        for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
-            self.note(line, context)
+        if sorted_locals:
+            self.note("Revealed local types are:", context)
+            for k, v in sorted_locals.items():
+                self.note('    {}: {}'.format(k, v), context)
+        else:
+            self.note("There are no locals to reveal", context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Cannot instantiate type "Type[{}]"'.format(format_type_bare(item)), context)

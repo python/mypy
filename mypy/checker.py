@@ -1439,12 +1439,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
     def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
-        """Check that __match_args__ is final and contains literal strings"""
-
-        if not var.is_final:
-            self.note("__match_args__ must be final for checking of match statements to work",
-                      context, code=codes.LITERAL_REQ)
-
+        """Check that __match_args__ contains literal strings"""
         typ = get_proper_type(typ)
         if not isinstance(typ, TupleType) or \
                 not all([is_string_literal(item) for item in typ.items]):
@@ -1834,11 +1829,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
-            for base in defn.info.mro[1:-1]:  # we don't need self and `object`
-                if base.is_enum and base.fullname not in ENUM_BASES:
-                    self.check_final_enum(defn, base)
-            self.check_enum_bases(defn)
-            self.check_enum_new(defn)
+            self.check_enum(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1895,6 +1886,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
+
+    def check_enum(self, defn: ClassDef) -> None:
+        assert defn.info.is_enum
+        if defn.info.fullname not in ENUM_BASES:
+            for sym in defn.info.names.values():
+                if (isinstance(sym.node, Var) and sym.node.has_explicit_value and
+                        sym.node.name == '__members__'):
+                    # `__members__` will always be overwritten by `Enum` and is considered
+                    # read-only so we disallow assigning a value to it
+                    self.fail(
+                        message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node
+                    )
+        for base in defn.info.mro[1:-1]:  # we don't need self and `object`
+            if base.is_enum and base.fullname not in ENUM_BASES:
+                self.check_final_enum(defn, base)
+
+        self.check_enum_bases(defn)
+        self.check_enum_new(defn)
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
@@ -2103,8 +2112,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
-        if name in ('__slots__', '__deletable__'):
+        # Some attributes like __slots__ and __deletable__ are special, and the type can
+        # vary across class hierarchy.
+        if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -2276,10 +2286,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             # Defer PartialType's super type checking.
             if (isinstance(lvalue, RefExpr) and
-                    not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)):
+                    not (isinstance(lvalue_type, PartialType) and
+                         lvalue_type.type is None) and
+                    not (isinstance(lvalue, NameExpr) and lvalue.name == '__match_args__')):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
+
+            if isinstance(lvalue, MemberExpr) and lvalue.name == '__match_args__':
+                self.fail(message_registry.CANNOT_MODIFY_MATCH_ARGS, lvalue)
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -2377,7 +2392,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if inferred:
                 rvalue_type = self.expr_checker.accept(rvalue)
-                if not inferred.is_final:
+                if not (inferred.is_final or (isinstance(lvalue, NameExpr) and
+                                              lvalue.name == '__match_args__')):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
@@ -2460,16 +2476,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_immediate_base = direct_bases[-1] if direct_bases else None
 
             for base in lvalue_node.info.mro[1:]:
-                # Only check __slots__ against the 'object'
-                # If a base class defines a Tuple of 3 elements, a child of
-                # this class should not be allowed to define it as a Tuple of
-                # anything other than 3 elements. The exception to this rule
-                # is __slots__, where it is allowed for any child class to
-                # redefine it.
-                if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
-                    continue
-                # We don't care about the type of "__deletable__".
-                if lvalue_node.name == "__deletable__":
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
+                        not (lvalue_node.name == "__slots__" and
+                             base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):

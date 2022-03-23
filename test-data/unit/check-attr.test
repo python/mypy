@@ -1539,3 +1539,19 @@ n: NoMatchArgs
 reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
 [builtins fixtures/attr.pyi]
+
+[case testAttrsMultipleInheritance]
+# flags: --python-version 3.10
+import attr
+
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+@attr.s
+class B:
+    y = attr.ib(type=int)
+
+class AB(A, B):
+    pass
+[builtins fixtures/attr.pyi]

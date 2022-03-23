@@ -37,8 +37,9 @@ async def yield_id(item: T) -> AsyncGenerator[T, None]:
 
 reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> typing.AsyncContextManager[T`-1]"
 
-async with yield_id(1) as x:
-    reveal_type(x) # N: Revealed type is "builtins.int*"
+async def f() -> None:
+    async with yield_id(1) as x:
+        reveal_type(x) # N: Revealed type is "builtins.int*"
 [typing fixtures/typing-async.pyi]
 [builtins fixtures/tuple.pyi]
 
