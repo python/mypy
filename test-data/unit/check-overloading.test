@@ -6340,3 +6340,12 @@ def f(x: int) -> object: ...
 
 def f(x: int = 0) -> int:
     return x
+
+@overload
+def g() -> object: ...
+
+@overload
+def g(x: int) -> str: ...
+
+def g(x: int = 0) -> int:  # E: Overloaded function implementation cannot produce return type of signature 2
+    return x
