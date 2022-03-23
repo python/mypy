@@ -6328,3 +6328,15 @@ if True:
 def f2(x): ...
 if True:
     def f2(x): ...  # E: Name "f2" already defined on line 17
+
+[case testOverloadItemHasMoreGeneralReturnType]
+from typing import overload
+
+@overload
+def f() -> object: ...
+
+@overload
+def f(x: int) -> object: ...
+
+def f(x: int = 0) -> int:
+    return x
