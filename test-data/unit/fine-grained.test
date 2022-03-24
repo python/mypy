@@ -2084,6 +2084,7 @@ a.py:5: error: "list" expects 1 type argument, but 2 given
 ==
 
 [case testPreviousErrorInOverloadedFunction]
+# flags: --strict-optional
 import a
 [file a.py]
 from typing import overload

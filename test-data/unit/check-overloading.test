@@ -6328,3 +6328,24 @@ if True:
 def f2(x): ...
 if True:
     def f2(x): ...  # E: Name "f2" already defined on line 17
+
+[case testOverloadItemHasMoreGeneralReturnType]
+from typing import overload
+
+@overload
+def f() -> object: ...
+
+@overload
+def f(x: int) -> object: ...
+
+def f(x: int = 0) -> int:
+    return x
+
+@overload
+def g() -> object: ...
+
+@overload
+def g(x: int) -> str: ...
+
+def g(x: int = 0) -> int:  # E: Overloaded function implementation cannot produce return type of signature 2
+    return x

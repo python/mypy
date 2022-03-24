@@ -600,7 +600,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if not is_subtype_no_promote(sig1.ret_type, impl.ret_type):
+                if not (is_subtype_no_promote(sig1.ret_type, impl.ret_type) or
+                        is_subtype_no_promote(impl.ret_type, sig1.ret_type)):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
