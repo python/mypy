@@ -1575,6 +1575,19 @@ reveal_type(x)  # Revealed type is "collections.OrderedDict[builtins.str, builti
 [out]
 _testTypingExtensionsOrderedDictAlias.py:3: note: Revealed type is "collections.OrderedDict[builtins.str, builtins.str]"
 
+[case testSpecialTypingProtocols]
+# flags: --warn-unreachable
+from typing import Awaitable, Hashable, Union, Tuple, List
+
+obj: Union[Tuple[int], List[int]]
+if isinstance(obj, Hashable):
+    reveal_type(obj)
+if isinstance(obj, Awaitable):
+    reveal_type(obj)
+[out]
+_testSpecialTypingProtocols.py:6: note: Revealed type is "Tuple[builtins.int]"
+_testSpecialTypingProtocols.py:8: error: Statement is unreachable
+
 [case testEnumValueWithPlaceholderNodeType]
 # https://github.com/python/mypy/issues/11971
 from enum import Enum
