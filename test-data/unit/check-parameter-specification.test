@@ -1016,5 +1016,13 @@ reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
 reveal_type(jf(1))  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
 
+[case testStackedConcatenateIsIllegal]
+from typing_extensions import Concatenate, ParamSpec
+from typing import Callable
+
+P = ParamSpec("P")
+
+def x(f: Callable[Concatenate[int, Concatenate[int, P]], None]) -> None: ...  # E: Nested Concatenates are invalid
 [builtins fixtures/tuple.pyi]

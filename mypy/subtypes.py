@@ -965,10 +965,10 @@ def are_parameters_compatible(left: Union[Parameters, CallableType],
                               check_args_covariantly: bool = False,
                               allow_partial_overlap: bool = False,
                               strict_concatenate_check: bool = True) -> bool:
+    """Helper function for is_callable_compatible, used for Parameter compatibility"""
     if right.is_ellipsis_args:
         return True
 
-    """Helper function for is_callable_compatible, used for Parameter compatibility"""
     left_star = left.var_arg()
     left_star2 = left.kw_arg()
     right_star = right.var_arg()

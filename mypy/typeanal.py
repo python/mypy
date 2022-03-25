@@ -288,11 +288,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             self.api.fail('Concatenate needs type arguments', t)
             return AnyType(TypeOfAny.from_error)
 
-        # last argument has to be ParamSpec (or Concatenate)
+        # last argument has to be ParamSpec
         ps = self.anal_type(t.args[-1], allow_param_spec=True)
         if not isinstance(ps, ParamSpecType):
             self.api.fail('The last parameter to Concatenate needs to be a ParamSpec', t)
             return AnyType(TypeOfAny.from_error)
+
+        # TODO: this may not work well with aliases, if those worked.
+        #   Those should be special-cased.
+        elif ps.prefix.arg_types:
+            self.api.fail('Nested Concatenates are invalid', t)
 
         args = self.anal_array(t.args[:-1])
         pre = ps.prefix
