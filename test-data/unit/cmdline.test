@@ -1249,6 +1249,10 @@ Found 1 error in 1 file (errors prevented further checking)
 pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
+[out version>=3.10.3]
+pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
 
 [case testCmdlinePackageAndFile]
 # cmd: mypy -p pkg file
