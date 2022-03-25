@@ -2344,8 +2344,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             s = t.type.fullname or t.type.name or '<???>'
 
-        if t.erased:
-            s += '*'
         if t.args:
             if t.type.fullname == 'builtins.tuple':
                 assert len(t.args) == 1

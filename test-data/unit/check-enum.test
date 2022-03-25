@@ -300,7 +300,7 @@ class E(IntEnum):
 x = None  # type: int
 reveal_type(E(x))
 [out]
-main:5: note: Revealed type is "__main__.E*"
+main:5: note: Revealed type is "__main__.E"
 
 [case testEnumIndex]
 from enum import IntEnum
@@ -345,7 +345,7 @@ class F(Generic[T], Enum):  # E: Enum class cannot be generic
     x: T
     y: T
 
-reveal_type(F[int].x)  # N: Revealed type is "__main__.F[builtins.int*]"
+reveal_type(F[int].x)  # N: Revealed type is "__main__.F[builtins.int]"
 
 [case testEnumFlag]
 from enum import Flag
@@ -542,8 +542,8 @@ from enum import IntEnum
 Color = IntEnum('Color', 'red green blue')
 reveal_type(Color['green'])  # N: Revealed type is "__main__.Color"
 for c in Color:
-    reveal_type(c)  # N: Revealed type is "__main__.Color*"
-reveal_type(list(Color))  # N: Revealed type is "builtins.list[__main__.Color*]"
+    reveal_type(c)  # N: Revealed type is "__main__.Color"
+reveal_type(list(Color))  # N: Revealed type is "builtins.list[__main__.Color]"
 
 [builtins fixtures/list.pyi]
 
@@ -2012,13 +2012,13 @@ class C(IntEnum):
 
 def f1(c: C) -> None:
     x = {'x': c.value}
-    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 
 def f2(c: C, a: Any) -> None:
     x = {'x': c.value, 'y': a}
-    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
     y = {'y': a, 'x': c.value}
-    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str*, Any]"
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
 [builtins fixtures/dict.pyi]
 
 [case testEnumIgnoreIsDeleted]

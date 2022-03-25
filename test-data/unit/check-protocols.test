@@ -625,10 +625,10 @@ def close_all(args: Sequence[Closeable[T]]) -> T:
 
 arg: Closeable[int]
 
-reveal_type(close(F())) # N: Revealed type is "builtins.int*"
-reveal_type(close(arg)) # N: Revealed type is "builtins.int*"
-reveal_type(close_all([F()])) # N: Revealed type is "builtins.int*"
-reveal_type(close_all([arg])) # N: Revealed type is "builtins.int*"
+reveal_type(close(F())) # N: Revealed type is "builtins.int"
+reveal_type(close(arg)) # N: Revealed type is "builtins.int"
+reveal_type(close_all([F()])) # N: Revealed type is "builtins.int"
+reveal_type(close_all([arg])) # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -647,7 +647,7 @@ class C:
 
 def fun3(x: P[T, T]) -> T:
     pass
-reveal_type(fun3(C())) # N: Revealed type is "builtins.int*"
+reveal_type(fun3(C())) # N: Revealed type is "builtins.int"
 
 [case testProtocolGenericInferenceCovariant]
 from typing import Generic, TypeVar, Protocol
@@ -665,7 +665,7 @@ class C:
 
 def fun4(x: U, y: P[U, U]) -> U:
     pass
-reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object*"
+reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
 [case testUnrealtedGenericProtolsEquivalent]
 from typing import TypeVar, Protocol
@@ -912,7 +912,7 @@ class L:
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L())) # N: Revealed type is "builtins.int*"
+reveal_type(last(L())) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testRecursiveProtocolSubtleMismatch]
@@ -1050,7 +1050,7 @@ class C(Generic[T]):
 
 x: C[int]
 def f(arg: P[T]) -> T: pass
-reveal_type(f(x)) #E: Revealed type is "builtins.int*"
+reveal_type(f(x)) #E: Revealed type is "builtins.int"
 
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
@@ -1353,9 +1353,9 @@ y: P2
 l0 = [x, x]
 l1 = [y, y]
 l = [x, y]
-reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P*]"
-reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2*]"
-reveal_type(l) # N: Revealed type is "builtins.list[__main__.P*]"
+reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P]"
+reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2]"
+reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
 [builtins fixtures/list.pyi]
 
 [case testJoinOfIncompatibleProtocols]
@@ -1368,7 +1368,7 @@ class P2(Protocol):
 
 x: P
 y: P2
-reveal_type([x, y]) # N: Revealed type is "builtins.list[builtins.object*]"
+reveal_type([x, y]) # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/list.pyi]
 
 [case testJoinProtocolWithNormal]
@@ -1385,7 +1385,7 @@ y: C
 
 l = [x, y]
 
-reveal_type(l) # N: Revealed type is "builtins.list[__main__.P*]"
+reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
 [builtins fixtures/list.pyi]
 
 [case testMeetProtocolWithProtocol]
@@ -1400,7 +1400,7 @@ class P2(Protocol):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
-reveal_type(f(g)) # N: Revealed type is "__main__.P2*"
+reveal_type(f(g)) # N: Revealed type is "__main__.P2"
 
 [case testMeetOfIncompatibleProtocols]
 from typing import Protocol, Callable, TypeVar
@@ -1426,7 +1426,7 @@ class C:
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: C) -> None: pass
-reveal_type(f(g)) # N: Revealed type is "__main__.C*"
+reveal_type(f(g)) # N: Revealed type is "__main__.C"
 
 [case testInferProtocolFromProtocol]
 from typing import Protocol, Sequence, TypeVar, Generic
@@ -1445,8 +1445,8 @@ class L(Generic[T]):
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L[int]())) # N: Revealed type is "__main__.Box*[builtins.int*]"
-reveal_type(last(L[str]()).content) # N: Revealed type is "builtins.str*"
+reveal_type(last(L[int]())) # N: Revealed type is "__main__.Box[builtins.int]"
+reveal_type(last(L[str]()).content) # N: Revealed type is "builtins.str"
 
 [case testOverloadOnProtocol]
 from typing import overload, Protocol, runtime_checkable
@@ -1828,9 +1828,9 @@ fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int,
            # N: "N2" is missing following "P" protocol member: \
            # N:     y
 
-reveal_type(fun3(z)) # N: Revealed type is "builtins.object*"
+reveal_type(fun3(z)) # N: Revealed type is "builtins.object"
 
-reveal_type(fun3(z3)) # N: Revealed type is "builtins.int*"
+reveal_type(fun3(z3)) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testBasicCallableStructuralSubtyping]
@@ -1849,7 +1849,7 @@ T = TypeVar('T')
 def apply_gen(f: Callable[[T], T]) -> T:
     pass
 
-reveal_type(apply_gen(Add5())) # N: Revealed type is "builtins.int*"
+reveal_type(apply_gen(Add5())) # N: Revealed type is "builtins.int"
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
@@ -1890,7 +1890,7 @@ def inc(a: int, temp: str) -> int:
 def foo(f: Callable[[int], T]) -> T:
     return f(1)
 
-reveal_type(foo(partial(inc, 'temp'))) # N: Revealed type is "builtins.int*"
+reveal_type(foo(partial(inc, 'temp'))) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testStructuralInferenceForCallable]
@@ -1903,7 +1903,7 @@ class Actual:
     def __call__(self, arg: int) -> str: pass
 
 def fun(cb: Callable[[T], S]) -> Tuple[T, S]: pass
-reveal_type(fun(Actual())) # N: Revealed type is "Tuple[builtins.int*, builtins.str*]"
+reveal_type(fun(Actual())) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 -- Standard protocol types (SupportsInt, Sized, etc.)
@@ -2028,8 +2028,8 @@ class A:
 
 class B(A): pass
 
-reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[__main__.B*]"
-reveal_type(list(B()))  # N: Revealed type is "builtins.list[__main__.B*]"
+reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(list(B()))  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/list.pyi]
 
 [case testIterableProtocolOnMetaclass]
@@ -2045,8 +2045,8 @@ class E(metaclass=EMeta):
 class C(E):
     pass
 
-reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[__main__.C*]"
-reveal_type(list(C))  # N: Revealed type is "builtins.list[__main__.C*]"
+reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(list(C))  # N: Revealed type is "builtins.list[__main__.C]"
 [builtins fixtures/list.pyi]
 
 [case testClassesGetattrWithProtocols]
@@ -2452,7 +2452,7 @@ def call(x: int, y: str) -> Tuple[int, str]: ...
 def func(caller: Caller[T, S]) -> Tuple[T, S]:
     pass
 
-reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int*, builtins.str*]"
+reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2689,10 +2689,10 @@ foo(ONE)
 foo(TWO)
 foo(3)
 
-reveal_type(abs(ONE))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(TWO))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(3))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(ALL))  # N: Revealed type is "builtins.int*"
+reveal_type(abs(ONE))  # N: Revealed type is "builtins.int"
+reveal_type(abs(TWO))  # N: Revealed type is "builtins.int"
+reveal_type(abs(3))  # N: Revealed type is "builtins.int"
+reveal_type(abs(ALL))  # N: Revealed type is "builtins.int"
 [builtins fixtures/float.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2744,13 +2744,13 @@ class Blooper:
     flap = None
 
     def bloop(self, x: Flapper) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 
 class Gleemer:
     flap = []  # E: Need type annotation for "flap" (hint: "flap: List[<type>] = ...")
 
     def gleem(self, x: Flapper) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 
@@ -2768,7 +2768,7 @@ class DataArray(ObjectHashable):
     __hash__ = None
 
     def f(self, x: Hashable) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 

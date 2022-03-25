@@ -608,10 +608,10 @@ class A(Generic[T]):
 reveal_type(A)  # N: Revealed type is "def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]"
 A(1, 2, ["a", "b"])  # E: Cannot infer type argument 1 of "A"
 a = A(1, 2, [1, 2])
-reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int*]"
-reveal_type(a.x)  # N: Revealed type is "builtins.int*"
-reveal_type(a.y)  # N: Revealed type is "builtins.int*"
-reveal_type(a.z)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a.x)  # N: Revealed type is "builtins.int"
+reveal_type(a.y)  # N: Revealed type is "builtins.int"
+reveal_type(a.z)  # N: Revealed type is "builtins.list[builtins.int]"
 s: str = a.bar()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [builtins fixtures/dataclasses.pyi]
@@ -656,12 +656,12 @@ class Sub(Base[S]):
     pass
 
 sub_int = Sub[int](attr=1)
-reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int*]"
-reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int*"
+reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int]"
+reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int"
 
 sub_str = Sub[str](attr='ok')
-reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str*]"
-reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str]"
+reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -686,9 +686,9 @@ class Sub(Base[int, str, float]):
 
 sub = Sub(one=1, two='ok', three=3.14)
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.one)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.two)  # N: Revealed type is "builtins.str*"
-reveal_type(sub.three)  # N: Revealed type is "builtins.float*"
+reveal_type(sub.one)  # N: Revealed type is "builtins.int"
+reveal_type(sub.two)  # N: Revealed type is "builtins.str"
+reveal_type(sub.three)  # N: Revealed type is "builtins.float"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -715,8 +715,8 @@ class Sub(Middle[str]):
 
 sub = Sub(base_attr=1, middle_attr='ok')
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int"
+reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -739,7 +739,7 @@ class A(Generic[T]):
   @classmethod
   def other(cls, x: T) -> A[T]: ...
 
-reveal_type(A(0).other)  # N: Revealed type is "def (x: builtins.int*) -> __main__.A[builtins.int*]"
+reveal_type(A(0).other)  # N: Revealed type is "def (x: builtins.int) -> __main__.A[builtins.int]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesForwardRefs]

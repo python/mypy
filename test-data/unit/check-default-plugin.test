@@ -16,7 +16,7 @@ def yield_id(item: T) -> Iterator[T]:
 reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> contextlib.GeneratorContextManager[T`-1]"
 
 with yield_id(1) as x:
-    reveal_type(x) # N: Revealed type is "builtins.int*"
+    reveal_type(x) # N: Revealed type is "builtins.int"
 
 f = yield_id
 def g(x, y): pass
@@ -39,7 +39,7 @@ reveal_type(yield_id) # N: Revealed type is "def [T] (item: T`-1) -> typing.Asyn
 
 async def f() -> None:
     async with yield_id(1) as x:
-        reveal_type(x) # N: Revealed type is "builtins.int*"
+        reveal_type(x) # N: Revealed type is "builtins.int"
 [typing fixtures/typing-async.pyi]
 [builtins fixtures/tuple.pyi]
 
@@ -69,7 +69,7 @@ def identity(x: int) -> int: return x
 
 with _thread_mapper(1) as m:
     lst = list(m(identity, [2, 3]))
-    reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int*]"
+    reveal_type(lst) # N: Revealed type is "builtins.list[builtins.int]"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/list.pyi]
 
@@ -79,6 +79,6 @@ from typing import Callable, Iterator
 
 c: Callable[..., Iterator[int]]
 reveal_type(c) # N: Revealed type is "def (*Any, **Any) -> typing.Iterator[builtins.int]"
-reveal_type(contextmanager(c)) # N: Revealed type is "def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int*]"
+reveal_type(contextmanager(c)) # N: Revealed type is "def (*Any, **Any) -> contextlib.GeneratorContextManager[builtins.int]"
 [typing fixtures/typing-medium.pyi]
 [builtins fixtures/tuple.pyi]
