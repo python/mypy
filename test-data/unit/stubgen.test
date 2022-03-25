@@ -28,9 +28,9 @@ def g(b: int = ..., c: int = ...) -> None: ...
 [case testDefaultArgNone]
 def f(x=None): ...
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-def f(x: Any | None = ...) -> None: ...
+def f(x: Incomplete | None = ...) -> None: ...
 
 [case testDefaultArgBool]
 def f(x=True, y=False): ...
@@ -275,10 +275,10 @@ def foo(x) -> None: ...
 [case testMultipleAssignment]
 x, y = 1, 2
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-x: Any
-y: Any
+x: Incomplete
+y: Incomplete
 
 [case testMultipleAssignmentAnnotated]
 x, y = 1, "2" # type: int, str
@@ -289,10 +289,10 @@ y: str
 [case testMultipleAssignment2]
 [x, y] = 1, 2
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-x: Any
-y: Any
+x: Incomplete
+y: Incomplete
 
 [case testKeywordOnlyArg]
 def f(x, *, y=1): ...
@@ -588,11 +588,12 @@ class A:
 import collections, x
 X = collections.namedtuple('X', ['a', 'b'])
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 [case testEmptyNamedtuple]
 import collections
@@ -607,33 +608,36 @@ from collections import namedtuple, xx
 X = namedtuple('X', 'a b')
 xx
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 [case testNamedtupleAltSyntaxUsingComma]
 from collections import namedtuple, xx
 X = namedtuple('X', 'a,    b')
 xx
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 [case testNamedtupleAltSyntaxUsingMultipleCommas]
 from collections import namedtuple, xx
 X = namedtuple('X', 'a,,   b')
 xx
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 [case testNamedtupleWithUnderscore]
 from collections import namedtuple as _namedtuple
@@ -641,13 +645,14 @@ def f(): ...
 X = _namedtuple('X', 'a b')
 def g(): ...
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 def f() -> None: ...
 
 class X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 def g() -> None: ...
 
@@ -656,11 +661,12 @@ import collections, x
 _X = collections.namedtuple('_X', ['a', 'b'])
 class Y(_X): ...
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class _X(NamedTuple):
-    a: Any
-    b: Any
+    a: Incomplete
+    b: Incomplete
 
 class Y(_X): ...
 
@@ -671,27 +677,28 @@ Y = namedtuple('Y', ('a',))
 Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
 xx
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class X(NamedTuple): ...
 
 class Y(NamedTuple):
-    a: Any
+    a: Incomplete
 
 class Z(NamedTuple):
-    a: Any
-    b: Any
-    c: Any
-    d: Any
-    e: Any
+    a: Incomplete
+    b: Incomplete
+    c: Incomplete
+    d: Incomplete
+    e: Incomplete
 
 [case testDynamicNamedTuple]
 from collections import namedtuple
 N = namedtuple('N', ['x', 'y'] + ['z'])
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-N: Any
+N: Incomplete
 
 [case testArbitraryBaseClass]
 import x
@@ -809,12 +816,12 @@ class A:
     def method(self, a=None):
         self.x = []
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
 class A:
-    x: Any
-    def __init__(self, a: Any | None = ...) -> None: ...
-    def method(self, a: Any | None = ...) -> None: ...
+    x: Incomplete
+    def __init__(self, a: Incomplete | None = ...) -> None: ...
+    def method(self, a: Incomplete | None = ...) -> None: ...
 
 [case testAnnotationImportsFrom]
 import foo
@@ -945,10 +952,10 @@ class Foo:
     alias = str
 
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
 class Foo:
-    alias: Any
+    alias: Incomplete
 
 [case testAliasExceptions]
 noalias1 = None
@@ -956,10 +963,10 @@ noalias2 = ...
 noalias3 = True
 
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-noalias1: Any
-noalias2: Any
+noalias1: Incomplete
+noalias2: Incomplete
 noalias3: bool
 
 -- More features/fixes:
@@ -1000,14 +1007,14 @@ def all():
     x = yield 123
     return "abc"
 [out]
+from _typeshed import Incomplete
 from collections.abc import Generator
-from typing import Any
 
-def f() -> Generator[Any, None, None]: ...
-def g() -> Generator[None, Any, None]: ...
+def f() -> Generator[Incomplete, None, None]: ...
+def g() -> Generator[None, Incomplete, None]: ...
 def h1() -> Generator[None, None, None]: ...
-def h2() -> Generator[None, None, Any]: ...
-def all() -> Generator[Any, Any, Any]: ...
+def h2() -> Generator[None, None, Incomplete]: ...
+def all() -> Generator[Incomplete, Incomplete, Incomplete]: ...
 
 [case testFunctionYieldsNone]
 def f():
@@ -1028,12 +1035,12 @@ class Generator:
 def f():
     yield 123
 [out]
+from _typeshed import Incomplete
 from collections.abc import Generator as _Generator
-from typing import Any
 
 class Generator: ...
 
-def f() -> _Generator[Any, None, None]: ...
+def f() -> _Generator[Incomplete, None, None]: ...
 
 [case testCallable]
 from typing import Callable
@@ -1422,9 +1429,9 @@ x = registry[a.f]
 [file a.py]
 def f(): ...
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
-x: Any
+x: Incomplete
 
 [case testCrossModuleClass_semanal]
 import a
@@ -1466,12 +1473,12 @@ class _A: ...
 [file _a.py]
 def f(): ...
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
 class C: ...
 
-A: Any
-B: Any
+A: Incomplete
+B: Incomplete
 
 [case testPrivateAliasesIncluded_semanal]
 # flags: --include-private
@@ -1503,12 +1510,13 @@ y: Final = x
 z: Final[object]
 t: Final
 [out]
-from typing import Any, Final
+from _typeshed import Incomplete
+from typing import Final
 
 x: Final[int]
-y: Final[Any]
+y: Final[Incomplete]
 z: Final[object]
-t: Final[Any]
+t: Final[Incomplete]
 
 [case testFinalInvalid_semanal]
 Final = 'boom'
@@ -1525,10 +1533,11 @@ from typing import Dict, Any
 funcs: Dict[Any, Any]
 f = funcs[a.f]
 [out]
+from _typeshed import Incomplete
 from typing import Any, Dict
 
 funcs: Dict[Any, Any]
-f: Any
+f: Incomplete
 
 [case testAbstractMethodNameExpr]
 from abc import ABCMeta, abstractmethod
@@ -1796,29 +1805,29 @@ class A(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def x(self): ...
 
-[case testClassWithNameAnyOrOptional]
+[case testClassWithNameIncompleteOrOptional]
 Y = object()
 
 def g(x=None): pass
 
 x = g()
 
-class Any:
+class Incomplete:
     pass
 
 def Optional():
     return 0
 
 [out]
-from typing import Any as _Any
+from _typeshed import Incomplete as _Incomplete
 
-Y: _Any
+Y: _Incomplete
 
-def g(x: _Any | None = ...) -> None: ...
+def g(x: _Incomplete | None = ...) -> None: ...
 
-x: _Any
+x: _Incomplete
 
-class Any: ...
+class Incomplete: ...
 
 def Optional(): ...
 
@@ -1889,10 +1898,10 @@ class Request2:
 
 [out]
 # main.pyi
-from typing import Any
+from _typeshed import Incomplete
 
-x: Any
-y: Any
+x: Incomplete
+y: Incomplete
 <out/p/vendored/requests.pyi was not generated>
 # p/sub/requests.pyi
 class Request2: ...
@@ -2280,10 +2289,10 @@ class C:
     x = attr.ib()
 
 [out]
-from typing import Any
+from _typeshed import Incomplete
 
 class C:
-    x: Any
+    x: Incomplete
     def __init__(self, x) -> None: ...
     def __lt__(self, other): ...
     def __le__(self, other): ...
@@ -2296,12 +2305,13 @@ from collections import namedtuple
 class C:
     N = namedtuple('N', ['x', 'y'])
 [out]
-from typing import Any, NamedTuple
+from _typeshed import Incomplete
+from typing import NamedTuple
 
 class C:
     class N(NamedTuple):
-        x: Any
-        y: Any
+        x: Incomplete
+        y: Incomplete
 
 [case testImports_directImportsWithAlias]
 import p.a as a
