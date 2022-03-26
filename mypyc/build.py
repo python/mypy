@@ -525,8 +525,9 @@ def mypycify(
     elif compiler.compiler_type == 'msvc':
         if opt_level == '3':
             opt_level = '2'
+        if opt_level != '0':
+            cflags.append('/O{}'.format(opt_level))
         cflags += [
-            '/O{}'.format(opt_level),
             '/wd4102',  # unreferenced label
             '/wd4101',  # unreferenced local variable
             '/wd4146',  # negating unsigned int
