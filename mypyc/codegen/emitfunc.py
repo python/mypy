@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union, Optional
+from typing import List, Union, Optional
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -8,7 +8,7 @@ from mypyc.common import (
 )
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
-    OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
+    Op, OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
@@ -88,22 +88,13 @@ def generate_native_function(fn: FuncIR,
             next_block = blocks[i + 1]
         body.emit_label(block)
         visitor.next_block = next_block
+
         ops = block.ops
-        i = 0
-        while i < len(ops):
-            op = ops[i]
-            visitor.next_branch = None
-            if i + 1 < len(ops):
-                next_op = ops[i + 1]
-                if isinstance(next_op, Branch):
-                    visitor.next_branch = next_op
-            else:
-                visitor.next_branch = None
-            op.accept(visitor)
-            if visitor.merged:
-                i += 1
-                visitor.merged = False
-            i += 1
+        visitor.ops = ops
+        visitor.op_index = 0
+        while visitor.op_index < len(ops):
+            ops[visitor.op_index].accept(visitor)
+            visitor.op_index += 1
 
     body.emit_line('}')
 
@@ -124,11 +115,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.module_name = module_name
         self.literals = emitter.context.literals
         self.rare = False
+        # Next basic block to be processed after the current one (if any), set by caller
         self.next_block: Optional[BasicBlock] = None
-        # If not None, the following op is a branch (to allow op merging)
-        self.next_branch: Optional[Branch] = None
-        # If changed to True after a visit_* call, we processed two ops, not one
-        self.merged = False
+        # Ops in the basic block currently being processed, set by caller
+        self.ops: List[Op] = []
+        # Current index within ops; visit methods can increment this to skip/merge ops
+        self.op_index = 0
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -315,8 +307,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             )
             exc_class = 'PyExc_AttributeError'
             merged_branch = None
-            if self.next_branch is not None:
-                branch = self.next_branch
+            branch = self.next_branch()
+            if branch is not None:
                 if (branch.value is op
                         and branch.op == Branch.IS_ERROR
                         and branch.traceback_entry is not None
@@ -339,9 +331,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if merged_branch:
                 if merged_branch.false is not self.next_block:
                     self.emit_line('goto %s;' % self.label(merged_branch.false))
-                self.merged = True
+                self.op_index += 1
             else:
                 self.emitter.emit_line('}')
+
+    def next_branch(self) -> Optional[Branch]:
+        if self.op_index + 1 < len(self.ops):
+            next_op = self.ops[self.op_index + 1]
+            if isinstance(next_op, Branch):
+                return next_op
+        return None
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)

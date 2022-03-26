@@ -458,7 +458,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
         visitor.next_block = next_block
         visitor.rare = rare
-        visitor.next_branch = next_branch
+        if next_branch:
+            visitor.ops = [op, next_branch]
+        else:
+            visitor.ops = [op]
+        visitor.op_index = 0
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
