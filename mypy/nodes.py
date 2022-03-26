@@ -2676,7 +2676,7 @@ class TypeInfo(SymbolNode):
             for vd in self.defn.type_vars:
                 if isinstance(vd, mypy.types.ParamSpecType):
                     self.has_param_spec_type = True
-                self.type_vars.append(vd.fullname)
+                self.type_vars.append(vd.name)
 
     @property
     def name(self) -> str:

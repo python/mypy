@@ -1365,7 +1365,7 @@ class Parameters(ProperType):
             [deserialize_type(t) for t in data['arg_types']],
             [ArgKind(x) for x in data['arg_kinds']],
             data['arg_names'],
-            variables=[deserialize_type(tv) for tv in data['variables']],
+            variables=[cast(TypeVarLikeType, deserialize_type(v)) for v in data['variables']],
         )
 
     def __hash__(self) -> int:
