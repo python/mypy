@@ -39,6 +39,7 @@ from mypy.subtypes import (
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
 )
 from mypy.sametypes import is_same_type
+from mypy.typeops import separate_union_literals
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
@@ -953,11 +954,8 @@ class MessageBuilder:
         if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            suffix = ''
-            if isinstance(typ, Instance):
-                suffix = ', not {}'.format(format_type(typ))
             self.fail(
-                'Argument after ** must be a mapping{}'.format(suffix),
+                'Argument after ** must be a mapping, not {}'.format(format_type(typ)),
                 context, code=codes.ARG_TYPE)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
@@ -1173,9 +1171,12 @@ class MessageBuilder:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
-        self.note("Revealed local types are:", context)
-        for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
-            self.note(line, context)
+        if sorted_locals:
+            self.note("Revealed local types are:", context)
+            for k, v in sorted_locals.items():
+                self.note('    {}: {}'.format(k, v), context)
+        else:
+            self.note("There are no locals to reveal", context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Cannot instantiate type "Type[{}]"'.format(format_type_bare(item)), context)
@@ -1258,7 +1259,7 @@ class MessageBuilder:
             context: Context) -> None:
         self.fail(
             'TypedDict key must be a string literal; expected one of {}'.format(
-                format_item_name_list(typ.items.keys())), context)
+                format_item_name_list(typ.items.keys())), context, code=codes.LITERAL_REQ)
 
     def typeddict_key_not_found(
             self,
@@ -1664,6 +1665,16 @@ def format_type_inner(typ: Type,
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
 
+    def format_list(types: Sequence[Type]) -> str:
+        return ', '.join(format(typ) for typ in types)
+
+    def format_literal_value(typ: LiteralType) -> str:
+        if typ.is_enum_literal():
+            underlying_type = format(typ.fallback)
+            return '{}.{}'.format(underlying_type, typ.value)
+        else:
+            return typ.value_repr()
+
     # TODO: show type alias names in errors.
     typ = get_proper_type(typ)
 
@@ -1686,15 +1697,10 @@ def format_type_inner(typ: Type,
         elif itype.type.fullname in reverse_builtin_aliases:
             alias = reverse_builtin_aliases[itype.type.fullname]
             alias = alias.split('.')[-1]
-            items = [format(arg) for arg in itype.args]
-            return '{}[{}]'.format(alias, ', '.join(items))
+            return '{}[{}]'.format(alias, format_list(itype.args))
         else:
             # There are type arguments. Convert the arguments to strings.
-            a: List[str] = []
-            for arg in itype.args:
-                a.append(format(arg))
-            s = ', '.join(a)
-            return '{}[{}]'.format(base_str, s)
+            return '{}[{}]'.format(base_str, format_list(itype.args))
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
@@ -1704,10 +1710,7 @@ def format_type_inner(typ: Type,
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
             return format(typ.partial_fallback)
-        items = []
-        for t in typ.items:
-            items.append(format(t))
-        s = 'Tuple[{}]'.format(', '.join(items))
+        s = 'Tuple[{}]'.format(format_list(typ.items))
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
@@ -1722,24 +1725,34 @@ def format_type_inner(typ: Type,
         s = 'TypedDict({{{}}})'.format(', '.join(items))
         return s
     elif isinstance(typ, LiteralType):
-        if typ.is_enum_literal():
-            underlying_type = format(typ.fallback)
-            return 'Literal[{}.{}]'.format(underlying_type, typ.value)
-        else:
-            return str(typ)
+        return 'Literal[{}]'.format(format_literal_value(typ))
     elif isinstance(typ, UnionType):
-        # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
-        print_as_optional = (len(typ.items) -
-                             sum(isinstance(get_proper_type(t), NoneType)
-                                 for t in typ.items) == 1)
-        if print_as_optional:
-            rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-            return 'Optional[{}]'.format(format(rest[0]))
+        literal_items, union_items = separate_union_literals(typ)
+
+        # Coalesce multiple Literal[] members. This also changes output order.
+        # If there's just one Literal item, retain the original ordering.
+        if len(literal_items) > 1:
+            literal_str = 'Literal[{}]'.format(
+                ', '.join(format_literal_value(t) for t in literal_items)
+            )
+
+            if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
+                return 'Optional[{}]'.format(literal_str)
+            elif union_items:
+                return 'Union[{}, {}]'.format(format_list(union_items), literal_str)
+            else:
+                return literal_str
         else:
-            items = []
-            for t in typ.items:
-                items.append(format(t))
-            s = 'Union[{}]'.format(', '.join(items))
+            # Only print Union as Optional if the Optional wouldn't have to contain another Union
+            print_as_optional = (len(typ.items) -
+                                 sum(isinstance(get_proper_type(t), NoneType)
+                                     for t in typ.items) == 1)
+            if print_as_optional:
+                rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
+                return 'Optional[{}]'.format(format(rest[0]))
+            else:
+                s = 'Union[{}]'.format(format_list(typ.items))
+
             return s
     elif isinstance(typ, NoneType):
         return 'None'

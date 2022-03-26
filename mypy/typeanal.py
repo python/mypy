@@ -12,13 +12,14 @@ from mypy_extensions import DefaultNamedArg
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
 from mypy.types import (
-    Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
+    NEVER_NAMES, Type, UnboundType, TupleType, TypedDictType, UnionType, Instance, AnyType,
     CallableType, NoneType, ErasedType, DeletedType, TypeList, TypeVarType, SyntheticTypeVisitor,
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, callable_with_ellipsis,
-    TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType,
+    callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
+    LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
 )
 
 from mypy.nodes import (
@@ -348,7 +349,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail('ClassVar[...] must have at most one type argument', t)
                 return AnyType(TypeOfAny.from_error)
             return self.anal_type(t.args[0])
-        elif fullname in ('mypy_extensions.NoReturn', 'typing.NoReturn'):
+        elif fullname in NEVER_NAMES:
             return UninhabitedType(is_noreturn=True)
         elif fullname in LITERAL_TYPE_NAMES:
             return self.analyze_literal_type(t)
@@ -377,6 +378,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')
+        elif fullname in ('typing.Unpack', 'typing_extensions.Unpack'):
+            # We don't want people to try to use this yet.
+            if not self.options.enable_incomplete_features:
+                self.fail('"Unpack" is not supported by mypy yet', t)
+                return AnyType(TypeOfAny.from_error)
+            return UnpackType(
+                self.anal_type(t.args[0]), line=t.line, column=t.column,
+            )
         return None
 
     def get_omitted_any(self, typ: Type, fullname: Optional[str] = None) -> AnyType:
@@ -492,7 +501,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             message = 'Variable "{}" is not valid as a type'
         elif isinstance(sym.node, (SYMBOL_FUNCBASE_TYPES, Decorator)):
             message = 'Function "{}" is not valid as a type'
-            notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
+            if name == 'builtins.any':
+                notes.append('Perhaps you meant "typing.Any" instead of "any"?')
+            elif name == 'builtins.callable':
+                notes.append('Perhaps you meant "typing.Callable" instead of "callable"?')
+            else:
+                notes.append('Perhaps you need "Callable[...]" or a callback protocol?')
         elif isinstance(sym.node, MypyFile):
             # TODO: suggest a protocol when supported.
             message = 'Module "{}" is not valid as a type'
@@ -552,6 +566,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope

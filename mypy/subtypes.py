@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    TUPLE_LIKE_INSTANCE_NAMES,
+    UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
 )
 import mypy.applytype
 import mypy.constraints
@@ -326,6 +326,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         ):
             return True
         return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
@@ -763,7 +766,7 @@ def non_method_protocol_members(tp: TypeInfo) -> List[str]:
 
     for member in tp.protocol_members:
         typ = get_proper_type(find_member(member, instance, instance))
-        if not isinstance(typ, CallableType):
+        if not isinstance(typ, (Overloaded, CallableType)):
             result.append(member)
     return result
 
@@ -1357,6 +1360,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
 
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
@@ -1436,7 +1442,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             if right.type.fullname == 'builtins.type':
                 # TODO: Strictly speaking, the type builtins.type is considered equivalent to
                 #       Type[Any]. However, this would break the is_proper_subtype check in
-                #       conditional_type_map for cases like isinstance(x, type) when the type
+                #       conditional_types for cases like isinstance(x, type) when the type
                 #       of x is Type[int]. It's unclear what's the right way to address this.
                 return True
             if right.type.fullname == 'builtins.object':

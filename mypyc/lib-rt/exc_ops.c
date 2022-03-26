@@ -140,7 +140,7 @@ out:
 // Get the type of a value as a string, expanding tuples to include
 // all the element types.
 static PyObject *CPy_FormatTypeName(PyObject *value) {
-    if (value == Py_None) {
+    if (Py_IsNone(value)) {
         return PyUnicode_FromString("None");
     }
 

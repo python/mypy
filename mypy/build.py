@@ -56,7 +56,7 @@ from mypy.plugins.default import DefaultPlugin
 from mypy.fscache import FileSystemCache
 from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
 from mypy.typestate import TypeState, reset_global_state
-from mypy.renaming import VariableRenameVisitor
+from mypy.renaming import VariableRenameVisitor, LimitedVariableRenameVisitor
 from mypy.config_parser import parse_mypy_comments
 from mypy.freetree import free_tree
 from mypy.stubinfo import legacy_bundled_packages, is_legacy_bundled_package
@@ -511,7 +511,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
     in_desired_section = False
     try:
         results = []
-        with open(path) as f:
+        with open(path, encoding="UTF-8") as f:
             for i, line in enumerate(f):
                 line = line.strip()
                 if line.startswith('[') and line.endswith(']'):
@@ -730,20 +730,19 @@ class BuildManager:
             return new_id
 
         res: List[Tuple[int, str, int]] = []
+        delayed_res: List[Tuple[int, str, int]] = []
         for imp in file.imports:
             if not imp.is_unreachable:
                 if isinstance(imp, Import):
                     pri = import_priority(imp, PRI_MED)
                     ancestor_pri = import_priority(imp, PRI_LOW)
                     for id, _ in imp.ids:
-                        # We append the target (e.g. foo.bar.baz)
-                        # before the ancestors (e.g. foo and foo.bar)
-                        # so that, if FindModuleCache finds the target
-                        # module in a package marked with py.typed
-                        # underneath a namespace package installed in
-                        # site-packages, (gasp), that cache's
-                        # knowledge of the ancestors can be primed
-                        # when it is asked to find the target.
+                        # We append the target (e.g. foo.bar.baz) before the ancestors (e.g. foo
+                        # and foo.bar) so that, if FindModuleCache finds the target module in a
+                        # package marked with py.typed underneath a namespace package installed in
+                        # site-packages, (gasp), that cache's knowledge of the ancestors
+                        # (aka FindModuleCache.ns_ancestors) can be primed when it is asked to find
+                        # the parent.
                         res.append((pri, id, imp.line))
                         ancestor_parts = id.split(".")[:-1]
                         ancestors = []
@@ -752,6 +751,7 @@ class BuildManager:
                             res.append((ancestor_pri, ".".join(ancestors), imp.line))
                 elif isinstance(imp, ImportFrom):
                     cur_id = correct_rel_imp(imp)
+                    any_are_submodules = False
                     all_are_submodules = True
                     # Also add any imported names that are submodules.
                     pri = import_priority(imp, PRI_MED)
@@ -759,6 +759,7 @@ class BuildManager:
                         sub_id = cur_id + '.' + name
                         if self.is_module(sub_id):
                             res.append((pri, sub_id, imp.line))
+                            any_are_submodules = True
                         else:
                             all_are_submodules = False
                     # Add cur_id as a dependency, even if all of the
@@ -768,14 +769,19 @@ class BuildManager:
                     # if all of the imports are submodules, do the import at a lower
                     # priority.
                     pri = import_priority(imp, PRI_HIGH if not all_are_submodules else PRI_LOW)
-                    # The imported module goes in after the
-                    # submodules, for the same namespace related
-                    # reasons discussed in the Import case.
-                    res.append((pri, cur_id, imp.line))
+                    # The imported module goes in after the submodules, for the same namespace
+                    # related reasons discussed in the Import case.
+                    # There is an additional twist: if none of the submodules exist,
+                    # we delay the import in case other imports of other submodules succeed.
+                    if any_are_submodules:
+                        res.append((pri, cur_id, imp.line))
+                    else:
+                        delayed_res.append((pri, cur_id, imp.line))
                 elif isinstance(imp, ImportAll):
                     pri = import_priority(imp, PRI_HIGH)
                     res.append((pri, correct_rel_imp(imp), imp.line))
 
+        res.extend(delayed_res)
         return res
 
     def is_module(self, id: str) -> bool:
@@ -2119,9 +2125,12 @@ class State:
             analyzer.visit_file(self.tree, self.xpath, self.id, options)
         # TODO: Do this while constructing the AST?
         self.tree.names = SymbolTable()
-        if options.allow_redefinition:
-            # Perform renaming across the AST to allow variable redefinitions
-            self.tree.accept(VariableRenameVisitor())
+        if not self.tree.is_stub:
+            # Always perform some low-key variable renaming
+            self.tree.accept(LimitedVariableRenameVisitor())
+            if options.allow_redefinition:
+                # Perform more renaming across the AST to allow variable redefinitions
+                self.tree.accept(VariableRenameVisitor())
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2186,8 +2195,10 @@ class State:
         if not self._type_checker:
             assert self.tree is not None, "Internal error: must be called on parsed file only"
             manager = self.manager
-            self._type_checker = TypeChecker(manager.errors, manager.modules, self.options,
-                                             self.tree, self.xpath, manager.plugin)
+            self._type_checker = TypeChecker(
+                manager.errors, manager.modules, self.options,
+                self.tree, self.xpath, manager.plugin,
+            )
         return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
@@ -2368,6 +2379,13 @@ class State:
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
             self.manager.errors.generate_unused_ignore_errors(self.xpath)
+
+    def generate_ignore_without_code_notes(self) -> None:
+        if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
+            self.manager.errors.generate_ignore_without_code_errors(
+                self.xpath,
+                self.options.warn_unused_ignores,
+            )
 
 
 # Module import and diagnostic glue
@@ -2830,8 +2848,15 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             )
             manager.errors.report(
                 -1, -1,
-                "Are you missing an __init__.py? Alternatively, consider using --exclude to "
-                "avoid checking one of them.",
+                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                "for more info",
+                severity='note',
+            )
+            manager.errors.report(
+                -1, -1,
+                "Common resolutions include: a) using `--exclude` to avoid checking one of them, "
+                "b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or "
+                "adjusting MYPYPATH",
                 severity='note'
             )
 
@@ -2905,6 +2930,12 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                                 "for more info",
                                 severity='note',
                             )
+                            manager.errors.report(
+                                -1, 0,
+                                "Common resolutions include: a) adding `__init__.py` somewhere, "
+                                "b) using `--explicit-package-bases` or adjusting MYPYPATH",
+                                severity='note',
+                            )
                             manager.errors.raise_error()
 
                         seen_files[newst_path] = newst
@@ -2934,12 +2965,16 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         # Order the SCC's nodes using a heuristic.
         # Note that ascc is a set, and scc is a list.
         scc = order_ascc(graph, ascc)
-        # If builtins is in the list, move it last.  (This is a bit of
-        # a hack, but it's necessary because the builtins module is
-        # part of a small cycle involving at least {builtins, abc,
-        # typing}.  Of these, builtins must be processed last or else
-        # some builtin objects will be incompletely processed.)
+        # Make the order of the SCC that includes 'builtins' and 'typing',
+        # among other things, predictable. Various things may  break if
+        # the order changes.
         if 'builtins' in ascc:
+            scc = sorted(scc, reverse=True)
+            # If builtins is in the list, move it last.  (This is a bit of
+            # a hack, but it's necessary because the builtins module is
+            # part of a small cycle involving at least {builtins, abc,
+            # typing}.  Of these, builtins must be processed last or else
+            # some builtin objects will be incompletely processed.)
             scc.remove('builtins')
             scc.append('builtins')
         if manager.options.verbosity >= 2:
@@ -3155,6 +3190,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
                 graph[id].finish_passes()
     for id in stale:
         graph[id].generate_unused_ignore_notes()
+        graph[id].generate_ignore_without_code_notes()
     if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
         for id in stale:
             graph[id].transitive_error = True

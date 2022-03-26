@@ -12,6 +12,11 @@ import subprocess
 import sys
 from enum import Enum, unique
 
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
@@ -449,10 +454,8 @@ class FindModuleCache:
         """
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
         if os.path.isfile(metadata_fnam):
-            # Delay import for a possible minor performance win.
-            import tomli
-            with open(metadata_fnam, encoding="utf-8") as f:
-                metadata = tomli.loads(f.read())
+            with open(metadata_fnam, "rb") as f:
+                metadata = tomllib.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:

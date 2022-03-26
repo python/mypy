@@ -143,16 +143,13 @@ class FileSystemCache:
         assert not os.path.exists(path), path  # Not cached!
         dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
-        # Get stat result as a sequence so we can modify it.
-        # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
-        seq: List[float] = list(tpl)
+        # Get stat result as a list so we can modify it.
+        seq: List[float] = list(st)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
-        tpl = tuple(seq)
-        st = os.stat_result(tpl)
+        st = os.stat_result(seq)
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)

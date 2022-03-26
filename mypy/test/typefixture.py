@@ -157,9 +157,11 @@ class TypeFixture:
         self.lit1 = LiteralType(1, self.a)
         self.lit2 = LiteralType(2, self.a)
         self.lit3 = LiteralType("foo", self.d)
+        self.lit4 = LiteralType(4, self.a)
         self.lit1_inst = Instance(self.ai, [], last_known_value=self.lit1)
         self.lit2_inst = Instance(self.ai, [], last_known_value=self.lit2)
         self.lit3_inst = Instance(self.di, [], last_known_value=self.lit3)
+        self.lit4_inst = Instance(self.ai, [], last_known_value=self.lit4)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)

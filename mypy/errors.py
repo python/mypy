@@ -16,7 +16,12 @@ from mypy import errorcodes as codes
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
 
 T = TypeVar("T")
+
 allowed_duplicates: Final = ["@overload", "Got:", "Expected:"]
+
+# Keep track of the original error code when the error code of a message is changed.
+# This is used to give notes about out-of-date "type: ignore" comments.
+original_error_codes: Final = {codes.LITERAL_REQ: codes.MISC}
 
 
 class ErrorInfo:
@@ -388,6 +393,24 @@ class Errors:
             info.hidden = True
             self.report_hidden_errors(info)
         self._add_error_info(file, info)
+        ignored_codes = self.ignored_lines.get(file, {}).get(info.line, [])
+        if ignored_codes and info.code:
+            # Something is ignored on the line, but not this error, so maybe the error
+            # code is incorrect.
+            msg = f'Error code "{info.code.code}" not covered by "type: ignore" comment'
+            if info.code in original_error_codes:
+                # If there seems to be a "type: ignore" with a stale error
+                # code, report a more specific note.
+                old_code = original_error_codes[info.code].code
+                if old_code in ignored_codes:
+                    msg = (f'Error code changed to {info.code.code}; "type: ignore" comment ' +
+                           'may be out of date')
+            note = ErrorInfo(
+                info.import_ctx, info.file, info.module, info.type, info.function_or_member,
+                info.line, info.column, 'note', msg,
+                code=None, blocker=False, only_once=False, allow_dups=False
+            )
+            self._add_error_info(file, note)
 
     def has_many_errors(self) -> bool:
         if self.many_errors_threshold < 0:
@@ -484,6 +507,41 @@ class Errors:
                                  None, line, -1, 'error', message,
                                  None, False, False, False)
                 self._add_error_info(file, info)
+
+    def generate_ignore_without_code_errors(self,
+                                            file: str,
+                                            is_warning_unused_ignores: bool) -> None:
+        if is_typeshed_file(file) or file in self.ignored_files:
+            return
+
+        used_ignored_lines = self.used_ignored_lines[file]
+
+        # If the whole file is ignored, ignore it.
+        if used_ignored_lines:
+            _, used_codes = min(used_ignored_lines.items())
+            if codes.FILE.code in used_codes:
+                return
+
+        for line, ignored_codes in self.ignored_lines[file].items():
+            if ignored_codes:
+                continue
+
+            # If the ignore is itself unused and that would be warned about, let
+            # that error stand alone
+            if is_warning_unused_ignores and not used_ignored_lines[line]:
+                continue
+
+            codes_hint = ''
+            ignored_codes = sorted(set(used_ignored_lines[line]))
+            if ignored_codes:
+                codes_hint = f' (consider "type: ignore[{", ".join(ignored_codes)}]" instead)'
+
+            message = f'"type: ignore" comment without error code{codes_hint}'
+            # Don't use report since add_error_info will ignore the error!
+            info = ErrorInfo(self.import_context(), file, self.current_module(), None,
+                             None, line, -1, 'error', message, codes.IGNORE_WITHOUT_CODE,
+                             False, False, False)
+            self._add_error_info(file, info)
 
     def num_messages(self) -> int:
         """Return the number of generated messages."""

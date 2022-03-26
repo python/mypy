@@ -286,21 +286,20 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     gen.emit_header()
     if fn.name not in reverse_op_methods and fn.name in reverse_op_method_names:
         # There's only a reverse operator method.
-        generate_bin_op_reverse_only_wrapper(cl, fn, emitter, gen)
+        generate_bin_op_reverse_only_wrapper(emitter, gen)
     else:
         rmethod = reverse_op_methods[fn.name]
         fn_rev = cl.get_method(rmethod)
         if fn_rev is None:
             # There's only a forward operator method.
-            generate_bin_op_forward_only_wrapper(cl, fn, emitter, gen)
+            generate_bin_op_forward_only_wrapper(fn, emitter, gen)
         else:
             # There's both a forward and a reverse operator method.
             generate_bin_op_both_wrappers(cl, fn, fn_rev, emitter, gen)
     return wrapper_name
 
 
-def generate_bin_op_forward_only_wrapper(cl: ClassIR,
-                                         fn: FuncIR,
+def generate_bin_op_forward_only_wrapper(fn: FuncIR,
                                          emitter: Emitter,
                                          gen: 'WrapperGenerator') -> None:
     gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
@@ -331,9 +330,7 @@ def generate_bin_op_forward_only_wrapper(cl: ClassIR,
     gen.finish()
 
 
-def generate_bin_op_reverse_only_wrapper(cl: ClassIR,
-                                         fn_rev: FuncIR,
-                                         emitter: Emitter,
+def generate_bin_op_reverse_only_wrapper(emitter: Emitter,
                                          gen: 'WrapperGenerator') -> None:
     gen.arg_names = ['right', 'left']
     gen.emit_arg_processing(error=GotoHandler('typefail'), raise_exception=False)
@@ -650,47 +647,17 @@ def generate_wrapper_core(fn: FuncIR,
     It converts the PyObject *s to the necessary types, checking and unboxing if necessary,
     makes the call, then boxes the result if necessary and returns it.
     """
+    gen = WrapperGenerator(None, emitter)
+    gen.set_target(fn)
+    gen.arg_names = arg_names or [arg.name for arg in fn.args]
+    gen.cleanups = cleanups or []
+    gen.optional_args = optional_args or []
+    gen.traceback_code = traceback_code or ''
 
-    optional_args = optional_args or []
-    cleanups = cleanups or []
-    use_goto = bool(cleanups or traceback_code)
-    error = ReturnHandler('NULL') if not use_goto else GotoHandler('fail')
-
-    arg_names = arg_names or [arg.name for arg in fn.args]
-    for arg_name, arg in zip(arg_names, fn.args):
-        # Suppress the argument check for *args/**kwargs, since we know it must be right.
-        typ = arg.type if arg.kind not in (ARG_STAR, ARG_STAR2) else object_rprimitive
-        generate_arg_check(arg_name,
-                           typ,
-                           emitter,
-                           error,
-                           optional=arg in optional_args)
-    native_args = ', '.join('arg_{}'.format(arg) for arg in arg_names)
-    if fn.ret_type.is_unboxed or use_goto:
-        # TODO: The Py_RETURN macros return the correct PyObject * with reference count handling.
-        #       Are they relevant?
-        emitter.emit_line('{}retval = {}{}({});'.format(emitter.ctype_spaced(fn.ret_type),
-                                                        NATIVE_PREFIX,
-                                                        fn.cname(emitter.names),
-                                                        native_args))
-        emitter.emit_lines(*cleanups)
-        if fn.ret_type.is_unboxed:
-            emitter.emit_error_check('retval', fn.ret_type, 'return NULL;')
-            emitter.emit_box('retval', 'retbox', fn.ret_type, declare_dest=True)
-
-        emitter.emit_line('return {};'.format('retbox' if fn.ret_type.is_unboxed else 'retval'))
-    else:
-        emitter.emit_line('return {}{}({});'.format(NATIVE_PREFIX,
-                                                    fn.cname(emitter.names),
-                                                    native_args))
-        # TODO: Tracebacks?
-
-    if use_goto:
-        emitter.emit_label('fail')
-        emitter.emit_lines(*cleanups)
-        if traceback_code:
-            emitter.emit_lines(traceback_code)
-        emitter.emit_lines('return NULL;')
+    error = ReturnHandler('NULL') if not gen.use_goto() else GotoHandler('fail')
+    gen.emit_arg_processing(error=error)
+    gen.emit_call()
+    gen.emit_error_handling()
 
 
 def generate_arg_check(name: str,
@@ -741,7 +708,7 @@ class WrapperGenerator:
 
     # TODO: Use this for more wrappers
 
-    def __init__(self, cl: ClassIR, emitter: Emitter) -> None:
+    def __init__(self, cl: Optional[ClassIR], emitter: Emitter) -> None:
         self.cl = cl
         self.emitter = emitter
         self.cleanups: List[str] = []
@@ -764,7 +731,7 @@ class WrapperGenerator:
         """Return the name of the wrapper function."""
         return '{}{}{}'.format(DUNDER_PREFIX,
                                self.target_name,
-                               self.cl.name_prefix(self.emitter.names))
+                               self.cl.name_prefix(self.emitter.names) if self.cl else '')
 
     def use_goto(self) -> bool:
         """Do we use a goto for error handling (instead of straight return)?"""

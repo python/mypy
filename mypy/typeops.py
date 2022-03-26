@@ -14,7 +14,8 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -106,6 +107,10 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         isinstance(explicit_type, (Instance, TupleType))
+        # We have to skip protocols, because it can can be a subtype of a return type
+        # by accident. Like `Hashable` is a subtype of `object`. See #11799
+        and isinstance(default_ret_type, Instance)
+        and not default_ret_type.type.is_protocol
         # Only use the declared return type from __new__ or declared self in __init__
         # if it is actually returning a subtype of what we would return otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
@@ -715,8 +720,8 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
             for name, symbol in typ.type.names.items():
                 if not isinstance(symbol.node, Var):
                     continue
-                # Skip "_order_" and "__order__", since Enum will remove it
-                if name in ("_order_", "__order__"):
+                # Skip these since Enum will remove it
+                if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
             # SymbolTables are really just dicts, and dicts are guaranteed to preserve
@@ -779,7 +784,7 @@ def coerce_to_literal(typ: Type) -> Type:
     typ = get_proper_type(typ)
     if isinstance(typ, UnionType):
         new_items = [coerce_to_literal(item) for item in typ.items]
-        return make_simplified_union(new_items)
+        return UnionType.make_union(new_items)
     elif isinstance(typ, Instance):
         if typ.last_known_value:
             return typ.last_known_value
@@ -845,3 +850,18 @@ def is_redundant_literal_instance(general: ProperType, specific: ProperType) -> 
         return True
 
     return False
+
+
+def separate_union_literals(t: UnionType) -> Tuple[Sequence[LiteralType], Sequence[Type]]:
+    """Separate literals from other members in a union type."""
+    literal_items = []
+    union_items = []
+
+    for item in t.items:
+        proper = get_proper_type(item)
+        if isinstance(proper, LiteralType):
+            literal_items.append(proper)
+        else:
+            union_items.append(item)
+
+    return literal_items, union_items

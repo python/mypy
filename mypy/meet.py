@@ -6,7 +6,7 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
-    ParamSpecType
+    ParamSpecType, UnpackType,
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -506,17 +506,19 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
+        raise NotImplementedError
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
-            si = self.s
-            if t.type == si.type:
+            if t.type == self.s.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args: List[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, si.args):
+                    for ta, sia in zip(t.args, self.s.args):
                         args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
-from typing import Any, SupportsInt, Tuple, Union, overload
+from typing import Any, SupportsInt, Union, overload
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
@@ -10,12 +10,12 @@ if sys.version_info >= (3, 8):
 else:
     _FD = SupportsInt
 
-_CMSG = Tuple[int, int, bytes]
-_CMSGArg = Tuple[int, int, ReadableBuffer]
+_CMSG = tuple[int, int, bytes]
+_CMSGArg = tuple[int, int, ReadableBuffer]
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = Union[Tuple[Any, ...], str]
+_Address = Union[tuple[Any, ...], str]
 _RetAddress = Any
 # TODO Most methods allow bytes as address objects
 
@@ -527,6 +527,8 @@ class socket:
     family: int
     type: int
     proto: int
+    @property
+    def timeout(self) -> float | None: ...
     def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: _FD | None = ...) -> None: ...
     def bind(self, __address: _Address | bytes) -> None: ...
     def close(self) -> None: ...

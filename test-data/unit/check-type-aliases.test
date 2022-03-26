@@ -57,7 +57,7 @@ Never = NoReturn
 a: Never  # Used to be an error here
 
 def f(a: Never): ...
-f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn" 
+f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn"
 [case testImportUnionAlias]
 import typing
 from _m import U
@@ -701,6 +701,30 @@ x: TypeAlias = list(int)  # E: Invalid type alias: expression is not a valid typ
                           # E: Too many arguments for "list"
 a: x
 [builtins fixtures/tuple.pyi]
+
+[case testAliasedImportPep613]
+import typing as tpp
+import typing_extensions as tpx
+from typing import TypeAlias as TPA
+from typing_extensions import TypeAlias as TXA
+import typing
+import typing_extensions
+
+Int1: tpp.TypeAlias = int
+Int2: tpx.TypeAlias = int
+Int3: TPA = int
+Int4: TXA = int
+Int5: typing.TypeAlias = int
+Int6: typing_extensions.TypeAlias = int
+
+x1: Int1 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x2: Int2 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x3: Int3 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x4: Int4 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x5: Int5 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+x6: Int6 = "str"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]
 
 [case testFunctionScopePep613]
 from typing_extensions import TypeAlias
