@@ -328,6 +328,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         merged_branch = branch
                         self.emitter.emit_line('}')
                 if not merged_branch:
+                    exc_class = 'PyExc_AttributeError'
                     self.emitter.emit_line(
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
                             exc_class, repr(op.attr), repr(cl.name)))

@@ -3,7 +3,7 @@ from typing import Any, cast
 from mypy.types import (
     ProperType, UnboundType, AnyType, NoneType, UninhabitedType, ErasedType, DeletedType,
     Instance, TypeVarType, ParamSpecType, PartialType, CallableType, TupleType, TypedDictType,
-    LiteralType, UnionType, Overloaded, TypeType, TypeAliasType
+    LiteralType, UnionType, Overloaded, TypeType, TypeAliasType, UnpackType
 )
 from mypy.type_visitor import TypeVisitor
 
@@ -53,6 +53,10 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
         dup = ParamSpecType(t.name, t.fullname, t.id, t.flavor, t.upper_bound)
+        return self.copy_common(t, dup)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
+        dup = UnpackType(t.type)
         return self.copy_common(t, dup)
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
