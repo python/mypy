@@ -874,68 +874,6 @@ value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a 
     :ref:`reveal_type() <reveal-type>` displays the inferred static type of
     an expression.
 
-If you want to use coroutines in Python 3.4, which does not support
-the ``async def`` syntax, you can instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-decorator to convert a generator into a coroutine.
-
-Note that we set the ``YieldType`` of the generator to be ``Any`` in the
-following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
-coroutine shouldn't have to know or care about what precisely that type is.
-
-.. code-block:: python
-
-   from typing import Any, Generator
-   import asyncio
-
-   @asyncio.coroutine
-   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_2("USS Enterprise", 5))
-   loop.close()
-
-As before, the result of calling a generator decorated with :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-will be a value of type :py:class:`Awaitable[T] <typing.Awaitable>`.
-
-.. note::
-
-   At runtime, you are allowed to add the :py:func:`@asyncio.coroutine <asyncio.coroutine>` decorator to
-   both functions and generators. This is useful when you want to mark a
-   work-in-progress function as a coroutine, but have not yet added ``yield`` or
-   ``yield from`` statements:
-
-   .. code-block:: python
-
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> str:
-          # todo: add yield/yield from to turn this into a generator
-          return "placeholder"
-
-   However, mypy currently does not support converting functions into
-   coroutines. Support for this feature will be added in a future version, but
-   for now, you can manually force the function to be a generator by doing
-   something like this:
-
-   .. code-block:: python
-
-      from typing import Generator
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> Generator[None, None, str]:
-          # todo: add yield/yield from to turn this into a generator
-          if False:
-              yield
-          return "placeholder"
-
 You may also choose to create a subclass of :py:class:`~typing.Awaitable` instead:
 
 .. code-block:: python
@@ -995,11 +933,29 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
    loop.run_until_complete(countdown_4("Serenity", 5))
    loop.close()
 
-For a more concrete example, the mypy repo has a toy webcrawler that
-demonstrates how to work with coroutines. One version
-`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
-and one
-`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
+If you use coroutines in legacy code that was originally written for
+Python 3.4, which did not support the ``async def`` syntax, you would
+instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
+decorator to convert a generator into a coroutine, and use a
+generator type as the return type:
+
+.. code-block:: python
+
+   from typing import Any, Generator
+   import asyncio
+
+   @asyncio.coroutine
+   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           yield from asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_2("USS Enterprise", 5))
+   loop.close()
+
 
 .. _typeddict:
 

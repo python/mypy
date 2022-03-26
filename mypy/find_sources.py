@@ -160,7 +160,7 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         return self._crawl_up_helper(dir) or ("", dir)
 
-    @functools.lru_cache()
+    @functools.lru_cache()  # noqa: B019
     def _crawl_up_helper(self, dir: str) -> Optional[Tuple[str, str]]:
         """Given a directory, maybe returns module and base directory.
 

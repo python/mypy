@@ -59,7 +59,8 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -410,6 +411,9 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
 
     def visit_param_spec(self, typ: ParamSpecType) -> None:
         pass
+
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        typ.type.accept(self)
 
     def visit_parameters(self, typ: Parameters) -> None:
         for arg in typ.arg_types:

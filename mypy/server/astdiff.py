@@ -60,7 +60,7 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, UninhabitedType,
     ErasedType, DeletedType, Instance, TypeVarType, CallableType, TupleType, TypedDictType,
     UnionType, Overloaded, PartialType, TypeType, LiteralType, TypeAliasType, ParamSpecType,
-    Parameters
+    Parameters, UnpackType,
 )
 from mypy.util import get_prefix
 
@@ -317,6 +317,9 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
                 typ.id.meta_level,
                 typ.flavor,
                 snapshot_type(typ.upper_bound))
+
+    def visit_unpack_type(self, typ: UnpackType) -> SnapshotItem:
+        return ('UnpackType', snapshot_type(typ.type))
 
     def visit_parameters(self, typ: Parameters) -> SnapshotItem:
         return ('Parameters',

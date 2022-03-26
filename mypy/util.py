@@ -435,11 +435,12 @@ def check_python_version(program: str) -> None:
                  "please upgrade to 3.6 or newer".format(name=program))
 
 
-def count_stats(errors: List[str]) -> Tuple[int, int]:
-    """Count total number of errors and files in error list."""
-    errors = [e for e in errors if ': error:' in e]
-    files = {e.split(':')[0] for e in errors}
-    return len(errors), len(files)
+def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+    """Count total number of errors, notes and error_files in message list."""
+    errors = [e for e in messages if ': error:' in e]
+    error_files = {e.split(':')[0] for e in errors}
+    notes = [e for e in messages if ': note:' in e]
+    return len(errors), len(notes), len(error_files)
 
 
 def split_words(msg: str) -> List[str]:

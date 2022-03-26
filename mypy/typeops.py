@@ -107,6 +107,10 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         isinstance(explicit_type, (Instance, TupleType))
+        # We have to skip protocols, because it can can be a subtype of a return type
+        # by accident. Like `Hashable` is a subtype of `object`. See #11799
+        and isinstance(default_ret_type, Instance)
+        and not default_ret_type.type.is_protocol
         # Only use the declared return type from __new__ or declared self in __init__
         # if it is actually returning a subtype of what we would return otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)

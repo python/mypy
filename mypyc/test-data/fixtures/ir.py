@@ -276,6 +276,8 @@ class ArithmeticError(Exception): pass
 
 class ZeroDivisionError(Exception): pass
 
+class GeneratorExit(BaseException): pass
+
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
 def sum(i: Iterable[T]) -> int: pass

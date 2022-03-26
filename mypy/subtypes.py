@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, TUPLE_LIKE_INSTANCE_NAMES,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
 )
 import mypy.applytype
 import mypy.constraints
@@ -338,6 +338,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         ):
             return True
         return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
@@ -1414,6 +1417,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         ):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        raise NotImplementedError
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
