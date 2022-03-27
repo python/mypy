@@ -1240,3 +1240,21 @@ L0:
     r0 = ''
     __mypyc_self__.s = r0
     return 1
+
+[case testBorrowAttribute]
+def f(d: D) -> int:
+    return d.c.x
+
+class C:
+    x: int
+class D:
+    c: C
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    return r1

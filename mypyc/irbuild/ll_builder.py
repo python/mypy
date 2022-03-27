@@ -219,11 +219,12 @@ class LowLevelIRBuilder:
 
     # Attribute access
 
-    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int, *,
+                 borrow: bool = False) -> Value:
         """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
-            return self.add(GetAttr(obj, attr, line))
+            return self.add(GetAttr(obj, attr, line, borrow=borrow))
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:

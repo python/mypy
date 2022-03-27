@@ -333,7 +333,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                         'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
                             exc_class, repr(op.attr), repr(cl.name)))
 
-            if attr_rtype.is_refcounted:
+            if attr_rtype.is_refcounted and not op.is_borrowed:
                 if not merged_branch and not always_defined:
                     self.emitter.emit_line('} else {')
                 self.emitter.emit_inc_ref(dest, attr_rtype)
