@@ -1044,8 +1044,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__args__",
         "__orig_bases__",
         "__final__",
-        # Consider removing these:
-        "__match_args__",
+        # Consider removing __slots__?
         "__slots__",
     }
 )
