@@ -400,7 +400,22 @@ reveal_type(D)  # N: Revealed type is "def (b: Any) -> __main__.D"
 
 [builtins fixtures/bool.pyi]
 
+[case testAttrsNewPackage]
+import attrs
+@attrs.define
+class A:
+    a: int = attrs.field()
+    b: bool
 
+@attrs.frozen
+class B:
+    a: bool
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.bool) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (a: builtins.bool, b: builtins.int) -> __main__.B"
+
+[builtins fixtures/bool.pyi]
 
 [case testAttrsDataClass]
 import attr
@@ -1132,6 +1147,27 @@ class A:
 A(None, None)
 
 [builtins fixtures/attr.pyi]
+
+[case testAttrsOptionalConverterNewPackage]
+# flags: --strict-optional
+import attrs
+from attrs.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attrs.define
+class A:
+    y: Optional[int] = attrs.field(converter=optional(int))
+    z: Optional[str] = attrs.field(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/attr.pyi]
+
 
 [case testAttrsTypeVarNoCollision]
 from typing import TypeVar, Generic
