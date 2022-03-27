@@ -1040,3 +1040,25 @@ L1:
     return r5
 L2:
     return 0
+
+[case testBorrowLenArgument]
+from typing import List
+
+def f(x: C) -> int:
+    return len(x.a)
+
+class C:
+    a: List[str]
+[out]
+def f(x):
+    x :: __main__.C
+    r0 :: list
+    r1 :: ptr
+    r2 :: native_int
+    r3 :: short_int
+L0:
+    r0 = borrow x.a
+    r1 = get_element_ptr r0 ob_size :: PyVarObject
+    r2 = load_mem r1 :: native_int*
+    r3 = r2 << 1
+    return r3

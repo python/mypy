@@ -25,7 +25,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive
+    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive, is_list_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_format_call, join_formatted_strings, convert_format_expr_to_str, FormatOp
@@ -113,14 +113,19 @@ def translate_len(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]):
-        expr_rtype = builder.node_type(expr.args[0])
+        arg = expr.args[0]
+        expr_rtype = builder.node_type(arg)
         if isinstance(expr_rtype, RTuple):
             # len() of fixed-length tuple can be trivially determined
             # statically, though we still need to evaluate it.
-            builder.accept(expr.args[0])
+            builder.accept(arg)
             return Integer(len(expr_rtype.types))
         else:
-            obj = builder.accept(expr.args[0])
+            if is_list_rprimitive(builder.node_type(arg)):
+                borrow = True
+            else:
+                borrow = False
+            obj = builder.accept(arg, can_borrow=borrow)
             return builder.builtin_len(obj, expr.line)
     return None
 
