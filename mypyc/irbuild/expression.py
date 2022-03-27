@@ -513,7 +513,8 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
-    if (e.operators[0] in ['in', 'not in']
+    first_op = e.operators[0]
+    if (first_op in ['in', 'not in']
             and len(e.operators) == 1
             and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
@@ -560,6 +561,12 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             else:
                 return builder.true()
 
+    if first_op in ('is', 'is not') and len(e.operators) == 1:
+        right = e.operands[1]
+        if isinstance(right, NameExpr) and right.fullname == 'builtins.None':
+            # Special case 'is None' / 'is not None'.
+            return translate_is_none(builder, e.operands[0], negated=first_op != 'is')
+
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
@@ -582,6 +589,11 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             e.line)
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Value:
+    v = builder.accept(expr, can_borrow=True)
+    return builder.binary_op(v, builder.none_object(), 'is not' if negated else 'is', expr.line)
 
 
 def transform_basic_comparison(builder: IRBuilder,

@@ -950,3 +950,36 @@ L0:
     r0 = borrow d.c
     r1 = r0.x
     return r1
+
+[case testBorrowAttributeIsNone]
+from typing import Optional
+
+def f(c: C) -> bool:
+    return c.x is not None
+
+def g(c: C) -> bool:
+    return c.x is None
+
+class C:
+    x: Optional[str]
+[out]
+def f(c):
+    c :: __main__.C
+    r0 :: union[str, None]
+    r1 :: object
+    r2 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 != r1
+    return r2
+def g(c):
+    c :: __main__.C
+    r0 :: union[str, None]
+    r1 :: object
+    r2 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 == r1
+    return r2
