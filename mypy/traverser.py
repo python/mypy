@@ -368,8 +368,20 @@ def has_return_statement(fdef: FuncBase) -> bool:
     return seeker.found
 
 
-class YieldSeeker(TraverserVisitor):
+class FuncCollectorBase(TraverserVisitor):
     def __init__(self) -> None:
+        self.inside_func = False
+
+    def visit_func_def(self, defn: FuncDef) -> None:
+        if not self.inside_func:
+            self.inside_func = True
+            super().visit_func_def(defn)
+            self.inside_func = False
+
+
+class YieldSeeker(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
         self.found = False
 
     def visit_yield_expr(self, o: YieldExpr) -> None:
@@ -380,17 +392,6 @@ def has_yield_expression(fdef: FuncBase) -> bool:
     seeker = YieldSeeker()
     fdef.accept(seeker)
     return seeker.found
-
-
-class FuncCollectorBase(TraverserVisitor):
-    def __init__(self) -> None:
-        self.inside_func = False
-
-    def visit_func_def(self, defn: FuncDef) -> None:
-        if not self.inside_func:
-            self.inside_func = True
-            super().visit_func_def(defn)
-            self.inside_func = False
 
 
 class ReturnCollector(FuncCollectorBase):
