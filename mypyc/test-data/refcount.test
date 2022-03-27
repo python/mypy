@@ -1062,3 +1062,42 @@ L0:
     r2 = load_mem r1 :: native_int*
     r3 = r2 << 1
     return r3
+
+[case testBorrowIsinstanceArgument]
+from typing import List
+
+def f(x: C) -> bool:
+    if isinstance(x.a, D):
+        return x.a.b
+    else:
+        return True
+
+class C:
+    a: object
+
+class D:
+    b: bool
+[out]
+def f(x):
+    x :: __main__.C
+    r0, r1 :: object
+    r2 :: ptr
+    r3 :: object
+    r4 :: bit
+    r5 :: object
+    r6 :: __main__.D
+    r7 :: bool
+L0:
+    r0 = borrow x.a
+    r1 = __main__.D :: type
+    r2 = get_element_ptr r0 ob_type :: PyObject
+    r3 = load_mem r2 :: builtins.object*
+    r4 = r3 == r1
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    r5 = borrow x.a
+    r6 = borrow cast(__main__.D, r5)
+    r7 = r6.b
+    return r7
+L2:
+    return 1
