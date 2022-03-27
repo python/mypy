@@ -234,7 +234,7 @@ class IRBuilder:
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
-        return self.builder.coerce(src, target_type, line, force)
+        return self.builder.coerce(src, target_type, line, force, can_borrow=self.can_borrow)
 
     def none_object(self) -> Value:
         return self.builder.none_object()

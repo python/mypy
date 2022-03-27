@@ -269,7 +269,7 @@ L1:
     r5 = CPyTagged_Add(r4, 2)
     return r5
 L2:
-    r6 = cast(__main__.A, x)
+    r6 = borrow cast(__main__.A, x)
     r7 = r6.a
     return r7
 L3:

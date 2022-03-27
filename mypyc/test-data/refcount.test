@@ -951,6 +951,28 @@ L0:
     r1 = r0.x
     return r1
 
+[case testBorrowAttributeTwice]
+def f(e: E) -> int:
+    return e.d.c.x
+
+class C:
+    x: int
+class D:
+    c: C
+class E:
+    d: D
+[out]
+def f(e):
+    e :: __main__.E
+    r0 :: __main__.D
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = borrow e.d
+    r1 = borrow r0.c
+    r2 = r1.x
+    return r2
+
 [case testBorrowAttributeIsNone]
 from typing import Optional
 
@@ -983,3 +1005,38 @@ L0:
     r1 = load_address _Py_NoneStruct
     r2 = r0 == r1
     return r2
+
+[case testBorrowAttributeNarrowOptional]
+from typing import Optional
+
+def f(c: C) -> bool:
+    if c.x is not None:
+        return c.x.b
+    return False
+
+class C:
+    x: Optional[D]
+
+class D:
+    b: bool
+[out]
+def f(c):
+    c :: __main__.C
+    r0 :: union[__main__.D, None]
+    r1 :: object
+    r2 :: bit
+    r3 :: union[__main__.D, None]
+    r4 :: __main__.D
+    r5 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 != r1
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = borrow c.x
+    r4 = borrow cast(__main__.D, r3)
+    r5 = r4.b
+    return r5
+L2:
+    return 0
