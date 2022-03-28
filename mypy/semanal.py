@@ -3093,14 +3093,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not call:
             return False
 
-        lvalue = s.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        if s.type:
-            self.fail("Cannot declare the type of a type variable", s)
-            return False
-
-        name = lvalue.name
-        if not self.check_typevarlike_name(call, name, s):
+        name = self.extract_typevarlike_name(s, call)
+        if name is None:
             return False
 
         # Constraining types
@@ -3279,6 +3273,20 @@ class SemanticAnalyzer(NodeVisitor[None],
             variance = INVARIANT
         return variance, upper_bound
 
+    def extract_typevarlike_name(self, s: AssignmentStmt, call: CallExpr) -> Optional[str]:
+        if not call:
+            return None
+
+        lvalue = s.lvalues[0]
+        assert isinstance(lvalue, NameExpr)
+        if s.type:
+            self.fail("Cannot declare the type of a TypeVar or similar construct", s)
+            return None
+
+        if not self.check_typevarlike_name(call, lvalue.name, s):
+            return None
+        return lvalue.name
+
     def process_paramspec_declaration(self, s: AssignmentStmt) -> bool:
         """Checks if s declares a ParamSpec; if yes, store it in symbol table.
 
@@ -3293,14 +3301,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not call:
             return False
 
-        lvalue = s.lvalues[0]
-        assert isinstance(lvalue, NameExpr)
-        if s.type:
-            self.fail("Cannot declare the type of a parameter specification", s)
-            return False
-
-        name = lvalue.name
-        if not self.check_typevarlike_name(call, name, s):
+        name = self.extract_typevarlike_name(s, call)
+        if name is None:
             return False
 
         # ParamSpec is different from a regular TypeVar:
