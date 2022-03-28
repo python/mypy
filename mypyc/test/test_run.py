@@ -263,7 +263,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
-        assert glob.glob('native.*.{}'.format(suffix))
+        assert glob.glob('native.*.{}'.format(suffix)) or glob.glob('native.{}'.format(suffix))
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
