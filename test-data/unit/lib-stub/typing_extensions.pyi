@@ -29,6 +29,7 @@ TypeAlias: _SpecialForm
 TypeGuard: _SpecialForm
 Never: _SpecialForm
 
+TypeVarTuple: _SpecialForm
 Unpack: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).

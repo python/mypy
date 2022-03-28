@@ -9,7 +9,7 @@ from mypy.nodes import (
     TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
     TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode, AssignmentExpr, ParamSpecExpr,
-    AssertTypeExpr,
+    AssertTypeExpr, TypeVarTupleExpr,
 )
 from mypy.visitor import ExpressionVisitor
 
@@ -222,6 +222,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> None:
+        return None
+
+    def visit_type_var_tuple_expr(self, e: TypeVarTupleExpr) -> None:
         return None
 
     def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:

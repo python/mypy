@@ -1548,3 +1548,13 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(P* [__main__.P])
     ParamSpecExpr:2()))
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple
+TV = TypeVarTuple("TV")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple])
+  AssignmentStmt:2(
+    NameExpr(TV* [__main__.TV])
+    TypeVarTupleExpr:2()))

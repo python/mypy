@@ -1460,3 +1460,13 @@ heterogenous_tuple: Tuple[Unpack[Tuple[int, str]]]
 homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
 bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or TypeVarTuple)
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple
+
+TVariadic = TypeVarTuple('TVariadic')
+TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
+TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
+TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
+TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first argument to TypeVarTuple has defined semantics
+TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as first argument

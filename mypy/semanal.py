@@ -78,7 +78,7 @@ from mypy.nodes import (
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt, FuncBase
+    MatchStmt, FuncBase, TypeVarTupleExpr
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
@@ -2074,6 +2074,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             special_form = True
         elif self.process_paramspec_declaration(s):
             special_form = True
+        elif self.process_typevartuple_declaration(s):
+            special_form = True
         # * type constructors
         elif self.analyze_namedtuple_assign(s):
             special_form = True
@@ -3329,6 +3331,43 @@ class SemanticAnalyzer(NodeVisitor[None],
             call.analyzed = paramspec_var
         else:
             assert isinstance(call.analyzed, ParamSpecExpr)
+        self.add_symbol(name, call.analyzed, s)
+        return True
+
+    def process_typevartuple_declaration(self, s: AssignmentStmt) -> bool:
+        """Checks if s declares a TypeVarTuple; if yes, store it in symbol table.
+
+        Return True if this looks like a TypeVarTuple (maybe with errors), otherwise return False.
+        """
+        call = self.get_typevarlike_declaration(
+            s, ("typing_extensions.TypeVarTuple", "typing.TypeVarTuple")
+        )
+        if not call:
+            return False
+
+        if len(call.args) > 1:
+            self.fail(
+                "Only the first argument to TypeVarTuple has defined semantics",
+                s,
+            )
+
+        if not self.options.enable_incomplete_features:
+            self.fail('"TypeVarTuple" is not supported by mypy yet', s)
+            return False
+
+        name = self.extract_typevarlike_name(s, call)
+        if name is None:
+            return False
+
+        # PEP 646 does not specify the behavior of variance, constraints, or bounds.
+        if not call.analyzed:
+            typevartuple_var = TypeVarTupleExpr(
+                name, self.qualified_name(name), self.object_type(), INVARIANT
+            )
+            typevartuple_var.line = call.line
+            call.analyzed = typevartuple_var
+        else:
+            assert isinstance(call.analyzed, TypeVarTupleExpr)
         self.add_symbol(name, call.analyzed, s)
         return True
 

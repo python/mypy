@@ -496,6 +496,18 @@ class StrConv(NodeVisitor[str]):
             a += ['UpperBound({})'.format(o.upper_bound)]
         return self.dump(a, o)
 
+    def visit_type_var_tuple_expr(self, o: 'mypy.nodes.TypeVarTupleExpr') -> str:
+        import mypy.types
+
+        a: List[Any] = []
+        if o.variance == mypy.nodes.COVARIANT:
+            a += ['Variance(COVARIANT)']
+        if o.variance == mypy.nodes.CONTRAVARIANT:
+            a += ['Variance(CONTRAVARIANT)']
+        if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
+            a += ['UpperBound({})'.format(o.upper_bound)]
+        return self.dump(a, o)
+
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> str:
         return 'TypeAliasExpr({})'.format(o.type)
 
