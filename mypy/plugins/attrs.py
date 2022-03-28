@@ -50,7 +50,7 @@ attr_attrib_makers: Final = {
     'attr.field',
     'attrs.field',
 }
-attr_optional_converter: Final = {'attr.converters.optional', 'attrs.converters.optional'}
+attr_optional_converters: Final = {'attr.converters.optional', 'attrs.converters.optional'}
 
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
@@ -611,7 +611,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
 
         if (isinstance(converter, CallExpr)
                 and isinstance(converter.callee, RefExpr)
-                and converter.callee.fullname in attr_optional_converter
+                and converter.callee.fullname in attr_optional_converters
                 and converter.args
                 and converter.args[0]):
             # Special handling for attr.converters.optional(type)
