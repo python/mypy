@@ -266,7 +266,7 @@ class TestRun(MypycDataSuite):
         print('[cwd]   ', os.getcwd())
         print('[files] ', os.listdir('.'))
         print('[glob]  ', glob.glob('**/*native*', recursive=True))
-        assert glob.glob('native.*.{}'.format(suffix))
+        assert glob.glob('native.*.{}'.format(suffix)) or glob.glob('native.{}'.format(suffix))
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
