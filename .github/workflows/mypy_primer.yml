@@ -12,6 +12,7 @@ on:
     - 'mypy/stubgen.py'
     - 'mypy/stubgenc.py'
     - 'mypy/test/**'
+    - '**'
 
 jobs:
   mypy_primer:
