@@ -8760,7 +8760,7 @@ from typing_extensions import Literal
 bar: Literal[3] = 3
 [builtins fixtures/tuple.pyi]
 [out]
-main:2: note: Revealed type is "builtins.int*"
+main:2: note: Revealed type is "builtins.int"
 ==
 main:2: note: Revealed type is "Literal[3]"
 

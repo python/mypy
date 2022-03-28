@@ -90,7 +90,7 @@ m: List[int]
 
 match m:
     case [a]:
-        reveal_type(a)  # N: Revealed type is "builtins.int*"
+        reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternCapturesStarred]
@@ -99,8 +99,8 @@ m: Sequence[int]
 
 match m:
     case [a, *b]:
-        reveal_type(a)  # N: Revealed type is "builtins.int*"
-        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
+        reveal_type(a)  # N: Revealed type is "builtins.int"
+        reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testMatchSequencePatternNarrowsInner]
@@ -191,27 +191,27 @@ match m1:
 
 match m2:
     case [b]:
-        reveal_type(b)  # N: Revealed type is "builtins.int*"
+        reveal_type(b)  # N: Revealed type is "builtins.int"
 
 match m3:
     case [c]:
-        reveal_type(c)  # N: Revealed type is "builtins.int*"
+        reveal_type(c)  # N: Revealed type is "builtins.int"
 
 match m4:
     case [d]:
-        reveal_type(d)  # N: Revealed type is "builtins.int*"
+        reveal_type(d)  # N: Revealed type is "builtins.int"
 
 match m5:
     case [e]:
-        reveal_type(e)  # N: Revealed type is "builtins.int*"
+        reveal_type(e)  # N: Revealed type is "builtins.int"
 
 match m6:
     case [f]:
-        reveal_type(f)  # N: Revealed type is "builtins.int*"
+        reveal_type(f)  # N: Revealed type is "builtins.int"
 
 match m7:
     case [g]:
-        reveal_type(g)  # N: Revealed type is "builtins.int*"
+        reveal_type(g)  # N: Revealed type is "builtins.int"
 
 match m8:
     case [h]:
@@ -335,9 +335,9 @@ m: Dict[str, int]
 
 match m:
     case {"key": v}:
-        reveal_type(v)  # N: Revealed type is "builtins.int*"
+        reveal_type(v)  # N: Revealed type is "builtins.int"
     case {b.b: v2}:
-        reveal_type(v2)  # N: Revealed type is "builtins.int*"
+        reveal_type(v2)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: str
 [builtins fixtures/dict.pyi]
@@ -350,9 +350,9 @@ m: Dict[str, int]
 
 match m:
     case {1: v}:
-        reveal_type(v)  # N: Revealed type is "builtins.int*"
+        reveal_type(v)  # N: Revealed type is "builtins.int"
     case {b.b: v2}:
-        reveal_type(v2)  # N: Revealed type is "builtins.int*"
+        reveal_type(v2)  # N: Revealed type is "builtins.int"
 [file b.py]
 b: int
 [builtins fixtures/dict.pyi]
@@ -375,7 +375,7 @@ match m:
         reveal_type(v3)  # N: Revealed type is "builtins.str"
         reveal_type(v4)  # N: Revealed type is "builtins.int"
     case {"o": v5}:
-        reveal_type(v5)  # N: Revealed type is "builtins.object*"
+        reveal_type(v5)  # N: Revealed type is "builtins.object"
 [typing fixtures/typing-typeddict.pyi]
 
 [case testMatchMappingPatternCapturesTypedDictWithLiteral]
@@ -397,7 +397,7 @@ match m:
         reveal_type(v3)  # N: Revealed type is "builtins.str"
         reveal_type(v4)  # N: Revealed type is "builtins.int"
     case {b.o: v5}:
-        reveal_type(v5)  # N: Revealed type is "builtins.object*"
+        reveal_type(v5)  # N: Revealed type is "builtins.object"
 [file b.py]
 from typing import Final, Literal
 a: Final = "a"
@@ -417,7 +417,7 @@ m: A
 
 match m:
     case {b.a: v}:
-        reveal_type(v)  # N: Revealed type is "builtins.object*"
+        reveal_type(v)  # N: Revealed type is "builtins.object"
 [file b.py]
 from typing import Final, Literal
 a: str
@@ -458,7 +458,7 @@ m: Mapping[str, int]
 
 match m:
     case {'k': 1, **r}:
-        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+        reveal_type(r)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
 
 -- Mapping patterns currently do not narrow --
@@ -698,7 +698,7 @@ m: A[int]
 match m:
     case A(a=i):
         reveal_type(m)  # N: Revealed type is "__main__.A[builtins.int]"
-        reveal_type(i)  # N: Revealed type is "builtins.int*"
+        reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testMatchClassPatternCaptureFilledGenericTypeAlias]
 from typing import Generic, TypeVar
@@ -888,9 +888,9 @@ match x:
     case list([({-0-0j: int(real=0+0j, imag=0-0j) | (1) as z},)]):
         y = 0
 
-reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list*[builtins.dict*[builtins.int*, builtins.int*]]]"
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[builtins.dict[builtins.int, builtins.int]]]"
 reveal_type(y)  # N: Revealed type is "builtins.int"
-reveal_type(z)  # N: Revealed type is "builtins.int*"
+reveal_type(z)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testMatchNonFinalMatchArgs]
@@ -1023,7 +1023,7 @@ m: List[int]
 match m:
     case [x, y] | list(x):  # E: Alternative patterns bind different names
         reveal_type(x)  # N: Revealed type is "builtins.object"
-        reveal_type(y)  # N: Revealed type is "builtins.int*"
+        reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testMatchOrPatternCapturesJoin]
@@ -1495,7 +1495,7 @@ from typing import List
 def f(x: List[int] | int) -> None:
     match x:
         case [*y]:
-            reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int*]"
+            reveal_type(y)  # N: Revealed type is "builtins.list[builtins.int]"
             return
     reveal_type(x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]

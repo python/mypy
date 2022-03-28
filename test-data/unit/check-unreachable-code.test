@@ -1002,9 +1002,9 @@ def test1(x: T1) -> T1:
 
 def test2(x: T2) -> T2:
     if isinstance(x, int):
-        reveal_type(x)  # N: Revealed type is "builtins.int*"
+        reveal_type(x)  # N: Revealed type is "builtins.int"
     else:
-        reveal_type(x)  # N: Revealed type is "builtins.str*"
+        reveal_type(x)  # N: Revealed type is "builtins.str"
 
     if False:
         # This is unreachable, but we don't report an error, unfortunately.
@@ -1020,9 +1020,9 @@ class Test3(Generic[T2]):
 
     def func(self) -> None:
         if isinstance(self.x, int):
-            reveal_type(self.x)  # N: Revealed type is "builtins.int*"
+            reveal_type(self.x)  # N: Revealed type is "builtins.int"
         else:
-            reveal_type(self.x)  # N: Revealed type is "builtins.str*"
+            reveal_type(self.x)  # N: Revealed type is "builtins.str"
 
         if False:
             # Same issue as above

@@ -50,8 +50,8 @@ def tmpcontextmanagerlike(x: Callable[P, Iterator[T]]) -> Callable[P, List[T]]: 
 def whatever(x: int) -> Iterator[int]:
     yield x
 
-reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int*]"
-reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int]"
+reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
 [case testInvalidParamSpecType]
@@ -217,7 +217,7 @@ def dec(f: Callable[P, T]) -> Callable[P, List[T]]:
 @dec
 def g(x: int, y: str = '') -> int: ...
 
-reveal_type(g)  # N: Revealed type is "def (x: builtins.int, y: builtins.str =) -> builtins.list[builtins.int*]"
+reveal_type(g)  # N: Revealed type is "def (x: builtins.int, y: builtins.str =) -> builtins.list[builtins.int]"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecArgsAndKwargsTypes]
@@ -298,19 +298,19 @@ def join(x: T, y: T) -> T: ...
 class C(Generic[P, P2]):
     def m(self, f: Callable[P, None], g: Callable[P2, None]) -> None:
         reveal_type(join(f, f))  # N: Revealed type is "def (*P.args, **P.kwargs)"
-        reveal_type(join(f, g))  # N: Revealed type is "builtins.function*"
+        reveal_type(join(f, g))  # N: Revealed type is "builtins.function"
 
     def m2(self, *args: P.args, **kwargs: P.kwargs) -> None:
         reveal_type(join(args, args))  # N: Revealed type is "P.args`1"
         reveal_type(join(kwargs, kwargs))  # N: Revealed type is "P.kwargs`1"
-        reveal_type(join(args, kwargs))  # N: Revealed type is "builtins.object*"
+        reveal_type(join(args, kwargs))  # N: Revealed type is "builtins.object"
         def f(*args2: P2.args, **kwargs2: P2.kwargs) -> None:
-            reveal_type(join(args, args2))  # N: Revealed type is "builtins.object*"
-            reveal_type(join(kwargs, kwargs2))  # N: Revealed type is "builtins.object*"
+            reveal_type(join(args, args2))  # N: Revealed type is "builtins.object"
+            reveal_type(join(kwargs, kwargs2))  # N: Revealed type is "builtins.object"
 
     def m3(self, c: C[P, P3]) -> None:
-        reveal_type(join(c, c))  # N: Revealed type is "__main__.C*[P`1, P3`-1]"
-        reveal_type(join(self, c))  # N: Revealed type is "builtins.object*"
+        reveal_type(join(c, c))  # N: Revealed type is "__main__.C[P`1, P3`-1]"
+        reveal_type(join(self, c))  # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 
 [case testParamSpecClassWithAny]

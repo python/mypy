@@ -1434,9 +1434,9 @@ a = [] # type: List[Union[int, str]]
 l = [x for x in a if isinstance(x, int)]
 g = (x for x in a if isinstance(x, int))
 d = {0: x for x in a if isinstance(x, int)}
-reveal_type(l) # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(g) # N: Revealed type is "typing.Generator[builtins.int*, None, None]"
-reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int*, builtins.int*]"
+reveal_type(l) # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(g) # N: Revealed type is "typing.Generator[builtins.int, None, None]"
+reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int, builtins.int]"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testIsinstanceInWrongOrderInBooleanOp]
@@ -2417,14 +2417,14 @@ else:
 y: A[Parent]
 if isinstance(y, B):
     reveal_type(y)      # N: Revealed type is "__main__.<subclass of "A" and "B">"
-    reveal_type(y.f())  # N: Revealed type is "__main__.Parent*"
+    reveal_type(y.f())  # N: Revealed type is "__main__.Parent"
 else:
     reveal_type(y)      # N: Revealed type is "__main__.A[__main__.Parent]"
 
 z: A[Child]
 if isinstance(z, B):
     reveal_type(z)      # N: Revealed type is "__main__.<subclass of "A" and "B">1"
-    reveal_type(z.f())  # N: Revealed type is "__main__.Child*"
+    reveal_type(z.f())  # N: Revealed type is "__main__.Child"
 else:
     reveal_type(z)      # N: Revealed type is "__main__.A[__main__.Child]"
 [builtins fixtures/isinstance.pyi]
@@ -2443,21 +2443,21 @@ class C:
 T1 = TypeVar('T1', A, B)
 def f1(x: T1) -> T1:
     if isinstance(x, A):
-        reveal_type(x)      # N: Revealed type is "__main__.A*" \
+        reveal_type(x)      # N: Revealed type is "__main__.A" \
                             # N: Revealed type is "__main__.<subclass of "B" and "A">"
         if isinstance(x, B):
             reveal_type(x)  # N: Revealed type is "__main__.<subclass of "A" and "B">" \
                             # N: Revealed type is "__main__.<subclass of "B" and "A">"
         else:
-            reveal_type(x)  # N: Revealed type is "__main__.A*"
+            reveal_type(x)  # N: Revealed type is "__main__.A"
     else:
-        reveal_type(x)      # N: Revealed type is "__main__.B*"
+        reveal_type(x)      # N: Revealed type is "__main__.B"
     return x
 
 T2 = TypeVar('T2', B, C)
 def f2(x: T2) -> T2:
     if isinstance(x, B):
-        reveal_type(x)      # N: Revealed type is "__main__.B*"
+        reveal_type(x)      # N: Revealed type is "__main__.B"
         # Note: even though --warn-unreachable is set, we don't report
         # errors for the below: we don't yet have a way of filtering out
         # reachability errors that occur for only one variation of the
@@ -2465,9 +2465,9 @@ def f2(x: T2) -> T2:
         if isinstance(x, C):
             reveal_type(x)
         else:
-            reveal_type(x)  # N: Revealed type is "__main__.B*"
+            reveal_type(x)  # N: Revealed type is "__main__.B"
     else:
-        reveal_type(x)      # N: Revealed type is "__main__.C*"
+        reveal_type(x)      # N: Revealed type is "__main__.C"
     return x
 [builtins fixtures/isinstance.pyi]
 
