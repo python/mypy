@@ -358,7 +358,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         """Undoes the contraction done by contract_starred_pattern_types.
 
         For example if the sequence pattern is [a, *b, c] and types [bool, int, str] are extended
-        to lenght 4 the result is [bool, int, int, str].
+        to length 4 the result is [bool, int, int, str].
         """
         if star_pos is None:
             return types
