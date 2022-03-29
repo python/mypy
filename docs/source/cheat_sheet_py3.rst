@@ -304,7 +304,7 @@ Miscellaneous
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not
    # distinguish between reading, writing or other modes)
-   def get_sys_IO(mode: str = 'w') -> IO[str]:
+   def get_sys_IO(mode: str = 'w') -> IO[AnyStr]:
        if mode == 'w':
            return sys.stdout
        elif mode == 'r':
