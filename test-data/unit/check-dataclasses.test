@@ -1537,6 +1537,22 @@ A(1)
 A(a="foo")  # E: Argument "a" to "A" has incompatible type "str"; expected "int"
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassesCallableFrozen]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any, Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[..., None]
+
+def func() -> None:
+    pass
+
+reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
+A(a=func).a()
+A(a=func).a = func  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesMultipleInheritanceWithNonDataclass]
 # flags: --python-version 3.10
 from dataclasses import dataclass
