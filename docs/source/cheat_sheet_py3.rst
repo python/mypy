@@ -296,7 +296,7 @@ Miscellaneous
 
    import sys
    import re
-   from typing import Match, AnyStr, IO
+   from typing import Match, IO
 
    # "typing.Match" describes regex matches from the re module
    x: Match[str] = re.match(r'[0-9]+', "15")
