@@ -296,7 +296,7 @@ Miscellaneous
 
    import sys
    import re
-   from typing import Match, AnyStr, IO
+   from typing import Match, IO
 
    # "typing.Match" describes regex matches from the re module
    x: Match[str] = re.match(r'[0-9]+', "15")
@@ -304,7 +304,7 @@ Miscellaneous
    # Use IO[] for functions that should accept or return any
    # object that comes from an open() call (IO[] does not
    # distinguish between reading, writing or other modes)
-   def get_sys_IO(mode: str = 'w') -> IO[AnyStr]:
+   def get_sys_IO(mode: str = 'w') -> IO[str]:
        if mode == 'w':
            return sys.stdout
        elif mode == 'r':
