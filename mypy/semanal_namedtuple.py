@@ -447,7 +447,8 @@ class NamedTupleAnalyzer:
         add_field(Var('_source', strtype), is_initialized_in_class=True)
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
-        add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
+        if self.options.python_version >= (3, 10):
+            add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
 
         tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
