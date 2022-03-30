@@ -273,7 +273,7 @@ reveal_type(u(1, C()))  # N: Revealed type is "Union[__main__.C, builtins.int]"
 reveal_type(u(1, a))  # N: Revealed type is "Union[Any, builtins.int]"
 reveal_type(u(a, 1))  # N: Revealed type is "Union[builtins.int, Any]"
 
-# Any and base-class-Any, no simplificaiton
+# Any and base-class-Any, no simplification
 reveal_type(u(C(), a))  # N: Revealed type is "Union[Any, __main__.C]"
 reveal_type(u(a, C()))  # N: Revealed type is "Union[__main__.C, Any]"
 

@@ -2064,7 +2064,7 @@ import typing
 from enum import Enum
 
 class WritingMembers(Enum):
-    __members__: typing.Dict[Enum, Enum] = {}  # E: Assigned "__members__" will be overriden by "Enum" internally
+    __members__: typing.Dict[Enum, Enum] = {}  # E: Assigned "__members__" will be overridden by "Enum" internally
 
 class OnlyAnnotatedMembers(Enum):
     __members__: typing.Dict[Enum, Enum]
