@@ -9,7 +9,7 @@ from .events import AbstractEventLoop, BaseDefaultEventLoopPolicy, _ProtocolFact
 from .selector_events import BaseSelectorEventLoop
 
 # This is also technically not available on Win,
-# but other parts of typeshed need this definition.
+# but other parts of typeshed need this defintion.
 # So, it is special cased.
 class AbstractChildWatcher:
     def add_child_handler(self, pid: int, callback: Callable[..., Any], *args: Any) -> None: ...

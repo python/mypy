@@ -277,7 +277,7 @@ class OrderedDict(dict[_KT, _VT], Reversible[_KT], Generic[_KT, _VT]):
     def items(self) -> _OrderedDictItemsView[_KT, _VT]: ...
     def values(self) -> _OrderedDictValuesView[_KT, _VT]: ...
     # `fromkeys` is actually inherited from `dict` at runtime, so the signature should be kept in line with `dict.fromkeys`.
-    # Ideally we would not redefine it here, but the true signature of `dict.fromkeys` is not expressible in the current type system.
+    # Ideally we would not redefine it here, but the true signature of `dict.fromkeys` is not expressable in the current type system.
     # See #3800 & https://github.com/python/typing/issues/548#issuecomment-683336963.
     @classmethod
     @overload
