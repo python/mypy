@@ -352,7 +352,7 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     if sys.platform == "darwin":
         @property
         def st_flags(self) -> int: ...  # user defined flags for file
-    # Atributes documented as sometimes appearing, but deliberately omitted from the stub: `st_creator`, `st_rsize`, `st_type`.
+    # Attributes documented as sometimes appearing, but deliberately omitted from the stub: `st_creator`, `st_rsize`, `st_type`.
     # See https://github.com/python/typeshed/pull/6560#issuecomment-991253327
 
 @runtime_checkable

@@ -847,7 +847,7 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     def values(self) -> dict_values[_KT, _VT]: ...
     def items(self) -> dict_items[_KT, _VT]: ...
     # Signature of `dict.fromkeys` should be kept identical to `fromkeys` methods of `OrderedDict`/`ChainMap`/`UserDict` in `collections`
-    # TODO: the true signature of `dict.fromkeys` is not expressable in the current type system.
+    # TODO: the true signature of `dict.fromkeys` is not expressible in the current type system.
     # See #3800 & https://github.com/python/typing/issues/548#issuecomment-683336963.
     @classmethod
     @overload
