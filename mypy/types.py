@@ -661,6 +661,42 @@ class ParamSpecType(TypeVarLikeType):
         )
 
 
+class TypeVarTupleType(TypeVarLikeType):
+    """Type that refers to a TypeVarTuple.
+
+    See PEP646 for more information.
+    """
+    def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
+        return {'.class': 'TypeVarTupleType',
+                'name': self.name,
+                'fullname': self.fullname,
+                'id': self.id.raw_id,
+                'upper_bound': self.upper_bound.serialize(),
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarTupleType':
+        assert data['.class'] == 'TypeVarTupleType'
+        return TypeVarTupleType(
+            data['name'],
+            data['fullname'],
+            data['id'],
+            deserialize_type(data['upper_bound']),
+        )
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_var_tuple(self)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarTupleType):
+            return NotImplemented
+        return self.id == other.id
+
+
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
 
@@ -2656,6 +2692,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += ' ='
 
         return f'[{s}]'
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> str:
+        if t.name is None:
+            # Anonymous type variable type (only numeric id).
+            s = f'`{t.id}'
+        else:
+            # Named type variable type.
+            s = f'{t.name}`{t.id}'
+        return s
 
     def visit_callable_type(self, t: CallableType) -> str:
         param_spec = t.param_spec()

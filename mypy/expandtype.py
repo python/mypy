@@ -6,7 +6,7 @@ from mypy.types import (
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
     TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor,
-    UnpackType
+    UnpackType, TypeVarTupleType
 )
 
 
@@ -130,6 +130,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
         raise NotImplementedError

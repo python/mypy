@@ -1,6 +1,10 @@
 from typing import Optional, Dict, Union
-from mypy.types import TypeVarLikeType, TypeVarType, ParamSpecType, ParamSpecFlavor, TypeVarId
-from mypy.nodes import ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode
+from mypy.types import (
+    TypeVarLikeType, TypeVarType, ParamSpecType, ParamSpecFlavor, TypeVarId, TypeVarTupleType,
+)
+from mypy.nodes import (
+    ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode, TypeVarTupleExpr,
+)
 
 
 class TypeVarLikeScope:
@@ -84,6 +88,15 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 flavor=ParamSpecFlavor.BARE,
+                upper_bound=tvar_expr.upper_bound,
+                line=tvar_expr.line,
+                column=tvar_expr.column
+            )
+        elif isinstance(tvar_expr, TypeVarTupleExpr):
+            tvar_def = TypeVarTupleType(
+                name,
+                tvar_expr.fullname,
+                i,
                 upper_bound=tvar_expr.upper_bound,
                 line=tvar_expr.line,
                 column=tvar_expr.column

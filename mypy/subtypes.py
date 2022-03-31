@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TypeVarTupleType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -336,6 +336,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
             isinstance(right, ParamSpecType)
             and right.id == left.id
             and right.flavor == left.flavor
+        ):
+            return True
+        return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
+        right = self.right
+        if (
+            isinstance(right, TypeVarTupleType)
+            and right.id == left.id
         ):
             return True
         return self._is_subtype(left.upper_bound, self.right)
@@ -1459,6 +1468,15 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
             isinstance(right, ParamSpecType)
             and right.id == left.id
             and right.flavor == left.flavor
+        ):
+            return True
+        return self._is_proper_subtype(left.upper_bound, self.right)
+
+    def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
+        right = self.right
+        if (
+            isinstance(right, TypeVarTupleType)
+            and right.id == left.id
         ):
             return True
         return self._is_proper_subtype(left.upper_bound, self.right)
