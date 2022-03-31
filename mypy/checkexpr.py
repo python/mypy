@@ -3320,8 +3320,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vt = join.join_type_list(values)
         if not isinstance(vt, Instance):
             return None
-        # TODO: update tests instead?
-        vt.erased = True
         return self.chk.named_generic_type(container_fullname, [vt])
 
     def check_lst_expr(self, items: List[Expression], fullname: str,
@@ -3448,9 +3446,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             return None
-        # TODO: update tests instead?
-        kt.erased = True
-        vt.erased = True
         return self.chk.named_generic_type('builtins.dict', [kt, vt])
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
