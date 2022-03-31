@@ -1029,7 +1029,7 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, *,
