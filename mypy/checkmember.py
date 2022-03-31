@@ -842,11 +842,6 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
-    # When we analyze enums, the corresponding Instance is always considered to be erased
-    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-    # in typeshed. However, this is really more of an implementation detail of how Enums
-    # are typed, and we really don't want to treat every single Enum value as if it were
-    # from type variable substitution. So we reset the 'erased' field here.
     return itype.copy_modified(last_known_value=enum_literal)
 
 
