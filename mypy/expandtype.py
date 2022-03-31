@@ -93,9 +93,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         else:
             return repl
 
@@ -103,9 +101,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
             return repl.with_flavor(t.flavor)
         else:
