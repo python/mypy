@@ -22,6 +22,7 @@ class BuildType:
 PER_MODULE_OPTIONS: Final = {
     # Please keep this list sorted
     "allow_redefinition",
+    "allow_same_name_modules",
     "allow_untyped_globals",
     "always_false",
     "always_true",
@@ -178,6 +179,10 @@ class Options:
         # Allow variable to be redefined with an arbitrary type in the same block
         # and the same nesting level as the initialization
         self.allow_redefinition = False
+
+        # Suppress Duplicate module named "...". Recomended to use this option in
+        # monorepos.
+        self.allow_same_name_modules = False
 
         # Prohibit equality, identity, and container checks for non-overlapping types.
         # This makes 1 == '1', 1 in ['1'], and 1 is '1' errors.

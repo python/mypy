@@ -669,6 +669,10 @@ def process_options(args: List[str],
                         help="Allow unconditional variable redefinition with a new type",
                         group=strictness_group)
 
+    add_invertible_flag('--allow-same-name-modules', default=False, strict_flag=False,
+                        help="Suppress toplevel errors caused by duplicated module named",
+                        group=strictness_group)
+
     add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
                         dest='implicit_reexport',
                         help="Treat imports as private unless aliased",

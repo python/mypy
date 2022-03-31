@@ -2841,26 +2841,27 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             continue
         if st.id in graph:
             manager.errors.set_file(st.xpath, st.id)
-            manager.errors.report(
-                -1, -1,
-                'Duplicate module named "%s" (also at "%s")' % (st.id, graph[st.id].xpath),
-                blocker=True,
-            )
-            manager.errors.report(
-                -1, -1,
-                "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
-                "for more info",
-                severity='note',
-            )
-            manager.errors.report(
-                -1, -1,
-                "Common resolutions include: a) using `--exclude` to avoid checking one of them, "
-                "b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or "
-                "adjusting MYPYPATH",
-                severity='note'
-            )
+            if manager.options.allow_same_name_modules is False:
+                manager.errors.report(
+                    -1, -1,
+                    'Duplicate module named "%s" (also at "%s")' % (st.id, graph[st.id].xpath),
+                    blocker=True,
+                )
+                manager.errors.report(
+                    -1, -1,
+                    "See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules "  # noqa: E501
+                    "for more info",
+                    severity='note',
+                )
+                manager.errors.report(
+                    -1, -1,
+                    "Common resolutions include: a) using `--exclude` to avoid checking one of them, "  # noqa: E501
+                    "b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or "
+                    "adjusting MYPYPATH, d) using --allow-same-name-modules",
+                    severity='note'
+                )
 
-            manager.errors.raise_error()
+                manager.errors.raise_error()
         graph[st.id] = st
         new.append(st)
         entry_points.add(bs.module)

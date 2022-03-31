@@ -60,8 +60,16 @@ undef
 [out]
 dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
 dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH, d) using --allow-same-name-modules
 == Return code: 2
+
+[case testCmdlineSuppressNonPackageDuplicate]
+# cmd: mypy dir --allow-same-name-modules
+[file dir/a.py]
+undef
+[file dir/subdir/a.py]
+undef
+[out]
 
 [case testCmdlineNonPackageSlash]
 # cmd: mypy dir/
@@ -127,8 +135,16 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [out]
 two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
 two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
-two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
+two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH, d) using --allow-same-name-modules
 == Return code: 2
+
+[case testIgnoreDuplicateModule]
+# cmd: mypy one/mod/__init__.py two/mod/__init__.py --allow-same-name-modules
+[file one/mod/__init__.py]
+# type: ignore
+[file two/mod/__init__.py]
+# type: ignore
+[out]
 
 [case testFlagsFile]
 # cmd: mypy @flagsfile

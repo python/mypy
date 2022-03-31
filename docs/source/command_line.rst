@@ -535,6 +535,11 @@ of the above sections.
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
 
+.. option:: --allow-same-name-modules
+
+    This flag allow to create different files with the same name in different paths, 
+    for example, one/router.py two/router.py.
+
 .. option:: --local-partial-types
 
     In mypy, the most common cases for partial types are variables initialized using ``None``,

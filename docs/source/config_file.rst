@@ -634,6 +634,14 @@ section of the command line docs.
            items = "100"  # valid, items now has type str
            items = int(items)  # valid, items now has type int
 
+.. confval:: allow_same_name_modules
+
+    :type: boolean
+    :default: False
+
+    Allows to create different files with the same name in different paths.
+    For example, one/router.py two/router.py
+
 .. confval:: local_partial_types
 
     :type: boolean
