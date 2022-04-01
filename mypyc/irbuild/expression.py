@@ -408,6 +408,8 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     # Special case some int ops to allow borrowing operands.
     if (is_int_rprimitive(builder.node_type(expr.left))
             and is_int_rprimitive(builder.node_type(expr.right))):
+        if expr.op == '//':
+            expr = try_optimize_int_floor_divide(expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
             left = builder.accept(expr.left, can_borrow=borrow_left)
@@ -417,6 +419,18 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
     )
+
+
+def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+    if not isinstance(expr.right, IntExpr):
+        return expr
+    divisor = expr.right.value
+    n = 2
+    for shift in range(1, 24):
+        if divisor == n:
+            return OpExpr('>>', expr.left, IntExpr(shift))
+        n += n
+    return expr
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
