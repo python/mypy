@@ -292,7 +292,7 @@ class IRBuilder:
                         arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
-            base, name, arg_values, result_type, line, arg_kinds, arg_names
+            base, name, arg_values, result_type, line, arg_kinds, arg_names, self.can_borrow
         )
 
     def load_module(self, name: str) -> Value:

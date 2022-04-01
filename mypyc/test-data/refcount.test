@@ -1153,14 +1153,20 @@ L0:
 [case testBorrowListGetItem2]
 from typing import List
 
-def attr_index(x: C) -> str:
+def attr_before_index(x: C) -> str:
     return x.a[x.n]
+
+def attr_after_index(a: List[C], i: int) -> int:
+    return a[i].n
+
+def attr_after_index_literal(a: List[C]) -> int:
+    return a[0].n
 
 class C:
     a: List[str]
     n: int
 [out]
-def attr_index(x):
+def attr_before_index(x):
     x :: __main__.C
     r0 :: list
     r1 :: int
@@ -1172,6 +1178,27 @@ L0:
     r2 = CPyList_GetItem(r0, r1)
     r3 = cast(str, r2)
     return r3
+def attr_after_index(a, i):
+    a :: list
+    i :: int
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItemBorrow(a, i)
+    r1 = borrow cast(__main__.C, r0)
+    r2 = r1.n
+    return r2
+def attr_after_index_literal(a):
+    a :: list
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItemShortBorrow(a, 0)
+    r1 = borrow cast(__main__.C, r0)
+    r2 = r1.n
+    return r2
 
 [case testCannotBorrowListGetItem]
 from typing import List

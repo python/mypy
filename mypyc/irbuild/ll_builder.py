@@ -725,7 +725,8 @@ class LowLevelIRBuilder:
                         result_type: Optional[RType],
                         line: int,
                         arg_kinds: Optional[List[ArgKind]] = None,
-                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
+                        arg_names: Optional[List[Optional[str]]] = None,
+                        can_borrow: bool = False) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
         if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
@@ -759,7 +760,8 @@ class LowLevelIRBuilder:
 
         # Try to do a special-cased method call
         if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
-            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
+            target = self.translate_special_method_call(
+                base, name, arg_values, result_type, line, can_borrow=can_borrow)
             if target:
                 return target
 
@@ -1332,20 +1334,22 @@ class LowLevelIRBuilder:
                 # and so we can't just coerce it.
                 result = self.none()
             else:
-                result = self.coerce(target, result_type, line)
+                result = self.coerce(target, result_type, line, can_borrow=desc.is_borrowed)
         return result
 
     def matching_call_c(self,
                         candidates: List[CFunctionDescription],
                         args: List[Value],
                         line: int,
-                        result_type: Optional[RType] = None) -> Optional[Value]:
+                        result_type: Optional[RType] = None,
+                        can_borrow: bool = False) -> Optional[Value]:
         matching: Optional[CFunctionDescription] = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
-            if all(is_subtype(actual.type, formal)
-                   for actual, formal in zip(args, desc.arg_types)):
+            if (all(is_subtype(actual.type, formal)
+                    for actual, formal in zip(args, desc.arg_types)) and
+                    (not desc.is_borrowed or can_borrow)):
                 if matching:
                     assert matching.priority != desc.priority, 'Ambiguous:\n1) {}\n2) {}'.format(
                         matching, desc)
@@ -1500,7 +1504,8 @@ class LowLevelIRBuilder:
                                       name: str,
                                       args: List[Value],
                                       result_type: Optional[RType],
-                                      line: int) -> Optional[Value]:
+                                      line: int,
+                                      can_borrow: bool = False) -> Optional[Value]:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -1511,7 +1516,7 @@ class LowLevelIRBuilder:
         """
         call_c_ops_candidates = method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args,
-                                         line, result_type)
+                                         line, result_type, can_borrow=can_borrow)
         return call_c_op
 
     def translate_eq_cmp(self,
