@@ -1201,3 +1201,43 @@ L0:
 def f():
 L0:
     return 0
+
+[case testBorrowSetAttrObject]
+from typing import Optional
+
+def f(x: Optional[C]) -> None:
+    if x is not None:
+        x.b = True
+
+def g(x: D) -> None:
+    x.c.b = False
+
+class C:
+    b: bool
+
+class D:
+    c: C
+[out]
+def f(x):
+    x :: union[__main__.C, None]
+    r0 :: object
+    r1 :: bit
+    r2 :: __main__.C
+    r3 :: bool
+L0:
+    r0 = load_address _Py_NoneStruct
+    r1 = x != r0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = borrow cast(__main__.C, x)
+    r2.b = 1; r3 = is_error
+L2:
+    return 1
+def g(x):
+    x :: __main__.D
+    r0 :: __main__.C
+    r1 :: bool
+L0:
+    r0 = borrow x.c
+    r0.b = 0; r1 = is_error
+    return 1

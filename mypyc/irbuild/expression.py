@@ -118,15 +118,6 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     return builder.load_global(expr)
 
 
-def is_native_attr_ref(builder: IRBuilder, expr: MemberExpr) -> bool:
-    """Is expr a direct reference to a native (struct) attribute of an instance?"""
-    obj_rtype = builder.node_type(expr.expr)
-    return (isinstance(obj_rtype, RInstance)
-            and obj_rtype.class_ir.is_ext_class
-            and obj_rtype.class_ir.has_attr(expr.name)
-            and not obj_rtype.class_ir.get_method(expr.name))
-
-
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
@@ -140,7 +131,7 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    can_borrow = is_native_attr_ref(builder, expr)
+    can_borrow = builder.is_native_attr_ref(expr)
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
 
@@ -454,7 +445,7 @@ def is_borrow_friendly_expr(builder: IRBuilder, expr: Expression) -> bool:
         if isinstance(expr.node, Var) and expr.kind == LDEF:
             # Local variable reference can be borrowed
             return True
-    if isinstance(expr, MemberExpr) and is_native_attr_ref(builder, expr):
+    if isinstance(expr, MemberExpr) and builder.is_native_attr_ref(expr):
         return True
     return False
 
