@@ -2197,14 +2197,14 @@ L0:
     r0 = self.is_add
     if r0 goto L1 else goto L2 :: bool
 L1:
-    r1 = self.left
-    r2 = self.right
+    r1 = borrow self.left
+    r2 = borrow self.right
     r3 = CPyTagged_Add(r1, r2)
     r4 = r3
     goto L3
 L2:
-    r5 = self.left
-    r6 = self.right
+    r5 = borrow self.left
+    r6 = borrow self.right
     r7 = CPyTagged_Subtract(r5, r6)
     r4 = r7
 L3:
@@ -2292,7 +2292,7 @@ def BaseProperty.next(self):
     r0, r1 :: int
     r2 :: __main__.BaseProperty
 L0:
-    r0 = self._incrementer
+    r0 = borrow self._incrementer
     r1 = CPyTagged_Add(r0, 2)
     r2 = BaseProperty(r1)
     return r2
@@ -2483,7 +2483,7 @@ def g(a, b, c):
     r2, r3 :: int
 L0:
     r0 = a.__getitem__(c)
-    r1 = CPyList_GetItem(b, c)
+    r1 = CPyList_GetItemBorrow(b, c)
     r2 = unbox(int, r1)
     r3 = CPyTagged_Add(r0, r2)
     return r3

@@ -59,7 +59,7 @@ L0:
     r5 = CPyList_GetItemShort(a, 0)
     r6 = cast(__main__.C, r5)
     d = r6
-    r7 = d.x
+    r7 = borrow d.x
     r8 = CPyTagged_Add(r7, 2)
     return r8
 

@@ -36,6 +36,7 @@ from mypyc.irbuild.nonlocalcontrol import (
 )
 from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.ast_helpers import process_conditional
 
 GenFunc = Callable[[], None]
 
@@ -207,7 +208,7 @@ def transform_if_stmt(builder: IRBuilder, stmt: IfStmt) -> None:
     # If statements are normalized
     assert len(stmt.expr) == 1
 
-    builder.process_conditional(stmt.expr[0], if_body, else_body)
+    process_conditional(builder, stmt.expr[0], if_body, else_body)
     builder.activate_block(if_body)
     builder.accept(stmt.body[0])
     builder.goto(next)
@@ -226,7 +227,7 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
     # Split block so that we get a handle to the top of the loop.
     builder.goto_and_activate(top)
-    builder.process_conditional(s.expr, body, normal_loop_exit)
+    process_conditional(builder, s.expr, body, normal_loop_exit)
 
     builder.activate_block(body)
     builder.accept(s.body)
