@@ -21,7 +21,8 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, RInstance, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
+    is_list_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -117,6 +118,15 @@ def transform_name_expr(builder: IRBuilder, expr: NameExpr) -> Value:
     return builder.load_global(expr)
 
 
+def is_native_attr_ref(builder: IRBuilder, expr: MemberExpr) -> bool:
+    """Is expr a direct reference to a native (struct) attribute of an instance?"""
+    obj_rtype = builder.node_type(expr.expr)
+    return (isinstance(obj_rtype, RInstance)
+            and obj_rtype.class_ir.is_ext_class
+            and obj_rtype.class_ir.has_attr(expr.name)
+            and not obj_rtype.class_ir.get_method(expr.name))
+
+
 def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     # First check if this is maybe a final attribute.
     final = builder.get_final_ref(expr)
@@ -130,17 +140,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    obj_rtype = builder.node_type(expr.expr)
-    if (isinstance(obj_rtype, RInstance)
-            and obj_rtype.class_ir.is_ext_class
-            and obj_rtype.class_ir.has_attr(expr.name)
-            and not obj_rtype.class_ir.get_method(expr.name)):
-        # Direct attribute access -> can borrow object
-        can_borrow = True
-    else:
-        can_borrow = False
+    can_borrow = is_native_attr_ref(builder, expr)
     obj = builder.accept(expr.expr, can_borrow=can_borrow)
-
     rtype = builder.node_type(expr)
 
     # Special case: for named tuples transform attribute access to faster index access.
@@ -418,8 +419,12 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
-    base = builder.accept(expr.base)
     index = expr.index
+    base_type = builder.node_type(expr.base)
+    is_list = is_list_rprimitive(base_type)
+    can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
     if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
         return builder.add(TupleGet(base, index.value, expr.line))
@@ -429,9 +434,29 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index)
+    index_reg = builder.accept(expr.index, can_borrow=is_list)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def is_borrow_friendly_expr(builder: IRBuilder, expr: Expression) -> bool:
+    """Can the result of the expression borrowed temporarily?
+
+    Borrowing means keeping a reference without incrementing the reference count.
+    """
+    if isinstance(expr, (IntExpr, FloatExpr, StrExpr, BytesExpr)):
+        # Literals are immportal and can always be borrowed
+        return True
+    if isinstance(expr, (UnaryExpr, OpExpr)) and constant_fold_expr(builder, expr) is not None:
+        # Literal expressions are similar to literals
+        return True
+    if isinstance(expr, NameExpr):
+        if isinstance(expr.node, Var) and expr.kind == LDEF:
+            # Local variable reference can be borrowed
+            return True
+    if isinstance(expr, MemberExpr) and is_native_attr_ref(builder, expr):
+        return True
+    return False
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
