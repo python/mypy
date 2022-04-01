@@ -5,7 +5,6 @@ and mypyc.irbuild.builder.
 """
 
 from typing import List, Optional, Union, Callable, cast
-from typing_extensions import Final
 
 from mypy.nodes import (
     Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
@@ -41,7 +40,7 @@ from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper
@@ -515,11 +514,6 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
     builder.activate_block(next_block)
 
     return target
-
-
-# These int binary operations can borrow their operands safely, since the
-# primitives take this into consideration.
-int_borrow_friendly_op: Final = {'+', '-', '==', '!=', '<', '<=', '>', '>='}
 
 
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:

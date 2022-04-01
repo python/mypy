@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
-from typing_extensions import overload
+from typing_extensions import overload, Final
 from mypy.backports import OrderedDict
 
 from mypy.build import Graph
@@ -65,6 +65,11 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
+
+
+# These int binary operations can borrow their operands safely, since the
+# primitives take this into consideration.
+int_borrow_friendly_op: Final = {'+', '-', '==', '!=', '<', '<=', '>', '>='}
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -515,7 +520,7 @@ class IRBuilder:
             # Attribute assignment x.y = e
             can_borrow = self.is_native_attr_ref(lvalue)
             obj = self.accept(lvalue.expr, can_borrow=can_borrow)
-            return AssignmentTargetAttr(obj, lvalue.name)
+            return AssignmentTargetAttr(obj, lvalue.name, can_borrow=can_borrow)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
             star_idx: Optional[int] = None
@@ -535,7 +540,10 @@ class IRBuilder:
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
-    def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
+    def read(self,
+             target: Union[Value, AssignmentTarget],
+             line: int = -1,
+             can_borrow: bool = False) -> Value:
         if isinstance(target, Value):
             return target
         if isinstance(target, AssignmentTargetRegister):
@@ -548,7 +556,8 @@ class IRBuilder:
             assert False, target.base.type
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
-                return self.add(GetAttr(target.obj, target.attr, line))
+                borrow = can_borrow and target.can_borrow
+                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 

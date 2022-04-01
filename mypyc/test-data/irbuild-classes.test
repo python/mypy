@@ -175,7 +175,7 @@ def increment(o):
     r0, r1 :: int
     r2 :: bool
 L0:
-    r0 = o.x
+    r0 = borrow o.x
     r1 = CPyTagged_Add(r0, 2)
     o.x = r1; r2 = is_error
     return o

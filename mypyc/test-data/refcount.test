@@ -1401,3 +1401,34 @@ L3:
     return 1
 L4:
     return 0
+
+[case testBorrowIntInPlaceOp]
+def add(c: C, n: int) -> None:
+    c.x += n
+
+def sub(c: C, n: int) -> None:
+    c.x -= c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c, n):
+    c :: __main__.C
+    n, r0, r1 :: int
+    r2 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = CPyTagged_Add(r0, n)
+    c.x = r1; r2 = is_error
+    return 1
+def sub(c, n):
+    c :: __main__.C
+    n, r0, r1, r2 :: int
+    r3 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = CPyTagged_Subtract(r0, r1)
+    c.x = r2; r3 = is_error
+    return 1
