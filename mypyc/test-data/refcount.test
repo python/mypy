@@ -1229,6 +1229,37 @@ def f():
 L0:
     return 0
 
+[case testBorrowListGetItemKeepAlive]
+from typing import List
+
+def f() -> str:
+    a = [C()]
+    return a[0].s
+
+class C:
+    s: str
+[out]
+def f():
+    r0 :: __main__.C
+    r1 :: list
+    r2, r3 :: ptr
+    a :: list
+    r4 :: object
+    r5 :: __main__.C
+    r6 :: str
+L0:
+    r0 = C()
+    r1 = PyList_New(1)
+    r2 = get_element_ptr r1 ob_item :: PyListObject
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
+    a = r1
+    r4 = CPyList_GetItemShortBorrow(a, 0)
+    r5 = borrow cast(__main__.C, r4)
+    r6 = r5.s
+    dec_ref a
+    return r6
+
 [case testBorrowSetAttrObject]
 from typing import Optional
 

@@ -1315,6 +1315,13 @@ class LowLevelIRBuilder:
             error_kind = ERR_NEVER
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
                                 desc.is_borrowed, error_kind, line, var_arg_idx))
+        if desc.is_borrowed:
+            # If the result is borrowed, force the arguments to be
+            # kept alive afterwards, as otherwise the result might be
+            # immediately freed, at the risk of a dangling pointer.
+            for arg in coerced:
+                if not isinstance(arg, (Integer, LoadLiteral)):
+                    self.keep_alives.append(arg)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target,
                                 Integer(0, desc.return_type, line),
