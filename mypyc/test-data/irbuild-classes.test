@@ -1257,4 +1257,5 @@ def f(d):
 L0:
     r0 = borrow d.c
     r1 = r0.x
+    keep_alive d
     return r1

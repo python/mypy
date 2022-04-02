@@ -181,6 +181,8 @@ class IRBuilder:
                 except UnsupportedException:
                     res = Register(self.node_type(node))
                 self.can_borrow = old_can_borrow
+                if not can_borrow:
+                    self.builder.flush_keep_alives()
                 return res
             else:
                 try:
