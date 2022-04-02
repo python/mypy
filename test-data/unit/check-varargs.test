@@ -549,6 +549,8 @@ if int():
 if int():
     b, a = f(b, *aa)
 if int():
+     a, b = f(*a)     # E: variadic arguments
+if int():
     b, a = f(b, a, *aa)
 
 def f(a: S, *b: T) -> Tuple[S, T]:
@@ -754,4 +756,5 @@ bar(*good1)
 bar(*good2)
 bar(*good3)
 bar(*bad1)  # E: Argument 1 to "bar" has incompatible type "*I[str]"; expected "float"
+bar(*bad2)  # E: variadic arguments
 [builtins fixtures/dict.pyi]

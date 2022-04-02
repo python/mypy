@@ -1519,8 +1519,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Check that a *arg is valid as varargs.
                 if (actual_kind == nodes.ARG_STAR and
                     not self.is_valid_var_arg(actual_type)):
-                    if not len(context.args) == 1:
-                        messages.invalid_var_arg(actual_type, context)
+                    messages.invalid_var_arg(actual_type, context)
                         
                 if (actual_kind == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(actual_type)):
