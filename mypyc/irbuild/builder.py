@@ -12,7 +12,9 @@ functions are transformed in mypyc.irbuild.function.
 """
 from contextlib import contextmanager
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
+from typing import (
+    TYPE_CHECKING, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
+)
 from typing_extensions import overload
 from mypy.backports import OrderedDict
 
