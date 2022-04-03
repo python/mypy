@@ -391,8 +391,9 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
    The Python interpreter internally uses the name ``NoneType`` for
    the type of ``None``, but ``None`` is always used in type
-   annotations. The latter is shorter and reads better. (Besides,
-   ``NoneType`` is not even defined in the standard library.)
+   annotations. The latter is shorter and reads better. (``NoneType``
+   is available as :py:data:`types.NoneType` on Python 3.10+, but is
+   not exposed at all on earlier versions of Python.)
 
 .. note::
 
