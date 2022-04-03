@@ -61,6 +61,7 @@ L0:
     d = r6
     r7 = borrow d.x
     r8 = CPyTagged_Add(r7, 2)
+    keep_alive d
     return r8
 
 [case testMethodCall]
