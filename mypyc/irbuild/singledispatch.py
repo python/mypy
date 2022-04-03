@@ -25,8 +25,15 @@ implementation), and then call the function using the Python API when we need to
 """
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List, Optional, Tuple
-from mypy.nodes import ArgKind, FuncDef, TypeInfo
+from typing import DefaultDict, Dict, List, NamedTuple, Optional, Tuple
+from mypy.nodes import (
+    ArgKind, CallExpr, Decorator, Expression, FuncDef, MemberExpr, MypyFile, NameExpr, RefExpr,
+    TypeInfo,
+)
+from mypy.semanal import refers_to_fullname
+from mypy.traverser import TraverserVisitor
+from mypy.types import Instance, get_proper_type
+from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.ir.ops import (
     BasicBlock, Integer, LoadAddress, LoadLiteral, Register, Return, SetAttr, Unbox, Unreachable,
@@ -301,3 +308,127 @@ def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line:
     else:
         func = builder.load_global_str(func_name, line)
     return func
+
+
+RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+
+
+class SingledispatchInfo(NamedTuple):
+    singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]
+    decorators_to_remove: Dict[FuncDef, List[int]]
+
+
+def find_singledispatch_register_impls(
+    modules: List[MypyFile],
+    errors: Errors,
+) -> SingledispatchInfo:
+    """Go over the entire SCC, looking for singledispatch functions and their registered
+    implementations.
+
+    Note that this needs to happen before all of the normal passes that actually start compiling
+    code because we need information about all registered implementations in the entire SCC before
+    we actually start generating code for any of those singledispatch functions in order to apply
+    optimizations for those implementations.
+    """
+    visitor = SingledispatchVisitor(errors)
+    for module in modules:
+        visitor.current_path = module.path
+        module.accept(visitor)
+    return SingledispatchInfo(visitor.singledispatch_impls, visitor.decorators_to_remove)
+
+
+class SingledispatchVisitor(TraverserVisitor):
+    current_path: str
+
+    def __init__(self, errors: Errors) -> None:
+        super().__init__()
+
+        # Map of main singledispatch function to list of registered implementations
+        self.singledispatch_impls: DefaultDict[FuncDef, List[RegisterImplInfo]] = defaultdict(list)
+
+        # Map of decorated function to the indices of any decorators to remove
+        self.decorators_to_remove: Dict[FuncDef, List[int]] = {}
+
+        self.errors: Errors = errors
+
+    def visit_decorator(self, dec: Decorator) -> None:
+        if dec.decorators:
+            decorators_to_store = dec.decorators.copy()
+            decorators_to_remove: List[int] = []
+            # the index of the last non-register decorator before finding a register decorator
+            # when going through decorators from top to bottom
+            last_non_register: Optional[int] = None
+            for i, d in enumerate(decorators_to_store):
+                impl = get_singledispatch_register_call_info(d, dec.func)
+                if impl is not None:
+                    self.singledispatch_impls[impl.singledispatch_func].append(
+                        (impl.dispatch_type, dec.func))
+                    decorators_to_remove.append(i)
+                    if last_non_register is not None:
+                        # found a register decorator after a non-register decorator, which we
+                        # don't support because we'd have to make a copy of the function before
+                        # calling the decorator so that we can call it later, which complicates
+                        # the implementation for something that is probably not commonly used
+                        self.errors.error(
+                            "Calling decorator after registering function not supported",
+                            self.current_path,
+                            decorators_to_store[last_non_register].line,
+                        )
+                else:
+                    if refers_to_fullname(d, 'functools.singledispatch'):
+                        decorators_to_remove.append(i)
+                        # make sure that we still treat the function as a singledispatch function
+                        # even if we don't find any registered implementations (which might happen
+                        # if all registered implementations are registered dynamically)
+                        self.singledispatch_impls.setdefault(dec.func, [])
+                    last_non_register = i
+
+            if decorators_to_remove:
+                # calling register on a function that tries to dispatch based on type annotations
+                # raises a TypeError because compiled functions don't have an __annotations__
+                # attribute
+                self.decorators_to_remove[dec.func] = decorators_to_remove
+
+        super().visit_decorator(dec)
+
+
+class RegisteredImpl(NamedTuple):
+    singledispatch_func: FuncDef
+    dispatch_type: TypeInfo
+
+
+def get_singledispatch_register_call_info(decorator: Expression, func: FuncDef
+                                          ) -> Optional[RegisteredImpl]:
+    # @fun.register(complex)
+    # def g(arg): ...
+    if (isinstance(decorator, CallExpr) and len(decorator.args) == 1
+            and isinstance(decorator.args[0], RefExpr)):
+        callee = decorator.callee
+        dispatch_type = decorator.args[0].node
+        if not isinstance(dispatch_type, TypeInfo):
+            return None
+
+        if isinstance(callee, MemberExpr):
+            return registered_impl_from_possible_register_call(callee, dispatch_type)
+    # @fun.register
+    # def g(arg: int): ...
+    elif isinstance(decorator, MemberExpr):
+        # we don't know if this is a register call yet, so we can't be sure that the function
+        # actually has arguments
+        if not func.arguments:
+            return None
+        arg_type = get_proper_type(func.arguments[0].variable.type)
+        if not isinstance(arg_type, Instance):
+            return None
+        info = arg_type.type
+        return registered_impl_from_possible_register_call(decorator, info)
+    return None
+
+
+def registered_impl_from_possible_register_call(expr: MemberExpr, dispatch_type: TypeInfo
+                                                ) -> Optional[RegisteredImpl]:
+    if expr.name == 'register' and isinstance(expr.expr, NameExpr):
+        node = expr.expr.node
+        if isinstance(node, Decorator):
+            return RegisteredImpl(node.func, dispatch_type)
+    return None

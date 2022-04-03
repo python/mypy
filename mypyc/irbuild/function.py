@@ -31,9 +31,7 @@ from mypyc.ir.func_ir import (
     FuncIR, FuncSignature, RuntimeArg, FuncDecl, FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FUNC_NORMAL
 )
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.irbuild.singledispatch import (
-    gen_dispatch_func_ir, maybe_insert_into_registry_dict, singledispatch_main_func_name,
-)
+from mypyc.irbuild import singledispatch
 from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
 from mypyc.primitives.misc_ops import (
     check_stop_op, yield_from_except_op, coro_op, send_op
@@ -73,7 +71,7 @@ def transform_func_def(builder: IRBuilder, fdef: FuncDef) -> None:
     # current environment or define it if it was not already defined.
     if func_reg:
         builder.assign(get_func_target(builder, fdef), func_reg, fdef.line)
-    maybe_insert_into_registry_dict(builder, fdef)
+    singledispatch.maybe_insert_into_registry_dict(builder, fdef)
     builder.functions.append(func_ir)
 
 
@@ -113,7 +111,7 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
                         builder.load_str(dec.func.name), decorated_func],
                        decorated_func.line)
 
-    maybe_insert_into_registry_dict(builder, dec.func)
+    singledispatch.maybe_insert_into_registry_dict(builder, dec.func)
 
     builder.functions.append(func_ir)
 
@@ -221,7 +219,7 @@ def gen_func_item(builder: IRBuilder,
         class_name = cdef.name
 
     if is_singledispatch:
-        func_name = singledispatch_main_func_name(name)
+        func_name = singledispatch.singledispatch_main_func_name(name)
     else:
         func_name = name
     builder.enter(FuncInfo(fitem, func_name, class_name, gen_func_ns(builder),
@@ -323,7 +321,7 @@ def gen_func_item(builder: IRBuilder,
         builder.functions.append(func_ir)
         # create the dispatch function
         assert isinstance(fitem, FuncDef)
-        return gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
+        return singledispatch.gen_dispatch_func_ir(builder, fitem, fn_info.name, name, sig)
 
     return func_ir, func_reg
 
