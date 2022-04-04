@@ -341,6 +341,16 @@ def make_simplified_union(items: Sequence[Type],
                 all_items.append(typ)
         items = all_items
 
+    simplified_set = _remove_redundant_union_items(items, keep_erased)
+
+    # If more than one literal exists in the union, try to simplify
+    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+        simplified_set = try_contracting_literals_in_union(simplified_set)
+
+    return UnionType.make_union(simplified_set, line, column)
+
+
+def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) -> List[ProperType]:
     from mypy.subtypes import is_proper_subtype
 
     removed: Set[int] = set()
@@ -393,13 +403,7 @@ def make_simplified_union(items: Sequence[Type],
         elif not item.can_be_false and cbf:
             items[i] = true_or_false(item)
 
-    simplified_set = [items[i] for i in range(len(items)) if i not in removed]
-
-    # If more than one literal exists in the union, try to simplify
-    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
-        simplified_set = try_contracting_literals_in_union(simplified_set)
-
-    return UnionType.make_union(simplified_set, line, column)
+    return [items[i] for i in range(len(items)) if i not in removed]
 
 
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
