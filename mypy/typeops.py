@@ -300,14 +300,34 @@ def callable_corresponding_argument(typ: CallableType,
 
 
 def is_simple_literal(t: ProperType) -> bool:
-    """
-    Whether a type is a simple enough literal to allow for fast Union simplification
+    """Whether a type is a simple enough literal to allow for fast union simplification.
 
-    For now this means enum or string
+    For now this means enum, string or Instance with string last_known_value.
     """
-    return isinstance(t, LiteralType) and (
-            t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
-    )
+    if isinstance(t, LiteralType):
+        return t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
+    if isinstance(t, Instance):
+        return t.last_known_value is not None and isinstance(t.last_known_value.value, str)
+    return False
+
+
+def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
+    """Return a hashable description of simple literal type.
+
+    The return value can be used to simplify away duplicate types.
+
+    Return None if not a simple literal type.
+
+    The definition of "simple literal" is the same as for is_simple_literal.
+    """
+    if isinstance(t, LiteralType):
+        if t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str':
+            assert isinstance(t.value, str)
+            return 'literal', t.value, t.fallback.type.fullname
+    if isinstance(t, Instance):
+        if t.last_known_value is not None and isinstance(t.last_known_value.value, str):
+            return 'instance', t.last_known_value.value, t.type.fullname
+    return None
 
 
 def make_simplified_union(items: Sequence[Type],
@@ -354,7 +374,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
     from mypy.subtypes import is_proper_subtype
 
     removed: Set[int] = set()
-    seen: Set[Tuple[str, str]] = set()
+    seen: Set[Tuple[str, ...]] = set()
 
     # NB: having a separate fast path for Union of Literal and slow path for other things
     # would arguably be cleaner, however it breaks down when simplifying the Union of two
@@ -364,10 +384,8 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
         if i in removed:
             continue
         # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
-        if is_simple_literal(item):
-            assert isinstance(item, LiteralType)
-            assert isinstance(item.value, str)
-            k = (item.value, item.fallback.type.fullname)
+        k = simple_literal_value_key(item)
+        if k is not None:
             if k in seen:
                 removed.add(i)
                 continue
@@ -383,6 +401,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             seen.add(k)
             if safe_skip:
                 continue
+
         # Keep track of the truishness info for deleted subtypes which can be relevant
         cbt = cbf = False
         for j, tj in enumerate(items):
