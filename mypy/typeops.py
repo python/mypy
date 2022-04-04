@@ -299,26 +299,14 @@ def callable_corresponding_argument(typ: CallableType,
     return by_name if by_name is not None else by_pos
 
 
-def is_simple_literal(t: ProperType) -> bool:
-    """Whether a type is a simple enough literal to allow for fast union simplification.
-
-    For now this means enum, string or Instance with string last_known_value.
-    """
-    if isinstance(t, LiteralType):
-        return t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
-    if isinstance(t, Instance):
-        return t.last_known_value is not None and isinstance(t.last_known_value.value, str)
-    return False
-
-
 def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     """Return a hashable description of simple literal type.
 
-    The return value can be used to simplify away duplicate types.
-
     Return None if not a simple literal type.
 
-    The definition of "simple literal" is the same as for is_simple_literal.
+    The return value can be used to simplify away duplicate types in
+    unions by comparing keys for equality. For now enum, string or
+    Instance with string last_known_value are supported.
     """
     if isinstance(t, LiteralType):
         if t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str':
@@ -408,7 +396,6 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             # NB: we don't need to check literals as the fast path above takes care of that
             if (
                     i != j
-                    and not is_simple_literal(tj)
                     and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
                     and is_redundant_literal_instance(item, tj)  # XXX?
             ):
