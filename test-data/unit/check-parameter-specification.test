@@ -444,7 +444,7 @@ reveal_type(unt2)  # N: Revealed type is "__main__.Z[[builtins.int]]"
 def fT(a: T) -> T: ...
 def fP(a: Z[P]) -> Z[P]: ...
 
-reveal_type(fT(n))  # N: Revealed type is "__main__.Z*[[builtins.int]]"
+reveal_type(fT(n))  # N: Revealed type is "__main__.Z[[builtins.int]]"
 reveal_type(fP(n))  # N: Revealed type is "__main__.Z[[builtins.int]]"
 
 # literals can be in function args and return type
@@ -486,7 +486,7 @@ def takes_int_str(request: Request, x: int, y: str) -> int:
     # use request
     return x + 7
 
-reveal_type(takes_int_str)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int*"
+reveal_type(takes_int_str)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
 
 takes_int_str(1, "A") # Accepted
 takes_int_str("B", 2) # E: Argument 1 to "takes_int_str" has incompatible type "str"; expected "int" \
@@ -555,7 +555,7 @@ def f(one: Callable[Concatenate[int, P], R], two: Callable[Concatenate[str, P], 
 a: Callable[[int, bytes], str]
 b: Callable[[str, bytes], str]
 
-reveal_type(f(a, b))  # N: Revealed type is "def (builtins.bytes) -> builtins.str*"
+reveal_type(f(a, b))  # N: Revealed type is "def (builtins.bytes) -> builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecConcatenateInReturn]
@@ -638,7 +638,7 @@ def a(n: int) -> None: ...
 
 n = f(a)
 
-reveal_type(n)  # N: Revealed type is "def (builtins.int*)"
+reveal_type(n)  # N: Revealed type is "def (builtins.int)"
 reveal_type(n(42))  # N: Revealed type is "None"
 [builtins fixtures/tuple.pyi]
 
@@ -846,7 +846,7 @@ reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, acti
 def f(x: int) -> int:
     ...
 
-reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int*"
+reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int"
 
 # TODO: this should reveal `int`
 reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
