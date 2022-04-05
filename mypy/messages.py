@@ -1768,7 +1768,7 @@ def format_type_inner(typ: Type,
                 format,
                 verbosity)
 
-            return f'Concatenate[{args}, {typ.name_with_suffix()}]'
+            return f'[{args}, **{typ.name_with_suffix()}]'
         else:
             return typ.name_with_suffix()
     elif isinstance(typ, TupleType):

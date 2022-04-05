@@ -2591,7 +2591,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         # prefixes are displayed as Concatenate
         s = ''
         if t.prefix.arg_types:
-            s += f'Concatenate[{self.list_str(t.prefix.arg_types)}, '
+            s += f'[{self.list_str(t.prefix.arg_types)}, **'
         if t.name is None:
             # Anonymous type variable type (only numeric id).
             s += f'`{t.id}'

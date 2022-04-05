@@ -596,7 +596,7 @@ f2(lambda x: 42)(42, x=42)
 [out]
 main:10: error: invalid syntax
 [out version>=3.8]
-main:17: error: Incompatible return value type (got "Callable[Concatenate[Arg(int, 'x'), P], R]", expected "Callable[Concatenate[int, P], R]")
+main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **P], R]", expected "Callable[[int, **P], R]")
 main:17: note: This may be because "result" has arguments named: "x"
 
 [case testNonStrictParamSpecConcatenateNamedArgs]
@@ -762,14 +762,14 @@ def f(c: C[P]) -> None:
     reveal_type(c)  # N: Revealed type is "__main__.C[P`-1]"
 
     n1 = c.add_str()
-    reveal_type(n1)  # N: Revealed type is "__main__.C[Concatenate[builtins.int, P`-1]]"
+    reveal_type(n1)  # N: Revealed type is "__main__.C[[builtins.int, **P`-1]]"
     n2 = n1.add_int()
-    reveal_type(n2)  # N: Revealed type is "__main__.C[Concatenate[builtins.str, builtins.int, P`-1]]"
+    reveal_type(n2)  # N: Revealed type is "__main__.C[[builtins.str, builtins.int, **P`-1]]"
 
     p1 = c.add_int()
-    reveal_type(p1)  # N: Revealed type is "__main__.C[Concatenate[builtins.str, P`-1]]"
+    reveal_type(p1)  # N: Revealed type is "__main__.C[[builtins.str, **P`-1]]"
     p2 = p1.add_str()
-    reveal_type(p2)  # N: Revealed type is "__main__.C[Concatenate[builtins.int, builtins.str, P`-1]]"
+    reveal_type(p2)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str, **P`-1]]"
 [builtins fixtures/tuple.pyi]
 
 [case testParamSpecLiteralJoin]
