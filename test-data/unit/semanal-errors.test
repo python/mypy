@@ -1081,7 +1081,7 @@ x = TypeVar('x') # E: Cannot redefine "x" as a type variable
 
 [case testTypevarWithType]
 from typing import TypeVar
-x = TypeVar('x') # type: int # E: Cannot declare the type of a type variable
+x = TypeVar('x') # type: int # E: Cannot declare the type of a TypeVar or similar construct
 [out]
 
 [case testRedefineTypevar]
@@ -1432,7 +1432,7 @@ from typing_extensions import ParamSpec
 
 TParams = ParamSpec('TParams')
 TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match variable name "TP"
-TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
+TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 
 [out]
 

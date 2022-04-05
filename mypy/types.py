@@ -1049,18 +1049,15 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
-                 line: int = -1, column: int = -1, erased: bool = False,
+                 line: int = -1, column: int = -1, *,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = tuple(args)
         self.type_ref: Optional[str] = None
-
-        # True if result of type variable substitution
-        self.erased = erased
 
         # True if recovered after incorrect number of type arguments error
         self.invalid = False
@@ -1157,15 +1154,14 @@ class Instance(ProperType):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
-                      erased: Bogus[bool] = _dummy,
                       last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            erased if erased is not _dummy else self.erased,
-            last_known_value if last_known_value is not _dummy else self.last_known_value,
+            last_known_value=last_known_value if last_known_value is not _dummy
+            else self.last_known_value,
         )
 
     def has_readable_member(self, name: str) -> bool:
@@ -2570,8 +2566,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             s = t.type.fullname or t.type.name or '<???>'
 
-        if t.erased:
-            s += '*'
         if t.args:
             if t.type.fullname == 'builtins.tuple':
                 assert len(t.args) == 1

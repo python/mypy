@@ -121,7 +121,7 @@ def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterable[R]: pass
 def is_float(a: object) -> TypeGuard[float]: pass
 a: List[object] = ["a", 0, 0.0]
 b = filter(is_float, a)
-reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float*]"
+reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardMethod]
@@ -242,8 +242,8 @@ def main1(a: object) -> None:
 
     la = [a]
     if is_float(*la):  # E: Type guard requires positional argument
-        reveal_type(la)  # N: Revealed type is "builtins.list[builtins.object*]"
-        reveal_type(a)  # N: Revealed type is "builtins.object*"
+        reveal_type(la)  # N: Revealed type is "builtins.list[builtins.object]"
+        reveal_type(a)  # N: Revealed type is "builtins.object"
 
 [builtins fixtures/tuple.pyi]
 
@@ -269,7 +269,7 @@ def main(a: List[Optional[int]]) -> None:
     reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
     # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
     cc = filter(is_int_typeguard, a)
-    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int*]"
+    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
     dd = filter(is_int_bool, a)
     reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
 
@@ -525,8 +525,8 @@ class filter(Generic[_T]):
 def is_int_typeguard(a: object) -> TypeGuard[int]: pass
 def returns_bool(a: object) -> bool: pass
 
-reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int*]"
-reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object*]"
+reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int]"
+reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardSubtypingVariance]

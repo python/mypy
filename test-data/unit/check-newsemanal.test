@@ -543,7 +543,7 @@ c: C[int]
 c2: C[int, str] # E: "C" expects 1 type argument, but 2 given
 c3: C
 c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
-reveal_type(c.get()) # N: Revealed type is "builtins.int*"
+reveal_type(c.get()) # N: Revealed type is "builtins.int"
 reveal_type(c2) # N: Revealed type is "__main__.C[Any]"
 reveal_type(c3) # N: Revealed type is "__main__.C[Any]"
 
@@ -571,7 +571,7 @@ T = TypeVar('T')
 c: C[int]
 reveal_type(c) # N: Revealed type is "__main__.C[builtins.int]"
 c = C('') # E: Argument 1 to "C" has incompatible type "str"; expected "int"
-reveal_type(c.get()) # N: Revealed type is "builtins.int*"
+reveal_type(c.get()) # N: Revealed type is "builtins.int"
 
 [case testNewAnalyzerTypeAlias]
 from typing import Union, TypeVar, Generic
@@ -820,7 +820,7 @@ class E: pass
 def f(x: T) -> T:
     return x
 
-reveal_type(f(D())) # N: Revealed type is "__main__.D*"
+reveal_type(f(D())) # N: Revealed type is "__main__.D"
 f(E()) # E: Value of type variable "T" of "f" cannot be "E"
 
 [case testNewAnalyzerNameExprRefersToIncompleteType]
@@ -1393,7 +1393,7 @@ from a import x
 
 class B(List[B]): pass
 
-reveal_type(x[0][0])  # N: Revealed type is "b.B*"
+reveal_type(x[0][0])  # N: Revealed type is "b.B"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClass2]
@@ -1404,7 +1404,7 @@ x: A
 class A(List[B]): pass
 B = A
 
-reveal_type(x[0][0])  # N: Revealed type is "__main__.A*"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.A"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClass3]
@@ -1415,7 +1415,7 @@ B = A
 A = C
 class C(List[B]): pass
 
-reveal_type(x[0][0])  # N: Revealed type is "__main__.C*"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyNestedClass]
@@ -1432,7 +1432,7 @@ from a import x
 class Out:
     class B(List[B]): pass
 
-reveal_type(x[0][0])  # N: Revealed type is "b.Out.B*"
+reveal_type(x[0][0])  # N: Revealed type is "b.Out.B"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyNestedClass2]
@@ -1444,7 +1444,7 @@ class Out:
     class A(List[B]): pass
 B = Out.A
 
-reveal_type(x[0][0])  # N: Revealed type is "__main__.Out.A*"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.Out.A"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyClassGeneric]
@@ -1522,7 +1522,7 @@ A = C
 class C(List[A]): pass
 
 reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
-reveal_type(x[0][0])  # N: Revealed type is "__main__.C*"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerAliasToNotReadyDirectBase]
@@ -1966,18 +1966,18 @@ class NTStr(NamedTuple):
     y: str
 
 t1: T
-reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.A*]"
+reveal_type(t1.__iter__) # N: Revealed type is "def () -> typing.Iterator[__main__.A]"
 
 t2: NTInt
-reveal_type(t2.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int*]"
+reveal_type(t2.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.int]"
 nt: Union[NTInt, NTStr]
-reveal_type(nt.__iter__) # N: Revealed type is "Union[def () -> typing.Iterator[builtins.int*], def () -> typing.Iterator[builtins.str*]]"
+reveal_type(nt.__iter__) # N: Revealed type is "Union[def () -> typing.Iterator[builtins.int], def () -> typing.Iterator[builtins.str]]"
 for nx in nt:
-    reveal_type(nx) # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+    reveal_type(nx) # N: Revealed type is "Union[builtins.int, builtins.str]"
 
 t: Union[Tuple[int, int], Tuple[str, str]]
 for x in t:
-    reveal_type(x) # N: Revealed type is "Union[builtins.int*, builtins.str*]"
+    reveal_type(x) # N: Revealed type is "Union[builtins.int, builtins.str]"
 [builtins fixtures/for.pyi]
 [out]
 
@@ -2003,7 +2003,7 @@ class G(Generic[T]): pass
 
 t: Tuple[G[B], G[C]] # E: Type argument "B" of "G" must be a subtype of "A" \
                      # E: Type argument "C" of "G" must be a subtype of "A"
-reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.object*]"
+reveal_type(t.__iter__) # N: Revealed type is "def () -> typing.Iterator[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testNewAnalyzerClassKeywordsForward]
@@ -2102,7 +2102,7 @@ A = NewType('A', str)  # E: Cannot redefine "A" as a NewType \
 from typing import NewType, List
 
 x: C
-reveal_type(x[0])  # N: Revealed type is "__main__.C*"
+reveal_type(x[0])  # N: Revealed type is "__main__.C"
 
 C = NewType('C', B)
 
@@ -2114,7 +2114,7 @@ class B(List[C]):
 from typing import NewType, List
 
 x: D
-reveal_type(x[0])  # N: Revealed type is "__main__.C*"
+reveal_type(x[0])  # N: Revealed type is "__main__.C"
 
 D = C
 C = NewType('C', B)
@@ -2127,7 +2127,7 @@ class B(List[D]):
 from typing import NewType, List
 
 x: D
-reveal_type(x[0][0])  # N: Revealed type is "__main__.C*"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
 
 D = C
 C = NewType('C', List[B])
@@ -2203,7 +2203,7 @@ class C: ...
 
 x: B[int]  # E: Type argument "int" of "B" must be a subtype of "B[Any]"
 y: B[B[Any]]
-reveal_type(y.x)  # N: Revealed type is "__main__.B*[Any]"
+reveal_type(y.x)  # N: Revealed type is "__main__.B[Any]"
 
 [case testNewAnalyzerDuplicateTypeVarImportCycle]
 import a
@@ -2227,7 +2227,7 @@ y: B[B[Any]]
 reveal_type(y.x)
 [out]
 tmp/b.py:8: error: Type argument "int" of "B" must be a subtype of "B[Any]"
-tmp/b.py:10: note: Revealed type is "b.B*[Any]"
+tmp/b.py:10: note: Revealed type is "b.B[Any]"
 tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 tmp/a.py:5: error: "int" not callable
@@ -2256,7 +2256,7 @@ y: B[B[Any]]
 reveal_type(y.x)
 [out]
 tmp/b.py:9: error: Type argument "int" of "B" must be a subtype of "B[Any]"
-tmp/b.py:11: note: Revealed type is "b.B*[Any]"
+tmp/b.py:11: note: Revealed type is "b.B[Any]"
 tmp/a.py:5: error: Cannot redefine "T" as a type variable
 tmp/a.py:5: error: Invalid assignment target
 
@@ -2329,7 +2329,7 @@ C = NamedTuple('C', [('x', int)])
 from typing import Generic, TypeVar
 
 x = C[int]()
-reveal_type(x)  # N: Revealed type is "__main__.C[builtins.int*]"
+reveal_type(x)  # N: Revealed type is "__main__.C[builtins.int]"
 
 T = TypeVar('T')
 class C(Generic[T]): ...
@@ -2341,7 +2341,7 @@ T = TypeVar('T')
 class C(Generic[T]): ...
 
 x = C['A']()
-reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A*]"
+reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A]"
 
 class A: ...
 
@@ -2349,7 +2349,7 @@ class A: ...
 from typing import Generic, TypeVar
 
 x = C[A]()
-reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A*]"
+reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A]"
 
 T = TypeVar('T')
 class C(Generic[T]): ...
@@ -2360,7 +2360,7 @@ class A: ...
 from typing import Generic, TypeVar
 
 x = C[A]()  # E: Value of type variable "T" of "C" cannot be "A"
-reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A*]"
+reveal_type(x)  # N: Revealed type is "__main__.C[__main__.A]"
 
 T = TypeVar('T', bound='D')
 class C(Generic[T]): ...
@@ -3074,7 +3074,7 @@ from typing import Tuple
 def f() -> None:
     t: Tuple[str, Tuple[str, str, str]]
     x, (y, *z) = t
-    reveal_type(z)  # N: Revealed type is "builtins.list[builtins.str*]"
+    reveal_type(z)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/list.pyi]
 
 [case testNewAnalyzerIdentityAssignment1]

@@ -2619,3 +2619,12 @@ class PT(Protocol[T, T2]):
 def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
 [out]
 def func(*, non_default_kwarg: bool, default_kwarg: bool = ...): ...
+
+[case testNestedGenerator]
+def f():
+    def g():
+        yield 0
+
+    return 0
+[out]
+def f(): ...

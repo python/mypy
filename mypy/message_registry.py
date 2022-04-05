@@ -211,7 +211,7 @@ CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be
 
 # Enum
 ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
-    'Assigned "__members__" will be overriden by "Enum" internally'
+    'Assigned "__members__" will be overridden by "Enum" internally'
 )
 
 # ClassVar

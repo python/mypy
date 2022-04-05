@@ -210,6 +210,7 @@ class DataclassTransformer:
                 )
 
         if decorator_arguments['frozen']:
+            self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             self._propertize_callables(attributes)
@@ -466,7 +467,9 @@ class DataclassTransformer:
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
-    def _propertize_callables(self, attributes: List[DataclassAttribute]) -> None:
+    def _propertize_callables(self,
+                              attributes: List[DataclassAttribute],
+                              settable: bool = True) -> None:
         """Converts all attributes with callable types to @property methods.
 
         This avoids the typechecker getting confused and thinking that
@@ -480,7 +483,7 @@ class DataclassTransformer:
                 var = attr.to_var()
                 var.info = info
                 var.is_property = True
-                var.is_settable_property = True
+                var.is_settable_property = settable
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 

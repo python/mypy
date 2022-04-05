@@ -2300,7 +2300,7 @@ def g(__x: T) -> T: pass
 f = g
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunction]
 from typing import Callable, TypeVar
@@ -2311,7 +2311,7 @@ reveal_type(deco)  # N: Revealed type is "def () -> def [T] (T`-1) -> T`-1"
 f = deco()
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> T`-1"
 i = f(3)
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunctionPartialBinding]
 from typing import Callable, TypeVar
@@ -2322,9 +2322,9 @@ U = TypeVar('U')
 def deco(x: U) -> Callable[[T, U], T]: pass
 reveal_type(deco)  # N: Revealed type is "def [U] (x: U`-1) -> def [T] (T`-2, U`-1) -> T`-2"
 f = deco("foo")
-reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str*) -> T`-2"
+reveal_type(f)  # N: Revealed type is "def [T] (T`-2, builtins.str) -> T`-2"
 i = f(3, "eggs")
-reveal_type(i)  # N: Revealed type is "builtins.int*"
+reveal_type(i)  # N: Revealed type is "builtins.int"
 
 [case testFunctionReturningGenericFunctionTwoLevelBinding]
 from typing import Callable, TypeVar
@@ -2335,9 +2335,9 @@ def deco() -> Callable[[T], Callable[[T, R], R]]: pass
 f = deco()
 reveal_type(f)  # N: Revealed type is "def [T] (T`-1) -> def [R] (T`-1, R`-2) -> R`-2"
 g = f(3)
-reveal_type(g)  # N: Revealed type is "def [R] (builtins.int*, R`-2) -> R`-2"
+reveal_type(g)  # N: Revealed type is "def [R] (builtins.int, R`-2) -> R`-2"
 s = g(4, "foo")
-reveal_type(s)  # N: Revealed type is "builtins.str*"
+reveal_type(s)  # N: Revealed type is "builtins.str"
 
 [case testGenericFunctionReturnAsDecorator]
 from typing import Callable, TypeVar

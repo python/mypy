@@ -341,14 +341,14 @@ x: N.A[C]
 reveal_type(x)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
 
 xx = N.A[C]()
-reveal_type(xx)  # N: Revealed type is "__main__.C[__main__.C*[Any]]"
+reveal_type(xx)  # N: Revealed type is "__main__.C[__main__.C[Any]]"
 
 y = N.A()
 reveal_type(y)  # N: Revealed type is "__main__.C[Any]"
 
 M = N
 b = M.A[int]()
-reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int*]"
+reveal_type(b)  # N: Revealed type is "__main__.C[builtins.int]"
 
 n: Type[N]
 w = n.B()
@@ -457,8 +457,8 @@ class C:
 
 class D(C): ...
 
-reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
-reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D*, builtins.int]"
+reveal_type(D.meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
+reveal_type(D().meth(1))  # N: Revealed type is "Union[__main__.D, builtins.int]"
 [builtins fixtures/classmethod.pyi]
 [out]
 

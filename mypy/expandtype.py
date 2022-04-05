@@ -94,9 +94,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         else:
             return repl
 
@@ -107,8 +105,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # Return copy of instance with type erasure flag on.
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
             return repl.copy_modified(flavor=t.flavor, prefix=t.prefix.copy_modified(
                 arg_types=t.prefix.arg_types + repl.prefix.arg_types,
