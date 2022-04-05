@@ -465,7 +465,12 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
         self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
                                      UnionType([fx.b, fx.c, fx.d]))
+
+    def test_simplified_union_with_literals(self) -> None:
+        fx = self.fx
+
         self.assert_simplified_union([fx.lit1, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit2, fx.a], fx.a)
         self.assert_simplified_union([fx.lit1, fx.lit1], fx.lit1)
         self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
         self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
@@ -480,6 +485,40 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
+
+    def test_simplified_union_with_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.str_type], fx.str_type)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1], fx.lit_str1)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3],
+                                     UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.uninhabited],
+                                     UnionType([fx.lit_str1, fx.lit_str2]))
+
+    def test_simplified_union_with_str_instance_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.str_type],
+                                     fx.str_type)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str1_inst, fx.lit_str1_inst],
+                                     fx.lit_str1_inst)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1_inst,
+                                                fx.lit_str2_inst,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.uninhabited],
+                                     UnionType([fx.lit_str1_inst, fx.lit_str2_inst]))
+
+    def test_simplified_union_with_mixed_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1,
+                                                fx.lit_str2,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
+                                     UnionType([fx.lit_str1, fx.lit_str1_inst]))
 
     def assert_simplified_union(self, original: List[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
