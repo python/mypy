@@ -1,7 +1,7 @@
 import _tkinter
 import sys
 import tkinter
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import Literal, TypedDict
 
 if sys.version_info >= (3, 9):
@@ -12,17 +12,13 @@ ROMAN: Literal["roman"]
 BOLD: Literal["bold"]
 ITALIC: Literal["italic"]
 
-_FontDescription = Union[
-    # "Helvetica 12"
-    str,
-    # A font object constructed in Python
-    Font,
-    # ("Helvetica", 12, BOLD)
-    list[Any],
-    tuple[Any, ...],
-    # A font object constructed in Tcl
-    _tkinter.Tcl_Obj,
-]
+_FontDescription = (
+    str  # "Helvetica 12"
+    | Font  # A font object constructed in Python
+    | list[Any]  # ("Helvetica", 12, BOLD)
+    | tuple[Any, ...]
+    | _tkinter.Tcl_Obj  # A font object constructed in Tcl
+)
 
 class _FontDict(TypedDict):
     family: str

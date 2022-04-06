@@ -12,7 +12,6 @@ from typing import (
     MutableSequence,
     Sequence,
     TypeVar,
-    Union,
     overload,
 )
 from typing_extensions import Literal, SupportsIndex, TypeGuard
@@ -102,9 +101,9 @@ else:
     ]
 
 _T = TypeVar("_T")
-_FileRead = Union[StrOrBytesPath, FileDescriptor, SupportsRead[bytes], SupportsRead[str]]
-_FileWriteC14N = Union[StrOrBytesPath, FileDescriptor, SupportsWrite[bytes]]
-_FileWrite = Union[_FileWriteC14N, SupportsWrite[str]]
+_FileRead = StrOrBytesPath | FileDescriptor | SupportsRead[bytes] | SupportsRead[str]
+_FileWriteC14N = StrOrBytesPath | FileDescriptor | SupportsWrite[bytes]
+_FileWrite = _FileWriteC14N | SupportsWrite[str]
 
 VERSION: str
 

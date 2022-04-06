@@ -1,7 +1,7 @@
 import datetime
 import sys
+from collections.abc import Iterable, Sequence
 from time import struct_time
-from typing import Any, Iterable, Optional, Sequence
 from typing_extensions import Literal
 
 __all__ = [
@@ -31,7 +31,7 @@ __all__ = [
     "weekheader",
 ]
 
-_LocaleType = tuple[Optional[str], Optional[str]]
+_LocaleType = tuple[str | None, str | None]
 
 class IllegalMonthError(ValueError):
     def __init__(self, month: int) -> None: ...
@@ -106,7 +106,7 @@ class HTMLCalendar(Calendar):
 class different_locale:
     def __init__(self, locale: _LocaleType) -> None: ...
     def __enter__(self) -> None: ...
-    def __exit__(self, *args: Any) -> None: ...
+    def __exit__(self, *args: object) -> None: ...
 
 class LocaleTextCalendar(TextCalendar):
     def __init__(self, firstweekday: int = ..., locale: _LocaleType | None = ...) -> None: ...

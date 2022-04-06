@@ -28,7 +28,9 @@ if sys.version_info >= (3, 11):
         "Tuple",
         "Type",
         "TypeVar",
+        "TypeVarTuple",
         "Union",
+        "Unpack",
         "AbstractSet",
         "ByteString",
         "Container",
@@ -80,6 +82,7 @@ if sys.version_info >= (3, 11):
         "TextIO",
         "AnyStr",
         "assert_never",
+        "assert_type",
         "cast",
         "final",
         "get_args",
@@ -524,6 +527,12 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 11):
     Self: _SpecialForm
     Never: _SpecialForm = ...
+    Unpack: _SpecialForm
+
+    class TypeVarTuple:
+        __name__: str
+        def __init__(self, name: str) -> None: ...
+        def __iter__(self) -> Any: ...
 
 if sys.version_info < (3, 7):
     class GenericMeta(type): ...
@@ -554,14 +563,14 @@ if sys.version_info >= (3, 10):
     TypeGuard: _SpecialForm
 
     class NewType:
-        def __init__(self, name: str, tp: type) -> None: ...
+        def __init__(self, name: str, tp: Any) -> None: ...
         def __call__(self, x: _T) -> _T: ...
         def __or__(self, other: Any) -> _SpecialForm: ...
         def __ror__(self, other: Any) -> _SpecialForm: ...
         __supertype__: type
 
 else:
-    def NewType(name: str, tp: Type[_T]) -> Type[_T]: ...
+    def NewType(name: str, tp: Any) -> Any: ...
 
 # These type variables are used by the container types.
 _S = TypeVar("_S")
@@ -743,26 +752,22 @@ class AsyncIterable(Protocol[_T_co]):
 @runtime_checkable
 class AsyncIterator(AsyncIterable[_T_co], Protocol[_T_co]):
     @abstractmethod
-    async def __anext__(self) -> _T_co: ...
+    def __anext__(self) -> Awaitable[_T_co]: ...
     def __aiter__(self) -> AsyncIterator[_T_co]: ...
 
 class AsyncGenerator(AsyncIterator[_T_co], Generic[_T_co, _T_contra]):
+    def __anext__(self) -> Awaitable[_T_co]: ...
     @abstractmethod
-    async def __anext__(self) -> _T_co: ...
-    @abstractmethod
-    async def asend(self, __value: _T_contra) -> _T_co: ...
+    def asend(self, __value: _T_contra) -> Awaitable[_T_co]: ...
     @overload
     @abstractmethod
-    async def athrow(
+    def athrow(
         self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...
-    ) -> _T_co: ...
+    ) -> Awaitable[_T_co]: ...
     @overload
     @abstractmethod
-    async def athrow(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> _T_co: ...
-    @abstractmethod
-    async def aclose(self) -> None: ...
-    @abstractmethod
-    def __aiter__(self) -> AsyncGenerator[_T_co, _T_contra]: ...
+    def athrow(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> Awaitable[_T_co]: ...
+    def aclose(self) -> Awaitable[None]: ...
     @property
     def ag_await(self) -> Any: ...
     @property
@@ -1026,7 +1031,7 @@ class IO(Iterator[AnyStr], Generic[AnyStr]):
     @abstractmethod
     def __exit__(
         self, __t: Type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
-    ) -> bool | None: ...
+    ) -> None: ...
 
 class BinaryIO(IO[bytes]):
     @abstractmethod
@@ -1133,21 +1138,19 @@ class Pattern(Generic[AnyStr]):
 # Functions
 
 if sys.version_info >= (3, 7):
-    _get_type_hints_obj_allowed_types = Union[
-        object,
-        Callable[..., Any],
-        FunctionType,
-        BuiltinFunctionType,
-        MethodType,
-        ModuleType,
-        WrapperDescriptorType,
-        MethodWrapperType,
-        MethodDescriptorType,
-    ]
+    _get_type_hints_obj_allowed_types = (
+        object
+        | Callable[..., Any]
+        | FunctionType
+        | BuiltinFunctionType
+        | MethodType
+        | ModuleType
+        | WrapperDescriptorType
+        | MethodWrapperType
+        | MethodDescriptorType
+    )
 else:
-    _get_type_hints_obj_allowed_types = Union[
-        object, Callable[..., Any], FunctionType, BuiltinFunctionType, MethodType, ModuleType,
-    ]
+    _get_type_hints_obj_allowed_types = object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
 
 if sys.version_info >= (3, 9):
     def get_type_hints(
@@ -1176,6 +1179,7 @@ def cast(typ: object, val: Any) -> Any: ...
 if sys.version_info >= (3, 11):
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
+    def assert_type(__val: _T, __typ: Any) -> _T: ...
 
 # Type constructors
 

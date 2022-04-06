@@ -1,10 +1,10 @@
 import sys
 from _typeshed import SupportsRead
-from typing import IO, Any, NamedTuple, Union, overload
+from typing import IO, Any, NamedTuple, overload
 from typing_extensions import final
 
 if sys.platform != "win32":
-    _chtype = Union[str, bytes, int]
+    _chtype = str | bytes | int
 
     # ACS codes are only initialized after initscr is called
     ACS_BBSS: int

@@ -1,10 +1,10 @@
 import subprocess
 from collections import deque
-from typing import IO, Any, Callable, Optional, Sequence, Union
+from typing import IO, Any, Callable, Sequence
 
 from . import events, futures, protocols, transports
 
-_File = Optional[Union[int, IO[Any]]]
+_File = int | IO[Any] | None
 
 class BaseSubprocessTransport(transports.SubprocessTransport):
 

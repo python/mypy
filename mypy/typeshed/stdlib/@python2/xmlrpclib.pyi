@@ -10,7 +10,7 @@ from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, MutableMapping,
 _Unmarshaller = Any
 _timeTuple = tuple[int, int, int, int, int, int, int, int, int]
 # Represents types that can be compared against a DateTime object
-_dateTimeComp = Union[unicode, DateTime, datetime]
+_dateTimeComp = unicode | DateTime | datetime
 # A "host description" used by Transport factories
 _hostDesc = Union[str, tuple[str, Mapping[Any, Any]]]
 
@@ -58,8 +58,8 @@ class DateTime:
     def __le__(self, other: _dateTimeComp) -> bool: ...
     def __gt__(self, other: _dateTimeComp) -> bool: ...
     def __ge__(self, other: _dateTimeComp) -> bool: ...
-    def __eq__(self, other: _dateTimeComp) -> bool: ...  # type: ignore
-    def __ne__(self, other: _dateTimeComp) -> bool: ...  # type: ignore
+    def __eq__(self, other: _dateTimeComp) -> bool: ...  # type: ignore[override]
+    def __ne__(self, other: _dateTimeComp) -> bool: ...  # type: ignore[override]
     def timetuple(self) -> struct_time: ...
     def __cmp__(self, other: _dateTimeComp) -> int: ...
     def decode(self, data: Any) -> None: ...

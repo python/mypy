@@ -1,12 +1,12 @@
 from array import array
 from mmap import mmap
-from typing import Any, Text, Union
+from typing import Any, Text
 
 class error(Exception): ...
 
-_FmtType = Union[bytes, Text]
-_BufferType = Union[array[int], bytes, bytearray, buffer, memoryview, mmap]
-_WriteBufferType = Union[array[Any], bytearray, buffer, memoryview, mmap]
+_FmtType = bytes | Text
+_BufferType = array[int] | bytes | bytearray | buffer | memoryview | mmap
+_WriteBufferType = array[Any] | bytearray | buffer | memoryview | mmap
 
 def pack(fmt: _FmtType, *v: Any) -> bytes: ...
 def pack_into(fmt: _FmtType, buffer: _WriteBufferType, offset: int, *v: Any) -> None: ...

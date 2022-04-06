@@ -1,7 +1,7 @@
 import os
 import sys
 from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
-from typing import Any, AnyStr, Callable, Iterable, NamedTuple, Sequence, TypeVar, Union, overload
+from typing import Any, AnyStr, Callable, Iterable, NamedTuple, Sequence, TypeVar, overload
 
 __all__ = [
     "copyfileobj",
@@ -82,7 +82,7 @@ else:
 
 def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
 
-_CopyFn = Union[Callable[[str, str], None], Callable[[StrPath, StrPath], None]]
+_CopyFn = Callable[[str, str], None] | Callable[[StrPath, StrPath], None]
 
 # N.B. shutil.move appears to take bytes arguments, however,
 # this does not work when dst is (or is within) an existing directory.

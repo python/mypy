@@ -2,7 +2,7 @@ import sys
 from _typeshed import Self, SupportsRichComparisonT
 from decimal import Decimal
 from fractions import Fraction
-from typing import Any, Hashable, Iterable, NamedTuple, Sequence, SupportsFloat, TypeVar, Union
+from typing import Any, Hashable, Iterable, NamedTuple, Sequence, SupportsFloat, TypeVar
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 10):
@@ -65,7 +65,7 @@ else:
     ]
 
 # Most functions in this module accept homogeneous collections of one of these types
-_Number = Union[float, Decimal, Fraction]
+_Number = float | Decimal | Fraction
 _NumberT = TypeVar("_NumberT", float, Decimal, Fraction)
 
 # Used in mode, multimode

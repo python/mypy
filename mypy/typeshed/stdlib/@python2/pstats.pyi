@@ -1,9 +1,9 @@
 from _typeshed import Self
 from cProfile import Profile as _cProfile
 from profile import Profile
-from typing import IO, Any, Iterable, Text, TypeVar, Union, overload
+from typing import IO, Any, Iterable, Text, TypeVar, overload
 
-_Selector = Union[str, float, int]
+_Selector = str | float | int
 _T = TypeVar("_T", bound=Stats)
 
 class Stats:

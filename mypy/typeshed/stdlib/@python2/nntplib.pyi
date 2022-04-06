@@ -3,9 +3,9 @@ import socket
 import ssl
 from _typeshed import Self
 from builtins import list as List  # alias to avoid a name clash with a method named `list` in `_NNTPBase`
-from typing import IO, Any, Iterable, NamedTuple, Union
+from typing import IO, Any, Iterable, NamedTuple
 
-_File = Union[IO[bytes], bytes, str, None]
+_File = IO[bytes] | bytes | str | None
 
 class NNTPError(Exception):
     response: str

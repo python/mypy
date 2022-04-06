@@ -1,12 +1,12 @@
 import codecs
 import sys
-from typing import Any, Callable, Union
+from typing import Any, Callable
 
 # This type is not exposed; it is defined in unicodeobject.c
 class _EncodingMap:
     def size(self) -> int: ...
 
-_MapT = Union[dict[int, int], _EncodingMap]
+_MapT = dict[int, int] | _EncodingMap
 _Handler = Callable[[Exception], tuple[str, int]]
 
 def register(__search_function: Callable[[str], Any]) -> None: ...

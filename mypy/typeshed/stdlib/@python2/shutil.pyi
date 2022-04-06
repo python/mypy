@@ -1,5 +1,5 @@
 from _typeshed import SupportsRead, SupportsWrite
-from typing import Any, AnyStr, Callable, Iterable, Sequence, Text, TypeVar, Union
+from typing import Any, AnyStr, Callable, Iterable, Sequence, Text, TypeVar
 
 _AnyStr = TypeVar("_AnyStr", str, unicode)
 _AnyPath = TypeVar("_AnyPath", str, unicode)
@@ -21,7 +21,7 @@ def copytree(
 ) -> _PathReturn: ...
 def rmtree(path: _AnyPath, ignore_errors: bool = ..., onerror: Callable[[Any, _AnyPath, Any], Any] | None = ...) -> None: ...
 
-_CopyFn = Union[Callable[[str, str], None], Callable[[Text, Text], None]]
+_CopyFn = Callable[[str, str], None] | Callable[[Text, Text], None]
 
 def move(src: Text, dst: Text) -> _PathReturn: ...
 def make_archive(

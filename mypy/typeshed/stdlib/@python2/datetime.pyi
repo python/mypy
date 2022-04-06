@@ -1,8 +1,8 @@
 from _typeshed import Self
 from time import struct_time
-from typing import AnyStr, ClassVar, SupportsAbs, Union, overload
+from typing import AnyStr, ClassVar, SupportsAbs, overload
 
-_Text = Union[str, unicode]
+_Text = str | unicode
 
 MINYEAR: int
 MAXYEAR: int
@@ -214,13 +214,13 @@ class datetime(date):
     def utcoffset(self) -> timedelta | None: ...
     def tzname(self) -> str | None: ...
     def dst(self) -> timedelta | None: ...
-    def __le__(self, other: datetime) -> bool: ...  # type: ignore
-    def __lt__(self, other: datetime) -> bool: ...  # type: ignore
-    def __ge__(self, other: datetime) -> bool: ...  # type: ignore
-    def __gt__(self, other: datetime) -> bool: ...  # type: ignore
+    def __le__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __lt__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __ge__(self, other: datetime) -> bool: ...  # type: ignore[override]
+    def __gt__(self, other: datetime) -> bool: ...  # type: ignore[override]
     def __add__(self, other: timedelta) -> datetime: ...
     def __radd__(self, other: timedelta) -> datetime: ...
-    @overload  # type: ignore
+    @overload  # type: ignore[override]
     def __sub__(self, other: datetime) -> timedelta: ...
     @overload
     def __sub__(self, other: timedelta) -> datetime: ...

@@ -1,7 +1,7 @@
 import sys
 from sre_constants import *
 from sre_constants import _NamedIntConstant as _NIC, error as _Error
-from typing import Any, Iterable, Match, Optional, Pattern as _Pattern, Union, overload
+from typing import Any, Iterable, Match, Pattern as _Pattern, overload
 
 SPECIAL_CHARS: str
 REPEAT_CHARS: str
@@ -37,11 +37,11 @@ if sys.version_info >= (3, 8):
 else:
     Pattern = _State
 
-_OpSubpatternType = tuple[Optional[int], int, int, SubPattern]
+_OpSubpatternType = tuple[int | None, int, int, SubPattern]
 _OpGroupRefExistsType = tuple[int, SubPattern, SubPattern]
 _OpInType = list[tuple[_NIC, int]]
 _OpBranchType = tuple[None, list[SubPattern]]
-_AvType = Union[_OpInType, _OpBranchType, Iterable[SubPattern], _OpGroupRefExistsType, _OpSubpatternType]
+_AvType = _OpInType | _OpBranchType | Iterable[SubPattern] | _OpGroupRefExistsType | _OpSubpatternType
 _CodeType = tuple[_NIC, _AvType]
 
 class SubPattern:
@@ -87,8 +87,8 @@ class Tokenizer:
 
 def fix_flags(src: str | bytes, flags: int) -> int: ...
 
-_TemplateType = tuple[list[tuple[int, int]], list[Optional[str]]]
-_TemplateByteType = tuple[list[tuple[int, int]], list[Optional[bytes]]]
+_TemplateType = tuple[list[tuple[int, int]], list[str | None]]
+_TemplateByteType = tuple[list[tuple[int, int]], list[bytes | None]]
 if sys.version_info >= (3, 8):
     def parse(str: str, flags: int = ..., state: State | None = ...) -> SubPattern: ...
     @overload

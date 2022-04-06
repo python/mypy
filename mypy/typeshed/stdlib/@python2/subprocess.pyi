@@ -1,9 +1,9 @@
-from typing import IO, Any, Callable, Generic, Mapping, Optional, Sequence, Text, TypeVar, Union
+from typing import IO, Any, Callable, Generic, Mapping, Sequence, Text, TypeVar
 
-_FILE = Union[None, int, IO[Any]]
-_TXT = Union[bytes, Text]
-_CMD = Union[_TXT, Sequence[_TXT]]
-_ENV = Union[Mapping[bytes, _TXT], Mapping[Text, _TXT]]
+_FILE = None | int | IO[Any]
+_TXT = bytes | Text
+_CMD = _TXT | Sequence[_TXT]
+_ENV = Mapping[bytes, _TXT] | Mapping[Text, _TXT]
 
 # Same args as Popen.__init__
 def call(

@@ -3,14 +3,14 @@ import time
 from builtins import list as List  # alias to avoid name clashes with `IMAP4.list`
 from socket import socket as _socket
 from ssl import SSLSocket
-from typing import IO, Any, Callable, Pattern, Text, Union
+from typing import IO, Any, Callable, Pattern, Text
 from typing_extensions import Literal
 
 # TODO: Commands should use their actual return types, not this type alias.
 #       E.g. tuple[Literal["OK"], list[bytes]]
 _CommandResults = tuple[str, list[Any]]
 
-_AnyResponseData = Union[list[None], list[Union[bytes, tuple[bytes, bytes]]]]
+_AnyResponseData = list[None] | list[bytes | tuple[bytes, bytes]]
 
 class IMAP4:
     error: type[Exception] = ...

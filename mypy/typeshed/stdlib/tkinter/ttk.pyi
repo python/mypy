@@ -2,7 +2,7 @@ import _tkinter
 import sys
 import tkinter
 from tkinter.font import _FontDescription
-from typing import Any, Callable, Union, overload
+from typing import Any, Callable, overload
 from typing_extensions import Literal, TypedDict
 
 if sys.version_info >= (3, 7):
@@ -972,7 +972,7 @@ class _TreeviewColumnDict(TypedDict):
     anchor: tkinter._Anchor
     id: str
 
-_TreeviewColumnId = Union[int, str]  # manual page: "COLUMN IDENTIFIERS"
+_TreeviewColumnId = int | str  # manual page: "COLUMN IDENTIFIERS"
 
 class Treeview(Widget, tkinter.XView, tkinter.YView):
     def __init__(

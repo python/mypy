@@ -1,7 +1,7 @@
 import pyexpat.errors as errors
 import pyexpat.model as model
 from _typeshed import SupportsRead
-from typing import Any, Callable, Optional, Text
+from typing import Any, Callable, Text
 
 EXPAT_VERSION: str  # undocumented
 version_info: tuple[int, int, int]  # undocumented
@@ -19,7 +19,7 @@ XML_PARAM_ENTITY_PARSING_NEVER: int
 XML_PARAM_ENTITY_PARSING_UNLESS_STANDALONE: int
 XML_PARAM_ENTITY_PARSING_ALWAYS: int
 
-_Model = tuple[int, int, Optional[str], tuple[Any, ...]]
+_Model = tuple[int, int, str | None, tuple[Any, ...]]
 
 class XMLParserType(object):
     def Parse(self, __data: Text | bytes, __isfinal: bool = ...) -> int: ...

@@ -1,4 +1,4 @@
-from typing import IO, Any, Union
+from typing import IO, Any
 from typing_extensions import Literal
 
 __all__ = ["binhex", "hexbin", "Error"]
@@ -16,7 +16,7 @@ class FInfo:
     Flags: int
 
 _FileInfoTuple = tuple[str, FInfo, int, int]
-_FileHandleUnion = Union[str, IO[bytes]]
+_FileHandleUnion = str | IO[bytes]
 
 def getfileinfo(name: str) -> _FileInfoTuple: ...
 

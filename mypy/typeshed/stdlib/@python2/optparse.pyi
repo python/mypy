@@ -1,7 +1,7 @@
-from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, Union, overload
+from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, overload
 
 # See https://groups.google.com/forum/#!topic/python-ideas/gA1gdj3RZ5g
-_Text = Union[str, unicode]
+_Text = str | unicode
 
 NO_DEFAULT: tuple[_Text, ...]
 SUPPRESS_HELP: _Text

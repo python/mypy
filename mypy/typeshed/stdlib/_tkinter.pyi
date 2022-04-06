@@ -1,5 +1,5 @@
 import sys
-from typing import Any
+from typing import Any, ClassVar
 from typing_extensions import Literal, final
 
 # _tkinter is meant to be only used internally by tkinter, but some tkinter
@@ -19,7 +19,7 @@ from typing_extensions import Literal, final
 class Tcl_Obj:
     string: str | bytes
     typename: str
-    __hash__: None  # type: ignore[assignment]
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def __eq__(self, __other): ...
     def __ge__(self, __other): ...
     def __gt__(self, __other): ...

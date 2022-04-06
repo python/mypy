@@ -1,11 +1,11 @@
-from typing import Any, BinaryIO, Callable, Protocol, Text, Union, overload
+from typing import Any, BinaryIO, Callable, Protocol, Text, overload
 
 class _ReadableBinary(Protocol):
     def tell(self) -> int: ...
     def read(self, size: int) -> bytes: ...
     def seek(self, offset: int) -> Any: ...
 
-_File = Union[Text, _ReadableBinary]
+_File = Text | _ReadableBinary
 
 @overload
 def what(file: _File, h: None = ...) -> str | None: ...

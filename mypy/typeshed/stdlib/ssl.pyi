@@ -2,17 +2,17 @@ import enum
 import socket
 import sys
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
-from typing import Any, Callable, Iterable, NamedTuple, Optional, Union, overload
+from typing import Any, Callable, Iterable, NamedTuple, Union, overload
 from typing_extensions import Literal, TypedDict, final
 
 _PCTRTT = tuple[tuple[str, str], ...]
 _PCTRTTT = tuple[_PCTRTT, ...]
-_PeerCertRetDictType = dict[str, Union[str, _PCTRTTT, _PCTRTT]]
-_PeerCertRetType = Union[_PeerCertRetDictType, bytes, None]
-_EnumRetType = list[tuple[bytes, str, Union[set[str], bool]]]
-_PasswordType = Union[Callable[[], Union[str, bytes]], str, bytes]
+_PeerCertRetDictType = dict[str, str | _PCTRTTT | _PCTRTT]
+_PeerCertRetType = _PeerCertRetDictType | bytes | None
+_EnumRetType = list[tuple[bytes, str, set[str] | bool]]
+_PasswordType = Union[Callable[[], str | bytes], str, bytes]
 
-_SrvnmeCbType = Callable[[Union[SSLSocket, SSLObject], Optional[str], SSLSocket], Optional[int]]
+_SrvnmeCbType = Callable[[SSLSocket | SSLObject, str | None, SSLSocket], int | None]
 
 class _Cipher(TypedDict):
     aead: bool

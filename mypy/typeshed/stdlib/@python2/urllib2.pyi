@@ -1,9 +1,9 @@
 import ssl
 from httplib import HTTPConnectionProtocol, HTTPResponse
-from typing import Any, AnyStr, Callable, Mapping, Sequence, Text, Union
+from typing import Any, AnyStr, Callable, Mapping, Sequence, Text
 from urllib import addinfourl
 
-_string = Union[str, unicode]
+_string = str | unicode
 
 class URLError(IOError):
     reason: str | BaseException

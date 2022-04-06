@@ -1,6 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from datetime import date, datetime, time
+from types import TracebackType
 from typing import Any, Callable, Generator, Iterable, Iterator, Protocol, TypeVar
 from typing_extensions import Literal, final
 
@@ -183,7 +184,9 @@ class Connection:
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, __type: type | None, __value: BaseException | None, __traceback: Any | None) -> Literal[False]: ...
+    def __exit__(
+        self, __type: type[BaseException] | None, __value: BaseException | None, __traceback: TracebackType | None
+    ) -> Literal[False]: ...
 
 class Cursor(Iterator[Any]):
     arraysize: Any

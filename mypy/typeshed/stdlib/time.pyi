@@ -1,7 +1,7 @@
 import sys
 from _typeshed import structseq
-from typing import Any, Protocol, Union
-from typing_extensions import Literal, final
+from typing import Any, Protocol
+from typing_extensions import Final, Literal, final
 
 _TimeTuple = tuple[int, int, int, int, int, int, int, int, int]
 
@@ -37,7 +37,9 @@ if sys.version_info >= (3, 9) and sys.platform == "linux":
 # even if an iterable with length >9 is passed.
 # https://github.com/python/typeshed/pull/6560#discussion_r767162532
 @final
-class struct_time(structseq[Union[Any, int]], _TimeTuple):
+class struct_time(structseq[Any | int], _TimeTuple):
+    if sys.version_info >= (3, 10):
+        __match_args__: Final = ("tm_year", "tm_mon", "tm_mday", "tm_hour", "tm_min", "tm_sec", "tm_wday", "tm_yday", "tm_isdst")
     @property
     def tm_year(self) -> int: ...
     @property

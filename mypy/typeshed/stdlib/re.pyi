@@ -2,7 +2,7 @@ import enum
 import sre_compile
 import sys
 from sre_constants import error as error
-from typing import Any, AnyStr, Callable, Iterator, Union, overload
+from typing import Any, AnyStr, Callable, Iterator, overload
 
 # ----- re variables and constants -----
 if sys.version_info >= (3, 7):
@@ -147,7 +147,7 @@ T = RegexFlag.T
 TEMPLATE = RegexFlag.TEMPLATE
 if sys.version_info >= (3, 11):
     NOFLAG = RegexFlag.NOFLAG
-_FlagsType = Union[int, RegexFlag]
+_FlagsType = int | RegexFlag
 
 if sys.version_info < (3, 7):
     # undocumented

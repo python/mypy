@@ -4,7 +4,7 @@ from _typeshed import Self
 from abc import ABCMeta
 from builtins import property as _builtins_property
 from collections.abc import Iterable, Iterator, Mapping
-from typing import Any, TypeVar, Union, overload
+from typing import Any, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 11):
@@ -52,7 +52,7 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # <enum 'Foo'>
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
-_EnumNames = Union[str, Iterable[str], Iterable[Iterable[Union[str, Any]]], Mapping[str, Any]]
+_EnumNames = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
 
 class _EnumDict(dict[str, Any]):
     def __init__(self) -> None: ...
@@ -95,11 +95,11 @@ class EnumMeta(ABCMeta):
     def __members__(self: type[_EnumMemberT]) -> types.MappingProxyType[str, _EnumMemberT]: ...
     def __len__(self) -> int: ...
     def __bool__(self) -> Literal[True]: ...
+    # Simple value lookup
+    @overload  # type: ignore[override]
+    def __call__(cls: type[_EnumMemberT], value: Any, names: None = ...) -> _EnumMemberT: ...
+    # Functional Enum API
     if sys.version_info >= (3, 11):
-        # Simple value lookup
-        @overload  # type: ignore[override]
-        def __call__(cls: type[_EnumMemberT], value: Any, names: None = ...) -> _EnumMemberT: ...
-        # Functional Enum API
         @overload
         def __call__(
             cls,
@@ -113,8 +113,6 @@ class EnumMeta(ABCMeta):
             boundary: FlagBoundary | None = ...,
         ) -> type[Enum]: ...
     else:
-        @overload  # type: ignore[override]
-        def __call__(cls: type[_EnumMemberT], value: Any, names: None = ...) -> _EnumMemberT: ...
         @overload
         def __call__(
             cls,

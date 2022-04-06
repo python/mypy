@@ -1,7 +1,7 @@
 import abc
 import sys
 from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
-from typing import (  # noqa Y022
+from typing import (  # noqa: Y022,Y027
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     AsyncContextManager as AsyncContextManager,

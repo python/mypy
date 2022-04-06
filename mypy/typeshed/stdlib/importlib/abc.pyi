@@ -12,10 +12,10 @@ from _typeshed import (
 from abc import ABCMeta, abstractmethod
 from importlib.machinery import ModuleSpec
 from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWrapper
-from typing import IO, Any, BinaryIO, Iterator, Mapping, NoReturn, Protocol, Sequence, Union, overload, runtime_checkable
+from typing import IO, Any, BinaryIO, Iterator, Mapping, NoReturn, Protocol, Sequence, overload, runtime_checkable
 from typing_extensions import Literal
 
-_Path = Union[bytes, str]
+_Path = bytes | str
 
 class Finder(metaclass=ABCMeta): ...
 

@@ -5,7 +5,7 @@ from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, Optional, Protocol, Sequence, TypeVar, Union, overload
+from typing import Any, Callable, Generic, Mapping, Protocol, Sequence, TypeVar, Union, overload
 from typing_extensions import Literal, TypedDict
 
 if sys.version_info >= (3, 9):
@@ -173,16 +173,16 @@ EXCEPTION = _tkinter.EXCEPTION
 # than the _Compound defined here. Many other options have similar things.
 _Anchor = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
 _Bitmap = str  # manual page: Tk_GetBitmap
-_ButtonCommand = Union[str, Callable[[], Any]]  # accepts string of tcl code, return value is returned from Button.invoke()
+_ButtonCommand = str | Callable[[], Any]  # accepts string of tcl code, return value is returned from Button.invoke()
 _CanvasItemId = int
 _Color = str  # typically '#rrggbb', '#rgb' or color names.
 _Compound = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
 _Cursor = Union[str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]  # manual page: Tk_GetCursor
-_EntryValidateCommand = Union[
-    Callable[[], bool], str, list[str], tuple[str, ...]
-]  # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
-_GridIndex = Union[int, str, Literal["all"]]
-_ImageSpec = Union[_Image, str]  # str can be from e.g. tkinter.image_names()
+_EntryValidateCommand = (
+    str | list[str] | tuple[str, ...] | Callable[[], bool]
+)  # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
+_GridIndex = int | str | Literal["all"]
+_ImageSpec = _Image | str  # str can be from e.g. tkinter.image_names()
 _Padding = Union[
     _ScreenUnits,
     tuple[_ScreenUnits],
@@ -191,9 +191,9 @@ _Padding = Union[
     tuple[_ScreenUnits, _ScreenUnits, _ScreenUnits, _ScreenUnits],
 ]
 _Relief = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
-_ScreenUnits = Union[str, float]  # Often the right type instead of int. Manual page: Tk_GetPixels
-_XYScrollCommand = Union[str, Callable[[float, float], Any]]  # -xscrollcommand and -yscrollcommand in 'options' manual page
-_TakeFocusValue = Union[int, Literal[""], Callable[[str], Optional[bool]]]  # -takefocus in manual page named 'options'
+_ScreenUnits = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
+_XYScrollCommand = str | Callable[[float, float], Any]  # -xscrollcommand and -yscrollcommand in 'options' manual page
+_TakeFocusValue = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
 
 class EventType(str, Enum):
     Activate: str
@@ -1696,7 +1696,7 @@ class Checkbutton(Widget):
     def select(self) -> None: ...
     def toggle(self) -> None: ...
 
-_EntryIndex = Union[str, int]  # "INDICES" in manual page
+_EntryIndex = str | int  # "INDICES" in manual page
 
 class Entry(Widget, XView):
     def __init__(
@@ -2054,7 +2054,7 @@ class Listbox(Widget, XView, YView):
     def itemconfigure(self, index, cnf: Any | None = ..., **kw): ...
     itemconfig: Any
 
-_MenuIndex = Union[str, int]
+_MenuIndex = str | int
 
 class Menu(Widget):
     def __init__(
@@ -2740,7 +2740,7 @@ class Scrollbar(Widget):
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
     def set(self, first: float, last: float) -> None: ...
 
-_TextIndex = Union[_tkinter.Tcl_Obj, str, float, Misc]
+_TextIndex = _tkinter.Tcl_Obj | str | float | Misc
 
 class Text(Widget, XView, YView):
     def __init__(

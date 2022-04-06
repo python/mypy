@@ -1,7 +1,7 @@
 import sys
 from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
 from collections.abc import Callable, ItemsView, Iterable, Iterator, Mapping, MutableMapping, Sequence
-from typing import Any, ClassVar, Optional, Pattern, TypeVar, overload
+from typing import Any, ClassVar, Pattern, TypeVar, overload
 from typing_extensions import Literal
 
 __all__ = [
@@ -205,7 +205,7 @@ class SectionProxy(MutableMapping[str, str]):
     # SectionProxy can have arbitrary attributes when custom converters are used
     def __getattr__(self, key: str) -> Callable[..., Any]: ...
 
-class ConverterMapping(MutableMapping[str, Optional[_converter]]):
+class ConverterMapping(MutableMapping[str, _converter | None]):
     GETTERCRE: Pattern[Any]
     def __init__(self, parser: RawConfigParser) -> None: ...
     def __getitem__(self, key: str) -> _converter: ...

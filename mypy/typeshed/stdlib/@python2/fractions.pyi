@@ -1,10 +1,10 @@
 from _typeshed import Self
 from decimal import Decimal
 from numbers import Integral, Rational, Real
-from typing import Union, overload
+from typing import overload
 from typing_extensions import Literal
 
-_ComparableNum = Union[int, float, Decimal, Real]
+_ComparableNum = int | float | Decimal | Real
 
 @overload
 def gcd(a: int, b: int) -> int: ...

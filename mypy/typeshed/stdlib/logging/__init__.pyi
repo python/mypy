@@ -6,7 +6,7 @@ from io import TextIOWrapper
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Optional, Pattern, TextIO, TypeVar, Union, overload
+from typing import Any, ClassVar, Generic, Pattern, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal
 
 __all__ = [
@@ -54,11 +54,11 @@ __all__ = [
     "raiseExceptions",
 ]
 
-_SysExcInfoType = Union[tuple[type[BaseException], BaseException, Optional[TracebackType]], tuple[None, None, None]]
-_ExcInfoType = Union[None, bool, _SysExcInfoType, BaseException]
-_ArgsType = Union[tuple[object, ...], Mapping[str, object]]
-_FilterType = Union[Filter, Callable[[LogRecord], int]]
-_Level = Union[int, str]
+_SysExcInfoType = Union[tuple[type[BaseException], BaseException, TracebackType | None], tuple[None, None, None]]
+_ExcInfoType = None | bool | _SysExcInfoType | BaseException
+_ArgsType = tuple[object, ...] | Mapping[str, object]
+_FilterType = Filter | Callable[[LogRecord], int]
+_Level = int | str
 _FormatStyle = Literal["%", "{", "$"]
 
 raiseExceptions: bool

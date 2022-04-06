@@ -12,7 +12,6 @@ from typing import (
     Sequence,
     Text,
     TypeVar,
-    Union,
     overload,
 )
 
@@ -29,7 +28,7 @@ _T = TypeVar("_T")
 # Type for parser inputs. Parser will accept any unicode/str/bytes and coerce,
 # and this is true in py2 and py3 (even fromstringlist() in python3 can be
 # called with a heterogeneous list)
-_parser_input_type = Union[bytes, Text]
+_parser_input_type = bytes | Text
 
 # Type for individual tag/attr/ns/text values in args to most functions.
 # In py2, the library accepts str or unicode everywhere and coerces
@@ -38,7 +37,7 @@ _parser_input_type = Union[bytes, Text]
 # so we exclude it. (why? the parser never produces bytes when it parses XML,
 # so e.g., element.get(b'name') will always return None for parsed XML, even if
 # there is a 'name' attribute.)
-_str_argument_type = Union[str, Text]
+_str_argument_type = str | Text
 
 # Type for return values from individual tag/attr/text values
 # in python2, if the tag/attribute/text wasn't decode-able as ascii, it
@@ -46,7 +45,7 @@ _str_argument_type = Union[str, Text]
 # _fixtext function in the source). Client code knows best:
 _str_result_type = Any
 
-_file_or_filename = Union[Text, FileDescriptor, IO[Any]]
+_file_or_filename = Text | FileDescriptor | IO[Any]
 
 class Element(MutableSequence[Element]):
     tag: _str_result_type

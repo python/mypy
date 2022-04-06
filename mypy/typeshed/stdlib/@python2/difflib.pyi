@@ -1,11 +1,11 @@
-from typing import Any, AnyStr, Callable, Generic, Iterable, Iterator, NamedTuple, Sequence, Text, TypeVar, Union, overload
+from typing import Any, AnyStr, Callable, Generic, Iterable, Iterator, NamedTuple, Sequence, Text, TypeVar, overload
 
 _T = TypeVar("_T")
 
 # Aliases can't point to type vars, so we need to redeclare AnyStr
 _StrType = TypeVar("_StrType", Text, bytes)
 
-_JunkCallback = Union[Callable[[Text], bool], Callable[[str], bool]]
+_JunkCallback = Callable[[Text], bool] | Callable[[str], bool]
 
 class Match(NamedTuple):
     a: int
@@ -29,9 +29,7 @@ class SequenceMatcher(Generic[_T]):
 
 # mypy thinks the signatures of the overloads overlap, but the types still work fine
 @overload
-def get_close_matches(  # type: ignore
-    word: AnyStr, possibilities: Iterable[AnyStr], n: int = ..., cutoff: float = ...
-) -> list[AnyStr]: ...
+def get_close_matches(word: AnyStr, possibilities: Iterable[AnyStr], n: int = ..., cutoff: float = ...) -> list[AnyStr]: ...  # type: ignore[misc]
 @overload
 def get_close_matches(
     word: Sequence[_T], possibilities: Iterable[Sequence[_T]], n: int = ..., cutoff: float = ...

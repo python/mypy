@@ -1,10 +1,10 @@
 from _typeshed import Self
 from types import TracebackType
-from typing import TypeVar, Union, overload
+from typing import TypeVar, overload
 
 _T = TypeVar("_T")
-_KeyType = Union[str, bytes]
-_ValueType = Union[str, bytes]
+_KeyType = str | bytes
+_ValueType = str | bytes
 
 class error(OSError): ...
 
@@ -29,7 +29,7 @@ class _dbm:
     def keys(self) -> list[bytes]: ...
     def setdefault(self, k: _KeyType, default: _ValueType = ...) -> bytes: ...
     # Don't exist at runtime
-    __new__: None  # type: ignore
-    __init__: None  # type: ignore
+    __new__: None  # type: ignore[assignment]
+    __init__: None  # type: ignore[assignment]
 
 def open(__filename: str, __flags: str = ..., __mode: int = ...) -> _dbm: ...

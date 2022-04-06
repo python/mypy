@@ -1,19 +1,19 @@
 import codecs
 import sys
-from typing import Any, Callable, Text, Union
+from typing import Any, Callable, Text
 
 # For convenience:
 _Handler = Callable[[Exception], tuple[Text, int]]
-_String = Union[bytes, str]
-_Errors = Union[str, Text, None]
-_Decodable = Union[bytes, Text]
-_Encodable = Union[bytes, Text]
+_String = bytes | str
+_Errors = str | Text | None
+_Decodable = bytes | Text
+_Encodable = bytes | Text
 
 # This type is not exposed; it is defined in unicodeobject.c
 class _EncodingMap(object):
     def size(self) -> int: ...
 
-_MapT = Union[dict[int, int], _EncodingMap]
+_MapT = dict[int, int] | _EncodingMap
 
 def register(__search_function: Callable[[str], Any]) -> None: ...
 def register_error(__errors: str | Text, __handler: _Handler) -> None: ...

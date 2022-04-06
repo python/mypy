@@ -1,26 +1,11 @@
 import email.message
 from types import TracebackType
-from typing import (
-    IO,
-    Any,
-    AnyStr,
-    Callable,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Protocol,
-    Sequence,
-    Text,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Iterator, Mapping, Protocol, Sequence, Text, TypeVar, overload
 from typing_extensions import Literal
 
 _T = TypeVar("_T")
 _MessageT = TypeVar("_MessageT", bound=Message)
-_MessageData = Union[email.message.Message, bytes, str, IO[str], IO[bytes]]
+_MessageData = email.message.Message | bytes | str | IO[str] | IO[bytes]
 
 class _HasIteritems(Protocol):
     def iteritems(self) -> Iterator[tuple[str, _MessageData]]: ...

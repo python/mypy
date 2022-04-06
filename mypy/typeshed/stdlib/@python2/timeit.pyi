@@ -1,8 +1,8 @@
-from typing import IO, Any, Callable, Sequence, Text, Union
+from typing import IO, Any, Callable, Sequence, Text
 
-_str = Union[str, Text]
+_str = str | Text
 _Timer = Callable[[], float]
-_stmt = Union[_str, Callable[[], Any]]
+_stmt = _str | Callable[[], Any]
 
 default_timer: _Timer
 

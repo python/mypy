@@ -1,7 +1,7 @@
 import sys
 import types
 from _typeshed import StrPath
-from typing import Any, Callable, Mapping, Optional, Sequence, TypeVar
+from typing import Any, Callable, Mapping, Sequence, TypeVar
 from typing_extensions import ParamSpec
 
 __all__ = ["Trace", "CoverageResults"]
@@ -9,7 +9,7 @@ __all__ = ["Trace", "CoverageResults"]
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
 _localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
-_fileModuleFunction = tuple[str, Optional[str], str]
+_fileModuleFunction = tuple[str, str | None, str]
 
 class CoverageResults:
     def __init__(

@@ -1,6 +1,6 @@
 import sys
 from _typeshed import Self, StrPath
-from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Optional
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Sequence
 
 from . import events, protocols, transports
 from .base_events import Server
@@ -64,7 +64,7 @@ else:
             "start_unix_server",
         ]
 
-_ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Optional[Awaitable[None]]]
+_ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
 
 if sys.version_info < (3, 8):
     class IncompleteReadError(EOFError):
@@ -87,7 +87,7 @@ if sys.version_info >= (3, 10):
     ) -> tuple[StreamReader, StreamWriter]: ...
     async def start_server(
         client_connected_cb: _ClientConnectedCallback,
-        host: str | None = ...,
+        host: str | Sequence[str] | None = ...,
         port: int | str | None = ...,
         *,
         limit: int = ...,

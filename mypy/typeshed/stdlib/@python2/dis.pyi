@@ -13,12 +13,12 @@ from opcode import (
     opmap as opmap,
     opname as opname,
 )
-from typing import Any, Callable, Iterator, Union
+from typing import Any, Callable, Iterator
 
 # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
 # for functions (python/mypy#3171)
-_have_code = Union[types.MethodType, types.FunctionType, types.CodeType, type, Callable[..., Any]]
-_have_code_or_string = Union[_have_code, str, bytes]
+_have_code = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
+_have_code_or_string = _have_code | str | bytes
 
 COMPILER_FLAG_NAMES: dict[int, str]
 

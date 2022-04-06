@@ -1,4 +1,4 @@
-from typing import IO, Any, NamedTuple, Text, Union, overload
+from typing import IO, Any, NamedTuple, Text, overload
 from typing_extensions import Literal
 
 class Error(Exception): ...
@@ -11,7 +11,7 @@ class _aifc_params(NamedTuple):
     comptype: bytes
     compname: bytes
 
-_File = Union[Text, IO[bytes]]
+_File = Text | IO[bytes]
 _Marker = tuple[int, int, bytes]
 
 class Aifc_read:

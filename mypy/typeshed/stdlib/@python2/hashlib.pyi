@@ -1,6 +1,4 @@
-from typing import Union
-
-_DataType = Union[str, unicode, bytearray, buffer, memoryview]
+_DataType = str | unicode | bytearray | buffer | memoryview
 
 class _hash(object):  # This is not actually in the module namespace.
     @property

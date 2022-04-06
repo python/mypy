@@ -78,7 +78,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
     when: str  # undocumented
     backupCount: int  # undocumented
     utc: bool  # undocumented
-    atTime: datetime.datetime | None  # undocumented
+    atTime: datetime.time | None  # undocumented
     interval: int  # undocumented
     suffix: str  # undocumented
     dayOfWeek: int  # undocumented
@@ -94,7 +94,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
             errors: str | None = ...,
         ) -> None: ...
     else:
@@ -107,7 +107,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
         ) -> None: ...
 
     def doRollover(self) -> None: ...

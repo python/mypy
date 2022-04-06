@@ -1,20 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, Self, WriteableBuffer
 from abc import abstractmethod
-from typing import (
-    Any,
-    Callable,
-    ClassVar,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Optional,
-    Sequence,
-    TypeVar,
-    Union as _UnionT,
-    overload,
-)
+from typing import Any, Callable, ClassVar, Generic, Iterable, Iterator, Mapping, Sequence, TypeVar, Union as _UnionT, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -97,7 +84,7 @@ class _CData(metaclass=_CDataMeta):
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
-_ECT = Callable[[Optional[type[_CData]], _FuncPointer, tuple[_CData, ...]], _CData]
+_ECT = Callable[[type[_CData] | None, _FuncPointer, tuple[_CData, ...]], _CData]
 _PF = _UnionT[tuple[int], tuple[int, str], tuple[int, str, Any]]
 
 class _FuncPointer(_PointerLike, _CData):
@@ -134,12 +121,12 @@ class _CArgObject: ...
 
 # Any type that can be implicitly converted to c_void_p when passed as a C function argument.
 # (bytes is not included here, see below.)
-_CVoidPLike = _UnionT[_PointerLike, Array[Any], _CArgObject, int]
+_CVoidPLike = _PointerLike | Array[Any] | _CArgObject | int
 # Same as above, but including types known to be read-only (i. e. bytes).
 # This distinction is not strictly necessary (ctypes doesn't differentiate between const
 # and non-const pointers), but it catches errors like memmove(b'foo', buf, 4)
 # when memmove(buf, b'foo', 4) was intended.
-_CVoidConstPLike = _UnionT[_CVoidPLike, bytes]
+_CVoidConstPLike = _CVoidPLike | bytes
 
 def addressof(obj: _CData) -> int: ...
 def alignment(obj_or_type: _CData | type[_CData]) -> int: ...
@@ -208,7 +195,7 @@ class c_byte(_SimpleCData[int]): ...
 class c_char(_SimpleCData[bytes]):
     def __init__(self, value: int | bytes = ...) -> None: ...
 
-class c_char_p(_PointerLike, _SimpleCData[Optional[bytes]]):
+class c_char_p(_PointerLike, _SimpleCData[bytes | None]):
     def __init__(self, value: int | bytes | None = ...) -> None: ...
 
 class c_double(_SimpleCData[float]): ...
@@ -233,10 +220,10 @@ class c_uint64(_SimpleCData[int]): ...
 class c_ulong(_SimpleCData[int]): ...
 class c_ulonglong(_SimpleCData[int]): ...
 class c_ushort(_SimpleCData[int]): ...
-class c_void_p(_PointerLike, _SimpleCData[Optional[int]]): ...
+class c_void_p(_PointerLike, _SimpleCData[int | None]): ...
 class c_wchar(_SimpleCData[str]): ...
 
-class c_wchar_p(_PointerLike, _SimpleCData[Optional[str]]):
+class c_wchar_p(_PointerLike, _SimpleCData[str | None]):
     def __init__(self, value: int | str | None = ...) -> None: ...
 
 class c_bool(_SimpleCData[bool]):

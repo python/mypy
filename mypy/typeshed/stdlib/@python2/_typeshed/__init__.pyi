@@ -14,7 +14,7 @@
 
 import array
 import mmap
-from typing import Any, Container, Iterable, Protocol, Text, TypeVar, Union
+from typing import Any, Container, Iterable, Protocol, Text, TypeVar
 from typing_extensions import Literal, final
 
 _KT = TypeVar("_KT")
@@ -28,7 +28,7 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 
 # Use for "self" annotations:
 #   def __enter__(self: Self) -> Self: ...
-Self = TypeVar("Self")  # noqa Y001
+Self = TypeVar("Self")  # noqa: Y001
 
 class IdentityFunction(Protocol):
     def __call__(self, __x: _T) -> _T: ...
@@ -104,7 +104,7 @@ OpenTextModeUpdating = Literal[
 ]
 OpenTextModeWriting = Literal["w", "wt", "tw", "a", "at", "ta", "x", "xt", "tx"]
 OpenTextModeReading = Literal["r", "rt", "tr", "U", "rU", "Ur", "rtU", "rUt", "Urt", "trU", "tUr", "Utr"]
-OpenTextMode = Union[OpenTextModeUpdating, OpenTextModeWriting, OpenTextModeReading]
+OpenTextMode = OpenTextModeUpdating | OpenTextModeWriting | OpenTextModeReading
 OpenBinaryModeUpdating = Literal[
     "rb+",
     "r+b",
@@ -133,13 +133,13 @@ OpenBinaryModeUpdating = Literal[
 ]
 OpenBinaryModeWriting = Literal["wb", "bw", "ab", "ba", "xb", "bx"]
 OpenBinaryModeReading = Literal["rb", "br", "rbU", "rUb", "Urb", "brU", "bUr", "Ubr"]
-OpenBinaryMode = Union[OpenBinaryModeUpdating, OpenBinaryModeReading, OpenBinaryModeWriting]
+OpenBinaryMode = OpenBinaryModeUpdating | OpenBinaryModeReading | OpenBinaryModeWriting
 
 class HasFileno(Protocol):
     def fileno(self) -> int: ...
 
 FileDescriptor = int
-FileDescriptorLike = Union[int, HasFileno]
+FileDescriptorLike = int | HasFileno
 
 class SupportsRead(Protocol[_T_co]):
     def read(self, __length: int = ...) -> _T_co: ...
@@ -153,8 +153,8 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 class SupportsWrite(Protocol[_T_contra]):
     def write(self, __s: _T_contra) -> Any: ...
 
-ReadableBuffer = Union[bytes, bytearray, memoryview, array.array[Any], mmap.mmap, buffer]
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, buffer]
+ReadableBuffer = bytes | bytearray | memoryview | array.array[Any] | mmap.mmap | buffer
+WriteableBuffer = bytearray | memoryview | array.array[Any] | mmap.mmap | buffer
 
 # Used by type checkers for checks involving None (does not exist at runtime)
 @final

@@ -1,6 +1,6 @@
-from typing import AnyStr, Iterable, Union
+from typing import AnyStr, Iterable
 
-_EitherStr = Union[str, unicode]
+_EitherStr = str | unicode
 
 def fnmatch(filename: _EitherStr, pattern: _EitherStr) -> bool: ...
 def fnmatchcase(filename: _EitherStr, pattern: _EitherStr) -> bool: ...

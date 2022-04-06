@@ -137,7 +137,7 @@ _AnyColor = Any
 # TODO: Replace this with a TypedDict once it becomes standardized.
 _PenState = dict[str, Any]
 
-_Speed = Union[str, float]
+_Speed = str | float
 _PolygonCoords = Sequence[tuple[float, float]]
 
 # TODO: Type this more accurately

@@ -1,5 +1,5 @@
 from types import FrameType
-from typing import Callable, Union
+from typing import Callable
 
 SIG_DFL: int
 SIG_IGN: int
@@ -55,7 +55,7 @@ CTRL_BREAK_EVENT: int
 
 class ItimerError(IOError): ...
 
-_HANDLER = Union[Callable[[int, FrameType], None], int, None]
+_HANDLER = Callable[[int, FrameType], None] | int | None
 
 def alarm(time: int) -> int: ...
 def getsignal(signalnum: int) -> _HANDLER: ...

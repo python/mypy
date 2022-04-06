@@ -1,7 +1,7 @@
-from typing import Any, Callable, Hashable, Optional, SupportsInt, TypeVar, Union
+from typing import Any, Callable, Hashable, SupportsInt, TypeVar, Union
 
 _TypeT = TypeVar("_TypeT", bound=type)
-_Reduce = Union[tuple[Callable[..., _TypeT], tuple[Any, ...]], tuple[Callable[..., _TypeT], tuple[Any, ...], Optional[Any]]]
+_Reduce = Union[tuple[Callable[..., _TypeT], tuple[Any, ...]], tuple[Callable[..., _TypeT], tuple[Any, ...], Any | None]]
 
 __all__ = ["pickle", "constructor", "add_extension", "remove_extension", "clear_extension_cache"]
 

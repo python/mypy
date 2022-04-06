@@ -11,7 +11,7 @@ from .events import AbstractEventLoop, BaseDefaultEventLoopPolicy, _ProtocolFact
 from .selector_events import BaseSelectorEventLoop
 
 # This is also technically not available on Win,
-# but other parts of typeshed need this defintion.
+# but other parts of typeshed need this definition.
 # So, it is special cased.
 class AbstractChildWatcher:
     @abstractmethod

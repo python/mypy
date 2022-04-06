@@ -2,7 +2,7 @@ import sys
 from _typeshed import Self, StrOrBytesPath
 from cProfile import Profile as _cProfile
 from profile import Profile
-from typing import IO, Any, Iterable, Union, overload
+from typing import IO, Any, Iterable, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -12,7 +12,7 @@ elif sys.version_info >= (3, 7):
 else:
     __all__ = ["Stats"]
 
-_Selector = Union[str, float, int]
+_Selector = str | float | int
 
 if sys.version_info >= (3, 7):
     from enum import Enum

@@ -1,8 +1,8 @@
-from typing import SupportsComplex, SupportsFloat, Union
+from typing import SupportsComplex, SupportsFloat
 
 e: float
 pi: float
-_C = Union[SupportsFloat, SupportsComplex, complex]
+_C = SupportsFloat | SupportsComplex | complex
 
 def acos(__z: _C) -> complex: ...
 def acosh(__z: _C) -> complex: ...

@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar, Union, overload
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -102,18 +102,18 @@ else:
 #    reveal_type(x)  # bytes, based on the overloads
 # except TimeoutError as e:
 #    reveal_type(e.cmd)  # Any, but morally is _CMD
-_FILE = Union[None, int, IO[Any]]
-_TXT = Union[bytes, str]
+_FILE = None | int | IO[Any]
+_TXT = bytes | str
 if sys.version_info >= (3, 8):
-    _CMD = Union[StrOrBytesPath, Sequence[StrOrBytesPath]]
+    _CMD = StrOrBytesPath | Sequence[StrOrBytesPath]
 else:
     # Python 3.6 doesn't support _CMD being a single PathLike.
     # See: https://bugs.python.org/issue31961
-    _CMD = Union[_TXT, Sequence[StrOrBytesPath]]
+    _CMD = _TXT | Sequence[StrOrBytesPath]
 if sys.platform == "win32":
     _ENV = Mapping[str, str]
 else:
-    _ENV = Union[Mapping[bytes, StrOrBytesPath], Mapping[str, StrOrBytesPath]]
+    _ENV = Mapping[bytes, StrOrBytesPath] | Mapping[str, StrOrBytesPath]
 
 _T = TypeVar("_T")
 

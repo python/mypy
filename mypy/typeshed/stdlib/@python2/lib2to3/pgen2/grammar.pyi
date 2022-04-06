@@ -1,7 +1,7 @@
 from _typeshed import Self, StrPath
-from typing import Optional, Text
+from typing import Text
 
-_Label = tuple[int, Optional[Text]]
+_Label = tuple[int, Text | None]
 _DFA = list[list[tuple[int, int]]]
 _DFAS = tuple[_DFA, dict[int, int]]
 

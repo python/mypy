@@ -619,10 +619,5 @@ if sys.version_info >= (3, 8):
 
 # the 5th tuple item is an address
 def getaddrinfo(
-    host: bytearray | bytes | str | None,
-    port: str | int | None,
-    family: int = ...,
-    type: int = ...,
-    proto: int = ...,
-    flags: int = ...,
+    host: bytes | str | None, port: str | int | None, family: int = ..., type: int = ..., proto: int = ..., flags: int = ...
 ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...

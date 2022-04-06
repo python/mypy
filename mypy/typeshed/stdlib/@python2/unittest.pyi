@@ -10,7 +10,7 @@ _FT = TypeVar("_FT")
 _P = ParamSpec("_P")
 
 _ExceptionType = Union[type[BaseException], tuple[type[BaseException], ...]]
-_Regexp = Union[Text, Pattern[Text]]
+_Regexp = Text | Pattern[Text]
 
 _SysExcInfoType = Union[tuple[type[BaseException], BaseException, types.TracebackType], tuple[None, None, None]]
 

@@ -20,7 +20,7 @@ from multiprocessing.process import active_children as active_children, current_
 # multiprocessing.queues or the aliases defined below. See #4266 for discussion.
 from multiprocessing.queues import JoinableQueue as JoinableQueue, Queue as Queue, SimpleQueue as SimpleQueue
 from multiprocessing.spawn import freeze_support as freeze_support
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
@@ -134,7 +134,7 @@ _SemaphoreType = synchronize.Semaphore
 # be identical (modulo self).
 
 # Synchronization primitives
-_LockLike = Union[synchronize.Lock, synchronize.RLock]
+_LockLike = synchronize.Lock | synchronize.RLock
 RawValue = context._default_context.RawValue
 RawArray = context._default_context.RawArray
 Value = context._default_context.Value

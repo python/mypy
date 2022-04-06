@@ -1,5 +1,5 @@
 from types import CodeType, FrameType, FunctionType, MethodType, ModuleType, TracebackType
-from typing import Any, AnyStr, Callable, NamedTuple, Optional, Sequence, Union
+from typing import Any, AnyStr, Callable, NamedTuple, Sequence, Union
 
 # Types and members
 class EndOfBlock(Exception): ...
@@ -104,9 +104,9 @@ class Traceback(NamedTuple):
     lineno: int
     function: str
     code_context: list[str] | None
-    index: int | None  # type: ignore
+    index: int | None  # type: ignore[assignment]
 
-_FrameInfo = tuple[FrameType, str, int, str, Optional[list[str]], Optional[int]]
+_FrameInfo = tuple[FrameType, str, int, str, list[str] | None, int | None]
 
 def getouterframes(frame: FrameType, context: int = ...) -> list[_FrameInfo]: ...
 def getframeinfo(frame: FrameType | TracebackType, context: int = ...) -> Traceback: ...

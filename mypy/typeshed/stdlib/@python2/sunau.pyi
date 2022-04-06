@@ -1,6 +1,6 @@
-from typing import IO, Any, NoReturn, Text, Union
+from typing import IO, Any, NoReturn, Text
 
-_File = Union[Text, IO[bytes]]
+_File = Text | IO[bytes]
 
 class Error(Exception): ...
 

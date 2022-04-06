@@ -3,7 +3,7 @@ import sys
 from contextlib import AbstractContextManager
 from pathlib import Path
 from types import ModuleType
-from typing import Any, BinaryIO, Iterator, TextIO, Union
+from typing import Any, BinaryIO, Iterator, TextIO
 
 if sys.version_info >= (3, 10):
     __all__ = [
@@ -37,8 +37,8 @@ elif sys.version_info >= (3, 9):
 else:
     __all__ = ["Package", "Resource", "contents", "is_resource", "open_binary", "open_text", "path", "read_binary", "read_text"]
 
-Package = Union[str, ModuleType]
-Resource = Union[str, os.PathLike[Any]]
+Package = str | ModuleType
+Resource = str | os.PathLike[Any]
 
 def open_binary(package: Package, resource: Resource) -> BinaryIO: ...
 def open_text(package: Package, resource: Resource, encoding: str = ..., errors: str = ...) -> TextIO: ...

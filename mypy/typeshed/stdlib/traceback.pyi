@@ -1,7 +1,7 @@
 import sys
 from _typeshed import Self, SupportsWrite
 from types import FrameType, TracebackType
-from typing import IO, Any, Generator, Iterable, Iterator, Mapping, Optional, overload
+from typing import IO, Any, Generator, Iterable, Iterator, Mapping, overload
 from typing_extensions import Literal
 
 __all__ = [
@@ -26,7 +26,7 @@ __all__ = [
     "walk_tb",
 ]
 
-_PT = tuple[str, int, str, Optional[str]]
+_PT = tuple[str, int, str, str | None]
 
 def print_tb(tb: TracebackType | None, limit: int | None = ..., file: IO[str] | None = ...) -> None: ...
 

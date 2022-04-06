@@ -2,9 +2,9 @@ from _typeshed import Self
 from types import TracebackType
 from typing import Any, Container, NamedTuple, Sequence, Text, Union
 
-_Decimal = Union[Decimal, int]
+_Decimal = Decimal | int
 _DecimalNew = Union[Decimal, float, Text, tuple[int, Sequence[int], int]]
-_ComparableNum = Union[Decimal, float]
+_ComparableNum = Decimal | float
 
 class DecimalTuple(NamedTuple):
     sign: int

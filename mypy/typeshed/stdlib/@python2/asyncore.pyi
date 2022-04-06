@@ -1,7 +1,7 @@
 import sys
 from _typeshed import FileDescriptorLike
 from socket import SocketType
-from typing import Any, Optional, overload
+from typing import Any, overload
 
 # cyclic dependence with asynchat
 _maptype = dict[int, Any]

@@ -1,11 +1,11 @@
 from _typeshed import Self
 from lib2to3.pgen2.grammar import Grammar
-from typing import Any, Callable, Iterator, Optional, Union
+from typing import Any, Callable, Iterator
 
-_NL = Union[Node, Leaf]
+_NL = Node | Leaf
 _Context = tuple[str, int, int]
 _Results = dict[str, _NL]
-_RawNode = tuple[int, str, _Context, Optional[list[_NL]]]
+_RawNode = tuple[int, str, _Context, list[_NL] | None]
 _Convert = Callable[[Grammar, _RawNode], Any]
 
 HUGE: int

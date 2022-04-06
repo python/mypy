@@ -52,7 +52,7 @@ class SocketHandler(Handler):
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
-    def makeSocket(self) -> SocketType: ...  # type: ignore
+    def makeSocket(self) -> SocketType: ...  # type: ignore[override]
 
 class SysLogHandler(Handler):
     LOG_EMERG: int

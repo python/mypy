@@ -4,9 +4,9 @@ from _typeshed import Self
 from types import TracebackType
 from typing import Any, Container, NamedTuple, Sequence, Union, overload
 
-_Decimal = Union[Decimal, int]
+_Decimal = Decimal | int
 _DecimalNew = Union[Decimal, float, str, tuple[int, Sequence[int], int]]
-_ComparableNum = Union[Decimal, float, numbers.Rational]
+_ComparableNum = Decimal | float | numbers.Rational
 
 __libmpdec_version__: str
 

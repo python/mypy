@@ -1,4 +1,4 @@
-from typing import Optional, Text
+from typing import Text
 
 class NetrcParseError(Exception):
     filename: str | None
@@ -7,7 +7,7 @@ class NetrcParseError(Exception):
     def __init__(self, msg: str, filename: Text | None = ..., lineno: int | None = ...) -> None: ...
 
 # (login, account, password) tuple
-_NetrcTuple = tuple[str, Optional[str], Optional[str]]
+_NetrcTuple = tuple[str, str | None, str | None]
 
 class netrc:
     hosts: dict[str, _NetrcTuple]

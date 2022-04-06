@@ -1,6 +1,6 @@
 import abc
 from _typeshed import Self
-from typing import (  # noqa Y022
+from typing import (  # noqa: Y022
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     Callable,
@@ -47,8 +47,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
-    # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
-    def pop(self, k: NoReturn, default: _T = ...) -> object: ...  # type: ignore
+    def pop(self, k: NoReturn, default: _T = ...) -> object: ...
     def update(self: _T, __m: _T) -> None: ...
     def has_key(self, k: str) -> bool: ...
     def viewitems(self) -> ItemsView[str, object]: ...

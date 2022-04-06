@@ -1,6 +1,6 @@
 import sys
 from _typeshed import SupportsRead
-from typing import Any, Sequence, Union
+from typing import Any, Sequence
 from typing_extensions import Literal
 from xml.dom.minidom import Document, DOMImplementation, Element, Text
 from xml.sax.handler import ContentHandler
@@ -15,8 +15,8 @@ PROCESSING_INSTRUCTION: Literal["PROCESSING_INSTRUCTION"]
 IGNORABLE_WHITESPACE: Literal["IGNORABLE_WHITESPACE"]
 CHARACTERS: Literal["CHARACTERS"]
 
-_DocumentFactory = Union[DOMImplementation, None]
-_Node = Union[Document, Element, Text]
+_DocumentFactory = DOMImplementation | None
+_Node = Document | Element | Text
 
 _Event = tuple[
     Literal[

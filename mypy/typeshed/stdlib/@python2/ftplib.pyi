@@ -1,10 +1,10 @@
 from _typeshed import SupportsRead, SupportsReadline
 from socket import socket
 from ssl import SSLContext
-from typing import Any, BinaryIO, Callable, Text, Union
+from typing import Any, BinaryIO, Callable, Text
 from typing_extensions import Literal
 
-_IntOrStr = Union[int, Text]
+_IntOrStr = int | Text
 
 MSG_OOB: int
 FTP_PORT: int

@@ -1,12 +1,12 @@
 from _typeshed import Self
 from types import TracebackType
-from typing import Iterator, MutableMapping, Union
+from typing import Iterator, MutableMapping
 from typing_extensions import Literal
 
 __all__ = ["open", "whichdb", "error"]
 
-_KeyType = Union[str, bytes]
-_ValueType = Union[str, bytes]
+_KeyType = str | bytes
+_ValueType = str | bytes
 _TFlags = Literal[
     "r",
     "w",

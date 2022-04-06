@@ -1,6 +1,6 @@
 import sys
 from socket import SocketType
-from typing import Any, BinaryIO, Callable, ClassVar, Text, Union
+from typing import Any, BinaryIO, Callable, ClassVar, Text
 
 class BaseServer:
     address_family: int

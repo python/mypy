@@ -1,9 +1,9 @@
 import io
 from _typeshed import Self, StrPath
 from types import TracebackType
-from typing import IO, Any, Callable, Iterable, Pattern, Protocol, Sequence, Text, Union
+from typing import IO, Any, Callable, Iterable, Pattern, Protocol, Sequence, Text
 
-_SZI = Union[Text, ZipInfo]
+_SZI = Text | ZipInfo
 _DT = tuple[int, int, int, int, int, int]
 
 class BadZipfile(Exception): ...
@@ -30,9 +30,9 @@ class ZipExtFile(io.BufferedIOBase):
         close_fileobj: bool = ...,
     ) -> None: ...
     def read(self, n: int | None = ...) -> bytes: ...
-    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
+    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore[override]
     def peek(self, n: int = ...) -> bytes: ...
-    def read1(self, n: int | None) -> bytes: ...  # type: ignore
+    def read1(self, n: int | None) -> bytes: ...
 
 class _Writer(Protocol):
     def write(self, __s: str) -> Any: ...

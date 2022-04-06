@@ -4,7 +4,7 @@
 # file. They are provided for type checking purposes.
 
 from sys import _OptExcInfo
-from typing import Any, Callable, Iterable, Optional, Protocol, Text
+from typing import Any, Callable, Iterable, Protocol, Text
 
 class StartResponse(Protocol):
     def __call__(

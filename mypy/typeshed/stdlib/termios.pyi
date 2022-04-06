@@ -1,9 +1,9 @@
 import sys
 from _typeshed import FileDescriptorLike
-from typing import Any, Union
+from typing import Any
 
 if sys.platform != "win32":
-    _Attr = list[Union[int, list[Union[bytes, int]]]]
+    _Attr = list[int | list[bytes | int]]
 
     # TODO constants not really documented
     B0: int

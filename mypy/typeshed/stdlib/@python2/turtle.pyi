@@ -15,7 +15,7 @@ _AnyColor = Any
 # TODO: Replace this with a TypedDict once it becomes standardized.
 _PenState = dict[str, Any]
 
-_Speed = Union[str, float]
+_Speed = str | float
 _PolygonCoords = Sequence[tuple[float, float]]
 
 # TODO: Type this more accurately
@@ -175,7 +175,7 @@ class TPen(object):
     def isvisible(self) -> bool: ...
     # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
     @overload
-    def pen(self) -> _PenState: ...  # type: ignore
+    def pen(self) -> _PenState: ...  # type: ignore[misc]
     @overload
     def pen(
         self,
@@ -215,7 +215,7 @@ class RawTurtle(TPen, TNavigator):
     def shape(self, name: str) -> None: ...
     # Unsafely overlaps when no arguments are provided
     @overload
-    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore
+    def shapesize(self) -> tuple[float, float, float]: ...  # type: ignore[misc]
     @overload
     def shapesize(
         self, stretch_wid: float | None = ..., stretch_len: float | None = ..., outline: float | None = ...
@@ -423,7 +423,7 @@ def isvisible() -> bool: ...
 
 # Note: signatures 1 and 2 overlap unsafely when no arguments are provided
 @overload
-def pen() -> _PenState: ...  # type: ignore
+def pen() -> _PenState: ...  # type: ignore[misc]
 @overload
 def pen(
     pen: _PenState | None = ...,
@@ -459,7 +459,7 @@ def shape(name: str) -> None: ...
 
 # Unsafely overlaps when no arguments are provided
 @overload
-def shapesize() -> tuple[float, float, float]: ...  # type: ignore
+def shapesize() -> tuple[float, float, float]: ...  # type: ignore[misc]
 @overload
 def shapesize(stretch_wid: float | None = ..., stretch_len: float | None = ..., outline: float | None = ...) -> None: ...
 def settiltangle(angle: float) -> None: ...

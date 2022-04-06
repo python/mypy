@@ -2,7 +2,7 @@ import subprocess
 import sys
 from _typeshed import StrOrBytesPath
 from asyncio import events, protocols, streams, transports
-from typing import IO, Any, Callable, Union
+from typing import IO, Any, Callable
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
@@ -13,7 +13,7 @@ else:
 if sys.version_info >= (3, 8):
     _ExecArg = StrOrBytesPath
 else:
-    _ExecArg = Union[str, bytes]
+    _ExecArg = str | bytes
 
 PIPE: int
 STDOUT: int

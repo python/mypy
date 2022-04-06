@@ -8,12 +8,15 @@ from asyncio.tasks import Task
 from asyncio.transports import BaseTransport, ReadTransport, SubprocessTransport, WriteTransport
 from collections.abc import Iterable
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Awaitable, Callable, Coroutine, Generator, Sequence, TypeVar, Union, overload
+from typing import IO, Any, Awaitable, Callable, Coroutine, Generator, Sequence, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):
     from contextvars import Context
 
+if sys.version_info >= (3, 9):
+    __all__ = ("BaseEventLoop", "Server")
+elif sys.version_info >= (3, 7):
     __all__ = ("BaseEventLoop",)
 else:
     __all__ = ["BaseEventLoop"]
@@ -23,7 +26,7 @@ _ProtocolT = TypeVar("_ProtocolT", bound=BaseProtocol)
 _Context = dict[str, Any]
 _ExceptionHandler = Callable[[AbstractEventLoop, _Context], Any]
 _ProtocolFactory = Callable[[], BaseProtocol]
-_SSLContext = Union[bool, None, ssl.SSLContext]
+_SSLContext = bool | None | ssl.SSLContext
 
 class Server(AbstractServer):
     if sys.version_info >= (3, 7):
@@ -100,7 +103,14 @@ class BaseEventLoop(AbstractEventLoop):
     def set_default_executor(self, executor: Any) -> None: ...
     # Network I/O methods returning Futures.
     async def getaddrinfo(
-        self, host: str | None, port: str | int | None, *, family: int = ..., type: int = ..., proto: int = ..., flags: int = ...
+        self,
+        host: bytes | str | None,
+        port: str | int | None,
+        *,
+        family: int = ...,
+        type: int = ...,
+        proto: int = ...,
+        flags: int = ...,
     ) -> list[tuple[AddressFamily, SocketKind, int, str, tuple[str, int] | tuple[str, int, int, int]]]: ...
     async def getnameinfo(self, sockaddr: tuple[str, int] | tuple[str, int, int, int], flags: int = ...) -> tuple[str, str]: ...
     if sys.version_info >= (3, 8):

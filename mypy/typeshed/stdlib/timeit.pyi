@@ -1,9 +1,9 @@
-from typing import IO, Any, Callable, Sequence, Union
+from typing import IO, Any, Callable, Sequence
 
 __all__ = ["Timer", "timeit", "repeat", "default_timer"]
 
 _Timer = Callable[[], float]
-_Stmt = Union[str, Callable[[], Any]]
+_Stmt = str | Callable[[], Any]
 
 default_timer: _Timer
 

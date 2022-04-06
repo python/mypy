@@ -1,5 +1,5 @@
 import sys
-from typing import Any, BinaryIO, Iterable, Text, Union, overload
+from typing import Any, BinaryIO, Iterable, Text, overload
 
 # ----- Constants -----
 # Some socket families are listed in the "Socket families" section of the docs,
@@ -373,11 +373,11 @@ class timeout(error):
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = Union[tuple[Any, ...], str]
+_Address = tuple[Any, ...] | str
 _RetAddress = Any
 # TODO Most methods allow bytes as address objects
 
-_WriteBuffer = Union[bytearray, memoryview]
+_WriteBuffer = bytearray | memoryview
 
 _CMSG = tuple[int, int, bytes]
 

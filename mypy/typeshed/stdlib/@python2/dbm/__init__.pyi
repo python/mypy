@@ -1,10 +1,10 @@
 from _typeshed import Self
 from types import TracebackType
-from typing import Iterator, MutableMapping, Union
+from typing import Iterator, MutableMapping
 from typing_extensions import Literal
 
-_KeyType = Union[str, bytes]
-_ValueType = Union[str, bytes]
+_KeyType = str | bytes
+_ValueType = str | bytes
 
 class _Database(MutableMapping[_KeyType, bytes]):
     def close(self) -> None: ...

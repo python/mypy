@@ -1,8 +1,8 @@
 from _typeshed import Self
 from mmap import mmap
-from typing import IO, Any, BinaryIO, Iterable, Text, TextIO, Union
+from typing import IO, Any, BinaryIO, Iterable, Text, TextIO
 
-_bytearray_like = Union[bytearray, mmap]
+_bytearray_like = bytearray | mmap
 
 DEFAULT_BUFFER_SIZE: int
 

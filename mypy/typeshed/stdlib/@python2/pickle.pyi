@@ -1,4 +1,4 @@
-from typing import IO, Any, Callable, Iterator, Optional, Union
+from typing import IO, Any, Callable, Iterator, Union
 
 HIGHEST_PROTOCOL: int
 bytes_types: tuple[type[Any], ...]  # undocumented
@@ -16,8 +16,8 @@ _reducedtype = Union[
     str,
     tuple[Callable[..., Any], tuple[Any, ...]],
     tuple[Callable[..., Any], tuple[Any, ...], Any],
-    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]]],
-    tuple[Callable[..., Any], tuple[Any, ...], Any, Optional[Iterator[Any]], Optional[Iterator[Any]]],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None],
+    tuple[Callable[..., Any], tuple[Any, ...], Any, Iterator[Any] | None, Iterator[Any] | None],
 ]
 
 class Pickler:

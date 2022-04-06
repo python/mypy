@@ -1,7 +1,7 @@
 from types import FrameType, TracebackType
-from typing import IO, Optional
+from typing import IO
 
-_PT = tuple[str, int, str, Optional[str]]
+_PT = tuple[str, int, str, str | None]
 
 def print_tb(tb: TracebackType | None, limit: int | None = ..., file: IO[str] | None = ...) -> None: ...
 def print_exception(

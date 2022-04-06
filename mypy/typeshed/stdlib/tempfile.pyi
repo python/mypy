@@ -2,7 +2,7 @@ import os
 import sys
 from _typeshed import Self
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, Union, overload
+from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -29,7 +29,7 @@ TMP_MAX: int
 tempdir: str | None
 template: str
 
-_DirT = Union[AnyStr, os.PathLike[AnyStr]]
+_DirT = AnyStr | os.PathLike[AnyStr]
 
 if sys.version_info >= (3, 8):
     @overload
@@ -185,7 +185,7 @@ class _TemporaryFileWrapper(Generic[AnyStr], IO[AnyStr]):
     delete: bool
     def __init__(self, file: IO[AnyStr], name: str, delete: bool = ...) -> None: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, exc: type[BaseException] | None, value: BaseException | None, tb: TracebackType | None) -> bool | None: ...
+    def __exit__(self, exc: type[BaseException] | None, value: BaseException | None, tb: TracebackType | None) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
     def close(self) -> None: ...
     # These methods don't exist directly on this object, but

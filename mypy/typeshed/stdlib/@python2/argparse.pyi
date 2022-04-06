@@ -1,10 +1,10 @@
-from typing import IO, Any, Callable, Generator, Iterable, NoReturn, Pattern, Protocol, Sequence, Text, TypeVar, Union, overload
+from typing import IO, Any, Callable, Generator, Iterable, NoReturn, Pattern, Protocol, Sequence, Text, TypeVar, overload
 
 _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
 _N = TypeVar("_N")
 
-_Text = Union[str, unicode]
+_Text = str | unicode
 
 ONE_OR_MORE: str
 OPTIONAL: str
@@ -107,11 +107,11 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     @overload
     def parse_args(self, args: Sequence[Text] | None = ...) -> Namespace: ...
     @overload
-    def parse_args(self, args: Sequence[Text] | None, namespace: None) -> Namespace: ...  # type: ignore
+    def parse_args(self, args: Sequence[Text] | None, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, args: Sequence[Text] | None, namespace: _N) -> _N: ...
     @overload
-    def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore
+    def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, *, namespace: _N) -> _N: ...
     def add_subparsers(
