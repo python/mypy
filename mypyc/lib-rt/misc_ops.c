@@ -437,7 +437,7 @@ fail:
 }
 
 CPyTagged CPyTagged_Id(PyObject *o) {
-    return CPyTagged_FromSsize_t((Py_ssize_t)o);
+    return CPyTagged_FromVoidPtr(o);
 }
 
 #define MAX_INT_CHARS 22

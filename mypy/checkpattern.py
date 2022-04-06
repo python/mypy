@@ -358,7 +358,7 @@ class PatternChecker(PatternVisitor[PatternType]):
         """Undoes the contraction done by contract_starred_pattern_types.
 
         For example if the sequence pattern is [a, *b, c] and types [bool, int, str] are extended
-        to lenght 4 the result is [bool, int, int, str].
+        to length 4 the result is [bool, int, int, str].
         """
         if star_pos is None:
             return types
@@ -463,7 +463,8 @@ class PatternChecker(PatternVisitor[PatternType]):
         # Check class type
         #
         type_info = o.class_ref.node
-        assert type_info is not None
+        if type_info is None:
+            return PatternType(AnyType(TypeOfAny.from_error), AnyType(TypeOfAny.from_error), {})
         if isinstance(type_info, TypeAlias) and not type_info.no_args:
             self.msg.fail(message_registry.CLASS_PATTERN_GENERIC_TYPE_ALIAS, o)
             return self.early_non_match()

@@ -764,6 +764,35 @@ class TypeList(ProperType):
         assert False, "Synthetic types don't serialize"
 
 
+class UnpackType(ProperType):
+    """Type operator Unpack from PEP646. Can be either with Unpack[]
+    or unpacking * syntax.
+
+    The inner type should be either a TypeVarTuple, a constant size
+    tuple, or a variable length tuple, or a union of one of those.
+    """
+    __slots__ = ["type"]
+
+    def __init__(self, typ: Type, line: int = -1, column: int = -1) -> None:
+        super().__init__(line, column)
+        self.type = typ
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_unpack_type(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            ".class": "UnpackType",
+            "type": self.type.serialize(),
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> "UnpackType":
+        assert data[".class"] == "UnpackType"
+        typ = data["type"]
+        return UnpackType(deserialize_type(typ))
+
+
 class AnyType(ProperType):
     """The type 'Any'."""
 
@@ -1000,18 +1029,15 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'erased', 'invalid', 'type_ref', 'last_known_value')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
-                 line: int = -1, column: int = -1, erased: bool = False,
+                 line: int = -1, column: int = -1, *,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
         self.type = typ
         self.args = tuple(args)
         self.type_ref: Optional[str] = None
-
-        # True if result of type variable substitution
-        self.erased = erased
 
         # True if recovered after incorrect number of type arguments error
         self.invalid = False
@@ -1108,15 +1134,14 @@ class Instance(ProperType):
 
     def copy_modified(self, *,
                       args: Bogus[List[Type]] = _dummy,
-                      erased: Bogus[bool] = _dummy,
                       last_known_value: Bogus[Optional['LiteralType']] = _dummy) -> 'Instance':
         return Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
             self.column,
-            erased if erased is not _dummy else self.erased,
-            last_known_value if last_known_value is not _dummy else self.last_known_value,
+            last_known_value=last_known_value if last_known_value is not _dummy
+            else self.last_known_value,
         )
 
     def has_readable_member(self, name: str) -> bool:
@@ -2315,8 +2340,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         else:
             s = t.type.fullname or t.type.name or '<???>'
 
-        if t.erased:
-            s += '*'
         if t.args:
             if t.type.fullname == 'builtins.tuple':
                 assert len(t.args) == 1
@@ -2473,6 +2496,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             self.any_as_dots = False
             return type_str
         return '<alias (unfixed)>'
+
+    def visit_unpack_type(self, t: UnpackType) -> str:
+        return 'Unpack[{}]'.format(t.type.accept(self))
 
     def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)

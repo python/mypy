@@ -1480,11 +1480,11 @@ g: List[List[List[Literal[1, 2, 3]]]] = [[[1, 2, 3], [3]]]
 h: List[Literal[1]] = []
 
 reveal_type(a)  # N: Revealed type is "builtins.list[Literal[1]]"
-reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(b)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal[2], Literal[3]]]"
-reveal_type(d)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(d)  # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(e)  # N: Revealed type is "builtins.list[Union[Literal[1], Literal['x']]]"
-reveal_type(f)  # N: Revealed type is "builtins.list[builtins.object*]"
+reveal_type(f)  # N: Revealed type is "builtins.list[builtins.object]"
 reveal_type(g)  # N: Revealed type is "builtins.list[builtins.list[builtins.list[Union[Literal[1], Literal[2], Literal[3]]]]]"
 reveal_type(h)  # N: Revealed type is "builtins.list[Literal[1]]"
 
@@ -1499,10 +1499,10 @@ arr4 = [lit1, lit2, lit3]
 arr5 = [object(), lit1]
 
 reveal_type(arr1)  # N: Revealed type is "builtins.list[Literal[1]]"
-reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(arr3)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(arr4)  # N: Revealed type is "builtins.list[builtins.object*]"
-reveal_type(arr5)  # N: Revealed type is "builtins.list[builtins.object*]"
+reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(arr3)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(arr4)  # N: Revealed type is "builtins.list[builtins.object]"
+reveal_type(arr5)  # N: Revealed type is "builtins.list[builtins.object]"
 
 bad: List[Literal[1, 2]] = [1, 2, 3]  # E: List item 2 has incompatible type "Literal[3]"; expected "Literal[1, 2]"
 
@@ -1533,7 +1533,7 @@ a = {"x": 1, "y": 2}
 b: Dict[str, Literal[1, 2]] = {"x": 1, "y": 2}
 c: Dict[Literal["x", "y"], int] = {"x": 1, "y": 2}
 
-reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int*]"
+reveal_type(a)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 
 [builtins fixtures/dict.pyi]
 [out]
@@ -1674,7 +1674,7 @@ def f1(x: T, y: str) -> Union[T, str]: ...
 def f1(x, y): pass
 
 a: Literal[1]
-reveal_type(f1(1, 1))  # N: Revealed type is "builtins.int*"
+reveal_type(f1(1, 1))  # N: Revealed type is "builtins.int"
 reveal_type(f1(a, 1))  # N: Revealed type is "Literal[1]"
 
 @overload
@@ -1683,7 +1683,7 @@ def f2(x: T, y: Literal[3]) -> T: ...
 def f2(x: T, y: str) -> Union[T]: ...
 def f2(x, y): pass
 
-reveal_type(f2(1, 3))  # N: Revealed type is "builtins.int*"
+reveal_type(f2(1, 3))  # N: Revealed type is "builtins.int"
 reveal_type(f2(a, 3))  # N: Revealed type is "Literal[1]"
 
 @overload
@@ -1692,7 +1692,7 @@ def f3(x: Literal[3]) -> Literal[3]: ...
 def f3(x: T) -> T: ...
 def f3(x): pass
 
-reveal_type(f3(1))  # N: Revealed type is "builtins.int*"
+reveal_type(f3(1))  # N: Revealed type is "builtins.int"
 reveal_type(f3(a))  # N: Revealed type is "Literal[1]"
 
 @overload
@@ -1702,7 +1702,7 @@ def f4(x: T) -> T: ...
 def f4(x): pass
 
 b: Literal['foo']
-reveal_type(f4(1))      # N: Revealed type is "builtins.int*"
+reveal_type(f4(1))      # N: Revealed type is "builtins.int"
 reveal_type(f4(a))      # N: Revealed type is "Literal[1]"
 reveal_type(f4("foo"))  # N: Revealed type is "builtins.str"
 
@@ -1879,7 +1879,7 @@ def expects_literal(x: Literal[3]) -> None: pass
 def expects_int(x: int) -> None: pass
 
 a: Literal[3]
-reveal_type(foo(3))  # N: Revealed type is "builtins.int*"
+reveal_type(foo(3))  # N: Revealed type is "builtins.int"
 reveal_type(foo(a))  # N: Revealed type is "Literal[3]"
 
 expects_literal(3)
@@ -1944,7 +1944,7 @@ def expects_literal(a: Literal[3]) -> None: pass
 def expects_literal_wrapper(x: Wrapper[Literal[3]]) -> None: pass
 
 a: Literal[3]
-reveal_type(Wrapper(3))              # N: Revealed type is "__main__.Wrapper[builtins.int*]"
+reveal_type(Wrapper(3))              # N: Revealed type is "__main__.Wrapper[builtins.int]"
 reveal_type(Wrapper[Literal[3]](3))  # N: Revealed type is "__main__.Wrapper[Literal[3]]"
 reveal_type(Wrapper(a))              # N: Revealed type is "__main__.Wrapper[Literal[3]]"
 
@@ -1996,13 +1996,13 @@ reveal_type(func1(4))   # E: Value of type variable "TLiteral" of "func1" cannot
 reveal_type(func1(b))   # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
                         # N: Revealed type is "Literal[4]"
 reveal_type(func1(c))   # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
-                        # N: Revealed type is "builtins.int*"
+                        # N: Revealed type is "builtins.int"
 
-reveal_type(func2(3))   # N: Revealed type is "builtins.int*"
+reveal_type(func2(3))   # N: Revealed type is "builtins.int"
 reveal_type(func2(a))   # N: Revealed type is "Literal[3]"
-reveal_type(func2(4))   # N: Revealed type is "builtins.int*"
+reveal_type(func2(4))   # N: Revealed type is "builtins.int"
 reveal_type(func2(b))   # N: Revealed type is "Literal[4]"
-reveal_type(func2(c))   # N: Revealed type is "builtins.int*"
+reveal_type(func2(c))   # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2042,7 +2042,7 @@ reveal_type(func1(4))       # E: Value of type variable "TLiteral" of "func1" ca
 reveal_type(func1(i2))      # E: Value of type variable "TLiteral" of "func1" cannot be "Literal[4]" \
                             # N: Revealed type is "Literal[4]"
 reveal_type(func1(i))       # E: Value of type variable "TLiteral" of "func1" cannot be "int" \
-                            # N: Revealed type is "builtins.int*"
+                            # N: Revealed type is "builtins.int"
 reveal_type(func1("foo"))   # N: Revealed type is "Literal['foo']"
 reveal_type(func1(s1))      # N: Revealed type is "Literal['foo']"
 reveal_type(func1("bar"))   # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']" \
@@ -2050,16 +2050,16 @@ reveal_type(func1("bar"))   # E: Value of type variable "TLiteral" of "func1" ca
 reveal_type(func1(s2))      # E: Value of type variable "TLiteral" of "func1" cannot be "Literal['bar']" \
                             # N: Revealed type is "Literal['bar']"
 reveal_type(func1(s))       # E: Value of type variable "TLiteral" of "func1" cannot be "str" \
-                            # N: Revealed type is "builtins.str*"
+                            # N: Revealed type is "builtins.str"
 
-reveal_type(func2(3))       # N: Revealed type is "builtins.int*"
-reveal_type(func2(i1))      # N: Revealed type is "builtins.int*"
-reveal_type(func2(4))       # N: Revealed type is "builtins.int*"
-reveal_type(func2(i2))      # N: Revealed type is "builtins.int*"
-reveal_type(func2("foo"))   # N: Revealed type is "builtins.str*"
-reveal_type(func2(s1))      # N: Revealed type is "builtins.str*"
-reveal_type(func2("bar"))   # N: Revealed type is "builtins.str*"
-reveal_type(func2(s2))      # N: Revealed type is "builtins.str*"
+reveal_type(func2(3))       # N: Revealed type is "builtins.int"
+reveal_type(func2(i1))      # N: Revealed type is "builtins.int"
+reveal_type(func2(4))       # N: Revealed type is "builtins.int"
+reveal_type(func2(i2))      # N: Revealed type is "builtins.int"
+reveal_type(func2("foo"))   # N: Revealed type is "builtins.str"
+reveal_type(func2(s1))      # N: Revealed type is "builtins.str"
+reveal_type(func2("bar"))   # N: Revealed type is "builtins.str"
+reveal_type(func2(s2))      # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2106,7 +2106,7 @@ arr4 = [a, d]
 arr5 = [a, e]
 
 reveal_type(arr1)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.int]"
-reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.function*]"
+reveal_type(arr2)  # N: Revealed type is "builtins.list[builtins.function]"
 reveal_type(arr3)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
 reveal_type(arr4)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
 reveal_type(arr5)  # N: Revealed type is "builtins.list[def (Literal[1]) -> builtins.object]"
@@ -2143,7 +2143,7 @@ b: Callable[[Literal[2]], str]
 lit: Literal[1]
 
 arr = [a, b]
-reveal_type(arr)  # N: Revealed type is "builtins.list[builtins.function*]"
+reveal_type(arr)  # N: Revealed type is "builtins.list[builtins.function]"
 reveal_type(arr[0](lit))  # E: Cannot call function of unknown type \
                           # N: Revealed type is "Any"
 
@@ -2342,7 +2342,7 @@ reveal_type(test.get(good_keys, 3))               # N: Revealed type is "Union[_
 reveal_type(test.pop(optional_keys))              # N: Revealed type is "Union[__main__.D, __main__.E]"
 reveal_type(test.pop(optional_keys, 3))           # N: Revealed type is "Union[__main__.D, __main__.E, Literal[3]?]"
 reveal_type(test.setdefault(good_keys, AAndB()))  # N: Revealed type is "Union[__main__.A, __main__.B]"
-reveal_type(test.get(bad_keys))                   # N: Revealed type is "builtins.object*"
+reveal_type(test.get(bad_keys))                   # N: Revealed type is "builtins.object"
 reveal_type(test.get(bad_keys, 3))                # N: Revealed type is "builtins.object"
 del test[optional_keys]
 
@@ -2440,7 +2440,7 @@ x[bad_keys]         # E: TypedDict "D1" has no key "d" \
 reveal_type(x[good_keys])           # N: Revealed type is "Union[__main__.B, __main__.C]"
 reveal_type(x.get(good_keys))       # N: Revealed type is "Union[__main__.B, __main__.C]"
 reveal_type(x.get(good_keys, 3))    # N: Revealed type is "Union[__main__.B, Literal[3]?, __main__.C]"
-reveal_type(x.get(bad_keys))        # N: Revealed type is "builtins.object*"
+reveal_type(x.get(bad_keys))        # N: Revealed type is "builtins.object"
 reveal_type(x.get(bad_keys, 3))     # N: Revealed type is "builtins.object"
 
 [builtins fixtures/dict.pyi]
@@ -2704,21 +2704,21 @@ direct = [1]
 def force1(x: List[Literal[1]]) -> None: pass
 def force2(x: Literal[1]) -> None: pass
 
-reveal_type(implicit)            # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(implicit)            # N: Revealed type is "builtins.list[builtins.int]"
 force1(reveal_type(implicit))    # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
-                                 # N: Revealed type is "builtins.list[builtins.int*]"
+                                 # N: Revealed type is "builtins.list[builtins.int]"
 force2(reveal_type(implicit[0])) # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
-                                 # N: Revealed type is "builtins.int*"
+                                 # N: Revealed type is "builtins.int"
 
 reveal_type(explicit)            # N: Revealed type is "builtins.list[Literal[1]]"
 force1(reveal_type(explicit))    # N: Revealed type is "builtins.list[Literal[1]]"
 force2(reveal_type(explicit[0])) # N: Revealed type is "Literal[1]"
 
-reveal_type(direct)              # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(direct)              # N: Revealed type is "builtins.list[builtins.int]"
 force1(reveal_type(direct))      # E: Argument 1 to "force1" has incompatible type "List[int]"; expected "List[Literal[1]]" \
-                                 # N: Revealed type is "builtins.list[builtins.int*]"
+                                 # N: Revealed type is "builtins.list[builtins.int]"
 force2(reveal_type(direct[0]))   # E: Argument 1 to "force2" has incompatible type "int"; expected "Literal[1]" \
-                                 # N: Revealed type is "builtins.int*"
+                                 # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 [out]
 
@@ -2821,25 +2821,25 @@ def over_literal(x: WrapperClass[Literal[99]]) -> None: pass
 var1: Final = 99
 w1 = WrapperClass(var1)
 force(reveal_type(w1.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
-                                                # N: Revealed type is "builtins.int*"
+                                                # N: Revealed type is "builtins.int"
 force(reveal_type(WrapperClass(var1).data))     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
-                                                # N: Revealed type is "builtins.int*"
+                                                # N: Revealed type is "builtins.int"
 force(reveal_type(wrapper_func(var1)))          # N: Revealed type is "Literal[99]"
-over_int(reveal_type(w1))                       # N: Revealed type is "__main__.WrapperClass[builtins.int*]"
+over_int(reveal_type(w1))                       # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_literal(reveal_type(w1))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
-                                                # N: Revealed type is "__main__.WrapperClass[builtins.int*]"
+                                                # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_int(reveal_type(WrapperClass(var1)))       # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_literal(reveal_type(WrapperClass(var1)))   # N: Revealed type is "__main__.WrapperClass[Literal[99]]"
 
 w2 = WrapperClass(99)
 force(reveal_type(w2.data))                     # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
-                                                # N: Revealed type is "builtins.int*"
+                                                # N: Revealed type is "builtins.int"
 force(reveal_type(WrapperClass(99).data))       # E: Argument 1 to "force" has incompatible type "int"; expected "Literal[99]" \
-                                                # N: Revealed type is "builtins.int*"
+                                                # N: Revealed type is "builtins.int"
 force(reveal_type(wrapper_func(99)))            # N: Revealed type is "Literal[99]"
-over_int(reveal_type(w2))                       # N: Revealed type is "__main__.WrapperClass[builtins.int*]"
+over_int(reveal_type(w2))                       # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_literal(reveal_type(w2))                   # E: Argument 1 to "over_literal" has incompatible type "WrapperClass[int]"; expected "WrapperClass[Literal[99]]" \
-                                                # N: Revealed type is "__main__.WrapperClass[builtins.int*]"
+                                                # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_int(reveal_type(WrapperClass(99)))         # N: Revealed type is "__main__.WrapperClass[builtins.int]"
 over_literal(reveal_type(WrapperClass(99)))     # N: Revealed type is "__main__.WrapperClass[Literal[99]]"
 

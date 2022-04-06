@@ -5,7 +5,7 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType
+    TypeAliasType, ParamSpecType, TypeVarLikeType, UnpackType
 )
 
 
@@ -93,9 +93,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         else:
             return repl
 
@@ -103,13 +101,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
             return repl.with_flavor(t.flavor)
         else:
             return repl
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        raise NotImplementedError
 
     def visit_callable_type(self, t: CallableType) -> Type:
         param_spec = t.param_spec()

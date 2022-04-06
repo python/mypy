@@ -225,3 +225,11 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 error:
     _PyErr_ChainExceptions(exc, val, tb);
 }
+
+void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
+                        const char *attrname, int line, PyObject *globals) {
+    char buf[500];
+    snprintf(buf, sizeof(buf), "attribute '%.200s' of '%.200s' undefined", classname, attrname);
+    PyErr_SetString(PyExc_AttributeError, buf);
+    CPy_AddTraceback(filename, funcname, line, globals);
+}

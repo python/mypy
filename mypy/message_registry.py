@@ -61,6 +61,9 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
 
+ASYNC_FOR_OUTSIDE_COROUTINE: Final = '"async for" outside async function'
+ASYNC_WITH_OUTSIDE_COROUTINE: Final = '"async with" outside async function'
+
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
@@ -141,6 +144,7 @@ NOT_CALLABLE: Final = '{} not callable'
 PYTHON2_PRINT_FILE_TYPE: Final = (
     'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
 )
+TYPE_MUST_BE_USED: Final = 'Value of type {} must be used'
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
@@ -151,6 +155,7 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -204,6 +209,11 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Enum
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+    'Assigned "__members__" will be overridden by "Enum" internally'
+)
+
 # ClassVar
 CANNOT_OVERRIDE_INSTANCE_VAR: Final = ErrorMessage(
     'Cannot override instance variable (previously declared on base class "{}") with class '
@@ -245,3 +255,4 @@ CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
 CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
 CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
 MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
+CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'

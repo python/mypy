@@ -23,7 +23,7 @@ from mypy.types import (
     RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, ParamSpecType, get_proper_type
+    PlaceholderType, TypeAliasType, ParamSpecType, UnpackType, get_proper_type
 )
 
 
@@ -107,6 +107,10 @@ class TypeVisitor(Generic[T]):
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
         pass
 
+    @abstractmethod
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
@@ -188,6 +192,9 @@ class TypeTranslator(TypeVisitor[Type]):
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        return t.type.accept(self)
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.translate_types(t.arg_types),
@@ -300,6 +307,9 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_param_spec(self, t: ParamSpecType) -> T:
         return self.strategy([])
+
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        return self.query_types([t.type])
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])

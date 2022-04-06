@@ -486,6 +486,7 @@ class ASTConverter:
         ret: List[Statement] = []
         current_overload: List[OverloadPart] = []
         current_overload_name: Optional[str] = None
+        seen_unconditional_func_def = False
         last_if_stmt: Optional[IfStmt] = None
         last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
         last_if_stmt_overload_name: Optional[str] = None
@@ -498,6 +499,7 @@ class ASTConverter:
             if (
                 isinstance(stmt, IfStmt)
                 and len(stmt.body[0].body) == 1
+                and seen_unconditional_func_def is False
                 and (
                     isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
                     or current_overload_name is not None
@@ -527,6 +529,8 @@ class ASTConverter:
                     self.fail_merge_overload(last_if_unknown_truth_value)
                     last_if_unknown_truth_value = None
                 current_overload.append(stmt)
+                if isinstance(stmt, FuncDef):
+                    seen_unconditional_func_def = True
             elif (
                 current_overload_name is not None
                 and isinstance(stmt, IfStmt)
@@ -583,6 +587,7 @@ class ASTConverter:
                 # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
                 # related, but multiple underscore functions next to each other aren't necessarily
                 # related
+                seen_unconditional_func_def = False
                 if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name

@@ -566,6 +566,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.defined_names = find_defined_names(o)
         self.referenced_names = find_referenced_names(o)
         known_imports = {
+            "_typeshed": ["Incomplete"],
             "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
         }
@@ -689,14 +690,14 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return_name = 'None'
             for expr, in_assignment in all_yield_expressions(o):
                 if expr.expr is not None and not self.is_none_expr(expr.expr):
-                    self.add_typing_import('Any')
-                    yield_name = 'Any'
+                    self.add_typing_import('Incomplete')
+                    yield_name = 'Incomplete'
                 if in_assignment:
-                    self.add_typing_import('Any')
-                    send_name = 'Any'
+                    self.add_typing_import('Incomplete')
+                    send_name = 'Incomplete'
             if has_return_statement(o):
-                self.add_typing_import('Any')
-                return_name = 'Any'
+                self.add_typing_import('Incomplete')
+                return_name = 'Incomplete'
             generator_name = self.typing_name('Generator')
             retname = f'{generator_name}[{yield_name}, {send_name}, {return_name}]'
         elif not has_return_statement(o) and not is_abstract:
@@ -851,6 +852,12 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             base_types.append('metaclass=abc.ABCMeta')
             self.import_tracker.add_import('abc')
             self.import_tracker.require_name('abc')
+        elif self.analyzed and o.info.is_protocol:
+            type_str = 'Protocol'
+            if o.info.type_vars:
+                type_str += f'[{", ".join(o.info.type_vars)}]'
+            base_types.append(type_str)
+            self.add_typing_import('Protocol')
         if base_types:
             self.add('(%s)' % ', '.join(base_types))
         self.add(':\n')
@@ -948,18 +955,18 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = [item.value for item in list_items]
         else:
-            self.add('%s%s: Any' % (self._indent, lvalue.name))
-            self.import_tracker.require_name('Any')
+            self.add('%s%s: Incomplete' % (self._indent, lvalue.name))
+            self.import_tracker.require_name('Incomplete')
             return
         self.import_tracker.require_name('NamedTuple')
         self.add('{}class {}(NamedTuple):'.format(self._indent, lvalue.name))
         if len(items) == 0:
             self.add(' ...\n')
         else:
-            self.import_tracker.require_name('Any')
+            self.import_tracker.require_name('Incomplete')
             self.add('\n')
             for item in items:
-                self.add('{}    {}: Any\n'.format(self._indent, item))
+                self.add('{}    {}: Incomplete\n'.format(self._indent, item))
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
@@ -1214,11 +1221,11 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'bool'
         if can_infer_optional and \
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
-            self.add_typing_import('Any')
-            return '{} | None'.format(self.typing_name('Any'))
+            self.add_typing_import('Incomplete')
+            return '{} | None'.format(self.typing_name('Incomplete'))
         if can_be_any:
-            self.add_typing_import('Any')
-            return self.typing_name('Any')
+            self.add_typing_import('Incomplete')
+            return self.typing_name('Incomplete')
         else:
             return ''
 
