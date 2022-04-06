@@ -126,4 +126,9 @@ reveal_type(Child().f)  # N: Revealed type is "builtins.str"
 reveal_type(Child().g)  # N: Revealed type is "builtins.int"
 Child().f = "Hello World"
 Child().g = "invalid"  # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+[file functools.pyi]
+import sys
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class cached_property(Generic[_T]): ...
 [builtins fixtures/property.pyi]
