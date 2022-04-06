@@ -629,7 +629,7 @@ def get_prefixes(python_executable: Optional[str]) -> Tuple[str, str]:
 
 
 @functools.lru_cache(maxsize=None)
-def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
+def get_site_packages_dirs(python_executable: Optional[str]) -> List[str]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the egg directories, and the site
@@ -648,51 +648,7 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
         site_packages = ast.literal_eval(
             subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
             stderr=subprocess.PIPE).decode())
-    return expand_site_packages(site_packages)
-
-
-def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
-    """Expands .pth imports in site-packages directories"""
-    egg_dirs: List[str] = []
-    for dir in site_packages:
-        if not os.path.isdir(dir):
-            continue
-        pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
-        for pth_filename in pth_filenames:
-            egg_dirs.extend(_parse_pth_file(dir, pth_filename))
-
-    return egg_dirs, site_packages
-
-
-def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
-    """
-    Mimics a subset of .pth import hook from Lib/site.py
-    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
-    """
-
-    pth_file = os.path.join(dir, pth_filename)
-    try:
-        f = open(pth_file, "r")
-    except OSError:
-        return
-    with f:
-        for line in f.readlines():
-            if line.startswith("#"):
-                # Skip comment lines
-                continue
-            if line.startswith(("import ", "import\t")):
-                # import statements in .pth files are not supported
-                continue
-
-            yield _make_abspath(line.rstrip(), dir)
-
-
-def _make_abspath(path: str, root: str) -> str:
-    """Take a path and make it absolute relative to root if not already absolute."""
-    if os.path.isabs(path):
-        return os.path.normpath(path)
-    else:
-        return os.path.join(root, os.path.normpath(path))
+    return site_packages
 
 
 def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:
@@ -781,7 +737,7 @@ def compute_search_paths(sources: List[BuildSource],
     if options.python_version[0] == 2:
         mypypath = add_py2_mypypath_entries(mypypath)
 
-    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+    site_packages = get_site_packages_dirs(options.python_executable)
     base_prefix, prefix = get_prefixes(options.python_executable)
     is_venv = base_prefix != prefix
     for site_dir in site_packages:
@@ -801,7 +757,7 @@ def compute_search_paths(sources: List[BuildSource],
 
     return SearchPaths(python_path=tuple(reversed(python_path)),
                        mypy_path=tuple(mypypath),
-                       package_path=tuple(egg_dirs + site_packages),
+                       package_path=tuple(site_packages),
                        typeshed_path=tuple(lib_path))
 
 

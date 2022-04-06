@@ -24,16 +24,11 @@ def getprefixes():
 
 def getsitepackages():
     # type: () -> List[str]
-    res = []
-    if hasattr(site, 'getsitepackages'):
-        res.extend(site.getsitepackages())
 
-        if hasattr(site, 'getusersitepackages') and site.ENABLE_USER_SITE:
-            res.insert(0, site.getusersitepackages())
-    else:
-        from distutils.sysconfig import get_python_lib
-        res = [get_python_lib()]
-    return res
+    # Simply return sys.path, which has already been expanded
+    # correctly via Python's site.py module, which takes care of .pth,
+    # sitecustomize.py files, etc.
+    return sys.path
 
 
 if __name__ == '__main__':
