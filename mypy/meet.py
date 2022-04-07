@@ -12,7 +12,7 @@ from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
-from mypy import state
+from mypy.state import state
 from mypy import join
 
 # TODO Describe this module.

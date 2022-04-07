@@ -83,7 +83,8 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-from mypy import state, errorcodes as codes
+from mypy import errorcodes as codes
+from mypy.state import state
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
 from mypy.util import is_typeshed_file, is_dunder, is_sunder

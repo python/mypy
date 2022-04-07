@@ -25,7 +25,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.typestate import TypeState, SubtypeKind
 from mypy.options import Options
-from mypy import state
+from mypy.state import state
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
