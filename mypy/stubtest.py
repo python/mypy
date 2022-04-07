@@ -21,6 +21,7 @@ from typing_extensions import Type
 
 import mypy.build
 import mypy.modulefinder
+import mypy.state
 import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
@@ -560,7 +561,7 @@ class Signature(Generic[T]):
             return max(index for _, index in all_args[arg_name])
 
         def get_type(arg_name: str) -> mypy.types.ProperType:
-            with mypy.state.strict_optional_set(True):
+            with mypy.state.state.strict_optional_set(True):
                 all_types = [
                     arg.variable.type or arg.type_annotation for arg, _ in all_args[arg_name]
                 ]
@@ -1099,7 +1100,7 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         # Special case checks against TypedDicts
         return True
 
-    with mypy.state.strict_optional_set(True):
+    with mypy.state.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
 

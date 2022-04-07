@@ -17,7 +17,7 @@ from mypy.types import (
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.typeops import true_only, false_only, make_simplified_union
 
 
@@ -410,15 +410,15 @@ class TypeOpsSuite(Suite):
         assert to.items[1] is tup_type
 
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
             assert_type(UninhabitedType, fo)
 
     def test_false_only_tuple(self) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, NoneType())
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, UninhabitedType())
 
@@ -437,7 +437,7 @@ class TypeOpsSuite(Suite):
         assert self.fx.a.can_be_true
 
     def test_false_only_of_union(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             tup_type = self.tuple()
             # Union of something that is unknown, something that is always true, something
             # that is always false
@@ -1059,9 +1059,9 @@ class MeetSuite(Suite):
     # FIX generic interfaces + ranges
 
     def assert_meet_uninhabited(self, s: Type, t: Type) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             self.assert_meet(s, t, self.fx.nonet)
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             self.assert_meet(s, t, self.fx.uninhabited)
 
     def assert_meet(self, s: Type, t: Type, meet: Type) -> None:

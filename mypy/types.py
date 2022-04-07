@@ -12,7 +12,7 @@ from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlia
 
 from mypy.backports import OrderedDict
 import mypy.nodes
-from mypy import state
+from mypy.state import state
 from mypy.nodes import (
     INVARIANT, SymbolNode, FuncDef,
     ArgKind, ARG_POS, ARG_STAR, ARG_STAR2,

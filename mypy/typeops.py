@@ -26,7 +26,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 
 from mypy.typevars import fill_typevars
 
-from mypy import state
+from mypy.state import state
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
