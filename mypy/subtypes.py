@@ -1384,6 +1384,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                             nominal = nominal and mypy.sametypes.is_same_type(ta, ra)
                     else:
                         nominal = nominal and mypy.sametypes.is_same_type(ta, ra)
+                    if not nominal:
+                        break
 
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
