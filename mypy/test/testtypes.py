@@ -12,7 +12,7 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarType, Type, Instance, NoneType,
     Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, ProperType,
-    get_proper_type
+    LiteralType, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
@@ -495,6 +495,14 @@ class TypeOpsSuite(Suite):
                                      UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3]))
         self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.uninhabited],
                                      UnionType([fx.lit_str1, fx.lit_str2]))
+
+    def test_simplify_very_large_union(self) -> None:
+        fx = self.fx
+        literals = []
+        for i in range(5000):
+            literals.append(LiteralType("v%d" % i, fx.str_type))
+        # This shouldn't be very slow, even if the union is big.
+        self.assert_simplified_union([*literals, fx.str_type], fx.str_type)
 
     def test_simplified_union_with_str_instance_literals(self) -> None:
         fx = self.fx

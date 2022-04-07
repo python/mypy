@@ -318,6 +318,15 @@ def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     return None
 
 
+def is_simple_literal(t: ProperType) -> bool:
+    """Fast way to check if simple_literal_value_key() would return a non-None value."""
+    if isinstance(t, LiteralType):
+        return t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
+    if isinstance(t, Instance):
+        return t.last_known_value is not None and isinstance(t.last_known_value.value, str)
+    return False
+
+
 def make_simplified_union(items: Sequence[Type],
                           line: int = -1, column: int = -1,
                           *, keep_erased: bool = False,
@@ -392,17 +401,26 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
 
         # Keep track of the truishness info for deleted subtypes which can be relevant
         cbt = cbf = False
+        num_items = len(items)
         for j, tj in enumerate(items):
-            # NB: we don't need to check literals as the fast path above takes care of that
-            if (
-                    i != j
+            if i != j:
+                # NB: The first check below is an optimization to
+                #     avoid very expensive computations with large
+                #     unions involving literals. We approximate the
+                #     results for unions with many items. This is
+                #     "fine" since simplifying these union items is
+                #     (almost) always optional.
+                if (
+                    (num_items < 5
+                     or is_likely_literal_supertype(item)
+                     or not is_simple_literal(tj))
                     and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
                     and is_redundant_literal_instance(item, tj)  # XXX?
-            ):
-                # We found a redundant item in the union.
-                removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
+                ):
+                    # We found a redundant item in the union.
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
         # if deleted subtypes had more general truthiness, use that
         if not item.can_be_true and cbt:
             items[i] = true_or_false(item)
@@ -410,6 +428,12 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             items[i] = true_or_false(item)
 
     return [items[i] for i in range(len(items)) if i not in removed]
+
+
+def is_likely_literal_supertype(t: ProperType) -> bool:
+    """Is the type likely to cause simplification of literal types in unions?"""
+    return isinstance(t, Instance) and t.type.fullname in ('builtins.object',
+                                                           'builtins.str')
 
 
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
