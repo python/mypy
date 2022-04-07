@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES,
 )
 import mypy.applytype
 import mypy.constraints
@@ -24,6 +24,7 @@ from mypy.nodes import (
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance
 from mypy.typestate import TypeState, SubtypeKind
+from mypy.options import Options
 from mypy import state
 
 # Flags for detected protocol members
@@ -52,7 +53,8 @@ def is_subtype(left: Type, right: Type,
                ignore_type_params: bool = False,
                ignore_pos_arg_names: bool = False,
                ignore_declared_variance: bool = False,
-               ignore_promotions: bool = False) -> bool:
+               ignore_promotions: bool = False,
+               options: Optional[Options] = None) -> bool:
     """Is 'left' subtype of 'right'?
 
     Also consider Any to be a subtype of any type, and vice versa. This
@@ -90,12 +92,14 @@ def is_subtype(left: Type, right: Type,
                                ignore_type_params=ignore_type_params,
                                ignore_pos_arg_names=ignore_pos_arg_names,
                                ignore_declared_variance=ignore_declared_variance,
-                               ignore_promotions=ignore_promotions)
+                               ignore_promotions=ignore_promotions,
+                               options=options)
     return _is_subtype(left, right,
                        ignore_type_params=ignore_type_params,
                        ignore_pos_arg_names=ignore_pos_arg_names,
                        ignore_declared_variance=ignore_declared_variance,
-                       ignore_promotions=ignore_promotions)
+                       ignore_promotions=ignore_promotions,
+                       options=options)
 
 
 def _is_subtype(left: Type, right: Type,
@@ -103,7 +107,8 @@ def _is_subtype(left: Type, right: Type,
                 ignore_type_params: bool = False,
                 ignore_pos_arg_names: bool = False,
                 ignore_declared_variance: bool = False,
-                ignore_promotions: bool = False) -> bool:
+                ignore_promotions: bool = False,
+                options: Optional[Options] = None) -> bool:
     orig_right = right
     orig_left = left
     left = get_proper_type(left)
@@ -120,7 +125,8 @@ def _is_subtype(left: Type, right: Type,
                                             ignore_type_params=ignore_type_params,
                                             ignore_pos_arg_names=ignore_pos_arg_names,
                                             ignore_declared_variance=ignore_declared_variance,
-                                            ignore_promotions=ignore_promotions)
+                                            ignore_promotions=ignore_promotions,
+                                            options=options)
                                  for item in right.items)
         # Recombine rhs literal types, to make an enum type a subtype
         # of a union of all enum items as literal types. Only do it if
@@ -135,7 +141,8 @@ def _is_subtype(left: Type, right: Type,
                                                 ignore_type_params=ignore_type_params,
                                                 ignore_pos_arg_names=ignore_pos_arg_names,
                                                 ignore_declared_variance=ignore_declared_variance,
-                                                ignore_promotions=ignore_promotions)
+                                                ignore_promotions=ignore_promotions,
+                                                options=options)
                                      for item in right.items)
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
@@ -152,19 +159,21 @@ def _is_subtype(left: Type, right: Type,
                                       ignore_type_params=ignore_type_params,
                                       ignore_pos_arg_names=ignore_pos_arg_names,
                                       ignore_declared_variance=ignore_declared_variance,
-                                      ignore_promotions=ignore_promotions))
+                                      ignore_promotions=ignore_promotions,
+                                      options=options))
 
 
 def is_equivalent(a: Type, b: Type,
                   *,
                   ignore_type_params: bool = False,
-                  ignore_pos_arg_names: bool = False
+                  ignore_pos_arg_names: bool = False,
+                  options: Optional[Options] = None
                   ) -> bool:
     return (
         is_subtype(a, b, ignore_type_params=ignore_type_params,
-                   ignore_pos_arg_names=ignore_pos_arg_names)
+                   ignore_pos_arg_names=ignore_pos_arg_names, options=options)
         and is_subtype(b, a, ignore_type_params=ignore_type_params,
-                       ignore_pos_arg_names=ignore_pos_arg_names))
+                       ignore_pos_arg_names=ignore_pos_arg_names, options=options))
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
@@ -174,7 +183,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                  ignore_type_params: bool,
                  ignore_pos_arg_names: bool = False,
                  ignore_declared_variance: bool = False,
-                 ignore_promotions: bool = False) -> None:
+                 ignore_promotions: bool = False,
+                 options: Optional[Options] = None) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
         self.ignore_type_params = ignore_type_params
@@ -183,6 +193,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         self.ignore_promotions = ignore_promotions
         self.check_type_parameter = (ignore_type_parameter if ignore_type_params else
                                      check_type_parameter)
+        self.options = options
         self._subtype_kind = SubtypeVisitor.build_subtype_kind(
             ignore_type_params=ignore_type_params,
             ignore_pos_arg_names=ignore_pos_arg_names,
@@ -206,7 +217,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                           ignore_type_params=self.ignore_type_params,
                           ignore_pos_arg_names=self.ignore_pos_arg_names,
                           ignore_declared_variance=self.ignore_declared_variance,
-                          ignore_promotions=self.ignore_promotions)
+                          ignore_promotions=self.ignore_promotions,
+                          options=self.options)
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of
     # right?
@@ -278,7 +290,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not self.check_type_parameter(lefta, righta, tvar.variance):
                             nominal = False
                     else:
-                        if not is_equivalent(lefta, righta):
+                        if not self.check_type_parameter(lefta, righta, COVARIANT):
                             nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
@@ -330,6 +342,16 @@ class SubtypeVisitor(TypeVisitor[bool]):
     def visit_unpack_type(self, left: UnpackType) -> bool:
         raise NotImplementedError
 
+    def visit_parameters(self, left: Parameters) -> bool:
+        right = self.right
+        if isinstance(right, Parameters) or isinstance(right, CallableType):
+            return are_parameters_compatible(
+                left, right,
+                is_compat=self._is_subtype,
+                ignore_pos_arg_names=self.ignore_pos_arg_names)
+        else:
+            return False
+
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right
         if isinstance(right, CallableType):
@@ -343,7 +365,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return is_callable_compatible(
                 left, right,
                 is_compat=self._is_subtype,
-                ignore_pos_arg_names=self.ignore_pos_arg_names)
+                ignore_pos_arg_names=self.ignore_pos_arg_names,
+                strict_concatenate=self.options.strict_concatenate if self.options else True)
         elif isinstance(right, Overloaded):
             return all(self._is_subtype(left, item) for item in right.items)
         elif isinstance(right, Instance):
@@ -358,6 +381,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
         elif isinstance(right, TypeType):
             # This is unsound, we don't check the __init__ signature.
             return left.is_type_obj() and self._is_subtype(left.ret_type, right.item)
+        elif isinstance(right, Parameters):
+            # this doesn't check return types.... but is needed for is_equivalent
+            return are_parameters_compatible(
+                left, right,
+                is_compat=self._is_subtype,
+                ignore_pos_arg_names=self.ignore_pos_arg_names)
         else:
             return False
 
@@ -404,7 +433,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             for name, l, r in left.zip(right):
                 if not is_equivalent(l, r,
-                                     ignore_type_params=self.ignore_type_params):
+                                     ignore_type_params=self.ignore_type_params,
+                                     options=self.options):
                     return False
                 # Non-required key is not compatible with a required key since
                 # indexing may fail unexpectedly if a required key is missing.
@@ -471,12 +501,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     else:
                         # If this one overlaps with the supertype in any way, but it wasn't
                         # an exact match, then it's a potential error.
+                        strict_concat = self.options.strict_concatenate if self.options else True
                         if (is_callable_compatible(left_item, right_item,
                                     is_compat=self._is_subtype, ignore_return=True,
-                                    ignore_pos_arg_names=self.ignore_pos_arg_names) or
+                                    ignore_pos_arg_names=self.ignore_pos_arg_names,
+                                    strict_concatenate=strict_concat) or
                                 is_callable_compatible(right_item, left_item,
                                         is_compat=self._is_subtype, ignore_return=True,
-                                        ignore_pos_arg_names=self.ignore_pos_arg_names)):
+                                        ignore_pos_arg_names=self.ignore_pos_arg_names,
+                                        strict_concatenate=strict_concat)):
                             # If this is an overload that's already been matched, there's no
                             # problem.
                             if left_item not in matched_overloads:
@@ -778,7 +811,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
                            ignore_return: bool = False,
                            ignore_pos_arg_names: bool = False,
                            check_args_covariantly: bool = False,
-                           allow_partial_overlap: bool = False) -> bool:
+                           allow_partial_overlap: bool = False,
+                           strict_concatenate: bool = False) -> bool:
     """Is the left compatible with the right, using the provided compatibility check?
 
     is_compat:
@@ -914,6 +948,27 @@ def is_callable_compatible(left: CallableType, right: CallableType,
     if check_args_covariantly:
         is_compat = flip_compat_check(is_compat)
 
+    if not strict_concatenate and (left.from_concatenate or right.from_concatenate):
+        strict_concatenate_check = False
+    else:
+        strict_concatenate_check = True
+
+    return are_parameters_compatible(left, right, is_compat=is_compat,
+                                     ignore_pos_arg_names=ignore_pos_arg_names,
+                                     check_args_covariantly=check_args_covariantly,
+                                     allow_partial_overlap=allow_partial_overlap,
+                                     strict_concatenate_check=strict_concatenate_check)
+
+
+def are_parameters_compatible(left: Union[Parameters, CallableType],
+                              right: Union[Parameters, CallableType],
+                              *,
+                              is_compat: Callable[[Type, Type], bool],
+                              ignore_pos_arg_names: bool = False,
+                              check_args_covariantly: bool = False,
+                              allow_partial_overlap: bool = False,
+                              strict_concatenate_check: bool = True) -> bool:
+    """Helper function for is_callable_compatible, used for Parameter compatibility"""
     if right.is_ellipsis_args:
         return True
 
@@ -1001,7 +1056,9 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         right_names = {name for name in right.arg_names if name is not None}
         left_only_names = set()
         for name, kind in zip(left.arg_names, left.arg_kinds):
-            if name is None or kind.is_star() or name in right_names:
+            if (name is None or kind.is_star()
+                    or name in right_names
+                    or not strict_concatenate_check):
                 continue
             left_only_names.add(name)
 
@@ -1037,7 +1094,8 @@ def is_callable_compatible(left: CallableType, right: CallableType,
         if (right_by_name is not None
                 and right_by_pos is not None
                 and right_by_name != right_by_pos
-                and (right_by_pos.required or right_by_name.required)):
+                and (right_by_pos.required or right_by_name.required)
+                and strict_concatenate_check):
             return False
 
         # All *required* left-hand arguments must have a corresponding
@@ -1362,6 +1420,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
         raise NotImplementedError
+
+    def visit_parameters(self, left: Parameters) -> bool:
+        right = self.right
+        if isinstance(right, Parameters) or isinstance(right, CallableType):
+            return are_parameters_compatible(left, right, is_compat=self._is_proper_subtype)
+        else:
+            return False
 
     def visit_callable_type(self, left: CallableType) -> bool:
         right = self.right

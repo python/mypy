@@ -1439,6 +1439,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
+    def check_slots_definition(self, typ: Type, context: Context) -> None:
+        """Check the type of __slots__."""
+        str_type = self.named_type("builtins.str")
+        expected_type = UnionType([str_type,
+                                   self.named_generic_type("typing.Iterable", [str_type])])
+        self.check_subtype(typ, expected_type, context,
+                           message_registry.INVALID_TYPE_FOR_SLOTS,
+                           'actual type',
+                           'expected type',
+                           code=codes.ASSIGNMENT)
+
     def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
         """Check that __match_args__ contains literal strings"""
         typ = get_proper_type(typ)
@@ -2281,6 +2292,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
+                if name == '__slots__':
+                    typ = lvalue_type or self.expr_checker.accept(rvalue)
+                    self.check_slots_definition(typ, lvalue)
                 if name == '__match_args__' and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
@@ -5224,7 +5238,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       code: Optional[ErrorCode] = None,
                       outer_context: Optional[Context] = None) -> bool:
         """Generate an error if the subtype is not compatible with supertype."""
-        if is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype, options=self.options):
             return True
 
         if isinstance(msg, ErrorMessage):
@@ -5260,6 +5274,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.note(note, context, code=code)
         if note_msg:
             self.note(note_msg, context, code=code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
         if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)

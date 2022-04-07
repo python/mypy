@@ -11,7 +11,7 @@ from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
     TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, ParamSpecType,
-    UnpackType,
+    Parameters, UnpackType,
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
@@ -254,6 +254,11 @@ class TypeFixer(TypeVisitor[None]):
 
     def visit_unpack_type(self, u: UnpackType) -> None:
         u.type.accept(self)
+
+    def visit_parameters(self, p: Parameters) -> None:
+        for argt in p.arg_types:
+            if argt is not None:
+                argt.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:

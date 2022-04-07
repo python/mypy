@@ -7,7 +7,7 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType,
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
     UnpackType
 )
 from mypy.maptype import map_instance_to_supertype
@@ -259,6 +259,12 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_unpack_type(self, t: UnpackType) -> UnpackType:
         raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        if self.s == t:
+            return t
+        else:
+            return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):

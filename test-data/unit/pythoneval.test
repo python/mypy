@@ -1312,13 +1312,17 @@ f(E)
 g(E)
 
 [case testInvalidSlots]
+from typing import List
 class A:
     __slots__ = 1
 class B:
     __slots__ = (1, 2)
+class C:
+    __slots__: List[int] = []
 [out]
-_testInvalidSlots.py:2: error: Incompatible types in assignment (expression has type "int", base class "object" defined the type as "Union[str, Iterable[str]]")
-_testInvalidSlots.py:4: error: Incompatible types in assignment (expression has type "Tuple[int, int]", base class "object" defined the type as "Union[str, Iterable[str]]")
+_testInvalidSlots.py:3: error: Invalid type for "__slots__" (actual type "int", expected type "Union[str, Iterable[str]]")
+_testInvalidSlots.py:5: error: Invalid type for "__slots__" (actual type "Tuple[int, int]", expected type "Union[str, Iterable[str]]")
+_testInvalidSlots.py:7: error: Invalid type for "__slots__" (actual type "List[int]", expected type "Union[str, Iterable[str]]")
 
 [case testDictWithStarStarSpecialCase]
 from typing import Dict

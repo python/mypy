@@ -1556,7 +1556,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               isinstance(callee_type.item, Instance) and
               (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
             self.msg.concrete_only_call(callee_type, context)
-        elif not is_subtype(caller_type, callee_type):
+        elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
             code = messages.incompatible_argument(n,
