@@ -1377,13 +1377,13 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                     if isinstance(tvar, TypeVarType):
                         variance = tvar.variance
                         if variance == COVARIANT:
-                            nominal = nominal and self._is_proper_subtype(ta, ra)
+                            nominal = self._is_proper_subtype(ta, ra)
                         elif variance == CONTRAVARIANT:
-                            nominal = nominal and self._is_proper_subtype(ra, ta)
+                            nominal = self._is_proper_subtype(ra, ta)
                         else:
-                            nominal = nominal and mypy.sametypes.is_same_type(ta, ra)
+                            nominal = mypy.sametypes.is_same_type(ta, ra)
                     else:
-                        nominal = nominal and mypy.sametypes.is_same_type(ta, ra)
+                        nominal = mypy.sametypes.is_same_type(ta, ra)
                     if not nominal:
                         break
 
