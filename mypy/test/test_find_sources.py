@@ -3,6 +3,7 @@ import pytest
 import shutil
 import tempfile
 import unittest
+import fnmatch
 from typing import List, Optional, Set, Tuple
 
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
@@ -305,8 +306,9 @@ class SourceFinderSuite(unittest.TestCase):
             ("a2.b.c.d.e", "/pkg"),
             ("e", "/pkg/a1/b/c/d"),
         ]
-        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == [('f', '/pkg/a1/b')]
-        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == [('a2.b.f', '/pkg')]
+
+        assert find_sources(["/pkg/a1/b/f.py"], options, fscache) == []
+        assert find_sources(["/pkg/a2/b/f.py"], options, fscache) == []
 
         # directory name
         options.exclude = ["/a1/"]
@@ -377,3 +379,52 @@ class SourceFinderSuite(unittest.TestCase):
             }
             fscache = FakeFSCache(files)
             assert len(find_sources(["."], options, fscache)) == len(files)
+
+    def test_find_sources_exclude_e2e(self) -> None:
+        files_config = "/pkg/*, /src/test/"
+
+        files = {
+            "/pkg/sample.json",
+            "/pkg/test.json",
+            "/pkg/a1/__init__.py",
+            "/pkg/a1/f.py",
+            "/pkg/a1/v.py",
+            "/pkg/a2/__init__.py",
+            "/pkg/a2/b.py",
+            "/pkg/a2/a.py",
+            "/src/test/a.py",
+            "/src/test/b.py",
+            "/src/test/a/a.py",
+        }
+
+        def split_and_match_files(files: Set[str], paths: List[str]) -> List[str]:
+            # mock split_and_match_files_list config_parser.py
+            expanded_paths = []
+
+            for p in paths:
+                p = p.strip()
+                # glob uses fnmatch underneath
+                matching = fnmatch.filter(files, p)
+                print("PATH", p)
+                if matching:
+                    expanded_paths.extend(matching)
+                else:
+                    expanded_paths.append(p)
+            return expanded_paths
+
+        all_files = split_and_match_files(files, files_config.split(','))
+        del split_and_match_files
+        options = Options()
+        options.exclude = [r'(?x)(\.json$)']
+        fscache = FakeFSCache(files)
+
+        assert find_sources(all_files, options, fscache) == [
+            ('a', '/src/test/a'),
+            ('a1', '/pkg'),
+            ('a1.f', '/pkg'),
+            ('a1.v', '/pkg'),
+            ('a2', '/pkg'),
+            ('a2.a', '/pkg'),
+            ('a2.b', '/pkg'),
+            ('b', '/src/test')
+        ]

@@ -1130,6 +1130,9 @@ tabs.py:2: error: Incompatible return value type (got "None", expected "str")
 # coding: uft-8
 [out]
 mypy: stubgen does not support .pyd files: 'a.pyd'
+Unsupported file type(s) where found in the source tree. This can lead to an error (only .py and .pyi are supported):
+a.pyd
+Use --exclude or add exclude to the config file. More information is here: https://mypy.readthedocs.io/en/stable/config_file.html?highlight=exclude#confval-exclude
 == Return code: 2
 
 [case testDuplicateModules]
