@@ -206,7 +206,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                            ignore_pos_arg_names: bool = False,
                            ignore_declared_variance: bool = False,
                            ignore_promotions: bool = False) -> SubtypeKind:
-        return (False,  # is proper subtype?
+        return (state.strict_optional,
+                False,  # is proper subtype?
                 ignore_type_params,
                 ignore_pos_arg_names,
                 ignore_declared_variance,
@@ -1316,7 +1317,11 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                            ignore_promotions: bool = False,
                            erase_instances: bool = False,
                            keep_erased_types: bool = False) -> SubtypeKind:
-        return True, ignore_promotions, erase_instances, keep_erased_types
+        return (state.strict_optional,
+                True,
+                ignore_promotions,
+                erase_instances,
+                keep_erased_types)
 
     def _is_proper_subtype(self, left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right,
