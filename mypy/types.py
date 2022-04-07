@@ -1049,7 +1049,7 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value', '_hash')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, *,
@@ -1107,11 +1107,16 @@ class Instance(ProperType):
         # Literal context.
         self.last_known_value = last_known_value
 
+        # Cached hash value
+        self._hash = -1
+
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_instance(self)
 
     def __hash__(self) -> int:
-        return hash((self.type, tuple(self.args), self.last_known_value))
+        if self._hash == -1:
+            self._hash = hash((self.type, self.args, self.last_known_value))
+        return self._hash
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Instance):
