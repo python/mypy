@@ -2130,13 +2130,14 @@ class LiteralType(ProperType):
     As another example, `Literal[Color.RED]` (where Color is an enum) is
     represented as `LiteralType(value="RED", fallback=instance_of_color)'.
     """
-    __slots__ = ('value', 'fallback')
+    __slots__ = ('value', 'fallback', '_hash')
 
     def __init__(self, value: LiteralValue, fallback: Instance,
                  line: int = -1, column: int = -1) -> None:
         self.value = value
         super().__init__(line, column)
         self.fallback = fallback
+        self._hash = -1  # Cached hash value
 
     def can_be_false_default(self) -> bool:
         return not self.value
@@ -2148,7 +2149,9 @@ class LiteralType(ProperType):
         return visitor.visit_literal_type(self)
 
     def __hash__(self) -> int:
-        return hash((self.value, self.fallback))
+        if self._hash == -1:
+            self._hash = hash((self.value, self.fallback))
+        return self._hash
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, LiteralType):
