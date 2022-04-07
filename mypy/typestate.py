@@ -123,6 +123,11 @@ class TypeState:
 
     @staticmethod
     def is_cached_subtype_check(kind: SubtypeKind, left: Instance, right: Instance) -> bool:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # If there is a literal last known value, give up. There
+            # will be an unbounded number of potential types to cache,
+            # making caching less effective.
+            return False
         info = right.type
         cache = TypeState._subtype_caches.get(info)
         if cache is None:
@@ -135,6 +140,10 @@ class TypeState:
     @staticmethod
     def record_subtype_cache_entry(kind: SubtypeKind,
                                    left: Instance, right: Instance) -> None:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # These are unlikely to match, due to the large space of
+            # possible values.  Avoid uselessly increasing cache sizes.
+            return
         cache = TypeState._subtype_caches.setdefault(right.type, dict())
         cache.setdefault(kind, set()).add((left, right))
 
