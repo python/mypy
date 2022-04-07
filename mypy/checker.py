@@ -5224,7 +5224,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       code: Optional[ErrorCode] = None,
                       outer_context: Optional[Context] = None) -> bool:
         """Generate an error if the subtype is not compatible with supertype."""
-        if is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype, options=self.options):
             return True
 
         if isinstance(msg, ErrorMessage):
@@ -5260,6 +5260,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.note(note, context, code=code)
         if note_msg:
             self.note(note_msg, context, code=code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
         if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)

@@ -5,7 +5,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any, Union
 from typing_extensions import Type as TypingType
 import itertools
 import sys
@@ -14,7 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType,
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters,
     ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
@@ -272,7 +272,7 @@ def erase_to_bound(t: Type) -> Type:
     return t
 
 
-def callable_corresponding_argument(typ: CallableType,
+def callable_corresponding_argument(typ: Union[CallableType, Parameters],
                                     model: FormalArgument) -> Optional[FormalArgument]:
     """Return the argument a function that corresponds to `model`"""
 

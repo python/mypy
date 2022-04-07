@@ -25,8 +25,7 @@ def foo1(x: Callable[P, int]) -> Callable[P, str]:  ...
 def foo2(x: P) -> P: ...  # E: Invalid location for ParamSpec "P" \
                           # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
 
-# TODO(PEP612): uncomment once we have support for Concatenate
-# def foo3(x: Concatenate[int, P]) -> int: ...  $ E: Invalid location for Concatenate
+def foo3(x: Concatenate[int, P]) -> int: ...  # E: Invalid location for Concatenate
 
 def foo4(x: List[P]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                    # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
@@ -100,7 +99,7 @@ class C(Generic[P]):
 
 def f(x: int, y: str) -> None: ...
 
-reveal_type(C(f))  # N: Revealed type is "__main__.C[def (x: builtins.int, y: builtins.str)]"
+reveal_type(C(f))  # N: Revealed type is "__main__.C[[x: builtins.int, y: builtins.str]]"
 reveal_type(C(f).m)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
 [builtins fixtures/dict.pyi]
 
@@ -142,7 +141,7 @@ def dec() -> Callable[[Callable[P, R]], W[P, R]]:
 @dec()
 def f(a: int, b: str) -> None: ...
 
-reveal_type(f)  # N: Revealed type is "__main__.W[def (a: builtins.int, b: builtins.str), None]"
+reveal_type(f)  # N: Revealed type is "__main__.W[[a: builtins.int, b: builtins.str], None]"
 reveal_type(f(1, ''))  # N: Revealed type is "None"
 reveal_type(f.x)  # N: Revealed type is "builtins.int"
 
@@ -416,3 +415,614 @@ with f() as x:
     pass
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testParamSpecLiterals]
+from typing_extensions import ParamSpec, TypeAlias
+from typing import Generic, TypeVar
+
+P = ParamSpec("P")
+T = TypeVar("T")
+
+class Z(Generic[P]): ...
+
+# literals can be applied
+n: Z[[int]]
+
+# TODO: type aliases too
+nt1 = Z[[int]]
+nt2: TypeAlias = Z[[int]]
+
+unt1: nt1
+unt2: nt2
+
+# literals actually keep types
+reveal_type(n)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(unt2)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+
+# passing into a function keeps the type
+def fT(a: T) -> T: ...
+def fP(a: Z[P]) -> Z[P]: ...
+
+reveal_type(fT(n))  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(fP(n))  # N: Revealed type is "__main__.Z[[builtins.int]]"
+
+# literals can be in function args and return type
+def k(a: Z[[int]]) -> Z[[str]]: ...
+
+# functions work
+reveal_type(k(n))  # N: Revealed type is "__main__.Z[[builtins.str]]"
+
+# literals can be matched in arguments
+def kb(a: Z[[bytes]]) -> Z[[str]]: ...
+
+reveal_type(kb(n))  # N: Revealed type is "__main__.Z[[builtins.str]]" \
+                    # E: Argument 1 to "kb" has incompatible type "Z[[int]]"; expected "Z[[bytes]]"
+
+
+n2: Z[bytes]
+
+reveal_type(kb(n2))  # N: Revealed type is "__main__.Z[[builtins.str]]"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecConcatenateFromPep]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar, Generic
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+# CASE 1
+class Request:
+    ...
+
+def with_request(f: Callable[Concatenate[Request, P], R]) -> Callable[P, R]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> R:
+        return f(Request(), *args, **kwargs)
+    return inner
+
+@with_request
+def takes_int_str(request: Request, x: int, y: str) -> int:
+    # use request
+    return x + 7
+
+reveal_type(takes_int_str)  # N: Revealed type is "def (x: builtins.int, y: builtins.str) -> builtins.int"
+
+takes_int_str(1, "A") # Accepted
+takes_int_str("B", 2) # E: Argument 1 to "takes_int_str" has incompatible type "str"; expected "int" \
+                      # E: Argument 2 to "takes_int_str" has incompatible type "int"; expected "str"
+
+# CASE 2
+T = TypeVar("T")
+P_2 = ParamSpec("P_2")
+
+class X(Generic[T, P]):
+  f: Callable[P, int]
+  x: T
+
+def f1(x: X[int, P_2]) -> str: ...                    # Accepted
+def f2(x: X[int, Concatenate[int, P_2]]) -> str: ...  # Accepted
+def f3(x: X[int, [int, bool]]) -> str: ...            # Accepted
+# ellipsis only show up here, but I can assume it works like Callable[..., R]
+def f4(x: X[int, ...]) -> str: ...                    # Accepted
+# TODO: this is not rejected:
+# def f5(x: X[int, int]) -> str: ...                    # Rejected
+
+# CASE 3
+def bar(x: int, *args: bool) -> int: ...
+def add(x: Callable[P, int]) -> Callable[Concatenate[str, P], bool]: ...
+
+reveal_type(add(bar))       # N: Revealed type is "def (builtins.str, x: builtins.int, *args: builtins.bool) -> builtins.bool"
+
+def remove(x: Callable[Concatenate[int, P], int]) -> Callable[P, bool]: ...
+
+reveal_type(remove(bar))    # N: Revealed type is "def (*args: builtins.bool) -> builtins.bool"
+
+def transform(
+  x: Callable[Concatenate[int, P], int]
+) -> Callable[Concatenate[str, P], bool]: ...
+
+# In the PEP, "__a" appears. What is that? Autogenerated names? To what spec?
+reveal_type(transform(bar)) # N: Revealed type is "def (builtins.str, *args: builtins.bool) -> builtins.bool"
+
+# CASE 4
+def expects_int_first(x: Callable[Concatenate[int, P], int]) -> None: ...
+
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[str], int]"; expected "Callable[[int], int]" \
+                    # N: This may be because "one" has arguments named: "x"
+def one(x: str) -> int: ...
+
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[NamedArg(int, 'x')], int]"; expected "Callable[[int], int]"
+def two(*, x: int) -> int: ...
+
+@expects_int_first  # E: Argument 1 to "expects_int_first" has incompatible type "Callable[[KwArg(int)], int]"; expected "Callable[[int], int]"
+def three(**kwargs: int) -> int: ...
+
+@expects_int_first # Accepted
+def four(*args: int) -> int: ...
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+
+[case testParamSpecTwiceSolving]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def f(one: Callable[Concatenate[int, P], R], two: Callable[Concatenate[str, P], R]) -> Callable[P, R]: ...
+
+a: Callable[[int, bytes], str]
+b: Callable[[str, bytes], str]
+
+reveal_type(f(a, b))  # N: Revealed type is "def (builtins.bytes) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecConcatenateInReturn]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, Protocol
+
+P = ParamSpec("P")
+
+def f(i: Callable[Concatenate[int, P], str]) -> Callable[Concatenate[int, P], str]: ...
+
+n: Callable[[int, bytes], str]
+
+reveal_type(f(n))  # N: Revealed type is "def (builtins.int, builtins.bytes) -> builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecConcatenateNamedArgs]
+# flags: --strict-concatenate
+# this is one noticeable deviation from PEP but I believe it is for the better
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Accepted
+
+def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Rejected
+
+# reason for rejection:
+f2(lambda x: 42)(42, x=42)
+[builtins fixtures/tuple.pyi]
+[out]
+main:10: error: invalid syntax
+[out version>=3.8]
+main:17: error: Incompatible return value type (got "Callable[[Arg(int, 'x'), **P], R]", expected "Callable[[int, **P], R]")
+main:17: note: This may be because "result" has arguments named: "x"
+
+[case testNonStrictParamSpecConcatenateNamedArgs]
+# this is one noticeable deviation from PEP but I believe it is for the better
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def f1(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, /, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Accepted
+
+def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
+    def result(x: int, *args: P.args, **kwargs: P.kwargs) -> R: ...
+
+    return result  # Rejected -> Accepted
+
+# reason for rejection:
+f2(lambda x: 42)(42, x=42)
+[builtins fixtures/tuple.pyi]
+[out]
+main:9: error: invalid syntax
+[out version>=3.8]
+
+[case testParamSpecConcatenateWithTypeVar]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, TypeVar
+
+P = ParamSpec("P")
+R = TypeVar("R")
+S = TypeVar("S")
+
+def f(c: Callable[Concatenate[S, P], R]) -> Callable[Concatenate[S, P], R]: ...
+
+def a(n: int) -> None: ...
+
+n = f(a)
+
+reveal_type(n)  # N: Revealed type is "def (builtins.int)"
+reveal_type(n(42))  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
+
+[case testCallablesAsParameters]
+# credits to https://github.com/microsoft/pyright/issues/2705
+from typing_extensions import ParamSpec, Concatenate
+from typing import Generic, Callable, Any
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]):
+    def __init__(self, func: Callable[P, Any]) -> None: ...
+def bar(baz: Foo[Concatenate[int, P]]) -> Foo[P]: ...
+
+def test(a: int, /, b: str) -> str: ...
+
+abc = Foo(test)
+reveal_type(abc)
+bar(abc)
+[builtins fixtures/tuple.pyi]
+[out]
+main:11: error: invalid syntax
+[out version>=3.8]
+main:14: note: Revealed type is "__main__.Foo[[builtins.int, b: builtins.str]]"
+
+[case testSolveParamSpecWithSelfType]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Callable, Generic
+
+P = ParamSpec("P")
+
+class Foo(Generic[P]):
+    def foo(self: 'Foo[P]', other: Callable[P, None]) -> None: ...
+
+n: Foo[[int]]
+def f(x: int) -> None: ...
+
+n.foo(f)
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralsTypeApplication]
+from typing_extensions import ParamSpec
+from typing import Generic, Callable
+
+P = ParamSpec("P")
+
+class Z(Generic[P]):
+    def __init__(self, c: Callable[P, None]) -> None:
+        ...
+
+# it allows valid functions
+reveal_type(Z[[int]](lambda x: None))  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(Z[[]](lambda: None))  # N: Revealed type is "__main__.Z[[]]"
+reveal_type(Z[bytes, str](lambda b, s: None))  # N: Revealed type is "__main__.Z[[builtins.bytes, builtins.str]]"
+
+# it disallows invalid functions
+def f1(n: str) -> None: ...
+def f2(b: bytes, i: int) -> None: ...
+
+Z[[int]](lambda one, two: None)  # E: Cannot infer type of lambda \
+                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any, Any], None]"; expected "Callable[[int], None]"
+Z[[int]](f1)  # E: Argument 1 to "Z" has incompatible type "Callable[[str], None]"; expected "Callable[[int], None]"
+
+Z[[]](lambda one: None)  # E: Cannot infer type of lambda \
+                         # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[], None]"
+
+Z[bytes, str](lambda one: None)  # E: Cannot infer type of lambda \
+                                 # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[bytes, str], None]"
+Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "Callable[[bytes, int], None]"; expected "Callable[[bytes, str], None]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralEllipsis]
+from typing_extensions import ParamSpec
+from typing import Generic, Callable
+
+P = ParamSpec("P")
+
+class Z(Generic[P]):
+    def __init__(self: 'Z[P]', c: Callable[P, None]) -> None:
+        ...
+
+def f1() -> None: ...
+def f2(*args: int) -> None: ...
+def f3(a: int, *, b: bytes) -> None: ...
+
+def f4(b: bytes) -> None: ...
+
+argh: Callable[..., None] = f4
+
+# check it works
+Z[...](f1)
+Z[...](f2)
+Z[...](f3)
+
+# check subtyping works
+n: Z[...]
+n = Z(f1)
+n = Z(f2)
+n = Z(f3)
+
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecApplyConcatenateTwice]
+from typing_extensions import ParamSpec, Concatenate
+from typing import Generic, Callable, Optional
+
+P = ParamSpec("P")
+
+class C(Generic[P]):
+    # think PhantomData<T> from rust
+    phantom: Optional[Callable[P, None]]
+
+    def add_str(self) -> C[Concatenate[int, P]]:
+        return C[Concatenate[int, P]]()
+
+    def add_int(self) -> C[Concatenate[str, P]]:
+        return C[Concatenate[str, P]]()
+
+def f(c: C[P]) -> None:
+    reveal_type(c)  # N: Revealed type is "__main__.C[P`-1]"
+
+    n1 = c.add_str()
+    reveal_type(n1)  # N: Revealed type is "__main__.C[[builtins.int, **P`-1]]"
+    n2 = n1.add_int()
+    reveal_type(n2)  # N: Revealed type is "__main__.C[[builtins.str, builtins.int, **P`-1]]"
+
+    p1 = c.add_int()
+    reveal_type(p1)  # N: Revealed type is "__main__.C[[builtins.str, **P`-1]]"
+    p2 = p1.add_str()
+    reveal_type(p2)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str, **P`-1]]"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecLiteralJoin]
+from typing import Generic, Callable, Union
+from typing_extensions import ParamSpec
+
+
+_P = ParamSpec("_P")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None:
+        self.target = target
+
+def func(
+    action: Union[Job[int], Callable[[int], None]],
+) -> None:
+    job = action if isinstance(action, Job) else Job(action)
+    reveal_type(job)  # N: Revealed type is "__main__.Job[[builtins.int]]"
+[builtins fixtures/tuple.pyi]
+
+[case testApplyParamSpecToParamSpecLiterals]
+from typing import TypeVar, Generic, Callable
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+class Job(Generic[_P, _R_co]):
+    def __init__(self, target: Callable[_P, _R_co]) -> None:
+        self.target = target
+
+def run_job(job: Job[_P, None], *args: _P.args, **kwargs: _P.kwargs) -> None: # N: "run_job" defined here
+    ...
+
+
+def func(job: Job[[int, str], None]) -> None:
+    run_job(job, 42, "Hello")
+    run_job(job, "Hello", 42) # E: Argument 2 to "run_job" has incompatible type "str"; expected "int" \
+                              # E: Argument 3 to "run_job" has incompatible type "int"; expected "str"
+    run_job(job, 42, msg="Hello")  # E: Unexpected keyword argument "msg" for "run_job"
+    run_job(job, "Hello") # E: Too few arguments for "run_job" \
+                          # E: Argument 2 to "run_job" has incompatible type "str"; expected "int"
+
+def func2(job: Job[..., None]) -> None:
+    run_job(job, 42, "Hello")
+    run_job(job, "Hello", 42)
+    run_job(job, 42, msg="Hello")
+    run_job(job, x=42, msg="Hello")
+[builtins fixtures/tuple.pyi]
+
+[case testExpandNonBareParamSpecAgainstCallable]
+from typing import Callable, TypeVar, Any
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
+
+def simple_decorator(callable: CallableT) -> CallableT:
+    # set some attribute on 'callable'
+    return callable
+
+
+class A:
+    @simple_decorator
+    def func(self, action: Callable[_P, _R], *args: _P.args, **kwargs: _P.kwargs) -> _R:
+        ...
+
+reveal_type(A.func)  # N: Revealed type is "def [_P, _R] (self: __main__.A, action: def (*_P.args, **_P.kwargs) -> _R`-2, *_P.args, **_P.kwargs) -> _R`-2"
+
+# TODO: _R`<n> keeps flip-flopping between 5 (?), 13, 14, 15. Spooky.
+# reveal_type(A().func)  $ N: Revealed type is "def [_P, _R] (action: def (*_P.args, **_P.kwargs) -> _R`13, *_P.args, **_P.kwargs) -> _R`13"
+
+def f(x: int) -> int:
+    ...
+
+reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int"
+
+# TODO: this should reveal `int`
+reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecConstraintOnOtherParamSpec]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+def simple_decorator(callable: CallableT) -> CallableT:
+    ...
+
+class Job(Generic[_P, _R_co]):
+    def __init__(self, target: Callable[_P, _R_co]) -> None:
+        ...
+
+
+class A:
+    @simple_decorator
+    def func(self, action: Job[_P, None]) -> Job[_P, None]:
+        ...
+
+reveal_type(A.func)  # N: Revealed type is "def [_P] (self: __main__.A, action: __main__.Job[_P`-1, None]) -> __main__.Job[_P`-1, None]"
+# TODO: flakey, _P`4 alternates around.
+# reveal_type(A().func)  $ N: Revealed type is "def [_P] (action: __main__.Job[_P`4, None]) -> __main__.Job[_P`4, None]"
+reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x: Any], None]"
+
+def f(x: int, y: int) -> None: ...
+reveal_type(A().func(Job(f)))  # N: Revealed type is "__main__.Job[[x: builtins.int, y: builtins.int], None]"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintBetweenParamSpecFunctions1]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_R_co = TypeVar("_R_co", covariant=True)
+
+def simple_decorator(callable: Callable[_P, _R_co]) -> Callable[_P, _R_co]: ...
+class Job(Generic[_P]): ...
+
+
+@simple_decorator
+def func(__action: Job[_P]) -> Callable[_P, None]:
+    ...
+
+reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintBetweenParamSpecFunctions2]
+from typing import Callable, TypeVar, Any, Generic
+from typing_extensions import ParamSpec
+
+CallableT = TypeVar("CallableT", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+
+def simple_decorator(callable: CallableT) -> CallableT: ...
+class Job(Generic[_P]): ...
+
+
+@simple_decorator
+def func(__action: Job[_P]) -> Callable[_P, None]:
+    ...
+
+reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
+[builtins fixtures/tuple.pyi]
+
+[case testConstraintsBetweenConcatenatePrefixes]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+class Awaitable(Generic[_T]): ...
+
+def adds_await() -> Callable[
+    [Callable[Concatenate[_T, _P], None]],
+    Callable[Concatenate[_T, _P], Awaitable[None]],
+]:
+    def decorator(
+        func: Callable[Concatenate[_T, _P], None],
+    ) -> Callable[Concatenate[_T, _P], Awaitable[None]]:
+        ...
+
+    return decorator  # we want `_T` and `_P` to refer to the same things.
+[builtins fixtures/tuple.pyi]
+
+[case testParamSpecVariance]
+from typing import Callable, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None: ...
+    def into_callable(self) -> Callable[_P, None]: ...
+
+class A:
+    def func(self, var: int) -> None: ...
+    def other_func(self, job: Job[[int]]) -> None: ...
+
+
+job = Job(A().func)
+reveal_type(job)  # N: Revealed type is "__main__.Job[[var: builtins.int]]"
+A().other_func(job)  # This should NOT error (despite the keyword)
+
+# and yet the keyword should remain
+job.into_callable()(var=42)
+job.into_callable()(x=42)  # E: Unexpected keyword argument "x"
+
+# similar for other functions
+def f1(n: object) -> None: ...
+def f2(n: int) -> None: ...
+def f3(n: bool) -> None: ...
+
+# just like how this is legal...
+a1: Callable[[bool], None]
+a1 = f3
+a1 = f2
+a1 = f1
+
+# ... this is also legal
+a2: Job[[bool]]
+a2 = Job(f3)
+a2 = Job(f2)
+a2 = Job(f1)
+
+# and this is not legal
+def f4(n: bytes) -> None: ...
+a1 = f4  # E: Incompatible types in assignment (expression has type "Callable[[bytes], None]", variable has type "Callable[[bool], None]")
+a2 = Job(f4)  # E: Argument 1 to "Job" has incompatible type "Callable[[bytes], None]"; expected "Callable[[bool], None]"
+
+# nor is this:
+a4: Job[[int]]
+a4 = Job(f3)  # E: Argument 1 to "Job" has incompatible type "Callable[[bool], None]"; expected "Callable[[int], None]"
+a4 = Job(f2)
+a4 = Job(f1)
+
+# just like this:
+a3: Callable[[int], None]
+a3 = f3  # E: Incompatible types in assignment (expression has type "Callable[[bool], None]", variable has type "Callable[[int], None]")
+a3 = f2
+a3 = f1
+[builtins fixtures/tuple.pyi]
+
+[case testGenericsInInferredParamspec]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+class Job(Generic[_P]):
+    def __init__(self, target: Callable[_P, None]) -> None: ...
+    def into_callable(self) -> Callable[_P, None]: ...
+
+def generic_f(x: _T) -> None: ...
+
+j = Job(generic_f)
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
+
+jf = j.into_callable()
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
+reveal_type(jf(1))  # N: Revealed type is "None"
+[builtins fixtures/tuple.pyi]
+
+[case testStackedConcatenateIsIllegal]
+from typing_extensions import Concatenate, ParamSpec
+from typing import Callable
+
+P = ParamSpec("P")
+
+def x(f: Callable[Concatenate[int, Concatenate[int, P]], None]) -> None: ...  # E: Nested Concatenates are invalid
+[builtins fixtures/tuple.pyi]

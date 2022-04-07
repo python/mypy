@@ -676,6 +676,13 @@ section of the command line docs.
        from foo import bar
        __all__ = ['bar']
 
+.. confval:: strict_concatenate
+
+    :type: boolean
+    :default: False
+
+    Make arguments prepended via ``Concatenate`` be truly positional-only.
+
 .. confval:: strict_equality
 
     :type: boolean

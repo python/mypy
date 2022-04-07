@@ -5,7 +5,8 @@ from mypy.types import (
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType, UnpackType
+    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor,
+    UnpackType
 )
 
 
@@ -101,14 +102,40 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
+            # Return copy of instance with type erasure flag on.
+            # TODO: what does prefix mean in this case?
+            # TODO: why does this case even happen? Instances aren't plural.
             return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
-            return repl.with_flavor(t.flavor)
+            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix.copy_modified(
+                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+            ))
+        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
+            # if the paramspec is *P.args or **P.kwargs:
+            if t.flavor != ParamSpecFlavor.BARE:
+                assert isinstance(repl, CallableType), "Should not be able to get here."
+                # Is this always the right thing to do?
+                param_spec = repl.param_spec()
+                if param_spec:
+                    return param_spec.with_flavor(t.flavor)
+                else:
+                    return repl
+            else:
+                return Parameters(t.prefix.arg_types + repl.arg_types,
+                                  t.prefix.arg_kinds + repl.arg_kinds,
+                                  t.prefix.arg_names + repl.arg_names,
+                                  variables=[*t.prefix.variables, *repl.variables])
         else:
+            # TODO: should this branch be removed? better not to fail silently
             return repl
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
         raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> Type:
+        return t.copy_modified(arg_types=self.expand_types(t.arg_types))
 
     def visit_callable_type(self, t: CallableType) -> Type:
         param_spec = t.param_spec()
@@ -121,13 +148,18 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, CallableType):
+            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
                 # Substitute *args: P.args, **kwargs: P.kwargs
-                t = t.expand_param_spec(repl)
-                # TODO: Substitute remaining arg types
-                return t.copy_modified(ret_type=t.ret_type.accept(self),
-                                       type_guard=(t.type_guard.accept(self)
-                                                   if t.type_guard is not None else None))
+                prefix = param_spec.prefix
+                # we need to expand the types in the prefix, so might as well
+                # not get them in the first place
+                t = t.expand_param_spec(repl, no_prefix=True)
+                return t.copy_modified(
+                    arg_types=self.expand_types(prefix.arg_types) + t.arg_types,
+                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
+                    arg_names=prefix.arg_names + t.arg_names,
+                    ret_type=t.ret_type.accept(self),
+                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None))
 
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),

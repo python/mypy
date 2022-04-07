@@ -15,7 +15,9 @@ import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union
+from typing import (
+    cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union, Callable
+)
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
@@ -24,7 +26,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    ParamSpecType, get_proper_types
+    ParamSpecType, Parameters, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -623,6 +625,32 @@ class MessageBuilder:
                                is_operator=True)
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
+
+        self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
+
+    def maybe_note_concatenate_pos_args(self,
+                                        original_caller_type: ProperType,
+                                        callee_type: ProperType,
+                                        context: Context,
+                                        code: Optional[ErrorCode] = None) -> None:
+        # pos-only vs positional can be confusing, with Concatenate
+        if (isinstance(callee_type, CallableType) and
+                isinstance(original_caller_type, CallableType) and
+                (original_caller_type.from_concatenate or callee_type.from_concatenate)):
+            names: List[str] = []
+            for c, o in zip(
+                              callee_type.formal_arguments(),
+                              original_caller_type.formal_arguments()):
+                if None in (c.pos, o.pos):
+                    # non-positional
+                    continue
+                if c.name != o.name and c.name is None and o.name is not None:
+                    names.append(o.name)
+
+            if names:
+                missing_arguments = '"' + '", "'.join(names) + '"'
+                self.note(f'This may be because "{original_caller_type.name}" has arguments '
+                          f'named: {missing_arguments}', context, code=code)
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context, *, code: ErrorCode) -> None:
@@ -1652,6 +1680,32 @@ def quote_type_string(type_string: str) -> str:
     return '"{}"'.format(type_string)
 
 
+def format_callable_args(arg_types: List[Type], arg_kinds: List[ArgKind],
+                         arg_names: List[Optional[str]], format: Callable[[Type], str],
+                         verbosity: int) -> str:
+    """Format a bunch of Callable arguments into a string"""
+    arg_strings = []
+    for arg_name, arg_type, arg_kind in zip(
+            arg_names, arg_types, arg_kinds):
+        if (arg_kind == ARG_POS and arg_name is None
+                or verbosity == 0 and arg_kind.is_positional()):
+
+            arg_strings.append(format(arg_type))
+        else:
+            constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+            if arg_kind.is_star() or arg_name is None:
+                arg_strings.append("{}({})".format(
+                    constructor,
+                    format(arg_type)))
+            else:
+                arg_strings.append("{}({}, {})".format(
+                    constructor,
+                    format(arg_type),
+                    repr(arg_name)))
+
+    return ", ".join(arg_strings)
+
+
 def format_type_inner(typ: Type,
                       verbosity: int,
                       fullnames: Optional[Set[str]]) -> str:
@@ -1705,7 +1759,18 @@ def format_type_inner(typ: Type,
         # This is similar to non-generic instance types.
         return typ.name
     elif isinstance(typ, ParamSpecType):
-        return typ.name_with_suffix()
+        # Concatenate[..., P]
+        if typ.prefix.arg_types:
+            args = format_callable_args(
+                typ.prefix.arg_types,
+                typ.prefix.arg_kinds,
+                typ.prefix.arg_names,
+                format,
+                verbosity)
+
+            return f'[{args}, **{typ.name_with_suffix()}]'
+        else:
+            return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
@@ -1782,27 +1847,14 @@ def format_type_inner(typ: Type,
                 return 'Callable[..., {}]'.format(return_type)
             param_spec = func.param_spec()
             if param_spec is not None:
-                return f'Callable[{param_spec.name}, {return_type}]'
-            arg_strings = []
-            for arg_name, arg_type, arg_kind in zip(
-                    func.arg_names, func.arg_types, func.arg_kinds):
-                if (arg_kind == ARG_POS and arg_name is None
-                        or verbosity == 0 and arg_kind.is_positional()):
-
-                    arg_strings.append(format(arg_type))
-                else:
-                    constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                    if arg_kind.is_star() or arg_name is None:
-                        arg_strings.append("{}({})".format(
-                            constructor,
-                            format(arg_type)))
-                    else:
-                        arg_strings.append("{}({}, {})".format(
-                            constructor,
-                            format(arg_type),
-                            repr(arg_name)))
-
-            return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+                return f'Callable[{format(param_spec)}, {return_type}]'
+            args = format_callable_args(
+                func.arg_types,
+                func.arg_kinds,
+                func.arg_names,
+                format,
+                verbosity)
+            return 'Callable[[{}], {}]'.format(args, return_type)
         else:
             # Use a simple representation for function types; proper
             # function types may result in long and difficult-to-read
@@ -1810,6 +1862,14 @@ def format_type_inner(typ: Type,
             return 'overloaded function'
     elif isinstance(typ, UnboundType):
         return str(typ)
+    elif isinstance(typ, Parameters):
+        args = format_callable_args(
+            typ.arg_types,
+            typ.arg_kinds,
+            typ.arg_names,
+            format,
+            verbosity)
+        return f'[{args}]'
     elif typ is None:
         raise RuntimeError('Type is None')
     else:
