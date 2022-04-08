@@ -65,7 +65,7 @@ Here is a small example to whet your appetite:
 
 ```python
 number = input("What is your favourite number?")
-print("Well, my favourite number is: ", number + 1)  # error: Unsupported operand types for + ("str" and "int")
+print("It is", number + 1)  # error: Unsupported operand types for + ("str" and "int")
 ```
 
 See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
