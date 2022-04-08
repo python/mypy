@@ -850,7 +850,7 @@ MyDDict(dict)[0]
 _program.py:6: error: Argument 1 to "defaultdict" has incompatible type "Type[List[Any]]"; expected "Callable[[], str]"
 _program.py:9: error: Invalid index type "str" for "defaultdict[int, str]"; expected type "int"
 _program.py:9: error: Incompatible types in assignment (expression has type "int", target has type "str")
-_program.py:19: error: Dict entry 0 has incompatible type "str": "List[<nothing>]"; expected "int": "List[<nothing>]"
+_program.py:19: error: Argument 1 to "tst" has incompatible type "defaultdict[str, List[<nothing>]]"; expected "defaultdict[int, List[<nothing>]]"
 _program.py:23: error: Invalid index type "str" for "MyDDict[Dict[_KT, _VT]]"; expected type "int"
 
 [case testNoSubcriptionOfStdlibCollections]
@@ -1084,8 +1084,8 @@ _testTypedDictGet.py:8: note: Revealed type is "builtins.str"
 _testTypedDictGet.py:9: note: Revealed type is "builtins.object"
 _testTypedDictGet.py:10: error: All overload variants of "get" of "Mapping" require at least one argument
 _testTypedDictGet.py:10: note: Possible overload variants:
-_testTypedDictGet.py:10: note:     def get(self, key: str) -> object
-_testTypedDictGet.py:10: note:     def [_T] get(self, str, object) -> object
+_testTypedDictGet.py:10: note:     def get(self, str) -> object
+_testTypedDictGet.py:10: note:     def [_T] get(self, str, default: object) -> object
 _testTypedDictGet.py:12: note: Revealed type is "builtins.object"
 
 [case testTypedDictMappingMethods]

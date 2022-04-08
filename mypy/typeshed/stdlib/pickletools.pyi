@@ -1,7 +1,9 @@
-from typing import IO, Any, Callable, Iterator, MutableMapping, Type
+from typing import IO, Any, Callable, Iterator, MutableMapping
+
+__all__ = ["dis", "genops", "optimize"]
 
 _Reader = Callable[[IO[bytes]], Any]
-bytes_types: tuple[Type[Any], ...]
+bytes_types: tuple[type[Any], ...]
 
 UP_TO_NEWLINE: int
 TAKEN_FROM_ARGUMENT1: int
@@ -108,9 +110,9 @@ long4: ArgumentDescriptor
 
 class StackObject:
     name: str
-    obtype: Type[Any] | tuple[Type[Any], ...]
+    obtype: type[Any] | tuple[type[Any], ...]
     doc: str
-    def __init__(self, name: str, obtype: Type[Any] | tuple[Type[Any], ...], doc: str) -> None: ...
+    def __init__(self, name: str, obtype: type[Any] | tuple[type[Any], ...], doc: str) -> None: ...
 
 pyint: StackObject
 pylong: StackObject

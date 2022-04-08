@@ -2,6 +2,8 @@ from codeop import CommandCompiler
 from types import CodeType
 from typing import Any, Callable, Mapping
 
+__all__ = ["InteractiveInterpreter", "InteractiveConsole", "interact", "compile_command"]
+
 class InteractiveInterpreter:
     locals: Mapping[str, Any]  # undocumented
     compile: CommandCompiler  # undocumented

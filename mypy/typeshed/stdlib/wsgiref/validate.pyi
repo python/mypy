@@ -1,6 +1,8 @@
 from _typeshed.wsgi import ErrorStream, InputStream, WSGIApplication
 from typing import Any, Callable, Iterable, Iterator, NoReturn
 
+__all__ = ["validator"]
+
 class WSGIWarning(Warning): ...
 
 def validator(application: WSGIApplication) -> WSGIApplication: ...

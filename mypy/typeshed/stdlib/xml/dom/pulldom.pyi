@@ -1,5 +1,6 @@
 import sys
-from typing import IO, Any, Sequence, Union
+from _typeshed import SupportsRead
+from typing import Any, Sequence
 from typing_extensions import Literal
 from xml.dom.minidom import Document, DOMImplementation, Element, Text
 from xml.sax.handler import ContentHandler
@@ -14,8 +15,8 @@ PROCESSING_INSTRUCTION: Literal["PROCESSING_INSTRUCTION"]
 IGNORABLE_WHITESPACE: Literal["IGNORABLE_WHITESPACE"]
 CHARACTERS: Literal["CHARACTERS"]
 
-_DocumentFactory = Union[DOMImplementation, None]
-_Node = Union[Document, Element, Text]
+_DocumentFactory = DOMImplementation | None
+_Node = Document | Element | Text
 
 _Event = tuple[
     Literal[
@@ -62,13 +63,14 @@ class ErrorHandler:
     def fatalError(self, exception) -> None: ...
 
 class DOMEventStream:
-    stream: IO[bytes]
+    stream: SupportsRead[bytes] | SupportsRead[str]
     parser: XMLReader
     bufsize: int
-    def __init__(self, stream: IO[bytes], parser: XMLReader, bufsize: int) -> None: ...
+    def __init__(self, stream: SupportsRead[bytes] | SupportsRead[str], parser: XMLReader, bufsize: int) -> None: ...
     pulldom: Any
     if sys.version_info < (3, 11):
         def __getitem__(self, pos): ...
+
     def __next__(self): ...
     def __iter__(self): ...
     def getEvent(self) -> _Event: ...
@@ -85,5 +87,7 @@ class SAX2DOM(PullDOM):
 
 default_bufsize: int
 
-def parse(stream_or_string: str | IO[bytes], parser: XMLReader | None = ..., bufsize: int | None = ...) -> DOMEventStream: ...
+def parse(
+    stream_or_string: str | SupportsRead[bytes] | SupportsRead[str], parser: XMLReader | None = ..., bufsize: int | None = ...
+) -> DOMEventStream: ...
 def parseString(string: str, parser: XMLReader | None = ...) -> DOMEventStream: ...

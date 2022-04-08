@@ -1,8 +1,10 @@
 import sys
 from pathlib import Path
-from typing import BinaryIO, Callable, Union
+from typing import BinaryIO, Callable
 
-_Path = Union[str, Path, BinaryIO]
+__all__ = ["ZipAppError", "create_archive", "get_interpreter"]
+
+_Path = str | Path | BinaryIO
 
 class ZipAppError(ValueError): ...
 

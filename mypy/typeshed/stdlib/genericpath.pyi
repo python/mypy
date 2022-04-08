@@ -3,6 +3,20 @@ from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRichComparison
 from typing import Sequence, overload
 from typing_extensions import Literal
 
+__all__ = [
+    "commonprefix",
+    "exists",
+    "getatime",
+    "getctime",
+    "getmtime",
+    "getsize",
+    "isdir",
+    "isfile",
+    "samefile",
+    "sameopenfile",
+    "samestat",
+]
+
 # All overloads can return empty string. Ideally, Literal[""] would be a valid
 # Iterable[T], so that list[T] | Literal[""] could be used as a return
 # type. But because this only works when T is str, we need Sequence[T] instead.

@@ -1,10 +1,10 @@
 import sys
 from _typeshed import SupportsTrunc
-from typing import Iterable, SupportsFloat, Union, overload
+from typing import Iterable, SupportsFloat, overload
 from typing_extensions import SupportsIndex
 
 if sys.version_info >= (3, 8):
-    _SupportsFloatOrIndex = Union[SupportsFloat, SupportsIndex]
+    _SupportsFloatOrIndex = SupportsFloat | SupportsIndex
 else:
     _SupportsFloatOrIndex = SupportsFloat
 
@@ -41,6 +41,10 @@ if sys.version_info >= (3, 8):
 def erf(__x: _SupportsFloatOrIndex) -> float: ...
 def erfc(__x: _SupportsFloatOrIndex) -> float: ...
 def exp(__x: _SupportsFloatOrIndex) -> float: ...
+
+if sys.version_info >= (3, 11):
+    def exp2(__x: _SupportsFloatOrIndex) -> float: ...
+
 def expm1(__x: _SupportsFloatOrIndex) -> float: ...
 def fabs(__x: _SupportsFloatOrIndex) -> float: ...
 

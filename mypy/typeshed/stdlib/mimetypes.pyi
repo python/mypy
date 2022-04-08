@@ -2,6 +2,22 @@ import sys
 from _typeshed import StrPath
 from typing import IO, Sequence
 
+__all__ = [
+    "knownfiles",
+    "inited",
+    "MimeTypes",
+    "guess_type",
+    "guess_all_extensions",
+    "guess_extension",
+    "add_type",
+    "init",
+    "read_mime_types",
+    "suffix_map",
+    "encodings_map",
+    "types_map",
+    "common_types",
+]
+
 if sys.version_info >= (3, 8):
     def guess_type(url: StrPath, strict: bool = ...) -> tuple[str | None, str | None]: ...
 
@@ -32,6 +48,7 @@ class MimeTypes:
         def guess_type(self, url: StrPath, strict: bool = ...) -> tuple[str | None, str | None]: ...
     else:
         def guess_type(self, url: str, strict: bool = ...) -> tuple[str | None, str | None]: ...
+
     def guess_all_extensions(self, type: str, strict: bool = ...) -> list[str]: ...
     def read(self, filename: str, strict: bool = ...) -> None: ...
     def readfp(self, fp: IO[str], strict: bool = ...) -> None: ...

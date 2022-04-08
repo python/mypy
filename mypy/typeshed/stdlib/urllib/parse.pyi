@@ -1,10 +1,34 @@
 import sys
-from typing import Any, AnyStr, Callable, Generic, Mapping, NamedTuple, Sequence, Union, overload
+from typing import Any, AnyStr, Callable, Generic, Mapping, NamedTuple, Sequence, overload
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-_Str = Union[bytes, str]
+__all__ = [
+    "urlparse",
+    "urlunparse",
+    "urljoin",
+    "urldefrag",
+    "urlsplit",
+    "urlunsplit",
+    "urlencode",
+    "parse_qs",
+    "parse_qsl",
+    "quote",
+    "quote_plus",
+    "quote_from_bytes",
+    "unquote",
+    "unquote_plus",
+    "unquote_to_bytes",
+    "DefragResult",
+    "ParseResult",
+    "SplitResult",
+    "DefragResultBytes",
+    "ParseResultBytes",
+    "SplitResultBytes",
+]
+
+_Str = bytes | str
 
 uses_relative: list[str]
 uses_netloc: list[str]
@@ -21,14 +45,18 @@ class _ResultMixinBase(Generic[AnyStr]):
 class _ResultMixinStr(_ResultMixinBase[str]):
     def encode(self, encoding: str = ..., errors: str = ...) -> _ResultMixinBytes: ...
 
-class _ResultMixinBytes(_ResultMixinBase[str]):
+class _ResultMixinBytes(_ResultMixinBase[bytes]):
     def decode(self, encoding: str = ..., errors: str = ...) -> _ResultMixinStr: ...
 
 class _NetlocResultMixinBase(Generic[AnyStr]):
-    username: AnyStr | None
-    password: AnyStr | None
-    hostname: AnyStr | None
-    port: int | None
+    @property
+    def username(self) -> AnyStr | None: ...
+    @property
+    def password(self) -> AnyStr | None: ...
+    @property
+    def hostname(self) -> AnyStr | None: ...
+    @property
+    def port(self) -> int | None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
@@ -36,8 +64,12 @@ class _NetlocResultMixinStr(_NetlocResultMixinBase[str], _ResultMixinStr): ...
 class _NetlocResultMixinBytes(_NetlocResultMixinBase[bytes], _ResultMixinBytes): ...
 
 class _DefragResultBase(tuple[Any, ...], Generic[AnyStr]):
-    url: AnyStr
-    fragment: AnyStr
+    if sys.version_info >= (3, 10):
+        __match_args__ = ("url", "fragment")
+    @property
+    def url(self) -> AnyStr: ...
+    @property
+    def fragment(self) -> AnyStr: ...
 
 class _SplitResultBase(NamedTuple):
     scheme: str
@@ -140,3 +172,4 @@ def urlunparse(components: Sequence[AnyStr | None]) -> AnyStr: ...
 def urlunsplit(components: tuple[AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None, AnyStr | None]) -> AnyStr: ...
 @overload
 def urlunsplit(components: Sequence[AnyStr | None]) -> AnyStr: ...
+def unwrap(url: str) -> str: ...

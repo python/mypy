@@ -1,14 +1,95 @@
 import sys
 from types import FrameType, TracebackType
-from typing import Any, Callable, Iterable, Mapping, Optional, Type, TypeVar
+from typing import Any, Callable, Iterable, Mapping, TypeVar
 
 # TODO recursive type
-_TF = Callable[[FrameType, str, Any], Optional[Callable[..., Any]]]
+_TF = Callable[[FrameType, str, Any], Callable[..., Any] | None]
 
 _PF = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
-__all__: list[str]
+if sys.version_info >= (3, 10):
+    __all__ = [
+        "get_ident",
+        "active_count",
+        "Condition",
+        "current_thread",
+        "enumerate",
+        "main_thread",
+        "TIMEOUT_MAX",
+        "Event",
+        "Lock",
+        "RLock",
+        "Semaphore",
+        "BoundedSemaphore",
+        "Thread",
+        "Barrier",
+        "BrokenBarrierError",
+        "Timer",
+        "ThreadError",
+        "setprofile",
+        "settrace",
+        "local",
+        "stack_size",
+        "excepthook",
+        "ExceptHookArgs",
+        "gettrace",
+        "getprofile",
+        "get_native_id",
+    ]
+elif sys.version_info >= (3, 8):
+    __all__ = [
+        "get_ident",
+        "active_count",
+        "Condition",
+        "current_thread",
+        "enumerate",
+        "main_thread",
+        "TIMEOUT_MAX",
+        "Event",
+        "Lock",
+        "RLock",
+        "Semaphore",
+        "BoundedSemaphore",
+        "Thread",
+        "Barrier",
+        "BrokenBarrierError",
+        "Timer",
+        "ThreadError",
+        "setprofile",
+        "settrace",
+        "local",
+        "stack_size",
+        "excepthook",
+        "ExceptHookArgs",
+        "get_native_id",
+    ]
+else:
+    __all__ = [
+        "get_ident",
+        "active_count",
+        "Condition",
+        "current_thread",
+        "enumerate",
+        "main_thread",
+        "TIMEOUT_MAX",
+        "Event",
+        "Lock",
+        "RLock",
+        "Semaphore",
+        "BoundedSemaphore",
+        "Thread",
+        "Barrier",
+        "BrokenBarrierError",
+        "Timer",
+        "ThreadError",
+        "setprofile",
+        "settrace",
+        "local",
+        "stack_size",
+    ]
+
+_profile_hook: _PF | None
 
 def active_count() -> int: ...
 def activeCount() -> int: ...  # deprecated alias for active_count()
@@ -35,13 +116,14 @@ TIMEOUT_MAX: float
 class ThreadError(Exception): ...
 
 class local:
-    def __getattribute__(self, name: str) -> Any: ...
-    def __setattr__(self, name: str, value: Any) -> None: ...
-    def __delattr__(self, name: str) -> None: ...
+    def __getattribute__(self, __name: str) -> Any: ...
+    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __delattr__(self, __name: str) -> None: ...
 
 class Thread:
     name: str
-    ident: int | None
+    @property
+    def ident(self) -> int | None: ...
     daemon: bool
     def __init__(
         self,
@@ -59,6 +141,7 @@ class Thread:
     if sys.version_info >= (3, 8):
         @property
         def native_id(self) -> int | None: ...  # only available on some platforms
+
     def is_alive(self) -> bool: ...
     if sys.version_info < (3, 9):
         def isAlive(self) -> bool: ...
@@ -75,7 +158,7 @@ class Lock:
     def __init__(self) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
@@ -86,9 +169,7 @@ class _RLock:
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
     __enter__ = acquire
-    def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> bool | None: ...
+    def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
 
 RLock = _RLock
 
@@ -96,7 +177,7 @@ class Condition:
     def __init__(self, lock: Lock | _RLock | None = ...) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
@@ -108,9 +189,7 @@ class Condition:
 
 class Semaphore:
     def __init__(self, value: int = ...) -> None: ...
-    def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> bool | None: ...
+    def __exit__(self, t: type[BaseException] | None, v: BaseException | None, tb: TracebackType | None) -> None: ...
     def acquire(self, blocking: bool = ..., timeout: float | None = ...) -> bool: ...
     def __enter__(self, blocking: bool = ..., timeout: float | None = ...) -> bool: ...
     if sys.version_info >= (3, 9):
@@ -145,9 +224,12 @@ class Timer(Thread):
     def cancel(self) -> None: ...
 
 class Barrier:
-    parties: int
-    n_waiting: int
-    broken: bool
+    @property
+    def parties(self) -> int: ...
+    @property
+    def n_waiting(self) -> int: ...
+    @property
+    def broken(self) -> bool: ...
     def __init__(self, parties: int, action: Callable[[], None] | None = ..., timeout: float | None = ...) -> None: ...
     def wait(self, timeout: float | None = ...) -> int: ...
     def reset(self) -> None: ...

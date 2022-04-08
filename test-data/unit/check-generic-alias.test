@@ -199,14 +199,6 @@ t23: collections.abc.ValuesView[str]
 [builtins fixtures/tuple.pyi]
 
 
-[case testGenericAliasImportRe]
-# flags: --python-version 3.9
-from re import Pattern, Match
-t1: Pattern[str]
-t2: Match[str]
-[builtins fixtures/tuple.pyi]
-
-
 [case testGenericBuiltinTupleTyping]
 # flags: --python-version 3.6
 from typing import Tuple
