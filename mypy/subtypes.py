@@ -294,7 +294,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not self.check_type_parameter(lefta, righta, COVARIANT):
                             nominal = False
                     else:
-                        if not self.check_type_parameter(lefta, righta, COVARIANT):
+                        if not is_equivalent(lefta, righta):
                             nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
