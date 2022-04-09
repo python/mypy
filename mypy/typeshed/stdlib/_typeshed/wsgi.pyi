@@ -4,6 +4,7 @@
 
 from sys import _OptExcInfo
 from typing import Any, Callable, Iterable, Protocol
+from typing_extensions import TypeAlias
 
 # stable
 class StartResponse(Protocol):
@@ -11,8 +12,8 @@ class StartResponse(Protocol):
         self, status: str, headers: list[tuple[str, str]], exc_info: _OptExcInfo | None = ...
     ) -> Callable[[bytes], Any]: ...
 
-WSGIEnvironment = dict[str, Any]  # stable
-WSGIApplication = Callable[[WSGIEnvironment, StartResponse], Iterable[bytes]]  # stable
+WSGIEnvironment: TypeAlias = dict[str, Any]  # stable
+WSGIApplication: TypeAlias = Callable[[WSGIEnvironment, StartResponse], Iterable[bytes]]  # stable
 
 # WSGI input streams per PEP 3333, stable
 class InputStream(Protocol):

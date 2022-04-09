@@ -1,23 +1,52 @@
+import os
 import sys
-from typing import Any
+from contextlib import AbstractContextManager
+from pathlib import Path
+from types import ModuleType
+from typing import Any, BinaryIO, Iterator, TextIO
 
-# This is a >=3.7 module, so we conditionally include its source.
-if sys.version_info >= (3, 7):
-    import os
-    from contextlib import AbstractContextManager
-    from pathlib import Path
-    from types import ModuleType
-    from typing import BinaryIO, Iterator, TextIO, Union
+if sys.version_info >= (3, 10):
+    __all__ = [
+        "Package",
+        "Resource",
+        "ResourceReader",
+        "as_file",
+        "contents",
+        "files",
+        "is_resource",
+        "open_binary",
+        "open_text",
+        "path",
+        "read_binary",
+        "read_text",
+    ]
+elif sys.version_info >= (3, 9):
+    __all__ = [
+        "Package",
+        "Resource",
+        "as_file",
+        "contents",
+        "files",
+        "is_resource",
+        "open_binary",
+        "open_text",
+        "path",
+        "read_binary",
+        "read_text",
+    ]
+else:
+    __all__ = ["Package", "Resource", "contents", "is_resource", "open_binary", "open_text", "path", "read_binary", "read_text"]
 
-    Package = Union[str, ModuleType]
-    Resource = Union[str, os.PathLike[Any]]
-    def open_binary(package: Package, resource: Resource) -> BinaryIO: ...
-    def open_text(package: Package, resource: Resource, encoding: str = ..., errors: str = ...) -> TextIO: ...
-    def read_binary(package: Package, resource: Resource) -> bytes: ...
-    def read_text(package: Package, resource: Resource, encoding: str = ..., errors: str = ...) -> str: ...
-    def path(package: Package, resource: Resource) -> AbstractContextManager[Path]: ...
-    def is_resource(package: Package, name: str) -> bool: ...
-    def contents(package: Package) -> Iterator[str]: ...
+Package = str | ModuleType
+Resource = str | os.PathLike[Any]
+
+def open_binary(package: Package, resource: Resource) -> BinaryIO: ...
+def open_text(package: Package, resource: Resource, encoding: str = ..., errors: str = ...) -> TextIO: ...
+def read_binary(package: Package, resource: Resource) -> bytes: ...
+def read_text(package: Package, resource: Resource, encoding: str = ..., errors: str = ...) -> str: ...
+def path(package: Package, resource: Resource) -> AbstractContextManager[Path]: ...
+def is_resource(package: Package, name: str) -> bool: ...
+def contents(package: Package) -> Iterator[str]: ...
 
 if sys.version_info >= (3, 9):
     from importlib.abc import Traversable

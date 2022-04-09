@@ -6,7 +6,8 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -831,8 +832,8 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         name: str,
                                         mx: MemberContext,
                                         ) -> Optional[Type]:
-    # Skip "_order_" and "__order__", since Enum will remove it
-    if name in ("_order_", "__order__"):
+    # Skip these since Enum will remove it
+    if name in ENUM_REMOVED_PROPS:
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
@@ -841,12 +842,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
-    # When we analyze enums, the corresponding Instance is always considered to be erased
-    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-    # in typeshed. However, this is really more of an implementation detail of how Enums
-    # are typed, and we really don't want to treat every single Enum value as if it were
-    # from type variable substitution. So we reset the 'erased' field here.
-    return itype.copy_modified(erased=False, last_known_value=enum_literal)
+    return itype.copy_modified(last_known_value=enum_literal)
 
 
 def analyze_typeddict_access(name: str, typ: TypedDictType,

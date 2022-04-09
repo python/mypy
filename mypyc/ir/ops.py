@@ -214,15 +214,21 @@ class Op(Value):
         pass
 
 
-class Assign(Op):
+class BaseAssign(Op):
+    """Base class for ops that assign to a register."""
+    def __init__(self, dest: Register, line: int = -1) -> None:
+        super().__init__(line)
+        self.dest = dest
+
+
+class Assign(BaseAssign):
     """Assign a value to a Register (dest = src)."""
 
     error_kind = ERR_NEVER
 
     def __init__(self, dest: Register, src: Value, line: int = -1) -> None:
-        super().__init__(line)
+        super().__init__(dest, line)
         self.src = src
-        self.dest = dest
 
     def sources(self) -> List[Value]:
         return [self.src]
@@ -234,7 +240,7 @@ class Assign(Op):
         return visitor.visit_assign(self)
 
 
-class AssignMulti(Op):
+class AssignMulti(BaseAssign):
     """Assign multiple values to a Register (dest = src1, src2, ...).
 
     This is used to initialize RArray values. It's provided to avoid
@@ -248,12 +254,11 @@ class AssignMulti(Op):
     error_kind = ERR_NEVER
 
     def __init__(self, dest: Register, src: List[Value], line: int = -1) -> None:
-        super().__init__(line)
+        super().__init__(dest, line)
         assert src
         assert isinstance(dest.type, RArray)
         assert dest.type.length == len(src)
         self.src = src
-        self.dest = dest
 
     def sources(self) -> List[Value]:
         return self.src[:]
@@ -490,6 +495,7 @@ class Call(RegisterOp):
         super().__init__(line)
         self.fn = fn
         self.args = list(args)
+        assert len(self.args) == len(fn.sig.args)
         self.type = fn.sig.ret_type
 
     def sources(self) -> List[Value]:

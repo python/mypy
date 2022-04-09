@@ -4,12 +4,46 @@ from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Pattern, Protocol, Sequence, Type, Union, overload
+from typing import Any, Pattern, Protocol, Sequence, overload
+
+if sys.version_info >= (3, 7):
+    __all__ = [
+        "SMTPException",
+        "SMTPNotSupportedError",
+        "SMTPServerDisconnected",
+        "SMTPResponseException",
+        "SMTPSenderRefused",
+        "SMTPRecipientsRefused",
+        "SMTPDataError",
+        "SMTPConnectError",
+        "SMTPHeloError",
+        "SMTPAuthenticationError",
+        "quoteaddr",
+        "quotedata",
+        "SMTP",
+        "SMTP_SSL",
+    ]
+else:
+    __all__ = [
+        "SMTPException",
+        "SMTPServerDisconnected",
+        "SMTPResponseException",
+        "SMTPSenderRefused",
+        "SMTPRecipientsRefused",
+        "SMTPDataError",
+        "SMTPConnectError",
+        "SMTPHeloError",
+        "SMTPAuthenticationError",
+        "quoteaddr",
+        "quotedata",
+        "SMTP",
+        "SMTP_SSL",
+    ]
 
 _Reply = tuple[int, bytes]
 _SendErrs = dict[str, _Reply]
 # Should match source_address for socket.create_connection
-_SourceAddress = tuple[Union[bytearray, bytes, str], int]
+_SourceAddress = tuple[bytearray | bytes | str, int]
 
 SMTP_PORT: int
 SMTP_SSL_PORT: int
@@ -79,7 +113,7 @@ class SMTP:
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> None: ...
     def set_debuglevel(self, debuglevel: int) -> None: ...
     def connect(self, host: str = ..., port: int = ..., source_address: _SourceAddress | None = ...) -> _Reply: ...

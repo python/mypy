@@ -10,7 +10,7 @@ from typing import List, Optional, Set
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
     Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, ParamSpecType,
-    get_proper_type
+    UnpackType, TupleType, get_proper_type
 )
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
@@ -94,6 +94,14 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                             format_type(arg), info.name, format_type(tvar.upper_bound)),
                         t, code=codes.TYPE_VAR)
         super().visit_instance(t)
+
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        proper_type = get_proper_type(typ.type)
+        if isinstance(proper_type, TupleType):
+            return
+        if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
+            return
+        self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:

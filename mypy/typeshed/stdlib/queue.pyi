@@ -5,6 +5,11 @@ from typing import Any, Generic, TypeVar
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
+if sys.version_info >= (3, 7):
+    __all__ = ["Empty", "Full", "Queue", "PriorityQueue", "LifoQueue", "SimpleQueue"]
+else:
+    __all__ = ["Empty", "Full", "Queue", "PriorityQueue", "LifoQueue"]
+
 _T = TypeVar("_T")
 
 class Empty(Exception): ...
@@ -18,6 +23,8 @@ class Queue(Generic[_T]):
     not_full: Condition  # undocumented
     all_tasks_done: Condition  # undocumented
     unfinished_tasks: int  # undocumented
+    # Despite the fact that `queue` has `deque` type,
+    # we treat it as `Any` to allow different implementations in subtypes.
     queue: Any  # undocumented
     def __init__(self, maxsize: int = ...) -> None: ...
     def _init(self, maxsize: int) -> None: ...
@@ -36,8 +43,11 @@ class Queue(Generic[_T]):
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-class PriorityQueue(Queue[_T]): ...
-class LifoQueue(Queue[_T]): ...
+class PriorityQueue(Queue[_T]):
+    queue: list[_T]
+
+class LifoQueue(Queue[_T]):
+    queue: list[_T]
 
 if sys.version_info >= (3, 7):
     class SimpleQueue(Generic[_T]):

@@ -1,8 +1,10 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Type, TypeVar, overload
+from typing import TypeVar, overload
 
 from .handlers import SimpleHandler
 from .types import ErrorStream, StartResponse, WSGIApplication, WSGIEnvironment
+
+__all__ = ["WSGIServer", "WSGIRequestHandler", "demo_app", "make_server"]
 
 server_version: str  # undocumented
 sys_version: str  # undocumented
@@ -30,8 +32,8 @@ def demo_app(environ: WSGIEnvironment, start_response: StartResponse) -> list[by
 _S = TypeVar("_S", bound=WSGIServer)
 
 @overload
-def make_server(host: str, port: int, app: WSGIApplication, *, handler_class: Type[WSGIRequestHandler] = ...) -> WSGIServer: ...
+def make_server(host: str, port: int, app: WSGIApplication, *, handler_class: type[WSGIRequestHandler] = ...) -> WSGIServer: ...
 @overload
 def make_server(
-    host: str, port: int, app: WSGIApplication, server_class: Type[_S], handler_class: Type[WSGIRequestHandler] = ...
+    host: str, port: int, app: WSGIApplication, server_class: type[_S], handler_class: type[WSGIRequestHandler] = ...
 ) -> _S: ...

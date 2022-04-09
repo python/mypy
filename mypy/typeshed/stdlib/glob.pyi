@@ -2,10 +2,30 @@ import sys
 from _typeshed import StrOrBytesPath
 from typing import AnyStr, Iterator
 
+__all__ = ["escape", "glob", "iglob"]
+
 def glob0(dirname: AnyStr, pattern: AnyStr) -> list[AnyStr]: ...
 def glob1(dirname: AnyStr, pattern: AnyStr) -> list[AnyStr]: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
+    def glob(
+        pathname: AnyStr,
+        *,
+        root_dir: StrOrBytesPath | None = ...,
+        dir_fd: int | None = ...,
+        recursive: bool = ...,
+        include_hidden: bool = ...,
+    ) -> list[AnyStr]: ...
+    def iglob(
+        pathname: AnyStr,
+        *,
+        root_dir: StrOrBytesPath | None = ...,
+        dir_fd: int | None = ...,
+        recursive: bool = ...,
+        include_hidden: bool = ...,
+    ) -> Iterator[AnyStr]: ...
+
+elif sys.version_info >= (3, 10):
     def glob(
         pathname: AnyStr, *, root_dir: StrOrBytesPath | None = ..., dir_fd: int | None = ..., recursive: bool = ...
     ) -> list[AnyStr]: ...

@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable, Iterable
 from logging import Logger
-from multiprocessing import connection, context, pool, synchronize
+from multiprocessing import connection, context, pool, reduction as reducer, synchronize
 from multiprocessing.context import (
     AuthenticationError as AuthenticationError,
     BaseContext,
@@ -20,7 +20,7 @@ from multiprocessing.process import active_children as active_children, current_
 # multiprocessing.queues or the aliases defined below. See #4266 for discussion.
 from multiprocessing.queues import JoinableQueue as JoinableQueue, Queue as Queue, SimpleQueue as SimpleQueue
 from multiprocessing.spawn import freeze_support as freeze_support
-from typing import Any, Union, overload
+from typing import Any, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
@@ -28,6 +28,86 @@ if sys.version_info >= (3, 8):
 
 if sys.platform != "win32":
     from multiprocessing.context import ForkContext, ForkServerContext
+
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "Array",
+        "AuthenticationError",
+        "Barrier",
+        "BoundedSemaphore",
+        "BufferTooShort",
+        "Condition",
+        "Event",
+        "JoinableQueue",
+        "Lock",
+        "Manager",
+        "Pipe",
+        "Pool",
+        "Process",
+        "ProcessError",
+        "Queue",
+        "RLock",
+        "RawArray",
+        "RawValue",
+        "Semaphore",
+        "SimpleQueue",
+        "TimeoutError",
+        "Value",
+        "active_children",
+        "allow_connection_pickling",
+        "cpu_count",
+        "current_process",
+        "freeze_support",
+        "get_all_start_methods",
+        "get_context",
+        "get_logger",
+        "get_start_method",
+        "parent_process",
+        "log_to_stderr",
+        "reducer",
+        "set_executable",
+        "set_forkserver_preload",
+        "set_start_method",
+    ]
+else:
+    __all__ = [
+        "Array",
+        "AuthenticationError",
+        "Barrier",
+        "BoundedSemaphore",
+        "BufferTooShort",
+        "Condition",
+        "Event",
+        "JoinableQueue",
+        "Lock",
+        "Manager",
+        "Pipe",
+        "Pool",
+        "Process",
+        "ProcessError",
+        "Queue",
+        "RLock",
+        "RawArray",
+        "RawValue",
+        "Semaphore",
+        "SimpleQueue",
+        "TimeoutError",
+        "Value",
+        "active_children",
+        "allow_connection_pickling",
+        "cpu_count",
+        "current_process",
+        "freeze_support",
+        "get_all_start_methods",
+        "get_context",
+        "get_logger",
+        "get_start_method",
+        "log_to_stderr",
+        "reducer",
+        "set_executable",
+        "set_forkserver_preload",
+        "set_start_method",
+    ]
 
 # The following type aliases can be used to annotate the return values of
 # the corresponding functions. They are not defined at runtime.
@@ -54,7 +134,7 @@ _SemaphoreType = synchronize.Semaphore
 # be identical (modulo self).
 
 # Synchronization primitives
-_LockLike = Union[synchronize.Lock, synchronize.RLock]
+_LockLike = synchronize.Lock | synchronize.RLock
 RawValue = context._default_context.RawValue
 RawArray = context._default_context.RawArray
 Value = context._default_context.Value

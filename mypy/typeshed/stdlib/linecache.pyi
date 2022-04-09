@@ -1,4 +1,10 @@
+import sys
 from typing import Any, Protocol
+
+if sys.version_info >= (3, 9):
+    __all__ = ["getline", "clearcache", "checkcache", "lazycache"]
+else:
+    __all__ = ["getline", "clearcache", "checkcache"]
 
 _ModuleGlobals = dict[str, Any]
 _ModuleMetadata = tuple[int, float, list[str], str]

@@ -4,7 +4,7 @@ from mypy.backports import OrderedDict, nullcontext
 from contextlib import contextmanager
 import itertools
 from typing import (
-    Any, cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
+    cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
 )
 from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
@@ -1556,7 +1556,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               isinstance(callee_type.item, Instance) and
               (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
             self.msg.concrete_only_call(callee_type, context)
-        elif not is_subtype(caller_type, callee_type):
+        elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
             code = messages.incompatible_argument(n,
@@ -1607,8 +1607,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Record if we succeeded. Next we need to see if maybe normal procedure
                 # gives a narrower type.
                 if unioned_return:
-                    # TODO: fix signature of zip() in typeshed.
-                    returns, inferred_types = cast(Any, zip)(*unioned_return)
+                    returns, inferred_types = zip(*unioned_return)
                     # Note that we use `combine_function_signatures` instead of just returning
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
@@ -2417,8 +2416,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            # TODO also check for "from __future__ import division"
-            return '__div__'
+            return (
+                '__truediv__'
+                if self.chk.tree.is_future_flag_set('division')
+                else '__div__'
+            )
         else:
             return operators.op_methods[op]
 
@@ -3318,8 +3320,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vt = join.join_type_list(values)
         if not isinstance(vt, Instance):
             return None
-        # TODO: update tests instead?
-        vt.erased = True
         return self.chk.named_generic_type(container_fullname, [vt])
 
     def check_lst_expr(self, items: List[Expression], fullname: str,
@@ -3446,9 +3446,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             return None
-        # TODO: update tests instead?
-        kt.erased = True
-        vt.erased = True
         return self.chk.named_generic_type('builtins.dict', [kt, vt])
 
     def visit_dict_expr(self, e: DictExpr) -> Type:

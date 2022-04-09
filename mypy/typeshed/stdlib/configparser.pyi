@@ -1,8 +1,32 @@
 import sys
 from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
 from collections.abc import Callable, ItemsView, Iterable, Iterator, Mapping, MutableMapping, Sequence
-from typing import Any, ClassVar, Optional, Pattern, Type, TypeVar, overload
+from typing import Any, ClassVar, Pattern, TypeVar, overload
 from typing_extensions import Literal
+
+__all__ = [
+    "NoSectionError",
+    "DuplicateOptionError",
+    "DuplicateSectionError",
+    "NoOptionError",
+    "InterpolationError",
+    "InterpolationDepthError",
+    "InterpolationMissingOptionError",
+    "InterpolationSyntaxError",
+    "ParsingError",
+    "MissingSectionHeaderError",
+    "ConfigParser",
+    "SafeConfigParser",
+    "RawConfigParser",
+    "Interpolation",
+    "BasicInterpolation",
+    "ExtendedInterpolation",
+    "LegacyInterpolation",
+    "SectionProxy",
+    "ConverterMapping",
+    "DEFAULTSECT",
+    "MAX_INTERPOLATION_DEPTH",
+]
 
 # Internal type aliases
 _section = Mapping[str, str]
@@ -16,8 +40,8 @@ if sys.version_info >= (3, 7):
 else:
     _Path = StrPath
 
-DEFAULTSECT: str
-MAX_INTERPOLATION_DEPTH: int
+DEFAULTSECT: Literal["DEFAULT"]
+MAX_INTERPOLATION_DEPTH: Literal[10]
 
 class Interpolation:
     def before_get(self, parser: _parser, section: str, option: str, value: str, defaults: _section) -> str: ...
@@ -47,7 +71,7 @@ class RawConfigParser(_parser):
     def __init__(
         self,
         defaults: Mapping[str, str | None] | None = ...,
-        dict_type: Type[Mapping[str, str]] = ...,
+        dict_type: type[Mapping[str, str]] = ...,
         allow_no_value: Literal[True] = ...,
         *,
         delimiters: Sequence[str] = ...,
@@ -63,7 +87,7 @@ class RawConfigParser(_parser):
     def __init__(
         self,
         defaults: _section | None = ...,
-        dict_type: Type[Mapping[str, str]] = ...,
+        dict_type: type[Mapping[str, str]] = ...,
         allow_no_value: bool = ...,
         *,
         delimiters: Sequence[str] = ...,
@@ -76,10 +100,11 @@ class RawConfigParser(_parser):
         converters: _converters = ...,
     ) -> None: ...
     def __len__(self) -> int: ...
-    def __getitem__(self, section: str) -> SectionProxy: ...
-    def __setitem__(self, section: str, options: _section) -> None: ...
-    def __delitem__(self, section: str) -> None: ...
+    def __getitem__(self, key: str) -> SectionProxy: ...
+    def __setitem__(self, key: str, value: _section) -> None: ...
+    def __delitem__(self, key: str) -> None: ...
     def __iter__(self) -> Iterator[str]: ...
+    def __contains__(self, key: object) -> bool: ...
     def defaults(self) -> _section: ...
     def sections(self) -> list[str]: ...
     def add_section(self, section: str) -> None: ...
@@ -138,8 +163,8 @@ class RawConfigParser(_parser):
 
 class ConfigParser(RawConfigParser): ...
 
-if sys.version_info < (3, 11):
-    class SafeConfigParser(ConfigParser): ...
+if sys.version_info < (3, 12):
+    class SafeConfigParser(ConfigParser): ...  # deprecated alias
 
 class SectionProxy(MutableMapping[str, str]):
     def __init__(self, parser: RawConfigParser, name: str) -> None: ...
@@ -180,7 +205,7 @@ class SectionProxy(MutableMapping[str, str]):
     # SectionProxy can have arbitrary attributes when custom converters are used
     def __getattr__(self, key: str) -> Callable[..., Any]: ...
 
-class ConverterMapping(MutableMapping[str, Optional[_converter]]):
+class ConverterMapping(MutableMapping[str, _converter | None]):
     GETTERCRE: Pattern[Any]
     def __init__(self, parser: RawConfigParser) -> None: ...
     def __getitem__(self, key: str) -> _converter: ...

@@ -1,15 +1,16 @@
+from email import _ParamsType, _ParamType
 from email.charset import Charset
 from email.contentmanager import ContentManager
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, Generator, Iterator, Optional, Sequence, TypeVar, Union
+from typing import Any, Generator, Iterator, Sequence, TypeVar
+
+__all__ = ["Message", "EmailMessage"]
 
 _T = TypeVar("_T")
 
-_PayloadType = Union[list[Message], str, bytes]
-_CharsetType = Union[Charset, str, None]
-_ParamsType = Union[str, None, tuple[str, Optional[str], str]]
-_ParamType = Union[str, tuple[Optional[str], Optional[str], str]]
+_PayloadType = list[Message] | str | bytes
+_CharsetType = Charset | str | None
 _HeaderType = Any
 
 class Message:
@@ -17,7 +18,6 @@ class Message:
     preamble: str | None
     epilogue: str | None
     defects: list[MessageDefect]
-    def __str__(self) -> str: ...
     def is_multipart(self) -> bool: ...
     def set_unixfrom(self, unixfrom: str) -> None: ...
     def get_unixfrom(self) -> str | None: ...

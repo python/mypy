@@ -2,6 +2,8 @@ from array import array
 from collections import deque
 from typing import Any, Callable
 
+__all__ = ["Repr", "repr", "recursive_repr"]
+
 _ReprFunc = Callable[[Any], str]
 
 def recursive_repr(fillvalue: str = ...) -> Callable[[_ReprFunc], _ReprFunc]: ...

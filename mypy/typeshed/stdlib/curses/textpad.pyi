@@ -4,6 +4,7 @@ from typing import Callable
 if sys.platform != "win32":
     from _curses import _CursesWindow
     def rectangle(win: _CursesWindow, uly: int, ulx: int, lry: int, lrx: int) -> None: ...
+
     class Textbox:
         stripspaces: bool
         def __init__(self, win: _CursesWindow, insert_mode: bool = ...) -> None: ...

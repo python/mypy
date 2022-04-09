@@ -15,14 +15,17 @@ from typing_extensions import Literal
 if sys.version_info >= (3, 8):
     class Num(Constant):
         value: complex
+
     class Str(Constant):
         value: str
         # Aliases for value, for backwards compatibility
         s: str
+
     class Bytes(Constant):
         value: bytes
         # Aliases for value, for backwards compatibility
         s: bytes
+
     class NameConstant(Constant): ...
     class Ellipsis(Constant): ...
 
@@ -88,6 +91,7 @@ class NodeVisitor:
     def visit_Constant(self, node: Constant) -> Any: ...
     if sys.version_info >= (3, 8):
         def visit_NamedExpr(self, node: NamedExpr) -> Any: ...
+
     def visit_Attribute(self, node: Attribute) -> Any: ...
     def visit_Subscript(self, node: Subscript) -> Any: ...
     def visit_Starred(self, node: Starred) -> Any: ...

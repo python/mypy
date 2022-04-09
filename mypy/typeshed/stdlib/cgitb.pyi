@@ -1,8 +1,10 @@
 from _typeshed import StrOrBytesPath
 from types import FrameType, TracebackType
-from typing import IO, Any, Callable, Optional, Type
+from typing import IO, Any, Callable
 
-_ExcInfo = tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+_ExcInfo = tuple[type[BaseException] | None, BaseException | None, TracebackType | None]
+
+__UNDEF__: object  # undocumented sentinel
 
 def reset() -> str: ...  # undocumented
 def small(text: str) -> str: ...  # undocumented
@@ -24,7 +26,7 @@ class Hook:  # undocumented
         file: IO[str] | None = ...,
         format: str = ...,
     ) -> None: ...
-    def __call__(self, etype: Type[BaseException] | None, evalue: BaseException | None, etb: TracebackType | None) -> None: ...
+    def __call__(self, etype: type[BaseException] | None, evalue: BaseException | None, etb: TracebackType | None) -> None: ...
     def handle(self, info: _ExcInfo | None = ...) -> None: ...
 
 def handler(info: _ExcInfo | None = ...) -> None: ...

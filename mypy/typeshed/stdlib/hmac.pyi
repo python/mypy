@@ -1,11 +1,11 @@
 import sys
 from _typeshed import ReadableBuffer
 from types import ModuleType
-from typing import Any, AnyStr, Callable, Union, overload
+from typing import Any, AnyStr, Callable, overload
 
 # TODO more precise type for object of hashlib
 _Hash = Any
-_DigestMod = Union[str, Callable[[], _Hash], ModuleType]
+_DigestMod = str | Callable[[], _Hash] | ModuleType
 
 trans_5C: bytes
 trans_36: bytes
@@ -26,7 +26,8 @@ else:
 class HMAC:
     digest_size: int
     block_size: int
-    name: str
+    @property
+    def name(self) -> str: ...
     def __init__(self, key: bytes, msg: ReadableBuffer | None = ..., digestmod: _DigestMod = ...) -> None: ...
     def update(self, msg: ReadableBuffer) -> None: ...
     def digest(self) -> bytes: ...

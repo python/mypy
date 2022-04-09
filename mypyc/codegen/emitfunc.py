@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union, Optional
+from typing import List, Union, Optional
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -8,7 +8,7 @@ from mypyc.common import (
 )
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
-    OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
+    Op, OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
@@ -88,8 +88,13 @@ def generate_native_function(fn: FuncIR,
             next_block = blocks[i + 1]
         body.emit_label(block)
         visitor.next_block = next_block
-        for op in block.ops:
-            op.accept(visitor)
+
+        ops = block.ops
+        visitor.ops = ops
+        visitor.op_index = 0
+        while visitor.op_index < len(ops):
+            ops[visitor.op_index].accept(visitor)
+            visitor.op_index += 1
 
     body.emit_line('}')
 
@@ -110,7 +115,12 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.module_name = module_name
         self.literals = emitter.context.literals
         self.rare = False
+        # Next basic block to be processed after the current one (if any), set by caller
         self.next_block: Optional[BasicBlock] = None
+        # Ops in the basic block currently being processed, set by caller
+        self.ops: List[Op] = []
+        # Current index within ops; visit methods can increment this to skip/merge ops
+        self.op_index = 0
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
@@ -293,16 +303,44 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
             self.emitter.emit_undefined_attr_check(
-                attr_rtype, attr_expr, '==', unlikely=True
+                attr_rtype, dest, '==', unlikely=True
             )
             exc_class = 'PyExc_AttributeError'
-            self.emitter.emit_line(
-                'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                    exc_class, repr(op.attr), repr(cl.name)))
+            merged_branch = None
+            branch = self.next_branch()
+            if branch is not None:
+                if (branch.value is op
+                        and branch.op == Branch.IS_ERROR
+                        and branch.traceback_entry is not None
+                        and not branch.negated):
+                    # Generate code for the following branch here to avoid
+                    # redundant branches in the generate code.
+                    self.emit_attribute_error(branch, cl.name, op.attr)
+                    self.emit_line('goto %s;' % self.label(branch.true))
+                    merged_branch = branch
+                    self.emitter.emit_line('}')
+            if not merged_branch:
+                self.emitter.emit_line(
+                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                        exc_class, repr(op.attr), repr(cl.name)))
+
             if attr_rtype.is_refcounted:
-                self.emitter.emit_line('} else {')
-                self.emitter.emit_inc_ref(attr_expr, attr_rtype)
-            self.emitter.emit_line('}')
+                if not merged_branch:
+                    self.emitter.emit_line('} else {')
+                self.emitter.emit_inc_ref(dest, attr_rtype)
+            if merged_branch:
+                if merged_branch.false is not self.next_block:
+                    self.emit_line('goto %s;' % self.label(merged_branch.false))
+                self.op_index += 1
+            else:
+                self.emitter.emit_line('}')
+
+    def next_branch(self) -> Optional[Branch]:
+        if self.op_index + 1 < len(self.ops):
+            next_op = self.ops[self.op_index + 1]
+            if isinstance(next_op, Branch):
+                return next_op
+        return None
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -602,6 +640,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+        assert op.traceback_entry is not None
+        globals_static = self.emitter.static_name('globals', self.module_name)
+        self.emit_line('CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);' % (
+            self.source_path.replace("\\", "\\\\"),
+            op.traceback_entry[0],
+            class_name,
+            attr,
+            op.traceback_entry[1],
+            globals_static))
+        if DEBUG_ERRORS:
+            self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
     def emit_signed_int_cast(self, type: RType) -> str:
         if is_tagged(type):

@@ -1509,11 +1509,12 @@ class C: pass
 main:3: error: Name "f" is not defined
 main:4: error: Name "C" is not defined
 ==
-main:3: error: Missing positional argument "x" in call to "f"
+main:2: error: Unsupported class scoped import
 main:4: error: Name "C" is not defined
 ==
-main:3: error: Missing positional argument "x" in call to "f"
+main:2: error: Unsupported class scoped import
 ==
+main:2: error: Unsupported class scoped import
 
 [case testImportStarAddMissingDependencyInsidePackage1]
 from p.b import f

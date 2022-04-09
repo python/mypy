@@ -345,8 +345,8 @@ class C:
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(c.y)  # N: Revealed type is "builtins.int*"
-reveal_type(c.z)  # N: Revealed type is "Union[builtins.int*, None]"
+reveal_type(c.y)  # N: Revealed type is "builtins.int"
+reveal_type(c.z)  # N: Revealed type is "Union[builtins.int, None]"
 
 [file mod.py]
 from typing import Generic, TypeVar, Type
@@ -558,7 +558,7 @@ reveal_type(foo[3]) # N: Revealed type is "builtins.int"
 reveal_type(foo(4, 5, 6)) # N: Revealed type is "builtins.int"
 foo[4] = 5
 for x in foo:
-    reveal_type(x) # N: Revealed type is "builtins.int*"
+    reveal_type(x) # N: Revealed type is "builtins.int"
 
 [file mypy.ini]
 \[mypy]
@@ -649,7 +649,7 @@ from mod import declarative_base
 
 Base1 = Base2 = declarative_base()
 
-class C1(Base1): ...  
+class C1(Base1): ...
 class C2(Base2): ...
 [file mod.py]
 def declarative_base(): ...
@@ -762,9 +762,9 @@ T = TypeVar("T")
 class Class(Generic[T]):
     def __init__(self, one: T): ...
     def __call__(self, two: T) -> int: ...
-reveal_type(Class("hi")("there"))  # N: Revealed type is "builtins.str*"
+reveal_type(Class("hi")("there"))  # N: Revealed type is "builtins.str"
 instance = Class(3.14)
-reveal_type(instance(2))  # N: Revealed type is "builtins.float*"
+reveal_type(instance(2))  # N: Revealed type is "builtins.float"
 
 [file mypy.ini]
 \[mypy]

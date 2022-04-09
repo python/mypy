@@ -1,14 +1,30 @@
+import sys
 from typing import Any, Callable, NamedTuple
 
-class Event(NamedTuple):
-    time: float
-    priority: Any
-    action: Callable[..., Any]
-    argument: tuple[Any, ...]
-    kwargs: dict[str, Any]
+__all__ = ["scheduler"]
+
+if sys.version_info >= (3, 10):
+    class Event(NamedTuple):
+        time: float
+        priority: Any
+        sequence: int
+        action: Callable[..., Any]
+        argument: tuple[Any, ...]
+        kwargs: dict[str, Any]
+
+else:
+    class Event(NamedTuple):
+        time: float
+        priority: Any
+        action: Callable[..., Any]
+        argument: tuple[Any, ...]
+        kwargs: dict[str, Any]
 
 class scheduler:
-    def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], None] = ...) -> None: ...
+    timefunc: Callable[[], float]
+    delayfunc: Callable[[float], object]
+
+    def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], object] = ...) -> None: ...
     def enterabs(
         self,
         time: float,

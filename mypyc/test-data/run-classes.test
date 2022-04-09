@@ -1816,7 +1816,7 @@ class B(A):
     def x(self, val : int) -> None:
         self._x = val + 1
 
-#Inerits base property setters and getters
+# Inherits base property setters and getters
 class C(A):
     def __init__(self) -> None:
         A.__init__(self)

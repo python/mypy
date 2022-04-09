@@ -60,7 +60,7 @@ def f():
 L0:
     r0 = C()
     c = r0
-    r1 = box(short_int, 2)
+    r1 = object 1
     c.x = r1; r2 = is_error
     r3 = c.x
     r4 = unbox(int, r3)
@@ -118,7 +118,7 @@ L0:
     r2 = CPyTagged_Add(y, 2)
     r3 = box(int, r2)
     r4 = x.set(r3)
-    r5 = box(short_int, 4)
+    r5 = object 2
     r6 = C(r5)
     x = r6
     return 1

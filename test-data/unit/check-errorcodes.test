@@ -145,6 +145,37 @@ x # type: ignore[name-defined, attr-defined] # E: Unused "type: ignore[attr-defi
 # flags: --warn-unused-ignores
 "x" # type: ignore[name-defined] # E: Unused "type: ignore" comment
 
+[case testErrorCodeMissingWhenRequired]
+# flags: --enable-error-code ignore-without-code
+"x" # type: ignore # E: "type: ignore" comment without error code  [ignore-without-code]
+y # type: ignore # E: "type: ignore" comment without error code (consider "type: ignore[name-defined]" instead)  [ignore-without-code]
+z # type: ignore[name-defined]
+"a" # type: ignore[ignore-without-code]
+
+[case testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning]
+# flags: --enable-error-code ignore-without-code --warn-unused-ignores
+"x" # type: ignore # E: Unused "type: ignore" comment
+"y" # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment
+z # type: ignore[ignore-without-code] # E: Unused "type: ignore" comment # E: Name "z" is not defined  [name-defined] # N: Error code "name-defined" not covered by "type: ignore" comment
+
+[case testErrorCodeMissingWholeFileIgnores]
+# flags: --enable-error-code ignore-without-code
+# type: ignore  # whole file ignore
+x
+y # type: ignore  # ignore the lack of error code since we're ignore the whole file
+
+[case testErrorCodeMissingMultiple]
+# flags: --enable-error-code ignore-without-code --python-version 3.7
+from __future__ import annotations
+class A:
+    attr: int
+    def func(self, var: int) -> A | None: ...
+
+a: A | None
+# 'union-attr' should only be listed once (instead of twice) and list should be sorted
+a.func("invalid string").attr  # type: ignore  # E: "type: ignore" comment without error code (consider "type: ignore[arg-type, union-attr]" instead)  [ignore-without-code]
+[builtins fixtures/tuple.pyi]
+
 [case testErrorCodeIgnoreWithExtraSpace]
 x  # type: ignore   [name-defined]
 x2 # type: ignore   [ name-defined ]
@@ -565,10 +596,10 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [builtins fixtures/primitives.pyi]
 
 [case testErrorCodeMissingModule]
-from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import] \
-                            # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import]
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import] \
+                     # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
 from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
 from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]

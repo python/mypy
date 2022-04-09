@@ -31,7 +31,6 @@ _MAX_WINDOWS_WORKERS: int
 class _RemoteTraceback(Exception):
     tb: str
     def __init__(self, tb: TracebackType) -> None: ...
-    def __str__(self) -> str: ...
 
 class _ExceptionWithTraceback:
     exc: BaseException
@@ -82,6 +81,7 @@ if sys.version_info >= (3, 7):
             def __init__(
                 self, max_size: int | None = ..., *, ctx: BaseContext, pending_work_items: dict[int, _WorkItem[Any]]
             ) -> None: ...
+
         def _on_queue_feeder_error(self, e: Exception, obj: _CallItem) -> None: ...
 
 def _get_chunks(*iterables: Any, chunksize: int) -> Generator[tuple[Any, ...], None, None]: ...
@@ -131,6 +131,7 @@ def _chain_from_iterable_of_lists(iterable: Iterable[MutableSequence[Any]]) -> A
 
 if sys.version_info >= (3, 7):
     from ._base import BrokenExecutor
+
     class BrokenProcessPool(BrokenExecutor): ...
 
 else:
@@ -164,4 +165,5 @@ class ProcessPoolExecutor(Executor):
         def __init__(self, max_workers: int | None = ...) -> None: ...
     if sys.version_info >= (3, 9):
         def _start_executor_manager_thread(self) -> None: ...
+
     def _adjust_process_count(self) -> None: ...

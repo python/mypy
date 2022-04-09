@@ -4,13 +4,58 @@ import sys
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
 from os import _Opener
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, TextIO, Type
+from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, TextIO
+from typing_extensions import Literal
 
-DEFAULT_BUFFER_SIZE: int
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "BlockingIOError",
+        "open",
+        "open_code",
+        "IOBase",
+        "RawIOBase",
+        "FileIO",
+        "BytesIO",
+        "StringIO",
+        "BufferedIOBase",
+        "BufferedReader",
+        "BufferedWriter",
+        "BufferedRWPair",
+        "BufferedRandom",
+        "TextIOBase",
+        "TextIOWrapper",
+        "UnsupportedOperation",
+        "SEEK_SET",
+        "SEEK_CUR",
+        "SEEK_END",
+    ]
+else:
+    __all__ = [
+        "BlockingIOError",
+        "open",
+        "IOBase",
+        "RawIOBase",
+        "FileIO",
+        "BytesIO",
+        "StringIO",
+        "BufferedIOBase",
+        "BufferedReader",
+        "BufferedWriter",
+        "BufferedRWPair",
+        "BufferedRandom",
+        "TextIOBase",
+        "TextIOWrapper",
+        "UnsupportedOperation",
+        "SEEK_SET",
+        "SEEK_CUR",
+        "SEEK_END",
+    ]
 
-SEEK_SET: int
-SEEK_CUR: int
-SEEK_END: int
+DEFAULT_BUFFER_SIZE: Literal[8192]
+
+SEEK_SET: Literal[0]
+SEEK_CUR: Literal[1]
+SEEK_END: Literal[2]
 
 open = builtins.open
 
@@ -26,8 +71,8 @@ class IOBase:
     def __next__(self) -> bytes: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
-    ) -> bool | None: ...
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None: ...
     def close(self) -> None: ...
     def fileno(self) -> int: ...
     def flush(self) -> None: ...
@@ -180,3 +225,4 @@ class IncrementalNewlineDecoder(codecs.IncrementalDecoder):
     def decode(self, input: bytes | str, final: bool = ...) -> str: ...
     @property
     def newlines(self) -> str | tuple[str, ...] | None: ...
+    def setstate(self, __state: tuple[bytes, int]) -> None: ...

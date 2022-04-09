@@ -1,9 +1,9 @@
 import mimetools
-from typing import Any, Dict, Protocol
+from typing import Any, Protocol
 
 class HTTPMessage(mimetools.Message):
     def addcontinue(self, key: str, more: str) -> None: ...
-    dict: Dict[str, str]
+    dict: dict[str, str]
     def addheader(self, key: str, value: str) -> None: ...
     unixfrom: str
     headers: Any
@@ -151,7 +151,7 @@ class LineAndFileWrapper:
 
 # Constants
 
-responses: Dict[int, str]
+responses: dict[int, str]
 
 HTTP_PORT: int
 HTTPS_PORT: int

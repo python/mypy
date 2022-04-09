@@ -5,9 +5,31 @@ import sys
 import types
 from _typeshed import Self, WriteableBuffer
 from socket import socket
-from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Protocol, Type, TypeVar, Union, overload
+from typing import IO, Any, BinaryIO, Callable, Iterable, Iterator, Mapping, Protocol, TypeVar, overload
 
-_DataType = Union[bytes, IO[Any], Iterable[bytes], str]
+__all__ = [
+    "HTTPResponse",
+    "HTTPConnection",
+    "HTTPException",
+    "NotConnected",
+    "UnknownProtocol",
+    "UnknownTransferEncoding",
+    "UnimplementedFileMode",
+    "IncompleteRead",
+    "InvalidURL",
+    "ImproperConnectionState",
+    "CannotSendRequest",
+    "CannotSendHeader",
+    "ResponseNotReady",
+    "BadStatusLine",
+    "LineTooLong",
+    "RemoteDisconnected",
+    "error",
+    "responses",
+    "HTTPSConnection",
+]
+
+_DataType = bytes | IO[Any] | Iterable[bytes] | str
 _T = TypeVar("_T")
 
 HTTP_PORT: int
@@ -107,8 +129,8 @@ class HTTPResponse(io.BufferedIOBase, BinaryIO):
     def __iter__(self) -> Iterator[bytes]: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
-    ) -> bool | None: ...
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: types.TracebackType | None
+    ) -> None: ...
     def info(self) -> email.message.Message: ...
     def geturl(self) -> str: ...
     def getcode(self) -> int: ...
@@ -135,7 +157,7 @@ class HTTPConnection:
     auto_open: int  # undocumented
     debuglevel: int
     default_port: int  # undocumented
-    response_class: Type[HTTPResponse]  # undocumented
+    response_class: type[HTTPResponse]  # undocumented
     timeout: float | None
     host: str
     port: int
@@ -153,6 +175,7 @@ class HTTPConnection:
         def __init__(
             self, host: str, port: int | None = ..., timeout: float | None = ..., source_address: tuple[str, int] | None = ...
         ) -> None: ...
+
     def request(
         self, method: str, url: str, body: _DataType | None = ..., headers: Mapping[str, str] = ..., *, encode_chunked: bool = ...
     ) -> None: ...
