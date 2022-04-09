@@ -1285,10 +1285,10 @@ x = make_tuple()
 if len(x) == 3:
     reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
 else:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 
 if len(x) != 3:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 else:
     reveal_type(x) # N: Revealed type is "Tuple[builtins.int, builtins.int, builtins.int]"
 [builtins fixtures/len.pyi]
@@ -1402,7 +1402,7 @@ def make_tuple() -> VarTuple:
 
 x = make_tuple()
 if len(x) < 3:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 else:
-    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int]"
+    reveal_type(x) # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/len.pyi]

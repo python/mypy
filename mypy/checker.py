@@ -9,7 +9,7 @@ from typing import (
     Any, Dict, Set, List, cast, Tuple, TypeVar, Union, Optional, NamedTuple, Iterator,
     Iterable, Sequence, Mapping, Generic, AbstractSet, Callable, overload
 )
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias, TypeGuard
 
 from mypy.backports import nullcontext
 from mypy.errors import Errors, report_internal_error
@@ -4703,7 +4703,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 not is_literal_none(expr) and
                 not is_literal_enum(type_map, expr))
 
-            def is_len_of_narrowable_literal(expr: Expression) -> bool:
+            def is_len_of_narrowable_literal(expr: Expression) -> TypeGuard[CallExpr]:
                 return (
                     isinstance(expr, CallExpr) and
                     refers_to_fullname(expr.callee, 'builtins.len') and
@@ -5268,15 +5268,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         too aggressive of a narrowing, depending on context.
         """
 
-        target = None  # type: Optional[int]
-        target_index = None  # type: Optional[int]
+        target: Optional[int] = None
+        target_index: Optional[int] = None
         possible_target_indices = []
         for i in chain_indices:
             expr_type = operand_types[i]
             expr_type = coerce_to_literal(expr_type)
-            if not isinstance(get_proper_type(expr_type), LiteralType):
+            proper_type = get_proper_type(expr_type)
+            if not isinstance(proper_type, LiteralType):
                 continue
-            if target and target != expr_type.value:
+            if target and target != proper_type.value:
                 if operator in {'==', '!='}:
                     # We have multiple different target values. So the 'if' branch
                     # must be unreachable.
@@ -5285,7 +5286,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     # Other operators can go either way
                     return {}, {}
 
-            target = expr_type.value
+            target = proper_type.value  # type: ignore[assignment]
             target_index = i
             possible_target_indices.append(i)
 
@@ -5300,7 +5301,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if i not in narrowable_operand_indices:
                 continue
 
-            expr = operands[i].args[0]
+            # we already checked that operand[i] is CallExpr since it is narrowable
+            expr = operands[i].args[0]  # type: ignore[attr-defined]
             expr_type = self.type_map[expr]
 
             # We intentionally use 'conditional_type_map' directly here instead of
@@ -5314,8 +5316,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def narrow_type_by_length(self, operator: str, typ: Type, length: int) -> Type:
         if operator not in {"==", "!="}:
             return typ
-        if (isinstance(typ, Instance) and typ.type.fullname == "builtins.tuple" and length >= 0):
-            return TupleType(typ.args[0:1] * length, self.named_type('builtins.tuple'))
+        proper_type = get_proper_type(typ)
+        if (isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple"
+                and length >= 0):
+            return TupleType([proper_type.args[0]] * length, self.named_type('builtins.tuple'))
         return typ
 
     def conditional_len_map(self,
@@ -5324,7 +5328,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             current_type: Optional[Type],
                             expr_index: int,
                             length: Optional[int],
-                            target_index: int,
+                            target_index: Optional[int],
                             ) -> Tuple[TypeMap, TypeMap]:
         """Takes in an expression, the current type of the expression, and a
         proposed length of that expression.
@@ -5333,8 +5337,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         the proposed type, if the expression can be the proposed length.  The
         second element is a map from the expression to the type it would hold
         if it was not the proposed length, if any. None means bot, {} means top"""
-        if length is not None and current_type is not None:
-            if isinstance(current_type, AnyType):
+        if length is not None and current_type is not None and target_index is not None:
+            proper_type = get_proper_type(current_type)
+            if isinstance(proper_type, AnyType):
                 # We don't really know much about the proposed type, so we shouldn't
                 # attempt to narrow anything. Instead, we broaden the expr to Any to
                 # avoid false positives
@@ -5373,10 +5378,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 remaining_type = make_simplified_union([
                     typ for typ, l in zip(possible_types, len_of_types)
                     if l is None or not length_op(l, length)])
-                if_map = (
+                if_map: TypeMap = (
                     {} if is_same_type(proposed_type, current_type)
                     else {expr: proposed_type})
-                else_map = (
+                else_map: TypeMap = (
                     {} if is_same_type(remaining_type, current_type)
                     else {expr: remaining_type})
                 return if_map, else_map
@@ -5964,13 +5969,14 @@ def conditional_types_to_typemaps(expr: Expression,
     return cast(Tuple[TypeMap, TypeMap], tuple(maps))
 
 
-def len_of_type(typ: Type) -> int:
+def len_of_type(typ: Type) -> Optional[int]:
     """Takes a type and returns an int that represents the length
     of instances of that type or None if not applicable or variant length"""
-    if isinstance(typ, TupleType):
-        return len(typ.items)
-    if isinstance(typ, LiteralType) and isinstance(typ.value, str):
-        return len(typ.value)
+    proper_type = get_proper_type(typ)
+    if isinstance(proper_type, TupleType):
+        return len(proper_type.items)
+    if isinstance(proper_type, LiteralType) and isinstance(proper_type.value, str):
+        return len(proper_type.value)
     return None
 
 
