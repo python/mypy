@@ -45,6 +45,18 @@ def parse_version(v: str) -> Tuple[int, int]:
     return major, minor
 
 
+def check_type_parse_version(s: Any) -> Tuple[int, int]:
+    try:
+        return parse_version(str(s))
+    except argparse.ArgumentTypeError as e:
+        if not isinstance(s, str):
+            raise argparse.ArgumentTypeError(
+                "expected argument type str, got {} instead"
+                .format(type(s).__name__))
+        else:
+            raise e
+
+
 def try_split(v: Union[str, Sequence[str]], split_regex: str = '[,]') -> List[str]:
     """Split and trim a str or list of str into a list of str"""
     if isinstance(v, str):
@@ -142,7 +154,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
 # Reuse the ini_config_types and overwrite the diff
 toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update({
-    'python_version': lambda s: parse_version(str(s)),
+    'python_version': check_type_parse_version,
     'strict_optional_whitelist': try_split,
     'mypy_path': lambda s: [expand_path(p) for p in try_split(s, '[,:]')],
     'files': lambda s: split_and_match_files_list(try_split(s)),
