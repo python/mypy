@@ -580,9 +580,10 @@ class MessageBuilder:
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
-                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                    arg_label, target, quote_type_string(arg_type_str),
-                    quote_type_string(expected_type_str))
+                msg = 'expression has type {}， variable has type {}'.format(
+                    quote_type_string(arg_type_str), quote_type_string(expected_type_str))
+                    # expression has type Foo[float], variable has type Foo[int]
+
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM
@@ -947,10 +948,10 @@ class MessageBuilder:
             self.fail('Cannot infer function type argument', context)
 
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
-        if not len(context.args) == 1:
-            self.fail('List or tuple expected as variable arguments', context)
-        else:
-            self.fail('variadic arguments', context)
+        # if not len(context.args) == 1:
+        self.fail('List or tuple expected as variable arguments', context)
+        # else:
+        #     self.fail('variadic arguments', context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
