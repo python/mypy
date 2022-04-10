@@ -416,29 +416,6 @@ with f() as x:
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-full.pyi]
 
-[case testDecoratingClassesThatUseParamSpec]
-from typing import Generic, TypeVar, Callable, Any
-from typing_extensions import ParamSpec
-
-_P = ParamSpec("_P")
-_T = TypeVar("_T")
-_F = TypeVar("_F", bound=Callable[..., Any])
-
-def f(x: _F) -> _F: ...
-
-@f  # Should be ok
-class OnlyParamSpec(Generic[_P]):
-    pass
-
-@f  # Should be ok
-class MixedWithTypeVar1(Generic[_P, _T]):
-    pass
-
-@f  # Should be ok
-class MixedWithTypeVar2(Generic[_T, _P]):
-    pass
-[builtins fixtures/dict.pyi]
-
 [case testParamSpecLiterals]
 from typing_extensions import ParamSpec, TypeAlias
 from typing import Generic, TypeVar
