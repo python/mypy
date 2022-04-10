@@ -948,10 +948,7 @@ class MessageBuilder:
             self.fail('Cannot infer function type argument', context)
 
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
-        # if not len(context.args) == 1:
         self.fail('List or tuple expected as variable arguments', context)
-        # else:
-        #     self.fail('variadic arguments', context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
