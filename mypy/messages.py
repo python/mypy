@@ -582,7 +582,6 @@ class MessageBuilder:
             else:
                 msg = 'expression has type {}， variable has type {}'.format(
                     quote_type_string(arg_type_str), quote_type_string(expected_type_str))
-                    # expression has type Foo[float], variable has type Foo[int]
 
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
