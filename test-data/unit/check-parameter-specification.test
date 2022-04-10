@@ -997,6 +997,29 @@ a3 = f2
 a3 = f1
 [builtins fixtures/tuple.pyi]
 
+[case testDecoratingClassesThatUseParamSpec]
+from typing import Generic, TypeVar, Callable, Any
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+_F = TypeVar("_F", bound=Callable[..., Any])
+
+def f(x: _F) -> _F: ...
+
+@f  # Should be ok
+class OnlyParamSpec(Generic[_P]):
+    pass
+
+@f  # Should be ok
+class MixedWithTypeVar1(Generic[_P, _T]):
+    pass
+
+@f  # Should be ok
+class MixedWithTypeVar2(Generic[_T, _P]):
+    pass
+[builtins fixtures/dict.pyi]
+
 [case testGenericsInInferredParamspec]
 from typing import Callable, TypeVar, Generic
 from typing_extensions import ParamSpec
