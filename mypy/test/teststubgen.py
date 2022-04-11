@@ -873,7 +873,7 @@ class StubgencSuite(unittest.TestCase):
         readonly_properties: List[str] = []
         generate_c_property_stub('attribute', TestClass.attribute, [],
                                  readwrite_properties, readonly_properties,
-                                 is_c_property_readonly(type(TestClass.attribute)))
+                                 is_c_property_readonly(TestClass.attribute))
         assert_equal(readwrite_properties, [])
         assert_equal(readonly_properties, ['@property', 'def attribute(self) -> str: ...'])
 
@@ -894,7 +894,7 @@ class StubgencSuite(unittest.TestCase):
         readonly_properties: List[str] = []
         generate_c_property_stub("attribute", type(TestClass.attribute), [],
                                  readwrite_properties, readonly_properties,
-                                 is_c_property_readonly(type(TestClass.attribute)))
+                                 is_c_property_readonly(TestClass.attribute))
         assert_equal(readwrite_properties, ['attribute: Any'])
         assert_equal(readonly_properties, [])
 
