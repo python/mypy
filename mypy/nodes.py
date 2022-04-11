@@ -123,7 +123,8 @@ type_aliases: Final = {
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
     'typing.OrderedDict': 'collections.OrderedDict',
-    'typing.LiteralString': 'builtins.str',  # a lie in lieu of actual support for PEP 675
+    # a lie in lieu of actual support for PEP 675
+    'typing.LiteralString': 'builtins.str',
 }
 
 # This keeps track of the oldest supported Python version where the corresponding
@@ -145,7 +146,8 @@ type_aliases_source_versions: Final = {
 typing_extensions_aliases: Final = {
     # See: https://github.com/python/mypy/issues/11528
     'typing_extensions.OrderedDict': 'collections.OrderedDict',
-    'typing_extensions.LiteralString': 'builtins.str',  # a lie in lieu of actual support for PEP 675
+    # a lie in lieu of actual support for PEP 675
+    'typing_extensions.LiteralString': 'builtins.str',
 }
 
 reverse_builtin_aliases: Final = {
