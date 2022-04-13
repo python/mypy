@@ -198,7 +198,7 @@ setup(name='mypy',
       install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
                         'typing_extensions>=3.10',
                         'mypy_extensions >= 0.4.3',
-                        'tomli>=1.1.0',
+                        "tomli>=1.1.0; python_version<'3.11'",
                         ],
       # Same here.
       extras_require={

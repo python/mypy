@@ -5,7 +5,7 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any
+from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any, Union
 from typing_extensions import Type as TypingType
 import itertools
 import sys
@@ -14,7 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType,
+    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters,
     ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
@@ -26,7 +26,7 @@ from mypy.expandtype import expand_type_by_instance, expand_type
 
 from mypy.typevars import fill_typevars
 
-from mypy import state
+from mypy.state import state
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
@@ -107,6 +107,10 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         isinstance(explicit_type, (Instance, TupleType))
+        # We have to skip protocols, because it can can be a subtype of a return type
+        # by accident. Like `Hashable` is a subtype of `object`. See #11799
+        and isinstance(default_ret_type, Instance)
+        and not default_ret_type.type.is_protocol
         # Only use the declared return type from __new__ or declared self in __init__
         # if it is actually returning a subtype of what we would return otherwise.
         and is_subtype(explicit_type, default_ret_type, ignore_type_params=True)
@@ -268,7 +272,7 @@ def erase_to_bound(t: Type) -> Type:
     return t
 
 
-def callable_corresponding_argument(typ: CallableType,
+def callable_corresponding_argument(typ: Union[CallableType, Parameters],
                                     model: FormalArgument) -> Optional[FormalArgument]:
     """Return the argument a function that corresponds to `model`"""
 
@@ -295,15 +299,32 @@ def callable_corresponding_argument(typ: CallableType,
     return by_name if by_name is not None else by_pos
 
 
-def is_simple_literal(t: ProperType) -> bool:
-    """
-    Whether a type is a simple enough literal to allow for fast Union simplification
+def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
+    """Return a hashable description of simple literal type.
 
-    For now this means enum or string
+    Return None if not a simple literal type.
+
+    The return value can be used to simplify away duplicate types in
+    unions by comparing keys for equality. For now enum, string or
+    Instance with string last_known_value are supported.
     """
-    return isinstance(t, LiteralType) and (
-            t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
-    )
+    if isinstance(t, LiteralType):
+        if t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str':
+            assert isinstance(t.value, str)
+            return 'literal', t.value, t.fallback.type.fullname
+    if isinstance(t, Instance):
+        if t.last_known_value is not None and isinstance(t.last_known_value.value, str):
+            return 'instance', t.last_known_value.value, t.type.fullname
+    return None
+
+
+def is_simple_literal(t: ProperType) -> bool:
+    """Fast way to check if simple_literal_value_key() would return a non-None value."""
+    if isinstance(t, LiteralType):
+        return t.fallback.type.is_enum or t.fallback.type.fullname == 'builtins.str'
+    if isinstance(t, Instance):
+        return t.last_known_value is not None and isinstance(t.last_known_value.value, str)
+    return False
 
 
 def make_simplified_union(items: Sequence[Type],
@@ -337,10 +358,20 @@ def make_simplified_union(items: Sequence[Type],
                 all_items.append(typ)
         items = all_items
 
+    simplified_set = _remove_redundant_union_items(items, keep_erased)
+
+    # If more than one literal exists in the union, try to simplify
+    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+        simplified_set = try_contracting_literals_in_union(simplified_set)
+
+    return UnionType.make_union(simplified_set, line, column)
+
+
+def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) -> List[ProperType]:
     from mypy.subtypes import is_proper_subtype
 
     removed: Set[int] = set()
-    seen: Set[Tuple[str, str]] = set()
+    seen: Set[Tuple[str, ...]] = set()
 
     # NB: having a separate fast path for Union of Literal and slow path for other things
     # would arguably be cleaner, however it breaks down when simplifying the Union of two
@@ -350,10 +381,8 @@ def make_simplified_union(items: Sequence[Type],
         if i in removed:
             continue
         # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
-        if is_simple_literal(item):
-            assert isinstance(item, LiteralType)
-            assert isinstance(item.value, str)
-            k = (item.value, item.fallback.type.fullname)
+        k = simple_literal_value_key(item)
+        if k is not None:
             if k in seen:
                 removed.add(i)
                 continue
@@ -369,33 +398,42 @@ def make_simplified_union(items: Sequence[Type],
             seen.add(k)
             if safe_skip:
                 continue
+
         # Keep track of the truishness info for deleted subtypes which can be relevant
         cbt = cbf = False
+        num_items = len(items)
         for j, tj in enumerate(items):
-            # NB: we don't need to check literals as the fast path above takes care of that
-            if (
-                    i != j
-                    and not is_simple_literal(tj)
+            if i != j:
+                # NB: The first check below is an optimization to
+                #     avoid very expensive computations with large
+                #     unions involving literals. We approximate the
+                #     results for unions with many items. This is
+                #     "fine" since simplifying these union items is
+                #     (almost) always optional.
+                if (
+                    (num_items < 5
+                     or is_likely_literal_supertype(item)
+                     or not is_simple_literal(tj))
                     and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
                     and is_redundant_literal_instance(item, tj)  # XXX?
-            ):
-                # We found a redundant item in the union.
-                removed.add(j)
-                cbt = cbt or tj.can_be_true
-                cbf = cbf or tj.can_be_false
+                ):
+                    # We found a redundant item in the union.
+                    removed.add(j)
+                    cbt = cbt or tj.can_be_true
+                    cbf = cbf or tj.can_be_false
         # if deleted subtypes had more general truthiness, use that
         if not item.can_be_true and cbt:
             items[i] = true_or_false(item)
         elif not item.can_be_false and cbf:
             items[i] = true_or_false(item)
 
-    simplified_set = [items[i] for i in range(len(items)) if i not in removed]
+    return [items[i] for i in range(len(items)) if i not in removed]
 
-    # If more than one literal exists in the union, try to simplify
-    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
-        simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return UnionType.make_union(simplified_set, line, column)
+def is_likely_literal_supertype(t: ProperType) -> bool:
+    """Is the type likely to cause simplification of literal types in unions?"""
+    return isinstance(t, Instance) and t.type.fullname in ('builtins.object',
+                                                           'builtins.str')
 
 
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:

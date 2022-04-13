@@ -1445,7 +1445,7 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-tmp/a.py:6: note: Revealed type is "def (builtins.str*) -> builtins.int"
+tmp/a.py:6: note: Revealed type is "def (builtins.str) -> builtins.int"
 
 [case testDeferredClassContext]
 class A:
@@ -1549,9 +1549,9 @@ second = XT[str]()
 last = XT[G]()
 
 reveal_type(notes) # N: Revealed type is "y.G[y.G[builtins.int]]"
-reveal_type(another) # N: Revealed type is "y.G[y.G*[builtins.int]]"
-reveal_type(second) # N: Revealed type is "y.G[builtins.str*]"
-reveal_type(last) # N: Revealed type is "y.G[y.G*[Any]]"
+reveal_type(another) # N: Revealed type is "y.G[y.G[builtins.int]]"
+reveal_type(second) # N: Revealed type is "y.G[builtins.str]"
+reveal_type(last) # N: Revealed type is "y.G[y.G[Any]]"
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -1962,7 +1962,7 @@ x = 42
 [case testModuleAliasToQualifiedImport]
 import package.module
 alias = package.module
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 [file package/__init__.py]
 
 [file package/module.py]
@@ -1975,7 +1975,7 @@ def whatever(x: T) -> T: pass
 import mod
 import othermod
 alias = mod.submod
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 if int():
     alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]

@@ -1980,14 +1980,14 @@ class D:
 reveal_type(D().a)
 [out1]
 tmp/crash.py:8: note: Revealed type is "crash.A@5"
-tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int]"
 main:2: note: Revealed type is "crash.A@5"
-main:3: note: Revealed type is "crash.B@13[builtins.int*]"
+main:3: note: Revealed type is "crash.B@13[builtins.int]"
 [out2]
 tmp/crash.py:8: note: Revealed type is "crash.A@5"
-tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int]"
 main:2: note: Revealed type is "crash.A@5"
-main:3: note: Revealed type is "crash.B@13[builtins.int*]"
+main:3: note: Revealed type is "crash.B@13[builtins.int]"
 
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict

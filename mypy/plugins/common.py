@@ -5,7 +5,7 @@ from mypy.nodes import (
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal import set_callable_name
+from mypy.semanal import set_callable_name, ALLOW_INCOMPATIBLE_OVERRIDE
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
 )
@@ -163,6 +163,7 @@ def add_attribute_to_class(
         typ: Type,
         final: bool = False,
         no_serialize: bool = False,
+        override_allow_incompatible: bool = False,
 ) -> None:
     """
     Adds a new attribute to a class definition.
@@ -180,6 +181,10 @@ def add_attribute_to_class(
     node = Var(name, typ)
     node.info = info
     node.is_final = final
+    if name in ALLOW_INCOMPATIBLE_OVERRIDE:
+        node.allow_incompatible_override = True
+    else:
+        node.allow_incompatible_override = override_allow_incompatible
     node._fullname = info.fullname + '.' + name
     info.names[name] = SymbolTableNode(
         MDEF,

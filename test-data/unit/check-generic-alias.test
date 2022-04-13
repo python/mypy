@@ -252,7 +252,7 @@ B = tuple[int, str]
 x: B = (1, 'x')
 y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
 
-reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int*, ...]"
+reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeAliasWithBuiltinTupleInStub]
@@ -290,7 +290,7 @@ d: type[str]
 [case testTypeAliasWithBuiltinListAliasInStub]
 # flags: --python-version 3.6
 import m
-reveal_type(m.a()[0])  # N: Revealed type is "builtins.int*"
+reveal_type(m.a()[0])  # N: Revealed type is "builtins.int"
 
 [file m.pyi]
 List = list

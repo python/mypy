@@ -145,13 +145,13 @@ def unsupported_div():
     r4, r5, r6 :: object
     r7, y :: float
 L0:
-    r0 = box(short_int, 8)
-    r1 = box(short_int, 12)
+    r0 = object 4
+    r1 = object 6
     r2 = PyNumber_TrueDivide(r0, r1)
     r3 = cast(float, r2)
     x = r3
-    r4 = box(short_int, 20)
-    r5 = box(short_int, 10)
+    r4 = object 10
+    r5 = object 5
     r6 = PyNumber_TrueDivide(r4, r5)
     r7 = cast(float, r6)
     y = r7
@@ -160,8 +160,8 @@ def unsupported_pow():
     r0, r1, r2 :: object
     r3, p :: float
 L0:
-    r0 = box(short_int, 6)
-    r1 = box(short_int, -2)
+    r0 = object 3
+    r1 = object -1
     r2 = CPyNumber_Power(r0, r1)
     r3 = cast(float, r2)
     p = r3

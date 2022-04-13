@@ -699,7 +699,7 @@ def f(x: Callable[..., T]) -> T: return x()
 class A: pass
 x = None  # type: Type[A]
 y = f(x)
-reveal_type(y)  # N: Revealed type is "__main__.A*"
+reveal_type(y)  # N: Revealed type is "__main__.A"
 
 -- Generic function inference with unions
 -- --------------------------------------
@@ -854,7 +854,7 @@ class V(T[_T], U[_T]): pass
 
 def wait_for(fut: Union[T[_T], U[_T]]) -> _T: ...
 
-reveal_type(wait_for(V[str]()))  # N: Revealed type is "builtins.str*"
+reveal_type(wait_for(V[str]()))  # N: Revealed type is "builtins.str"
 
 [case testAmbiguousUnionContextAndMultipleInheritance2]
 from typing import TypeVar, Union, Generic
@@ -869,7 +869,7 @@ class V(T[_T, _S], U[_T, _S]): pass
 def wait_for(fut: Union[T[_T, _S], U[_T, _S]]) -> T[_T, _S]: ...
 
 reveal_type(wait_for(V[int, str]()))  \
-    # N: Revealed type is "__main__.T[builtins.int*, builtins.str*]"
+    # N: Revealed type is "__main__.T[builtins.int, builtins.str]"
 
 
 -- Literal expressions
@@ -907,8 +907,8 @@ if int():
 [case testSetWithStarExpr]
 s = {1, 2, *(3, 4)}
 t = {1, 2, *s}
-reveal_type(s)  # N: Revealed type is "builtins.set[builtins.int*]"
-reveal_type(t)  # N: Revealed type is "builtins.set[builtins.int*]"
+reveal_type(s)  # N: Revealed type is "builtins.set[builtins.int]"
+reveal_type(t)  # N: Revealed type is "builtins.set[builtins.int]"
 [builtins fixtures/set.pyi]
 
 [case testListLiteralWithFunctionsErasesNames]
@@ -1556,7 +1556,7 @@ def f(blocks: object):
 a = []
 if bool():
     a = [1]
-reveal_type(a) # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(a) # N: Revealed type is "builtins.list[builtins.int]"
 
 def f():
     return [1]
@@ -1568,7 +1568,7 @@ reveal_type(b) # N: Revealed type is "builtins.list[Any]"
 d = {}
 if bool():
     d = {1: 'x'}
-reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int*, builtins.str*]"
+reveal_type(d) # N: Revealed type is "builtins.dict[builtins.int, builtins.str]"
 
 dd = {} # E: Need type annotation for "dd" (hint: "dd: Dict[<type>, <type>] = ...")
 if bool():
@@ -1586,7 +1586,7 @@ reveal_type(o) # N: Revealed type is "collections.OrderedDict[builtins.int, buil
 d = {1: 'x'}
 oo = OrderedDict()
 oo.update(d)
-reveal_type(oo) # N: Revealed type is "collections.OrderedDict[builtins.int*, builtins.str*]"
+reveal_type(oo) # N: Revealed type is "collections.OrderedDict[builtins.int, builtins.str]"
 [builtins fixtures/dict.pyi]
 
 [case testEmptyCollectionAssignedToVariableTwiceIncremental]
@@ -1618,7 +1618,7 @@ class C:
         self.a = []
         if bool():
             self.a = [1]
-reveal_type(C().a)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(C().a)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferAttributeInitializedToEmptyAndAppended]
@@ -1773,13 +1773,13 @@ def f() -> None:
 [case testInferListTypeFromInplaceAdd]
 a = []
 a += [1]
-reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(a)  # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
 
 [case testInferSetTypeFromInplaceOr]
 a = set()
 a |= {'x'}
-reveal_type(a)  # N: Revealed type is "builtins.set[builtins.str*]"
+reveal_type(a)  # N: Revealed type is "builtins.set[builtins.str]"
 [builtins fixtures/set.pyi]
 
 
@@ -2998,15 +2998,15 @@ def q2(x: Union[Z[F], F]) -> F:
         return x
 
 b: B
-reveal_type(q1(b))  # N: Revealed type is "__main__.B*"
-reveal_type(q2(b))  # N: Revealed type is "__main__.B*"
+reveal_type(q1(b))  # N: Revealed type is "__main__.B"
+reveal_type(q2(b))  # N: Revealed type is "__main__.B"
 
 z: Z[B]
-reveal_type(q1(z))  # N: Revealed type is "__main__.B*"
-reveal_type(q2(z))  # N: Revealed type is "__main__.B*"
+reveal_type(q1(z))  # N: Revealed type is "__main__.B"
+reveal_type(q2(z))  # N: Revealed type is "__main__.B"
 
-reveal_type(q1(Z(b)))  # N: Revealed type is "__main__.B*"
-reveal_type(q2(Z(b)))  # N: Revealed type is "__main__.B*"
+reveal_type(q1(Z(b)))  # N: Revealed type is "__main__.B"
+reveal_type(q2(Z(b)))  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testUnionInvariantSubClassAndCovariantBase]
@@ -3022,7 +3022,7 @@ X = Union[Cov[T], Inv[T]]
 
 def f(x: X[T]) -> T: ...
 x: Inv[int]
-reveal_type(f(x))  # N: Revealed type is "builtins.int*"
+reveal_type(f(x))  # N: Revealed type is "builtins.int"
 
 [case testOptionalTypeVarAgainstOptional]
 # flags: --strict-optional
@@ -3035,7 +3035,7 @@ def filter(__function: None, __iterable: Iterable[Optional[_T]]) -> List[_T]: ..
 x: Optional[str]
 
 y = filter(None, [x])
-reveal_type(y)  # N: Revealed type is "builtins.list[builtins.str*]"
+reveal_type(y)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/list.pyi]
 
 [case testPartialDefaultDict]
@@ -3125,7 +3125,7 @@ from collections import defaultdict
 
 x = defaultdict(list)
 x['a'] = [1, 2, 3]
-reveal_type(x)  # N: Revealed type is "collections.defaultdict[builtins.str, builtins.list[builtins.int*]]"
+reveal_type(x)  # N: Revealed type is "collections.defaultdict[builtins.str, builtins.list[builtins.int]]"
 
 y = defaultdict(list)  # E: Need type annotation for "y"
 y['a'] = []
@@ -3149,7 +3149,7 @@ def f(x: Callable[[], T]) -> T:
     return x()
 
 reveal_type(f(lambda: None))  # N: Revealed type is "None"
-reveal_type(f(lambda: 1))  # N: Revealed type is "builtins.int*"
+reveal_type(f(lambda: 1))  # N: Revealed type is "builtins.int"
 
 def g() -> None: pass
 
@@ -3165,7 +3165,7 @@ def f(x: Callable[[], T]) -> T:
     return x()
 
 reveal_type(f(lambda: None))  # N: Revealed type is "None"
-reveal_type(f(lambda: 1))  # N: Revealed type is "builtins.int*"
+reveal_type(f(lambda: 1))  # N: Revealed type is "builtins.int"
 
 def g() -> None: pass
 
@@ -3236,9 +3236,9 @@ class C(NamedTuple):
 t: Optional[C]
 d: Dict[C, bytes]
 x = t and d[t]
-reveal_type(x)  # N: Revealed type is "Union[None, builtins.bytes*]"
+reveal_type(x)  # N: Revealed type is "Union[None, builtins.bytes]"
 if x:
-    reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+    reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
 
 [case testRegression11705_NoStrict]
@@ -3251,7 +3251,7 @@ class C(NamedTuple):
 t: Optional[C]
 d: Dict[C, bytes]
 x = t and d[t]
-reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
-    reveal_type(x)  # N: Revealed type is "builtins.bytes*"
+    reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]

@@ -85,7 +85,6 @@ class _SupportsAiter(Protocol[_T_co]):
 class object:
     __doc__: str | None
     __dict__: dict[str, Any]
-    __slots__: str | Iterable[str]
     __module__: str
     __annotations__: dict[str, Any]
     @property
