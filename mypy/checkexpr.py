@@ -1019,13 +1019,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee.arg_kinds, callee.arg_names,
             lambda i: self.accept(args[i]))
 
+        print(callee)
+        print(callee.variables)
         if callee.is_generic():
+            print("is generic")
+            print("a")
             need_refresh = any(isinstance(v, ParamSpecType) for v in callee.variables)
+            print("b")
             callee = freshen_function_type_vars(callee)
+            print("c")
+            print(callee)
             callee = self.infer_function_type_arguments_using_context(
                 callee, context)
+            print(callee)
             callee = self.infer_function_type_arguments(
                 callee, args, arg_kinds, formal_to_actual, context)
+            print(callee)
             if need_refresh:
                 # Argument kinds etc. may have changed due to
                 # ParamSpec variables being replaced with an arbitrary
@@ -1371,6 +1380,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Apply the inferred types to the function type. In this case the
         # return type must be CallableType, since we give the right number of type
         # arguments.
+        print(callee_type)
+        print(inferred_args)
         return self.apply_generic_arguments(callee_type, inferred_args, context)
 
     def check_argument_count(self,

@@ -696,6 +696,12 @@ class TypeVarTupleType(TypeVarLikeType):
             return NotImplemented
         return self.id == other.id
 
+    @staticmethod
+    def new_unification_variable(old: 'TypeVarTupleType') -> 'TypeVarTupleType':
+        new_id = TypeVarId.new(meta_level=1)
+        return TypeVarTupleType(old.name, old.fullname, new_id, old.upper_bound,
+                             line=old.line, column=old.column)
+
 
 class UnboundType(ProperType):
     """Instance type that has not been bound during semantic analysis."""
