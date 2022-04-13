@@ -84,7 +84,7 @@ Mypy can be installed using pip:
 
 If you want to run the latest version of the code, you can install from git:
 
-    python3 -m pip install -U git+git://github.com/python/mypy.git
+    python3 -m pip install -U git+https://github.com/python/mypy.git
 
 
 Now you can type-check the [statically typed parts] of a program like this:
