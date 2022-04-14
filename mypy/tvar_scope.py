@@ -65,6 +65,7 @@ class TypeVarLikeScope:
         else:
             self.func_id -= 1
             i = self.func_id
+            # TODO: Consider also using namespaces for functions
             namespace = ''
         if isinstance(tvar_expr, TypeVarExpr):
             tvar_def: TypeVarLikeType = TypeVarType(
