@@ -94,12 +94,12 @@ from mypy.messages import (
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 from mypy.types import (
-    ASSERT_TYPE_NAMES, NEVER_NAMES, FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
+    NEVER_NAMES, FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
     CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    is_named_instance,
+    ASSERT_TYPE_NAMES, is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery

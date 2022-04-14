@@ -3,11 +3,11 @@
 from typing import List
 
 from mypy.nodes import (
-    AssertTypeExpr, Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
+    Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
     SliceExpr, CastExpr, RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
     IndexExpr, GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, LambdaExpr, StarExpr, BackquoteExpr, AwaitExpr,
-    AssignmentExpr,
+    AssignmentExpr, AssertTypeExpr,
 )
 from mypy.traverser import TraverserVisitor
 

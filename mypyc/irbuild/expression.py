@@ -7,11 +7,11 @@ and mypyc.irbuild.builder.
 from typing import List, Optional, Union, Callable, cast
 
 from mypy.nodes import (
-    AssertTypeExpr, Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
+    Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
-    AssignmentExpr,
+    AssignmentExpr, AssertTypeExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
