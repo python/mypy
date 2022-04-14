@@ -1,5 +1,131 @@
-from tkinter import Canvas, Frame, PhotoImage
-from typing import Any, Callable, ClassVar, Sequence, TypeVar, Union, overload
+from _typeshed import Self
+from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
+from typing import Any, Callable, ClassVar, Sequence, Union, overload
+
+__all__ = [
+    "ScrolledCanvas",
+    "TurtleScreen",
+    "Screen",
+    "RawTurtle",
+    "Turtle",
+    "RawPen",
+    "Pen",
+    "Shape",
+    "Vec2D",
+    "addshape",
+    "bgcolor",
+    "bgpic",
+    "bye",
+    "clearscreen",
+    "colormode",
+    "delay",
+    "exitonclick",
+    "getcanvas",
+    "getshapes",
+    "listen",
+    "mainloop",
+    "mode",
+    "numinput",
+    "onkey",
+    "onkeypress",
+    "onkeyrelease",
+    "onscreenclick",
+    "ontimer",
+    "register_shape",
+    "resetscreen",
+    "screensize",
+    "setup",
+    "setworldcoordinates",
+    "textinput",
+    "title",
+    "tracer",
+    "turtles",
+    "update",
+    "window_height",
+    "window_width",
+    "back",
+    "backward",
+    "begin_fill",
+    "begin_poly",
+    "bk",
+    "circle",
+    "clear",
+    "clearstamp",
+    "clearstamps",
+    "clone",
+    "color",
+    "degrees",
+    "distance",
+    "dot",
+    "down",
+    "end_fill",
+    "end_poly",
+    "fd",
+    "fillcolor",
+    "filling",
+    "forward",
+    "get_poly",
+    "getpen",
+    "getscreen",
+    "get_shapepoly",
+    "getturtle",
+    "goto",
+    "heading",
+    "hideturtle",
+    "home",
+    "ht",
+    "isdown",
+    "isvisible",
+    "left",
+    "lt",
+    "onclick",
+    "ondrag",
+    "onrelease",
+    "pd",
+    "pen",
+    "pencolor",
+    "pendown",
+    "pensize",
+    "penup",
+    "pos",
+    "position",
+    "pu",
+    "radians",
+    "right",
+    "reset",
+    "resizemode",
+    "rt",
+    "seth",
+    "setheading",
+    "setpos",
+    "setposition",
+    "settiltangle",
+    "setundobuffer",
+    "setx",
+    "sety",
+    "shape",
+    "shapesize",
+    "shapetransform",
+    "shearfactor",
+    "showturtle",
+    "speed",
+    "st",
+    "stamp",
+    "tilt",
+    "tiltangle",
+    "towards",
+    "turtlesize",
+    "undo",
+    "undobufferentries",
+    "up",
+    "width",
+    "write",
+    "xcor",
+    "ycor",
+    "write_docstringdict",
+    "done",
+    "Terminator",
+]
 
 # Note: '_Color' is the alias we use for arguments and _AnyColor is the
 # alias we use for return types. Really, these two aliases should be the
@@ -11,14 +137,24 @@ _AnyColor = Any
 # TODO: Replace this with a TypedDict once it becomes standardized.
 _PenState = dict[str, Any]
 
-_Speed = Union[str, float]
+_Speed = str | float
 _PolygonCoords = Sequence[tuple[float, float]]
 
 # TODO: Type this more accurately
 # Vec2D is actually a custom subclass of 'tuple'.
 Vec2D = tuple[float, float]
 
-class ScrolledCanvas(Frame): ...
+# Does not actually inherit from Canvas, but dynamically gets all methods of Canvas
+class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]
+    bg: str
+    hscroll: Scrollbar
+    vscroll: Scrollbar
+    def __init__(
+        self, master: Misc | None, width: int = ..., height: int = ..., canvwidth: int = ..., canvheight: int = ...
+    ) -> None: ...
+    canvwidth: int
+    canvheight: int
+    def reset(self, canvwidth: int | None = ..., canvheight: int | None = ..., bg: str | None = ...) -> None: ...
 
 class TurtleScreenBase:
     cv: Canvas
@@ -205,8 +341,6 @@ class TPen:
     st = showturtle
     ht = hideturtle
 
-_T = TypeVar("_T")
-
 class RawTurtle(TPen, TNavigator):
     screen: TurtleScreen
     screens: ClassVar[list[TurtleScreen]]
@@ -217,7 +351,7 @@ class RawTurtle(TPen, TNavigator):
     def setundobuffer(self, size: int | None) -> None: ...
     def undobufferentries(self) -> int: ...
     def clear(self) -> None: ...
-    def clone(self: _T) -> _T: ...
+    def clone(self: Self) -> Self: ...
     @overload
     def shape(self, name: None = ...) -> str: ...
     @overload
@@ -262,7 +396,7 @@ class RawTurtle(TPen, TNavigator):
     def end_poly(self) -> None: ...
     def get_poly(self) -> _PolygonCoords | None: ...
     def getscreen(self) -> TurtleScreen: ...
-    def getturtle(self: _T) -> _T: ...
+    def getturtle(self: Self) -> Self: ...
     getpen = getturtle
     def onclick(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...
     def onrelease(self, fun: Callable[[float, float], Any], btn: int = ..., add: bool | None = ...) -> None: ...

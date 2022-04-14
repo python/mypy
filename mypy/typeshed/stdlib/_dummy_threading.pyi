@@ -1,14 +1,63 @@
 import sys
 from types import FrameType, TracebackType
-from typing import Any, Callable, Iterable, Mapping, Optional, Type, TypeVar
+from typing import Any, Callable, Iterable, Mapping, TypeVar
 
 # TODO recursive type
-_TF = Callable[[FrameType, str, Any], Optional[Callable[..., Any]]]
+_TF = Callable[[FrameType, str, Any], Callable[..., Any] | None]
 
 _PF = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
-__all__: list[str]
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "get_ident",
+        "active_count",
+        "Condition",
+        "current_thread",
+        "enumerate",
+        "main_thread",
+        "TIMEOUT_MAX",
+        "Event",
+        "Lock",
+        "RLock",
+        "Semaphore",
+        "BoundedSemaphore",
+        "Thread",
+        "Barrier",
+        "BrokenBarrierError",
+        "Timer",
+        "ThreadError",
+        "setprofile",
+        "settrace",
+        "local",
+        "stack_size",
+        "excepthook",
+        "ExceptHookArgs",
+    ]
+else:
+    __all__ = [
+        "get_ident",
+        "active_count",
+        "Condition",
+        "current_thread",
+        "enumerate",
+        "main_thread",
+        "TIMEOUT_MAX",
+        "Event",
+        "Lock",
+        "RLock",
+        "Semaphore",
+        "BoundedSemaphore",
+        "Thread",
+        "Barrier",
+        "BrokenBarrierError",
+        "Timer",
+        "ThreadError",
+        "setprofile",
+        "settrace",
+        "local",
+        "stack_size",
+    ]
 
 def active_count() -> int: ...
 def current_thread() -> Thread: ...
@@ -16,10 +65,6 @@ def currentThread() -> Thread: ...
 def get_ident() -> int: ...
 def enumerate() -> list[Thread]: ...
 def main_thread() -> Thread: ...
-
-if sys.version_info >= (3, 8):
-    from _thread import get_native_id as get_native_id
-
 def settrace(func: _TF) -> None: ...
 def setprofile(func: _PF | None) -> None: ...
 def stack_size(size: int = ...) -> int: ...
@@ -35,8 +80,9 @@ class local:
 
 class Thread:
     name: str
-    ident: int | None
     daemon: bool
+    @property
+    def ident(self) -> int | None: ...
     def __init__(
         self,
         group: None = ...,
@@ -55,9 +101,11 @@ class Thread:
     if sys.version_info >= (3, 8):
         @property
         def native_id(self) -> int | None: ...  # only available on some platforms
+
     def is_alive(self) -> bool: ...
     if sys.version_info < (3, 9):
         def isAlive(self) -> bool: ...
+
     def isDaemon(self) -> bool: ...
     def setDaemon(self, daemonic: bool) -> None: ...
 
@@ -67,7 +115,7 @@ class Lock:
     def __init__(self) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
@@ -77,7 +125,7 @@ class _RLock:
     def __init__(self) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
@@ -88,7 +136,7 @@ class Condition:
     def __init__(self, lock: Lock | _RLock | None = ...) -> None: ...
     def __enter__(self) -> bool: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float = ...) -> bool: ...
     def release(self) -> None: ...
@@ -101,7 +149,7 @@ class Condition:
 class Semaphore:
     def __init__(self, value: int = ...) -> None: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> bool | None: ...
     def acquire(self, blocking: bool = ..., timeout: float | None = ...) -> bool: ...
     def __enter__(self, blocking: bool = ..., timeout: float | None = ...) -> bool: ...
@@ -136,9 +184,12 @@ class Timer(Thread):
     def cancel(self) -> None: ...
 
 class Barrier:
-    parties: int
-    n_waiting: int
-    broken: bool
+    @property
+    def parties(self) -> int: ...
+    @property
+    def n_waiting(self) -> int: ...
+    @property
+    def broken(self) -> bool: ...
     def __init__(self, parties: int, action: Callable[[], None] | None = ..., timeout: float | None = ...) -> None: ...
     def wait(self, timeout: float | None = ...) -> int: ...
     def reset(self) -> None: ...

@@ -1,11 +1,92 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, Type, TypeVar, Union, overload
+from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
+
+if sys.platform == "win32":
+    if sys.version_info >= (3, 7):
+        __all__ = [
+            "Popen",
+            "PIPE",
+            "STDOUT",
+            "call",
+            "check_call",
+            "getstatusoutput",
+            "getoutput",
+            "check_output",
+            "run",
+            "CalledProcessError",
+            "DEVNULL",
+            "SubprocessError",
+            "TimeoutExpired",
+            "CompletedProcess",
+            "CREATE_NEW_CONSOLE",
+            "CREATE_NEW_PROCESS_GROUP",
+            "STD_INPUT_HANDLE",
+            "STD_OUTPUT_HANDLE",
+            "STD_ERROR_HANDLE",
+            "SW_HIDE",
+            "STARTF_USESTDHANDLES",
+            "STARTF_USESHOWWINDOW",
+            "STARTUPINFO",
+            "ABOVE_NORMAL_PRIORITY_CLASS",
+            "BELOW_NORMAL_PRIORITY_CLASS",
+            "HIGH_PRIORITY_CLASS",
+            "IDLE_PRIORITY_CLASS",
+            "NORMAL_PRIORITY_CLASS",
+            "REALTIME_PRIORITY_CLASS",
+            "CREATE_NO_WINDOW",
+            "DETACHED_PROCESS",
+            "CREATE_DEFAULT_ERROR_MODE",
+            "CREATE_BREAKAWAY_FROM_JOB",
+        ]
+    else:
+        __all__ = [
+            "Popen",
+            "PIPE",
+            "STDOUT",
+            "call",
+            "check_call",
+            "getstatusoutput",
+            "getoutput",
+            "check_output",
+            "run",
+            "CalledProcessError",
+            "DEVNULL",
+            "SubprocessError",
+            "TimeoutExpired",
+            "CompletedProcess",
+            "CREATE_NEW_CONSOLE",
+            "CREATE_NEW_PROCESS_GROUP",
+            "STD_INPUT_HANDLE",
+            "STD_OUTPUT_HANDLE",
+            "STD_ERROR_HANDLE",
+            "SW_HIDE",
+            "STARTF_USESTDHANDLES",
+            "STARTF_USESHOWWINDOW",
+            "STARTUPINFO",
+        ]
+else:
+    __all__ = [
+        "Popen",
+        "PIPE",
+        "STDOUT",
+        "call",
+        "check_call",
+        "getstatusoutput",
+        "getoutput",
+        "check_output",
+        "run",
+        "CalledProcessError",
+        "DEVNULL",
+        "SubprocessError",
+        "TimeoutExpired",
+        "CompletedProcess",
+    ]
 
 # We prefer to annotate inputs to methods (eg subprocess.check_call) with these
 # union types.
@@ -21,18 +102,18 @@ if sys.version_info >= (3, 9):
 #    reveal_type(x)  # bytes, based on the overloads
 # except TimeoutError as e:
 #    reveal_type(e.cmd)  # Any, but morally is _CMD
-_FILE = Union[None, int, IO[Any]]
-_TXT = Union[bytes, str]
+_FILE = None | int | IO[Any]
+_TXT = bytes | str
 if sys.version_info >= (3, 8):
-    _CMD = Union[StrOrBytesPath, Sequence[StrOrBytesPath]]
+    _CMD = StrOrBytesPath | Sequence[StrOrBytesPath]
 else:
     # Python 3.6 doesn't support _CMD being a single PathLike.
     # See: https://bugs.python.org/issue31961
-    _CMD = Union[_TXT, Sequence[StrOrBytesPath]]
+    _CMD = _TXT | Sequence[StrOrBytesPath]
 if sys.platform == "win32":
     _ENV = Mapping[str, str]
 else:
-    _ENV = Union[Mapping[bytes, StrOrBytesPath], Mapping[str, StrOrBytesPath]]
+    _ENV = Mapping[bytes, StrOrBytesPath] | Mapping[str, StrOrBytesPath]
 
 _T = TypeVar("_T")
 
@@ -991,6 +1072,7 @@ class Popen(Generic[AnyStr]):
             encoding: str | None = ...,
             errors: str | None = ...,
         ) -> Popen[Any]: ...
+
     def poll(self) -> int | None: ...
     if sys.version_info >= (3, 7):
         def wait(self, timeout: float | None = ...) -> int: ...
@@ -1008,7 +1090,7 @@ class Popen(Generic[AnyStr]):
     def kill(self) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        self, exc_type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
@@ -1043,22 +1125,27 @@ if sys.platform == "win32":
         wShowWindow: int
         if sys.version_info >= (3, 7):
             lpAttributeList: Mapping[str, Any]
-    STD_INPUT_HANDLE: Any
-    STD_OUTPUT_HANDLE: Any
-    STD_ERROR_HANDLE: Any
-    SW_HIDE: int
-    STARTF_USESTDHANDLES: int
-    STARTF_USESHOWWINDOW: int
-    CREATE_NEW_CONSOLE: int
-    CREATE_NEW_PROCESS_GROUP: int
+    from _winapi import (
+        CREATE_NEW_CONSOLE as CREATE_NEW_CONSOLE,
+        CREATE_NEW_PROCESS_GROUP as CREATE_NEW_PROCESS_GROUP,
+        STARTF_USESHOWWINDOW as STARTF_USESHOWWINDOW,
+        STARTF_USESTDHANDLES as STARTF_USESTDHANDLES,
+        STD_ERROR_HANDLE as STD_ERROR_HANDLE,
+        STD_INPUT_HANDLE as STD_INPUT_HANDLE,
+        STD_OUTPUT_HANDLE as STD_OUTPUT_HANDLE,
+        SW_HIDE as SW_HIDE,
+    )
+
     if sys.version_info >= (3, 7):
-        ABOVE_NORMAL_PRIORITY_CLASS: int
-        BELOW_NORMAL_PRIORITY_CLASS: int
-        HIGH_PRIORITY_CLASS: int
-        IDLE_PRIORITY_CLASS: int
-        NORMAL_PRIORITY_CLASS: int
-        REALTIME_PRIORITY_CLASS: int
-        CREATE_NO_WINDOW: int
-        DETACHED_PROCESS: int
-        CREATE_DEFAULT_ERROR_MODE: int
-        CREATE_BREAKAWAY_FROM_JOB: int
+        from _winapi import (
+            ABOVE_NORMAL_PRIORITY_CLASS as ABOVE_NORMAL_PRIORITY_CLASS,
+            BELOW_NORMAL_PRIORITY_CLASS as BELOW_NORMAL_PRIORITY_CLASS,
+            CREATE_BREAKAWAY_FROM_JOB as CREATE_BREAKAWAY_FROM_JOB,
+            CREATE_DEFAULT_ERROR_MODE as CREATE_DEFAULT_ERROR_MODE,
+            CREATE_NO_WINDOW as CREATE_NO_WINDOW,
+            DETACHED_PROCESS as DETACHED_PROCESS,
+            HIGH_PRIORITY_CLASS as HIGH_PRIORITY_CLASS,
+            IDLE_PRIORITY_CLASS as IDLE_PRIORITY_CLASS,
+            NORMAL_PRIORITY_CLASS as NORMAL_PRIORITY_CLASS,
+            REALTIME_PRIORITY_CLASS as REALTIME_PRIORITY_CLASS,
+        )

@@ -1,6 +1,7 @@
 from typing import Any
 from weakref import ReferenceType
 
+__all__ = ["local"]
 localdict = dict[Any, Any]
 
 class _localimpl:

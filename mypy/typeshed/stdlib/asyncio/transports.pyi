@@ -4,6 +4,11 @@ from asyncio.protocols import BaseProtocol
 from socket import _Address
 from typing import Any, Mapping
 
+if sys.version_info >= (3, 7):
+    __all__ = ("BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport")
+else:
+    __all__ = ["BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport"]
+
 class BaseTransport:
     def __init__(self, extra: Mapping[Any, Any] | None = ...) -> None: ...
     def get_extra_info(self, name: Any, default: Any = ...) -> Any: ...
@@ -15,6 +20,7 @@ class BaseTransport:
 class ReadTransport(BaseTransport):
     if sys.version_info >= (3, 7):
         def is_reading(self) -> bool: ...
+
     def pause_reading(self) -> None: ...
     def resume_reading(self) -> None: ...
 

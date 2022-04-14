@@ -6,14 +6,59 @@ from io import TextIOWrapper
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Optional, Pattern, TextIO, Type, TypeVar, Union, overload
+from typing import Any, ClassVar, Generic, Pattern, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal
 
-_SysExcInfoType = Union[tuple[Type[BaseException], BaseException, Optional[TracebackType]], tuple[None, None, None]]
-_ExcInfoType = Union[None, bool, _SysExcInfoType, BaseException]
-_ArgsType = Union[tuple[object, ...], Mapping[str, object]]
-_FilterType = Union[Filter, Callable[[LogRecord], int]]
-_Level = Union[int, str]
+__all__ = [
+    "BASIC_FORMAT",
+    "BufferingFormatter",
+    "CRITICAL",
+    "DEBUG",
+    "ERROR",
+    "FATAL",
+    "FileHandler",
+    "Filter",
+    "Formatter",
+    "Handler",
+    "INFO",
+    "LogRecord",
+    "Logger",
+    "LoggerAdapter",
+    "NOTSET",
+    "NullHandler",
+    "StreamHandler",
+    "WARN",
+    "WARNING",
+    "addLevelName",
+    "basicConfig",
+    "captureWarnings",
+    "critical",
+    "debug",
+    "disable",
+    "error",
+    "exception",
+    "fatal",
+    "getLevelName",
+    "getLogger",
+    "getLoggerClass",
+    "info",
+    "log",
+    "makeLogRecord",
+    "setLoggerClass",
+    "shutdown",
+    "warn",
+    "warning",
+    "getLogRecordFactory",
+    "setLogRecordFactory",
+    "lastResort",
+    "raiseExceptions",
+]
+
+_SysExcInfoType = Union[tuple[type[BaseException], BaseException, TracebackType | None], tuple[None, None, None]]
+_ExcInfoType = None | bool | _SysExcInfoType | BaseException
+_ArgsType = tuple[object, ...] | Mapping[str, object]
+_FilterType = Filter | Callable[[LogRecord], int]
+_Level = int | str
 _FormatStyle = Literal["%", "{", "$"]
 
 raiseExceptions: bool
@@ -39,11 +84,11 @@ class Manager:  # undocumented
     disable: int
     emittedNoHandlerWarning: bool
     loggerDict: dict[str, Logger | PlaceHolder]
-    loggerClass: Type[Logger] | None
+    loggerClass: type[Logger] | None
     logRecordFactory: Callable[..., LogRecord] | None
     def __init__(self, rootnode: RootLogger) -> None: ...
     def getLogger(self, name: str) -> Logger: ...
-    def setLoggerClass(self, klass: Type[Logger]) -> None: ...
+    def setLoggerClass(self, klass: type[Logger]) -> None: ...
     def setLogRecordFactory(self, factory: Callable[..., LogRecord]) -> None: ...
 
 class Logger(Filterer):
@@ -227,6 +272,7 @@ class Logger(Filterer):
         def findCaller(self, stack_info: bool = ..., stacklevel: int = ...) -> tuple[str, int, str, str | None]: ...
     else:
         def findCaller(self, stack_info: bool = ...) -> tuple[str, int, str, str | None]: ...
+
     def handle(self, record: LogRecord) -> None: ...
     def makeRecord(
         self,
@@ -301,6 +347,7 @@ class Formatter:
         ) -> None: ...
     else:
         def __init__(self, fmt: str | None = ..., datefmt: str | None = ..., style: _FormatStyle = ...) -> None: ...
+
     def format(self, record: LogRecord) -> str: ...
     def formatTime(self, record: LogRecord, datefmt: str | None = ...) -> str: ...
     def formatException(self, ei: _SysExcInfoType) -> str: ...
@@ -372,6 +419,7 @@ class LoggerAdapter(Generic[_L]):
     else:
         extra: Mapping[str, object]
         def __init__(self, logger: _L, extra: Mapping[str, object]) -> None: ...
+
     def process(self, msg: Any, kwargs: MutableMapping[str, Any]) -> tuple[Any, MutableMapping[str, Any]]: ...
     if sys.version_info >= (3, 8):
         def debug(
@@ -529,6 +577,7 @@ class LoggerAdapter(Generic[_L]):
             extra: Mapping[str, object] | None = ...,
             **kwargs: object,
         ) -> None: ...
+
     def isEnabledFor(self, level: int) -> bool: ...
     def getEffectiveLevel(self) -> int: ...
     def setLevel(self, level: _Level) -> None: ...
@@ -546,7 +595,7 @@ class LoggerAdapter(Generic[_L]):
     def name(self) -> str: ...  # undocumented
 
 def getLogger(name: str | None = ...) -> Logger: ...
-def getLoggerClass() -> Type[Logger]: ...
+def getLoggerClass() -> type[Logger]: ...
 def getLogRecordFactory() -> Callable[..., LogRecord]: ...
 
 if sys.version_info >= (3, 8):
@@ -703,7 +752,7 @@ else:
     ) -> None: ...
 
 def shutdown(handlerList: Sequence[Any] = ...) -> None: ...  # handlerList is undocumented
-def setLoggerClass(klass: Type[Logger]) -> None: ...
+def setLoggerClass(klass: type[Logger]) -> None: ...
 def captureWarnings(capture: bool) -> None: ...
 def setLogRecordFactory(factory: Callable[..., LogRecord]) -> None: ...
 
@@ -733,6 +782,7 @@ class FileHandler(StreamHandler[TextIOWrapper]):
         ) -> None: ...
     else:
         def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+
     def _open(self) -> TextIOWrapper: ...  # undocumented
 
 class NullHandler(Handler): ...
@@ -760,9 +810,11 @@ class PercentStyle:  # undocumented
         def __init__(self, fmt: str, *, defaults: Mapping[str, Any] | None = ...) -> None: ...
     else:
         def __init__(self, fmt: str) -> None: ...
+
     def usesTime(self) -> bool: ...
     if sys.version_info >= (3, 8):
         def validate(self) -> None: ...
+
     def format(self, record: Any) -> str: ...
 
 class StrFormatStyle(PercentStyle):  # undocumented

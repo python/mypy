@@ -121,11 +121,11 @@ def is_c_classmethod(obj: object) -> bool:
 
 
 def is_c_property(obj: object) -> bool:
-    return inspect.isdatadescriptor(obj) and hasattr(obj, 'fget')
+    return inspect.isdatadescriptor(obj) or hasattr(obj, 'fget')
 
 
 def is_c_property_readonly(prop: Any) -> bool:
-    return prop.fset is None
+    return hasattr(prop, 'fset') and prop.fset is None
 
 
 def is_c_type(obj: object) -> bool:
@@ -286,6 +286,10 @@ def generate_c_property_stub(name: str, obj: object,
             return inferred
         else:
             return None
+
+    # Ignore special properties/attributes.
+    if name.startswith('__') and name.endswith('__'):
+        return
 
     inferred = infer_prop_type(getattr(obj, '__doc__', None))
     if not inferred:

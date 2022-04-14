@@ -1378,6 +1378,16 @@ p: Future  # E: Missing type parameters for generic type "Future" \
            # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
 q: Queue  # E: Missing type parameters for generic type "Queue" \
           # N: Subscripting classes that are not generic at runtime may require escaping, see https://mypy.readthedocs.io/en/stable/runtime_troubles.html#not-generic-runtime
+[file asyncio/__init__.pyi]
+from asyncio.futures import Future as Future
+[file asyncio/futures.pyi]
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class Future(Generic[_T]): ...
+[file queue.pyi]
+from typing import TypeVar, Generic
+_T = TypeVar('_T')
+class Queue(Generic[_T]): ...
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-full.pyi]
 

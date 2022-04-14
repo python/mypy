@@ -1,6 +1,6 @@
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Union
 
-_Macro = Union[tuple[str], tuple[str, Optional[str]]]
+_Macro = Union[tuple[str], tuple[str, str | None]]
 
 def gen_lib_options(
     compiler: CCompiler, library_dirs: list[str], runtime_library_dirs: list[str], libraries: list[str]

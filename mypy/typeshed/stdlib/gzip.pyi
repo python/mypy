@@ -6,6 +6,11 @@ from io import FileIO
 from typing import Any, Protocol, TextIO, overload
 from typing_extensions import Literal
 
+if sys.version_info >= (3, 8):
+    __all__ = ["BadGzipFile", "GzipFile", "open", "compress", "decompress"]
+else:
+    __all__ = ["GzipFile", "open", "compress", "decompress"]
+
 _ReadBinaryMode = Literal["r", "rb"]
 _WriteBinaryMode = Literal["a", "ab", "w", "wb", "x", "xb"]
 _OpenTextMode = Literal["rt", "at", "wt", "xt"]

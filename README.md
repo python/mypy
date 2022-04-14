@@ -65,7 +65,7 @@ Here is a small example to whet your appetite:
 
 ```python
 number = input("What is your favourite number?")
-print("Well, my favourite number is: ", number + 1)  # error: Unsupported operand types for + ("str" and "int")
+print("It is", number + 1)  # error: Unsupported operand types for + ("str" and "int")
 ```
 
 See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
@@ -84,7 +84,7 @@ Mypy can be installed using pip:
 
 If you want to run the latest version of the code, you can install from git:
 
-    python3 -m pip install -U git+git://github.com/python/mypy.git
+    python3 -m pip install -U git+https://github.com/python/mypy.git
 
 
 Now you can type-check the [statically typed parts] of a program like this:

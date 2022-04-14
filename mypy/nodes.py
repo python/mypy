@@ -123,6 +123,8 @@ type_aliases: Final = {
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
     'typing.OrderedDict': 'collections.OrderedDict',
+    # HACK: a lie in lieu of actual support for PEP 675
+    'typing.LiteralString': 'builtins.str',
 }
 
 # This keeps track of the oldest supported Python version where the corresponding
@@ -137,12 +139,15 @@ type_aliases_source_versions: Final = {
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
     'typing.OrderedDict': (3, 7),
+    'typing.LiteralString': (3, 11),
 }
 
 # This keeps track of aliases in `typing_extensions`, which we treat specially.
 typing_extensions_aliases: Final = {
     # See: https://github.com/python/mypy/issues/11528
     'typing_extensions.OrderedDict': 'collections.OrderedDict',
+    # HACK: a lie in lieu of actual support for PEP 675
+    'typing_extensions.LiteralString': 'builtins.str',
 }
 
 reverse_builtin_aliases: Final = {
@@ -156,6 +161,8 @@ _nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate
 _nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 # Drop OrderedDict from this for backward compatibility
 del _nongen_builtins['collections.OrderedDict']
+# HACK: consequence of hackily treating LiteralString as an alias for str
+del _nongen_builtins['builtins.str']
 
 
 def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:

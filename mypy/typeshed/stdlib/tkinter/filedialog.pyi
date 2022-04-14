@@ -1,7 +1,25 @@
+import sys
 from _typeshed import StrOrBytesPath
 from tkinter import Button, Entry, Frame, Listbox, Misc, Scrollbar, StringVar, Toplevel, commondialog
 from typing import IO, Any, ClassVar, Iterable
 from typing_extensions import Literal
+
+if sys.version_info >= (3, 9):
+    __all__ = [
+        "FileDialog",
+        "LoadFileDialog",
+        "SaveFileDialog",
+        "Open",
+        "SaveAs",
+        "Directory",
+        "askopenfilename",
+        "asksaveasfilename",
+        "askopenfilenames",
+        "askopenfile",
+        "askopenfiles",
+        "asksaveasfile",
+        "askdirectory",
+    ]
 
 dialogstates: dict[Any, tuple[Any, Any]]
 
@@ -46,7 +64,7 @@ class LoadFileDialog(FileDialog):
 
 class SaveFileDialog(FileDialog):
     title: str
-    def ok_command(self): ...
+    def ok_command(self) -> None: ...
 
 class _Dialog(commondialog.Dialog): ...
 

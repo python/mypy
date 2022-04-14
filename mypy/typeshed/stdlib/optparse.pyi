@@ -1,11 +1,32 @@
-from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, Type, overload
+from abc import abstractmethod
+from typing import IO, Any, AnyStr, Callable, Iterable, Mapping, Sequence, overload
+
+__all__ = [
+    "Option",
+    "make_option",
+    "SUPPRESS_HELP",
+    "SUPPRESS_USAGE",
+    "Values",
+    "OptionContainer",
+    "OptionGroup",
+    "OptionParser",
+    "HelpFormatter",
+    "IndentedHelpFormatter",
+    "TitledHelpFormatter",
+    "OptParseError",
+    "OptionError",
+    "OptionConflictError",
+    "OptionValueError",
+    "BadOptionError",
+    "check_choice",
+]
 
 NO_DEFAULT: tuple[str, ...]
 SUPPRESS_HELP: str
 SUPPRESS_USAGE: str
 
 def check_builtin(option: Option, opt: Any, value: str) -> Any: ...
-def check_choice(option: Option, opt: Any, value: str) -> Any: ...
+def check_choice(option: Option, opt: Any, value: str) -> str: ...
 
 class OptParseError(Exception):
     msg: str
@@ -47,9 +68,11 @@ class HelpFormatter:
     def expand_default(self, option: Option) -> str: ...
     def format_description(self, description: str) -> str: ...
     def format_epilog(self, epilog: str) -> str: ...
+    @abstractmethod
     def format_heading(self, heading: Any) -> str: ...
     def format_option(self, option: Option) -> str: ...
     def format_option_strings(self, option: Option) -> str: ...
+    @abstractmethod
     def format_usage(self, usage: Any) -> str: ...
     def indent(self) -> None: ...
     def set_long_opt_delimiter(self, delim: str) -> None: ...
@@ -119,8 +142,8 @@ class OptionContainer:
     conflict_handler: str
     defaults: dict[str, Any]
     description: Any
-    option_class: Type[Option]
-    def __init__(self, option_class: Type[Option], conflict_handler: Any, description: Any) -> None: ...
+    option_class: type[Option]
+    def __init__(self, option_class: type[Option], conflict_handler: Any, description: Any) -> None: ...
     def _check_conflict(self, option: Any) -> None: ...
     def _create_option_mappings(self) -> None: ...
     def _share_option_mappings(self, parser: OptionParser) -> None: ...
@@ -157,7 +180,8 @@ class Values:
     def read_file(self, filename: str, mode: str = ...) -> None: ...
     def read_module(self, modname: str, mode: str = ...) -> None: ...
     def __getattr__(self, name: str) -> Any: ...
-    def __setattr__(self, name: str, value: Any) -> None: ...
+    def __setattr__(self, __name: str, __value: Any) -> None: ...
+    def __eq__(self, other: object) -> bool: ...
 
 class OptionParser(OptionContainer):
     allow_interspersed_args: bool
@@ -177,7 +201,7 @@ class OptionParser(OptionContainer):
         self,
         usage: str | None = ...,
         option_list: Iterable[Option] | None = ...,
-        option_class: Type[Option] = ...,
+        option_class: type[Option] = ...,
         version: str | None = ...,
         conflict_handler: str = ...,
         description: str | None = ...,

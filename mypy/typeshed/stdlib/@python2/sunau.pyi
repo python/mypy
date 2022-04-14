@@ -1,6 +1,6 @@
-from typing import IO, Any, NoReturn, Text, Tuple, Union
+from typing import IO, Any, NoReturn, Text
 
-_File = Union[Text, IO[bytes]]
+_File = Text | IO[bytes]
 
 class Error(Exception): ...
 
@@ -19,7 +19,7 @@ AUDIO_FILE_ENCODING_ADPCM_G723_5: int
 AUDIO_FILE_ENCODING_ALAW_8: int
 AUDIO_UNKNOWN_SIZE: int
 
-_sunau_params = Tuple[int, int, int, int, str, str]
+_sunau_params = tuple[int, int, int, int, str, str]
 
 class Au_read:
     def __init__(self, f: _File) -> None: ...

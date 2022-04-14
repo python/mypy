@@ -2,6 +2,8 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from typing import Any, Iterator
 
+__all__ = ["calcsize", "pack", "pack_into", "unpack", "unpack_from", "iter_unpack", "Struct", "error"]
+
 class error(Exception): ...
 
 def pack(fmt: str | bytes, *v: Any) -> bytes: ...
