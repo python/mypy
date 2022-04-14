@@ -416,8 +416,9 @@ class TypeVarId:
     # Class variable used for allocating fresh ids for metavariables.
     next_raw_id: ClassVar[int] = 1
 
-    # Fullname of class or function which declares this type variable
-    # (not the fullname of the TypeVar definition!), or ''
+    # Fullname of class (or potentially function in the future) which
+    # declares this type variable (not the fullname of the TypeVar
+    # definition!), or ''
     namespace: str
 
     def __init__(self, raw_id: int, meta_level: int = 0, *, namespace: str = '') -> None:
