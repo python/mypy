@@ -520,6 +520,7 @@ class TypeVarType(TypeVarLikeType):
                 'name': self.name,
                 'fullname': self.fullname,
                 'id': self.id.raw_id,
+                'namespace': self.id.namespace,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
@@ -531,7 +532,7 @@ class TypeVarType(TypeVarLikeType):
         return TypeVarType(
             data['name'],
             data['fullname'],
-            data['id'],
+            TypeVarId(data['id'], data['namespace']),
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
