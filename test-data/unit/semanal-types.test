@@ -390,6 +390,17 @@ MypyFile:1(
       IntExpr(1)
       builtins.int)))
 
+[case testAssertType]
+from typing import assert_type
+assert_type(1, int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [assert_type])
+  ExpressionStmt:2(
+    AssertTypeExpr:2(
+      IntExpr(1)
+      builtins.int)))
+
 [case testFunctionTypeVariable]
 from typing import TypeVar
 t = TypeVar('t')

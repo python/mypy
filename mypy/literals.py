@@ -2,7 +2,7 @@ from typing import Optional, Union, Any, Tuple, Iterable
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
+    AssertTypeExpr, Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
     LITERAL_NO, NameExpr, LITERAL_TYPE, IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr,
     UnicodeExpr, ListExpr, TupleExpr, SetExpr, DictExpr, CallExpr, SliceExpr, CastExpr,
     ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
@@ -173,6 +173,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_cast_expr(self, e: CastExpr) -> None:
+        return None
+
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
         return None
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> None:

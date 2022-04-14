@@ -23,7 +23,7 @@ from mypy.types import (
     get_proper_types, flatten_nested_unions, LITERAL_TYPE_NAMES,
 )
 from mypy.nodes import (
-    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    AssertTypeExpr, NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
@@ -3143,6 +3143,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         check_for_explicit_any(target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg,
                                context=expr)
         return target_type
+
+    def visit_assert_type_expr(self, expr: AssertTypeExpr) -> Type:
+        source_type = self.accept(expr.expr, type_context=AnyType(TypeOfAny.special_form),
+                                  allow_none_return=True, always_allow_any=True)
+        target_type = expr.type
+        if not is_same_type(source_type, target_type):
+            self.msg.assert_type_fail(source_type, target_type, expr)
+        return source_type
 
     def visit_reveal_expr(self, expr: RevealExpr) -> Type:
         """Type check a reveal_type expression."""

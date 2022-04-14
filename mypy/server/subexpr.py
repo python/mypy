@@ -3,7 +3,7 @@
 from typing import List
 
 from mypy.nodes import (
-    Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
+    AssertTypeExpr, Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
     SliceExpr, CastExpr, RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
     IndexExpr, GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, LambdaExpr, StarExpr, BackquoteExpr, AwaitExpr,
@@ -98,6 +98,10 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_cast_expr(self, e: CastExpr) -> None:
         self.add(e)
         super().visit_cast_expr(e)
+
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        self.add(e)
+        super().visit_assert_type_expr(e)
 
     def visit_reveal_expr(self, e: RevealExpr) -> None:
         self.add(e)

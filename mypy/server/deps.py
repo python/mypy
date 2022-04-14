@@ -84,7 +84,7 @@ from typing_extensions import DefaultDict
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
-    Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
+    AssertTypeExpr, Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
     ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
@@ -684,6 +684,10 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         super().visit_cast_expr(e)
+        self.add_type_dependencies(e.type)
+
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(e)
         self.add_type_dependencies(e.type)
 
     def visit_type_application(self, e: TypeApplication) -> None:

@@ -7,7 +7,7 @@ and mypyc.irbuild.builder.
 from typing import List, Optional, Union, Callable, cast
 
 from mypy.nodes import (
-    Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
+    AssertTypeExpr, Expression, NameExpr, MemberExpr, SuperExpr, CallExpr, UnaryExpr, OpExpr, IndexExpr,
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
@@ -203,6 +203,9 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
 def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     if isinstance(expr.analyzed, CastExpr):
         return translate_cast_expr(builder, expr.analyzed)
+    elif isinstance(expr.analyzed, AssertTypeExpr):
+        # Compile to a no-op.
+        return builder.accept(expr.analyzed.expr)
 
     callee = expr.callee
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
