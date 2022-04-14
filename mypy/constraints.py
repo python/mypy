@@ -407,6 +407,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         raise NotImplementedError
 
     def visit_parameters(self, template: Parameters) -> List[Constraint]:
+        # constraining Any against C[P] turns into infer_against_any([P], Any)
+        # ... which seems like the only case this can happen. Better to fail loudly.
+        if isinstance(self.actual, AnyType):
+            return self.infer_against_any(template.arg_types, self.actual)
         raise RuntimeError("Parameters cannot be constrained to")
 
     # Non-leaf types

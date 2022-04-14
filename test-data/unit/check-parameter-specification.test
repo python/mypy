@@ -1049,3 +1049,17 @@ P = ParamSpec("P")
 
 def x(f: Callable[Concatenate[int, Concatenate[int, P]], None]) -> None: ...  # E: Nested Concatenates are invalid
 [builtins fixtures/tuple.pyi]
+
+[case testPropagatedAnyConstraintsAreOK]
+from typing import Any, Callable, Generic, TypeVar
+from typing_extensions import ParamSpec
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+def callback(func: Callable[[Any], Any]) -> None: ...
+class Job(Generic[P]): ...
+
+@callback
+def run_job(job: Job[...]) -> T: ...
+[builtins fixtures/tuple.pyi]
