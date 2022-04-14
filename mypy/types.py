@@ -532,7 +532,7 @@ class TypeVarType(TypeVarLikeType):
         return TypeVarType(
             data['name'],
             data['fullname'],
-            TypeVarId(data['id'], data['namespace']),
+            TypeVarId(data['id'], namespace=data['namespace']),
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
