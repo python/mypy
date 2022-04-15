@@ -56,6 +56,7 @@ __all__ = [
     "SupportsIndex",
     "Annotated",
     "assert_never",
+    "assert_type",
     "dataclass_transform",
     "final",
     "IntVar",
@@ -186,12 +187,19 @@ else:
 
 # New things in 3.11
 if sys.version_info >= (3, 11):
-    from typing import Never as Never, Self as Self, assert_never as assert_never, reveal_type as reveal_type
+    from typing import (
+        Never as Never,
+        Self as Self,
+        assert_never as assert_never,
+        assert_type as assert_type,
+        reveal_type as reveal_type,
+    )
 else:
     Self: _SpecialForm
     Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: NoReturn) -> NoReturn: ...
+    def assert_type(__val: _T, __typ: Any) -> _T: ...
 
 # Experimental (hopefully these will be in 3.11)
 Required: _SpecialForm
