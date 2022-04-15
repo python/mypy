@@ -58,8 +58,10 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions.
+    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
+    # call builder.accept here.
     stmt.expr.accept(builder.visitor)
+    builder.flush_keep_alives()
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:

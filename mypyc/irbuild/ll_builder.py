@@ -168,6 +168,8 @@ class LowLevelIRBuilder:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
+            if can_borrow:
+                self.keep_alives.append(src)
             return self.add(Cast(src, target_type, line, borrow=can_borrow))
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False, *,

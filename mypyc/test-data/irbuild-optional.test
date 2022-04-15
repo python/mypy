@@ -271,6 +271,7 @@ L1:
 L2:
     r6 = borrow cast(__main__.A, x)
     r7 = r6.a
+    keep_alive x
     return r7
 L3:
     unreachable
