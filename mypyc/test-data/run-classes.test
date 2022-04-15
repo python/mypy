@@ -1866,10 +1866,28 @@ class F(D):
 # #   def y(self, val : object) -> None:
 # #       self._y = val
 
+# No inheritance, just plain setter/getter
+class G:
+    def __init__(self, x: int) -> None:
+        self._x = x
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, x: int) -> None:
+        self._x = x
+
+class H:
+    def __init__(self, g: G) -> None:
+        self.g = g
+        self.g.x = 5  # Should not be treated as initialization
+
 [file other.py]
 # Run in both interpreted and compiled mode
 
-from native import A, B, C, D, E, F
+from native import A, B, C, D, E, F, G
 
 a = A()
 assert a.x == 0
@@ -1899,6 +1917,9 @@ f = F()
 assert f.x == 20
 f.x = 30
 assert f.x == 50
+g = G(4)
+g.x = 20
+assert g.x == 20
 
 [file driver.py]
 # Run the tests in both interpreted and compiled mode

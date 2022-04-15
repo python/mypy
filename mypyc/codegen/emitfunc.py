@@ -361,8 +361,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
             # Again, use vtable access for properties...
-            assert not op.is_init and op.error_kind == ERR_FALSE, '%s %d %d' % (
-                op.attr, op.is_init, op.error_kind)
+            assert not op.is_init and op.error_kind == ERR_FALSE, '%s %d %d %s' % (
+                op.attr, op.is_init, op.error_kind, rtype)
             version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,

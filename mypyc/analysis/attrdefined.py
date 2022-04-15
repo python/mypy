@@ -144,7 +144,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     if dump_always_defined:
         print(cl.name, sorted(always_defined))
 
-    mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
+    mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
 
     # Check if __init__ can run unpredictable code.
     any_dirty = False
@@ -199,6 +199,7 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
 
 
 def mark_attr_initialiation_ops(blocks: List[BasicBlock],
+                                self_reg: Register,
                                 maybe_defined: AnalysisResult[str],
                                 dirty: AnalysisResult[None]) -> None:
     """Tag all SetAttr ops in the basic blocks that initialize attributes.
@@ -208,7 +209,7 @@ def mark_attr_initialiation_ops(blocks: List[BasicBlock],
     """
     for block in blocks:
         for i, op in enumerate(block.ops):
-            if isinstance(op, SetAttr):
+            if isinstance(op, SetAttr) and op.obj is self_reg:
                 attr = op.attr
                 if attr not in maybe_defined.before[block, i] and not dirty.after[block, i]:
                     op.mark_as_initializer()
