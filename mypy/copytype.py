@@ -51,7 +51,7 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         return self.copy_common(t, dup)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
-        dup = ParamSpecType(t.name, t.fullname, t.id, t.flavor, t.upper_bound)
+        dup = ParamSpecType(t.name, t.fullname, t.id, t.flavor, t.upper_bound, prefix=t.prefix)
         return self.copy_common(t, dup)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
