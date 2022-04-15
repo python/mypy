@@ -153,7 +153,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=builder.can_borrow)
+    borrow = can_borrow and builder.can_borrow
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
 
 
 def check_instance_attribute_access_through_class(builder: IRBuilder,
