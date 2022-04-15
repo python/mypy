@@ -1036,6 +1036,18 @@ class B: pass
 [out]
 main:3: error: "A" not callable
 
+-- assert_type()
+
+[case testAssertType]
+from typing import assert_type, Any
+from typing_extensions import Literal
+a: int = 1
+returned = assert_type(a, int)
+reveal_type(returned)  # N: Revealed type is "builtins.int"
+assert_type(a, str)  # E: Expression is of type "int", not "str"
+assert_type(a, Any)  # E: Expression is of type "int", not "Any"
+assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+[builtins fixtures/tuple.pyi]
 
 -- None return type
 -- ----------------

@@ -56,7 +56,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    AssertTypeExpr, MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    is_named_instance,
+    ASSERT_TYPE_NAMES, is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -3897,6 +3897,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, ASSERT_TYPE_NAMES):
+            if not self.check_fixed_args(expr, 2, 'assert_type'):
+                return
+            # Translate second argument to an unanalyzed type.
+            try:
+                target = self.expr_to_unanalyzed_type(expr.args[1])
+            except TypeTranslationError:
+                self.fail('assert_type() type is not a type', expr)
+                return
+            expr.analyzed = AssertTypeExpr(expr.args[0], target)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, REVEAL_TYPE_NAMES):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
@@ -4195,6 +4208,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.stride.accept(self)
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
+        expr.expr.accept(self)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
+
+    def visit_assert_type_expr(self, expr: AssertTypeExpr) -> None:
         expr.expr.accept(self)
         analyzed = self.anal_type(expr.type)
         if analyzed is not None:

@@ -89,7 +89,8 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    AssertTypeExpr,
 )
 from mypy.operators import (
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
@@ -684,6 +685,10 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_cast_expr(self, e: CastExpr) -> None:
         super().visit_cast_expr(e)
+        self.add_type_dependencies(e.type)
+
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(e)
         self.add_type_dependencies(e.type)
 
     def visit_type_application(self, e: TypeApplication) -> None:

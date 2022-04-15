@@ -876,6 +876,17 @@ L0:
     o = r3
     return 1
 
+[case testAssertType]
+from typing import assert_type
+def f(x: int) -> None:
+    y = assert_type(x, int)
+[out]
+def f(x):
+    x, y :: int
+L0:
+    y = x
+    return 1
+
 [case testDownCast]
 from typing import cast, List, Tuple
 class A: pass

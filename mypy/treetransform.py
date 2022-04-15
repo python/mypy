@@ -6,7 +6,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 from typing import List, Dict, cast, Optional, Iterable
 
 from mypy.nodes import (
-    MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
+    AssertTypeExpr, MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
@@ -406,6 +406,9 @@ class TransformVisitor(NodeVisitor[Node]):
     def visit_cast_expr(self, node: CastExpr) -> CastExpr:
         return CastExpr(self.expr(node.expr),
                         self.type(node.type))
+
+    def visit_assert_type_expr(self, node: AssertTypeExpr) -> AssertTypeExpr:
+        return AssertTypeExpr(self.expr(node.expr), self.type(node.type))
 
     def visit_reveal_expr(self, node: RevealExpr) -> RevealExpr:
         if node.kind == REVEAL_TYPE:

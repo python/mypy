@@ -839,6 +839,15 @@ cast(str, *None) # E: "cast" must be called with 2 positional arguments
 cast(str, target=None) # E: "cast" must be called with 2 positional arguments
 [out]
 
+[case testInvalidAssertType]
+from typing import assert_type
+assert_type(1, type=int) # E: "assert_type" must be called with 2 positional arguments
+assert_type(1, *int) # E: "assert_type" must be called with 2 positional arguments
+assert_type() # E: "assert_type" expects 2 arguments
+assert_type(1, int, "hello") # E: "assert_type" expects 2 arguments
+assert_type(int, 1)  # E: Invalid type: try using Literal[1] instead?
+assert_type(1, int[int])  # E: "int" expects no type arguments, but 1 given
+
 [case testInvalidAnyCall]
 from typing import Any
 Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead

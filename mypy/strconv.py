@@ -431,6 +431,9 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> str:
         return self.dump([o.expr, o.type], o)
 
+    def visit_assert_type_expr(self, o: 'mypy.nodes.AssertTypeExpr') -> str:
+        return self.dump([o.expr, o.type], o)
+
     def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> str:
         if o.kind == mypy.nodes.REVEAL_TYPE:
             return self.dump([o.expr], o)
