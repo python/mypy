@@ -109,6 +109,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
+        builder.flush_keep_alives()
 
 
 def is_simple_lvalue(expr: Expression) -> bool:

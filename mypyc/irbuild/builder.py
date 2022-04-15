@@ -182,7 +182,7 @@ class IRBuilder:
                     res = Register(self.node_type(node))
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
-                    self.builder.flush_keep_alives()
+                    self.flush_keep_alives()
                 return res
             else:
                 try:
@@ -190,6 +190,9 @@ class IRBuilder:
                 except UnsupportedException:
                     pass
                 return None
+
+    def flush_keep_alives(self) -> None:
+        self.builder.flush_keep_alives()
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 

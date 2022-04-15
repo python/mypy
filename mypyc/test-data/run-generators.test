@@ -581,3 +581,17 @@ except RuntimeError as e:
     assert str(e) == 'error'
 else:
     assert False
+
+[case testBorrowingInGeneratorNearYield]
+from typing import Iterator
+
+class Foo:
+    flag: bool
+
+class C:
+    foo: Foo
+
+    def genf(self) -> Iterator[None]:
+        self.foo.flag = True
+        yield
+        self.foo.flag = False
