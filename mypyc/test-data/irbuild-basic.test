@@ -2489,6 +2489,7 @@ L0:
     r1 = CPyList_GetItemBorrow(b, c)
     r2 = unbox(int, r1)
     r3 = CPyTagged_Add(r0, r2)
+    keep_alive b, c
     return r3
 
 [case testTypeAlias_toplevel]
