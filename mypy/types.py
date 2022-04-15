@@ -134,7 +134,7 @@ REVEAL_TYPE_NAMES: Final = (
 
 ASSERT_TYPE_NAMES: Final = (
     'typing.assert_type',
-    'typing_extensions.assert_Type',
+    'typing_extensions.assert_type',
 )
 
 # Attributes that can optionally be defined in the body of a subclass of
