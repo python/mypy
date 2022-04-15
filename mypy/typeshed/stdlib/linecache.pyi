@@ -7,7 +7,7 @@ else:
     __all__ = ["getline", "clearcache", "checkcache"]
 
 _ModuleGlobals = dict[str, Any]
-_ModuleMetadata = tuple[int, float, list[str], str]
+_ModuleMetadata = tuple[int, float | None, list[str], str]
 
 class _SourceLoader(Protocol):
     def __call__(self) -> str | None: ...

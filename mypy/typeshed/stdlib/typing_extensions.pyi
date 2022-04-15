@@ -30,6 +30,57 @@ from typing import (  # noqa: Y022,Y027
     overload as overload,
 )
 
+__all__ = [
+    "ClassVar",
+    "Concatenate",
+    "Final",
+    "LiteralString",
+    "ParamSpec",
+    "Self",
+    "Type",
+    "TypeVarTuple",
+    "Unpack",
+    "Awaitable",
+    "AsyncIterator",
+    "AsyncIterable",
+    "Coroutine",
+    "AsyncGenerator",
+    "AsyncContextManager",
+    "ChainMap",
+    "ContextManager",
+    "Counter",
+    "Deque",
+    "DefaultDict",
+    "OrderedDict",
+    "TypedDict",
+    "SupportsIndex",
+    "Annotated",
+    "assert_never",
+    "assert_type",
+    "dataclass_transform",
+    "final",
+    "IntVar",
+    "is_typeddict",
+    "Literal",
+    "NewType",
+    "overload",
+    "Protocol",
+    "reveal_type",
+    "runtime",
+    "runtime_checkable",
+    "Text",
+    "TypeAlias",
+    "TypeGuard",
+    "TYPE_CHECKING",
+    "Never",
+    "NoReturn",
+    "Required",
+    "NotRequired",
+    "get_args",
+    "get_origin",
+    "get_type_hints",
+]
+
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
 _TC = TypeVar("_TC", bound=Type[object])
@@ -82,15 +133,14 @@ TypedDict: object
 
 OrderedDict = _Alias()
 
-if sys.version_info >= (3, 7):
-    def get_type_hints(
-        obj: Callable[..., Any],
-        globalns: dict[str, Any] | None = ...,
-        localns: dict[str, Any] | None = ...,
-        include_extras: bool = ...,
-    ) -> dict[str, Any]: ...
-    def get_args(tp: Any) -> tuple[Any, ...]: ...
-    def get_origin(tp: Any) -> Any | None: ...
+def get_type_hints(
+    obj: Callable[..., Any],
+    globalns: dict[str, Any] | None = ...,
+    localns: dict[str, Any] | None = ...,
+    include_extras: bool = ...,
+) -> dict[str, Any]: ...
+def get_args(tp: Any) -> tuple[Any, ...]: ...
+def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
 _AnnotatedAlias: Any  # undocumented
@@ -137,12 +187,19 @@ else:
 
 # New things in 3.11
 if sys.version_info >= (3, 11):
-    from typing import Never as Never, Self as Self, assert_never as assert_never, reveal_type as reveal_type
+    from typing import (
+        Never as Never,
+        Self as Self,
+        assert_never as assert_never,
+        assert_type as assert_type,
+        reveal_type as reveal_type,
+    )
 else:
     Self: _SpecialForm
     Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: NoReturn) -> NoReturn: ...
+    def assert_type(__val: _T, __typ: Any) -> _T: ...
 
 # Experimental (hopefully these will be in 3.11)
 Required: _SpecialForm

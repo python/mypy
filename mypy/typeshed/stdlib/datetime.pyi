@@ -65,12 +65,7 @@ class date:
     def isoformat(self) -> str: ...
     def timetuple(self) -> struct_time: ...
     def toordinal(self) -> int: ...
-    if sys.version_info >= (3, 6):
-        def replace(self: Self, year: int = ..., month: int = ..., day: int = ...) -> Self: ...
-    else:
-        # Prior to Python 3.6, the `replace` method always returned `date`, even in subclasses
-        def replace(self, year: int = ..., month: int = ..., day: int = ...) -> date: ...
-
+    def replace(self: Self, year: int = ..., month: int = ..., day: int = ...) -> Self: ...
     def __le__(self, __other: date) -> bool: ...
     def __lt__(self, __other: date) -> bool: ...
     def __ge__(self, __other: date) -> bool: ...
@@ -144,29 +139,16 @@ class time:
     def utcoffset(self) -> timedelta | None: ...
     def tzname(self) -> str | None: ...
     def dst(self) -> timedelta | None: ...
-    if sys.version_info >= (3, 6):
-        def replace(
-            self: Self,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            microsecond: int = ...,
-            tzinfo: _tzinfo | None = ...,
-            *,
-            fold: int = ...,
-        ) -> Self: ...
-    else:
-        # Prior to Python 3.6, the `replace` method always returned `time`, even in subclasses
-        def replace(
-            self,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            microsecond: int = ...,
-            tzinfo: _tzinfo | None = ...,
-            *,
-            fold: int = ...,
-        ) -> time: ...
+    def replace(
+        self: Self,
+        hour: int = ...,
+        minute: int = ...,
+        second: int = ...,
+        microsecond: int = ...,
+        tzinfo: _tzinfo | None = ...,
+        *,
+        fold: int = ...,
+    ) -> Self: ...
 
 _date = date
 _time = time
@@ -278,35 +260,19 @@ class datetime(date):
     def date(self) -> _date: ...
     def time(self) -> _time: ...
     def timetz(self) -> _time: ...
-    if sys.version_info >= (3, 6):
-        def replace(
-            self: Self,
-            year: int = ...,
-            month: int = ...,
-            day: int = ...,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            microsecond: int = ...,
-            tzinfo: _tzinfo | None = ...,
-            *,
-            fold: int = ...,
-        ) -> Self: ...
-    else:
-        # Prior to Python 3.6, the `replace` method always returned `datetime`, even in subclasses
-        def replace(
-            self,
-            year: int = ...,
-            month: int = ...,
-            day: int = ...,
-            hour: int = ...,
-            minute: int = ...,
-            second: int = ...,
-            microsecond: int = ...,
-            tzinfo: _tzinfo | None = ...,
-            *,
-            fold: int = ...,
-        ) -> datetime: ...
+    def replace(
+        self: Self,
+        year: int = ...,
+        month: int = ...,
+        day: int = ...,
+        hour: int = ...,
+        minute: int = ...,
+        second: int = ...,
+        microsecond: int = ...,
+        tzinfo: _tzinfo | None = ...,
+        *,
+        fold: int = ...,
+    ) -> Self: ...
     if sys.version_info >= (3, 8):
         def astimezone(self: Self, tz: _tzinfo | None = ...) -> Self: ...
     else:
