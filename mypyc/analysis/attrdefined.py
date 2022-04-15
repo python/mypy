@@ -62,6 +62,7 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 """
 
 from typing import List, Set, Tuple
+from typing_extensions import Final
 
 from mypyc.ir.ops import (
     Register, Assign, AssignMulti, SetMem, SetAttr, Branch, Return, Unreachable, GetAttr,
@@ -73,6 +74,11 @@ from mypyc.analysis.dataflow import (
     BaseAnalysisVisitor, AnalysisResult, get_cfg, CFG, MAYBE_ANALYSIS, run_analysis
 )
 from mypyc.analysis.selfleaks import analyze_self_leaks
+
+
+# If True, print out all always-defined attributes of native classes (to aid
+# debugging and testing)
+dump_always_defined: Final = False
 
 
 def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
@@ -135,8 +141,8 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     always_defined = {a for a in always_defined if not cl.is_deletable(a)}
 
     cl._always_initialized_attrs = always_defined
-    #if always_defined:
-    #    print(cl.name, sorted(always_defined))
+    if dump_always_defined:
+        print(cl.name, sorted(always_defined))
 
     mark_attr_initialiation_ops(m.blocks, maybe_defined, dirty)
 
