@@ -21,8 +21,8 @@ from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, FloatExpr, StrExpr,
-    BytesExpr, GDEF, ArgKind, ARG_POS, ARG_NAMED, FuncDef,
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr,
+    GDEF, ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -40,7 +40,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, c_int_rprimitive, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
+    str_rprimitive, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
