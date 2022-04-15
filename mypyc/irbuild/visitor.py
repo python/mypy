@@ -6,7 +6,7 @@ mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 from typing_extensions import NoReturn
 
 from mypy.nodes import (
-    MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
+    AssertTypeExpr, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
     IntExpr, NameExpr, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, CallExpr,
     IndexExpr, Block, ListExpr, ExpressionStmt, MemberExpr, ForStmt,
     BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
@@ -326,6 +326,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr should have been handled in CallExpr"
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> Value:
+        assert False, "AssertTypeExpr should have been handled in CallExpr"
 
     def visit_star_expr(self, o: StarExpr) -> Value:
         assert False, "should have been handled in Tuple/List/Set/DictExpr or CallExpr"

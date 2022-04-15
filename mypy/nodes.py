@@ -1938,6 +1938,22 @@ class CastExpr(Expression):
         return visitor.visit_cast_expr(self)
 
 
+class AssertTypeExpr(Expression):
+    """Represents a typing.assert_type(expr, type) call."""
+    __slots__ = ('expr', 'type')
+
+    expr: Expression
+    type: "mypy.types.Type"
+
+    def __init__(self, expr: Expression, typ: 'mypy.types.Type') -> None:
+        super().__init__()
+        self.expr = expr
+        self.type = typ
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_assert_type_expr(self)
+
+
 class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 

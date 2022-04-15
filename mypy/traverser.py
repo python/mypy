@@ -9,7 +9,7 @@ from mypy.patterns import (
 )
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
+    AssertTypeExpr, Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
     TryStmt, WithStmt, MatchStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
@@ -203,6 +203,9 @@ class TraverserVisitor(NodeVisitor[None]):
             o.stride.accept(self)
 
     def visit_cast_expr(self, o: CastExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
         o.expr.accept(self)
 
     def visit_reveal_expr(self, o: RevealExpr) -> None:
