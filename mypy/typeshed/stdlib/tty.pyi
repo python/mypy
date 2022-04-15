@@ -2,6 +2,8 @@ import sys
 from typing import IO
 
 if sys.platform != "win32":
+    __all__ = ["setraw", "setcbreak"]
+
     _FD = int | IO[str]
 
     # XXX: Undocumented integer constants
