@@ -683,6 +683,16 @@ class SubclassPythonclass(PythonBase):
     def __init__(self) -> None:
         self.y = 1
 
+class BaseWithSometimesDefined:
+    def __init__(self, b: bool) -> None:
+        if b:
+            self.x = 0
+
+class Derived3(BaseWithSometimesDefined):
+    def __init__(self, b: bool) -> None:
+        super().__init__(b)
+        self.x = 1
+
 [file interpreted.py]
 class PythonBase:
     def __init__(self) -> None:
@@ -704,6 +714,9 @@ BaseWithGeneralSubclassing: []
 Derived2: [x, z]
 -- Always defined attribute analysis is turned off when inheriting a non-native class.
 SubclassPythonclass: []
+BaseWithSometimesDefined: []
+-- TODO: 'x' could also be always defined, but it is a bit tricky to support
+Derived3: []
 
 [case testAlwaysDefinedWithNesting]
 class NestedFunc:

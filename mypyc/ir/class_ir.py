@@ -155,7 +155,11 @@ class ClassIR:
         # Instance attributes that are initialized in the class body.
         self.attrs_with_defaults: Set[str] = set()
 
+        # Attributes that are always initialized in __init__ or class body
         self._always_initialized_attrs: Set[str] = set()
+
+        # Attributes that are sometimes initialized in __init__
+        self._sometimes_initialized_attrs: Set[str] = set()
 
         # If True, __init__ can run unpredictable/arbitrary code.
         self.init_unknown_code = False
@@ -340,6 +344,7 @@ class ClassIR:
             ] if self.children is not None else None,
             'attrs_with_defaults': sorted(self.attrs_with_defaults),
             '_always_initialized_attrs': sorted(self._always_initialized_attrs),
+            '_sometimes_initialized_attrs': sorted(self._sometimes_initialized_attrs),
             'init_unknown_code': self.init_unknown_code,
         }
 
@@ -391,6 +396,7 @@ class ClassIR:
         ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
         ir.attrs_with_defaults = set(data['attrs_with_defaults'])
         ir._always_initialized_attrs = set(data['_always_initialized_attrs'])
+        ir._sometimes_initialized_attrs = set(data['_sometimes_initialized_attrs'])
         ir.init_unknown_code = data['init_unknown_code']
 
         return ir

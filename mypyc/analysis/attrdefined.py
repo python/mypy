@@ -122,6 +122,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     m = cl.get_method('__init__')
     if m is None:
         cl._always_initialized_attrs = cl.attrs_with_defaults.copy()
+        cl._sometimes_initialized_attrs = cl.attrs_with_defaults.copy()
         return
     self_reg = m.arg_regs[0]
     cfg = get_cfg(m.blocks)
@@ -144,6 +145,8 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
     cl._always_initialized_attrs = always_defined
     if dump_always_defined:
         print(cl.name, sorted(always_defined))
+    cl._sometimes_initialized_attrs = find_sometimes_defined_attributes(
+        m.blocks, self_reg, maybe_defined, dirty)
 
     mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
 
@@ -200,6 +203,27 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
     return attrs
 
 
+def find_sometimes_defined_attributes(blocks: List[BasicBlock],
+                                   self_reg: Register,
+                                   maybe_defined: AnalysisResult[str],
+                                   dirty: AnalysisResult[None]) -> Set[str]:
+    """Find attributes that are sometimes initialized in some basic blocks."""
+    attrs: Set[str] = set()
+    for block in blocks:
+        for i, op in enumerate(block.ops):
+            # Only look at possibly defined attributes at exits.
+            if dirty.after[block, i]:
+                if not dirty.before[block, i]:
+                    attrs = attrs | maybe_defined.after[block, i]
+                break
+            if isinstance(op, ControlOp):
+                for target in op.targets():
+                    if not dirty.after[block, i] and dirty.before[target, 0]:
+                        attrs = attrs | maybe_defined.after[target, 0]
+    return attrs
+
+
+
 def mark_attr_initialiation_ops(blocks: List[BasicBlock],
                                 self_reg: Register,
                                 maybe_defined: AnalysisResult[str],
@@ -221,11 +245,19 @@ GenAndKill = Tuple[Set[str], Set[str]]
 
 
 def attributes_initialized_by_init_call(op: Call) -> Set[str]:
-    """Calculate attributes that are initialized by a super().__init__ call."""
+    """Calculate attributes that are always initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
     assert isinstance(self_type, RInstance)
     cl = self_type.class_ir
     return {a for base in cl.mro for a in base.attributes if base.is_always_defined(a)}
+
+
+def attributes_maybe_initialized_by_init_call(op: Call) -> Set[str]:
+    """Calculate attributes that may be initialized by a super().__init__ call."""
+    self_type = op.fn.sig.args[0].type
+    assert isinstance(self_type, RInstance)
+    cl = self_type.class_ir
+    return attributes_initialized_by_init_call(op) | cl._sometimes_initialized_attrs
 
 
 class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
@@ -251,7 +283,7 @@ class AttributeMaybeDefinedVisitor(BaseAnalysisVisitor[str]):
         if isinstance(op, SetAttr) and op.obj is self.self_reg:
             return {op.attr}, set()
         if isinstance(op, Call) and op.fn.class_name and op.fn.name == '__init__':
-            return attributes_initialized_by_init_call(op), set()
+            return attributes_maybe_initialized_by_init_call(op), set()
         return set(), set()
 
     def visit_assign(self, op: Assign) -> Tuple[Set[str], Set[str]]:
