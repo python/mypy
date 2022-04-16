@@ -11,8 +11,8 @@ from mypyc.analysis.dataflow import MAYBE_ANALYSIS, run_analysis, AnalysisResult
 
 GenAndKill = Tuple[Set[None], Set[None]]
 
-CLEAN: GenAndKill = set(), set()
-DIRTY: GenAndKill = {None}, {None}
+CLEAN: GenAndKill = (set(), set())
+DIRTY: GenAndKill = ({None}, {None})
 
 
 class SelfLeakedVisitor(OpVisitor[GenAndKill]):
