@@ -1954,8 +1954,8 @@ from typing import Union
 class A: pass
 
 class C:
-    def __init__(self) -> None:
-        self.n = 0
+    def __init__(self, n: int = 0) -> None:
+        self.n = n
         self.s = ""
         self.t = ("", 0)
         self.u: Union[str, bytes] = ''
