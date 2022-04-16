@@ -40,6 +40,24 @@ class A: pass
 class B: pass
 [builtins fixtures/isinstance.pyi]
 
+[case testTypingExtensionsOverload]
+from typing import Any
+from typing_extensions import overload
+@overload
+def f(x: 'A') -> 'B': ...
+@overload
+def f(x: 'B') -> 'A': ...
+
+def f(x: Any) -> Any:
+    pass
+
+reveal_type(f(A())) # N: Revealed type is "__main__.B"
+reveal_type(f(B())) # N: Revealed type is "__main__.A"
+
+class A: pass
+class B: pass
+[builtins fixtures/isinstance.pyi]
+
 [case testOverloadNeedsImplementation]
 from typing import overload, Any
 @overload  # E: An overloaded function outside a stub file must have an implementation
