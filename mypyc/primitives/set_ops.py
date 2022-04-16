@@ -15,8 +15,7 @@ new_set_op = function_op(
     return_type=set_rprimitive,
     c_function_name='PySet_New',
     error_kind=ERR_MAGIC,
-    extra_int_constants=[(0, pointer_rprimitive)],
-    run_arbitrary_code=False)
+    extra_int_constants=[(0, pointer_rprimitive)])
 
 # set(obj)
 function_op(

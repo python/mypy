@@ -78,8 +78,7 @@ def int_binary_op(name: str, c_function_name: str,
               arg_types=[int_rprimitive, int_rprimitive],
               return_type=return_type,
               c_function_name=c_function_name,
-              error_kind=error_kind,
-              run_arbitrary_code=False)
+              error_kind=error_kind)
 
 
 # Binary, unary and augmented assignment operations that operate on CPyTagged ints
@@ -119,8 +118,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
                     arg_type=int_rprimitive,
                     return_type=int_rprimitive,
                     c_function_name=c_function_name,
-                    error_kind=ERR_NEVER,
-                    run_arbitrary_code=False)
+                    error_kind=ERR_NEVER)
 
 
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
@@ -146,16 +144,14 @@ int_equal_ = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsEq_',
-    error_kind=ERR_NEVER,
-    run_arbitrary_code=False)
+    error_kind=ERR_NEVER)
 
 # Less than operation on two boxed tagged integers
 int_less_than_ = custom_op(
     arg_types=[int_rprimitive, int_rprimitive],
     return_type=bit_rprimitive,
     c_function_name='CPyTagged_IsLt_',
-    error_kind=ERR_NEVER,
-    run_arbitrary_code=False)
+    error_kind=ERR_NEVER)
 
 # Provide mapping from textual op to short int's op variant and boxed int's description.
 # Note that these are not complete implementations and require extra IR.
