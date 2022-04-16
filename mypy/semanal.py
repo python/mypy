@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, is_named_instance,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -835,7 +835,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(item, Decorator):
                 callable = function_type(item.func, self.named_type('builtins.function'))
                 assert isinstance(callable, CallableType)
-                if not any(refers_to_fullname(dec, 'typing.overload')
+                if not any(refers_to_fullname(dec, OVERLOAD_NAMES)
                            for dec in item.decorators):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
                         # Last item outside a stub is impl
