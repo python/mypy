@@ -668,16 +668,16 @@ class FuncItem(FuncBase):
     __deletable__ = ('arguments', 'max_pos', 'min_args')
 
     def __init__(self,
-                 arguments: List[Argument],
-                 body: 'Block',
+                 arguments: Optional[List[Argument]] = None,
+                 body: Optional['Block'] = None,
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
-        self.arguments = arguments
-        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in arguments]
+        self.arguments = arguments or []
+        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
         self.arg_kinds: List[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = (
             self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT))
-        self.body: 'Block' = body
+        self.body: 'Block' = body or Block([])
         self.type = typ
         self.unanalyzed_type = typ
         self.is_overload: bool = False
@@ -726,9 +726,9 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  )
 
     def __init__(self,
-                 name: str,              # Function name
-                 arguments: List[Argument],
-                 body: 'Block',
+                 name: str = '',              # Function name
+                 arguments: Optional[List[Argument]] = None,
+                 body: Optional['Block'] = None,
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__(arguments, body, typ)
         self._name = name

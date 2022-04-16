@@ -5,6 +5,7 @@ Verify that various things in stubs are consistent with how things behave at run
 """
 
 import argparse
+import copy
 import enum
 import importlib
 import inspect
@@ -916,7 +917,8 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return func
         if decorator.fullname == "builtins.classmethod":
             assert func.arguments[0].variable.name in ("cls", "metacls")
-            ret = _copy_func_item(func)
+            # FuncItem is written so that copy.copy() actually works, even when compiled
+            ret = copy.copy(func)
             # Remove the cls argument, since it's not present in inspect.signature of classmethods
             ret.arguments = ret.arguments[1:]
             return ret
@@ -931,43 +933,6 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return None
         func = resulting_func
     return func
-
-
-def _copy_func_item(func: nodes.FuncItem) -> nodes.FuncItem:
-    """Create a shallow copy of a FuncItem.
-
-    Note that native classes compiled with mypyc don't support copy.copy().
-    """
-    new: nodes.FuncItem
-    if isinstance(func, nodes.FuncDef):
-        new = nodes.FuncDef(func.name, func.arguments, func.body, None)
-        new.is_decorated = func.is_decorated
-        new.is_conditional = func.is_conditional
-        new.is_abstract = func.is_abstract
-        new.is_final = func.is_final
-        new.original_def = func.original_def
-    elif isinstance(func, nodes.LambdaExpr):
-        new = nodes.LambdaExpr(func.arguments, func.body, None)
-    else:
-        assert False, f"unsupported type: {type(func)}"
-    new._fullname = func._fullname
-    new.info = func.info
-    new.type = func.type
-    new.is_property = func.is_property
-    new.is_class = func.is_class
-    new.is_static = func.is_static
-    new.is_final = func.is_final
-    new.min_args = func.min_args
-    new.max_pos = func.max_pos
-    new.is_overload = func.is_overload
-    new.is_generator = func.is_generator
-    new.is_coroutine = func.is_coroutine
-    new.is_async_generator = func.is_async_generator
-    new.is_awaitable_coroutine = func.is_awaitable_coroutine
-    new.expanded = func.expanded
-    new.line = func.line
-    new.column = func.column
-    return new
 
 
 @verify.register(nodes.Decorator)
