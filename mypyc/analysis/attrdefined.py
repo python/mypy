@@ -30,8 +30,8 @@ also always defined in all subclasses.
 
 As soon as __init__ contains an op that can 'leak' self to another
 function, we will stop inferring always defined attributes, since the
-analysis is intra-procedural and only looks at __init__ methods. The
-called code could read an uninitialized attribute. Example:
+analysis is mostly intra-procedural and only looks at __init__ methods.
+The called code could read an uninitialized attribute. Example:
 
   class C:
       def __init__(self) -> None:
@@ -115,6 +115,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
         # Give up
         return
 
+    # First analyze all base classes. Track seen classes to avoid duplicate work.
     for base in cl.mro[1:]:
         analyze_always_defined_attrs_in_class(base, seen)
 
@@ -146,7 +147,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
 
     mark_attr_initialiation_ops(m.blocks, self_reg, maybe_defined, dirty)
 
-    # Check if __init__ can run unpredictable code.
+    # Check if __init__ can run unpredictable code (leak 'self').
     any_dirty = False
     for b in m.blocks:
         for i, op in enumerate(b.ops):
@@ -192,6 +193,7 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
                 break
             if isinstance(op, ControlOp):
                 for target in op.targets():
+                    # Gotos/branches can also be "exits".
                     if not dirty.after[block, i] and dirty.before[target, 0]:
                         attrs = attrs & (maybe_defined.after[target, 0] -
                                          maybe_undefined.after[target, 0])
@@ -204,7 +206,7 @@ def mark_attr_initialiation_ops(blocks: List[BasicBlock],
                                 dirty: AnalysisResult[None]) -> None:
     """Tag all SetAttr ops in the basic blocks that initialize attributes.
 
-    Initialization ops assume that the previous attribute value is 0,
+    Initialization ops assume that the previous attribute value is the error value,
     so there's no need to decref or check for definedness.
     """
     for block in blocks:
@@ -219,6 +221,7 @@ GenAndKill = Tuple[Set[str], Set[str]]
 
 
 def attributes_initialized_by_init_call(op: Call) -> Set[str]:
+    """Calculate attributes that are initialized by a super().__init__ call."""
     self_type = op.fn.sig.args[0].type
     assert isinstance(self_type, RInstance)
     cl = self_type.class_ir
@@ -322,6 +325,7 @@ def analyze_maybe_undefined_attrs_in_init(blocks: List[BasicBlock],
 
 
 def update_always_defined_attrs_using_subclasses(cl: ClassIR, seen: Set[ClassIR]) -> None:
+    """Remove attributes not defined in all subclasses from always defined attrs."""
     if cl in seen:
         return
     if cl.children is None:

@@ -725,6 +725,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'original_def',
                  )
 
+    # Note that all __init__ args must have default values
     def __init__(self,
                  name: str = '',              # Function name
                  arguments: Optional[List[Argument]] = None,

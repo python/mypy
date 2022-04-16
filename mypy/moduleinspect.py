@@ -12,6 +12,7 @@ import sys
 
 
 class ModuleProperties:
+    # Note that all __init__ args must have default values
     def __init__(self,
                  name: str = "",
                  file: Optional[str] = None,
