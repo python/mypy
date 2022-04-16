@@ -1066,7 +1066,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     and name not in self.referenced_names
                     and (not self._all_ or name in IGNORED_DUNDERS)
                     and not is_private
-                    and module not in ('abc', *TYPING_MODULE_NAMES, 'asyncio')):
+                    and module not in ('abc', 'asyncio') + TYPING_MODULE_NAMES):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.

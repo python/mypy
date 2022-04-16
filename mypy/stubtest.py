@@ -913,8 +913,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
         if decorator.fullname in (
             "builtins.staticmethod",
             "abc.abstractmethod",
-            *mypy.types.OVERLOAD_NAMES,
-        ):
+        ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
             return func
         if decorator.fullname == "builtins.classmethod":
             assert func.arguments[0].variable.name in ("cls", "metacls")
