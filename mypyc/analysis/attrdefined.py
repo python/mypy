@@ -223,7 +223,6 @@ def find_sometimes_defined_attributes(blocks: List[BasicBlock],
     return attrs
 
 
-
 def mark_attr_initialiation_ops(blocks: List[BasicBlock],
                                 self_reg: Register,
                                 maybe_defined: AnalysisResult[str],
