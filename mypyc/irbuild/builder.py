@@ -89,7 +89,7 @@ class IRBuilder:
                  visitor: IRVisitor,
                  options: CompilerOptions,
                  singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
-        self.builder = LowLevelIRBuilder(current_module, mapper, options)
+        self.builder = LowLevelIRBuilder(current_module, '', mapper, options)
         self.builders = [self.builder]
         self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]
         self.runtime_args: List[List[RuntimeArg]] = [[]]
@@ -981,7 +981,8 @@ class IRBuilder:
     def enter(self, fn_info: Union[FuncInfo, str] = '') -> None:
         if isinstance(fn_info, str):
             fn_info = FuncInfo(name=fn_info)
-        self.builder = LowLevelIRBuilder(self.current_module, self.mapper, self.options)
+        self.builder = LowLevelIRBuilder(self.current_module, fn_info.name, self.mapper,
+                                         self.options)
         self.builders.append(self.builder)
         self.symtables.append(OrderedDict())
         self.runtime_args.append([])

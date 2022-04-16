@@ -783,3 +783,9 @@ fail:
     return NULL;
 
 }
+
+void CPy_Trace(PyObject *module, PyObject *func, PyObject *line, PyObject *opname) {
+    PyObject *output = PyUnicode_FromFormat("[trace] %S:%S:%S:%S", module, line, func, opname);
+    const char *cstr = PyUnicode_AsUTF8(output);
+    puts(cstr);
+}
