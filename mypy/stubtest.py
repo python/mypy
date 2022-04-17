@@ -83,7 +83,8 @@ class Error:
         if not stub_desc:
             obj = getattr(stub_object, "type", stub_object)
             if isinstance(obj, nodes.TypeInfo):
-                obj = obj.name  # we get very verbose, not particularly helpful, messages otherwise
+                # we get very verbose, not particularly helpful, messages otherwise
+                obj = obj.fullname
             stub_desc = str(obj)
         if typealias_node is not None:
             stub_desc = 'Type alias for: ' + stub_desc
