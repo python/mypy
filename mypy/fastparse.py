@@ -496,18 +496,9 @@ class ASTConverter:
             if_overload_name: Optional[str] = None
             if_block_with_overload: Optional[Block] = None
             if_unknown_truth_value: Optional[IfStmt] = None
-            if (
-                isinstance(stmt, IfStmt)
-                and len(stmt.body[0].body) == 1
-                and seen_unconditional_func_def is False
-                and (
-                    isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
-                    or current_overload_name is not None
-                    and isinstance(stmt.body[0].body[0], FuncDef)
-                )
-            ):
+            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
                 # Check IfStmt block to determine if function overloads can be merged
-                if_overload_name = self._check_ifstmt_for_overloads(stmt)
+                if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
                 if if_overload_name is not None:
                     if_block_with_overload, if_unknown_truth_value = \
                         self._get_executable_if_block_with_overloads(stmt)
@@ -553,8 +544,11 @@ class ASTConverter:
                     else:
                         current_overload.append(last_if_overload)
                     last_if_stmt, last_if_overload = None, None
-                if isinstance(if_block_with_overload.body[0], OverloadedFuncDef):
-                    current_overload.extend(if_block_with_overload.body[0].items)
+                if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
+                    skipped_if_stmts.extend(
+                        cast(List[IfStmt], if_block_with_overload.body[:-1])
+                    )
+                    current_overload.extend(if_block_with_overload.body[-1].items)
                 else:
                     current_overload.append(
                         cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
@@ -600,9 +594,12 @@ class ASTConverter:
                     last_if_stmt = stmt
                     last_if_stmt_overload_name = None
                     if if_block_with_overload is not None:
+                        skipped_if_stmts.extend(
+                            cast(List[IfStmt], if_block_with_overload.body[:-1])
+                        )
                         last_if_overload = cast(
                             Union[Decorator, FuncDef, OverloadedFuncDef],
-                            if_block_with_overload.body[0]
+                            if_block_with_overload.body[-1]
                         )
                     last_if_unknown_truth_value = if_unknown_truth_value
                 else:
@@ -620,11 +617,15 @@ class ASTConverter:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
             ret.append(OverloadedFuncDef(current_overload))
+        elif last_if_overload is not None:
+            ret.append(last_if_overload)
         elif last_if_stmt is not None:
             ret.append(last_if_stmt)
         return ret
 
-    def _check_ifstmt_for_overloads(self, stmt: IfStmt) -> Optional[str]:
+    def _check_ifstmt_for_overloads(
+        self, stmt: IfStmt, current_overload_name: Optional[str] = None
+    ) -> Optional[str]:
         """Check if IfStmt contains only overloads with the same name.
         Return overload_name if found, None otherwise.
         """
@@ -632,11 +633,22 @@ class ASTConverter:
         # Multiple overloads have already been merged as OverloadedFuncDef.
         if not (
             len(stmt.body[0].body) == 1
-            and isinstance(stmt.body[0].body[0], (Decorator, FuncDef, OverloadedFuncDef))
+            and (
+                isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                or current_overload_name is not None
+                and isinstance(stmt.body[0].body[0], FuncDef)
+            )
+            or len(stmt.body[0].body) > 1
+            and isinstance(stmt.body[0].body[-1], OverloadedFuncDef)
+            and all(
+                self._is_stripped_if_stmt(if_stmt)
+                for if_stmt in stmt.body[0].body[:-1]
+            )
         ):
             return None
 
-        overload_name = stmt.body[0].body[0].name
+        overload_name = cast(
+            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]).name
         if stmt.else_body is None:
             return overload_name
 
@@ -649,7 +661,9 @@ class ASTConverter:
                 return overload_name
             if (
                 isinstance(stmt.else_body.body[0], IfStmt)
-                and self._check_ifstmt_for_overloads(stmt.else_body.body[0]) == overload_name
+                and self._check_ifstmt_for_overloads(
+                    stmt.else_body.body[0], current_overload_name
+                ) == overload_name
             ):
                 return overload_name
 
@@ -703,6 +717,25 @@ class ASTConverter:
                 self._strip_contents_from_if_stmt(stmt.else_body.body[0])
             else:
                 stmt.else_body.body = []
+
+    def _is_stripped_if_stmt(self, stmt: Statement) -> bool:
+        """Check stmt to make sure it is a stripped IfStmt.
+
+        See also: _strip_contents_from_if_stmt
+        """
+        if not isinstance(stmt, IfStmt):
+            return False
+
+        if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
+            # Body not empty
+            return False
+
+        if not stmt.else_body or len(stmt.else_body.body) == 0:
+            # No or empty else_body
+            return True
+
+        # For elif, IfStmt are stored recursively in else_body
+        return self._is_stripped_if_stmt(stmt.else_body.body[0])
 
     def in_method_scope(self) -> bool:
         return self.class_and_function_stack[-2:] == ['C', 'F']
