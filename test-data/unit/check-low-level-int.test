@@ -33,12 +33,12 @@ n32: i32 = 0
 n64: i64 = 1
 n = 2
 
-reveal_type(join(n32, n))  # N: Revealed type is "builtins.int*"
-reveal_type(join(n, n32))  # N: Revealed type is "builtins.int*"
-reveal_type(join(n64, n))  # N: Revealed type is "builtins.int*"
-reveal_type(join(n, n64))  # N: Revealed type is "builtins.int*"
-reveal_type(join(n32, n64))  # N: Revealed type is "builtins.int*"
-reveal_type(join(n64, n32))  # N: Revealed type is "builtins.int*"
+reveal_type(join(n32, n))  # N: Revealed type is "builtins.int"
+reveal_type(join(n, n32))  # N: Revealed type is "builtins.int"
+reveal_type(join(n64, n))  # N: Revealed type is "builtins.int"
+reveal_type(join(n, n64))  # N: Revealed type is "builtins.int"
+reveal_type(join(n32, n64))  # N: Revealed type is "builtins.int"
+reveal_type(join(n64, n32))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testLowLevelIntMeets]
@@ -54,12 +54,12 @@ def f(x: int) -> None: pass
 def meet(c1: Callable[[T], None], c2: Callable[[T], None]) -> T:
     pass
 
-reveal_type(meet(f32, f))  # N: Revealed type is "builtins.int*"
-reveal_type(meet(f, f32))  # N: Revealed type is "builtins.int*"
-reveal_type(meet(f64, f))  # N: Revealed type is "builtins.int*"
-reveal_type(meet(f, f64))  # N: Revealed type is "builtins.int*"
-reveal_type(meet(f32, f64))  # N: Revealed type is "builtins.int*"
-reveal_type(meet(f64, f32))  # N: Revealed type is "builtins.int*"
+reveal_type(meet(f32, f))  # N: Revealed type is "builtins.int"
+reveal_type(meet(f, f32))  # N: Revealed type is "builtins.int"
+reveal_type(meet(f64, f))  # N: Revealed type is "builtins.int"
+reveal_type(meet(f, f64))  # N: Revealed type is "builtins.int"
+reveal_type(meet(f32, f64))  # N: Revealed type is "builtins.int"
+reveal_type(meet(f64, f32))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testLowLevelIntCoerceInArithmetic]
