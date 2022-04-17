@@ -55,11 +55,15 @@ class Error:
         self,
         object_path: List[str],
         message: str,
-        stub_object: MaybeMissing[nodes.Node],
+        stub_object: MaybeMissing[Union[nodes.Node, mypy.types.ProperType]],
         runtime_object: MaybeMissing[Any],
         *,
         stub_desc: Optional[str] = None,
-        runtime_desc: Optional[str] = None
+        runtime_desc: Optional[str] = None,
+        # Extra field that's usually None,
+        # to help us get correct line numbers
+        # when reporting errors for type aliases.
+        typealias_node: Optional[nodes.TypeAlias] = None
     ) -> None:
         """Represents an error found by stubtest.
 
@@ -76,8 +80,22 @@ class Error:
         self.message = message
         self.stub_object = stub_object
         self.runtime_object = runtime_object
-        self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
+        if not stub_desc:
+            obj = getattr(stub_object, "type", stub_object)
+            if isinstance(obj, nodes.TypeInfo):
+                obj = obj.name  # we get very verbose, not particularly helpful, messages otherwise
+            stub_desc = str(obj)
+        if typealias_node is not None:
+            stub_desc = 'Type alias for: ' + stub_desc
+        self.stub_desc = stub_desc
         self.runtime_desc = runtime_desc or str(runtime_object)
+        self.typealias_node = typealias_node
+        if isinstance(stub_object, Missing):
+            self.stub_line: Optional[int] = None
+        elif typealias_node is None:
+            self.stub_line = stub_object.line
+        else:
+            self.stub_line = typealias_node.line
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
@@ -97,10 +115,8 @@ class Error:
         if concise:
             return _style(self.object_desc, bold=True) + " " + self.message
 
-        stub_line = None
+        stub_line = self.stub_line
         stub_file: None = None
-        if not isinstance(self.stub_object, Missing):
-            stub_line = self.stub_object.line
         # TODO: Find a way of getting the stub file
 
         stub_loc_str = ""
@@ -956,10 +972,12 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        # ignore type aliases that don't have a runtime counterpart
-        return
     stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(runtime, Missing):
+        yield Error(
+            object_path, "is not present at runtime", stub_target, runtime, typealias_node=stub
+        )
+        return
     if isinstance(stub_target, mypy.types.Instance):
         yield from verify(stub_target.type, runtime, object_path)
         return
