@@ -959,7 +959,8 @@ def verify_typealias(
     stub_target = mypy.types.get_proper_type(stub.target)
     if isinstance(runtime, Missing):
         yield Error(
-            object_path, "is not present at runtime", stub_target, runtime, typealias_node=stub
+            object_path, "is not present at runtime", stub, runtime,
+            stub_desc=f"Type alias for {stub_target}"
         )
         return
     if isinstance(stub_target, mypy.types.Instance):
