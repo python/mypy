@@ -960,7 +960,7 @@ def verify_typealias(
     if isinstance(runtime, Missing):
         yield Error(
             object_path, "is not present at runtime", stub, runtime,
-            stub_desc=f"Type alias for {stub_target}"
+            stub_desc=f"Type alias for: {stub_target}"
         )
         return
     if isinstance(stub_target, mypy.types.Instance):
