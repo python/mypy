@@ -1214,13 +1214,22 @@ def unify_generic_callable(type: CallableType, target: CallableType,
 
 
 def try_restrict_literal_union(t: UnionType, s: Type) -> Optional[List[Type]]:
-    """Helper function for restrict_subtype_away, allowing a fast path for Union of simple literals"""
+    """Return the items of t, excluding any occurrence of s, if and only if
+      - t only contains simple literals
+      - s is a simple literal
+
+    Otherwise, returns None
+    """
+    ps = get_proper_type(s)
+    if not mypy.typeops.is_simple_literal(ps):
+        return None
+
     new_items: List[Type] = []
     for i in t.relevant_items():
-        it = get_proper_type(i)
-        if not mypy.typeops.is_simple_literal(it):
+        pi = get_proper_type(i)
+        if not mypy.typeops.is_simple_literal(pi):
             return None
-        if it != s:
+        if pi != ps:
             new_items.append(i)
     return new_items
 
@@ -1238,13 +1247,14 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     s = get_proper_type(s)
 
     if isinstance(t, UnionType):
-        new_items = try_restrict_literal_union(t, s) if isinstance(s, LiteralType) else []
-        new_items = new_items or [
-            restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
-            for item in t.relevant_items()
-            if (isinstance(get_proper_type(item), AnyType) or
-                not covers_at_runtime(item, s, ignore_promotions))
-        ]
+        new_items = try_restrict_literal_union(t, s)
+        if new_items is None:
+            new_items = [
+                restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
+                for item in t.relevant_items()
+                if (isinstance(get_proper_type(item), AnyType) or
+                    not covers_at_runtime(item, s, ignore_promotions))
+            ]
         return UnionType.make_union(new_items)
     elif covers_at_runtime(t, s, ignore_promotions):
         return UninhabitedType()

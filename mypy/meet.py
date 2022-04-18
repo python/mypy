@@ -140,16 +140,17 @@ def get_possible_variants(typ: Type) -> List[Type]:
 
 
 def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is an Enum, and y is an Union with at least one Literal from x"""
     return (
         isinstance(x, Instance) and x.type.is_enum and
         isinstance(y, UnionType) and
-        all(x.type == p.fallback.type
-            for p in (get_proper_type(z) for z in y.relevant_items())
-            if isinstance(p, LiteralType))
+        any(isinstance(p, LiteralType) and x.type == p.fallback.type
+            for p in (get_proper_type(z) for z in y.relevant_items()))
     )
 
 
 def is_literal_in_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is a Literal and y is an Union that includes x"""
     return (isinstance(x, LiteralType) and isinstance(y, UnionType) and
             any(x == get_proper_type(z) for z in y.items))
 

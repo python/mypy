@@ -49,6 +49,22 @@ def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
     return True
 
 
+def _extract_literals(u: UnionType) -> Tuple[Set[Type], List[Type]]:
+    """Given a UnionType, separate out its items into a set of simple literals and a remainder list
+    This is a useful helper to avoid O(n**2) behavior when comparing large unions, which can often
+    result from large enums in contexts where type narrowing removes a small subset of entries.
+    """
+    lit: Set[Type] = set()
+    rem: List[Type] = []
+    for i in u.relevant_items():
+        i = get_proper_type(i)
+        if is_simple_literal(i):
+            lit.add(i)
+        else:
+            rem.append(i)
+    return lit, rem
+
+
 class SameTypeVisitor(TypeVisitor[bool]):
     """Visitor for checking whether two types are the 'same' type."""
 
@@ -153,18 +169,6 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         if isinstance(self.right, UnionType):
-            # fast path for simple literals
-            def _extract_literals(u: UnionType) -> Tuple[Set[Type], List[Type]]:
-                lit: Set[Type] = set()
-                rem: List[Type] = []
-                for i in u.relevant_items():
-                    i = get_proper_type(i)
-                    if is_simple_literal(i):
-                        lit.add(i)
-                    else:
-                        rem.append(i)
-                return lit, rem
-
             left_lit, left_rem = _extract_literals(left)
             right_lit, right_rem = _extract_literals(self.right)
 
