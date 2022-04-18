@@ -406,20 +406,26 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if folded:
         return folded
 
+    borrow_left = False
+    borrow_right = False
+
+    ltype = builder.node_type(expr.left)
+    rtype = builder.node_type(expr.right)
+
     # Special case some int ops to allow borrowing operands.
-    if (is_int_rprimitive(builder.node_type(expr.left))
-            and is_int_rprimitive(builder.node_type(expr.right))):
+    if is_int_rprimitive(ltype) and is_int_rprimitive(rtype):
         if expr.op == '//':
             expr = try_optimize_int_floor_divide(expr)
         if expr.op in int_borrow_friendly_op:
             borrow_left = is_borrow_friendly_expr(builder, expr.right)
-            left = builder.accept(expr.left, can_borrow=borrow_left)
-            right = builder.accept(expr.right, can_borrow=True)
-            return builder.binary_op(left, right, expr.op, expr.line)
+            borrow_right = True
+    elif is_fixed_width_rtype(ltype) and is_fixed_width_rtype(rtype):
+        borrow_left = is_borrow_friendly_expr(builder, expr.right)
+        borrow_right = True
 
-    return builder.binary_op(
-        builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
-    )
+    left = builder.accept(expr.left, can_borrow=borrow_left)
+    right = builder.accept(expr.right, can_borrow=borrow_right)
+    return builder.binary_op(left, right, expr.op, expr.line)
 
 
 def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:

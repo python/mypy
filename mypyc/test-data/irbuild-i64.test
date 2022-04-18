@@ -1024,3 +1024,23 @@ L3:
 L4:
     y = r3
     return y
+
+[case testBorrowOverI64Arithmetic]
+from mypy_extensions import i64
+
+def add(c: C) -> i64:
+    return c.x + c.y
+
+class C:
+    x: i64
+    y: i64
+[out]
+def add(c):
+    c :: __main__.C
+    r0, r1, r2 :: int64
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = r0 + r1
+    keep_alive c, c
+    return r2
