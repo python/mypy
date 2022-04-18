@@ -42,6 +42,15 @@ a: Any
 b = cast(Any, a)
 [builtins fixtures/list.pyi]
 
+[case testRedundantCastTypeContext]
+# flags: --warn-redundant-casts
+from typing import List, cast
+
+class A: ...
+class B(A): ...
+
+a: List[A] = cast(List[A], [B()])  # E: Redundant cast to "List[A]"
+
 -- Unused 'type: ignore' comments
 -- ------------------------------
 
