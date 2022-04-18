@@ -955,10 +955,13 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        # ignore type aliases that don't have a runtime counterpart
-        return
     stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(runtime, Missing):
+        yield Error(
+            object_path, "is not present at runtime", stub, runtime,
+            stub_desc=f"Type alias for: {stub_target}"
+        )
+        return
     if isinstance(stub_target, mypy.types.Instance):
         yield from verify(stub_target.type, runtime, object_path)
         return

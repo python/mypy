@@ -712,6 +712,18 @@ class StubtestUnit(unittest.TestCase):
             runtime="A = (int, str)",
             error="A",
         )
+        # Error if an alias isn't present at runtime...
+        yield Case(
+            stub="B = str",
+            runtime="",
+            error="B"
+        )
+        # ... but only if the alias isn't private
+        yield Case(
+            stub="_C = int",
+            runtime="",
+            error=None
+        )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
