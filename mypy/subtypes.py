@@ -535,6 +535,20 @@ class SubtypeVisitor(TypeVisitor[bool]):
             return False
 
     def visit_union_type(self, left: UnionType) -> bool:
+        if isinstance(self.right, Instance):
+            literal_types: Set[Instance] = set()
+            # avoid redundant check for union of literals
+            for item in left.relevant_items():
+                item = get_proper_type(item)
+                lit_type = mypy.typeops.simple_literal_type(item)
+                if lit_type is not None:
+                    if lit_type in literal_types:
+                        continue
+                    literal_types.add(lit_type)
+                    item = lit_type
+                if not self._is_subtype(item, self.orig_right):
+                    return False
+            return True
         return all(self._is_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:
@@ -1199,6 +1213,27 @@ def unify_generic_callable(type: CallableType, target: CallableType,
     return applied
 
 
+def try_restrict_literal_union(t: UnionType, s: Type) -> Optional[List[Type]]:
+    """Return the items of t, excluding any occurrence of s, if and only if
+      - t only contains simple literals
+      - s is a simple literal
+
+    Otherwise, returns None
+    """
+    ps = get_proper_type(s)
+    if not mypy.typeops.is_simple_literal(ps):
+        return None
+
+    new_items: List[Type] = []
+    for i in t.relevant_items():
+        pi = get_proper_type(i)
+        if not mypy.typeops.is_simple_literal(pi):
+            return None
+        if pi != ps:
+            new_items.append(i)
+    return new_items
+
+
 def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) -> Type:
     """Return t minus s for runtime type assertions.
 
@@ -1212,10 +1247,14 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     s = get_proper_type(s)
 
     if isinstance(t, UnionType):
-        new_items = [restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
-                     for item in t.relevant_items()
-                     if (isinstance(get_proper_type(item), AnyType) or
-                         not covers_at_runtime(item, s, ignore_promotions))]
+        new_items = try_restrict_literal_union(t, s)
+        if new_items is None:
+            new_items = [
+                restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
+                for item in t.relevant_items()
+                if (isinstance(get_proper_type(item), AnyType) or
+                    not covers_at_runtime(item, s, ignore_promotions))
+            ]
         return UnionType.make_union(new_items)
     elif covers_at_runtime(t, s, ignore_promotions):
         return UninhabitedType()
@@ -1285,11 +1324,11 @@ def _is_proper_subtype(left: Type, right: Type, *,
     right = get_proper_type(right)
 
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
-        return any([is_proper_subtype(orig_left, item,
-                                      ignore_promotions=ignore_promotions,
-                                      erase_instances=erase_instances,
-                                      keep_erased_types=keep_erased_types)
-                    for item in right.items])
+        return any(is_proper_subtype(orig_left, item,
+                                     ignore_promotions=ignore_promotions,
+                                     erase_instances=erase_instances,
+                                     keep_erased_types=keep_erased_types)
+                   for item in right.items)
     return left.accept(ProperSubtypeVisitor(orig_right,
                                             ignore_promotions=ignore_promotions,
                                             erase_instances=erase_instances,
@@ -1495,7 +1534,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_union_type(self, left: UnionType) -> bool:
-        return all([self._is_proper_subtype(item, self.orig_right) for item in left.items])
+        return all(self._is_proper_subtype(item, self.orig_right) for item in left.items)
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # TODO: What's the right thing to do here?

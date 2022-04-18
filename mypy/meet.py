@@ -64,6 +64,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
                                       for x in declared.relevant_items()])
+    if is_enum_overlapping_union(declared, narrowed):
+        return narrowed
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
@@ -137,6 +139,22 @@ def get_possible_variants(typ: Type) -> List[Type]:
         return [typ]
 
 
+def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is an Enum, and y is an Union with at least one Literal from x"""
+    return (
+        isinstance(x, Instance) and x.type.is_enum and
+        isinstance(y, UnionType) and
+        any(isinstance(p, LiteralType) and x.type == p.fallback.type
+            for p in (get_proper_type(z) for z in y.relevant_items()))
+    )
+
+
+def is_literal_in_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is a Literal and y is an Union that includes x"""
+    return (isinstance(x, LiteralType) and isinstance(y, UnionType) and
+            any(x == get_proper_type(z) for z in y.items))
+
+
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
@@ -197,6 +215,18 @@ def is_overlapping_types(left: Type,
     # *partial* overlap between types.
     #
     # These checks will also handle the NoneType and UninhabitedType cases for us.
+
+    # enums are sometimes expanded into an Union of Literals
+    # when that happens we want to make sure we treat the two as overlapping
+    # and crucially, we want to do that *fast* in case the enum is large
+    # so we do it before expanding variants below to avoid O(n**2) behavior
+    if (
+        is_enum_overlapping_union(left, right)
+        or is_enum_overlapping_union(right, left)
+        or is_literal_in_union(left, right)
+        or is_literal_in_union(right, left)
+    ):
+        return True
 
     if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
             or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
