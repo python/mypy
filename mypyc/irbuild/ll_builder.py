@@ -970,12 +970,14 @@ class LowLevelIRBuilder:
                            is_short_int_rprimitive(rhs.type)))):
             # We can skip the tag check
             check = self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
+            self.flush_keep_alives()
             self.add(Branch(check, true, false, Branch.BOOL))
             return
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         int_block, short_int_block = BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line, negated=True)
         if is_eq or is_short_int_rprimitive(rhs.type):
+            self.flush_keep_alives()
             self.add(Branch(check_lhs, int_block, short_int_block, Branch.BOOL))
         else:
             # For non-equality logical ops (less/greater than, etc.), need to check both sides
@@ -983,6 +985,7 @@ class LowLevelIRBuilder:
             self.add(Branch(check_lhs, int_block, rhs_block, Branch.BOOL))
             self.activate_block(rhs_block)
             check_rhs = self.check_tagged_short_int(rhs, line, negated=True)
+            self.flush_keep_alives()
             self.add(Branch(check_rhs, int_block, short_int_block, Branch.BOOL))
         # Arbitrary integers (slow path)
         self.activate_block(int_block)
@@ -994,6 +997,7 @@ class LowLevelIRBuilder:
         if negate_result:
             self.add(Branch(call, false, true, Branch.BOOL))
         else:
+            self.flush_keep_alives()
             self.add(Branch(call, true, false, Branch.BOOL))
         # Short integers (fast path)
         self.activate_block(short_int_block)
