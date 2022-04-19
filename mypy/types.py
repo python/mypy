@@ -416,9 +416,15 @@ class TypeVarId:
     # Class variable used for allocating fresh ids for metavariables.
     next_raw_id: ClassVar[int] = 1
 
-    def __init__(self, raw_id: int, meta_level: int = 0) -> None:
+    # Fullname of class (or potentially function in the future) which
+    # declares this type variable (not the fullname of the TypeVar
+    # definition!), or ''
+    namespace: str
+
+    def __init__(self, raw_id: int, meta_level: int = 0, *, namespace: str = '') -> None:
         self.raw_id = raw_id
         self.meta_level = meta_level
+        self.namespace = namespace
 
     @staticmethod
     def new(meta_level: int) -> 'TypeVarId':
@@ -432,7 +438,8 @@ class TypeVarId:
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TypeVarId):
             return (self.raw_id == other.raw_id and
-                    self.meta_level == other.meta_level)
+                    self.meta_level == other.meta_level and
+                    self.namespace == other.namespace)
         else:
             return False
 
@@ -440,7 +447,7 @@ class TypeVarId:
         return not (self == other)
 
     def __hash__(self) -> int:
-        return hash((self.raw_id, self.meta_level))
+        return hash((self.raw_id, self.meta_level, self.namespace))
 
     def is_meta_var(self) -> bool:
         return self.meta_level > 0
@@ -514,6 +521,7 @@ class TypeVarType(TypeVarLikeType):
                 'name': self.name,
                 'fullname': self.fullname,
                 'id': self.id.raw_id,
+                'namespace': self.id.namespace,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
@@ -525,7 +533,7 @@ class TypeVarType(TypeVarLikeType):
         return TypeVarType(
             data['name'],
             data['fullname'],
-            data['id'],
+            TypeVarId(data['id'], namespace=data['namespace']),
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
