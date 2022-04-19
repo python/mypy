@@ -2504,3 +2504,23 @@ b: I[I[Any]]
 reveal_type([a, b])  # N: Revealed type is "builtins.list[__main__.I[__main__.I[Any]]]"
 reveal_type([b, a])  # N: Revealed type is "builtins.list[__main__.I[__main__.I[Any]]]"
 [builtins fixtures/list.pyi]
+
+[case testOverlappingTypeVarIds]
+from typing import TypeVar, Generic
+
+class A: ...
+class B: ...
+
+T = TypeVar("T", bound=A)
+V = TypeVar("V", bound=B)
+S = TypeVar("S")
+
+class Whatever(Generic[T]):
+    def something(self: S) -> S:
+        return self
+
+# the "V" here had the same id as "T" and so mypy used to think it could expand one into another.
+# this test is here to make sure that doesn't happen!
+class WhateverPartTwo(Whatever[A], Generic[V]):
+    def something(self: S) -> S:
+        return self
