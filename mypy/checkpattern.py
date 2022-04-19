@@ -396,8 +396,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if is_subtype(current_type, mapping) and isinstance(current_type, Instance):
                 mapping_inst = map_instance_to_supertype(current_type, mapping.type)
                 dict_typeinfo = self.chk.lookup_typeinfo("builtins.dict")
-                dict_type = fill_typevars(dict_typeinfo)
-                rest_type = expand_type_by_instance(dict_type, mapping_inst)
+                rest_type = Instance(dict_typeinfo, mapping_inst.args)
             else:
                 object_type = self.chk.named_type("builtins.object")
                 rest_type = self.chk.named_generic_type("builtins.dict",

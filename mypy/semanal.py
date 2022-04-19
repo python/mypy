@@ -1116,7 +1116,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_class_def(self, defn: ClassDef) -> None:
         self.statement = defn
         self.incomplete_type_stack.append(not defn.info)
-        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+        namespace = self.qualified_name(defn.name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             self.analyze_class(defn)
         self.incomplete_type_stack.pop()
 
