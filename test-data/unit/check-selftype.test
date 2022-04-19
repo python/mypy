@@ -1196,3 +1196,27 @@ class C(Generic[T]):
         for x, y in Z(self.a, self.b):
             reveal_type((x, y))  # N: Revealed type is "Tuple[T`1, builtins.str]"
 [builtins fixtures/tuple.pyi]
+
+[case testEnumerateReturningSelfFromIter]
+from typing import Generic, Iterable, Iterator, TypeVar, Tuple
+
+T = TypeVar("T")
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+Self = TypeVar("Self")
+
+class enumerate(Iterator[Tuple[int, T]], Generic[T]):
+    def __init__(self, iterable: Iterable[T]) -> None: ...
+    def __iter__(self: Self) -> Self: ...
+    def __next__(self) -> Tuple[int, T]: ...
+
+class Dict(Generic[KT, VT]):
+    def update(self, __m: Iterable[Tuple[KT, VT]]) -> None: ...
+
+class ThingCollection(Generic[T]):
+    collection: Iterable[Tuple[float, T]]
+    index: Dict[int, T]
+
+    def do_thing(self) -> None:
+        self.index.update((idx, c) for idx, (k, c) in enumerate(self.collection))
+[builtins fixtures/tuple.pyi]
