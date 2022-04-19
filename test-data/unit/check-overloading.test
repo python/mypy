@@ -6367,3 +6367,142 @@ def g(x: int) -> str: ...
 
 def g(x: int = 0) -> int:  # E: Overloaded function implementation cannot produce return type of signature 2
     return x
+
+[case testOverloadIfNestedOk]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+@overload
+def f1(g: A) -> A: ...
+if True:
+    @overload
+    def f1(g: B) -> B: ...
+    if True:
+        @overload
+        def f1(g: C) -> C: ...
+        @overload
+        def f1(g: D) -> D: ...
+def f1(g): ...
+reveal_type(f1(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f1(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f1(C()))  # N: Revealed type is "__main__.C"
+reveal_type(f1(D()))  # N: Revealed type is "__main__.D"
+
+@overload
+def f2(g: A) -> A: ...
+if True:
+    @overload
+    def f2(g: B) -> B: ...
+    if True:
+        @overload
+        def f2(g: C) -> C: ...
+        if True:
+            @overload
+            def f2(g: D) -> D: ...
+def f2(g): ...
+reveal_type(f2(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f2(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f2(C()))  # N: Revealed type is "__main__.C"
+reveal_type(f2(D()))  # N: Revealed type is "__main__.D"
+
+@overload
+def f3(g: A) -> A: ...
+if True:
+    if True:
+        @overload
+        def f3(g: B) -> B: ...
+    if True:
+        @overload
+        def f3(g: C) -> C: ...
+def f3(g): ...
+reveal_type(f3(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f3(B()))  # N: Revealed type is "__main__.B"
+reveal_type(f3(C()))  # N: Revealed type is "__main__.C"
+
+@overload
+def f4(g: A) -> A: ...
+if True:
+    if False:
+        @overload
+        def f4(g: B) -> B: ...
+    else:
+        @overload
+        def f4(g: C) -> C: ...
+def f4(g): ...
+reveal_type(f4(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f4(B()))  # E: No overload variant of "f4" matches argument type "B" \
+    # N: Possible overload variants: \
+    # N:     def f4(g: A) -> A \
+    # N:     def f4(g: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f4(C()))  # N: Revealed type is "__main__.C"
+
+@overload
+def f5(g: A) -> A: ...
+if True:
+    if False:
+        @overload
+        def f5(g: B) -> B: ...
+    elif True:
+        @overload
+        def f5(g: C) -> C: ...
+def f5(g): ...
+reveal_type(f5(A()))  # N: Revealed type is "__main__.A"
+reveal_type(f5(B()))  # E: No overload variant of "f5" matches argument type "B" \
+    # N: Possible overload variants: \
+    # N:     def f5(g: A) -> A \
+    # N:     def f5(g: C) -> C \
+    # N: Revealed type is "Any"
+reveal_type(f5(C()))  # N: Revealed type is "__main__.C"
+
+[case testOverloadIfNestedFailure]
+# flags: --always-true True --always-false False
+from typing import overload
+
+class A: ...
+class B: ...
+class C: ...
+class D: ...
+
+@overload  # E: Single overload definition, multiple required
+def f1(g: A) -> A: ...
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def f1(g: B) -> B: ...
+    if maybe_true:  # E: Condition cannot be inferred, unable to merge overloads \
+                    # E: Name "maybe_true" is not defined
+        @overload
+        def f1(g: C) -> C: ...
+        @overload
+        def f1(g: D) -> D: ...
+def f1(g): ...  # E: Name "f1" already defined on line 9
+
+@overload  # E: Single overload definition, multiple required
+def f2(g: A) -> A: ...
+if True:
+    if False:
+        @overload
+        def f2(g: B) -> B: ...
+    elif maybe_true:  # E: Name "maybe_true" is not defined
+        @overload  # E: Single overload definition, multiple required
+        def f2(g: C) -> C: ...
+def f2(g): ...  # E: Name "f2" already defined on line 21
+
+@overload  # E: Single overload definition, multiple required
+def f3(g: A) -> A: ...
+if True:
+    @overload  # E: Single overload definition, multiple required
+    def f3(g: B) -> B: ...
+    if True:
+        pass  # Some other node
+        @overload  # E: Name "f3" already defined on line 32  \
+                   # E: An overloaded function outside a stub file must have an implementation
+        def f3(g: C) -> C: ...
+        @overload
+        def f3(g: D) -> D: ...
+def f3(g): ...  # E: Name "f3" already defined on line 32
