@@ -134,6 +134,11 @@ class Errors:
     # files were processed.
     error_info_map: Dict[str, List[ErrorInfo]]
 
+    # optimization for legacy codebases with many files with errors
+    has_real_errors: bool = False
+    has_blockers: bool = False
+    total_error_count: int = 0
+
     # Files that we have reported the errors for
     flushed_files: Set[str]
 
@@ -235,7 +240,7 @@ class Errors:
         return new
 
     def total_errors(self) -> int:
-        return sum(len(errs) for errs in self.error_info_map.values())
+        return self.total_error_count
 
     def set_ignore_prefix(self, prefix: str) -> None:
         """Set path prefix that will be removed from all paths."""
@@ -357,6 +362,11 @@ class Errors:
         if file not in self.error_info_map:
             self.error_info_map[file] = []
         self.error_info_map[file].append(info)
+        self.total_error_count += 1
+        if info.severity == 'error':
+            self.has_real_errors = True
+        if info.blocker:
+            self.has_blockers = True
         if info.code is IMPORT:
             self.seen_import_error = True
 
@@ -553,12 +563,11 @@ class Errors:
 
     def is_real_errors(self) -> bool:
         """Are there any generated errors (not just notes, for example)?"""
-        return any(info.severity == 'error'
-                   for infos in self.error_info_map.values() for info in infos)
+        return self.has_real_errors
 
     def is_blockers(self) -> bool:
         """Are the any errors that are blockers?"""
-        return any(err for errs in self.error_info_map.values() for err in errs if err.blocker)
+        return self.has_blockers
 
     def blocker_module(self) -> Optional[str]:
         """Return the module with a blocking error, or None if not possible."""
