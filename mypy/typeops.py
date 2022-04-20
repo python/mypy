@@ -442,12 +442,6 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
     return [items[i] for i in range(len(items)) if i not in removed]
 
 
-def is_likely_literal_supertype(t: ProperType) -> bool:
-    """Is the type likely to cause simplification of literal types in unions?"""
-    return isinstance(t, Instance) and t.type.fullname in ('builtins.object',
-                                                           'builtins.str')
-
-
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
     t = get_proper_type(t)
 
