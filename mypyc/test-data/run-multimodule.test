@@ -798,3 +798,25 @@ def foo() -> int: return 10
 import native
 
 [rechecked native, other_a]
+
+[case testIncrementalCompilationWithDeletable]
+import other_a
+[file other_a.py]
+from other_b import C
+[file other_a.py.2]
+from other_b import C
+c = C()
+print(getattr(c, 'x', None))
+del c.x
+print(getattr(c, 'x', None))
+[file other_b.py]
+class C:
+    __deletable__ = ['x']
+    def __init__(self) -> None:
+        self.x = 0
+[file driver.py]
+import native
+[out]
+[out2]
+0
+None
