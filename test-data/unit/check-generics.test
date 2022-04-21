@@ -1506,6 +1506,22 @@ class Outer(Generic[T]):
         def g(self) -> None:
             y: T  # E: Invalid type "__main__.T"
 
+[case testGenericClassInsideOtherGenericClass]
+from typing import TypeVar, Generic
+T = TypeVar("T")
+K = TypeVar("K")
+
+class C(Generic[T]):
+    def __init__(self, t: T) -> None: ...
+    class F(Generic[K]):
+        def __init__(self, k: K) -> None: ...
+        def foo(self) -> K: ...
+
+reveal_type(C.F(17).foo())      # N: Revealed type is "builtins.int"
+reveal_type(C("").F(17).foo())  # N: Revealed type is "builtins.int"
+reveal_type(C.F)                # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
+reveal_type(C("").F)            # N: Revealed type is "def [K] (k: K`1) -> __main__.C.F[K`1]"
+
 
 -- Callable subtyping with generic functions
 -- -----------------------------------------
