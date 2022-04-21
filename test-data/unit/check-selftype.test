@@ -1220,3 +1220,21 @@ class ThingCollection(Generic[T]):
     def do_thing(self) -> None:
         self.index.update((idx, c) for idx, (k, c) in enumerate(self.collection))
 [builtins fixtures/tuple.pyi]
+
+[case testDequeReturningSelfFromCopy]
+# Tests a bug with generic self types identified in issue #12641
+from typing import Generic, Sequence, TypeVar
+
+T = TypeVar("T")
+Self = TypeVar("Self")
+
+class deque(Sequence[T]):
+    def copy(self: Self) -> Self: ...
+
+class List(Sequence[T]): ...
+
+class Test(Generic[T]):
+    def test(self) -> None:
+        a: deque[List[T]]
+        # previously this failed with 'Incompatible types in assignment (expression has type "deque[List[List[T]]]", variable has type "deque[List[T]]")'
+        b: deque[List[T]] = a.copy()
