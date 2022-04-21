@@ -2869,6 +2869,8 @@ class TypeInfo(SymbolNode):
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
                 'metadata': self.metadata,
+                'slots': list(sorted(self.slots)) if self.slots is not None else None,
+                'deletable_attributes': self.deletable_attributes,
                 }
         return data
 
@@ -2906,6 +2908,8 @@ class TypeInfo(SymbolNode):
         ti.typeddict_type = (None if data['typeddict_type'] is None
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
         ti.metadata = data['metadata']
+        ti.slots = set(data['slots']) if data['slots'] is not None else None
+        ti.deletable_attributes = data['deletable_attributes']
         set_flags(ti, data['flags'])
         return ti
 
