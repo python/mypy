@@ -365,14 +365,14 @@ def make_simplified_union(items: Sequence[Type],
     items = get_proper_types(items)
 
     # Step 1: expand all nested unions
-    all_items: List[ProperType] = []
-    while items:
-        typ = items.pop()
-        if isinstance(typ, UnionType):
-            items.extend(get_proper_types(typ.items))
-        else:
-            all_items.append(typ)
-    items = all_items
+    while any(isinstance(typ, UnionType) for typ in items):
+        all_items: List[ProperType] = []
+        for typ in items:
+            if isinstance(typ, UnionType):
+                all_items.extend(get_proper_types(typ.items))
+            else:
+                all_items.append(typ)
+        items = all_items
 
     # Step 2: remove redundant unions
     simplified_set = _remove_redundant_union_items(items, keep_erased)
