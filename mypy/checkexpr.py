@@ -8,7 +8,7 @@ from typing import (
 )
 from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
-from mypy.errors import report_internal_error
+from mypy.errors import ErrorWatcher, report_internal_error
 from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
@@ -2293,12 +2293,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.add_errors(local_errors)
             elif operator in operators.op_methods:
                 method = self.get_operator_method(operator)
-                err_count = self.msg.errors.total_errors()
-                sub_result, method_type = self.check_op(method, left_type, right, e,
-                                                        allow_reverse=True)
+
+                with ErrorWatcher(self.msg.errors) as w:
+                    sub_result, method_type = self.check_op(method, left_type, right, e,
+                                                            allow_reverse=True)
+                    has_new_errors = w.has_new_errors()
+
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
-                if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
+                if not has_new_errors and operator in ('==', '!='):
                     right_type = self.accept(right)
                     # We suppress the error if there is a custom __eq__() method on either
                     # side. User defined (or even standard library) classes can define this
