@@ -1236,4 +1236,5 @@ class List(Sequence[T]): ...
 class Test(Generic[T]):
     def test(self) -> None:
         a: deque[List[T]]
+        # previously this failed with 'Incompatible types in assignment (expression has type "deque[List[List[T]]]", variable has type "deque[List[T]]")'
         b: deque[List[T]] = a.copy()
