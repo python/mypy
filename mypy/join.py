@@ -8,7 +8,7 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
     ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
-    UnpackType
+    UnpackType, TypeVarTupleType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -253,6 +253,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
         if self.s == t:
             return t
         return self.default(self.s)

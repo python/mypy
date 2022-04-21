@@ -4,7 +4,8 @@ from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType, ParamSpecType, Parameters, UnpackType
+    ProperType, get_proper_type, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_literal
 
@@ -117,6 +118,10 @@ class SameTypeVisitor(TypeVisitor[bool]):
         # Ignore upper bound since it's derived from flavor.
         return (isinstance(self.right, ParamSpecType) and
                 left.id == self.right.id and left.flavor == self.right.flavor)
+
+    def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
+        return (isinstance(self.right, TypeVarTupleType) and
+                left.id == self.right.id)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
         return (isinstance(self.right, UnpackType) and
