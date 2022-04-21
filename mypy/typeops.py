@@ -107,7 +107,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         isinstance(explicit_type, (Instance, TupleType))
-        # We have to skip protocols, because it can can be a subtype of a return type
+        # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
@@ -354,10 +354,17 @@ def make_simplified_union(items: Sequence[Type],
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
+
     The keep_erased flag is used for type inference against union types
     containing type variables. If set to True, keep all ErasedType items.
+
+    The contract_literals flag indicates whether we need to contract literal types
+    back into a sum type. Set it to False when called by try_expanding_sum_type_
+    to_union().
     """
     items = get_proper_types(items)
+
+    # Step 1: expand all nested unions
     while any(isinstance(typ, UnionType) for typ in items):
         all_items: List[ProperType] = []
         for typ in items:
@@ -367,10 +374,11 @@ def make_simplified_union(items: Sequence[Type],
                 all_items.append(typ)
         items = all_items
 
+    # Step 2: remove redundant unions
     simplified_set = _remove_redundant_union_items(items, keep_erased)
 
-    # If more than one literal exists in the union, try to simplify
-    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+    # Step 3: If more than one literal exists in the union, try to simplify
+    if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
     return UnionType.make_union(simplified_set, line, column)
@@ -384,7 +392,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
 
     # NB: having a separate fast path for Union of Literal and slow path for other things
     # would arguably be cleaner, however it breaks down when simplifying the Union of two
-    # different enum types as try_expanding_enum_to_union works recursively and will
+    # different enum types as try_expanding_sum_type_to_union works recursively and will
     # trigger intermediate simplifications that would render the fast path useless
     for i, item in enumerate(items):
         if i in removed:
@@ -408,7 +416,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             if safe_skip:
                 continue
 
-        # Keep track of the truishness info for deleted subtypes which can be relevant
+        # Keep track of the truthiness info for deleted subtypes which can be relevant
         cbt = cbf = False
         for j, tj in enumerate(items):
             if (
@@ -609,7 +617,7 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     Otherwise, returns None.
 
     Specifically, this function is guaranteed to return a list with
-    one or more strings if one one the following is true:
+    one or more strings if one of the following is true:
 
     1. 'expr' is a StrExpr
     2. 'typ' is a LiteralType containing a string
@@ -651,7 +659,7 @@ def try_getting_literals_from_type(typ: Type,
                                    target_literal_type: TypingType[T],
                                    target_fullname: str) -> Optional[List[T]]:
     """If the given expression or type corresponds to a Literal or
-    union of Literals where the underlying values corresponds to the given
+    union of Literals where the underlying values correspond to the given
     target type, returns a list of those underlying values. Otherwise,
     returns None.
     """
