@@ -883,7 +883,7 @@ def process_options(args: List[str],
         group=code_group)
     add_invertible_flag(
         '--fast-module-lookup', default=False,
-        help="Enable fast path for finding modules within input sources",
+        help=argparse.SUPPRESS,
         group=code_group)
     code_group.add_argument(
         "--exclude",

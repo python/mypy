@@ -195,6 +195,9 @@ class FindModuleCache:
         self.ns_ancestors.clear()
 
     def find_module_via_source_set(self, id: str) -> Optional[ModuleSearchResult]:
+        """Fast path to find modules by looking through the input sources
+
+        This is only used when --fast-module-lookup is passed on the command line."""
         if not self.source_set:
             return None
 

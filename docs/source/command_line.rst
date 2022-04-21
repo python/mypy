@@ -212,6 +212,29 @@ imports.
     By default, mypy will suppress any error messages generated within :pep:`561`
     compliant packages. Adding this flag will disable this behavior.
 
+.. option:: --fast-module-lookup
+
+    The default logic used to scan through search paths to resolve imports has a
+    quadratic worse-case behavior in some cases, which is for instance triggered
+    by a large number of folders sharing a top-level namespace as in:
+
+        foo/
+            company/
+                foo/
+                    a.py
+        bar/
+            company/
+                bar/
+                    b.py
+        baz/
+            company/
+                baz/
+                    c.py
+       ...
+
+    If you are in this situation, you can enable an experimental fast path by
+    setting the :option:`--fast-module-lookup` option.
+
 
 .. _platform-configuration:
 
