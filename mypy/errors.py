@@ -877,7 +877,7 @@ def report_internal_error(err: Exception,
 
     # Print "INTERNAL ERROR" message.
     print('{}error: INTERNAL ERROR --'.format(prefix),
-          'Please try using mypy master on Github:\n'
+          'Please try using mypy master on GitHub:\n'
           'https://mypy.readthedocs.io/en/stable/common_issues.html'
           '#using-a-development-mypy-build',
           file=stderr)
