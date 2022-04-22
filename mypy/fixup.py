@@ -188,11 +188,7 @@ class TypeFixer(TypeVisitor[None]):
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
         for v in ct.variables:
-            if isinstance(v, TypeVarType):
-                if v.values:
-                    for val in v.values:
-                        val.accept(self)
-                v.upper_bound.accept(self)
+            v.accept(self)
         for arg in ct.bound_args:
             if arg:
                 arg.accept(self)
@@ -259,6 +255,8 @@ class TypeFixer(TypeVisitor[None]):
         for argt in p.arg_types:
             if argt is not None:
                 argt.accept(self)
+        for var in p.variables:
+            var.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:
