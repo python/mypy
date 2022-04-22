@@ -1810,8 +1810,8 @@ class State:
 
     fine_grained_deps_loaded = False
 
-    # Cumulative time spent on this file (for profiling stats)
-    time_spent: int = 0
+    # Cumulative time spent on this file, in microseconds (for profiling stats)
+    time_spent_us: int = 0
 
     def __init__(self,
                  id: Optional[str],
@@ -2039,7 +2039,7 @@ class State:
         else:
             manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
-        t0 = time.perf_counter_ns()
+        t0 = time.perf_counter()
 
         with self.wrap_context():
             source = self.source
@@ -2086,7 +2086,7 @@ class State:
                     self.tree.ignored_lines,
                     self.ignore_all or self.options.ignore_errors)
 
-        self.time_spent += time.perf_counter_ns() - t0
+        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
 
         if not cached:
             # Make a copy of any errors produced during parse time so that
@@ -2123,7 +2123,7 @@ class State:
         options = self.options
         assert self.tree is not None
 
-        t0 = time.perf_counter_ns()
+        t0 = time.perf_counter()
 
         # Do the first pass of semantic analysis: analyze the reachability
         # of blocks and import statements. We must do this before
@@ -2143,7 +2143,7 @@ class State:
             if options.allow_redefinition:
                 # Perform more renaming across the AST to allow variable redefinitions
                 self.tree.accept(VariableRenameVisitor())
-        self.time_spent += time.perf_counter_ns() - t0
+        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2201,10 +2201,10 @@ class State:
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
-        t0 = time.perf_counter_ns()
+        t0 = time.perf_counter()
         with self.wrap_context():
             self.type_checker().check_first_pass()
-        self.time_spent += time.perf_counter_ns() - t0
+        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
 
     def type_checker(self) -> TypeChecker:
         if not self._type_checker:
@@ -2222,17 +2222,17 @@ class State:
     def type_check_second_pass(self) -> bool:
         if self.options.semantic_analysis_only:
             return False
-        t0 = time.perf_counter_ns()
+        t0 = time.perf_counter()
         with self.wrap_context():
             return self.type_checker().check_second_pass()
-        self.time_spent += time.perf_counter_ns() - t0
+        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
-        t0 = time.perf_counter_ns()
+        t0 = time.perf_counter()
         with self.wrap_context():
             # Some tests (and tools) want to look at the set of all types.
             options = manager.options
@@ -2255,7 +2255,7 @@ class State:
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
                 free_tree(self.tree)
-        self.time_spent += time.perf_counter_ns() - t0
+        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
 
     def free_state(self) -> None:
         if self._type_checker:
@@ -2797,7 +2797,7 @@ def dump_timing_stats(path: str, graph: Graph) -> None:
     with open(path, 'w') as f:
         for k in sorted(graph.keys()):
             v = graph[k]
-            f.write('{} {}\n'.format(v.id, v.time_spent))
+            f.write('{} {}\n'.format(v.id, v.time_spent_us))
 
 
 def dump_graph(graph: Graph, stdout: Optional[TextIO] = None) -> None:
@@ -3118,8 +3118,6 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
         manager.trace(str(fresh_scc_queue))
     else:
         manager.log("No fresh SCCs left in queue")
-
-
 
 
 def order_ascc(graph: Graph, ascc: AbstractSet[str], pri_max: int = PRI_ALL) -> List[str]:
