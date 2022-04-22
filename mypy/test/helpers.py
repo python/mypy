@@ -464,8 +464,8 @@ def check_test_output_files(testcase: DataDrivenTestCase,
             if expected_content.fullmatch(actual_output_content) is not None:
                 continue
             raise AssertionError(
-                'Output file {} did not match its expected output pattern\n---\n{}\n---\n{}\n---'.format(
-                    path, actual_output_content, expected_content)
+                'Output file {} did not match its expected output pattern\n---\n{}\n---'.format(
+                    path, actual_output_content)
             )
 
         normalized_output = normalize_file_output(actual_output_content.splitlines(),
