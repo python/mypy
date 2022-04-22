@@ -101,10 +101,8 @@ class DataclassAttribute:
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
-        if not isinstance(self.type, TypeVarType):
-            return
-
-        self.type = map_type_from_supertype(self.type, sub_type, self.info)
+        if self.type is not None:
+            self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
