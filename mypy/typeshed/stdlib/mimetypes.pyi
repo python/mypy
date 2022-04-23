@@ -1,6 +1,7 @@
 import sys
 from _typeshed import StrPath
-from typing import IO, Sequence
+from collections.abc import Sequence
+from typing import IO
 
 __all__ = [
     "knownfiles",

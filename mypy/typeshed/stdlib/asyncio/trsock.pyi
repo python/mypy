@@ -1,14 +1,16 @@
 import socket
 import sys
 from builtins import type as Type  # alias to avoid name clashes with property named "type"
+from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, BinaryIO, Iterable, NoReturn, overload
+from typing import Any, BinaryIO, NoReturn, overload
+from typing_extensions import TypeAlias
 
 # These are based in socket, maybe move them out into _typeshed.pyi or such
-_Address = tuple[Any, ...] | str
-_RetAddress = Any
-_WriteBuffer = bytearray | memoryview
-_CMSG = tuple[int, int, bytes]
+_Address: TypeAlias = tuple[Any, ...] | str
+_RetAddress: TypeAlias = Any
+_WriteBuffer: TypeAlias = bytearray | memoryview
+_CMSG: TypeAlias = tuple[int, int, bytes]
 
 class TransportSocket:
     def __init__(self, sock: socket.socket) -> None: ...

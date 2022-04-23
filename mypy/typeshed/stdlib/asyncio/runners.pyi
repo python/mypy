@@ -1,5 +1,6 @@
 import sys
-from typing import Awaitable, TypeVar
+from collections.abc import Awaitable
+from typing import TypeVar
 
 __all__ = ("run",)
 _T = TypeVar("_T")

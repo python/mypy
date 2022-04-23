@@ -1,28 +1,52 @@
 import sys
 from _typeshed import ReadableBuffer, Self
-from typing import AbstractSet
+from collections.abc import Callable, Set as AbstractSet
+from typing import Protocol
 from typing_extensions import final
 
-__all__ = (
-    "md5",
-    "sha1",
-    "sha224",
-    "sha256",
-    "sha384",
-    "sha512",
-    "blake2b",
-    "blake2s",
-    "sha3_224",
-    "sha3_256",
-    "sha3_384",
-    "sha3_512",
-    "shake_128",
-    "shake_256",
-    "new",
-    "algorithms_guaranteed",
-    "algorithms_available",
-    "pbkdf2_hmac",
-)
+if sys.version_info >= (3, 11):
+    __all__ = (
+        "md5",
+        "sha1",
+        "sha224",
+        "sha256",
+        "sha384",
+        "sha512",
+        "blake2b",
+        "blake2s",
+        "sha3_224",
+        "sha3_256",
+        "sha3_384",
+        "sha3_512",
+        "shake_128",
+        "shake_256",
+        "new",
+        "algorithms_guaranteed",
+        "algorithms_available",
+        "pbkdf2_hmac",
+        "file_digest",
+    )
+else:
+    __all__ = (
+        "md5",
+        "sha1",
+        "sha224",
+        "sha256",
+        "sha384",
+        "sha512",
+        "blake2b",
+        "blake2s",
+        "sha3_224",
+        "sha3_256",
+        "sha3_384",
+        "sha3_512",
+        "shake_128",
+        "shake_256",
+        "new",
+        "algorithms_guaranteed",
+        "algorithms_available",
+        "pbkdf2_hmac",
+    )
 
 class _Hash:
     @property
@@ -143,3 +167,15 @@ class _BlakeHash(_Hash):
 
 blake2b = _BlakeHash
 blake2s = _BlakeHash
+
+if sys.version_info >= (3, 11):
+    class _BytesIOLike(Protocol):
+        def getbuffer(self) -> ReadableBuffer: ...
+
+    class _FileDigestFileObj(Protocol):
+        def readinto(self, __buf: bytearray) -> int: ...
+        def readable(self) -> bool: ...
+
+    def file_digest(
+        __fileobj: _BytesIOLike | _FileDigestFileObj, __digest: str | Callable[[], _Hash], *, _bufsize: int = ...
+    ) -> _Hash: ...

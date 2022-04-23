@@ -1,17 +1,19 @@
+from collections.abc import Generator, Iterator, Sequence
 from email import _ParamsType, _ParamType
 from email.charset import Charset
 from email.contentmanager import ContentManager
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, Generator, Iterator, Sequence, TypeVar
+from typing import Any, TypeVar
+from typing_extensions import TypeAlias
 
 __all__ = ["Message", "EmailMessage"]
 
 _T = TypeVar("_T")
 
-_PayloadType = list[Message] | str | bytes
-_CharsetType = Charset | str | None
-_HeaderType = Any
+_PayloadType: TypeAlias = list[Message] | str | bytes
+_CharsetType: TypeAlias = Charset | str | None
+_HeaderType: TypeAlias = Any
 
 class Message:
     policy: Policy  # undocumented

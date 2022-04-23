@@ -1,10 +1,11 @@
 import sys
 from _typeshed import StrOrBytesPath
-from typing import Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
-    _Completer = Callable[[str, int], str | None]
-    _CompDisp = Callable[[str, Sequence[str], int], None]
+    _Completer: TypeAlias = Callable[[str, int], str | None]
+    _CompDisp: TypeAlias = Callable[[str, Sequence[str], int], None]
 
     def parse_and_bind(__string: str) -> None: ...
     def read_init_file(__filename: StrOrBytesPath | None = ...) -> None: ...

@@ -1,8 +1,10 @@
 import sys
 import types
 from _typeshed import Self
+from collections.abc import Callable, Iterator
 from opcode import *  # `dis` re-exports it as a part of public API
-from typing import IO, Any, Callable, Iterator, NamedTuple
+from typing import IO, Any, NamedTuple
+from typing_extensions import TypeAlias
 
 __all__ = [
     "code_info",
@@ -34,28 +36,63 @@ __all__ = [
 
 # Strictly this should not have to include Callable, but mypy doesn't use FunctionType
 # for functions (python/mypy#3171)
-_HaveCodeType = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
-_HaveCodeOrStringType = _HaveCodeType | str | bytes
+_HaveCodeType: TypeAlias = types.MethodType | types.FunctionType | types.CodeType | type | Callable[..., Any]
+_HaveCodeOrStringType: TypeAlias = _HaveCodeType | str | bytes
 
-class Instruction(NamedTuple):
-    opname: str
-    opcode: int
-    arg: int | None
-    argval: Any
-    argrepr: str
-    offset: int
-    starts_line: int | None
-    is_jump_target: bool
+if sys.version_info >= (3, 11):
+    class Positions(NamedTuple):
+        lineno: int | None = ...
+        end_lineno: int | None = ...
+        col_offset: int | None = ...
+        end_col_offset: int | None = ...
+
+if sys.version_info >= (3, 11):
+    class Instruction(NamedTuple):
+        opname: str
+        opcode: int
+        arg: int | None
+        argval: Any
+        argrepr: str
+        offset: int
+        starts_line: int | None
+        is_jump_target: bool
+        positions: Positions | None = ...
+
+else:
+    class Instruction(NamedTuple):
+        opname: str
+        opcode: int
+        arg: int | None
+        argval: Any
+        argrepr: str
+        offset: int
+        starts_line: int | None
+        is_jump_target: bool
 
 class Bytecode:
     codeobj: types.CodeType
     first_line: int
-    def __init__(self, x: _HaveCodeOrStringType, *, first_line: int | None = ..., current_offset: int | None = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            x: _HaveCodeOrStringType,
+            *,
+            first_line: int | None = ...,
+            current_offset: int | None = ...,
+            show_caches: bool = ...,
+        ) -> None: ...
+        @classmethod
+        def from_traceback(cls: type[Self], tb: types.TracebackType, *, show_caches: bool = ...) -> Self: ...
+    else:
+        def __init__(
+            self, x: _HaveCodeOrStringType, *, first_line: int | None = ..., current_offset: int | None = ...
+        ) -> None: ...
+        @classmethod
+        def from_traceback(cls: type[Self], tb: types.TracebackType) -> Self: ...
+
     def __iter__(self) -> Iterator[Instruction]: ...
     def info(self) -> str: ...
     def dis(self) -> str: ...
-    @classmethod
-    def from_traceback(cls: type[Self], tb: types.TracebackType) -> Self: ...
 
 COMPILER_FLAG_NAMES: dict[int, str]
 
@@ -64,14 +101,27 @@ def findlinestarts(code: _HaveCodeType) -> Iterator[tuple[int, int]]: ...
 def pretty_flags(flags: int) -> str: ...
 def code_info(x: _HaveCodeOrStringType) -> str: ...
 
-if sys.version_info >= (3, 7):
+if sys.version_info >= (3, 11):
+    def dis(
+        x: _HaveCodeOrStringType | None = ..., *, file: IO[str] | None = ..., depth: int | None = ..., show_caches: bool = ...
+    ) -> None: ...
+
+elif sys.version_info >= (3, 7):
     def dis(x: _HaveCodeOrStringType | None = ..., *, file: IO[str] | None = ..., depth: int | None = ...) -> None: ...
 
 else:
     def dis(x: _HaveCodeOrStringType | None = ..., *, file: IO[str] | None = ...) -> None: ...
 
-def distb(tb: types.TracebackType | None = ..., *, file: IO[str] | None = ...) -> None: ...
-def disassemble(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ...) -> None: ...
-def disco(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ...) -> None: ...
+if sys.version_info >= (3, 11):
+    def disassemble(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ..., show_caches: bool = ...) -> None: ...
+    def disco(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ..., show_caches: bool = ...) -> None: ...
+    def distb(tb: types.TracebackType | None = ..., *, file: IO[str] | None = ..., show_caches: bool = ...) -> None: ...
+    def get_instructions(x: _HaveCodeType, *, first_line: int | None = ..., show_caches: bool = ...) -> Iterator[Instruction]: ...
+
+else:
+    def disassemble(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ...) -> None: ...
+    def disco(co: _HaveCodeType, lasti: int = ..., *, file: IO[str] | None = ...) -> None: ...
+    def distb(tb: types.TracebackType | None = ..., *, file: IO[str] | None = ...) -> None: ...
+    def get_instructions(x: _HaveCodeType, *, first_line: int | None = ...) -> Iterator[Instruction]: ...
+
 def show_code(co: _HaveCodeType, *, file: IO[str] | None = ...) -> None: ...
-def get_instructions(x: _HaveCodeType, *, first_line: int | None = ...) -> Iterator[Instruction]: ...

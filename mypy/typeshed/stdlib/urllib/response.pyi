@@ -1,8 +1,9 @@
 import sys
 from _typeshed import Self
+from collections.abc import Callable, Iterable
 from email.message import Message
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable
+from typing import IO, Any, BinaryIO
 
 __all__ = ["addbase", "addclosehook", "addinfo", "addinfourl"]
 

@@ -1,9 +1,9 @@
 import sys
 from _typeshed import structseq
 from typing import Any, Protocol
-from typing_extensions import Final, Literal, final
+from typing_extensions import Final, Literal, TypeAlias, final
 
-_TimeTuple = tuple[int, int, int, int, int, int, int, int, int]
+_TimeTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int]
 
 altzone: int
 daylight: int

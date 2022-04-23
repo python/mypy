@@ -1,18 +1,17 @@
 import sys
-from _typeshed import structseq
+from _typeshed import OptExcInfo, structseq
 from builtins import object as _object
+from collections.abc import AsyncGenerator, Callable, Coroutine, Sequence
 from importlib.abc import PathEntryFinder
 from importlib.machinery import ModuleSpec
 from io import TextIOWrapper
 from types import FrameType, ModuleType, TracebackType
-from typing import Any, AsyncGenerator, Callable, Coroutine, NoReturn, Protocol, Sequence, TextIO, TypeVar, Union, overload
-from typing_extensions import Literal, final
+from typing import Any, NoReturn, Protocol, TextIO, TypeVar, overload
+from typing_extensions import Literal, TypeAlias, final
 
 _T = TypeVar("_T")
 
-# The following type alias are stub-only and do not exist during runtime
-_ExcInfo = tuple[type[BaseException], BaseException, TracebackType]
-_OptExcInfo = Union[_ExcInfo, tuple[None, None, None]]
+_OptExcInfo: TypeAlias = OptExcInfo  # TODO: obsolete, remove fall 2022 or later
 
 # Intentionally omits one deprecated and one optional method of `importlib.abc.MetaPathFinder`
 class _MetaPathFinder(Protocol):
@@ -76,16 +75,16 @@ _xoptions: dict[Any, Any]
 
 # Type alias used as a mixin for structseq classes that cannot be instantiated at runtime
 # This can't be represented in the type system, so we just use `structseq[Any]`
-_uninstantiable_structseq = structseq[Any]
+_uninstantiable_structseq: TypeAlias = structseq[Any]
 
 flags: _flags
 
 if sys.version_info >= (3, 10):
-    _FlagTuple = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, bool, int, int]
+    _FlagTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, bool, int, int]
 elif sys.version_info >= (3, 7):
-    _FlagTuple = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, bool, int]
+    _FlagTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int, bool, int]
 else:
-    _FlagTuple = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int]
+    _FlagTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int]
 
 @final
 class _flags(_uninstantiable_structseq, _FlagTuple):
@@ -217,7 +216,7 @@ def _getframe(__depth: int = ...) -> FrameType: ...
 def _debugmallocstats() -> None: ...
 def __displayhook__(__value: object) -> None: ...
 def __excepthook__(__exctype: type[BaseException], __value: BaseException, __traceback: TracebackType | None) -> None: ...
-def exc_info() -> _OptExcInfo: ...
+def exc_info() -> OptExcInfo: ...
 
 # sys.exit() accepts an optional argument of anything printable
 def exit(__status: object = ...) -> NoReturn: ...
@@ -237,12 +236,12 @@ def getsizeof(obj: object) -> int: ...
 def getsizeof(obj: object, default: int) -> int: ...
 def getswitchinterval() -> float: ...
 
-_ProfileFunc = Callable[[FrameType, str, Any], Any]
+_ProfileFunc: TypeAlias = Callable[[FrameType, str, Any], Any]
 
 def getprofile() -> _ProfileFunc | None: ...
 def setprofile(profilefunc: _ProfileFunc | None) -> None: ...
 
-_TraceFunc = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
+_TraceFunc: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
 
 def gettrace() -> _TraceFunc | None: ...
 def settrace(tracefunc: _TraceFunc | None) -> None: ...
@@ -309,7 +308,7 @@ if sys.version_info >= (3, 8):
     def addaudithook(hook: Callable[[str, tuple[Any, ...]], Any]) -> None: ...
     def audit(__event: str, *args: Any) -> None: ...
 
-_AsyncgenHook = Callable[[AsyncGenerator[Any, Any]], None] | None
+_AsyncgenHook: TypeAlias = Callable[[AsyncGenerator[Any, Any]], None] | None
 
 @final
 class _asyncgen_hooks(structseq[_AsyncgenHook], tuple[_AsyncgenHook, _AsyncgenHook]):
@@ -330,6 +329,6 @@ if sys.version_info >= (3, 7):
     def set_coroutine_origin_tracking_depth(depth: int) -> None: ...
 
 if sys.version_info < (3, 8):
-    _CoroWrapper = Callable[[Coroutine[Any, Any, Any]], Any]
+    _CoroWrapper: TypeAlias = Callable[[Coroutine[Any, Any, Any]], Any]
     def set_coroutine_wrapper(__wrapper: _CoroWrapper) -> None: ...
     def get_coroutine_wrapper() -> _CoroWrapper: ...

@@ -3,7 +3,8 @@ import importlib.machinery
 import sys
 import types
 from _typeshed import StrOrBytesPath
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from typing_extensions import ParamSpec
 
 _P = ParamSpec("_P")

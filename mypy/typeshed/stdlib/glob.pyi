@@ -1,6 +1,7 @@
 import sys
 from _typeshed import StrOrBytesPath
-from typing import AnyStr, Iterator
+from collections.abc import Iterator
+from typing import AnyStr
 
 __all__ = ["escape", "glob", "iglob"]
 

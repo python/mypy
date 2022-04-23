@@ -1,6 +1,7 @@
 import sys
 from _typeshed import ReadableBuffer, Self
-from typing import Iterable, Iterator, NoReturn, Sized, overload
+from collections.abc import Iterable, Iterator, Sized
+from typing import NoReturn, overload
 
 ACCESS_DEFAULT: int
 ACCESS_READ: int

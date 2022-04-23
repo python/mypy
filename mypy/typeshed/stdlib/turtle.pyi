@@ -1,6 +1,8 @@
 from _typeshed import Self
+from collections.abc import Callable, Sequence
 from tkinter import Canvas, Frame, Misc, PhotoImage, Scrollbar
-from typing import Any, Callable, ClassVar, Sequence, Union, overload
+from typing import Any, ClassVar, Union, overload
+from typing_extensions import TypeAlias
 
 __all__ = [
     "ScrolledCanvas",
@@ -131,18 +133,18 @@ __all__ = [
 # alias we use for return types. Really, these two aliases should be the
 # same, but as per the "no union returns" typeshed policy, we'll return
 # Any instead.
-_Color = Union[str, tuple[float, float, float]]
-_AnyColor = Any
+_Color: TypeAlias = Union[str, tuple[float, float, float]]
+_AnyColor: TypeAlias = Any
 
 # TODO: Replace this with a TypedDict once it becomes standardized.
-_PenState = dict[str, Any]
+_PenState: TypeAlias = dict[str, Any]
 
-_Speed = str | float
-_PolygonCoords = Sequence[tuple[float, float]]
+_Speed: TypeAlias = str | float
+_PolygonCoords: TypeAlias = Sequence[tuple[float, float]]
 
 # TODO: Type this more accurately
 # Vec2D is actually a custom subclass of 'tuple'.
-Vec2D = tuple[float, float]
+Vec2D: TypeAlias = tuple[float, float]
 
 # Does not actually inherit from Canvas, but dynamically gets all methods of Canvas
 class ScrolledCanvas(Canvas, Frame):  # type: ignore[misc]

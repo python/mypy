@@ -1,12 +1,15 @@
 import sys
 from _typeshed import Self
-from typing import Any, BinaryIO, Generic, Iterable, MutableSequence, TypeVar, overload
-from typing_extensions import Literal, SupportsIndex
+from collections.abc import Iterable
 
-_IntTypeCode = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
-_FloatTypeCode = Literal["f", "d"]
-_UnicodeTypeCode = Literal["u"]
-_TypeCode = _IntTypeCode | _FloatTypeCode | _UnicodeTypeCode
+# pytype crashes if array inherits from collections.abc.MutableSequence instead of typing.MutableSequence
+from typing import Any, BinaryIO, Generic, MutableSequence, TypeVar, overload  # noqa: Y027
+from typing_extensions import Literal, SupportsIndex, TypeAlias
+
+_IntTypeCode: TypeAlias = Literal["b", "B", "h", "H", "i", "I", "l", "L", "q", "Q"]
+_FloatTypeCode: TypeAlias = Literal["f", "d"]
+_UnicodeTypeCode: TypeAlias = Literal["u"]
+_TypeCode: TypeAlias = _IntTypeCode | _FloatTypeCode | _UnicodeTypeCode
 
 _T = TypeVar("_T", int, float, str)
 

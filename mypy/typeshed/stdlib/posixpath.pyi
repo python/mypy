@@ -1,5 +1,6 @@
 import sys
 from _typeshed import BytesPath, StrOrBytesPath, StrPath
+from collections.abc import Sequence
 from genericpath import (
     commonprefix as commonprefix,
     exists as exists,
@@ -14,7 +15,7 @@ from genericpath import (
     samestat as samestat,
 )
 from os import PathLike
-from typing import AnyStr, Sequence, overload
+from typing import AnyStr, overload
 
 __all__ = [
     "normcase",

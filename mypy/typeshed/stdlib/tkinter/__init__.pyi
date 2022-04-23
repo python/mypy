@@ -1,12 +1,13 @@
 import _tkinter
 import sys
 from _typeshed import StrOrBytesPath
+from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, Protocol, Sequence, TypeVar, Union, overload
-from typing_extensions import Literal, TypedDict
+from typing import Any, Generic, Protocol, TypeVar, Union, overload
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
     __all__ = [
@@ -171,29 +172,31 @@ EXCEPTION = _tkinter.EXCEPTION
 
 # Some widgets have an option named -compound that accepts different values
 # than the _Compound defined here. Many other options have similar things.
-_Anchor = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
-_Bitmap = str  # manual page: Tk_GetBitmap
-_ButtonCommand = str | Callable[[], Any]  # accepts string of tcl code, return value is returned from Button.invoke()
-_CanvasItemId = int
-_Color = str  # typically '#rrggbb', '#rgb' or color names.
-_Compound = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
-_Cursor = Union[str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]  # manual page: Tk_GetCursor
-_EntryValidateCommand = (
+_Anchor: TypeAlias = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
+_Bitmap: TypeAlias = str  # manual page: Tk_GetBitmap
+_ButtonCommand: TypeAlias = str | Callable[[], Any]  # accepts string of tcl code, return value is returned from Button.invoke()
+_CanvasItemId: TypeAlias = int
+_Color: TypeAlias = str  # typically '#rrggbb', '#rgb' or color names.
+_Compound: TypeAlias = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
+_Cursor: TypeAlias = Union[
+    str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]
+]  # manual page: Tk_GetCursor
+_EntryValidateCommand: TypeAlias = (
     str | list[str] | tuple[str, ...] | Callable[[], bool]
 )  # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
-_GridIndex = int | str | Literal["all"]
-_ImageSpec = _Image | str  # str can be from e.g. tkinter.image_names()
-_Padding = Union[
+_GridIndex: TypeAlias = int | str | Literal["all"]
+_ImageSpec: TypeAlias = _Image | str  # str can be from e.g. tkinter.image_names()
+_Padding: TypeAlias = Union[
     _ScreenUnits,
     tuple[_ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits, _ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits, _ScreenUnits, _ScreenUnits],
 ]
-_Relief = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
-_ScreenUnits = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
-_XYScrollCommand = str | Callable[[float, float], Any]  # -xscrollcommand and -yscrollcommand in 'options' manual page
-_TakeFocusValue = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
+_Relief: TypeAlias = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
+_ScreenUnits: TypeAlias = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
+_XYScrollCommand: TypeAlias = str | Callable[[float, float], Any]  # -xscrollcommand and -yscrollcommand in 'options' manual page
+_TakeFocusValue: TypeAlias = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
 
 class EventType(str, Enum):
     Activate: str
@@ -263,7 +266,7 @@ class Event(Generic[_W_co]):
 
 def NoDefaultRoot() -> None: ...
 
-_TraceMode = Literal["array", "read", "write", "unset"]
+_TraceMode: TypeAlias = Literal["array", "read", "write", "unset"]
 
 class Variable:
     def __init__(self, master: Misc | None = ..., value: Any | None = ..., name: str | None = ...) -> None: ...
@@ -1696,7 +1699,7 @@ class Checkbutton(Widget):
     def select(self) -> None: ...
     def toggle(self) -> None: ...
 
-_EntryIndex = str | int  # "INDICES" in manual page
+_EntryIndex: TypeAlias = str | int  # "INDICES" in manual page
 
 class Entry(Widget, XView):
     def __init__(
@@ -2054,7 +2057,7 @@ class Listbox(Widget, XView, YView):
     def itemconfigure(self, index, cnf: Any | None = ..., **kw): ...
     itemconfig: Any
 
-_MenuIndex = str | int
+_MenuIndex: TypeAlias = str | int
 
 class Menu(Widget):
     def __init__(
@@ -2740,7 +2743,7 @@ class Scrollbar(Widget):
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
     def set(self, first: float, last: float) -> None: ...
 
-_TextIndex = _tkinter.Tcl_Obj | str | float | Misc
+_TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
 
 class Text(Widget, XView, YView):
     def __init__(

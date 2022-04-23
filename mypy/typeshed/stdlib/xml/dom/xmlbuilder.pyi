@@ -1,5 +1,5 @@
 from typing import Any, NoReturn
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 from urllib.request import OpenerDirector
 from xml.dom.expatbuilder import ExpatBuilder, ExpatBuilderNS
 from xml.dom.minidom import Node
@@ -18,13 +18,13 @@ __all__ = ["DOMBuilder", "DOMEntityResolver", "DOMInputSource"]
 
 # probably the same as `Options.errorHandler`?
 # Maybe `xml.sax.handler.ErrorHandler`?
-_DOMBuilderErrorHandlerType = Any | None
+_DOMBuilderErrorHandlerType: TypeAlias = Any | None
 # probably some kind of IO...
-_DOMInputSourceCharacterStreamType = Any | None
+_DOMInputSourceCharacterStreamType: TypeAlias = Any | None
 # probably a string??
-_DOMInputSourceStringDataType = Any | None
+_DOMInputSourceStringDataType: TypeAlias = Any | None
 # probably a string??
-_DOMInputSourceEncodingType = Any | None
+_DOMInputSourceEncodingType: TypeAlias = Any | None
 
 class Options:
     namespaces: int

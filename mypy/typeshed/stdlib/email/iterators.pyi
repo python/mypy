@@ -1,6 +1,6 @@
 from _typeshed import SupportsWrite
+from collections.abc import Iterator
 from email.message import Message
-from typing import Iterator
 
 __all__ = ["body_line_iterator", "typed_subpart_iterator", "walk"]
 

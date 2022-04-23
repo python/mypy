@@ -1,7 +1,9 @@
 import os
 import sys
 from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRead, SupportsWrite
-from typing import Any, AnyStr, Callable, Iterable, NamedTuple, Sequence, TypeVar, overload
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any, AnyStr, NamedTuple, TypeVar, overload
+from typing_extensions import TypeAlias
 
 __all__ = [
     "copyfileobj",
@@ -36,7 +38,7 @@ _StrOrBytesPathT = TypeVar("_StrOrBytesPathT", bound=StrOrBytesPath)
 _StrPathT = TypeVar("_StrPathT", bound=StrPath)
 # Return value of some functions that may either return a path-like object that was passed in or
 # a string
-_PathReturn = Any
+_PathReturn: TypeAlias = Any
 
 class Error(OSError): ...
 class SameFileError(Error): ...
@@ -82,7 +84,7 @@ else:
 
 def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
 
-_CopyFn = Callable[[str, str], None] | Callable[[StrPath, StrPath], None]
+_CopyFn: TypeAlias = Callable[[str, str], None] | Callable[[StrPath, StrPath], None]
 
 # N.B. shutil.move appears to take bytes arguments, however,
 # this does not work when dst is (or is within) an existing directory.

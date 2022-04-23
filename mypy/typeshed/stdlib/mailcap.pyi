@@ -1,6 +1,7 @@
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing_extensions import TypeAlias
 
-_Cap = dict[str, str | int]
+_Cap: TypeAlias = dict[str, str | int]
 
 __all__ = ["getcaps", "findmatch"]
 

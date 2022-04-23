@@ -1,6 +1,8 @@
 import sys
 from _typeshed import Self, StrPath
-from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
+from typing import Any
+from typing_extensions import TypeAlias
 
 from . import events, protocols, transports
 from .base_events import Server
@@ -64,7 +66,7 @@ else:
             "start_unix_server",
         ]
 
-_ClientConnectedCallback = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
+_ClientConnectedCallback: TypeAlias = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
 
 if sys.version_info < (3, 8):
     class IncompleteReadError(EOFError):
@@ -118,9 +120,9 @@ else:
 
 if sys.platform != "win32":
     if sys.version_info >= (3, 7):
-        _PathType = StrPath
+        _PathType: TypeAlias = StrPath
     else:
-        _PathType = str
+        _PathType: TypeAlias = str
     if sys.version_info >= (3, 10):
         async def open_unix_connection(
             path: _PathType | None = ..., *, limit: int = ..., **kwds: Any

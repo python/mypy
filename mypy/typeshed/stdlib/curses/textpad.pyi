@@ -1,5 +1,5 @@
 import sys
-from typing import Callable
+from collections.abc import Callable
 
 if sys.platform != "win32":
     from _curses import _CursesWindow

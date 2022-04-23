@@ -22,6 +22,7 @@ from typing import (  # noqa: Y022,Y027
     Mapping,
     NewType as NewType,
     NoReturn as NoReturn,
+    Sequence,
     Text as Text,
     Type as Type,
     TypeVar,
@@ -76,8 +77,10 @@ __all__ = [
     "NoReturn",
     "Required",
     "NotRequired",
+    "clear_overloads",
     "get_args",
     "get_origin",
+    "get_overloads",
     "get_type_hints",
 ]
 
@@ -188,10 +191,17 @@ else:
 # New things in 3.11
 if sys.version_info >= (3, 11):
     from typing import (
+        LiteralString as LiteralString,
         Never as Never,
+        NotRequired as NotRequired,
+        Required as Required,
         Self as Self,
+        TypeVarTuple as TypeVarTuple,
+        Unpack as Unpack,
         assert_never as assert_never,
         assert_type as assert_type,
+        clear_overloads as clear_overloads,
+        get_overloads as get_overloads,
         reveal_type as reveal_type,
     )
 else:
@@ -200,23 +210,26 @@ else:
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: NoReturn) -> NoReturn: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
+    def clear_overloads() -> None: ...
+    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
+
+    Required: _SpecialForm
+    NotRequired: _SpecialForm
+    LiteralString: _SpecialForm
+    Unpack: _SpecialForm
+
+    @final
+    class TypeVarTuple:
+        __name__: str
+        def __init__(self, name: str) -> None: ...
+        def __iter__(self) -> Any: ...  # Unpack[Self]
 
 # Experimental (hopefully these will be in 3.11)
-Required: _SpecialForm
-NotRequired: _SpecialForm
-LiteralString: _SpecialForm
-Unpack: _SpecialForm
-
-@final
-class TypeVarTuple:
-    __name__: str
-    def __init__(self, name: str) -> None: ...
-    def __iter__(self) -> Any: ...  # Unpack[Self]
-
 def dataclass_transform(
     *,
     eq_default: bool = ...,
     order_default: bool = ...,
     kw_only_default: bool = ...,
-    field_descriptors: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+    **kwargs: object,
 ) -> Callable[[_T], _T]: ...
