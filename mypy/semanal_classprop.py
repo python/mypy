@@ -28,10 +28,6 @@ TYPE_PROMOTIONS: Final = {
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
 TYPE_PROMOTIONS_PYTHON3: Final = TYPE_PROMOTIONS.copy()
-TYPE_PROMOTIONS_PYTHON3.update({
-    'builtins.bytearray': 'bytes',
-    'builtins.memoryview': 'bytes',
-})
 
 # Hard coded type promotions for Python 2.
 #
@@ -41,8 +37,6 @@ TYPE_PROMOTIONS_PYTHON3.update({
 TYPE_PROMOTIONS_PYTHON2: Final = TYPE_PROMOTIONS.copy()
 TYPE_PROMOTIONS_PYTHON2.update({
     'builtins.str': 'unicode',
-    'builtins.bytearray': 'str',
-    'builtins.memoryview': 'str',
 })
 
 
