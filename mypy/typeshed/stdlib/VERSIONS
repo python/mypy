@@ -286,6 +286,7 @@ webbrowser: 2.7-
 winreg: 3.0-
 winsound: 2.7-
 wsgiref: 2.7-
+wsgiref.types: 3.11-
 xdrlib: 2.7-
 xml: 2.7-
 xmlrpc: 3.0-

@@ -1,6 +1,7 @@
 import sys
 from _typeshed import SupportsItems
-from typing import Any, Generic, Iterable, TypeVar
+from collections.abc import Iterable
+from typing import Any, Generic, TypeVar
 
 __all__ = ["TopologicalSorter", "CycleError"]
 

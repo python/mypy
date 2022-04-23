@@ -1,7 +1,8 @@
 import sys
 from _typeshed import Self, SupportsKeysAndGetItem
 from _weakrefset import WeakSet as WeakSet
-from typing import Any, Callable, Generic, Iterable, Iterator, Mapping, MutableMapping, TypeVar, overload
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping
+from typing import Any, Generic, TypeVar, overload
 from typing_extensions import ParamSpec
 
 from _weakref import (

@@ -1,8 +1,8 @@
 import queue
 import sys
-from collections.abc import Iterable, Mapping, Set as AbstractSet
+from collections.abc import Callable, Iterable, Mapping, Set as AbstractSet
 from threading import Lock, Semaphore, Thread
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from weakref import ref
 
 from ._base import Executor, Future

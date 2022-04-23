@@ -1,7 +1,8 @@
 import sys
 from collections import deque
+from collections.abc import Callable, Generator
 from types import TracebackType
-from typing import Any, Callable, Generator, TypeVar
+from typing import Any, TypeVar
 from typing_extensions import Literal
 
 from .events import AbstractEventLoop

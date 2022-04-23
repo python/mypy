@@ -1,13 +1,13 @@
 from _typeshed import Self
+from collections.abc import Iterator, MutableMapping
 from types import TracebackType
-from typing import Iterator, MutableMapping
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 __all__ = ["open", "whichdb", "error"]
 
-_KeyType = str | bytes
-_ValueType = str | bytes
-_TFlags = Literal[
+_KeyType: TypeAlias = str | bytes
+_ValueType: TypeAlias = str | bytes
+_TFlags: TypeAlias = Literal[
     "r",
     "w",
     "c",

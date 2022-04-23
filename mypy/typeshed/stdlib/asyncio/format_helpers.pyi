@@ -1,12 +1,14 @@
 import functools
 import traceback
+from collections.abc import Iterable
 from types import FrameType, FunctionType
-from typing import Any, Iterable, overload
+from typing import Any, overload
+from typing_extensions import TypeAlias
 
 class _HasWrapper:
     __wrapper__: _HasWrapper | FunctionType
 
-_FuncType = FunctionType | _HasWrapper | functools.partial[Any] | functools.partialmethod[Any]
+_FuncType: TypeAlias = FunctionType | _HasWrapper | functools.partial[Any] | functools.partialmethod[Any]
 
 @overload
 def _get_function_source(func: _FuncType) -> tuple[str, int]: ...

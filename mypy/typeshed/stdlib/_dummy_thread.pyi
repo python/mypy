@@ -1,5 +1,6 @@
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Callable, NoReturn
+from typing import Any, NoReturn
 
 TIMEOUT_MAX: int
 error = RuntimeError

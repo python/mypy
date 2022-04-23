@@ -1,8 +1,9 @@
 # This only exists in 3.11+. See VERSIONS.
 
 from _typeshed import Self
+from collections.abc import Coroutine, Generator
 from types import TracebackType
-from typing import Any, Coroutine, Generator, TypeVar
+from typing import Any, TypeVar
 
 from .tasks import Task
 

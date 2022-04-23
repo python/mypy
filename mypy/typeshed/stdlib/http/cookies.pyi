@@ -1,12 +1,14 @@
 import sys
-from typing import Any, Generic, Iterable, Mapping, TypeVar, overload
+from collections.abc import Iterable, Mapping
+from typing import Any, Generic, TypeVar, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 __all__ = ["CookieError", "BaseCookie", "SimpleCookie"]
 
-_DataType = str | Mapping[str, str | Morsel[Any]]
+_DataType: TypeAlias = str | Mapping[str, str | Morsel[Any]]
 _T = TypeVar("_T")
 
 @overload

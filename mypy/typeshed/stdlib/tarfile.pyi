@@ -2,7 +2,7 @@ import bz2
 import io
 import sys
 from _typeshed import Self, StrOrBytesPath, StrPath
-from builtins import type as Type  # alias to avoid name clashes with fields named "type"
+from builtins import list as _list, type as Type  # aliases to avoid name clashes with fields named "type" or "list"
 from collections.abc import Callable, Iterable, Iterator, Mapping
 from gzip import _ReadableFileobj as _GzipReadableFileobj, _WritableFileobj as _GzipWritableFileobj
 from types import TracebackType
@@ -108,8 +108,6 @@ def open(
 
 class ExFileObject(io.BufferedReader):
     def __init__(self, tarfile: TarFile, tarinfo: TarInfo) -> None: ...
-
-_list = list  # conflicts with method name
 
 class TarFile:
     OPEN_METH: Mapping[str, str]

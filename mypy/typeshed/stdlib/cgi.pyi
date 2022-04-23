@@ -1,6 +1,6 @@
 import sys
 from _typeshed import Self, SupportsGetItem, SupportsItemAccess
-from builtins import type as _type
+from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
 from types import TracebackType
 from typing import IO, Any, Protocol
@@ -86,8 +86,6 @@ class MiniFieldStorage:
     name: Any
     value: Any
     def __init__(self, name: Any, value: Any) -> None: ...
-
-_list = list
 
 class FieldStorage:
     FieldStorageClass: _type | None

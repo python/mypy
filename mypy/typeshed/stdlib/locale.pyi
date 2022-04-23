@@ -1,5 +1,6 @@
 import sys
 from _typeshed import StrPath
+from collections.abc import Callable, Iterable, Mapping
 
 __all__ = [
     "getlocale",
@@ -32,7 +33,7 @@ __all__ = [
 # as a type annotation or type alias.
 from builtins import str as _str
 from decimal import Decimal
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any
 
 CODESET: int
 D_T_FMT: int

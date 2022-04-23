@@ -2,7 +2,7 @@ import datetime
 import sys
 from collections.abc import Iterable, Sequence
 from time import struct_time
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 10):
     __all__ = [
@@ -66,7 +66,7 @@ else:
         "weekheader",
     ]
 
-_LocaleType = tuple[str | None, str | None]
+_LocaleType: TypeAlias = tuple[str | None, str | None]
 
 class IllegalMonthError(ValueError):
     def __init__(self, month: int) -> None: ...

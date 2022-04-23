@@ -1,4 +1,4 @@
-from typing import Iterator
+from collections.abc import Iterator
 
 __all__ = ["Charset", "add_alias", "add_charset", "add_codec"]
 

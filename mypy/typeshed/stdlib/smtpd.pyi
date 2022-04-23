@@ -4,13 +4,14 @@ import socket
 import sys
 from collections import defaultdict
 from typing import Any
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 11):
     __all__ = ["SMTPChannel", "SMTPServer", "DebuggingServer", "PureProxy"]
 else:
     __all__ = ["SMTPChannel", "SMTPServer", "DebuggingServer", "PureProxy", "MailmanProxy"]
 
-_Address = tuple[str, int]  # (host, port)
+_Address: TypeAlias = tuple[str, int]  # (host, port)
 
 class SMTPChannel(asynchat.async_chat):
     COMMAND: int

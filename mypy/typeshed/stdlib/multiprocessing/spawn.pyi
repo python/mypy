@@ -1,5 +1,6 @@
+from collections.abc import Mapping, Sequence
 from types import ModuleType
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 __all__ = [
     "_main",

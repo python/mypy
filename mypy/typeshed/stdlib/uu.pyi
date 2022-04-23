@@ -1,9 +1,10 @@
 import sys
 from typing import BinaryIO
+from typing_extensions import TypeAlias
 
 __all__ = ["Error", "encode", "decode"]
 
-_File = str | BinaryIO
+_File: TypeAlias = str | BinaryIO
 
 class Error(Exception): ...
 

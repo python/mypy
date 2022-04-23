@@ -1,7 +1,8 @@
 import sys
 from _typeshed import FileDescriptorLike, Self
+from collections.abc import Iterable
 from types import TracebackType
-from typing import Any, Iterable
+from typing import Any
 from typing_extensions import final
 
 if sys.platform != "win32":

@@ -1,6 +1,7 @@
 import sys
+from collections.abc import Container, Iterable, Sequence
 from types import ModuleType
-from typing import Any, Container, Iterable, Sequence
+from typing import Any
 from typing_extensions import Literal
 
 if sys.platform == "win32":

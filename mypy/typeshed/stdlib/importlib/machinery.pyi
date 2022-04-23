@@ -1,7 +1,8 @@
 import importlib.abc
 import sys
 import types
-from typing import Any, Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 
 if sys.version_info >= (3, 8):
     from importlib.metadata import DistributionFinder, PathDistribution

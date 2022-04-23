@@ -1,11 +1,11 @@
 import sys
-from collections.abc import Generator, Iterable, Mapping, MutableMapping, MutableSequence
+from collections.abc import Callable, Generator, Iterable, Mapping, MutableMapping, MutableSequence
 from multiprocessing.connection import Connection
 from multiprocessing.context import BaseContext, Process
 from multiprocessing.queues import Queue, SimpleQueue
 from threading import Lock, Semaphore, Thread
 from types import TracebackType
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from weakref import ref
 
 from ._base import Executor, Future

@@ -1,6 +1,7 @@
 from _typeshed import Self, StrOrBytesPath
-from typing import Any, Callable, TypeVar
-from typing_extensions import ParamSpec
+from collections.abc import Callable
+from typing import Any, TypeVar
+from typing_extensions import ParamSpec, TypeAlias
 
 __all__ = ["run", "runctx", "Profile"]
 
@@ -11,7 +12,7 @@ def runctx(
 
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
-_Label = tuple[str, int, str]
+_Label: TypeAlias = tuple[str, int, str]
 
 class Profile:
     bias: int
