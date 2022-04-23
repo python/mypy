@@ -3,9 +3,10 @@ import sys
 from _typeshed import Self
 from bdb import Bdb
 from cmd import Cmd
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from inspect import _SourceObjectType
 from types import CodeType, FrameType, TracebackType
-from typing import IO, Any, Callable, ClassVar, Iterable, Mapping, Sequence, TypeVar
+from typing import IO, Any, ClassVar, TypeVar
 from typing_extensions import ParamSpec
 
 __all__ = ["run", "pm", "Pdb", "runeval", "runctx", "runcall", "set_trace", "post_mortem", "help"]

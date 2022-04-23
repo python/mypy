@@ -2,7 +2,7 @@ import sys
 from _typeshed import Self
 from time import struct_time
 from typing import ClassVar, NamedTuple, NoReturn, SupportsAbs, TypeVar, overload
-from typing_extensions import Literal, final
+from typing_extensions import Literal, TypeAlias, final
 
 if sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
@@ -19,7 +19,7 @@ class tzinfo:
     def fromutc(self, __dt: datetime) -> datetime: ...
 
 # Alias required to avoid name conflicts with date(time).tzinfo.
-_tzinfo = tzinfo
+_tzinfo: TypeAlias = tzinfo
 
 @final
 class timezone(tzinfo):
@@ -150,8 +150,8 @@ class time:
         fold: int = ...,
     ) -> Self: ...
 
-_date = date
-_time = time
+_date: TypeAlias = date
+_time: TypeAlias = time
 
 class timedelta(SupportsAbs[timedelta]):
     min: ClassVar[timedelta]

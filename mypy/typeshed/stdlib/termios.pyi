@@ -1,9 +1,10 @@
 import sys
 from _typeshed import FileDescriptorLike
 from typing import Any
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
-    _Attr = list[int | list[bytes | int]]
+    _Attr: TypeAlias = list[int | list[bytes | int]]
 
     # TODO constants not really documented
     B0: int

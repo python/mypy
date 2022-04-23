@@ -2,8 +2,9 @@ import _compression
 import sys
 from _compression import BaseStream
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath, WriteableBuffer
-from typing import IO, Any, Iterable, Protocol, TextIO, overload
-from typing_extensions import Literal, SupportsIndex, final
+from collections.abc import Iterable
+from typing import IO, Any, Protocol, TextIO, overload
+from typing_extensions import Literal, SupportsIndex, TypeAlias, final
 
 __all__ = ["BZ2File", "BZ2Compressor", "BZ2Decompressor", "open", "compress", "decompress"]
 
@@ -21,10 +22,10 @@ class _WritableFileobj(Protocol):
 def compress(data: bytes, compresslevel: int = ...) -> bytes: ...
 def decompress(data: bytes) -> bytes: ...
 
-_ReadBinaryMode = Literal["", "r", "rb"]
-_WriteBinaryMode = Literal["w", "wb", "x", "xb", "a", "ab"]
-_ReadTextMode = Literal["rt"]
-_WriteTextMode = Literal["wt", "xt", "at"]
+_ReadBinaryMode: TypeAlias = Literal["", "r", "rb"]
+_WriteBinaryMode: TypeAlias = Literal["w", "wb", "x", "xb", "a", "ab"]
+_ReadTextMode: TypeAlias = Literal["rt"]
+_WriteTextMode: TypeAlias = Literal["wt", "xt", "at"]
 
 @overload
 def open(

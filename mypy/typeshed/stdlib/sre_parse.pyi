@@ -1,7 +1,9 @@
 import sys
+from collections.abc import Iterable
 from sre_constants import *
 from sre_constants import _NamedIntConstant as _NIC, error as _Error
-from typing import Any, Iterable, Match, Pattern as _Pattern, overload
+from typing import Any, Match, Pattern as _Pattern, overload
+from typing_extensions import TypeAlias
 
 SPECIAL_CHARS: str
 REPEAT_CHARS: str
@@ -33,16 +35,16 @@ class _State:
     def checklookbehindgroup(self, gid: int, source: Tokenizer) -> None: ...
 
 if sys.version_info >= (3, 8):
-    State = _State
+    State: TypeAlias = _State
 else:
-    Pattern = _State
+    Pattern: TypeAlias = _State
 
-_OpSubpatternType = tuple[int | None, int, int, SubPattern]
-_OpGroupRefExistsType = tuple[int, SubPattern, SubPattern]
-_OpInType = list[tuple[_NIC, int]]
-_OpBranchType = tuple[None, list[SubPattern]]
-_AvType = _OpInType | _OpBranchType | Iterable[SubPattern] | _OpGroupRefExistsType | _OpSubpatternType
-_CodeType = tuple[_NIC, _AvType]
+_OpSubpatternType: TypeAlias = tuple[int | None, int, int, SubPattern]
+_OpGroupRefExistsType: TypeAlias = tuple[int, SubPattern, SubPattern]
+_OpInType: TypeAlias = list[tuple[_NIC, int]]
+_OpBranchType: TypeAlias = tuple[None, list[SubPattern]]
+_AvType: TypeAlias = _OpInType | _OpBranchType | Iterable[SubPattern] | _OpGroupRefExistsType | _OpSubpatternType
+_CodeType: TypeAlias = tuple[_NIC, _AvType]
 
 class SubPattern:
     data: list[_CodeType]
@@ -87,8 +89,8 @@ class Tokenizer:
 
 def fix_flags(src: str | bytes, flags: int) -> int: ...
 
-_TemplateType = tuple[list[tuple[int, int]], list[str | None]]
-_TemplateByteType = tuple[list[tuple[int, int]], list[bytes | None]]
+_TemplateType: TypeAlias = tuple[list[tuple[int, int]], list[str | None]]
+_TemplateByteType: TypeAlias = tuple[list[tuple[int, int]], list[bytes | None]]
 if sys.version_info >= (3, 8):
     def parse(str: str, flags: int = ..., state: State | None = ...) -> SubPattern: ...
     @overload

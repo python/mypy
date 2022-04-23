@@ -1,6 +1,7 @@
 import sys
 from _typeshed import SupportsRead, _T_co
-from typing import Any, Iterable, NoReturn, Protocol
+from collections.abc import Iterable
+from typing import Any, NoReturn, Protocol
 from xml.sax.handler import ContentHandler, ErrorHandler
 from xml.sax.xmlreader import Locator, XMLReader
 

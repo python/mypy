@@ -1,7 +1,8 @@
 import sys
 from _typeshed import StrOrBytesPath
+from collections.abc import Callable, Iterable, Sequence
 from os import PathLike
-from typing import Any, AnyStr, Callable, Generic, Iterable, Sequence
+from typing import Any, AnyStr, Generic
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):

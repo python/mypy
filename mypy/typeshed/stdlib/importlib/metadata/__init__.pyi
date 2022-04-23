@@ -2,12 +2,12 @@ import abc
 import pathlib
 import sys
 from _typeshed import Self, StrPath
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from email.message import Message
 from importlib.abc import MetaPathFinder
 from os import PathLike
 from pathlib import Path
-from typing import Any, ClassVar, Iterable, NamedTuple, Pattern, overload
+from typing import Any, ClassVar, NamedTuple, Pattern, overload
 
 if sys.version_info >= (3, 10):
     __all__ = [

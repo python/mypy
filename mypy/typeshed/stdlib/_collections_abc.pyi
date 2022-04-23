@@ -1,6 +1,6 @@
 import sys
 from types import MappingProxyType
-from typing import (
+from typing import (  # noqa: Y027,Y038
     AbstractSet as Set,
     AsyncGenerator as AsyncGenerator,
     AsyncIterable as AsyncIterable,

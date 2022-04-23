@@ -1,7 +1,8 @@
 import sys
 from _tracemalloc import *
-from typing import Any, Sequence, Union, overload
-from typing_extensions import SupportsIndex
+from collections.abc import Sequence
+from typing import Any, Union, overload
+from typing_extensions import SupportsIndex, TypeAlias
 
 def get_object_traceback(obj: object) -> Traceback | None: ...
 def take_snapshot() -> Snapshot: ...
@@ -41,7 +42,7 @@ class StatisticDiff:
     def __init__(self, traceback: Traceback, size: int, size_diff: int, count: int, count_diff: int) -> None: ...
     def __eq__(self, other: object) -> bool: ...
 
-_FrameTupleT = tuple[str, int]
+_FrameTupleT: TypeAlias = tuple[str, int]
 
 class Frame:
     @property
@@ -61,9 +62,9 @@ class Frame:
         def __le__(self, other: Frame, NotImplemented: Any = ...) -> bool: ...
 
 if sys.version_info >= (3, 9):
-    _TraceTupleT = Union[tuple[int, int, Sequence[_FrameTupleT], int | None], tuple[int, int, Sequence[_FrameTupleT]]]
+    _TraceTupleT: TypeAlias = Union[tuple[int, int, Sequence[_FrameTupleT], int | None], tuple[int, int, Sequence[_FrameTupleT]]]
 else:
-    _TraceTupleT = tuple[int, int, Sequence[_FrameTupleT]]
+    _TraceTupleT: TypeAlias = tuple[int, int, Sequence[_FrameTupleT]]
 
 class Trace:
     @property

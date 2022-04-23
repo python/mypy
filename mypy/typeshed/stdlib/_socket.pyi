@@ -2,21 +2,22 @@ import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
 from typing import Any, SupportsInt, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
-    _FD = SupportsIndex
+    _FD: TypeAlias = SupportsIndex
 else:
-    _FD = SupportsInt
+    _FD: TypeAlias = SupportsInt
 
-_CMSG = tuple[int, int, bytes]
-_CMSGArg = tuple[int, int, ReadableBuffer]
+_CMSG: TypeAlias = tuple[int, int, bytes]
+_CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = tuple[Any, ...] | str
-_RetAddress = Any
+_Address: TypeAlias = tuple[Any, ...] | str
+_RetAddress: TypeAlias = Any
 # TODO Most methods allow bytes as address objects
 
 # ----- Constants -----

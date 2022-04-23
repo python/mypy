@@ -5,7 +5,7 @@ from abc import ABCMeta
 from builtins import property as _builtins_property
 from collections.abc import Iterable, Iterator, Mapping
 from typing import Any, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 11):
     __all__ = [
@@ -52,7 +52,7 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # <enum 'Foo'>
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
-_EnumNames = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
+_EnumNames: TypeAlias = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
 
 class _EnumDict(dict[str, Any]):
     def __init__(self) -> None: ...

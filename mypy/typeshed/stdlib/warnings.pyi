@@ -1,7 +1,8 @@
 from _warnings import warn as warn, warn_explicit as warn_explicit
+from collections.abc import Sequence
 from types import ModuleType, TracebackType
-from typing import Any, Sequence, TextIO, overload
-from typing_extensions import Literal
+from typing import Any, TextIO, overload
+from typing_extensions import Literal, TypeAlias
 
 __all__ = [
     "warn",
@@ -14,7 +15,7 @@ __all__ = [
     "catch_warnings",
 ]
 
-_ActionKind = Literal["default", "error", "ignore", "always", "module", "once"]
+_ActionKind: TypeAlias = Literal["default", "error", "ignore", "always", "module", "once"]
 
 filters: Sequence[tuple[str, str | None, type[Warning], str | None, int]]  # undocumented, do not mutate
 

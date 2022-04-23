@@ -2,10 +2,11 @@ import sys
 from _typeshed import FileDescriptorLike
 from socket import socket
 from typing import Any, overload
+from typing_extensions import TypeAlias
 
 # cyclic dependence with asynchat
-_maptype = dict[int, Any]
-_socket = socket
+_maptype: TypeAlias = dict[int, Any]
+_socket: TypeAlias = socket
 
 socket_map: _maptype  # undocumented
 

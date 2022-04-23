@@ -1,8 +1,9 @@
 import sys
 from asyncio.events import AbstractEventLoop
 from asyncio.protocols import BaseProtocol
+from collections.abc import Mapping
 from socket import _Address
-from typing import Any, Mapping
+from typing import Any
 
 if sys.version_info >= (3, 7):
     __all__ = ("BaseTransport", "ReadTransport", "WriteTransport", "Transport", "DatagramTransport", "SubprocessTransport")

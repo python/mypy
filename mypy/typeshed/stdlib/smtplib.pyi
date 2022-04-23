@@ -1,10 +1,12 @@
 import sys
 from _typeshed import Self
+from collections.abc import Sequence
 from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Pattern, Protocol, Sequence, overload
+from typing import Any, Pattern, Protocol, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 7):
     __all__ = [
@@ -40,10 +42,10 @@ else:
         "SMTP_SSL",
     ]
 
-_Reply = tuple[int, bytes]
-_SendErrs = dict[str, _Reply]
+_Reply: TypeAlias = tuple[int, bytes]
+_SendErrs: TypeAlias = dict[str, _Reply]
 # Should match source_address for socket.create_connection
-_SourceAddress = tuple[bytearray | bytes | str, int]
+_SourceAddress: TypeAlias = tuple[bytearray | bytes | str, int]
 
 SMTP_PORT: int
 SMTP_SSL_PORT: int

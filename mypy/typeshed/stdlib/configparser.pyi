@@ -2,7 +2,7 @@ import sys
 from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
 from collections.abc import Callable, ItemsView, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from typing import Any, ClassVar, Pattern, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 __all__ = [
     "NoSectionError",
@@ -29,16 +29,16 @@ __all__ = [
 ]
 
 # Internal type aliases
-_section = Mapping[str, str]
-_parser = MutableMapping[str, _section]
-_converter = Callable[[str], Any]
-_converters = dict[str, _converter]
+_section: TypeAlias = Mapping[str, str]
+_parser: TypeAlias = MutableMapping[str, _section]
+_converter: TypeAlias = Callable[[str], Any]
+_converters: TypeAlias = dict[str, _converter]
 _T = TypeVar("_T")
 
 if sys.version_info >= (3, 7):
-    _Path = StrOrBytesPath
+    _Path: TypeAlias = StrOrBytesPath
 else:
-    _Path = StrPath
+    _Path: TypeAlias = StrPath
 
 DEFAULTSECT: Literal["DEFAULT"]
 MAX_INTERPOLATION_DEPTH: Literal[10]
