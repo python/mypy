@@ -4009,7 +4009,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 not always_allow_any and
                 not self.chk.is_stub and
                 self.chk.in_checked_function() and
-                has_any_type(typ) and not self.chk.current_node_deferred):
+                has_any_type(typ, ignore_any_from_error=self.chk.options.ignore_any_from_error) and
+                not self.chk.current_node_deferred):
             self.msg.disallowed_any_type(typ, node)
 
         if not self.chk.in_checked_function() or self.chk.current_node_deferred:
@@ -4291,17 +4292,26 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return known_type
 
 
-def has_any_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
+def has_any_type(
+    t: Type, ignore_in_type_obj: bool = False, ignore_any_from_error: bool = False
+) -> bool:
     """Whether t contains an Any type"""
-    return t.accept(HasAnyType(ignore_in_type_obj))
+    return t.accept(HasAnyType(ignore_in_type_obj, ignore_any_from_error=ignore_any_from_error))
 
 
 class HasAnyType(types.TypeQuery[bool]):
-    def __init__(self, ignore_in_type_obj: bool) -> None:
+    def __init__(self, ignore_in_type_obj: bool, ignore_any_from_error: bool = False) -> None:
         super().__init__(any)
         self.ignore_in_type_obj = ignore_in_type_obj
+        self.ignore_any_from_error = ignore_any_from_error
 
     def visit_any(self, t: AnyType) -> bool:
+        if self.ignore_any_from_error and (
+            t.type_of_any == TypeOfAny.from_error or
+            (t.type_of_any == TypeOfAny.from_another_any and
+            t.source_any and t.source_any.type_of_any == TypeOfAny.from_error)
+        ):
+            return False
         return t.type_of_any != TypeOfAny.special_form  # special forms are not real Any types
 
     def visit_callable_type(self, t: CallableType) -> bool:

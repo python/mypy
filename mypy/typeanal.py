@@ -1309,7 +1309,7 @@ def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
                     typ,
                     code=codes.TYPE_ARG)
 
-        any_type = AnyType(TypeOfAny.from_error, line=typ.line, column=typ.column)
+        any_type = AnyType(TypeOfAny.from_omitted_generics, line=typ.line, column=typ.column)
     else:
         any_type = AnyType(
             TypeOfAny.from_omitted_generics, line=orig_type.line, column=orig_type.column
@@ -1408,7 +1408,7 @@ def set_any_tvars(node: TypeAlias,
                   disallow_any: bool = False,
                   fail: Optional[MsgCallback] = None,
                   unexpanded_type: Optional[Type] = None) -> Type:
-    if from_error or disallow_any:
+    if from_error:
         type_of_any = TypeOfAny.from_error
     else:
         type_of_any = TypeOfAny.from_omitted_generics
