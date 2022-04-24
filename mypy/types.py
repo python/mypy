@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
-    Sequence
+    Sequence, Callable
 )
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
@@ -583,19 +583,36 @@ class ParamSpecType(TypeVarLikeType):
     prefix: 'Parameters'
 
     def __init__(
-         self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int,
-         upper_bound: Type, *, line: int = -1, column: int = -1,
-         prefix: Optional['Parameters'] = None
-    ) -> None:
-        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
+         self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int, *,
+         upper_bound: Optional[Type] = None,
+         named_type_func: Optional[Callable[..., 'Instance']] = None, line: int = -1,
+         column: int = -1, prefix: Optional['Parameters'] = None) -> None:
         self.flavor = flavor
+        if upper_bound is None:
+            assert named_type_func is not None, (
+                "Either 'upper_bound' or 'named_type_func' must be specified"
+            )
+            upper_bound = self.get_fallback(named_type_func)
+        super().__init__(name, fullname, id, upper_bound=upper_bound, line=line, column=column)
         self.prefix = prefix or Parameters([], [], [])
+
+    def get_fallback(self, named_type_func: Callable[..., 'Instance']) -> 'Instance':
+        if self.flavor == ParamSpecFlavor.BARE:
+            return named_type_func('builtins.object')
+        elif self.flavor == ParamSpecFlavor.ARGS:
+            return named_type_func('builtins.tuple')
+        else:
+            return named_type_func(
+                'builtins.dict',
+                [named_type_func('builtins.str'), AnyType(TypeOfAny.special_form)]
+            )
 
     @staticmethod
     def new_unification_variable(old: 'ParamSpecType') -> 'ParamSpecType':
         new_id = TypeVarId.new(meta_level=1)
-        return ParamSpecType(old.name, old.fullname, new_id, old.flavor, old.upper_bound,
-                             line=old.line, column=old.column, prefix=old.prefix)
+        return ParamSpecType(old.name, old.fullname, new_id, old.flavor,
+                             upper_bound=old.upper_bound, line=old.line, column=old.column,
+                             prefix=old.prefix)
 
     def with_flavor(self, flavor: int) -> 'ParamSpecType':
         return ParamSpecType(self.name, self.fullname, self.id, flavor,
@@ -610,7 +627,7 @@ class ParamSpecType(TypeVarLikeType):
             self.fullname,
             id if id is not _dummy else self.id,
             flavor if flavor is not _dummy else self.flavor,
-            self.upper_bound,
+            upper_bound=self.upper_bound,
             line=self.line,
             column=self.column,
             prefix=prefix if prefix is not _dummy else self.prefix,
@@ -656,7 +673,7 @@ class ParamSpecType(TypeVarLikeType):
             data['fullname'],
             data['id'],
             data['flavor'],
-            deserialize_type(data['upper_bound']),
+            upper_bound=deserialize_type(data['upper_bound']),
             prefix=Parameters.deserialize(data['prefix'])
         )
 
@@ -1739,7 +1756,7 @@ class CallableType(FunctionLike):
             # TODO: confirm that all arg kinds are positional
             prefix = Parameters(self.arg_types[:-2], self.arg_kinds[:-2], self.arg_names[:-2])
         return ParamSpecType(arg_type.name, arg_type.fullname, arg_type.id, ParamSpecFlavor.BARE,
-                             arg_type.upper_bound, prefix=prefix)
+                             upper_bound=arg_type.upper_bound, prefix=prefix)
 
     def expand_param_spec(self,
                           c: Union['CallableType', Parameters],

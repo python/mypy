@@ -222,7 +222,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # Change the line number
                 return ParamSpecType(
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.flavor,
-                    tvar_def.upper_bound, line=t.line, column=t.column,
+                    named_type_func=self.named_type, line=t.line, column=t.column,
                 )
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
@@ -717,7 +717,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     else:
                         assert False, kind
                     return ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, flavor,
-                                         upper_bound=self.named_type('builtins.object'),
+                                         named_type_func=self.named_type,
                                          line=t.line, column=t.column)
         return self.anal_type(t, nested=nested)
 
@@ -855,13 +855,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO: Use tuple[...] or Mapping[..] instead?
-        obj = self.named_type('builtins.object')
         return CallableType(
             [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
-                           upper_bound=obj),
+                           named_type_func=self.named_type),
              ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
-                           upper_bound=obj)],
+                           named_type_func=self.named_type)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
             ret_type=ret_type,
@@ -891,8 +889,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO: Use tuple[...] or Mapping[..] instead?
-        obj = self.named_type('builtins.object')
         # ick, CallableType should take ParamSpecType
         prefix = tvar_def.prefix
         # we don't set the prefix here as generic arguments will get updated at some point
@@ -900,9 +896,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return CallableType(
             [*prefix.arg_types,
              ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
-                           upper_bound=obj),
+                           named_type_func=self.named_type),
              ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
-                           upper_bound=obj)],
+                           named_type_func=self.named_type)],
             [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
             [*prefix.arg_names, None, None],
             ret_type=ret_type,
@@ -1134,7 +1130,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
-                self.tvar_scope.bind_new(var.name, var_expr)
+                self.tvar_scope.bind_new(var.name, var_expr, named_type_func=self.named_type)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -1144,7 +1140,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail('Type variable "{}" is bound by an outer class'.format(name), defn)
-            self.tvar_scope.bind_new(name, tvar)
+            self.tvar_scope.bind_new(name, tvar, named_type_func=self.named_type)
             binding = self.tvar_scope.get_binding(tvar.fullname)
             assert binding is not None
             defs.append(binding)
