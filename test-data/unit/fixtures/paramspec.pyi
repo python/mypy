@@ -1,7 +1,8 @@
 # builtins stub for paramspec-related test cases
 
 from typing import (
-    Sequence, Generic, TypeVar, Iterable, Iterator, Tuple, Mapping, Optional, Union, Type, overload
+    Sequence, Generic, TypeVar, Iterable, Iterator, Tuple, Mapping, Optional, Union, Type, overload,
+    Protocol
 )
 
 T = TypeVar("T")
@@ -45,7 +46,10 @@ class tuple(Sequence[T_co], Generic[T_co]):
     def __mul__(self, n: int) -> Tuple[T_co, ...]: pass
     def __rmul__(self, n: int) -> Tuple[T_co, ...]: pass
     def __add__(self, x: Tuple[T_co, ...]) -> Tuple[T_co, ...]: pass
+    def __len__(self) -> int: ...
     def count(self, obj: object) -> int: pass
+
+class _ItemsView(Iterable[Tuple[KT, VT]]): pass
 
 class dict(Mapping[KT, VT]):
     @overload
@@ -62,5 +66,12 @@ class dict(Mapping[KT, VT]):
     @overload
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: pass
+    def pop(self, k: KT) -> VT: pass
+    def items(self) -> _ItemsView: pass
 
 def isinstance(x: object, t: type) -> bool: pass
+
+class _Sized(Protocol):
+    def __len__(self) -> int: pass
+
+def len(x: _Sized) -> int: pass
