@@ -67,7 +67,7 @@ class dict(Mapping[KT, VT]):
     def get(self, k: KT, default: Union[KT, T]) -> Union[VT, T]: pass
     def __len__(self) -> int: pass
     def pop(self, k: KT) -> VT: pass
-    def items(self) -> _ItemsView: pass
+    def items(self) -> _ItemsView[KT, VT]: pass
 
 def isinstance(x: object, t: type) -> bool: pass
 

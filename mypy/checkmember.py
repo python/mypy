@@ -164,7 +164,7 @@ def _analyze_member_access(name: str,
         return analyze_typeddict_access(name, typ, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
-    elif isinstance(typ, TypeVarType):
+    elif isinstance(typ, TypeVarLikeType):
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
