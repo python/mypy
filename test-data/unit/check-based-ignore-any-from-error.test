@@ -1,0 +1,25 @@
+[case testIgnoreAnyFromError]
+from typing import Any
+a = AMONGUS  # E:5: Name "AMONGUS" is not defined  [name-defined]
+b = a + 1
+c = b()
+d = [c]
+e = d[0].d
+e + 1
+f: Any  # E:1: Explicit "Any" is not allowed  [no-any-explicit]
+g = f + 1  # E:5: Expression has type "Any"  [no-any-expr]
+
+[case testIncludeAnyFromError]
+# flags: --no-ignore-any-from-error
+from typing import Any
+a = AMONGUS  # E:5: Name "AMONGUS" is not defined  [name-defined] \
+             # E:5: Expression has type "Any"  [no-any-expr]
+b = a + 1  # E:5: Expression has type "Any"  [no-any-expr]
+c = b()  # E:5: Expression has type "Any"  [no-any-expr]
+d = [c]  # E:5: Expression type contains "Any" (has type "List[Any]")  [no-any-expr] \
+         # E:6: Expression has type "Any"  [no-any-expr]
+e = d[0].d  # E:5: Expression type contains "Any" (has type "List[Any]")  [no-any-expr] \
+            # E:5: Expression has type "Any"  [no-any-expr]
+e + 1  # E:1: Expression has type "Any"  [no-any-expr]
+f: Any  # E:1: Explicit "Any" is not allowed  [no-any-explicit]
+g = f + 1  # E:5: Expression has type "Any"  [no-any-expr]

@@ -250,13 +250,13 @@ Found 1 error in 1 file (errors prevented further checking)
 [case testBaselineFilterLinkedNotes]
 # cmd: mypy --error-summary pkg
 [file pkg/a.py]
-(a,)  # type: ignore[name-defined]
+(a, 1 + "")  # type: ignore[name-defined]
 [file .mypy/baseline.json]
 {
   "files": {
     "pkg/a.py": [
       {"code": "name-defined", "column": 1, "message": "Name \"a\" is not defined", "offset": 1},
-      {"code": "no-any-expr", "column": 0, "message": "Expression has type \"Any\"", "offset": 0}
+      {"code": "operator", "column": 0, "message": "Unsupported operand types for + (\"str\" and \"int\")", "offset": 0}
     ]
   },
   "format": "1.3",

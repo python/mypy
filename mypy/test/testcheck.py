@@ -32,6 +32,7 @@ import pytest
 typecheck_files = [
     'check-basic.test',
     'check-based-default-return.test',
+    'check-based-ignore-any-from-error.test',
     'check-union-or-syntax.test',
     'check-callable.test',
     'check-classes.test',
