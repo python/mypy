@@ -586,20 +586,22 @@ class ParamSpecType(TypeVarLikeType):
          self, name: str, fullname: str, id: Union[TypeVarId, int], flavor: int, *,
          upper_bound: Optional[Type] = None,
          named_type_func: Optional[Callable[..., 'Instance']] = None, line: int = -1,
-         column: int = -1, prefix: Optional['Parameters'] = None) -> None:
-        self.flavor = flavor
+         column: int = -1, prefix: Optional['Parameters'] = None
+    ) -> None:
         if upper_bound is None:
             assert named_type_func is not None, (
                 "Either 'upper_bound' or 'named_type_func' must be specified"
             )
-            upper_bound = self.get_fallback(named_type_func)
-        super().__init__(name, fullname, id, upper_bound=upper_bound, line=line, column=column)
+            upper_bound = self.get_fallback(flavor, named_type_func)
+        super().__init__(name, fullname, id, upper_bound, line=line, column=column)
+        self.flavor = flavor
         self.prefix = prefix or Parameters([], [], [])
 
-    def get_fallback(self, named_type_func: Callable[..., 'Instance']) -> 'Instance':
-        if self.flavor == ParamSpecFlavor.BARE:
+    @staticmethod
+    def get_fallback(flavor: int, named_type_func: Callable[..., 'Instance']) -> 'Instance':
+        if flavor == ParamSpecFlavor.BARE:
             return named_type_func('builtins.object')
-        elif self.flavor == ParamSpecFlavor.ARGS:
+        elif flavor == ParamSpecFlavor.ARGS:
             return named_type_func('builtins.tuple')
         else:
             return named_type_func(
