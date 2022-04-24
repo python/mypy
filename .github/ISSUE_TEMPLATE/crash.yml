@@ -3,6 +3,10 @@ description: Use this form only if mypy reports an "INTERNAL ERROR", "IMPOSTER D
 labels: "crash"
 
 body:
+  - type: dropdown
+    attributes:
+      label: Is this crash exclusive to basedmypy, or does it also occur with mypy?
+      options: [yes, no]
   - type: textarea
     attributes:
       label: Crash Report
@@ -31,7 +35,7 @@ body:
       label: Command-line flags
   - type: input
     attributes:
-      label: Configuration options from `pyptoject.toml` (and other config files)
+      label: Configuration options from `pyproject.toml` (and other config files)
   - type: input
     attributes:
       label: Python version used
