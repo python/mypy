@@ -6,7 +6,11 @@ import os
 import re
 import sys
 
-import tomli
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
                     TextIO, Tuple, Union)
 from typing_extensions import Final, TypeAlias as _TypeAlias
@@ -178,8 +182,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                with open(config_file, encoding="utf-8") as f:
-                    toml_data = tomli.loads(f.read())
+                with open(config_file, "rb") as f:
+                    toml_data = tomllib.load(f)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
@@ -191,7 +195,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (tomli.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+        except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
             print("%s: %s" % (config_file, err), file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:

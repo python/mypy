@@ -1,4 +1,4 @@
-from typing import Mapping
+from collections.abc import Mapping
 
 errorcode: Mapping[int, str]
 
@@ -36,7 +36,7 @@ EMLINK: int
 EPIPE: int
 EDOM: int
 ERANGE: int
-EDEADLCK: int
+EDEADLK: int
 ENAMETOOLONG: int
 ENOLCK: int
 ENOSYS: int
@@ -135,3 +135,24 @@ ENOMEDIUM: int  # undocumented
 ENOTRECOVERABLE: int  # undocumented
 EOWNERDEAD: int  # undocumented
 ERFKILL: int  # undocumented
+EAUTH: int  # undocumented
+EBADARCH: int  # undocumented
+EBADEXEC: int  # undocumented
+EBADMACHO: int  # undocumented
+EBADRPC: int  # undocumented
+EDEVERR: int  # undocumented
+EFTYPE: int  # undocumented
+EL: int  # undocumented
+ELOCKUNMAPPED: int  # undocumented
+ENEEDAUTH: int  # undocumented
+ENOATTR: int  # undocumented
+ENOPOLICY: int  # undocumented
+ENOTACTIVE: int  # undocumented
+EPROCLIM: int  # undocumented
+EPROCUNAVAIL: int  # undocumented
+EPROGMISMATCH: int  # undocumented
+EPROGUNAVAIL: int  # undocumented
+EPWROFF: int  # undocumented
+EQFULL: int  # undocumented
+ERPCMISMATCH: int  # undocumented
+ESHLIBVERS: int  # undocumented

@@ -431,6 +431,9 @@ class StrConv(NodeVisitor[str]):
     def visit_cast_expr(self, o: 'mypy.nodes.CastExpr') -> str:
         return self.dump([o.expr, o.type], o)
 
+    def visit_assert_type_expr(self, o: 'mypy.nodes.AssertTypeExpr') -> str:
+        return self.dump([o.expr, o.type], o)
+
     def visit_reveal_expr(self, o: 'mypy.nodes.RevealExpr') -> str:
         if o.kind == mypy.nodes.REVEAL_TYPE:
             return self.dump([o.expr], o)
@@ -482,6 +485,18 @@ class StrConv(NodeVisitor[str]):
         return self.dump(a, o)
 
     def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
+        import mypy.types
+
+        a: List[Any] = []
+        if o.variance == mypy.nodes.COVARIANT:
+            a += ['Variance(COVARIANT)']
+        if o.variance == mypy.nodes.CONTRAVARIANT:
+            a += ['Variance(CONTRAVARIANT)']
+        if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
+            a += ['UpperBound({})'.format(o.upper_bound)]
+        return self.dump(a, o)
+
+    def visit_type_var_tuple_expr(self, o: 'mypy.nodes.TypeVarTupleExpr') -> str:
         import mypy.types
 
         a: List[Any] = []

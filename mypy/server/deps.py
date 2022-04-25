@@ -89,7 +89,8 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    AssertTypeExpr,
 )
 from mypy.operators import (
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
@@ -99,7 +100,7 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -686,6 +687,10 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_cast_expr(e)
         self.add_type_dependencies(e.type)
 
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(e)
+        self.add_type_dependencies(e.type)
+
     def visit_type_application(self, e: TypeApplication) -> None:
         super().visit_type_application(e)
         for typ in e.types:
@@ -959,6 +964,22 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         if typ.fullname:
             triggers.append(make_trigger(typ.fullname))
         triggers.extend(self.get_type_triggers(typ.upper_bound))
+        return triggers
+
+    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> List[str]:
+        triggers = []
+        if typ.fullname:
+            triggers.append(make_trigger(typ.fullname))
+        triggers.extend(self.get_type_triggers(typ.upper_bound))
+        return triggers
+
+    def visit_unpack_type(self, typ: UnpackType) -> List[str]:
+        return typ.type.accept(self)
+
+    def visit_parameters(self, typ: Parameters) -> List[str]:
+        triggers = []
+        for arg in typ.arg_types:
+            triggers.extend(self.get_type_triggers(arg))
         return triggers
 
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:

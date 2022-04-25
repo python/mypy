@@ -1,4 +1,5 @@
-from typing import Iterable, Pattern, overload
+from collections.abc import Iterable
+from typing import Pattern, overload
 from typing_extensions import Literal
 
 # class is entirely undocumented

@@ -157,7 +157,7 @@ Arguments with default values can be annotated like so:
        # 'kwargs' has type 'dict[str, float]' (a dict of strs to floats)
        for arg in args:
            print(arg)
-       for key, value in kwargs:
+       for key, value in kwargs.items():
            print(key, value)
 
 Additional types, and the typing module

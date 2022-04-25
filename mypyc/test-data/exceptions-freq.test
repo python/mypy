@@ -85,7 +85,8 @@ def f(x):
     r1 :: bit
     r2 :: None
 L0:
-    r0 = box(short_int, 2)
+    r0 = object 1
+    inc_ref r0
     r1 = CPyList_SetItem(x, 0, r0)
     if not r1 goto L2 (error at f:3) else goto L1 :: bool
 L1:

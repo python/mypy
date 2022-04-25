@@ -23,7 +23,7 @@ from mypy.types import (
     get_proper_types, flatten_nested_unions, LITERAL_TYPE_NAMES,
 )
 from mypy.nodes import (
-    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    AssertTypeExpr, NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
@@ -32,7 +32,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ParamSpecExpr,
+    ParamSpecExpr, TypeVarTupleExpr,
     ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -1556,7 +1556,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
               isinstance(callee_type.item, Instance) and
               (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)):
             self.msg.concrete_only_call(callee_type, context)
-        elif not is_subtype(caller_type, callee_type):
+        elif not is_subtype(caller_type, callee_type, options=self.chk.options):
             if self.chk.should_suppress_optional_error([caller_type, callee_type]):
                 return
             code = messages.incompatible_argument(n,
@@ -2416,8 +2416,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def get_operator_method(self, op: str) -> str:
         if op == '/' and self.chk.options.python_version[0] == 2:
-            # TODO also check for "from __future__ import division"
-            return '__div__'
+            return (
+                '__truediv__'
+                if self.chk.tree.is_future_flag_set('division')
+                else '__div__'
+            )
         else:
             return operators.op_methods[op]
 
@@ -3141,6 +3144,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                context=expr)
         return target_type
 
+    def visit_assert_type_expr(self, expr: AssertTypeExpr) -> Type:
+        source_type = self.accept(expr.expr, type_context=self.type_context[-1],
+                                  allow_none_return=True, always_allow_any=True)
+        target_type = expr.type
+        if not is_same_type(source_type, target_type):
+            self.msg.assert_type_fail(source_type, target_type, expr)
+        return source_type
+
     def visit_reveal_expr(self, expr: RevealExpr) -> Type:
         """Type check a reveal_type expression."""
         if expr.kind == REVEAL_TYPE:
@@ -3317,8 +3328,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         vt = join.join_type_list(values)
         if not isinstance(vt, Instance):
             return None
-        # TODO: update tests instead?
-        vt.erased = True
         return self.chk.named_generic_type(container_fullname, [vt])
 
     def check_lst_expr(self, items: List[Expression], fullname: str,
@@ -3445,9 +3454,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return None
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             return None
-        # TODO: update tests instead?
-        kt.erased = True
-        vt.erased = True
         return self.chk.named_generic_type('builtins.dict', [kt, vt])
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
@@ -4178,6 +4184,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_type_var_tuple_expr(self, e: TypeVarTupleExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:

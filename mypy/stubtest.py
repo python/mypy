@@ -21,6 +21,7 @@ from typing_extensions import Type
 
 import mypy.build
 import mypy.modulefinder
+import mypy.state
 import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
@@ -288,13 +289,14 @@ def verify_typeinfo(
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
 
-    # Check everything already defined in the stub
+    # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
+    # Check all public things on the runtime class
     to_check.update(
         # cast to workaround mypyc complaints
         m
         for m in cast(Any, vars)(runtime)
-        if not is_probably_private(m) and m not in ALLOW_MISSING_CLASS_DUNDERS
+        if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
 
     for entry in sorted(to_check):
@@ -559,7 +561,7 @@ class Signature(Generic[T]):
             return max(index for _, index in all_args[arg_name])
 
         def get_type(arg_name: str) -> mypy.types.ProperType:
-            with mypy.state.strict_optional_set(True):
+            with mypy.state.state.strict_optional_set(True):
                 all_types = [
                     arg.variable.type or arg.type_annotation for arg, _ in all_args[arg_name]
                 ]
@@ -618,6 +620,7 @@ def _verify_signature(
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
+            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional-only '
@@ -628,6 +631,7 @@ def _verify_signature(
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
             and stub_arg.variable.name.startswith("__")
+            and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
                 'stub argument "{}" should be positional or keyword '
@@ -700,18 +704,6 @@ def _verify_signature(
         yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
 
 
-def _verify_coroutine(
-    stub: nodes.FuncItem, runtime: Any, *, runtime_is_coroutine: bool
-) -> Optional[str]:
-    if stub.is_coroutine:
-        if not runtime_is_coroutine:
-            return 'is an "async def" function in the stub, but not at runtime'
-    else:
-        if runtime_is_coroutine:
-            return 'is an "async def" function at runtime, but not in the stub'
-    return None
-
-
 @verify.register(nodes.FuncItem)
 def verify_funcitem(
     stub: nodes.FuncItem, runtime: MaybeMissing[Any], object_path: List[str]
@@ -735,21 +727,20 @@ def verify_funcitem(
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
         runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
+        stub_desc = f'def {stub_sig!r}'
     else:
-        runtime_sig_desc = None
+        runtime_sig_desc, stub_desc = None, None
 
-    coroutine_mismatch_error = _verify_coroutine(
-        stub,
-        runtime,
-        runtime_is_coroutine=runtime_is_coroutine
-    )
-
-    if coroutine_mismatch_error is not None:
+    # Don't raise an error if the stub is a coroutine, but the runtime isn't.
+    # That results in false positives.
+    # See https://github.com/python/typeshed/issues/7344
+    if runtime_is_coroutine and not stub.is_coroutine:
         yield Error(
             object_path,
-            coroutine_mismatch_error,
+            'is an "async def" function at runtime, but not in the stub',
             stub,
             runtime,
+            stub_desc=stub_desc,
             runtime_desc=runtime_sig_desc
         )
 
@@ -783,6 +774,18 @@ def verify_var(
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
+    if (
+        stub.is_initialized_in_class
+        and is_read_only_property(runtime)
+        and (stub.is_settable_property or not stub.is_property)
+    ):
+        yield Error(
+            object_path,
+            "is read-only at runtime but not in the stub",
+            stub,
+            runtime
+        )
+
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     if (
         runtime_type is not None
@@ -815,7 +818,14 @@ def verify_overloadedfuncdef(
         return
 
     if stub.is_property:
-        # We get here in cases of overloads from property.setter
+        # Any property with a setter is represented as an OverloadedFuncDef
+        if is_read_only_property(runtime):
+            yield Error(
+                object_path,
+                "is read-only at runtime but not in the stub",
+                stub,
+                runtime
+            )
         return
 
     if not is_probably_a_function(runtime):
@@ -858,7 +868,7 @@ def verify_typevarexpr(
         yield None
 
 
-def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
+def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         return
@@ -902,9 +912,8 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return None
         if decorator.fullname in (
             "builtins.staticmethod",
-            "typing.overload",
             "abc.abstractmethod",
-        ):
+        ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
             return func
         if decorator.fullname == "builtins.classmethod":
             assert func.arguments[0].variable.name in ("cls", "metacls")
@@ -933,7 +942,7 @@ def verify_decorator(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if stub.func.is_property:
-        for message in _verify_property(stub, runtime):
+        for message in _verify_readonly_property(stub, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
@@ -946,10 +955,13 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        # ignore type aliases that don't have a runtime counterpart
-        return
     stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(runtime, Missing):
+        yield Error(
+            object_path, "is not present at runtime", stub, runtime,
+            stub_desc=f"Type alias for: {stub_target}"
+        )
+        return
     if isinstance(stub_target, mypy.types.Instance):
         yield from verify(stub_target.type, runtime, object_path)
         return
@@ -988,6 +1000,7 @@ IGNORED_MODULE_DUNDERS = frozenset(
         "__cached__",
         "__loader__",
         "__spec__",
+        "__annotations__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # TODO: remove the following from this list
@@ -997,16 +1010,16 @@ IGNORED_MODULE_DUNDERS = frozenset(
     }
 )
 
-ALLOW_MISSING_CLASS_DUNDERS = frozenset(
+IGNORABLE_CLASS_DUNDERS = frozenset(
     {
         # Special attributes
         "__dict__",
         "__text_signature__",
         "__weakref__",
         "__del__",  # Only ever called when an object is being deleted, who cares?
-        # These two are basically useless for type checkers
         "__hash__",
         "__getattr__",  # resulting behaviour might be typed explicitly
+        "__setattr__",  # defining this on a class can cause worse type checking
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
@@ -1034,8 +1047,7 @@ ALLOW_MISSING_CLASS_DUNDERS = frozenset(
         "__args__",
         "__orig_bases__",
         "__final__",
-        # Consider removing these:
-        "__match_args__",
+        # Consider removing __slots__?
         "__slots__",
     }
 )
@@ -1051,6 +1063,10 @@ def is_probably_a_function(runtime: Any) -> bool:
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
     )
+
+
+def is_read_only_property(runtime: object) -> bool:
+    return isinstance(runtime, property) and runtime.fset is None
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
@@ -1086,7 +1102,7 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         # Special case checks against TypedDicts
         return True
 
-    with mypy.state.strict_optional_set(True):
+    with mypy.state.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
 

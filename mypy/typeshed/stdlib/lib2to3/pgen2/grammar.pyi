@@ -1,10 +1,9 @@
-from _typeshed import StrPath
-from typing import Optional, TypeVar
+from _typeshed import Self, StrPath
+from typing_extensions import TypeAlias
 
-_P = TypeVar("_P")
-_Label = tuple[int, Optional[str]]
-_DFA = list[list[tuple[int, int]]]
-_DFAS = tuple[_DFA, dict[int, int]]
+_Label: TypeAlias = tuple[int, str | None]
+_DFA: TypeAlias = list[list[tuple[int, int]]]
+_DFAS: TypeAlias = tuple[_DFA, dict[int, int]]
 
 class Grammar:
     symbol2number: dict[str, int]
@@ -19,7 +18,7 @@ class Grammar:
     def __init__(self) -> None: ...
     def dump(self, filename: StrPath) -> None: ...
     def load(self, filename: StrPath) -> None: ...
-    def copy(self: _P) -> _P: ...
+    def copy(self: Self) -> Self: ...
     def report(self) -> None: ...
 
 opmap_raw: str

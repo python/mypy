@@ -1,4 +1,14 @@
--- These test cases compile two modules at a time (native and other.py)
+-- These test cases compile two or more modules at a time.
+-- Any file prefixed with "other" is compiled.
+--
+-- Note that these are run in three compilation modes: regular,
+-- multi-file and separate. See the docstrings of
+-- mypyc.test.test_run.TestRunMultiFile and
+-- mypyc.test.test_run.TestRunSeparate for more information.
+--
+-- Some of these files perform multiple incremental runs. See
+-- test-data/unit/check-incremental.test for more information
+-- about how this is specified (e.g. .2 file name suffixes).
 
 [case testMultiModulePackage]
 from p.other import g
@@ -788,3 +798,25 @@ def foo() -> int: return 10
 import native
 
 [rechecked native, other_a]
+
+[case testIncrementalCompilationWithDeletable]
+import other_a
+[file other_a.py]
+from other_b import C
+[file other_a.py.2]
+from other_b import C
+c = C()
+print(getattr(c, 'x', None))
+del c.x
+print(getattr(c, 'x', None))
+[file other_b.py]
+class C:
+    __deletable__ = ['x']
+    def __init__(self) -> None:
+        self.x = 0
+[file driver.py]
+import native
+[out]
+[out2]
+0
+None

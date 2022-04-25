@@ -105,6 +105,9 @@ EXIT_RETURN: Final = ErrorCode(
 LITERAL_REQ: Final = ErrorCode(
     "literal-required", "Check that value is a literal", 'General'
 )
+UNUSED_COROUTINE: Final = ErrorCode(
+    "unused-coroutine", "Ensure that all coroutines are used", "General"
+)
 
 # These error codes aren't enabled by default.
 NO_UNTYPED_DEF: Final[ErrorCode] = ErrorCode(
@@ -117,6 +120,9 @@ NO_UNTYPED_CALL: Final = ErrorCode(
 )
 REDUNDANT_CAST: Final = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
+)
+ASSERT_TYPE: Final = ErrorCode(
+    "assert-type", "Check that assert_type() call succeeds", "General"
 )
 COMPARISON_OVERLAP: Final = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
@@ -152,6 +158,12 @@ NO_OVERLOAD_IMPL: Final[ErrorCode] = ErrorCode(
 IGNORE_WITHOUT_CODE: Final = ErrorCode(
     "ignore-without-code",
     "Warn about '# type: ignore' comments which do not have error codes",
+    "General",
+    default_enabled=False,
+)
+UNUSED_AWAITABLE: Final = ErrorCode(
+    "unused-awaitable",
+    "Ensure that all awaitable values are used",
     "General",
     default_enabled=False,
 )

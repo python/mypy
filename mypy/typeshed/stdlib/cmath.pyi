@@ -1,5 +1,6 @@
 import sys
-from typing import SupportsComplex, SupportsFloat, Union
+from typing import SupportsComplex, SupportsFloat
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
@@ -13,9 +14,9 @@ nanj: complex
 tau: float
 
 if sys.version_info >= (3, 8):
-    _C = Union[SupportsFloat, SupportsComplex, SupportsIndex, complex]
+    _C: TypeAlias = SupportsFloat | SupportsComplex | SupportsIndex | complex
 else:
-    _C = Union[SupportsFloat, SupportsComplex, complex]
+    _C: TypeAlias = SupportsFloat | SupportsComplex | complex
 
 def acos(__z: _C) -> complex: ...
 def acosh(__z: _C) -> complex: ...

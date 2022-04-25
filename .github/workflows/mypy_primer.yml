@@ -8,6 +8,10 @@ on:
     - '**/*.rst'
     - '**/*.md'
     - 'mypyc/**'
+    - 'mypy/stubtest.py'
+    - 'mypy/stubgen.py'
+    - 'mypy/stubgenc.py'
+    - 'mypy/test/**'
 
 jobs:
   mypy_primer:

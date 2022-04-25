@@ -1,13 +1,15 @@
 import codecs
 import sys
-from typing import Any, Callable, Union
+from collections.abc import Callable
+from typing import Any
+from typing_extensions import TypeAlias
 
 # This type is not exposed; it is defined in unicodeobject.c
 class _EncodingMap:
     def size(self) -> int: ...
 
-_MapT = Union[dict[int, int], _EncodingMap]
-_Handler = Callable[[Exception], tuple[str, int]]
+_MapT: TypeAlias = dict[int, int] | _EncodingMap
+_Handler: TypeAlias = Callable[[Exception], tuple[str, int]]
 
 def register(__search_function: Callable[[str], Any]) -> None: ...
 def register_error(__errors: str, __handler: _Handler) -> None: ...

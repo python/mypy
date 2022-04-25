@@ -17,7 +17,7 @@ from mypy.version import __version__ as mypy_version
 # -- Project information -----------------------------------------------------
 
 project = 'mypyc'
-copyright = '2020, mypyc team'
+copyright = '2020-2022, mypyc team'
 author = 'mypyc team'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -50,13 +50,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-try:
-    import sphinx_rtd_theme  # type: ignore
-except:
-    html_theme = 'default'
-else:
-    html_theme = 'sphinx_rtd_theme'
-    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+html_theme = 'furo'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

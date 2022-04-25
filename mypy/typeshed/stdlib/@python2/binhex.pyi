@@ -1,4 +1,4 @@
-from typing import IO, Any, Tuple, Union
+from typing import IO, Any
 
 class Error(Exception): ...
 
@@ -12,8 +12,8 @@ class FInfo:
     Creator: str
     Flags: int
 
-_FileInfoTuple = Tuple[str, FInfo, int, int]
-_FileHandleUnion = Union[str, IO[bytes]]
+_FileInfoTuple = tuple[str, FInfo, int, int]
+_FileHandleUnion = str | IO[bytes]
 
 def getfileinfo(name: str) -> _FileInfoTuple: ...
 

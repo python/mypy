@@ -149,6 +149,8 @@ class LowLevelIRBuilder:
 
     def box(self, src: Value) -> Value:
         if src.type.is_unboxed:
+            if isinstance(src, Integer) and is_tagged(src.type):
+                return self.add(LoadLiteral(src.value >> 1, rtype=object_rprimitive))
             return self.add(Box(src))
         else:
             return src
