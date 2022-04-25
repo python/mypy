@@ -1568,3 +1568,54 @@ class B:
 class Derived(A, B):
     pass
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritance2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@dataclass
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@dataclass
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@dataclass
+class Parent2(Generic[T]):
+    a: List[T]
+
+@dataclass
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritOptionalType]
+# flags: --python-version 3.7 --strict-optional
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List, Optional
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: Optional[str]
+@dataclass
+class Child(Parent):
+    y: Optional[int]
+Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "Optional[str]"
+Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
+Child(x='', y=1)
+Child(x=None, y=None)
+[builtins fixtures/dataclasses.pyi]
