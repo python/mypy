@@ -3276,7 +3276,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         lvalue = s.lvalues[0]
         assert isinstance(lvalue, NameExpr)
         if s.type:
-            self.fail("Cannot declare the type of a TypeVar or similar construct", s)
+            self.fail(message_registry.CANNOT_REDEFINE_TYPEVAR_TYPE, s)
             return None
 
         if not self.check_typevarlike_name(call, lvalue.name, s):

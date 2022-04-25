@@ -203,6 +203,9 @@ ARG_NAME_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
 EXCEPT_EXPR_NOTNAME_UNSUPPORTED: Final = ErrorMessage(
     'Sorry, "except <expr>, <anything but a name>" is not supported', codes.SYNTAX
 )
+FAILED_TO_MERGE_OVERLOADS: Final = ErrorMessage(
+    "Condition can't be inferred, unable to merge overloads",
+)
 
 # Nodes
 DUPLICATE_ARGUMENT_IN_X: Final = ErrorMessage('Duplicate argument "{}" in {}')
@@ -343,6 +346,9 @@ INCOMPATIBLE_TUPLE_ITEM_COUNT: Final = ErrorMessage('Incompatible number of tupl
 TUPLE_TYPE_EXPECTED: Final = ErrorMessage('Tuple type expected for multiple variables')
 CANNOT_DECLARE_TYPE_OF_TYPEVAR: Final = ErrorMessage("Cannot declare the type of a type variable")
 REDEFINE_AS_TYPEVAR: Final = ErrorMessage('Cannot redefine "{}" as a type variable')
+CANNOT_REDEFINE_TYPEVAR_TYPE: Final = ErrorMessage(
+    "Cannot declare the type of a TypeVar or similar construct"
+)
 TYPEVAR_CALL_TOO_FEW_ARGS: Final = ErrorMessage("Too few arguments for {}()")
 TYPEVAR_CALL_EXPECTED_STRING_LITERAL: Final = ErrorMessage(
     "{}() expects a string literal as first argument"

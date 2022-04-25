@@ -349,11 +349,10 @@ class ASTConverter:
 
     def fail_merge_overload(self, node: IfStmt) -> None:
         self.fail(
-            "Condition can't be inferred, unable to merge overloads",
+            message_registry.FAILED_TO_MERGE_OVERLOADS,
             line=node.line,
             column=node.column,
             blocker=False,
-            code=codes.MISC,
         )
 
     def visit(self, node: Optional[AST]) -> Any:
