@@ -1553,6 +1553,31 @@ class NestedEmptyIntFlagSub(EmptyIntFlagSub):
     x = 1
 class NestedEmptyEnumMetaSub(EmptyEnumMetaSub):
     x = 1
+
+class Get:
+    def __get__(self, obj, objtype): ...
+class Set:
+    def __set__(self, obj, value): ...
+class Delete:
+    def __delete__(self, obj): ...
+class property:
+    def __init__(self, func): ...
+    def __get__(self, obj, objtyp): ...
+class classmethod:
+    def __init__(self, func): ...
+    def __get__(self, obj, objtyp): ...
+class ManyDescriptorsEnum(Enum):
+    A = Get()
+    B = Set()
+    C = Delete()
+    @property
+    def d(self): ...
+    D = property(lambda self: None)
+    @classmethod
+    def e(cls): ...
+    E = classmethod(lambda cls: None)
+class ManyDescriptorsSubclass(ManyDescriptorsEnum):
+    X = 42
 [builtins fixtures/bool.pyi]
 
 [case testEnumExplicitlyAndImplicitlyFinal]

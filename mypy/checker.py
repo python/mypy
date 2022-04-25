@@ -1939,18 +1939,25 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Now, only `Var` is left, we need to check:
         # 1. Private name like in `__prop = 1`
         # 2. Dunder name like `__hash__ = some_hasher`
-        # 3. Sunder name like `_order_ = 'a, b, c'`
-        # 4. If it is a method / descriptor like in `method = classmethod(func)`
+        # 3. Sunder name like `_order_ = 'a, b, c'`...
         if (
             is_private(sym.node.name)
             or is_dunder(sym.node.name)
             or is_sunder(sym.node.name)
-            # TODO: make sure that `x = @class/staticmethod(func)`
-            # and `x = property(prop)` both work correctly.
-            # Now they are incorrectly counted as enum members.
             or isinstance(get_proper_type(sym.node.type), FunctionLike)
         ):
             return False
+
+        # ...4. If it is a method / descriptor like in `method = classmethod(func)`
+        proper_type = get_proper_type(sym.node.type)
+        if isinstance(proper_type, Instance):
+            info = proper_type.type
+            # __set_name__ is deliberately omitted;
+            # the runtime doesn't special-case objects with __set_name__
+            # in the same way it does with the other descriptor-protocol methods
+            for method_name in {"__get__", "__set__", "__delete__"}:
+                if info.get(method_name) is not None:
+                    return False
 
         if self.is_stub or sym.node.has_explicit_value:
             return True
