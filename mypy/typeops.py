@@ -107,7 +107,7 @@ def class_callable(init_type: CallableType, info: TypeInfo, type_type: Instance,
     explicit_type = init_ret_type if is_new else orig_self_type
     if (
         isinstance(explicit_type, (Instance, TupleType))
-        # We have to skip protocols, because it can can be a subtype of a return type
+        # We have to skip protocols, because it can be a subtype of a return type
         # by accident. Like `Hashable` is a subtype of `object`. See #11799
         and isinstance(default_ret_type, Instance)
         and not default_ret_type.type.is_protocol
@@ -318,6 +318,15 @@ def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     return None
 
 
+def simple_literal_type(t: ProperType) -> Optional[Instance]:
+    """Extract the underlying fallback Instance type for a simple Literal"""
+    if isinstance(t, Instance) and t.last_known_value is not None:
+        t = t.last_known_value
+    if isinstance(t, LiteralType):
+        return t.fallback
+    return None
+
+
 def is_simple_literal(t: ProperType) -> bool:
     """Fast way to check if simple_literal_value_key() would return a non-None value."""
     if isinstance(t, LiteralType):
@@ -345,10 +354,17 @@ def make_simplified_union(items: Sequence[Type],
 
     Note: This must NOT be used during semantic analysis, since TypeInfos may not
           be fully initialized.
+
     The keep_erased flag is used for type inference against union types
     containing type variables. If set to True, keep all ErasedType items.
+
+    The contract_literals flag indicates whether we need to contract literal types
+    back into a sum type. Set it to False when called by try_expanding_sum_type_
+    to_union().
     """
     items = get_proper_types(items)
+
+    # Step 1: expand all nested unions
     while any(isinstance(typ, UnionType) for typ in items):
         all_items: List[ProperType] = []
         for typ in items:
@@ -358,10 +374,11 @@ def make_simplified_union(items: Sequence[Type],
                 all_items.append(typ)
         items = all_items
 
+    # Step 2: remove redundant unions
     simplified_set = _remove_redundant_union_items(items, keep_erased)
 
-    # If more than one literal exists in the union, try to simplify
-    if (contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1):
+    # Step 3: If more than one literal exists in the union, try to simplify
+    if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
     return UnionType.make_union(simplified_set, line, column)
@@ -375,7 +392,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
 
     # NB: having a separate fast path for Union of Literal and slow path for other things
     # would arguably be cleaner, however it breaks down when simplifying the Union of two
-    # different enum types as try_expanding_enum_to_union works recursively and will
+    # different enum types as try_expanding_sum_type_to_union works recursively and will
     # trigger intermediate simplifications that would render the fast path useless
     for i, item in enumerate(items):
         if i in removed:
@@ -399,28 +416,31 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             if safe_skip:
                 continue
 
-        # Keep track of the truishness info for deleted subtypes which can be relevant
+        # Keep track of the truthiness info for deleted subtypes which can be relevant
         cbt = cbf = False
-        num_items = len(items)
         for j, tj in enumerate(items):
-            if i != j:
-                # NB: The first check below is an optimization to
-                #     avoid very expensive computations with large
-                #     unions involving literals. We approximate the
-                #     results for unions with many items. This is
-                #     "fine" since simplifying these union items is
-                #     (almost) always optional.
-                if (
-                    (num_items < 5
-                     or is_likely_literal_supertype(item)
-                     or not is_simple_literal(tj))
-                    and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
-                    and is_redundant_literal_instance(item, tj)  # XXX?
-                ):
-                    # We found a redundant item in the union.
-                    removed.add(j)
-                    cbt = cbt or tj.can_be_true
-                    cbf = cbf or tj.can_be_false
+            if (
+                i == j
+                # avoid further checks if this item was already marked redundant.
+                or j in removed
+                # if the current item is a simple literal then this simplification loop can
+                # safely skip all other simple literals as two literals will only ever be
+                # subtypes of each other if they are equal, which is already handled above.
+                # However, if the current item is not a literal, it might plausibly be a
+                # supertype of other literals in the union, so we must check them again.
+                # This is an important optimization as is_proper_subtype is pretty expensive.
+                or (k is not None and is_simple_literal(tj))
+            ):
+                continue
+            # actual redundancy checks
+            if (
+                is_redundant_literal_instance(item, tj)  # XXX?
+                and is_proper_subtype(tj, item, keep_erased_types=keep_erased)
+            ):
+                # We found a redundant item in the union.
+                removed.add(j)
+                cbt = cbt or tj.can_be_true
+                cbf = cbf or tj.can_be_false
         # if deleted subtypes had more general truthiness, use that
         if not item.can_be_true and cbt:
             items[i] = true_or_false(item)
@@ -428,12 +448,6 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
             items[i] = true_or_false(item)
 
     return [items[i] for i in range(len(items)) if i not in removed]
-
-
-def is_likely_literal_supertype(t: ProperType) -> bool:
-    """Is the type likely to cause simplification of literal types in unions?"""
-    return isinstance(t, Instance) and t.type.fullname in ('builtins.object',
-                                                           'builtins.str')
 
 
 def _get_type_special_method_bool_ret_type(t: Type) -> Optional[Type]:
@@ -603,7 +617,7 @@ def try_getting_str_literals(expr: Expression, typ: Type) -> Optional[List[str]]
     Otherwise, returns None.
 
     Specifically, this function is guaranteed to return a list with
-    one or more strings if one one the following is true:
+    one or more strings if one of the following is true:
 
     1. 'expr' is a StrExpr
     2. 'typ' is a LiteralType containing a string
@@ -645,7 +659,7 @@ def try_getting_literals_from_type(typ: Type,
                                    target_literal_type: TypingType[T],
                                    target_fullname: str) -> Optional[List[T]]:
     """If the given expression or type corresponds to a Literal or
-    union of Literals where the underlying values corresponds to the given
+    union of Literals where the underlying values correspond to the given
     target type, returns a list of those underlying values. Otherwise,
     returns None.
     """

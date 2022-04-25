@@ -3,8 +3,9 @@ import unittest.case
 import unittest.loader
 import unittest.result
 import unittest.suite
+from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Iterable, Protocol
+from typing import Any, Protocol
 
 MAIN_EXAMPLES: str
 MODULE_EXAMPLES: str

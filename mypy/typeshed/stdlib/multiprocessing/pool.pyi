@@ -1,7 +1,8 @@
 import sys
 from _typeshed import Self
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from types import TracebackType
-from typing import Any, Callable, Generic, Iterable, Iterator, Mapping, TypeVar
+from typing import Any, Generic, TypeVar
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):

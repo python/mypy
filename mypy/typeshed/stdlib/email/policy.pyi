@@ -1,9 +1,10 @@
 from abc import ABCMeta, abstractmethod
+from collections.abc import Callable
 from email.contentmanager import ContentManager
 from email.errors import MessageDefect
 from email.header import Header
 from email.message import Message
-from typing import Any, Callable
+from typing import Any
 
 __all__ = ["Compat32", "compat32", "Policy", "EmailPolicy", "default", "strict", "SMTP", "HTTP"]
 

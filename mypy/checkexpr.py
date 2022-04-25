@@ -23,7 +23,7 @@ from mypy.types import (
     get_proper_types, flatten_nested_unions, LITERAL_TYPE_NAMES,
 )
 from mypy.nodes import (
-    NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
+    AssertTypeExpr, NameExpr, RefExpr, Var, FuncDef, OverloadedFuncDef, TypeInfo, CallExpr,
     MemberExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr, FloatExpr,
     OpExpr, UnaryExpr, IndexExpr, CastExpr, RevealExpr, TypeApplication, ListExpr,
     TupleExpr, DictExpr, LambdaExpr, SuperExpr, SliceExpr, Context, Expression,
@@ -32,7 +32,7 @@ from mypy.nodes import (
     DictionaryComprehension, ComplexExpr, EllipsisExpr, StarExpr, AwaitExpr, YieldExpr,
     YieldFromExpr, TypedDictExpr, PromoteExpr, NewTypeExpr, NamedTupleExpr, TypeVarExpr,
     TypeAliasExpr, BackquoteExpr, EnumCallExpr, TypeAlias, SymbolNode, PlaceholderNode,
-    ParamSpecExpr,
+    ParamSpecExpr, TypeVarTupleExpr,
     ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
 from mypy.literals import literal
@@ -3144,6 +3144,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                context=expr)
         return target_type
 
+    def visit_assert_type_expr(self, expr: AssertTypeExpr) -> Type:
+        source_type = self.accept(expr.expr, type_context=self.type_context[-1],
+                                  allow_none_return=True, always_allow_any=True)
+        target_type = expr.type
+        if not is_same_type(source_type, target_type):
+            self.msg.assert_type_fail(source_type, target_type, expr)
+        return source_type
+
     def visit_reveal_expr(self, expr: RevealExpr) -> Type:
         """Type check a reveal_type expression."""
         if expr.kind == REVEAL_TYPE:
@@ -4176,6 +4184,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return AnyType(TypeOfAny.special_form)
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> Type:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_type_var_tuple_expr(self, e: TypeVarTupleExpr) -> Type:
         return AnyType(TypeOfAny.special_form)
 
     def visit_newtype_expr(self, e: NewTypeExpr) -> Type:

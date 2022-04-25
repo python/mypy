@@ -20,8 +20,8 @@ from multiprocessing.process import active_children as active_children, current_
 # multiprocessing.queues or the aliases defined below. See #4266 for discussion.
 from multiprocessing.queues import JoinableQueue as JoinableQueue, Queue as Queue, SimpleQueue as SimpleQueue
 from multiprocessing.spawn import freeze_support as freeze_support
-from typing import Any, overload
-from typing_extensions import Literal
+from typing import Any, TypeVar, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 8):
     from multiprocessing.process import parent_process as parent_process
@@ -118,23 +118,24 @@ else:
 #     from multiprocessing import _LockType
 # lock: _LockType = Lock()
 
-_QueueType = Queue
-_SimpleQueueType = SimpleQueue
-_JoinableQueueType = JoinableQueue
-_BarrierType = synchronize.Barrier
-_BoundedSemaphoreType = synchronize.BoundedSemaphore
-_ConditionType = synchronize.Condition
-_EventType = synchronize.Event
-_LockType = synchronize.Lock
-_RLockType = synchronize.RLock
-_SemaphoreType = synchronize.Semaphore
+_T = TypeVar("_T")
+_QueueType: TypeAlias = Queue[_T]
+_SimpleQueueType: TypeAlias = SimpleQueue[_T]
+_JoinableQueueType: TypeAlias = JoinableQueue[_T]
+_BarrierType: TypeAlias = synchronize.Barrier
+_BoundedSemaphoreType: TypeAlias = synchronize.BoundedSemaphore
+_ConditionType: TypeAlias = synchronize.Condition
+_EventType: TypeAlias = synchronize.Event
+_LockType: TypeAlias = synchronize.Lock
+_RLockType: TypeAlias = synchronize.RLock
+_SemaphoreType: TypeAlias = synchronize.Semaphore
 
 # N.B. The functions below are generated at runtime by partially applying
 # multiprocessing.context.BaseContext's methods, so the two signatures should
 # be identical (modulo self).
 
 # Synchronization primitives
-_LockLike = synchronize.Lock | synchronize.RLock
+_LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
 RawValue = context._default_context.RawValue
 RawArray = context._default_context.RawArray
 Value = context._default_context.Value

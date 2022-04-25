@@ -1,8 +1,9 @@
 import subprocess
 import sys
 from _typeshed import Self
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, AnyStr, Callable, Protocol
+from typing import Any, AnyStr, Protocol
 from typing_extensions import Literal
 
 if sys.platform == "win32":

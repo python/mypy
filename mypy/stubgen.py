@@ -54,7 +54,7 @@ import argparse
 from collections import defaultdict
 
 from typing import (
-    List, Dict, Tuple, Iterable, Mapping, Optional, Set, cast,
+    List, Dict, Tuple, Iterable, Mapping, Optional, Set, Union, cast,
 )
 from typing_extensions import Final
 
@@ -84,7 +84,7 @@ from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
 from mypy.options import Options as MypyOptions
 from mypy.types import (
     Type, TypeStrVisitor, CallableType, UnboundType, NoneType, TupleType, TypeList, Instance,
-    AnyType, get_proper_type
+    AnyType, get_proper_type, OVERLOAD_NAMES
 )
 from mypy.visitor import NodeVisitor
 from mypy.find_sources import create_source_list, InvalidSourceList
@@ -93,6 +93,10 @@ from mypy.errors import CompileError, Errors
 from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.moduleinspect import ModuleInspect
 
+TYPING_MODULE_NAMES: Final = (
+    'typing',
+    'typing_extensions',
+)
 
 # Common ways of naming package containing vendored modules.
 VENDOR_PACKAGES: Final = [
@@ -768,13 +772,15 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add_decorator('property')
             self.add_decorator('abc.abstractmethod')
             is_abstract = True
-        elif self.refers_to_fullname(name, 'typing.overload'):
+        elif self.refers_to_fullname(name, OVERLOAD_NAMES):
             self.add_decorator(name)
             self.add_typing_import('overload')
             is_overload = True
         return is_abstract, is_overload
 
-    def refers_to_fullname(self, name: str, fullname: str) -> bool:
+    def refers_to_fullname(self, name: str, fullname: Union[str, Tuple[str, ...]]) -> bool:
+        if isinstance(fullname, tuple):
+            return any(self.refers_to_fullname(name, fname) for fname in fullname)
         module, short = fullname.rsplit('.', 1)
         return (self.import_tracker.module_for.get(name) == module and
                 (name == short or
@@ -825,8 +831,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                                              expr.expr.name + '.coroutine',
                                              expr.expr.name)
         elif (isinstance(expr.expr, NameExpr) and
-              (expr.expr.name == 'typing' or
-               self.import_tracker.reverse_alias.get(expr.expr.name) == 'typing') and
+              (expr.expr.name in TYPING_MODULE_NAMES or
+               self.import_tracker.reverse_alias.get(expr.expr.name) in TYPING_MODULE_NAMES) and
               expr.name == 'overload'):
             self.import_tracker.require_name(expr.expr.name)
             self.add_decorator('%s.%s' % (expr.expr.name, 'overload'))
@@ -1060,7 +1066,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     and name not in self.referenced_names
                     and (not self._all_ or name in IGNORED_DUNDERS)
                     and not is_private
-                    and module not in ('abc', 'typing', 'asyncio')):
+                    and module not in ('abc', 'asyncio') + TYPING_MODULE_NAMES):
                 # An imported name that is never referenced in the module is assumed to be
                 # exported, unless there is an explicit __all__. Note that we need to special
                 # case 'abc' since some references are deleted during semantic analysis.
@@ -1118,8 +1124,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             typename = self.print_annotation(annotation)
             if (isinstance(annotation, UnboundType) and not annotation.args and
                     annotation.name == 'Final' and
-                    self.import_tracker.module_for.get('Final') in ('typing',
-                                                                    'typing_extensions')):
+                    self.import_tracker.module_for.get('Final') in TYPING_MODULE_NAMES):
                 # Final without type argument is invalid in stubs.
                 final_arg = self.get_str_type_of_node(rvalue)
                 typename += '[{}]'.format(final_arg)

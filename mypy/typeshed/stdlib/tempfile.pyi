@@ -1,9 +1,10 @@
 import os
 import sys
 from _typeshed import Self
+from collections.abc import Iterable, Iterator
 from types import TracebackType
-from typing import IO, Any, AnyStr, Generic, Iterable, Iterator, overload
-from typing_extensions import Literal
+from typing import IO, Any, AnyStr, Generic, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -29,7 +30,7 @@ TMP_MAX: int
 tempdir: str | None
 template: str
 
-_DirT = AnyStr | os.PathLike[AnyStr]
+_DirT: TypeAlias = AnyStr | os.PathLike[AnyStr]
 
 if sys.version_info >= (3, 8):
     @overload

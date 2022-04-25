@@ -325,6 +325,7 @@ class ClassIR:
             'children': [
                 cir.fullname for cir in self.children
             ] if self.children is not None else None,
+            'deletable': self.deletable,
         }
 
     @classmethod
@@ -373,6 +374,7 @@ class ClassIR:
         ir.mro = [ctx.classes[s] for s in data['mro']]
         ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
         ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
+        ir.deletable = data['deletable']
 
         return ir
 

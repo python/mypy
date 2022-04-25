@@ -1,6 +1,7 @@
 import sys
 from _typeshed import Self
-from typing import Any, Generic, Iterable, Iterator, MutableSet, TypeVar
+from collections.abc import Iterable, Iterator, MutableSet
+from typing import Any, Generic, TypeVar
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias

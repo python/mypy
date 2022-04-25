@@ -1213,6 +1213,11 @@ class MessageBuilder:
         self.fail('Redundant cast to {}'.format(format_type(typ)), context,
                   code=codes.REDUNDANT_CAST)
 
+    def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
+        self.fail(f"Expression is of type {format_type(source_type)}, "
+                  f"not {format_type(target_type)}", context,
+                  code=codes.ASSERT_TYPE)
+
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, format_type(typ)),
                   ctx, code=codes.NO_ANY_UNIMPORTED)

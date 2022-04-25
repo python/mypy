@@ -1,6 +1,7 @@
 import sys
+from collections.abc import Container, Iterable, Iterator, Sequence
 from types import CodeType
-from typing import IO, Any, Container, Iterable, Iterator, Sequence
+from typing import IO, Any
 
 LOAD_CONST: int  # undocumented
 IMPORT_NAME: int  # undocumented

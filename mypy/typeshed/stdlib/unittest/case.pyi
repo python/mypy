@@ -3,25 +3,10 @@ import logging
 import sys
 import unittest.result
 from _typeshed import Self
-from collections.abc import Set as AbstractSet
+from collections.abc import Callable, Container, Iterable, Mapping, Sequence, Set as AbstractSet
 from contextlib import AbstractContextManager
 from types import TracebackType
-from typing import (
-    Any,
-    AnyStr,
-    Callable,
-    ClassVar,
-    Container,
-    Generic,
-    Iterable,
-    Mapping,
-    NamedTuple,
-    NoReturn,
-    Pattern,
-    Sequence,
-    TypeVar,
-    overload,
-)
+from typing import Any, AnyStr, ClassVar, Generic, NamedTuple, NoReturn, Pattern, TypeVar, overload
 from typing_extensions import ParamSpec
 from warnings import WarningMessage
 

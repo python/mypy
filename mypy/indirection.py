@@ -67,6 +67,9 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
     def visit_param_spec(self, t: types.ParamSpecType) -> Set[str]:
         return set()
 
+    def visit_type_var_tuple(self, t: types.TypeVarTupleType) -> Set[str]:
+        return self._visit(t.upper_bound)
+
     def visit_unpack_type(self, t: types.UnpackType) -> Set[str]:
         return t.type.accept(self)
 

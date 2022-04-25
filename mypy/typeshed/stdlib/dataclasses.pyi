@@ -2,7 +2,8 @@ import enum
 import sys
 import types
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
-from typing import Any, Callable, Generic, Iterable, Mapping, Protocol, TypeVar, overload
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any, Generic, Protocol, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):

@@ -1,8 +1,9 @@
 import array
 import threading
 import weakref
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from queue import Queue as Queue
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
 from typing_extensions import Literal
 
 from .connection import Pipe as Pipe

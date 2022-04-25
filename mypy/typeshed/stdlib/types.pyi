@@ -1,26 +1,23 @@
 import sys
 from _typeshed import SupportsKeysAndGetItem
-from importlib.abc import _LoaderProtocol
-from importlib.machinery import ModuleSpec
-from typing import (
-    Any,
+from collections.abc import (
     AsyncGenerator,
     Awaitable,
     Callable,
-    ClassVar,
     Coroutine,
     Generator,
-    Generic,
     ItemsView,
     Iterable,
     Iterator,
     KeysView,
-    Mapping,
     MutableSequence,
-    TypeVar,
     ValuesView,
-    overload,
 )
+from importlib.abc import _LoaderProtocol
+from importlib.machinery import ModuleSpec
+
+# pytype crashes if types.MappingProxyType inherits from collections.abc.Mapping instead of typing.Mapping
+from typing import Any, ClassVar, Generic, Mapping, TypeVar, overload  # noqa: Y027
 from typing_extensions import Literal, ParamSpec, final
 
 if sys.version_info >= (3, 10):

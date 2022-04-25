@@ -1,7 +1,8 @@
 import sys
 from _typeshed import SupportsRead
+from collections.abc import Callable, Iterable, Iterator
 from importlib.abc import Loader, MetaPathFinder, PathEntryFinder
-from typing import IO, Any, Callable, Iterable, Iterator, NamedTuple, TypeVar
+from typing import IO, Any, NamedTuple, TypeVar
 
 __all__ = [
     "get_importer",

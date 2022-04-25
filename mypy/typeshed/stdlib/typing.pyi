@@ -22,9 +22,12 @@ if sys.version_info >= (3, 11):
         "ForwardRef",
         "Generic",
         "Literal",
+        "LiteralString",
+        "NotRequired",
         "Optional",
         "ParamSpec",
         "Protocol",
+        "Required",
         "Tuple",
         "Type",
         "TypeVar",
@@ -84,9 +87,11 @@ if sys.version_info >= (3, 11):
         "assert_never",
         "assert_type",
         "cast",
+        "clear_overloads",
         "final",
         "get_args",
         "get_origin",
+        "get_overloads",
         "get_type_hints",
         "is_typeddict",
         "Never",
@@ -528,6 +533,9 @@ if sys.version_info >= (3, 11):
     Self: _SpecialForm
     Never: _SpecialForm = ...
     Unpack: _SpecialForm
+    Required: _SpecialForm
+    NotRequired: _SpecialForm
+    LiteralString: _SpecialForm
 
     class TypeVarTuple:
         __name__: str
@@ -1138,7 +1146,7 @@ class Pattern(Generic[AnyStr]):
 # Functions
 
 if sys.version_info >= (3, 7):
-    _get_type_hints_obj_allowed_types = (
+    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
         object
         | Callable[..., Any]
         | FunctionType
@@ -1150,7 +1158,9 @@ if sys.version_info >= (3, 7):
         | MethodDescriptorType
     )
 else:
-    _get_type_hints_obj_allowed_types = object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
+    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
+        object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
+    )
 
 if sys.version_info >= (3, 9):
     def get_type_hints(
@@ -1180,6 +1190,8 @@ if sys.version_info >= (3, 11):
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
+    def clear_overloads() -> None: ...
+    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
 
 # Type constructors
 

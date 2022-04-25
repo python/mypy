@@ -1,5 +1,5 @@
 from typing import IO, Any
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 __all__ = ["binhex", "hexbin", "Error"]
 
@@ -15,8 +15,8 @@ class FInfo:
     Creator: str
     Flags: int
 
-_FileInfoTuple = tuple[str, FInfo, int, int]
-_FileHandleUnion = str | IO[bytes]
+_FileInfoTuple: TypeAlias = tuple[str, FInfo, int, int]
+_FileHandleUnion: TypeAlias = str | IO[bytes]
 
 def getfileinfo(name: str) -> _FileInfoTuple: ...
 

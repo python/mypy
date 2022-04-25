@@ -1,6 +1,7 @@
 import os
 from _typeshed import BytesPath, StrOrBytesPath, StrPath, SupportsRichComparisonT
-from typing import Sequence, overload
+from collections.abc import Sequence
+from typing import overload
 from typing_extensions import Literal
 
 __all__ = [

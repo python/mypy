@@ -1,9 +1,11 @@
 import unittest.case
 import unittest.result
 import unittest.suite
-from typing import Callable, Iterable, TextIO
+from collections.abc import Callable, Iterable
+from typing import TextIO
+from typing_extensions import TypeAlias
 
-_ResultClassType = Callable[[TextIO, bool, int], unittest.result.TestResult]
+_ResultClassType: TypeAlias = Callable[[TextIO, bool, int], unittest.result.TestResult]
 
 class TextTestResult(unittest.result.TestResult):
     descriptions: bool  # undocumented

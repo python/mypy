@@ -56,7 +56,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import (
-    MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
+    AssertTypeExpr, MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
     ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
     ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
     IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
@@ -78,7 +78,7 @@ from mypy.nodes import (
     typing_extensions_aliases,
     EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
     ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt, FuncBase
+    MatchStmt, FuncBase, TypeVarTupleExpr
 )
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern,
@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    is_named_instance,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -835,7 +835,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             if isinstance(item, Decorator):
                 callable = function_type(item.func, self.named_type('builtins.function'))
                 assert isinstance(callable, CallableType)
-                if not any(refers_to_fullname(dec, 'typing.overload')
+                if not any(refers_to_fullname(dec, OVERLOAD_NAMES)
                            for dec in item.decorators):
                     if i == len(defn.items) - 1 and not self.is_stub_file:
                         # Last item outside a stub is impl
@@ -1116,7 +1116,8 @@ class SemanticAnalyzer(NodeVisitor[None],
     def visit_class_def(self, defn: ClassDef) -> None:
         self.statement = defn
         self.incomplete_type_stack.append(not defn.info)
-        with self.tvar_scope_frame(self.tvar_scope.class_frame()):
+        namespace = self.qualified_name(defn.name)
+        with self.tvar_scope_frame(self.tvar_scope.class_frame(namespace)):
             self.analyze_class(defn)
         self.incomplete_type_stack.pop()
 
@@ -2072,6 +2073,8 @@ class SemanticAnalyzer(NodeVisitor[None],
         elif self.process_typevar_declaration(s):
             special_form = True
         elif self.process_paramspec_declaration(s):
+            special_form = True
+        elif self.process_typevartuple_declaration(s):
             special_form = True
         # * type constructors
         elif self.analyze_namedtuple_assign(s):
@@ -3331,6 +3334,43 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.add_symbol(name, call.analyzed, s)
         return True
 
+    def process_typevartuple_declaration(self, s: AssignmentStmt) -> bool:
+        """Checks if s declares a TypeVarTuple; if yes, store it in symbol table.
+
+        Return True if this looks like a TypeVarTuple (maybe with errors), otherwise return False.
+        """
+        call = self.get_typevarlike_declaration(
+            s, ("typing_extensions.TypeVarTuple", "typing.TypeVarTuple")
+        )
+        if not call:
+            return False
+
+        if len(call.args) > 1:
+            self.fail(
+                "Only the first argument to TypeVarTuple has defined semantics",
+                s,
+            )
+
+        if not self.options.enable_incomplete_features:
+            self.fail('"TypeVarTuple" is not supported by mypy yet', s)
+            return False
+
+        name = self.extract_typevarlike_name(s, call)
+        if name is None:
+            return False
+
+        # PEP 646 does not specify the behavior of variance, constraints, or bounds.
+        if not call.analyzed:
+            typevartuple_var = TypeVarTupleExpr(
+                name, self.qualified_name(name), self.object_type(), INVARIANT
+            )
+            typevartuple_var.line = call.line
+            call.analyzed = typevartuple_var
+        else:
+            assert isinstance(call.analyzed, TypeVarTupleExpr)
+        self.add_symbol(name, call.analyzed, s)
+        return True
+
     def basic_new_typeinfo(self, name: str,
                            basetype_or_fallback: Instance,
                            line: int) -> TypeInfo:
@@ -3897,6 +3937,19 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.analyzed.line = expr.line
             expr.analyzed.column = expr.column
             expr.analyzed.accept(self)
+        elif refers_to_fullname(expr.callee, ASSERT_TYPE_NAMES):
+            if not self.check_fixed_args(expr, 2, 'assert_type'):
+                return
+            # Translate second argument to an unanalyzed type.
+            try:
+                target = self.expr_to_unanalyzed_type(expr.args[1])
+            except TypeTranslationError:
+                self.fail('assert_type() type is not a type', expr)
+                return
+            expr.analyzed = AssertTypeExpr(expr.args[0], target)
+            expr.analyzed.line = expr.line
+            expr.analyzed.column = expr.column
+            expr.analyzed.accept(self)
         elif refers_to_fullname(expr.callee, REVEAL_TYPE_NAMES):
             if not self.check_fixed_args(expr, 1, 'reveal_type'):
                 return
@@ -4195,6 +4248,12 @@ class SemanticAnalyzer(NodeVisitor[None],
             expr.stride.accept(self)
 
     def visit_cast_expr(self, expr: CastExpr) -> None:
+        expr.expr.accept(self)
+        analyzed = self.anal_type(expr.type)
+        if analyzed is not None:
+            expr.type = analyzed
+
+    def visit_assert_type_expr(self, expr: AssertTypeExpr) -> None:
         expr.expr.accept(self)
         analyzed = self.anal_type(expr.type)
         if analyzed is not None:

@@ -1,8 +1,9 @@
 import sys
 from _typeshed import Self
+from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Iterable, Iterator, Pattern
+from typing import Any, Pattern
 from typing_extensions import Final
 
 WSP: Final[set[str]]

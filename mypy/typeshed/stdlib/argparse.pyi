@@ -1,20 +1,7 @@
 import sys
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Generator,
-    Generic,
-    Iterable,
-    NewType,
-    NoReturn,
-    Pattern,
-    Protocol,
-    Sequence,
-    TypeVar,
-    overload,
-)
-from typing_extensions import Literal
+from collections.abc import Callable, Generator, Iterable, Sequence
+from typing import IO, Any, Generic, NewType, NoReturn, Pattern, Protocol, TypeVar, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = [
@@ -66,11 +53,11 @@ _N = TypeVar("_N")
 # "store_false", "append", "append_const", "count", "help", "version",
 # "extend"], but using this would make it hard to annotate callers
 # that don't use a literal argument
-_ActionStr = str
+_ActionStr: TypeAlias = str
 # more precisely, Literal["?", "*", "+", "...", "A...",
 # "==SUPPRESS=="], but using this would make it hard to annotate
 # callers that don't use a literal argument
-_NArgsStr = str
+_NArgsStr: TypeAlias = str
 
 ONE_OR_MORE: Literal["+"]
 OPTIONAL: Literal["?"]

@@ -1,5 +1,6 @@
 import sys
-from typing import Any, NoReturn, Sequence, overload
+from collections.abc import Sequence
+from typing import Any, NoReturn, overload
 from typing_extensions import Literal, final
 
 if sys.platform == "win32":

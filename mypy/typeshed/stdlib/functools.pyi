@@ -1,8 +1,9 @@
 import sys
 import types
 from _typeshed import Self, SupportsAllComparisons, SupportsItems
-from typing import Any, Callable, Generic, Hashable, Iterable, NamedTuple, Sequence, Sized, TypeVar, overload
-from typing_extensions import Literal, final
+from collections.abc import Callable, Hashable, Iterable, Sequence, Sized
+from typing import Any, Generic, NamedTuple, TypeVar, overload
+from typing_extensions import Literal, TypeAlias, final
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -54,7 +55,7 @@ else:
         "singledispatch",
     ]
 
-_AnyCallable = Callable[..., Any]
+_AnyCallable: TypeAlias = Callable[..., Any]
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -111,7 +112,7 @@ class partial(Generic[_T]):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 # With protocols, this could change into a generic protocol that defines __get__ and returns _T
-_Descriptor = Any
+_Descriptor: TypeAlias = Any
 
 class partialmethod(Generic[_T]):
     func: Callable[..., _T] | _Descriptor

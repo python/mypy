@@ -37,7 +37,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
+    OVERLOAD_NAMES,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -3981,7 +3982,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
         for d in reversed(e.decorators):
-            if refers_to_fullname(d, 'typing.overload'):
+            if refers_to_fullname(d, OVERLOAD_NAMES):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)

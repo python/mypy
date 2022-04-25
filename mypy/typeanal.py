@@ -17,7 +17,7 @@ from mypy.types import (
     StarType, PartialType, EllipsisType, UninhabitedType, TypeType, CallableArgument,
     Parameters, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
-    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType,
+    TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType, TypeVarTupleType,
     callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
 )
@@ -26,7 +26,8 @@ from mypy.nodes import (
     TypeInfo, Context, SymbolTableNode, Var, Expression,
     get_nongen_builtins, check_arg_names, check_arg_kinds, ArgKind, ARG_POS, ARG_NAMED,
     ARG_OPT, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2, TypeVarExpr, TypeVarLikeExpr, ParamSpecExpr,
-    TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile
+    TypeAlias, PlaceholderNode, SYMBOL_FUNCBASE_TYPES, Decorator, MypyFile,
+    TypeVarTupleExpr
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarLikeScope
@@ -235,6 +236,24 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return TypeVarType(
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.values,
                     tvar_def.upper_bound, tvar_def.variance, line=t.line, column=t.column,
+                )
+            if isinstance(sym.node, TypeVarTupleExpr) and (
+                tvar_def is not None and self.defining_alias
+            ):
+                self.fail('Can\'t use bound type variable "{}"'
+                          ' to define generic alias'.format(t.name), t)
+                return AnyType(TypeOfAny.from_error)
+            if isinstance(sym.node, TypeVarTupleExpr):
+                if tvar_def is None:
+                    self.fail('TypeVarTuple "{}" is unbound'.format(t.name), t)
+                    return AnyType(TypeOfAny.from_error)
+                assert isinstance(tvar_def, TypeVarTupleType)
+                if len(t.args) > 0:
+                    self.fail('Type variable "{}" used with arguments'.format(t.name), t)
+                # Change the line number
+                return TypeVarTupleType(
+                    tvar_def.name, tvar_def.fullname, tvar_def.id,
+                    tvar_def.upper_bound, line=t.line, column=t.column,
                 )
             special = self.try_analyze_special_unbound_type(t, fullname)
             if special is not None:
@@ -514,7 +533,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Option 2:
         # Unbound type variable. Currently these may be still valid,
         # for example when defining a generic type alias.
-        unbound_tvar = (isinstance(sym.node, TypeVarExpr) and
+        unbound_tvar = (isinstance(sym.node, (TypeVarExpr, TypeVarTupleExpr)) and
                         self.tvar_scope.get_binding(sym) is None)
         if self.allow_unbound_tvars and unbound_tvar:
             return t
@@ -628,6 +647,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return t
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
+        return t
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
         return t
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
@@ -1180,6 +1202,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_def.variance,
                 var_def.line
             )
+        elif isinstance(var_def, TypeVarTupleType):
+            raise NotImplementedError
         else:
             return var_def
 
