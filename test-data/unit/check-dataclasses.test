@@ -1614,9 +1614,8 @@ class Parent(Generic[T]):
 @dataclass
 class Child(Parent):
     y: Optional[int]
-Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "str"
+Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "Optional[str]"
 Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
 Child(x='', y=1)
 Child(x=None, y=None)
-x: int = None
 [builtins fixtures/dataclasses.pyi]
