@@ -19,6 +19,7 @@ from mypy.types import (
     get_proper_type, AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {
@@ -400,7 +401,11 @@ class DataclassTransformer:
                 name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
-                    attr.expand_typevar_from_subtype(ctx.cls.info)
+                    # TODO: We shouldn't be performing type operations during the main
+                    #       semantic analysis pass, since some TypeInfo attributes might
+                    #       still be in flux. This should be performed in a later phase.
+                    with state.strict_optional_set(ctx.api.options.strict_optional):
+                        attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
