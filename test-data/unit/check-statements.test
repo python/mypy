@@ -1298,7 +1298,7 @@ T = TypeVar('T')
 def f(a: T) -> Generator[int, str, T]: pass
 def g() -> Generator[int, str, float]:
     r = yield from f('')
-    reveal_type(r)  # N: Revealed type is "builtins.str*"
+    reveal_type(r)  # N: Revealed type is "builtins.str"
     return 3.14
 
 [case testYieldFromTupleStatement]
@@ -2107,14 +2107,14 @@ class A:
 [case testAugmentedAssignmentIntFloatDict]
 from typing import Dict
 d = {'weight0': 65.5}
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] = 65
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] *= 'a'  # E: Unsupported operand types for * ("float" and "str")
 d['weight0'] *= 0.5
-reveal_type(d['weight0'])  # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0'])  # N: Revealed type is "builtins.float"
 d['weight0'] *= object()  # E: Unsupported operand types for * ("float" and "object")
-reveal_type(d['weight0']) # N: Revealed type is "builtins.float*"
+reveal_type(d['weight0']) # N: Revealed type is "builtins.float"
 
 [builtins fixtures/floatdict.pyi]
 

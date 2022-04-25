@@ -1,5 +1,6 @@
 import sys
 from _typeshed import BytesPath, StrOrBytesPath, StrPath
+from collections.abc import Sequence
 from genericpath import (
     commonprefix as commonprefix,
     exists as exists,
@@ -14,7 +15,48 @@ from genericpath import (
     samestat as samestat,
 )
 from os import PathLike
-from typing import AnyStr, Sequence, overload
+from typing import AnyStr, overload
+
+__all__ = [
+    "normcase",
+    "isabs",
+    "join",
+    "splitdrive",
+    "split",
+    "splitext",
+    "basename",
+    "dirname",
+    "commonprefix",
+    "getsize",
+    "getmtime",
+    "getatime",
+    "getctime",
+    "islink",
+    "exists",
+    "lexists",
+    "isdir",
+    "isfile",
+    "ismount",
+    "expanduser",
+    "expandvars",
+    "normpath",
+    "abspath",
+    "samefile",
+    "sameopenfile",
+    "samestat",
+    "curdir",
+    "pardir",
+    "sep",
+    "pathsep",
+    "defpath",
+    "altsep",
+    "extsep",
+    "devnull",
+    "realpath",
+    "supports_unicode_filenames",
+    "relpath",
+    "commonpath",
+]
 
 supports_unicode_filenames: bool
 # aliases (also in os)

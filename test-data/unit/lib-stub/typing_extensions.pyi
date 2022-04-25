@@ -1,6 +1,6 @@
 from typing import TypeVar, Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
-from typing import NewType as NewType
+from typing import NewType as NewType, overload as overload
 
 import sys
 
@@ -28,6 +28,9 @@ TypeAlias: _SpecialForm
 
 TypeGuard: _SpecialForm
 Never: _SpecialForm
+
+TypeVarTuple: _SpecialForm
+Unpack: _SpecialForm
 
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):

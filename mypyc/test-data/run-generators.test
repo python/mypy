@@ -516,3 +516,68 @@ class E:
 
 [file driver.py]
 # really I only care it builds
+
+[case testCloseStopIterationRaised]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        raise
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+gen.close()
+
+[case testCloseGeneratorExitRaised]
+def g() -> object:
+    yield 1
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+gen.close()
+
+[case testCloseGeneratorExitIgnored]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        pass
+
+    yield 2
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+try:
+    gen.close()
+except RuntimeError as e:
+    assert str(e) == 'generator ignored GeneratorExit'
+else:
+    assert False
+
+[case testCloseGeneratorRaisesAnotherException]
+def g() -> object:
+    try:
+        yield 1
+    except GeneratorExit:
+        raise RuntimeError("error")
+
+[file driver.py]
+from native import g
+
+gen = g()
+next(gen)
+try:
+    gen.close()
+except RuntimeError as e:
+    assert str(e) == 'error'
+else:
+    assert False

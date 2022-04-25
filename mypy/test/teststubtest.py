@@ -605,12 +605,12 @@ class StubtestUnit(unittest.TestCase):
             stub="""
             class Good:
                 @property
-                def f(self) -> int: ...
+                def read_only_attr(self) -> int: ...
             """,
             runtime="""
             class Good:
                 @property
-                def f(self) -> int: return 1
+                def read_only_attr(self): return 1
             """,
             error=None,
         )
@@ -650,6 +650,38 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="BadReadOnly.f",
         )
+        yield Case(
+            stub="""
+            class Y:
+                @property
+                def read_only_attr(self) -> int: ...
+                @read_only_attr.setter
+                def read_only_attr(self, val: int) -> None: ...
+            """,
+            runtime="""
+            class Y:
+                @property
+                def read_only_attr(self): return 5
+            """,
+            error="Y.read_only_attr",
+        )
+        yield Case(
+            stub="""
+            class Z:
+                @property
+                def read_write_attr(self) -> int: ...
+                @read_write_attr.setter
+                def read_write_attr(self, val: int) -> None: ...
+            """,
+            runtime="""
+            class Z:
+                @property
+                def read_write_attr(self): return self._val
+                @read_write_attr.setter
+                def read_write_attr(self, val): self._val = val
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_var(self) -> Iterator[Case]:
@@ -688,6 +720,32 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            class Y:
+                read_only_attr: int
+            """,
+            runtime="""
+            class Y:
+                @property
+                def read_only_attr(self): return 5
+            """,
+            error="Y.read_only_attr",
+        )
+        yield Case(
+            stub="""
+            class Z:
+                read_write_attr: int
+            """,
+            runtime="""
+            class Z:
+                @property
+                def read_write_attr(self): return self._val
+                @read_write_attr.setter
+                def read_write_attr(self, val): self._val = val
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
@@ -711,6 +769,18 @@ class StubtestUnit(unittest.TestCase):
             """,
             runtime="A = (int, str)",
             error="A",
+        )
+        # Error if an alias isn't present at runtime...
+        yield Case(
+            stub="B = str",
+            runtime="",
+            error="B"
+        )
+        # ... but only if the alias isn't private
+        yield Case(
+            stub="_C = int",
+            runtime="",
+            error=None
         )
 
     @collect_cases
@@ -1162,7 +1232,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             "error: test_module.temp variable differs from runtime type Literal[5]\n"
-            "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
+            "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""

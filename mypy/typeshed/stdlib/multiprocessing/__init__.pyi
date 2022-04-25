@@ -1,7 +1,7 @@
 import sys
 from collections.abc import Callable, Iterable
 from logging import Logger
-from multiprocessing import connection, context, pool, synchronize
+from multiprocessing import connection, context, pool, reduction as reducer, synchronize
 from multiprocessing.context import (
     AuthenticationError as AuthenticationError,
     BaseContext,
@@ -20,14 +20,94 @@ from multiprocessing.process import active_children as active_children, current_
 # multiprocessing.queues or the aliases defined below. See #4266 for discussion.
 from multiprocessing.queues import JoinableQueue as JoinableQueue, Queue as Queue, SimpleQueue as SimpleQueue
 from multiprocessing.spawn import freeze_support as freeze_support
-from typing import Any, Union, overload
-from typing_extensions import Literal
+from typing import Any, TypeVar, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 8):
     from multiprocessing.process import parent_process as parent_process
 
 if sys.platform != "win32":
     from multiprocessing.context import ForkContext, ForkServerContext
+
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "Array",
+        "AuthenticationError",
+        "Barrier",
+        "BoundedSemaphore",
+        "BufferTooShort",
+        "Condition",
+        "Event",
+        "JoinableQueue",
+        "Lock",
+        "Manager",
+        "Pipe",
+        "Pool",
+        "Process",
+        "ProcessError",
+        "Queue",
+        "RLock",
+        "RawArray",
+        "RawValue",
+        "Semaphore",
+        "SimpleQueue",
+        "TimeoutError",
+        "Value",
+        "active_children",
+        "allow_connection_pickling",
+        "cpu_count",
+        "current_process",
+        "freeze_support",
+        "get_all_start_methods",
+        "get_context",
+        "get_logger",
+        "get_start_method",
+        "parent_process",
+        "log_to_stderr",
+        "reducer",
+        "set_executable",
+        "set_forkserver_preload",
+        "set_start_method",
+    ]
+else:
+    __all__ = [
+        "Array",
+        "AuthenticationError",
+        "Barrier",
+        "BoundedSemaphore",
+        "BufferTooShort",
+        "Condition",
+        "Event",
+        "JoinableQueue",
+        "Lock",
+        "Manager",
+        "Pipe",
+        "Pool",
+        "Process",
+        "ProcessError",
+        "Queue",
+        "RLock",
+        "RawArray",
+        "RawValue",
+        "Semaphore",
+        "SimpleQueue",
+        "TimeoutError",
+        "Value",
+        "active_children",
+        "allow_connection_pickling",
+        "cpu_count",
+        "current_process",
+        "freeze_support",
+        "get_all_start_methods",
+        "get_context",
+        "get_logger",
+        "get_start_method",
+        "log_to_stderr",
+        "reducer",
+        "set_executable",
+        "set_forkserver_preload",
+        "set_start_method",
+    ]
 
 # The following type aliases can be used to annotate the return values of
 # the corresponding functions. They are not defined at runtime.
@@ -38,23 +118,24 @@ if sys.platform != "win32":
 #     from multiprocessing import _LockType
 # lock: _LockType = Lock()
 
-_QueueType = Queue
-_SimpleQueueType = SimpleQueue
-_JoinableQueueType = JoinableQueue
-_BarrierType = synchronize.Barrier
-_BoundedSemaphoreType = synchronize.BoundedSemaphore
-_ConditionType = synchronize.Condition
-_EventType = synchronize.Event
-_LockType = synchronize.Lock
-_RLockType = synchronize.RLock
-_SemaphoreType = synchronize.Semaphore
+_T = TypeVar("_T")
+_QueueType: TypeAlias = Queue[_T]
+_SimpleQueueType: TypeAlias = SimpleQueue[_T]
+_JoinableQueueType: TypeAlias = JoinableQueue[_T]
+_BarrierType: TypeAlias = synchronize.Barrier
+_BoundedSemaphoreType: TypeAlias = synchronize.BoundedSemaphore
+_ConditionType: TypeAlias = synchronize.Condition
+_EventType: TypeAlias = synchronize.Event
+_LockType: TypeAlias = synchronize.Lock
+_RLockType: TypeAlias = synchronize.RLock
+_SemaphoreType: TypeAlias = synchronize.Semaphore
 
 # N.B. The functions below are generated at runtime by partially applying
 # multiprocessing.context.BaseContext's methods, so the two signatures should
 # be identical (modulo self).
 
 # Synchronization primitives
-_LockLike = Union[synchronize.Lock, synchronize.RLock]
+_LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
 RawValue = context._default_context.RawValue
 RawArray = context._default_context.RawArray
 Value = context._default_context.Value

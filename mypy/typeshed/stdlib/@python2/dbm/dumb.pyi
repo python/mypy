@@ -1,8 +1,9 @@
+from _typeshed import Self
 from types import TracebackType
-from typing import Iterator, MutableMapping, Type, Union
+from typing import Iterator, MutableMapping
 
-_KeyType = Union[str, bytes]
-_ValueType = Union[str, bytes]
+_KeyType = str | bytes
+_ValueType = str | bytes
 
 error = OSError
 
@@ -17,9 +18,9 @@ class _Database(MutableMapping[_KeyType, bytes]):
     def __iter__(self) -> Iterator[bytes]: ...
     def __len__(self) -> int: ...
     def __del__(self) -> None: ...
-    def __enter__(self) -> _Database: ...
+    def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
 
 def open(file: str, flag: str = ..., mode: int = ...) -> _Database: ...

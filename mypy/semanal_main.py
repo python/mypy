@@ -32,7 +32,7 @@ from mypy.nodes import (
     MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
 )
 from mypy.semanal_typeargs import TypeArgumentAnalyzer
-from mypy.state import strict_optional_set
+import mypy.state
 from mypy.semanal import (
     SemanticAnalyzer, apply_semantic_analyzer_patches, remove_imported_names_from_symtable
 )
@@ -356,7 +356,7 @@ def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None
                                         state.options,
                                         is_typeshed_file(state.path or ''))
         with state.wrap_context():
-            with strict_optional_set(state.options.strict_optional):
+            with mypy.state.state.strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
 
 
@@ -371,7 +371,7 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                                     state.options,
                                     is_typeshed_file(state.path or ''))
     with state.wrap_context():
-        with strict_optional_set(state.options.strict_optional):
+        with mypy.state.state.strict_optional_set(state.options.strict_optional):
             for target in targets:
                 func: Optional[Union[FuncDef, OverloadedFuncDef]] = None
                 if isinstance(target.node, (FuncDef, OverloadedFuncDef)):

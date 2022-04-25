@@ -1,8 +1,11 @@
 import sys
-from typing import IO, Union
+from typing import IO
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
-    _FD = Union[int, IO[str]]
+    __all__ = ["setraw", "setcbreak"]
+
+    _FD: TypeAlias = int | IO[str]
 
     # XXX: Undocumented integer constants
     IFLAG: int

@@ -135,10 +135,11 @@ def process_start_options(flags: List[str], allow_sources: bool) -> Options:
         ['-i'] + flags, require_targets=False, server_options=True
     )
     if options.report_dirs:
-        sys.exit("dmypy: start/restart cannot generate reports")
+        print("dmypy: Ignoring report generation settings. Start/restart cannot generate reports.")
     if options.junit_xml:
-        sys.exit("dmypy: start/restart does not support --junit-xml; "
-                 "pass it to check/recheck instead")
+        print("dmypy: Ignoring report generation settings. "
+              "Start/restart does not support --junit-xml. Pass it to check/recheck instead")
+        options.junit_xml = None
     if not options.incremental:
         sys.exit("dmypy: start/restart should not disable incremental mode")
     if options.follow_imports not in ('skip', 'error', 'normal'):
@@ -772,12 +773,11 @@ class Server:
                                                       fixed_terminal_width=terminal_width)
         if self.options.error_summary:
             summary: Optional[str] = None
-            if messages:
-                n_errors, n_files = count_stats(messages)
-                if n_errors:
-                    summary = self.formatter.format_error(n_errors, n_files, n_sources,
-                                                          use_color=use_color)
-            else:
+            n_errors, n_notes, n_files = count_stats(messages)
+            if n_errors:
+                summary = self.formatter.format_error(n_errors, n_files, n_sources,
+                                                      use_color=use_color)
+            elif not messages or n_notes == len(messages):
                 summary = self.formatter.format_success(n_sources, use_color)
             if summary:
                 # Create new list to avoid appending multiple summaries on successive runs.

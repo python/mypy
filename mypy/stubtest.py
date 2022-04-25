@@ -21,6 +21,7 @@ from typing_extensions import Type
 
 import mypy.build
 import mypy.modulefinder
+import mypy.state
 import mypy.types
 from mypy import nodes
 from mypy.config_parser import parse_config_file
@@ -560,7 +561,7 @@ class Signature(Generic[T]):
             return max(index for _, index in all_args[arg_name])
 
         def get_type(arg_name: str) -> mypy.types.ProperType:
-            with mypy.state.strict_optional_set(True):
+            with mypy.state.state.strict_optional_set(True):
                 all_types = [
                     arg.variable.type or arg.type_annotation for arg, _ in all_args[arg_name]
                 ]
@@ -795,6 +796,18 @@ def verify_var(
             yield Error(object_path, "is not present at runtime", stub, runtime)
         return
 
+    if (
+        stub.is_initialized_in_class
+        and is_read_only_property(runtime)
+        and (stub.is_settable_property or not stub.is_property)
+    ):
+        yield Error(
+            object_path,
+            "is read-only at runtime but not in the stub",
+            stub,
+            runtime
+        )
+
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     if (
         runtime_type is not None
@@ -827,7 +840,14 @@ def verify_overloadedfuncdef(
         return
 
     if stub.is_property:
-        # We get here in cases of overloads from property.setter
+        # Any property with a setter is represented as an OverloadedFuncDef
+        if is_read_only_property(runtime):
+            yield Error(
+                object_path,
+                "is read-only at runtime but not in the stub",
+                stub,
+                runtime
+            )
         return
 
     if not is_probably_a_function(runtime):
@@ -870,7 +890,7 @@ def verify_typevarexpr(
         yield None
 
 
-def _verify_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
+def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
     assert stub.func.is_property
     if isinstance(runtime, property):
         return
@@ -914,9 +934,8 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return None
         if decorator.fullname in (
             "builtins.staticmethod",
-            "typing.overload",
             "abc.abstractmethod",
-        ):
+        ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
             return func
         if decorator.fullname == "builtins.classmethod":
             assert func.arguments[0].variable.name in ("cls", "metacls")
@@ -945,7 +964,7 @@ def verify_decorator(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     if stub.func.is_property:
-        for message in _verify_property(stub, runtime):
+        for message in _verify_readonly_property(stub, runtime):
             yield Error(object_path, message, stub, runtime)
         return
 
@@ -958,10 +977,13 @@ def verify_decorator(
 def verify_typealias(
     stub: nodes.TypeAlias, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if isinstance(runtime, Missing):
-        # ignore type aliases that don't have a runtime counterpart
-        return
     stub_target = mypy.types.get_proper_type(stub.target)
+    if isinstance(runtime, Missing):
+        yield Error(
+            object_path, "is not present at runtime", stub, runtime,
+            stub_desc=f"Type alias for: {stub_target}"
+        )
+        return
     if isinstance(stub_target, mypy.types.Instance):
         yield from verify(stub_target.type, runtime, object_path)
         return
@@ -1000,6 +1022,7 @@ IGNORED_MODULE_DUNDERS = frozenset(
         "__cached__",
         "__loader__",
         "__spec__",
+        "__annotations__",
         "__path__",  # mypy adds __path__ to packages, but C packages don't have it
         "__getattr__",  # resulting behaviour might be typed explicitly
         # TODO: remove the following from this list
@@ -1046,8 +1069,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__args__",
         "__orig_bases__",
         "__final__",
-        # Consider removing these:
-        "__match_args__",
+        # Consider removing __slots__?
         "__slots__",
     }
 )
@@ -1063,6 +1085,10 @@ def is_probably_a_function(runtime: Any) -> bool:
         or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
     )
+
+
+def is_read_only_property(runtime: object) -> bool:
+    return isinstance(runtime, property) and runtime.fset is None
 
 
 def safe_inspect_signature(runtime: Any) -> Optional[inspect.Signature]:
@@ -1098,7 +1124,7 @@ def is_subtype_helper(left: mypy.types.Type, right: mypy.types.Type) -> bool:
         # Special case checks against TypedDicts
         return True
 
-    with mypy.state.strict_optional_set(True):
+    with mypy.state.state.strict_optional_set(True):
         return mypy.subtypes.is_subtype(left, right)
 
 

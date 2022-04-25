@@ -37,7 +37,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
+    OVERLOAD_NAMES,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -83,7 +84,8 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-from mypy import state, errorcodes as codes
+from mypy import errorcodes as codes
+from mypy.state import state
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
 from mypy.util import is_typeshed_file, is_dunder, is_sunder
@@ -600,7 +602,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if not is_subtype_no_promote(sig1.ret_type, impl.ret_type):
+                if not (is_subtype_no_promote(sig1.ret_type, impl.ret_type) or
+                        is_subtype_no_promote(impl.ret_type, sig1.ret_type)):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
@@ -1438,13 +1441,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
+    def check_slots_definition(self, typ: Type, context: Context) -> None:
+        """Check the type of __slots__."""
+        str_type = self.named_type("builtins.str")
+        expected_type = UnionType([str_type,
+                                   self.named_generic_type("typing.Iterable", [str_type])])
+        self.check_subtype(typ, expected_type, context,
+                           message_registry.INVALID_TYPE_FOR_SLOTS,
+                           'actual type',
+                           'expected type',
+                           code=codes.ASSIGNMENT)
+
     def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
-        """Check that __match_args__ is final and contains literal strings"""
-
-        if not var.is_final:
-            self.note("__match_args__ must be final for checking of match statements to work",
-                      context, code=codes.LITERAL_REQ)
-
+        """Check that __match_args__ contains literal strings"""
         typ = get_proper_type(typ)
         if not isinstance(typ, TupleType) or \
                 not all([is_string_literal(item) for item in typ.items]):
@@ -1834,11 +1843,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
-            for base in defn.info.mro[1:-1]:  # we don't need self and `object`
-                if base.is_enum and base.fullname not in ENUM_BASES:
-                    self.check_final_enum(defn, base)
-            self.check_enum_bases(defn)
-            self.check_enum_new(defn)
+            self.check_enum(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1895,6 +1900,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # We are only interested in the first Base having __init_subclass__,
             # all other bases have already been checked.
             break
+
+    def check_enum(self, defn: ClassDef) -> None:
+        assert defn.info.is_enum
+        if defn.info.fullname not in ENUM_BASES:
+            for sym in defn.info.names.values():
+                if (isinstance(sym.node, Var) and sym.node.has_explicit_value and
+                        sym.node.name == '__members__'):
+                    # `__members__` will always be overwritten by `Enum` and is considered
+                    # read-only so we disallow assigning a value to it
+                    self.fail(
+                        message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node
+                    )
+        for base in defn.info.mro[1:-1]:  # we don't need self and `object`
+            if base.is_enum and base.fullname not in ENUM_BASES:
+                self.check_final_enum(defn, base)
+
+        self.check_enum_bases(defn)
+        self.check_enum_new(defn)
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
@@ -2103,8 +2126,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
-        if name in ('__slots__', '__deletable__'):
+        # Some attributes like __slots__ and __deletable__ are special, and the type can
+        # vary across class hierarchy.
+        if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -2270,16 +2294,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
+                if name == '__slots__':
+                    typ = lvalue_type or self.expr_checker.accept(rvalue)
+                    self.check_slots_definition(typ, lvalue)
                 if name == '__match_args__' and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
 
             # Defer PartialType's super type checking.
             if (isinstance(lvalue, RefExpr) and
-                    not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)):
+                    not (isinstance(lvalue_type, PartialType) and
+                         lvalue_type.type is None) and
+                    not (isinstance(lvalue, NameExpr) and lvalue.name == '__match_args__')):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
+
+            if isinstance(lvalue, MemberExpr) and lvalue.name == '__match_args__':
+                self.fail(message_registry.CANNOT_MODIFY_MATCH_ARGS, lvalue)
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -2377,7 +2409,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if inferred:
                 rvalue_type = self.expr_checker.accept(rvalue)
-                if not inferred.is_final:
+                if not (inferred.is_final or (isinstance(lvalue, NameExpr) and
+                                              lvalue.name == '__match_args__')):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
@@ -2460,16 +2493,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_immediate_base = direct_bases[-1] if direct_bases else None
 
             for base in lvalue_node.info.mro[1:]:
-                # Only check __slots__ against the 'object'
-                # If a base class defines a Tuple of 3 elements, a child of
-                # this class should not be allowed to define it as a Tuple of
-                # anything other than 3 elements. The exception to this rule
-                # is __slots__, where it is allowed for any child class to
-                # redefine it.
-                if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
-                    continue
-                # We don't care about the type of "__deletable__".
-                if lvalue_node.name == "__deletable__":
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
+                        not (lvalue_node.name == "__slots__" and
+                             base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):
@@ -3953,7 +3982,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
         for d in reversed(e.decorators):
-            if refers_to_fullname(d, 'typing.overload'):
+            if refers_to_fullname(d, OVERLOAD_NAMES):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
@@ -5211,7 +5240,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       code: Optional[ErrorCode] = None,
                       outer_context: Optional[Context] = None) -> bool:
         """Generate an error if the subtype is not compatible with supertype."""
-        if is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype, options=self.options):
             return True
 
         if isinstance(msg, ErrorMessage):
@@ -5247,6 +5276,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.note(note, context, code=code)
         if note_msg:
             self.note(note_msg, context, code=code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
         if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)

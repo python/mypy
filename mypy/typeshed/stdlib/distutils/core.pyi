@@ -1,7 +1,8 @@
+from collections.abc import Mapping
 from distutils.cmd import Command as Command
 from distutils.dist import Distribution as Distribution
 from distutils.extension import Extension as Extension
-from typing import Any, Mapping, Type
+from typing import Any
 
 def setup(
     *,
@@ -20,14 +21,14 @@ def setup(
     scripts: list[str] = ...,
     ext_modules: list[Extension] = ...,
     classifiers: list[str] = ...,
-    distclass: Type[Distribution] = ...,
+    distclass: type[Distribution] = ...,
     script_name: str = ...,
     script_args: list[str] = ...,
     options: Mapping[str, Any] = ...,
     license: str = ...,
     keywords: list[str] | str = ...,
     platforms: list[str] | str = ...,
-    cmdclass: Mapping[str, Type[Command]] = ...,
+    cmdclass: Mapping[str, type[Command]] = ...,
     data_files: list[tuple[str, list[str]]] = ...,
     package_dir: Mapping[str, str] = ...,
     obsoletes: list[str] = ...,

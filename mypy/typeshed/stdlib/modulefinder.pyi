@@ -1,6 +1,7 @@
 import sys
+from collections.abc import Container, Iterable, Iterator, Sequence
 from types import CodeType
-from typing import IO, Any, Container, Iterable, Iterator, Sequence
+from typing import IO, Any
 
 LOAD_CONST: int  # undocumented
 IMPORT_NAME: int  # undocumented
@@ -19,7 +20,6 @@ def ReplacePackage(oldname: str, newname: str) -> None: ...
 
 class Module:  # undocumented
     def __init__(self, name: str, file: str | None = ..., path: str | None = ...) -> None: ...
-    def __repr__(self) -> str: ...
 
 class ModuleFinder:
 
@@ -47,6 +47,7 @@ class ModuleFinder:
             excludes: Container[str] = ...,
             replace_paths: Sequence[tuple[str, str]] = ...,
         ) -> None: ...
+
     def msg(self, level: int, str: str, *args: Any) -> None: ...  # undocumented
     def msgin(self, *args: Any) -> None: ...  # undocumented
     def msgout(self, *args: Any) -> None: ...  # undocumented

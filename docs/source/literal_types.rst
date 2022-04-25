@@ -431,7 +431,7 @@ You can use enums to annotate types as you would expect:
           self.speed = speed
 
   Movement(Direction.up, 5.0)  # ok
-  Movement('up', 5.0)  # E: Argument 1 to "Movemement" has incompatible type "str"; expected "Direction"
+  Movement('up', 5.0)  # E: Argument 1 to "Movement" has incompatible type "str"; expected "Direction"
 
 Exhaustiveness checking
 ***********************
@@ -505,7 +505,7 @@ the same way Python's runtime does:
         left = 'left'
         right = 'right'
 
-- All ``Enum`` fields are implictly ``final`` as well.
+- All ``Enum`` fields are implicitly ``final`` as well.
 
   .. code-block:: python
 

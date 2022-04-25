@@ -25,7 +25,7 @@ from typing import List, Dict, Callable, Any, TypeVar, cast
 
 from mypy.nodes import MypyFile, Expression, ClassDef
 from mypy.types import Type
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.build import Graph
 
 from mypyc.common import TOP_LEVEL_NAME
@@ -45,7 +45,7 @@ from mypyc.irbuild.mapper import Mapper
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...
 F = TypeVar('F', bound=Callable[..., Any])
-strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
+strict_optional_dec = cast(Callable[[F], F], state.strict_optional_set(True))
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do

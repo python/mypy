@@ -5,7 +5,7 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarLikeType, ProperType, ParamSpecType, get_proper_type
+    TypeVarLikeType, ProperType, ParamSpecType, Parameters, get_proper_type
 )
 from mypy.nodes import Context
 
@@ -94,7 +94,7 @@ def apply_generic_arguments(
         nt = id_to_type.get(param_spec.id)
         if nt is not None:
             nt = get_proper_type(nt)
-            if isinstance(nt, CallableType):
+            if isinstance(nt, CallableType) or isinstance(nt, Parameters):
                 callable = callable.expand_param_spec(nt)
 
     # Apply arguments to argument types.

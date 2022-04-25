@@ -113,6 +113,9 @@ NO_UNTYPED_CALL: Final = ErrorCode(
 REDUNDANT_CAST: Final = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
 )
+ASSERT_TYPE: Final = ErrorCode(
+    "assert-type", "Check that assert_type() call succeeds", "General"
+)
 COMPARISON_OVERLAP: Final = ErrorCode(
     "comparison-overlap", "Check that types in comparisons and 'in' expressions overlap", "General"
 )

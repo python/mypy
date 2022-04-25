@@ -1,5 +1,3 @@
-from typing import Dict
-
-name2codepoint: Dict[str, int]
-codepoint2name: Dict[int, str]
-entitydefs: Dict[str, str]
+name2codepoint: dict[str, int]
+codepoint2name: dict[int, str]
+entitydefs: dict[str, str]

@@ -20,7 +20,8 @@ from mypy.stubgen import (
 )
 from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
 from mypy.stubgenc import (
-    generate_c_type_stub, infer_method_sig, generate_c_function_stub, generate_c_property_stub
+    generate_c_type_stub, infer_method_sig, generate_c_function_stub, generate_c_property_stub,
+    is_c_property_readonly
 )
 from mypy.stubdoc import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
@@ -868,9 +869,34 @@ class StubgencSuite(unittest.TestCase):
                 pass
             attribute = property(get_attribute, doc="")
 
-        output: List[str] = []
-        generate_c_property_stub('attribute', TestClass.attribute, [], [], output, readonly=True)
-        assert_equal(output, ['@property', 'def attribute(self) -> str: ...'])
+        readwrite_properties: List[str] = []
+        readonly_properties: List[str] = []
+        generate_c_property_stub('attribute', TestClass.attribute, [],
+                                 readwrite_properties, readonly_properties,
+                                 is_c_property_readonly(TestClass.attribute))
+        assert_equal(readwrite_properties, [])
+        assert_equal(readonly_properties, ['@property', 'def attribute(self) -> str: ...'])
+
+    def test_generate_c_property_with_rw_property(self) -> None:
+        class TestClass:
+            def __init__(self) -> None:
+                self._attribute = 0
+
+            @property
+            def attribute(self) -> int:
+                return self._attribute
+
+            @attribute.setter
+            def attribute(self, value: int) -> None:
+                self._attribute = value
+
+        readwrite_properties: List[str] = []
+        readonly_properties: List[str] = []
+        generate_c_property_stub("attribute", type(TestClass.attribute), [],
+                                 readwrite_properties, readonly_properties,
+                                 is_c_property_readonly(TestClass.attribute))
+        assert_equal(readwrite_properties, ['attribute: Any'])
+        assert_equal(readonly_properties, [])
 
     def test_generate_c_type_with_single_arg_generic(self) -> None:
         class TestClass:

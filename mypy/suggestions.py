@@ -27,7 +27,7 @@ from typing import (
 )
 from typing_extensions import TypedDict
 
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike, UninhabitedType,
@@ -439,7 +439,7 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
                 self.get_starting_type(node),
@@ -454,7 +454,7 @@ class SuggestionEngine:
         # Now try to find the return type!
         self.try_type(node, best)
         returns = get_return_types(self.manager.all_types, node)
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             if returns:
                 ret_types = generate_type_combinations(returns)
             else:
@@ -988,7 +988,7 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
 
     # Turn strict optional on when simplifying the union since we
     # don't want to drop Nones.
-    with strict_optional_set(True):
+    with state.strict_optional_set(True):
         return make_simplified_union(new_items)
 
 
