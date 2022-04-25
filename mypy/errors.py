@@ -4,7 +4,7 @@ import traceback
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
-from typing import Any, Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable
+from typing import Any, Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
 from typing_extensions import Final, Literal
 
 from mypy.scope import Scope
@@ -125,27 +125,53 @@ ErrorTuple = Tuple[Optional[str],
 class ErrorWatcher:
     """Context manager that can be used to keep track of new errors recorded
     around a given operation.
+
+    Errors maintain a stack of such watchers. The handler is called starting
+    at the top of the stack, and is propagated down the stack unless filtered
+    out by one of the ErrorWatcher instances.
     """
-    def __init__(self, errors: 'Errors'):
+    def __init__(self, errors: 'Errors', *,
+                 filter_errors: Union[bool, Callable[[str, ErrorInfo], bool]] = False,
+                 save_filtered_errors: bool = False):
         self.errors = errors
         self._has_new_errors = False
+        self._filter = filter_errors
+        self._filtered: Optional[List[ErrorInfo]] = [] if save_filtered_errors else None
 
     def __enter__(self) -> 'ErrorWatcher':
-        self.errors._watchers.add(self)
+        self.errors._watchers.append(self)
         return self
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
-        self.errors._watchers.remove(self)
+        assert self == self.errors._watchers.pop()
         return False
 
-    def on_error(self, file: str, info: ErrorInfo) -> None:
+    def on_error(self, file: str, info: ErrorInfo) -> bool:
         """Handler called when a new error is recorded.
 
-        The default implementation just sets the has_new_errors flag"""
+        The default implementation just sets the has_new_errors flag
+
+        Return True to filter out the error, preventing it from being seen by other
+        ErrorWatcher further down the stack and from being recorded by Errors
+        """
         self._has_new_errors = True
+        if isinstance(self._filter, bool):
+            should_filter = self._filter
+        elif callable(self._filter):
+            should_filter = self._filter(file, info)
+        else:
+            raise AssertionError("invalid error filter: {}".format(type(self._filter)))
+        if should_filter and self._filtered is not None:
+            self._filtered.append(info)
+
+        return should_filter
 
     def has_new_errors(self) -> bool:
         return self._has_new_errors
+
+    def filtered_errors(self) -> List[ErrorInfo]:
+        assert self._filtered is not None
+        return self._filtered
 
 
 class Errors:
@@ -207,7 +233,7 @@ class Errors:
     # in some cases to avoid reporting huge numbers of errors.
     seen_import_error = False
 
-    _watchers: Set[ErrorWatcher] = set()
+    _watchers: List[ErrorWatcher] = []
 
     def __init__(self,
                  show_error_context: bool = False,
@@ -383,18 +409,39 @@ class Errors:
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files
+        # process the stack of ErrorWatchers before modifying any internal state
+        # in case we need to filter out the error entirely
+        if self._filter_error(file, info):
+            return
         if file not in self.error_info_map:
             self.error_info_map[file] = []
         self.error_info_map[file].append(info)
-        for w in self._watchers:
-            w.on_error(file, info)
         if info.blocker:
             self.has_blockers.add(file)
         if info.code is IMPORT:
             self.seen_import_error = True
 
+    def _filter_error(self, file: str, info: ErrorInfo) -> bool:
+        """
+        process ErrorWatcher stack from top to bottom,
+        stopping early if error needs to be filtered out
+        """
+        i = len(self._watchers)
+        while i > 0:
+            i -= 1
+            w = self._watchers[i]
+            if w.on_error(file, info):
+                return True
+        return False
+
     def add_error_info(self, info: ErrorInfo) -> None:
         file, line, end_line = info.origin
+        # process the stack of ErrorWatchers before modifying any internal state
+        # in case we need to filter out the error entirely
+        # NB: we need to do this both here and in _add_error_info, otherwise we
+        # might incorrectly update the sets of ignored or only_once messages
+        if self._filter_error(file, info):
+            return
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines:
                 # It's okay if end_line is *before* line.

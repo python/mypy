@@ -416,29 +416,29 @@ class PatternChecker(PatternVisitor[PatternType]):
                               mapping_type: Type,
                               key: Expression
                               ) -> Optional[Type]:
-        local_errors = self.msg.clean_copy()
-        local_errors.disable_count = 0
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
-            result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
-                mapping_type, key, local_errors=local_errors)
+            with self.msg.filter_errors() as local_errors:
+                result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
+                    mapping_type, key)
+                has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
-            if local_errors.is_errors():
-                local_errors = self.msg.clean_copy()
-                local_errors.disable_count = 0
+            if has_local_errors:
+                with self.msg.filter_errors() as local_errors:
+                    result = self.get_simple_mapping_item_type(pattern,
+                                                               mapping_type,
+                                                               key,
+                                                               self.msg)
+
+                    if local_errors.has_new_errors():
+                        result = None
+        else:
+            with self.msg.filter_errors():
                 result = self.get_simple_mapping_item_type(pattern,
                                                            mapping_type,
                                                            key,
-                                                           local_errors)
-
-                if local_errors.is_errors():
-                    result = None
-        else:
-            result = self.get_simple_mapping_item_type(pattern,
-                                                       mapping_type,
-                                                       key,
-                                                       local_errors)
+                                                           self.msg)
         return result
 
     def get_simple_mapping_item_type(self,
@@ -507,14 +507,14 @@ class PatternChecker(PatternVisitor[PatternType]):
                                        pattern_type.captures)
                 captures = pattern_type.captures
             else:
-                local_errors = self.msg.clean_copy()
-                match_args_type = analyze_member_access("__match_args__", typ, o,
-                                                        False, False, False,
-                                                        local_errors,
-                                                        original_type=typ,
-                                                        chk=self.chk)
-
-                if local_errors.is_errors():
+                with self.msg.filter_errors() as local_errors:
+                    match_args_type = analyze_member_access("__match_args__", typ, o,
+                                                            False, False, False,
+                                                            self.msg,
+                                                            original_type=typ,
+                                                            chk=self.chk)
+                    has_local_errors = local_errors.has_new_errors()
+                if has_local_errors:
                     self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
                     return self.early_non_match()
 
@@ -561,20 +561,21 @@ class PatternChecker(PatternVisitor[PatternType]):
         can_match = True
         for keyword, pattern in keyword_pairs:
             key_type: Optional[Type] = None
-            local_errors = self.msg.clean_copy()
-            if keyword is not None:
-                key_type = analyze_member_access(keyword,
-                                                 narrowed_type,
-                                                 pattern,
-                                                 False,
-                                                 False,
-                                                 False,
-                                                 local_errors,
-                                                 original_type=new_type,
-                                                 chk=self.chk)
-            else:
-                key_type = AnyType(TypeOfAny.from_error)
-            if local_errors.is_errors() or key_type is None:
+            with self.msg.filter_errors() as local_errors:
+                if keyword is not None:
+                    key_type = analyze_member_access(keyword,
+                                                     narrowed_type,
+                                                     pattern,
+                                                     False,
+                                                     False,
+                                                     False,
+                                                     self.msg,
+                                                     original_type=new_type,
+                                                     chk=self.chk)
+                else:
+                    key_type = AnyType(TypeOfAny.from_error)
+                has_local_errors = local_errors.has_new_errors()
+            if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
                 self.msg.fail(message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword),
                               pattern)

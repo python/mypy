@@ -21,7 +21,7 @@ from typing import (
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
-from mypy.errors import Errors
+from mypy.errors import Errors, ErrorWatcher, ErrorInfo
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
@@ -33,7 +33,7 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
+    CallExpr, IndexExpr, StrExpr, SymbolTable, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
@@ -106,66 +106,38 @@ class MessageBuilder:
 
     modules: Dict[str, MypyFile]
 
-    # Number of times errors have been disabled.
-    disable_count = 0
-
     # Hack to deduplicate error messages from union types
-    disable_type_names_count = 0
+    _disable_type_names: List[bool]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
-        self.disable_count = 0
-        self.disable_type_names_count = 0
+        self._disable_type_names = []
 
     #
     # Helpers
     #
 
-    def copy(self) -> 'MessageBuilder':
-        new = MessageBuilder(self.errors.copy(), self.modules)
-        new.disable_count = self.disable_count
-        new.disable_type_names_count = self.disable_type_names_count
-        return new
+    def filter_errors(self, *, filter_errors: bool = True,
+                      save_filtered_errors: bool = False) -> ErrorWatcher:
+        return ErrorWatcher(self.errors, filter_errors=filter_errors,
+                            save_filtered_errors=save_filtered_errors)
 
-    def clean_copy(self) -> 'MessageBuilder':
-        errors = self.errors.copy()
-        errors.error_info_map = OrderedDict()
-        return MessageBuilder(errors, self.modules)
-
-    def add_errors(self, messages: 'MessageBuilder') -> None:
+    def add_errors(self, errors: List[ErrorInfo]) -> None:
         """Add errors in messages to this builder."""
-        if self.disable_count <= 0:
-            for errs in messages.errors.error_info_map.values():
-                for info in errs:
-                    self.errors.add_error_info(info)
-
-    @contextmanager
-    def disable_errors(self) -> Iterator[None]:
-        self.disable_count += 1
-        try:
-            yield
-        finally:
-            self.disable_count -= 1
+        for info in errors:
+            self.errors.add_error_info(info)
 
     @contextmanager
     def disable_type_names(self) -> Iterator[None]:
-        self.disable_type_names_count += 1
+        self._disable_type_names.append(True)
         try:
             yield
         finally:
-            self.disable_type_names_count -= 1
+            self._disable_type_names.pop()
 
-    def is_errors(self) -> bool:
-        return self.errors.is_errors()
-
-    def most_recent_context(self) -> Context:
-        """Return a dummy context matching the most recent generated error in current file."""
-        line, column = self.errors.most_recent_error_location()
-        node = TempNode(NoneType())
-        node.line = line
-        node.column = column
-        return node
+    def are_type_names_disabled(self) -> bool:
+        return len(self._disable_type_names) > 0 and self._disable_type_names[-1]
 
     def report(self,
                msg: str,
@@ -184,12 +156,11 @@ class MessageBuilder:
             end_line = context.end_line
         else:
             end_line = None
-        if self.disable_count <= 0:
-            self.errors.report(context.get_line() if context else -1,
-                               context.get_column() if context else -1,
-                               msg, severity=severity, file=file, offset=offset,
-                               origin_line=origin.get_line() if origin else None,
-                               end_line=end_line, code=code, allow_dups=allow_dups)
+        self.errors.report(context.get_line() if context else -1,
+                           context.get_column() if context else -1,
+                           msg, severity=severity, file=file, offset=offset,
+                           origin_line=origin.get_line() if origin else None,
+                           end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
@@ -309,7 +280,7 @@ class MessageBuilder:
                 extra = ' (not iterable)'
             elif member == '__aiter__':
                 extra = ' (not async iterable)'
-            if not self.disable_type_names_count:
+            if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
@@ -391,7 +362,7 @@ class MessageBuilder:
         else:
             right_str = format_type(right_type)
 
-        if self.disable_type_names_count:
+        if self.are_type_names_disabled():
             msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
@@ -400,7 +371,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if self.disable_type_names_count:
+        if self.are_type_names_disabled():
             msg = 'Unsupported left operand type for {} (some union)'.format(op)
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(

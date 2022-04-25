@@ -2196,7 +2196,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.disable_errors():
+                with self.expr_checker.msg.filter_errors():
                     typ = get_proper_type(self.expr_checker.accept(
                         s.expr, allow_none_return=True, always_allow_any=True))
 
@@ -3377,7 +3377,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For non-overloaded setters, the result should be type-checked like a regular assignment.
         # Hence, we first only try to infer the type by using the rvalue as type context.
         type_context = rvalue
-        with self.msg.disable_errors():
+        with self.msg.filter_errors():
             _, inferred_dunder_set_type = self.expr_checker.check_call(
                 dunder_set_type,
                 [TempNode(instance_type, context=context), type_context],
@@ -4312,9 +4312,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             return info_, full_name_
 
-        old_msg = self.msg
-        new_msg = old_msg.clean_copy()
-        self.msg = new_msg
         base_classes = _get_base_classes(instances)
         # We use the pretty_names_list for error messages but can't
         # use it for the real name that goes into the symbol table
@@ -4322,24 +4319,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
         try:
             info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
-            self.check_multiple_inheritance(info)
-            if new_msg.is_errors():
+            with self.msg.filter_errors() as local_errors:
+                self.check_multiple_inheritance(info)
+            if local_errors.has_new_errors():
                 # "class A(B, C)" unsafe, now check "class A(C, B)":
-                new_msg = new_msg.clean_copy()
-                self.msg = new_msg
                 base_classes = _get_base_classes(instances[::-1])
                 info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
-                self.check_multiple_inheritance(info)
+                with self.msg.filter_errors() as local_errors:
+                    self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
             if self.should_report_unreachable_issues():
-                old_msg.impossible_intersection(
+                self.msg.impossible_intersection(
                     pretty_names_list, "inconsistent method resolution order", ctx)
             return None
-        finally:
-            self.msg = old_msg
 
-        if new_msg.is_errors():
+        if local_errors.has_new_errors():
             if self.should_report_unreachable_issues():
                 self.msg.impossible_intersection(
                     pretty_names_list, "incompatible method signatures", ctx)
@@ -4974,20 +4969,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 member_name = expr.name
 
                 def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                    msg_copy = self.msg.clean_copy()
-                    member_type = analyze_member_access(
-                        name=member_name,
-                        typ=new_parent_type,
-                        context=parent_expr,
-                        is_lvalue=False,
-                        is_super=False,
-                        is_operator=False,
-                        msg=msg_copy,
-                        original_type=new_parent_type,
-                        chk=self,
-                        in_literal_context=False,
-                    )
-                    if msg_copy.is_errors():
+                    with self.msg.filter_errors() as w:
+                        member_type = analyze_member_access(
+                            name=member_name,
+                            typ=new_parent_type,
+                            context=parent_expr,
+                            is_lvalue=False,
+                            is_super=False,
+                            is_operator=False,
+                            msg=self.msg,
+                            original_type=new_parent_type,
+                            chk=self,
+                            in_literal_context=False,
+                        )
+                    if w.has_new_errors():
                         return None
                     else:
                         return member_type
