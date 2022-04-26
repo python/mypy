@@ -599,14 +599,15 @@ class ParamSpecType(TypeVarLikeType):
 
     @staticmethod
     def get_fallback(flavor: int, named_type_func: Callable[..., 'Instance']) -> 'Instance':
+        builtins_object = named_type_func('builtins.object')
         if flavor == ParamSpecFlavor.BARE:
-            return named_type_func('builtins.object')
+            return builtins_object
         elif flavor == ParamSpecFlavor.ARGS:
-            return named_type_func('builtins.tuple')
+            return named_type_func('builtins.tuple', [builtins_object, EllipsisType()])
         else:
             return named_type_func(
                 'builtins.dict',
-                [named_type_func('builtins.str'), AnyType(TypeOfAny.special_form)]
+                [named_type_func('builtins.str'), builtins_object]
             )
 
     @staticmethod
