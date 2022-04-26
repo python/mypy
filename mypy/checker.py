@@ -23,13 +23,14 @@ from mypy.nodes import (
     UnicodeExpr, OpExpr, UnaryExpr, LambdaExpr, TempNode, SymbolTableNode,
     Context, Decorator, PrintStmt, BreakStmt, PassStmt, ContinueStmt,
     ComparisonExpr, StarExpr, EllipsisExpr, RefExpr, PromoteExpr,
-    Import, ImportFrom, ImportAll, ImportBase, TypeAlias,
+    Import, ImportFrom, ImportAll, ImportBase, TypeAlias, SymbolNode,
     ARG_POS, ARG_STAR, ARG_NAMED, LITERAL_TYPE, LDEF, MDEF, GDEF,
     CONTRAVARIANT, COVARIANT, INVARIANT, TypeVarExpr, AssignmentExpr,
     is_final_node, MatchStmt)
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
+from mypy.plugins.enums import is_definitely_not_enum_member
 from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
@@ -88,7 +89,7 @@ from mypy import errorcodes as codes
 from mypy.state import state
 from mypy.traverser import has_return_statement, all_return_statements
 from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
-from mypy.util import is_typeshed_file, is_dunder, is_sunder
+from mypy.util import is_typeshed_file, is_private
 
 T = TypeVar('T')
 
@@ -1921,7 +1922,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
-            if self.is_final_enum_value(sym):
+            if self.is_final_enum_value(sym.node):
                 self.fail(
                     'Cannot extend enum with existing members: "{}"'.format(
                         base.name,
@@ -1930,35 +1931,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
                 break
 
-    def is_final_enum_value(self, sym: SymbolTableNode) -> bool:
-        if isinstance(sym.node, (FuncBase, Decorator)):
+    def is_final_enum_value(self, node: Optional[SymbolNode]) -> bool:
+        if isinstance(node, (FuncBase, Decorator)):
             return False  # A method is fine
-        if not isinstance(sym.node, Var):
+        if not isinstance(node, Var):
             return True  # Can be a class or anything else
-
-        # Now, only `Var` is left, we need to check:
-        # 1. Private name like in `__prop = 1`
-        # 2. Dunder name like `__hash__ = some_hasher`
-        # 3. Sunder name like `_order_ = 'a, b, c'`...
-        if (
-            is_private(sym.node.name)
-            or is_dunder(sym.node.name)
-            or is_sunder(sym.node.name)
-            or isinstance(get_proper_type(sym.node.type), FunctionLike)
-        ):
+        if is_definitely_not_enum_member(node.name, node.type):
             return False
-
-        # ...4. If it is a method / descriptor like in `method = classmethod(func)`
-        proper_type = get_proper_type(sym.node.type)
-        if (
-            isinstance(proper_type, Instance)
-            and proper_type.type.is_descriptor
-        ):
-            return False
-
-        if self.is_stub or sym.node.has_explicit_value:
-            return True
-        return False
+        return (self.is_stub or node.has_explicit_value)
 
     def check_enum_bases(self, defn: ClassDef) -> None:
         enum_base: Optional[Instance] = None
@@ -6579,11 +6559,6 @@ def is_subtype_no_promote(left: Type, right: Type) -> bool:
 
 def is_overlapping_types_no_promote(left: Type, right: Type) -> bool:
     return is_overlapping_types(left, right, ignore_promotions=True)
-
-
-def is_private(node_name: str) -> bool:
-    """Check if node is private to class definition."""
-    return node_name.startswith('__') and not node_name.endswith('__')
 
 
 def is_string_literal(typ: Type) -> bool:

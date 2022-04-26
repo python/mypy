@@ -20,6 +20,7 @@ from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.erasetype import erase_typevars
 from mypy.plugin import AttributeContext
+from mypy.plugins.enums import is_definitely_not_enum_member
 from mypy.typeanal import set_any_tvars
 from mypy import message_registry
 from mypy import subtypes
@@ -837,10 +838,8 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
-    # For other names surrendered by underscores, we don't make them Enum members
-    if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
+    if is_definitely_not_enum_member(name, itype.type[name].type):
         return None
-
     enum_literal = LiteralType(name, fallback=itype)
     return itype.copy_modified(last_known_value=enum_literal)
 

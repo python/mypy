@@ -14,11 +14,14 @@ from typing import Iterable, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
+from mypy.types import (
+    Type, Instance, LiteralType, CallableType, ProperType, FunctionLike, get_proper_type
+)
 from mypy.typeops import make_simplified_union
 from mypy.nodes import TypeInfo
 from mypy.subtypes import is_equivalent
 from mypy.semanal_enum import ENUM_BASES
+from mypy.util import is_sunder, is_dunder, is_private
 
 ENUM_NAME_ACCESS: Final = {"{}.name".format(prefix) for prefix in ENUM_BASES} | {
     "{}._name_".format(prefix) for prefix in ENUM_BASES
@@ -253,3 +256,21 @@ def _extract_underlying_field_name(typ: Type) -> Optional[str]:
     # as a string.
     assert isinstance(underlying_literal.value, str)
     return underlying_literal.value
+
+
+def is_definitely_not_enum_member(name: str, typ: Optional[Type]) -> bool:
+    if is_private(name) or is_dunder(name) or is_sunder(name):
+        return True
+
+    if typ is None:
+        return False
+
+    # ...4. If it is a method / descriptor like in `method = classmethod(func)`
+    proper_type = get_proper_type(typ)
+    return (
+        isinstance(proper_type, FunctionLike)
+        or (
+            isinstance(proper_type, Instance)
+            and proper_type.type.is_descriptor
+        )
+    )

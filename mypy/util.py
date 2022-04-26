@@ -67,6 +67,11 @@ def is_sunder(name: str) -> bool:
     return not is_dunder(name) and name.startswith('_') and name.endswith('_')
 
 
+def is_private(node_name: str) -> bool:
+    """Check if node is private to class definition."""
+    return node_name.startswith('__') and not node_name.endswith('__')
+
+
 def split_module_names(mod_name: str) -> List[str]:
     """Return the module and all parent module names.
 
