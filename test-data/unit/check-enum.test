@@ -1092,9 +1092,10 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
 from typing import Union
 from typing_extensions import Final
 from enum import Enum
+from functools import partial
 
 class Empty(Enum):
-    token = lambda x: x
+    token = partial(lambda x: x)
 
     def f(self) -> int:
         return 1
