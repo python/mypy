@@ -259,13 +259,22 @@ def _extract_underlying_field_name(typ: Type) -> Optional[str]:
 
 
 def is_definitely_not_enum_member(name: str, typ: Optional[Type]) -> bool:
+    """
+    Return `True` if we are certain that an object inside an enum class statement
+    will not be converted to become a member of the enum.
+
+    The following things are not converted:
+    1. Assignments with private names like in `__prop = 1`
+    2. Assignments with dunder names like `__hash__ = some_hasher`
+    3. Assignments with sunder names like `_order_ = 'a, b, c'`
+    4. Assignments to methods/descriptors like in `method = classmethod(func)`
+    """
     if is_private(name) or is_dunder(name) or is_sunder(name):
         return True
 
     if typ is None:
         return False
 
-    # ...4. If it is a method / descriptor like in `method = classmethod(func)`
     proper_type = get_proper_type(typ)
     return (
         isinstance(proper_type, FunctionLike)
