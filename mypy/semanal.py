@@ -2490,9 +2490,21 @@ class SemanticAnalyzer(NodeVisitor[None],
                     cur_node = self.type.names.get(lval.name, None)
                     if (cur_node and isinstance(cur_node.node, Var) and
                             not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
+                        # Assignments to descriptors are not converted into enum members
+                        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, NameExpr):
+                            info = self.named_type(s.rvalue.callee.fullname).type
+                            is_descriptor_attribute = any(
+                                info.get(method) is not None
+                                for method in {"__get__", "__set__", "__delete__"}
+                            )
+                        else:
+                            is_descriptor_attribute = False
                         # Double underscored members are writable on an `Enum`.
                         # (Except read-only `__members__` but that is handled in type checker)
-                        cur_node.node.is_final = s.is_final_def = not is_dunder(cur_node.node.name)
+                        cur_node.node.is_final = s.is_final_def = (
+                            not is_descriptor_attribute
+                            and not is_dunder(cur_node.node.name)
+                        )
 
                 # Special case: deferred initialization of a final attribute in __init__.
                 # In this case we just pretend this is a valid final definition to suppress
