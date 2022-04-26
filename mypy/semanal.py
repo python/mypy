@@ -2491,10 +2491,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                     if (cur_node and isinstance(cur_node.node, Var) and
                             not (isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs)):
                         # Assignments to descriptors are not converted into enum members
-                        if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.callee, NameExpr):
-                            info = self.named_type(s.rvalue.callee.fullname).type
-                            is_descriptor_attribute = any(
-                                info.get(method) is not None
+                        if (
+                            isinstance(s.rvalue, CallExpr)
+                            and isinstance(s.rvalue.callee, NameExpr)
+                        ):
+                            name = s.rvalue.callee.fullname
+                            assert isinstance(name, str)
+                            sym = self.lookup_fully_qualified(name)
+                            node = sym.node
+                            is_descriptor_attribute = isinstance(node, TypeInfo) and any(
+                                node.get(method) is not None
                                 for method in {"__get__", "__set__", "__delete__"}
                             )
                         else:
