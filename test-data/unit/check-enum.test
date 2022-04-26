@@ -2128,3 +2128,26 @@ class Some:
 class A(Some, Enum):
     __labels__ = {1: "1"}
 [builtins fixtures/dict.pyi]
+
+[case testDescriptorAccessOnEnum]
+from enum import Enum
+from typing import TypeVar, Type, Optional
+
+T = TypeVar("T")
+
+class Get:
+    def __get__(self, obj: Optional[T], objtype: Optional[Type[T]] = None) -> str:
+        return 'foo'
+
+class Foo(Enum):
+    g = Get()
+
+class Bar(Foo):
+    BAZ = 5
+
+reveal_type(Foo.g)  # N: Revealed type is "builtins.str"
+reveal_type(Bar.g)  # N: Revealed type is "builtins.str"
+reveal_type(Bar.BAZ)  # N: Revealed type is "Literal[__main__.Bar.BAZ]?"
+reveal_type(Bar.BAZ.name)  # N: Revealed type is "Literal['BAZ']?"
+reveal_type(Bar.BAZ.value)  # N: Revealed type is "Literal[5]?"
+reveal_type(Bar.BAZ.g)  # N: Revealed type is "builtins.str"
