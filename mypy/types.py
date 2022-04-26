@@ -603,7 +603,7 @@ class ParamSpecType(TypeVarLikeType):
         if flavor == ParamSpecFlavor.BARE:
             return builtins_object
         elif flavor == ParamSpecFlavor.ARGS:
-            return named_type_func('builtins.tuple', [builtins_object, EllipsisType()])
+            return named_type_func('builtins.tuple', [builtins_object])
         else:
             return named_type_func(
                 'builtins.dict',

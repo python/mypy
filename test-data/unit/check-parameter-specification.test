@@ -1072,6 +1072,7 @@ P = ParamSpec('P')
 
 def func(callback: Callable[P, str]) -> Callable[P, str]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> str:
+        reveal_type(args[5])  # N: Revealed type is "builtins.object"
         for a in args:
             reveal_type(a)  # N: Revealed type is "builtins.object"
         b = 'foo' in args
