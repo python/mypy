@@ -1950,14 +1950,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         # ...4. If it is a method / descriptor like in `method = classmethod(func)`
         proper_type = get_proper_type(sym.node.type)
-        if isinstance(proper_type, Instance):
-            info = proper_type.type
-            # __set_name__ is deliberately omitted;
-            # the runtime doesn't special-case objects with __set_name__
-            # in the same way it does with the other descriptor-protocol methods
-            for method_name in {"__get__", "__set__", "__delete__"}:
-                if info.get(method_name) is not None:
-                    return False
+        if (
+            isinstance(proper_type, Instance)
+            and proper_type.type.is_descriptor
+        ):
+            return False
 
         if self.is_stub or sym.node.has_explicit_value:
             return True

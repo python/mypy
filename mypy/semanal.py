@@ -2499,9 +2499,9 @@ class SemanticAnalyzer(NodeVisitor[None],
                             assert isinstance(name, str)
                             sym = self.lookup_fully_qualified(name)
                             node = sym.node
-                            is_descriptor_attribute = isinstance(node, TypeInfo) and any(
-                                node.get(method) is not None
-                                for method in {"__get__", "__set__", "__delete__"}
+                            is_descriptor_attribute = (
+                                isinstance(node, TypeInfo)
+                                and node.is_descriptor
                             )
                         else:
                             is_descriptor_attribute = False
