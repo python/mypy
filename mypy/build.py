@@ -36,7 +36,8 @@ from mypy.indirection import TypeIndirectionVisitor
 from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
 from mypy.util import (
     DecodeError, decode_python_encoding, is_sub_path, get_mypy_comments, module_prefix,
-    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes
+    read_py_file, hash_digest, is_typeshed_file, is_stub_package_file, get_top_two_prefixes,
+    time_ref, time_spent_us
 )
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
@@ -2039,7 +2040,7 @@ class State:
         else:
             manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
 
-        t0 = time.perf_counter()
+        t0 = time_ref()
 
         with self.wrap_context():
             source = self.source
@@ -2086,7 +2087,7 @@ class State:
                     self.tree.ignored_lines,
                     self.ignore_all or self.options.ignore_errors)
 
-        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
+        self.time_spent_us += time_spent_us(t0)
 
         if not cached:
             # Make a copy of any errors produced during parse time so that
@@ -2123,7 +2124,7 @@ class State:
         options = self.options
         assert self.tree is not None
 
-        t0 = time.perf_counter()
+        t0 = time_ref()
 
         # Do the first pass of semantic analysis: analyze the reachability
         # of blocks and import statements. We must do this before
@@ -2143,7 +2144,7 @@ class State:
             if options.allow_redefinition:
                 # Perform more renaming across the AST to allow variable redefinitions
                 self.tree.accept(VariableRenameVisitor())
-        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
+        self.time_spent_us += time_spent_us(t0)
 
     def add_dependency(self, dep: str) -> None:
         if dep not in self.dependencies_set:
@@ -2201,10 +2202,10 @@ class State:
     def type_check_first_pass(self) -> None:
         if self.options.semantic_analysis_only:
             return
-        t0 = time.perf_counter()
+        t0 = time_ref()
         with self.wrap_context():
             self.type_checker().check_first_pass()
-        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
+        self.time_spent_us += time_spent_us(t0)
 
     def type_checker(self) -> TypeChecker:
         if not self._type_checker:
@@ -2222,17 +2223,17 @@ class State:
     def type_check_second_pass(self) -> bool:
         if self.options.semantic_analysis_only:
             return False
-        t0 = time.perf_counter()
+        t0 = time_ref()
         with self.wrap_context():
             return self.type_checker().check_second_pass()
-        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
+        self.time_spent_us += time_spent_us(t0)
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
         manager = self.manager
         if self.options.semantic_analysis_only:
             return
-        t0 = time.perf_counter()
+        t0 = time_ref()
         with self.wrap_context():
             # Some tests (and tools) want to look at the set of all types.
             options = manager.options
@@ -2255,7 +2256,7 @@ class State:
             self.free_state()
             if not manager.options.fine_grained_incremental and not manager.options.preserve_asts:
                 free_tree(self.tree)
-        self.time_spent_us += int((time.perf_counter() - t0) * 1e6)
+        self.time_spent_us += time_spent_us(t0)
 
     def free_state(self) -> None:
         if self._type_checker:
