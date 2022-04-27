@@ -200,7 +200,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # Run as "mypy --enable-error-code redundant-expr ..."
+    # Use "mypy --enable-error-code redundant-expr ..."
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -222,7 +222,7 @@ since unless implemented by a sub-type, the expression will always evaluate to t
 
 .. code-block:: python
 
-    # Run as "mypy --enable-error-code truthy-bool ..."
+    # Use "mypy --enable-error-code truthy-bool ..."
 
     class Foo:
       pass
@@ -237,7 +237,7 @@ This check might falsely imply an error. For example, ``Iterable`` does not impl
 
 .. code-block:: python
 
-    # Run as "mypy -enable-error-code truthy-bool ..."
+    # Use "mypy -enable-error-code truthy-bool ..."
 
     from typing import Iterable
 
@@ -271,7 +271,7 @@ Example:
 
 .. code-block:: python
 
-    # Run as "mypy --enable-error-code ignore-without-code ..."
+    # Use "mypy --enable-error-code ignore-without-code ..."
 
     class Foo:
         def __init__(self, name: str) -> None:
@@ -294,24 +294,27 @@ Check that awaitable return value is used [unused-awaitable]
 ------------------------------------------------------------
 
 If you use :option:`--enable-error-code unused-awaitable <mypy --enable-error-code>`,
-mypy generates an error if you don't use a returned value that defined ``__await__``.
+mypy generates an error if you don't use a returned value that defines ``__await__``.
 
 Example:
 
 .. code-block:: python
 
-    # Run as "mypy --enable-error-code unused-awaitable ..."
+    # Use "mypy --enable-error-code unused-awaitable ..."
 
     import asyncio
 
     async def f() -> int: ...
 
     async def g() -> None:
-        asyncio.create_task(f())  # Error: Unused awaitable
+        # Error: Value of type "Task[int]" must be used
+        #        Are you missing an await?
+        asyncio.create_task(f())
 
 You can assign the value to a temporary, otherwise unused to variable to
 silence the error:
 
 .. code-block:: python
 
-    _ = asyncio.create_task(f())  # No error
+    async def g() -> None:
+        _ = asyncio.create_task(f())  # No error

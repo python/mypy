@@ -616,6 +616,7 @@ of the above sections.
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
     .. code-block:: python
 
@@ -623,20 +624,21 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
 .. option:: --enable-error-code
 
     This flag allows enabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
-    Note: This flag will override disabled error codes from the --disable-error-code
-    flag
+    Note: This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     .. code-block:: python
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
