@@ -1,7 +1,6 @@
-from typing import Optional, Dict, Union, Callable
+from typing import Optional, Dict, Union
 from mypy.types import (
     TypeVarLikeType, TypeVarType, ParamSpecType, ParamSpecFlavor, TypeVarId, TypeVarTupleType,
-    Instance
 )
 from mypy.nodes import (
     ParamSpecExpr, TypeVarExpr, TypeVarLikeExpr, SymbolTableNode, TypeVarTupleExpr,
@@ -62,9 +61,7 @@ class TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
 
-    def bind_new(
-        self, name: str, tvar_expr: TypeVarLikeExpr, *, named_type_func: Callable[..., Instance]
-    ) -> TypeVarLikeType:
+    def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
@@ -91,7 +88,7 @@ class TypeVarLikeScope:
                 tvar_expr.fullname,
                 i,
                 flavor=ParamSpecFlavor.BARE,
-                named_type_func=named_type_func,
+                upper_bound=tvar_expr.upper_bound,
                 line=tvar_expr.line,
                 column=tvar_expr.column
             )

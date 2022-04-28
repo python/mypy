@@ -33,7 +33,7 @@ from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
-from mypy.semanal_shared import SemanticAnalyzerCoreInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.errorcodes import ErrorCode
 from mypy import nodes, message_registry, errorcodes as codes
 
@@ -222,7 +222,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # Change the line number
                 return ParamSpecType(
                     tvar_def.name, tvar_def.fullname, tvar_def.id, tvar_def.flavor,
-                    named_type_func=self.named_type, line=t.line, column=t.column,
+                    tvar_def.upper_bound, line=t.line, column=t.column,
                 )
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
                 self.fail('Can\'t use bound type variable "{}"'
@@ -711,12 +711,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
-                        flavor = ParamSpecFlavor.ARGS
+                        make_paramspec = paramspec_args
                     elif kind == ARG_STAR2:
-                        flavor = ParamSpecFlavor.KWARGS
+                        make_paramspec = paramspec_kwargs
                     else:
                         assert False, kind
-                    return ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, flavor,
+                    return make_paramspec(tvar_def.name, tvar_def.fullname, tvar_def.id,
                                          named_type_func=self.named_type,
                                          line=t.line, column=t.column)
         return self.anal_type(t, nested=nested)
@@ -856,9 +856,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return None
 
         return CallableType(
-            [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
+            [paramspec_args(tvar_def.name, tvar_def.fullname, tvar_def.id,
                            named_type_func=self.named_type),
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
+             paramspec_kwargs(tvar_def.name, tvar_def.fullname, tvar_def.id,
                            named_type_func=self.named_type)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
@@ -895,9 +895,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # in the future. CallableType.param_spec() accounts for this.
         return CallableType(
             [*prefix.arg_types,
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
+             paramspec_args(tvar_def.name, tvar_def.fullname, tvar_def.id,
                            named_type_func=self.named_type),
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
+             paramspec_kwargs(tvar_def.name, tvar_def.fullname, tvar_def.id,
                            named_type_func=self.named_type)],
             [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
             [*prefix.arg_names, None, None],
@@ -1130,7 +1130,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
                 assert isinstance(var_expr, TypeVarLikeExpr)
-                self.tvar_scope.bind_new(var.name, var_expr, named_type_func=self.named_type)
+                self.tvar_scope.bind_new(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -1140,7 +1140,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         for name, tvar in typevars:
             if not self.tvar_scope.allow_binding(tvar.fullname):
                 self.fail('Type variable "{}" is bound by an outer class'.format(name), defn)
-            self.tvar_scope.bind_new(name, tvar, named_type_func=self.named_type)
+            self.tvar_scope.bind_new(name, tvar)
             binding = self.tvar_scope.get_binding(tvar.fullname)
             assert binding is not None
             defs.append(binding)

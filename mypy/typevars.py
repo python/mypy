@@ -23,7 +23,7 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
             )
         else:
             assert isinstance(tv, ParamSpecType)
-            tv = ParamSpecType(tv.name, tv.fullname, tv.id, tv.flavor, upper_bound=tv.upper_bound,
+            tv = ParamSpecType(tv.name, tv.fullname, tv.id, tv.flavor, tv.upper_bound,
                                line=-1, column=-1)
         tvs.append(tv)
     inst = Instance(typ, tvs)
