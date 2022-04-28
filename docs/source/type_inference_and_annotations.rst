@@ -48,7 +48,7 @@ type:
 
    The best way to think about this is that the type annotation sets the
    type of the variable, not the type of the expression. To force the
-   type of an expression you can use :py:func:`cast(\<type\>, \<expression\>) <typing.c#ast>`.
+   type of an expression you can use :py:func:`cast(\<type\>, \<expression\>) <typing.cast>`.
 
 Explicit types for collections
 ******************************

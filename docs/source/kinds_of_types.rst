@@ -347,7 +347,6 @@ This also works for attributes defined within methods:
         def __init__(self) -> None:
             self.count: Optional[int] = None
 
-
 This is not a problem when using variable annotations, since no initial
 value is needed:
 
