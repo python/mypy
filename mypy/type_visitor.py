@@ -209,7 +209,7 @@ class TypeTranslator(TypeVisitor[Type]):
         return t
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        return t.type.accept(self)
+        return UnpackType(t.type.accept(self))
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.translate_types(t.arg_types),
