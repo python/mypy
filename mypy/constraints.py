@@ -694,9 +694,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
-        print("XX")
-        print(actual)
-        print(template)
         # TODO: Support other items in the tuple besides Unpack
         # TODO: Support subclasses of Tuple
         is_varlength_tuple = (
