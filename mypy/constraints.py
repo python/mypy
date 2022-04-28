@@ -699,18 +699,25 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         print(template)
         # TODO: Support other items in the tuple besides Unpack
         # TODO: Support subclasses of Tuple
-        is_varlength_tuple = isinstance(actual, Instance) and actual.type.fullname == "builtins.tuple"
+        is_varlength_tuple = (
+            isinstance(actual, Instance)
+            and actual.type.fullname == "builtins.tuple"
+        )
         if len(template.items) == 1:
             item = get_proper_type(template.items[0])
             if isinstance(item, UnpackType):
                 unpacked_type = get_proper_type(item.type)
                 if isinstance(unpacked_type, TypeVarTupleType):
-                    if isinstance(actual, TupleType) or is_varlength_tuple or isinstance(actual, AnyType):
+                    if (
+                        isinstance(actual, (TupleType, AnyType))
+                        or is_varlength_tuple
+                    ):
                         return [Constraint(
                             type_var=unpacked_type.id,
                             op=self.direction,
                             target=actual,
                         )]
+
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
             res: List[Constraint] = []
             for i in range(len(template.items)):
