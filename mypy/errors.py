@@ -4,7 +4,7 @@ import traceback
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
-from typing import Any, Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
 from typing_extensions import Final, Literal
 
 from mypy.scope import Scope
