@@ -33,7 +33,7 @@ from mypy.typetraverser import TypeTraverserVisitor
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
-from mypy.semanal_shared import SemanticAnalyzerCoreInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
 from mypy.errorcodes import ErrorCode
 from mypy import nodes, message_registry, errorcodes as codes
 
@@ -711,13 +711,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 tvar_def = self.tvar_scope.get_binding(sym)
                 if isinstance(tvar_def, ParamSpecType):
                     if kind == ARG_STAR:
-                        flavor = ParamSpecFlavor.ARGS
+                        make_paramspec = paramspec_args
                     elif kind == ARG_STAR2:
-                        flavor = ParamSpecFlavor.KWARGS
+                        make_paramspec = paramspec_kwargs
                     else:
                         assert False, kind
-                    return ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, flavor,
-                                         upper_bound=self.named_type('builtins.object'),
+                    return make_paramspec(tvar_def.name, tvar_def.fullname, tvar_def.id,
+                                         named_type_func=self.named_type,
                                          line=t.line, column=t.column)
         return self.anal_type(t, nested=nested)
 
@@ -855,13 +855,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO: Use tuple[...] or Mapping[..] instead?
-        obj = self.named_type('builtins.object')
         return CallableType(
-            [ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
-                           upper_bound=obj),
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
-                           upper_bound=obj)],
+            [paramspec_args(tvar_def.name, tvar_def.fullname, tvar_def.id,
+                           named_type_func=self.named_type),
+             paramspec_kwargs(tvar_def.name, tvar_def.fullname, tvar_def.id,
+                           named_type_func=self.named_type)],
             [nodes.ARG_STAR, nodes.ARG_STAR2],
             [None, None],
             ret_type=ret_type,
@@ -891,18 +889,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if not isinstance(tvar_def, ParamSpecType):
             return None
 
-        # TODO: Use tuple[...] or Mapping[..] instead?
-        obj = self.named_type('builtins.object')
         # ick, CallableType should take ParamSpecType
         prefix = tvar_def.prefix
         # we don't set the prefix here as generic arguments will get updated at some point
         # in the future. CallableType.param_spec() accounts for this.
         return CallableType(
             [*prefix.arg_types,
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.ARGS,
-                           upper_bound=obj),
-             ParamSpecType(tvar_def.name, tvar_def.fullname, tvar_def.id, ParamSpecFlavor.KWARGS,
-                           upper_bound=obj)],
+             paramspec_args(tvar_def.name, tvar_def.fullname, tvar_def.id,
+                           named_type_func=self.named_type),
+             paramspec_kwargs(tvar_def.name, tvar_def.fullname, tvar_def.id,
+                           named_type_func=self.named_type)],
             [*prefix.arg_kinds, nodes.ARG_STAR, nodes.ARG_STAR2],
             [*prefix.arg_names, None, None],
             ret_type=ret_type,

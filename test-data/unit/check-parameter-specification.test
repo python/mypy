@@ -11,7 +11,7 @@ P2 = ParamSpec("P2", contravariant=True)  # E: Only the first argument to ParamS
 P3 = ParamSpec("P3", bound=int)  # E: Only the first argument to ParamSpec has defined semantics
 P4 = ParamSpec("P4", int, str)  # E: Only the first argument to ParamSpec has defined semantics
 P5 = ParamSpec("P5", covariant=True, bound=int)  # E: Only the first argument to ParamSpec has defined semantics
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLocations]
 from typing import Callable, List
@@ -35,7 +35,7 @@ def foo5(x: Callable[[int, str], P]) -> None: ...  # E: Invalid location for Par
 
 def foo6(x: Callable[[P], int]) -> None: ...  # E: Invalid location for ParamSpec "P" \
                                               # N: You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecContextManagerLike]
 from typing import Callable, List, Iterator, TypeVar
@@ -51,7 +51,7 @@ def whatever(x: int) -> Iterator[int]:
 
 reveal_type(whatever)  # N: Revealed type is "def (x: builtins.int) -> builtins.list[builtins.int]"
 reveal_type(whatever(217))  # N: Revealed type is "builtins.list[builtins.int]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testInvalidParamSpecType]
 # flags: --python-version 3.10
@@ -70,7 +70,7 @@ P = ParamSpec('P')
 
 def f(x: Callable[P, int]) -> None: ...
 reveal_type(f)  # N: Revealed type is "def [P] (x: def (*P.args, **P.kwargs) -> builtins.int)"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecSimpleFunction]
 from typing import Callable, TypeVar
@@ -83,7 +83,7 @@ def changes_return_type_to_str(x: Callable[P, int]) -> Callable[P, str]: ...
 def returns_int(a: str, b: bool) -> int: ...
 
 reveal_type(changes_return_type_to_str(returns_int))  # N: Revealed type is "def (a: builtins.str, b: builtins.bool) -> builtins.str"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecSimpleClass]
 from typing import Callable, TypeVar, Generic
@@ -199,7 +199,7 @@ g: Any
 reveal_type(f(g))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 f(g)(1, 3, x=1, y=2)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecDecoratorImplementation]
 from typing import Callable, Any, TypeVar, List
@@ -556,7 +556,7 @@ a: Callable[[int, bytes], str]
 b: Callable[[str, bytes], str]
 
 reveal_type(f(a, b))  # N: Revealed type is "def (builtins.bytes) -> builtins.str"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConcatenateInReturn]
 from typing_extensions import ParamSpec, Concatenate
@@ -569,7 +569,7 @@ def f(i: Callable[Concatenate[int, P], str]) -> Callable[Concatenate[int, P], st
 n: Callable[[int, bytes], str]
 
 reveal_type(f(n))  # N: Revealed type is "def (builtins.int, builtins.bytes) -> builtins.str"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConcatenateNamedArgs]
 # flags: --strict-concatenate
@@ -592,7 +592,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 
 # reason for rejection:
 f2(lambda x: 42)(42, x=42)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 [out]
 main:10: error: invalid syntax
 [out version>=3.8]
@@ -619,7 +619,7 @@ def f2(c: Callable[P, R]) -> Callable[Concatenate[int, P], R]:
 
 # reason for rejection:
 f2(lambda x: 42)(42, x=42)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 [out]
 main:9: error: invalid syntax
 [out version>=3.8]
@@ -640,7 +640,7 @@ n = f(a)
 
 reveal_type(n)  # N: Revealed type is "def (builtins.int)"
 reveal_type(n(42))  # N: Revealed type is "None"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testCallablesAsParameters]
 # credits to https://github.com/microsoft/pyright/issues/2705
@@ -658,7 +658,7 @@ def test(a: int, /, b: str) -> str: ...
 abc = Foo(test)
 reveal_type(abc)
 bar(abc)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 [out]
 main:11: error: invalid syntax
 [out version>=3.8]
@@ -677,7 +677,7 @@ n: Foo[[int]]
 def f(x: int) -> None: ...
 
 n.foo(f)
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLiteralsTypeApplication]
 from typing_extensions import ParamSpec
@@ -709,7 +709,7 @@ Z[bytes, str](lambda one: None)  # E: Cannot infer type of lambda \
                                  # E: Argument 1 to "Z" has incompatible type "Callable[[Any], None]"; expected "Callable[[bytes, str], None]"
 Z[bytes, str](f2)  # E: Argument 1 to "Z" has incompatible type "Callable[[bytes, int], None]"; expected "Callable[[bytes, str], None]"
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLiteralEllipsis]
 from typing_extensions import ParamSpec
@@ -740,7 +740,7 @@ n = Z(f1)
 n = Z(f2)
 n = Z(f3)
 
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecApplyConcatenateTwice]
 from typing_extensions import ParamSpec, Concatenate
@@ -770,7 +770,7 @@ def f(c: C[P]) -> None:
     reveal_type(p1)  # N: Revealed type is "__main__.C[[builtins.str, **P`-1]]"
     p2 = p1.add_str()
     reveal_type(p2)  # N: Revealed type is "__main__.C[[builtins.int, builtins.str, **P`-1]]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecLiteralJoin]
 from typing import Generic, Callable, Union
@@ -788,7 +788,7 @@ def func(
 ) -> None:
     job = action if isinstance(action, Job) else Job(action)
     reveal_type(job)  # N: Revealed type is "__main__.Job[[builtins.int]]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testApplyParamSpecToParamSpecLiterals]
 from typing import TypeVar, Generic, Callable
@@ -818,7 +818,7 @@ def func2(job: Job[..., None]) -> None:
     run_job(job, "Hello", 42)
     run_job(job, 42, msg="Hello")
     run_job(job, x=42, msg="Hello")
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testExpandNonBareParamSpecAgainstCallable]
 from typing import Callable, TypeVar, Any
@@ -850,7 +850,7 @@ reveal_type(A().func(f, 42))  # N: Revealed type is "builtins.int"
 
 # TODO: this should reveal `int`
 reveal_type(A().func(lambda x: x + x, 42))  # N: Revealed type is "Any"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecConstraintOnOtherParamSpec]
 from typing import Callable, TypeVar, Any, Generic
@@ -880,7 +880,7 @@ reveal_type(A().func(Job(lambda x: x)))  # N: Revealed type is "__main__.Job[[x:
 
 def f(x: int, y: int) -> None: ...
 reveal_type(A().func(Job(f)))  # N: Revealed type is "__main__.Job[[x: builtins.int, y: builtins.int], None]"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testConstraintBetweenParamSpecFunctions1]
 from typing import Callable, TypeVar, Any, Generic
@@ -898,7 +898,7 @@ def func(__action: Job[_P]) -> Callable[_P, None]:
     ...
 
 reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testConstraintBetweenParamSpecFunctions2]
 from typing import Callable, TypeVar, Any, Generic
@@ -916,7 +916,7 @@ def func(__action: Job[_P]) -> Callable[_P, None]:
     ...
 
 reveal_type(func)  # N: Revealed type is "def [_P] (__main__.Job[_P`-1]) -> def (*_P.args, **_P.kwargs)"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testConstraintsBetweenConcatenatePrefixes]
 from typing import Any, Callable, Generic, TypeVar
@@ -937,7 +937,7 @@ def adds_await() -> Callable[
         ...
 
     return decorator  # we want `_T` and `_P` to refer to the same things.
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testParamSpecVariance]
 from typing import Callable, Generic
@@ -995,7 +995,7 @@ a3: Callable[[int], None]
 a3 = f3  # E: Incompatible types in assignment (expression has type "Callable[[bool], None]", variable has type "Callable[[int], None]")
 a3 = f2
 a3 = f1
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testDecoratingClassesThatUseParamSpec]
 from typing import Generic, TypeVar, Callable, Any
@@ -1039,7 +1039,7 @@ reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T`-1]]"
 jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T`-1)"
 reveal_type(jf(1))  # N: Revealed type is "None"
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testStackedConcatenateIsIllegal]
 from typing_extensions import Concatenate, ParamSpec
@@ -1048,7 +1048,7 @@ from typing import Callable
 P = ParamSpec("P")
 
 def x(f: Callable[Concatenate[int, Concatenate[int, P]], None]) -> None: ...  # E: Nested Concatenates are invalid
-[builtins fixtures/tuple.pyi]
+[builtins fixtures/paramspec.pyi]
 
 [case testPropagatedAnyConstraintsAreOK]
 from typing import Any, Callable, Generic, TypeVar
@@ -1063,3 +1063,26 @@ class Job(Generic[P]): ...
 @callback
 def run_job(job: Job[...]) -> T: ...
 [builtins fixtures/tuple.pyi]
+
+[case testTupleAndDictOperationsOnParamSpecArgsAndKwargs]
+from typing import Callable
+from typing_extensions import ParamSpec
+
+P = ParamSpec('P')
+
+def func(callback: Callable[P, str]) -> Callable[P, str]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> str:
+        reveal_type(args[5])  # N: Revealed type is "builtins.object"
+        for a in args:
+            reveal_type(a)  # N: Revealed type is "builtins.object"
+        b = 'foo' in args
+        reveal_type(b)  # N: Revealed type is "builtins.bool"
+        reveal_type(args.count(42))  # N: Revealed type is "builtins.int"
+        reveal_type(len(args))  # N: Revealed type is "builtins.int"
+        for c, d in kwargs.items():
+            reveal_type(c)  # N: Revealed type is "builtins.str"
+            reveal_type(d)  # N: Revealed type is "builtins.object"
+        kwargs.pop('bar')
+        return 'baz'
+    return inner
+[builtins fixtures/paramspec.pyi]
