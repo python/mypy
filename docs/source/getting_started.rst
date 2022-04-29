@@ -317,9 +317,6 @@ syntax like so:
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-   # If you want compatibility with even older versions of Python
-   my_global_dict = {}  # type: Dict[int, float]
-
 .. _stubs-intro:
 
 Library stubs and typeshed

@@ -347,23 +347,13 @@ This also works for attributes defined within methods:
         def __init__(self) -> None:
             self.count: Optional[int] = None
 
-As a special case, you can use a non-optional type when initializing an
-attribute to ``None`` inside a class body *and* using a type comment,
-since when using a type comment, an initializer is syntactically required,
-and ``None`` is used as a dummy, placeholder initializer:
+This is not a problem when using variable annotations, since no initial
+value is needed:
 
 .. code-block:: python
 
    class Container:
-       items = None  # type: list[str]  # OK (only with type comment)
-
-This is not a problem when using variable annotations, since no initializer
-is needed:
-
-.. code-block:: python
-
-   class Container:
-       items: list[str]  # No initializer
+       items: list[str]  # No initial value
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
@@ -420,9 +410,6 @@ the runtime with some limitations (see :ref:`runtime_troubles`).
     t1: int | str  # equivalent to Union[int, str]
 
     t2: int | None  # equivalent to Optional[int]
-
-    # Usable in type comments
-    t3 = 42  # type: int | str
 
 .. _no_strict_optional:
 

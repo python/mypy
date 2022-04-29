@@ -548,11 +548,11 @@ of the above sections.
         from typing import Optional
 
         a = None  # Need type annotation here if using --local-partial-types
-        b = None  # type: Optional[int]
+        b: Optional[int] = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz = None  # type: Optional[int]
+            baz: Optional[int] = None
 
             def __init__(self) -> None:
                 self.bar = 1
