@@ -1511,14 +1511,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         mapper = ArgTypeExpander(self.argument_infer_context())
         for i, actuals in enumerate(formal_to_actual):
             for actual in actuals:
+                
                 actual_type = arg_types[actual]
                 if actual_type is None:
                     continue  # Some kind of error was already reported.
                 actual_kind = arg_kinds[actual]
                 # Check that a *arg is valid as varargs.
                 if (actual_kind == nodes.ARG_STAR and
-                        not self.is_valid_var_arg(actual_type)):
+                    not self.is_valid_var_arg(actual_type)):
                     messages.invalid_var_arg(actual_type, context)
+                        
                 if (actual_kind == nodes.ARG_STAR2 and
                         not self.is_valid_keyword_var_arg(actual_type)):
                     is_mapping = is_subtype(actual_type, self.chk.named_type('typing.Mapping'))

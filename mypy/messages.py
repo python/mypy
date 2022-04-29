@@ -582,9 +582,9 @@ class MessageBuilder:
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
-                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                    arg_label, target, quote_type_string(arg_type_str),
-                    quote_type_string(expected_type_str))
+                msg = 'expression has type {}， variable has type {}'.format(
+                    quote_type_string(arg_type_str), quote_type_string(expected_type_str))
+
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):
                 code = codes.TYPEDDICT_ITEM

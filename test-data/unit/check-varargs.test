@@ -546,10 +546,9 @@ if int():
 if int():
     a, b = f(a, *a)  # E: List or tuple expected as variable arguments
 if int():
-    a, b = f(*a)     # E: List or tuple expected as variable arguments
-
-if int():
     a, a = f(*aa)
+if int():
+     a, b = f(*a)     # E: List or tuple expected as variable arguments
 if int():
     b, a = f(b, *aa)
 if int():
