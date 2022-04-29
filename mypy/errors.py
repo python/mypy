@@ -142,7 +142,7 @@ class ErrorWatcher:
         self.errors._watchers.append(self)
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Literal[False]:
+    def __exit__(self, exc_type: object, exc_val: object, exc_tb: object) -> Literal[False]:
         assert self == self.errors._watchers.pop()
         return False
 
