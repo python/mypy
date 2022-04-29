@@ -17,6 +17,7 @@ from typing import (
 )
 from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 
+from mypy.errors import Errors
 from mypy.types import (
     Type, AnyType, TupleType, Instance, UnionType, TypeOfAny, get_proper_type, TypeVarType,
     LiteralType, get_proper_types
@@ -512,8 +513,7 @@ class StringFormatterChecker:
             return repl
         assert spec.field
 
-        # This is a bit of a dirty trick, but it looks like this is the simplest way.
-        temp_errors = self.msg.clean_copy().errors
+        temp_errors = Errors()
         dummy = DUMMY_FIELD_NAME + spec.field[len(spec.key):]
         temp_ast: Node = parse(
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors

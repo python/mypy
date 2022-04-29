@@ -1,6 +1,6 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from mypy.backports import OrderedDict, nullcontext
+from mypy.backports import OrderedDict
 from contextlib import contextmanager
 import itertools
 from typing import (
@@ -8,7 +8,7 @@ from typing import (
 )
 from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 
-from mypy.errors import report_internal_error
+from mypy.errors import report_internal_error, ErrorWatcher
 from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
     make_optional_type,
@@ -887,7 +887,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         res: List[Type] = []
         for typ in object_type.relevant_items():
             # Member access errors are already reported when visiting the member expression.
-            with self.msg.disable_errors():
+            with self.msg.filter_errors():
                 item = analyze_member_access(member, typ, e, False, False, False,
                                              self.msg, original_type=object_type, chk=self.chk,
                                              in_literal_context=self.is_literal_context(),
@@ -1244,7 +1244,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # due to partial available context information at this time, but
             # these errors can be safely ignored as the arguments will be
             # inferred again later.
-            with self.msg.disable_errors():
+            with self.msg.filter_errors():
                 arg_types = self.infer_arg_types_in_context(
                     callee_type, args, arg_kinds, formal_to_actual)
 
@@ -1594,13 +1594,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         unioned_result: Optional[Tuple[Type, Type]] = None
         union_interrupted = False  # did we try all union combinations?
         if any(self.real_union(arg) for arg in arg_types):
-            unioned_errors = arg_messages.clean_copy()
             try:
-                unioned_return = self.union_overload_result(plausible_targets, args,
-                                                            arg_types, arg_kinds, arg_names,
-                                                            callable_name, object_type,
-                                                            context,
-                                                            arg_messages=unioned_errors)
+                with arg_messages.filter_errors():
+                    unioned_return = self.union_overload_result(plausible_targets, args,
+                                                                arg_types, arg_kinds, arg_names,
+                                                                callable_name, object_type,
+                                                                context,
+                                                                arg_messages=arg_messages)
             except TooManyUnions:
                 union_interrupted = True
             else:
@@ -1751,29 +1751,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         args_contain_any = any(map(has_any_type, arg_types))
 
         for typ in plausible_targets:
-            overload_messages = self.msg.clean_copy()
-            prev_messages = self.msg
             assert self.msg is self.chk.msg
-            self.msg = overload_messages
-            self.chk.msg = overload_messages
-            try:
-                # Passing `overload_messages` as the `arg_messages` parameter doesn't
-                # seem to reliably catch all possible errors.
-                # TODO: Figure out why
+            with self.msg.filter_errors() as w:
                 ret_type, infer_type = self.check_call(
                     callee=typ,
                     args=args,
                     arg_kinds=arg_kinds,
                     arg_names=arg_names,
                     context=context,
-                    arg_messages=overload_messages,
+                    arg_messages=self.msg,
                     callable_name=callable_name,
                     object_type=object_type)
-            finally:
-                self.chk.msg = prev_messages
-                self.msg = prev_messages
-
-            is_match = not overload_messages.is_errors()
+            is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info so we can
                 # check for ambiguity due to 'Any' below.
@@ -2254,15 +2243,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
                 # Keep track of whether we get type check errors (these won't be reported, they
                 # are just to verify whether something is valid typing wise).
-                local_errors = self.msg.clean_copy()
-                _, method_type = self.check_method_call_by_name(
-                    method='__contains__',
-                    base_type=right_type,
-                    args=[left],
-                    arg_kinds=[ARG_POS],
-                    context=e,
-                    local_errors=local_errors,
-                )
+                with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
+                    _, method_type = self.check_method_call_by_name(
+                        method='__contains__',
+                        base_type=right_type,
+                        args=[left],
+                        arg_kinds=[ARG_POS],
+                        context=e,
+                    )
+
                 sub_result = self.bool_type()
                 # Container item type for strict type overlap checks. Note: we need to only
                 # check for nominal type, because a usual "Unsupported operands for in"
@@ -2272,7 +2261,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if isinstance(right_type, PartialType):
                     # We don't really know if this is an error or not, so just shut up.
                     pass
-                elif (local_errors.is_errors() and
+                elif (local_errors.has_new_errors() and
                     # is_valid_var_arg is True for any Iterable
                         self.is_valid_var_arg(right_type)):
                     _, itertype = self.chk.analyze_iterable_item_type(right)
@@ -2285,20 +2274,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     if not is_subtype(left_type, itertype):
                         self.msg.unsupported_operand_types('in', left_type, right_type, e)
                 # Only show dangerous overlap if there are no other errors.
-                elif (not local_errors.is_errors() and cont_type and
+                elif (not local_errors.has_new_errors() and cont_type and
                         self.dangerous_comparison(left_type, cont_type,
                                                   original_container=right_type)):
                     self.msg.dangerous_comparison(left_type, cont_type, 'container', e)
                 else:
-                    self.msg.add_errors(local_errors)
+                    self.msg.add_errors(local_errors.filtered_errors())
             elif operator in operators.op_methods:
                 method = self.get_operator_method(operator)
-                err_count = self.msg.errors.total_errors()
-                sub_result, method_type = self.check_op(method, left_type, right, e,
-                                                        allow_reverse=True)
+
+                with ErrorWatcher(self.msg.errors) as w:
+                    sub_result, method_type = self.check_op(method, left_type, right, e,
+                                                            allow_reverse=True)
+
                 # Only show dangerous overlap if there are no other errors. See
                 # testCustomEqCheckStrictEquality for an example.
-                if self.msg.errors.total_errors() == err_count and operator in ('==', '!='):
+                if not w.has_new_errors() and operator in ('==', '!='):
                     right_type = self.accept(right)
                     # We suppress the error if there is a custom __eq__() method on either
                     # side. User defined (or even standard library) classes can define this
@@ -2525,24 +2516,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if not self.has_member(base_type, op_name):
                 return None
 
-            local_errors = msg.clean_copy()
-
-            member = analyze_member_access(
-                name=op_name,
-                typ=base_type,
-                is_lvalue=False,
-                is_super=False,
-                is_operator=True,
-                original_type=base_type,
-                context=context,
-                msg=local_errors,
-                chk=self.chk,
-                in_literal_context=self.is_literal_context()
-            )
-            if local_errors.is_errors():
-                return None
-            else:
-                return member
+            with self.msg.filter_errors() as w:
+                member = analyze_member_access(
+                    name=op_name,
+                    typ=base_type,
+                    is_lvalue=False,
+                    is_super=False,
+                    is_operator=True,
+                    original_type=base_type,
+                    context=context,
+                    msg=self.msg,
+                    chk=self.chk,
+                    in_literal_context=self.is_literal_context()
+                )
+                return None if w.has_new_errors() else member
 
         def lookup_definer(typ: Instance, attr_name: str) -> Optional[str]:
             """Returns the name of the class that contains the actual definition of attr_name.
@@ -2656,11 +2643,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         errors = []
         results = []
         for method, obj, arg in variants:
-            local_errors = msg.clean_copy()
-            result = self.check_method_call(
-                op_name, obj, method, [arg], [ARG_POS], context, local_errors)
-            if local_errors.is_errors():
-                errors.append(local_errors)
+            with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
+                result = self.check_method_call(
+                    op_name, obj, method, [arg], [ARG_POS], context)
+            if local_errors.has_new_errors():
+                errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
                 return result
@@ -2678,12 +2665,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # call the __op__ method (even though it's missing).
 
         if not variants:
-            local_errors = msg.clean_copy()
-            result = self.check_method_call_by_name(
-                op_name, left_type, [right_expr], [ARG_POS], context, local_errors)
+            with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
+                result = self.check_method_call_by_name(
+                    op_name, left_type, [right_expr], [ARG_POS], context)
 
-            if local_errors.is_errors():
-                errors.append(local_errors)
+            if local_errors.has_new_errors():
+                errors.append(local_errors.filtered_errors())
                 results.append(result)
             else:
                 # In theory, we should never enter this case, but it seems
@@ -2724,23 +2711,23 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Step 1: We first try leaving the right arguments alone and destructure
             # just the left ones. (Mypy can sometimes perform some more precise inference
             # if we leave the right operands a union -- see testOperatorWithEmptyListAndSum.)
-            msg = self.msg.clean_copy()
             all_results = []
             all_inferred = []
 
-            for left_possible_type in left_variants:
-                result, inferred = self.check_op_reversible(
-                    op_name=method,
-                    left_type=left_possible_type,
-                    left_expr=TempNode(left_possible_type, context=context),
-                    right_type=right_type,
-                    right_expr=arg,
-                    context=context,
-                    msg=msg)
-                all_results.append(result)
-                all_inferred.append(inferred)
+            with self.msg.filter_errors() as local_errors:
+                for left_possible_type in left_variants:
+                    result, inferred = self.check_op_reversible(
+                        op_name=method,
+                        left_type=left_possible_type,
+                        left_expr=TempNode(left_possible_type, context=context),
+                        right_type=right_type,
+                        right_expr=arg,
+                        context=context,
+                        msg=self.msg)
+                    all_results.append(result)
+                    all_inferred.append(inferred)
 
-            if not msg.is_errors():
+            if not local_errors.has_new_errors():
                 results_final = make_simplified_union(all_results)
                 inferred_final = make_simplified_union(all_inferred)
                 return results_final, inferred_final
@@ -2765,27 +2752,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                       handle_type_alias_type=True)
                 ]
 
-            msg = self.msg.clean_copy()
             all_results = []
             all_inferred = []
 
-            for left_possible_type in left_variants:
-                for right_possible_type, right_expr in right_variants:
-                    result, inferred = self.check_op_reversible(
-                        op_name=method,
-                        left_type=left_possible_type,
-                        left_expr=TempNode(left_possible_type, context=context),
-                        right_type=right_possible_type,
-                        right_expr=right_expr,
-                        context=context,
-                        msg=msg)
-                    all_results.append(result)
-                    all_inferred.append(inferred)
+            with self.msg.filter_errors(save_filtered_errors=True) as local_errors:
+                for left_possible_type in left_variants:
+                    for right_possible_type, right_expr in right_variants:
+                        result, inferred = self.check_op_reversible(
+                            op_name=method,
+                            left_type=left_possible_type,
+                            left_expr=TempNode(left_possible_type, context=context),
+                            right_type=right_possible_type,
+                            right_expr=right_expr,
+                            context=context,
+                            msg=self.msg)
+                        all_results.append(result)
+                        all_inferred.append(inferred)
 
-            if msg.is_errors():
-                self.msg.add_errors(msg)
+            if local_errors.has_new_errors():
+                self.msg.add_errors(local_errors.filtered_errors())
                 # Point any notes to the same location as an existing message.
-                recent_context = msg.most_recent_context()
+                err = local_errors.filtered_errors()[-1]
+                recent_context = TempNode(NoneType())
+                recent_context.line = err.line
+                recent_context.column = err.column
                 if len(left_variants) >= 2 and len(right_variants) >= 2:
                     self.msg.warn_both_operands_are_from_unions(recent_context)
                 elif len(left_variants) >= 2:
@@ -2864,7 +2854,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # If right_map is None then we know mypy considers the right branch
         # to be unreachable and therefore any errors found in the right branch
         # should be suppressed.
-        with (self.msg.disable_errors() if right_map is None else nullcontext()):
+        with self.msg.filter_errors(filter_errors=right_map is None):
             right_type = self.analyze_cond_branch(right_map, e.right, expanded_left_type)
 
         if left_map is None and right_map is None:
