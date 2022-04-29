@@ -1373,3 +1373,15 @@ exclude = (?x)(
 1()
 [out]
 c/cpkg.py:1: error: "int" not callable
+
+
+[case testCmdlineTimingStats]
+# cmd: mypy --timing-stats timing.txt .
+[file b/__init__.py]
+[file b/c.py]
+class C: pass
+[outfile-re timing.txt]
+.*
+b \d+
+b\.c \d+
+.*

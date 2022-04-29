@@ -5,7 +5,7 @@ import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern
 
 from mypy import defaults
 import mypy.api as api
@@ -458,8 +458,17 @@ def check_test_output_files(testcase: DataDrivenTestCase,
                 'Expected file {} was not produced by test case{}'.format(
                     path, ' on step %d' % step if testcase.output2 else ''))
         with open(path, 'r', encoding='utf8') as output_file:
-            actual_output_content = output_file.read().splitlines()
-        normalized_output = normalize_file_output(actual_output_content,
+            actual_output_content = output_file.read()
+
+        if isinstance(expected_content, Pattern):
+            if expected_content.fullmatch(actual_output_content) is not None:
+                continue
+            raise AssertionError(
+                'Output file {} did not match its expected output pattern\n---\n{}\n---'.format(
+                    path, actual_output_content)
+            )
+
+        normalized_output = normalize_file_output(actual_output_content.splitlines(),
                                                   os.path.abspath(test_temp_dir))
         # We always normalize things like timestamp, but only handle operating-system
         # specific things if requested.

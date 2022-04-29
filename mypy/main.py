@@ -835,6 +835,9 @@ def process_options(args: List[str],
     parser.add_argument(
         '--dump-build-stats', action='store_true',
         help=argparse.SUPPRESS)
+    # dump timing  stats for each processed file into the given output file
+    parser.add_argument(
+        '--timing-stats', dest='timing_stats', help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
