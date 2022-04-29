@@ -350,7 +350,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
-        raise NotImplementedError
+        if isinstance(self.right, UnpackType):
+            return self._is_subtype(left.type, self.right.type)
+        return False
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
@@ -1482,7 +1484,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return self._is_proper_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
-        raise NotImplementedError
+        if isinstance(self.right, UnpackType):
+            return self._is_proper_subtype(left.type, self.right.type)
+        return False
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right

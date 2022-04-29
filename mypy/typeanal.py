@@ -1202,8 +1202,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_def.variance,
                 var_def.line
             )
-        elif isinstance(var_def, TypeVarTupleType):
-            raise NotImplementedError
         else:
             return var_def
 

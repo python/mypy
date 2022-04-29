@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, List, TypeVar, Mapping, cast
+from typing import Dict, Iterable, List, TypeVar, Mapping, cast, Union, Optional
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
@@ -45,6 +45,8 @@ def freshen_function_type_vars(callee: F) -> F:
             # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
                 tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
+            elif isinstance(v, TypeVarTupleType):
+                tv = TypeVarTupleType.new_unification_variable(v)
             else:
                 assert isinstance(v, ParamSpecType)
                 tv = ParamSpecType.new_unification_variable(v)
@@ -135,7 +137,36 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         raise NotImplementedError
 
     def visit_unpack_type(self, t: UnpackType) -> Type:
-        raise NotImplementedError
+        # It is impossible to reasonally implement visit_unpack_type, because
+        # unpacking inherently expands to something more like a list of types.
+        #
+        # Relevant sections that can call unpack should call expand_unpack()
+        # instead.
+        assert False, "Mypy bug: unpacking must happen at a higher level"
+
+    def expand_unpack(self, t: UnpackType) -> Optional[Union[List[Type], Instance, AnyType]]:
+        """May return either a list of types to unpack to, any, or a single
+        variable length tuple. The latter may not be valid in all contexts.
+        """
+        proper_typ = get_proper_type(t.type)
+        if isinstance(proper_typ, TypeVarTupleType):
+            repl = get_proper_type(self.variables.get(proper_typ.id, t))
+            if isinstance(repl, TupleType):
+                return repl.items
+            elif isinstance(repl, Instance) and repl.type.fullname == "builtins.tuple":
+                return repl
+            elif isinstance(repl, AnyType):
+                # tuple[Any, ...] would be better, but we don't have
+                # the type info to construct that type here.
+                return repl
+            elif isinstance(repl, TypeVarTupleType):
+                return [UnpackType(typ=repl)]
+            elif isinstance(repl, UninhabitedType):
+                return None
+            else:
+                raise NotImplementedError("Invalid type to expand: {}".format(repl))
+        else:
+            raise NotImplementedError
 
     def visit_parameters(self, t: Parameters) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types))
@@ -179,7 +210,27 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return t.copy_modified(items=self.expand_types(t.items))
+        items = []
+        for item in t.items:
+            proper_item = get_proper_type(item)
+            if isinstance(proper_item, UnpackType):
+                unpacked_items = self.expand_unpack(proper_item)
+                if unpacked_items is None:
+                    # TODO: better error, something like tuple of unknown?
+                    return UninhabitedType()
+                elif isinstance(unpacked_items, Instance):
+                    if len(t.items) == 1:
+                        return unpacked_items
+                    else:
+                        assert False, "Invalid unpack of variable length tuple"
+                elif isinstance(unpacked_items, AnyType):
+                    return unpacked_items
+                else:
+                    items.extend(unpacked_items)
+            else:
+                items.append(proper_item.accept(self))
+
+        return t.copy_modified(items=items)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.copy_modified(item_types=self.expand_types(t.items.values()))
