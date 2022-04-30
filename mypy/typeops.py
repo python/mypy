@@ -318,7 +318,7 @@ def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     return None
 
 
-def simple_literal_type(t: ProperType) -> Optional[Instance]:
+def simple_literal_type(t: Optional[ProperType]) -> Optional[Instance]:
     """Extract the underlying fallback Instance type for a simple Literal"""
     if isinstance(t, Instance) and t.last_known_value is not None:
         t = t.last_known_value
