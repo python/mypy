@@ -428,8 +428,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                 with self.msg.filter_errors() as local_errors:
                     result = self.get_simple_mapping_item_type(pattern,
                                                                mapping_type,
-                                                               key,
-                                                               self.msg)
+                                                               key)
 
                     if local_errors.has_new_errors():
                         result = None
@@ -437,22 +436,19 @@ class PatternChecker(PatternVisitor[PatternType]):
             with self.msg.filter_errors():
                 result = self.get_simple_mapping_item_type(pattern,
                                                            mapping_type,
-                                                           key,
-                                                           self.msg)
+                                                           key)
         return result
 
     def get_simple_mapping_item_type(self,
                                      pattern: MappingPattern,
                                      mapping_type: Type,
-                                     key: Expression,
-                                     local_errors: MessageBuilder
+                                     key: Expression
                                      ) -> Type:
         result, _ = self.chk.expr_checker.check_method_call_by_name('__getitem__',
                                                                     mapping_type,
                                                                     [key],
                                                                     [ARG_POS],
-                                                                    pattern,
-                                                                    local_errors=local_errors)
+                                                                    pattern)
         return result
 
     def visit_class_pattern(self, o: ClassPattern) -> PatternType:

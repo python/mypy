@@ -274,24 +274,6 @@ class Errors:
     def reset(self) -> None:
         self.initialize()
 
-    def copy(self) -> 'Errors':
-        new = Errors(self.show_error_context,
-                     self.show_column_numbers,
-                     self.show_error_codes,
-                     self.pretty,
-                     self.read_source,
-                     self.show_absolute_path,
-                     self.enabled_error_codes,
-                     self.disabled_error_codes,
-                     self.many_errors_threshold)
-        new.file = self.file
-        new.import_ctx = self.import_ctx[:]
-        new.function_or_member = self.function_or_member[:]
-        new.target_module = self.target_module
-        new.scope = self.scope
-        new.seen_import_error = self.seen_import_error
-        return new
-
     def set_ignore_prefix(self, prefix: str) -> None:
         """Set path prefix that will be removed from all paths."""
         prefix = os.path.normpath(prefix)
@@ -650,10 +632,6 @@ class Errors:
     def is_errors_for_file(self, file: str) -> bool:
         """Are there any errors for the given file?"""
         return file in self.error_info_map
-
-    def most_recent_error_location(self) -> Tuple[int, int]:
-        info = self.error_info_map[self.file][-1]
-        return info.line, info.column
 
     def raise_error(self, use_stdout: bool = True) -> None:
         """Raise a CompileError with the generated messages.
