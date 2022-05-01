@@ -665,7 +665,7 @@ class BuildManager:
         if self.options.dump_build_stats:
             print("Stats:")
             for key, value in sorted(self.stats_summary().items()):
-                print("{:24}{}".format(key + ":", value))
+                print(f"{key + ':':24}{value}")
 
     def use_fine_grained_cache(self) -> bool:
         return self.cache_enabled and self.options.use_fine_grained_cache
@@ -1083,7 +1083,7 @@ def read_deps_cache(manager: BuildManager,
             except FileNotFoundError:
                 matched = False
             if not matched:
-                manager.log('Invalid or missing fine-grained deps cache: {}'.format(meta['path']))
+                manager.log(f"Invalid or missing fine-grained deps cache: {meta['path']}")
                 return None
 
     return module_deps_metas
@@ -1485,8 +1485,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
 
     # Obtain file paths.
     meta_json, data_json, _ = get_cache_names(id, path, manager.options)
-    manager.log('Writing {} {} {} {}'.format(
-        id, path, meta_json, data_json))
+    manager.log(f'Writing {id} {path} {meta_json} {data_json}')
 
     # Update tree.path so that in bazel mode it's made relative (since
     # sometimes paths leak out).
@@ -1590,7 +1589,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
     # tracked separately.
     meta_path, data_path, _ = get_cache_names(id, path, manager.options)
     cache_paths = [meta_path, data_path]
-    manager.log('Deleting {} {} {}'.format(id, path, " ".join(x for x in cache_paths if x)))
+    manager.log(f"Deleting {id} {path} {' '.join(x for x in cache_paths if x)}")
 
     for filename in cache_paths:
         try:
@@ -2490,7 +2489,7 @@ def find_module_and_diagnose(manager: BuildManager,
                 and not options.custom_typeshed_dir):
             raise CompileError([
                 f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
-                'note: A user-defined top-level module with name "%s" is not supported' % id
+                f'note: A user-defined top-level module with name "{id}" is not supported'
             ])
         return (result, follow_imports)
     else:
@@ -2523,7 +2522,7 @@ def find_module_and_diagnose(manager: BuildManager,
             # If we can't find a root source it's always fatal.
             # TODO: This might hide non-fatal errors from
             # root sources processed earlier.
-            raise CompileError(["mypy: can't find module '%s'" % id])
+            raise CompileError([f"mypy: can't find module '{id}'"])
         else:
             raise ModuleNotFound
 
@@ -2670,21 +2669,21 @@ def log_configuration(manager: BuildManager, sources: List[BuildSource]) -> None
     ]
 
     for conf_name, conf_value in configuration_vars:
-        manager.log("{:24}{}".format(conf_name + ":", conf_value))
+        manager.log(f"{conf_name + ':':24}{conf_value}")
 
     for source in sources:
-        manager.log("{:24}{}".format("Found source:", source))
+        manager.log(f"{'Found source:':24}{source}")
 
     # Complete list of searched paths can get very long, put them under TRACE
     for path_type, paths in manager.search_paths._asdict().items():
         if not paths:
-            manager.trace("No %s" % path_type)
+            manager.trace(f"No {path_type}")
             continue
 
-        manager.trace("%s:" % path_type)
+        manager.trace(f"{path_type}:")
 
         for pth in paths:
-            manager.trace("    %s" % pth)
+            manager.trace(f"    {pth}")
 
 
 # The driver
@@ -2720,7 +2719,7 @@ def dispatch(sources: List[BuildSource],
     if not graph:
         print("Nothing to do?!", file=stdout)
         return graph
-    manager.log("Loaded graph with %d nodes (%.3f sec)" % (len(graph), t1 - t0))
+    manager.log(f"Loaded graph with {len(graph)} nodes ({t1 - t0:.3f} sec)")
     if manager.options.dump_graph:
         dump_graph(graph, stdout)
         return graph
@@ -3009,7 +3008,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             scc.append('builtins')
         if manager.options.verbosity >= 2:
             for id in scc:
-                manager.trace("Priorities for %s:" % id,
+                manager.trace(f"Priorities for {id}:",
                               " ".join("%s:%d" % (x, graph[id].priorities[x])
                                        for x in graph[id].dependencies
                                        if x in ascc and x in graph[id].priorities))
@@ -3059,19 +3058,19 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
             # (on some platforms).
             if oldest_in_scc < newest_in_deps:
                 fresh = False
-                fresh_msg = "out of date by %.0f seconds" % (newest_in_deps - oldest_in_scc)
+                fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
             else:
                 fresh_msg = "fresh"
         elif undeps:
-            fresh_msg = "stale due to changed suppression (%s)" % " ".join(sorted(undeps))
+            fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
         elif stale_scc:
             fresh_msg = "inherently stale"
             if stale_scc != ascc:
-                fresh_msg += " (%s)" % " ".join(sorted(stale_scc))
+                fresh_msg += f" ({' '.join(sorted(stale_scc))})"
             if stale_deps:
-                fresh_msg += " with stale deps (%s)" % " ".join(sorted(stale_deps))
+                fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
         else:
-            fresh_msg = "stale due to deps (%s)" % " ".join(sorted(stale_deps))
+            fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
 
         # Initialize transitive_error for all SCC members from union
         # of transitive_error of dependencies.
@@ -3371,7 +3370,7 @@ def topsort(data: Dict[T, Set[T]]) -> Iterable[Set[T]]:
         data = {item: (dep - ready)
                 for item, dep in data.items()
                 if item not in ready}
-    assert not data, "A cyclic dependency exists amongst %r" % data
+    assert not data, f"A cyclic dependency exists amongst {data!r}"
 
 
 def missing_stubs_file(cache_dir: str) -> str:
@@ -3388,7 +3387,7 @@ def record_missing_stub_packages(cache_dir: str, missing_stub_packages: Set[str]
     if missing_stub_packages:
         with open(fnam, 'w') as f:
             for pkg in sorted(missing_stub_packages):
-                f.write('%s\n' % pkg)
+                f.write(f'{pkg}\n')
     else:
         if os.path.isfile(fnam):
             os.remove(fnam)

@@ -236,7 +236,7 @@ class FineGrainedBuildManager:
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
-            self.manager.log_fine_grained('existing blocker: %s' % self.blocking_error[0])
+            self.manager.log_fine_grained(f'existing blocker: {self.blocking_error[0]}')
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
             blocking_error = self.blocking_error[0]
             self.blocking_error = None
@@ -322,7 +322,7 @@ class FineGrainedBuildManager:
                 and next_id not in self.previous_modules
                 and next_id not in initial_set):
             self.manager.log_fine_grained(
-                'skip %r (module with blocking error not in import graph)' % next_id)
+                f'skip {next_id!r} (module with blocking error not in import graph)')
             return changed_modules, (next_id, next_path), None
 
         result = self.update_module(next_id, next_path, next_id in removed_set)
@@ -333,8 +333,7 @@ class FineGrainedBuildManager:
         t1 = time.time()
 
         self.manager.log_fine_grained(
-            "update once: {} in {:.3f}s - {} left".format(
-                next_id, t1 - t0, len(changed_modules)))
+            f"update once: {next_id} in {t1 - t0:.3f}s - {len(changed_modules)} left")
 
         return changed_modules, (next_id, next_path), blocker_messages
 
@@ -362,7 +361,7 @@ class FineGrainedBuildManager:
             - Module which was actually processed as (id, path) tuple
             - If there was a blocking error, the error messages from it
         """
-        self.manager.log_fine_grained('--- update single %r ---' % module)
+        self.manager.log_fine_grained(f'--- update single {module!r} ---')
         self.updated_modules.append(module)
 
         # builtins and friends could potentially get triggered because
@@ -406,7 +405,7 @@ class FineGrainedBuildManager:
         if is_verbose(self.manager):
             filtered = [trigger for trigger in triggered
                         if not trigger.endswith('__>')]
-            self.manager.log_fine_grained('triggered: %r' % sorted(filtered))
+            self.manager.log_fine_grained(f'triggered: {sorted(filtered)!r}')
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         if module in graph:
             graph[module].update_fine_grained_deps(self.deps)
@@ -534,7 +533,7 @@ def update_module_isolated(module: str,
     Returns a named tuple describing the result (see above for details).
     """
     if module not in graph:
-        manager.log_fine_grained('new module %r' % module)
+        manager.log_fine_grained(f'new module {module!r}')
 
     if not manager.fscache.isfile(path) or force_removed:
         delete_module(module, path, graph, manager)
@@ -592,7 +591,7 @@ def update_module_isolated(module: str,
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         restore([id for id, _ in remaining_modules])
-        manager.log_fine_grained('--> %r (newly imported)' % module)
+        manager.log_fine_grained(f'--> {module!r} (newly imported)')
     else:
         remaining_modules = []
 
@@ -662,7 +661,7 @@ def delete_module(module_id: str,
                   path: str,
                   graph: Graph,
                   manager: BuildManager) -> None:
-    manager.log_fine_grained('delete module %r' % module_id)
+    manager.log_fine_grained(f'delete module {module_id!r}')
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     if module_id in graph:
         del graph[module_id]
@@ -815,7 +814,7 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                manager.log_fine_grained('process target with error: %s' % target)
+                manager.log_fine_grained(f'process target with error: {target}')
                 more_nodes, _ = lookup_target(manager, target)
                 todo[id].update(more_nodes)
         triggered = set()
@@ -835,7 +834,7 @@ def propagate_changes_using_dependencies(
         up_to_date_modules = set()
         targets_with_errors = set()
         if is_verbose(manager):
-            manager.log_fine_grained('triggered: %r' % list(triggered))
+            manager.log_fine_grained(f'triggered: {list(triggered)!r}')
 
     return remaining_modules
 
@@ -891,7 +890,7 @@ def find_targets_recursive(
 
                 if module_id not in result:
                     result[module_id] = set()
-                manager.log_fine_grained('process: %s' % target)
+                manager.log_fine_grained(f'process: {target}')
                 deferred, stale_proto = lookup_target(manager, target)
                 if stale_proto:
                     stale_protos.add(stale_proto)
@@ -1040,7 +1039,7 @@ def lookup_target(manager: BuildManager,
     """
     def not_found() -> None:
         manager.log_fine_grained(
-            "Can't find matching target for %s (stale dependency?)" % target)
+            f"Can't find matching target for {target} (stale dependency?)")
 
     modules = manager.modules
     items = split_target(modules, target)

@@ -94,7 +94,8 @@ def analyze_type_alias(node: Expression,
 
 
 def no_subscript_builtin_alias(name: str, propose_alt: bool = True) -> str:
-    msg = '"{}" is not subscriptable'.format(name.split('.')[-1])
+    class_name = name.split('.')[-1]
+    msg = f'"{class_name}" is not subscriptable'
     # This should never be called if the python_version is 3.9 or newer
     nongen_builtins = get_nongen_builtins((3, 8))
     replacement = nongen_builtins[name]
@@ -971,8 +972,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     # Looking it up already put an error message in
                     return None
                 elif found.fullname not in ARG_KINDS_BY_CONSTRUCTOR:
-                    self.fail('Invalid argument constructor "{}"'.format(
-                        found.fullname), arg)
+                    self.fail(f'Invalid argument constructor "{found.fullname}"', arg)
                     return None
                 else:
                     assert found.fullname is not None
@@ -1322,8 +1322,7 @@ def fix_instance(t: Instance, fail: MsgCallback, note: MsgCallback,
     act = str(len(t.args))
     if act == '0':
         act = 'none'
-    fail('"{}" expects {}, but {} given'.format(
-        t.type.name, s, act), t, code=codes.TYPE_ARG)
+    fail(f'"{t.type.name}" expects {s}, but {act} given', t, code=codes.TYPE_ARG)
     # Construct the correct number of type arguments, as
     # otherwise the type checker may crash as it expects
     # things to be right.

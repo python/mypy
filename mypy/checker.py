@@ -886,7 +886,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
                             for idx, arg_type in enumerate(fdef.type.arg_types):
                                 if has_any_from_unimported_type(arg_type):
-                                    prefix = f"Argument {idx + 1} to \"{fdef.name}\""
+                                    prefix = f'Argument {idx + 1} to "{fdef.name}"'
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
@@ -1918,9 +1918,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for sym in base.names.values():
             if self.is_final_enum_value(sym):
                 self.fail(
-                    'Cannot extend enum with existing members: "{}"'.format(
-                        base.name,
-                    ),
+                    f'Cannot extend enum with existing members: "{base.name}"',
                     defn,
                 )
                 break
@@ -2571,7 +2569,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return self.check_subtype(compare_type, base_type, rvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
-                                      'base class "%s" defined the type as' % base.name,
+                                      f'base class "{base.name}" defined the type as',
                                       code=codes.ASSIGNMENT)
         return True
 

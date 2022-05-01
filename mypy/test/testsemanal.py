@@ -102,8 +102,7 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
-                                                                testcase.line))
+        f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 # Semantic analyzer error test cases
@@ -165,8 +164,7 @@ class SemAnalSymtableSuite(DataSuite):
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 # Type info export test cases
@@ -200,8 +198,7 @@ class SemAnalTypeInfoSuite(DataSuite):
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 class TypeInfoMap(Dict[str, TypeInfo]):

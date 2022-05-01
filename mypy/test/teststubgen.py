@@ -662,11 +662,11 @@ class StubgencSuite(unittest.TestCase):
     def test_infer_binary_op_sig(self) -> None:
         for op in ('eq', 'ne', 'lt', 'le', 'gt', 'ge',
                    'add', 'radd', 'sub', 'rsub', 'mul', 'rmul'):
-            assert_equal(infer_method_sig('__%s__' % op), [self_arg, ArgSig(name='other')])
+            assert_equal(infer_method_sig(f'__{op}__'), [self_arg, ArgSig(name='other')])
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ('neg', 'pos'):
-            assert_equal(infer_method_sig('__%s__' % op), [self_arg])
+            assert_equal(infer_method_sig(f'__{op}__'), [self_arg])
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output: List[str] = []
@@ -1074,7 +1074,7 @@ class ModuleInspectSuite(unittest.TestCase):
 
 
 def module_to_path(out_dir: str, module: str) -> str:
-    fnam = os.path.join(out_dir, '{}.pyi'.format(module.replace('.', '/')))
+    fnam = os.path.join(out_dir, f"{module.replace('.', '/')}.pyi")
     if not os.path.exists(fnam):
         alt_fnam = fnam.replace('.pyi', '/__init__.pyi')
         if os.path.exists(alt_fnam):

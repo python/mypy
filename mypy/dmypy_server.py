@@ -264,7 +264,7 @@ class Server:
         key = 'cmd_' + command
         method = getattr(self.__class__, key, None)
         if method is None:
-            return {'error': "Unrecognized command '%s'" % command}
+            return {'error': f"Unrecognized command '{command}'"}
         else:
             if command not in {'check', 'recheck', 'run'}:
                 # Only the above commands use some error formatting.

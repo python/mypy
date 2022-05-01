@@ -1167,8 +1167,7 @@ class StubtestMiscUnit(unittest.TestCase):
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
         config_file = (
-            "[mypy]\n"
-            "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
+            f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (

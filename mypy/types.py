@@ -2754,7 +2754,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 if isinstance(var, TypeVarType):
                     # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
-                        vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
+                        vals = f"({', '.join(val.accept(self) for val in var.values)})"
                         vs.append(f'{var.name} in {vals}')
                     elif not is_named_instance(var.upper_bound, 'builtins.object'):
                         vs.append(f'{var.name} <: {var.upper_bound.accept(self)}')
@@ -2763,7 +2763,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 else:
                     # For other TypeVarLikeTypes, just use the name
                     vs.append(var.name)
-            s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
+            s = f"[{', '.join(vs)}] {s}"
 
         return f'def {s}'
 
@@ -2771,7 +2771,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         a = []
         for i in t.items:
             a.append(i.accept(self))
-        return 'Overload({})'.format(', '.join(a))
+        return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)

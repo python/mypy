@@ -365,8 +365,7 @@ class MessageBuilder:
         if self.are_type_names_disabled():
             msg = f'Unsupported operand types for {op} (likely involving Union)'
         else:
-            msg = 'Unsupported operand types for {} ({} and {})'.format(
-                op, left_str, right_str)
+            msg = f'Unsupported operand types for {op} ({left_str} and {right_str})'
         self.fail(msg, context, code=code)
 
     def unsupported_left_operand(self, op: str, typ: Type,
@@ -374,8 +373,7 @@ class MessageBuilder:
         if self.are_type_names_disabled():
             msg = f'Unsupported left operand type for {op} (some union)'
         else:
-            msg = 'Unsupported left operand type for {} ({})'.format(
-                op, format_type(typ))
+            msg = f'Unsupported left operand type for {op} ({format_type(typ)})'
         self.fail(msg, context, code=codes.OPERATOR)
 
     def not_callable(self, typ: Type, context: Context) -> Type:
@@ -707,7 +705,7 @@ class MessageBuilder:
         if not matches:
             matches = best_matches(name, not_matching_type_args)
         if matches:
-            msg += "; did you mean {}?".format(pretty_seq(matches[:3], "or"))
+            msg += f"; did you mean {pretty_seq(matches[:3], 'or')}?"
         self.fail(msg, context, code=codes.CALL_ARG)
         module = find_defining_module(self.modules, callee)
         if module:
@@ -980,7 +978,7 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def unsupported_placeholder(self, placeholder: str, context: Context) -> None:
-        self.fail('Unsupported format character "%s"' % placeholder, context,
+        self.fail(f'Unsupported format character "{placeholder}"', context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_with_star_and_key(self, context: Context) -> None:
@@ -999,7 +997,7 @@ class MessageBuilder:
                   context, code=codes.STRING_FORMATTING)
 
     def key_not_in_mapping(self, key: str, context: Context) -> None:
-        self.fail('Key "%s" not found in mapping' % key, context,
+        self.fail(f'Key "{key}" not found in mapping', context,
                   code=codes.STRING_FORMATTING)
 
     def string_interpolation_mixing_key_and_non_keys(self, context: Context) -> None:
@@ -1007,7 +1005,7 @@ class MessageBuilder:
                   code=codes.STRING_FORMATTING)
 
     def cannot_determine_type(self, name: str, context: Context) -> None:
-        self.fail('Cannot determine type of "%s"' % name, context, code=codes.HAS_TYPE)
+        self.fail(f'Cannot determine type of "{name}"', context, code=codes.HAS_TYPE)
 
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
         self.fail(f'Cannot determine type of "{name}" in base class "{base}"', context)
@@ -1029,7 +1027,7 @@ class MessageBuilder:
     def cannot_instantiate_abstract_class(self, class_name: str,
                                           abstract_attributes: List[str],
                                           context: Context) -> None:
-        attrs = format_string_list(['"%s"' % a for a in abstract_attributes])
+        attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail('Cannot instantiate abstract class "%s" with abstract '
                   'attribute%s %s' % (class_name, plural_s(abstract_attributes),
                                    attrs),
@@ -1047,7 +1045,7 @@ class MessageBuilder:
                   code=codes.ASSIGNMENT)
 
     def cant_assign_to_classvar(self, name: str, context: Context) -> None:
-        self.fail('Cannot assign to class variable "%s" via instance' % name, context)
+        self.fail(f'Cannot assign to class variable "{name}" via instance', context)
 
     def final_cant_override_writable(self, name: str, ctx: Context) -> None:
         self.fail(f'Cannot override writable attribute "{name}" with a final one', ctx)
@@ -1072,8 +1070,7 @@ class MessageBuilder:
 
     def read_only_property(self, name: str, type: TypeInfo,
                            context: Context) -> None:
-        self.fail('Property "{}" defined in "{}" is read-only'.format(
-            name, type.name), context)
+        self.fail(f'Property "{name}" defined in "{type.name}" is read-only', context)
 
     def incompatible_typevar_value(self,
                                    callee: CallableType,
@@ -1142,8 +1139,7 @@ class MessageBuilder:
 
     def forward_operator_not_callable(
             self, forward_method: str, context: Context) -> None:
-        self.fail('Forward operator "{}" is not callable'.format(
-            forward_method), context)
+        self.fail(f'Forward operator "{forward_method}" is not callable', context)
 
     def signatures_incompatible(self, method: str, other_method: str,
                                 context: Context) -> None:
@@ -1322,8 +1318,7 @@ class MessageBuilder:
         self.fail(message, context)
 
     def incorrectly_returning_any(self, typ: Type, context: Context) -> None:
-        message = 'Returning Any from function declared to return {}'.format(
-            format_type(typ))
+        message = f'Returning Any from function declared to return {format_type(typ)}'
         self.fail(message, context, code=codes.NO_ANY_RETURN)
 
     def incorrect__exit__return(self, context: Context) -> None:
@@ -1481,8 +1476,7 @@ class MessageBuilder:
         if conflict_types and (not is_subtype(subtype, erase_type(supertype)) or
                                not subtype.type.defn.type_vars or
                                not supertype.type.defn.type_vars):
-            self.note('Following member(s) of {} have '
-                      'conflicts:'.format(format_type(subtype)),
+            self.note(f'Following member(s) of {format_type(subtype)} have conflicts:',
                       context,
                       code=code)
             for name, got, exp in conflict_types[:MAX_ITEMS]:
@@ -1562,8 +1556,7 @@ class MessageBuilder:
                    *,
                    code: Optional[ErrorCode] = None) -> None:
         if len(conflicts) > max_items:
-            self.note('<{} more conflict(s) not shown>'
-                      .format(len(conflicts) - max_items),
+            self.note(f'<{len(conflicts) - max_items} more conflict(s) not shown>',
                       context, offset=offset, code=code)
 
     def try_report_long_tuple_assignment_error(self,
@@ -1670,9 +1663,7 @@ def format_callable_args(arg_types: List[Type], arg_kinds: List[ArgKind],
         else:
             constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
             if arg_kind.is_star() or arg_name is None:
-                arg_strings.append("{}({})".format(
-                    constructor,
-                    format(arg_type)))
+                arg_strings.append(f"{constructor}({format(arg_type)})")
             else:
                 arg_strings.append("{}({}, {})".format(
                     constructor,
@@ -1760,10 +1751,8 @@ def format_type_inner(typ: Type,
         items = []
         for (item_name, item_type) in typ.items.items():
             modifier = '' if item_name in typ.required_keys else '?'
-            items.append('{!r}{}: {}'.format(item_name,
-                                             modifier,
-                                             format(item_type)))
-        s = 'TypedDict({{{}}})'.format(', '.join(items))
+            items.append(f'{item_name!r}{modifier}: {format(item_type)}')
+        s = f"TypedDict({{{', '.join(items)}}})"
         return s
     elif isinstance(typ, LiteralType):
         return f'Literal[{format_literal_value(typ)}]'
@@ -2027,7 +2016,7 @@ def pretty_callable(tp: CallableType) -> str:
             else:
                 # For other TypeVarLikeTypes, just use the repr
                 tvars.append(repr(tvar))
-        s = '[{}] {}'.format(', '.join(tvars), s)
+        s = f"[{', '.join(tvars)}] {s}"
     return f'def {s}'
 
 
@@ -2134,7 +2123,7 @@ def format_string_list(lst: List[str]) -> str:
     if len(lst) == 1:
         return lst[0]
     elif len(lst) <= 5:
-        return '{} and {}'.format(', '.join(lst[:-1]), lst[-1])
+        return f"{', '.join(lst[:-1])} and {lst[-1]}"
     else:
         return '%s, ... and %s (%i methods suppressed)' % (
             ', '.join(lst[:2]), lst[-1], len(lst) - 3)
@@ -2143,9 +2132,9 @@ def format_string_list(lst: List[str]) -> str:
 def format_item_name_list(s: Iterable[str]) -> str:
     lst = list(s)
     if len(lst) <= 5:
-        return '(' + ', '.join(['"%s"' % name for name in lst]) + ')'
+        return '(' + ', '.join([f'"{name}"' for name in lst]) + ')'
     else:
-        return '(' + ', '.join(['"%s"' % name for name in lst[:5]]) + ', ...)'
+        return '(' + ', '.join([f'"{name}"' for name in lst[:5]]) + ', ...)'
 
 
 def callable_name(type: FunctionLike) -> Optional[str]:
@@ -2263,4 +2252,4 @@ def format_key_list(keys: List[str], *, short: bool = False) -> str:
     elif len(keys) == 1:
         return f'{td}key {formatted_keys[0]}'
     else:
-        return '{}keys ({})'.format(td, ', '.join(formatted_keys))
+        return f"{td}keys ({', '.join(formatted_keys)})"
