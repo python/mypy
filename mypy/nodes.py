@@ -254,7 +254,7 @@ class SymbolNode(Node):
         method = deserialize_map.get(classname)
         if method is not None:
             return method(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
+        raise NotImplementedError(f'unexpected .class {classname}')
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
@@ -1660,7 +1660,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Serializing NameExpr: %s" % (self,)
+        assert False, f"Serializing NameExpr: {self}"
 
 
 class MemberExpr(RefExpr):
@@ -2868,18 +2868,18 @@ class TypeInfo(SymbolNode):
             description = name + str_conv.format_id(self.names[name].node)
             node = self.names[name].node
             if isinstance(node, Var) and node.type:
-                description += ' ({})'.format(type_str(node.type))
+                description += f' ({type_str(node.type)})'
             names.append(description)
         items = [
-            'Name({})'.format(self.fullname),
+            f'Name({self.fullname})',
             base,
             mro,
             ('Names', names),
         ]
         if self.declared_metaclass:
-            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+            items.append(f'DeclaredMetaclass({type_str(self.declared_metaclass)})')
         if self.metaclass_type:
-            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
+            items.append(f'MetaclassType({type_str(self.metaclass_type)})')
         return mypy.strconv.dump_tagged(
             items,
             head,
@@ -3328,12 +3328,12 @@ class SymbolTableNode:
         return new
 
     def __str__(self) -> str:
-        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
+        s = f'{node_kinds[self.kind]}/{short_type(self.node)}'
         if isinstance(self.node, SymbolNode):
-            s += ' ({})'.format(self.node.fullname)
+            s += f' ({self.node.fullname})'
         # Include declared type of variables and functions.
         if self.type is not None:
-            s += ' : {}'.format(self.type)
+            s += f' : {self.type}'
         return s
 
     def serialize(self, prefix: str, name: str) -> JsonDict:
@@ -3358,7 +3358,7 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname
         else:
-            assert self.node is not None, '%s:%s' % (prefix, name)
+            assert self.node is not None, f'{prefix}:{name}'
             if prefix is not None:
                 fullname = self.node.fullname
                 if (fullname is not None and '.' in fullname
@@ -3366,7 +3366,7 @@ class SymbolTableNode:
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     assert not isinstance(self.node, PlaceholderNode), (
-                        'Definition of {} is unexpectedly incomplete'.format(fullname)
+                        f'Definition of {fullname} is unexpectedly incomplete'
                     )
                     data['cross_ref'] = fullname
                     return data
@@ -3468,7 +3468,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
         initial = get_member_expr_fullname(expr.expr)
     else:
         return None
-    return '{}.{}'.format(initial, expr.name)
+    return f'{initial}.{expr.name}'
 
 
 deserialize_map: Final = {
@@ -3519,7 +3519,7 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
     seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail('Duplicate argument "{}" in {}'.format(name, description), node)
+            fail(f'Duplicate argument "{name}" in {description}', node)
             break
         seen_names.add(name)
 

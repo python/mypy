@@ -161,7 +161,7 @@ class ErrorWatcher:
         elif callable(self._filter):
             should_filter = self._filter(file, info)
         else:
-            raise AssertionError("invalid error filter: {}".format(type(self._filter)))
+            raise AssertionError(f"invalid error filter: {type(self._filter)}")
         if should_filter and self._filtered is not None:
             self._filtered.append(info)
 
@@ -661,18 +661,18 @@ class Errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line >= 0 and column >= 0:
-                    srcloc = '{}:{}:{}'.format(file, line, 1 + column)
+                    srcloc = f'{file}:{line}:{1 + column}'
                 elif line >= 0:
-                    srcloc = '{}:{}'.format(file, line)
+                    srcloc = f'{file}:{line}'
                 else:
                     srcloc = file
-                s = '{}: {}: {}'.format(srcloc, severity, message)
+                s = f'{srcloc}: {severity}: {message}'
             else:
                 s = message
             if self.show_error_codes and code and severity != 'note':
                 # If note has an error code, it is related to a previous error. Avoid
                 # displaying duplicate error codes.
-                s = '{}  [{}]'.format(s, code.code)
+                s = f'{s}  [{code.code}]'
             a.append(s)
             if self.pretty:
                 # Add source code fragment and a location marker.
@@ -723,10 +723,12 @@ class Errors:
         """Return a set of all targets that contain errors."""
         # TODO: Make sure that either target is always defined or that not being defined
         #       is okay for fine-grained incremental checking.
-        return set(info.target
-                   for errs in self.error_info_map.values()
-                   for info in errs
-                   if info.target)
+        return {
+            info.target
+            for errs in self.error_info_map.values()
+            for info in errs
+            if info.target
+        }
 
     def render_messages(self,
                         errors: List[ErrorInfo]) -> List[ErrorTuple]:
@@ -792,7 +794,7 @@ class Errors:
                     result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                 else:
                     result.append((file, -1, -1, 'note',
-                                   'In class "{}":'.format(e.type), e.allow_dups, None))
+                                   f'In class "{e.type}":', e.allow_dups, None))
 
             if isinstance(e.message, ErrorMessage):
                 result.append(
@@ -927,14 +929,14 @@ def report_internal_error(err: Exception,
     # Compute file:line prefix for official-looking error messages.
     if file:
         if line:
-            prefix = '{}:{}: '.format(file, line)
+            prefix = f'{file}:{line}: '
         else:
-            prefix = '{}: '.format(file)
+            prefix = f'{file}: '
     else:
         prefix = ''
 
     # Print "INTERNAL ERROR" message.
-    print('{}error: INTERNAL ERROR --'.format(prefix),
+    print(f'{prefix}error: INTERNAL ERROR --',
           'Please try using mypy master on GitHub:\n'
           'https://mypy.readthedocs.io/en/stable/common_issues.html'
           '#using-a-development-mypy-build',
@@ -946,7 +948,7 @@ def report_internal_error(err: Exception,
         print('If this issue continues with mypy master, '
               'please report a bug at https://github.com/python/mypy/issues',
             file=stderr)
-    print('version: {}'.format(mypy_version),
+    print(f'version: {mypy_version}',
           file=stderr)
 
     # If requested, drop into pdb. This overrides show_tb.
@@ -969,8 +971,8 @@ def report_internal_error(err: Exception,
         print('Traceback (most recent call last):')
         for s in traceback.format_list(tb + tb2):
             print(s.rstrip('\n'))
-        print('{}: {}'.format(type(err).__name__, err), file=stdout)
-        print('{}: note: use --pdb to drop into pdb'.format(prefix), file=stderr)
+        print(f'{type(err).__name__}: {err}', file=stdout)
+        print(f'{prefix}: note: use --pdb to drop into pdb', file=stderr)
 
     # Exit.  The caller has nothing more to say.
     # We use exit code 2 to signal that this is no ordinary error.

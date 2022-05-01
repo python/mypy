@@ -53,13 +53,10 @@ non_sequence_match_type_names: Final = [
 # For every Pattern a PatternType can be calculated. This requires recursively calculating
 # the PatternTypes of the sub-patterns first.
 # Using the data in the PatternType the match subject and captured names can be narrowed/inferred.
-PatternType = NamedTuple(
-    'PatternType',
-    [
-        ('type', Type),  # The type the match subject can be narrowed to
-        ('rest_type', Type),  # The remaining type if the pattern didn't match
-        ('captures', Dict[Expression, Type]),  # The variables captured by the pattern
-    ])
+class PatternType(NamedTuple):
+    type: Type  # The type the match subject can be narrowed to
+    rest_type: Type  # The remaining type if the pattern didn't match
+    captures: Dict[Expression, Type]  # The variables captured by the pattern
 
 
 class PatternChecker(PatternVisitor[PatternType]):
@@ -628,7 +625,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                         ) -> None:
         # Calculating this would not be needed if TypeMap directly used literal hashes instead of
         # expressions, as suggested in the TODO above it's definition
-        already_captured = set(literal_hash(expr) for expr in original_type_map)
+        already_captured = {literal_hash(expr) for expr in original_type_map}
         for expr, typ in extra_type_map.items():
             if literal_hash(expr) in already_captured:
                 node = get_var(expr)

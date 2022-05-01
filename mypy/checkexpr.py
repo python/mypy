@@ -156,7 +156,7 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
             else:
                 break
         else:
-            raise AssertionError("Unknown RefExpr subclass: {}".format(type(expr)))
+            raise AssertionError(f"Unknown RefExpr subclass: {type(expr)}")
     return output
 
 
@@ -437,7 +437,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             type_name = tuple_fallback(object_type).type.fullname
 
         if type_name is not None:
-            return '{}.{}'.format(type_name, method_name)
+            return f'{type_name}.{method_name}'
         else:
             return None
 
@@ -592,7 +592,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.check_simple_assignment(
                     lvalue_type=item_expected_type, rvalue=item_value, context=item_value,
                     msg=message_registry.INCOMPATIBLE_TYPES,
-                    lvalue_name='TypedDict item "{}"'.format(item_name),
+                    lvalue_name=f'TypedDict item "{item_name}"',
                     rvalue_name='expression',
                     code=codes.TYPEDDICT_ITEM)
 
@@ -2199,7 +2199,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             e.method_type = method_type
             return result
         else:
-            raise RuntimeError('Unknown operator {}'.format(e.op))
+            raise RuntimeError(f'Unknown operator {e.op}')
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Type:
         """Type check a comparison expression.
@@ -2296,7 +2296,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     self.msg.dangerous_comparison(left_type, right_type, 'identity', e)
                 method_type = None
             else:
-                raise RuntimeError('Unknown comparison operator {}'.format(operator))
+                raise RuntimeError(f'Unknown comparison operator {operator}')
 
             e.method_types.append(method_type)
 

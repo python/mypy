@@ -120,7 +120,7 @@ class TypeVarLikeScope:
             return None
 
     def __str__(self) -> str:
-        me = ", ".join('{}: {}`{}'.format(k, v.name, v.id) for k, v in self.scope.items())
+        me = ", ".join(f'{k}: {v.name}`{v.id}' for k, v in self.scope.items())
         if self.parent is None:
             return me
-        return "{} <- {}".format(str(self.parent), me)
+        return f"{self.parent} <- {me}"

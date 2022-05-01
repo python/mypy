@@ -62,18 +62,18 @@ import json
 import os
 
 
-PyAnnotateSignature = TypedDict('PyAnnotateSignature',
-                                {'return_type': str, 'arg_types': List[str]})
+class PyAnnotateSignature(TypedDict):
+    return_type: str
+    arg_types: List[str]
 
 
-Callsite = NamedTuple(
-    'Callsite',
-    [('path', str),
-     ('line', int),
-     ('arg_kinds', List[List[ArgKind]]),
-     ('callee_arg_names', List[Optional[str]]),
-     ('arg_names', List[List[Optional[str]]]),
-     ('arg_types', List[List[Type]])])
+class Callsite(NamedTuple):
+    path: str
+    line: int
+    arg_kinds: List[List[ArgKind]]
+    callee_arg_names: List[Optional[str]]
+    arg_names: List[List[Optional[str]]]
+    arg_types: List[List[Type]]
 
 
 class SuggestionPlugin(Plugin):
@@ -250,7 +250,7 @@ class SuggestionEngine:
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
-            ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
+            [f"{path}:{line}: {self.format_args(arg_kinds, arg_names, arg_types)}"
              for path, line, arg_kinds, _, arg_names, arg_types in callsites]
         ))
 
@@ -483,7 +483,7 @@ class SuggestionEngine:
                     arg = '**' + arg
                 elif kind.is_named():
                     if name:
-                        arg = "%s=%s" % (name, arg)
+                        arg = f"{name}={arg}"
             args.append(arg)
         return "(%s)" % (", ".join(args))
 
@@ -504,14 +504,14 @@ class SuggestionEngine:
                     ' package.module.Class.method or path/to/file.py:line'.format(key))
             file, line = key.split(':')
             if not line.isdigit():
-                raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
+                raise SuggestionFailure(f'Line number must be a number. Got {line}')
             line_number = int(line)
             modname, node = self.find_node_by_file_and_line(file, line_number)
             tail = node.fullname[len(modname) + 1:]  # add one to account for '.'
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
-                raise SuggestionFailure("Cannot find module for %s" % (key,))
+                raise SuggestionFailure(f"Cannot find module for {key}")
             modname, tail = target
             node = self.find_node_by_module_and_name(modname, tail)
 
@@ -589,7 +589,7 @@ class SuggestionEngine:
                 closest_line = sym_line
                 node = sym.node
         if not node:
-            raise SuggestionFailure('Cannot find a function at line {}'.format(line))
+            raise SuggestionFailure(f'Cannot find a function at line {line}')
         return modname, node
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
@@ -720,7 +720,7 @@ class SuggestionEngine:
         return 0
 
     def score_callable(self, t: CallableType) -> int:
-        return (sum([self.score_type(x, arg_pos=True) for x in t.arg_types]) +
+        return (sum(self.score_type(x, arg_pos=True) for x in t.arg_types) +
                 self.score_type(t.ret_type, arg_pos=False))
 
 
@@ -803,7 +803,7 @@ class TypeFormatter(TypeStrVisitor):
         if (mod, obj) == ('builtins', 'tuple'):
             mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
         elif t.args:
-            obj += '[{}]'.format(self.list_str(t.args))
+            obj += f'[{self.list_str(t.args)}]'
 
         if mod_obj == ('builtins', 'unicode'):
             return 'Text'
@@ -819,7 +819,7 @@ class TypeFormatter(TypeStrVisitor):
             if fallback_name != 'builtins.tuple':
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
-        return 'Tuple[{}]'.format(s)
+        return f'Tuple[{s}]'
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
         return "Any"
@@ -829,7 +829,7 @@ class TypeFormatter(TypeStrVisitor):
 
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_optional(t):
-            return "Optional[{}]".format(remove_optional(t).accept(self))
+            return f"Optional[{remove_optional(t).accept(self)}]"
         else:
             return super().visit_union_type(t)
 
@@ -845,7 +845,7 @@ class TypeFormatter(TypeStrVisitor):
             args = [typ.accept(self) for typ in t.arg_types]
             arg_str = "[{}]".format(", ".join(args))
 
-        return "Callable[{}, {}]".format(arg_str, t.ret_type.accept(self))
+        return f"Callable[{arg_str}, {t.ret_type.accept(self)}]"
 
 
 class StrToText(TypeTranslator):

@@ -493,17 +493,21 @@ def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
 # - Remaining changed modules that are not processed yet as (module id, path)
 #   tuples (non-empty if the original changed module imported other new
 #   modules)
-NormalUpdate = NamedTuple('NormalUpdate', [('module', str),
-                                           ('path', str),
-                                           ('remaining', List[Tuple[str, str]]),
-                                           ('tree', Optional[MypyFile])])
+class NormalUpdate(NamedTuple):
+    module: str
+    path: str
+    remaining: List[Tuple[str, str]]
+    tree: Optional[MypyFile]
+
 
 # The result of update_module_isolated when there is a blocking error. Items
 # are similar to NormalUpdate (but there are fewer).
-BlockedUpdate = NamedTuple('BlockedUpdate', [('module', str),
-                                             ('path', str),
-                                             ('remaining', List[Tuple[str, str]]),
-                                             ('messages', List[str])])
+class BlockedUpdate(NamedTuple):
+    module: str
+    path: str
+    remaining: List[Tuple[str, str]]
+    messages: List[str]
+
 
 UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
@@ -1128,9 +1132,9 @@ def target_from_node(module: str,
         return module
     else:  # OverloadedFuncDef or FuncDef
         if node.info:
-            return '%s.%s' % (node.info.fullname, node.name)
+            return f'{node.info.fullname}.{node.name}'
         else:
-            return '%s.%s' % (module, node.name)
+            return f'{module}.{node.name}'
 
 
 if sys.platform != "win32":

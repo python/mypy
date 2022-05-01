@@ -299,29 +299,29 @@ def normpath(path: str, options: Options) -> str:
         return os.path.abspath(path)
 
 
-CacheMeta = NamedTuple('CacheMeta',
-                       [('id', str),
-                        ('path', str),
-                        ('mtime', int),
-                        ('size', int),
-                        ('hash', str),
-                        ('dependencies', List[str]),  # names of imported modules
-                        ('data_mtime', int),  # mtime of data_json
-                        ('data_json', str),  # path of <id>.data.json
-                        ('suppressed', List[str]),  # dependencies that weren't imported
-                        ('options', Optional[Dict[str, object]]),  # build options
-                        # dep_prios and dep_lines are in parallel with
-                        # dependencies + suppressed.
-                        ('dep_prios', List[int]),
-                        ('dep_lines', List[int]),
-                        ('interface_hash', str),  # hash representing the public interface
-                        ('version_id', str),  # mypy version for cache invalidation
-                        ('ignore_all', bool),  # if errors were ignored
-                        ('plugin_data', Any),  # config data from plugins
-                        ])
+class CacheMeta(NamedTuple):
+    id: str
+    path: str
+    mtime: int
+    size: int
+    hash: str
+    dependencies: List[str]  # names of imported modules
+    data_mtime: int  # mtime of data_json
+    data_json: str  # path of <id>.data.json
+    suppressed: List[str]  # dependencies that weren't imported
+    options: Optional[Dict[str, object]]  # build options
+    # dep_prios and dep_lines are in parallel with dependencies + suppressed
+    dep_prios: List[int]
+    dep_lines: List[int]
+    interface_hash: str  # hash representing the public interface
+    version_id: str  # mypy version for cache invalidation
+    ignore_all: bool  # if errors were ignored
+    plugin_data: Any  # config data from plugins
+
 # NOTE: dependencies + suppressed == all reachable imports;
 # suppressed contains those reachable imports that were prevented by
 # silent mode or simply not found.
+
 
 # Metadata for the fine-grained dependencies file associated with a module.
 FgDepMeta = TypedDict('FgDepMeta', {'path': str, 'mtime': int})
@@ -413,7 +413,7 @@ def load_plugins_from_config(
             # Plugin paths can be relative to the config file location.
             plugin_path = os.path.join(os.path.dirname(options.config_file), plugin_path)
             if not os.path.isfile(plugin_path):
-                plugin_error('Can\'t find plugin "{}"'.format(plugin_path))
+                plugin_error(f'Can\'t find plugin "{plugin_path}"')
             # Use an absolute path to avoid populating the cache entry
             # for 'tmp' during tests, since it will be different in
             # different tests.
@@ -423,14 +423,14 @@ def load_plugins_from_config(
             sys.path.insert(0, plugin_dir)
         elif re.search(r'[\\/]', plugin_path):
             fnam = os.path.basename(plugin_path)
-            plugin_error('Plugin "{}" does not have a .py extension'.format(fnam))
+            plugin_error(f'Plugin "{fnam}" does not have a .py extension')
         else:
             module_name = plugin_path
 
         try:
             module = importlib.import_module(module_name)
         except Exception as exc:
-            plugin_error('Error importing plugin "{}": {}'.format(plugin_path, exc))
+            plugin_error(f'Error importing plugin "{plugin_path}": {exc}')
         finally:
             if plugin_dir is not None:
                 assert sys.path[0] == plugin_dir
@@ -443,7 +443,7 @@ def load_plugins_from_config(
         try:
             plugin_type = getattr(module, func_name)(__version__)
         except Exception:
-            print('Error calling the plugin(version) entry point of {}\n'.format(plugin_path),
+            print(f'Error calling the plugin(version) entry point of {plugin_path}\n',
                   file=stdout)
             raise  # Propagate to display traceback
 
@@ -459,7 +459,7 @@ def load_plugins_from_config(
             custom_plugins.append(plugin_type(options))
             snapshot[module_name] = take_module_snapshot(module)
         except Exception:
-            print('Error constructing plugin instance of {}\n'.format(plugin_type.__name__),
+            print(f'Error constructing plugin instance of {plugin_type.__name__}\n',
                   file=stdout)
             raise  # Propagate to display traceback
 
@@ -503,7 +503,7 @@ def take_module_snapshot(module: types.ModuleType) -> str:
     else:
         digest = 'unknown'
     ver = getattr(module, '__version__', 'none')
-    return '{}:{}'.format(ver, digest)
+    return f'{ver}:{digest}'
 
 
 def find_config_file_line_number(path: str, section: str, setting_name: str) -> int:
@@ -520,7 +520,7 @@ def find_config_file_line_number(path: str, section: str, setting_name: str) -> 
                 if line.startswith('[') and line.endswith(']'):
                     current_section = line[1:-1].strip()
                     in_desired_section = (current_section == section)
-                elif in_desired_section and re.match(r'{}\s*='.format(setting_name), line):
+                elif in_desired_section and re.match(fr'{setting_name}\s*=', line):
                     results.append(i + 1)
         if len(results) == 1:
             return results[0]
@@ -918,7 +918,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
         assert deps_json
         manager.log("Writing deps cache", deps_json)
         if not manager.metastore.write(deps_json, deps_to_json(rdeps[id])):
-            manager.log("Error writing fine-grained deps JSON file {}".format(deps_json))
+            manager.log(f"Error writing fine-grained deps JSON file {deps_json}")
             error = True
         else:
             fg_deps_meta[id] = {'path': deps_json, 'mtime': manager.getmtime(deps_json)}
@@ -938,7 +938,7 @@ def write_deps_cache(rdeps: Dict[str, Dict[str, Set[str]]],
     meta = {'snapshot': meta_snapshot, 'deps_meta': fg_deps_meta}
 
     if not metastore.write(DEPS_META_FILE, json.dumps(meta)):
-        manager.log("Error writing fine-grained deps meta JSON file {}".format(DEPS_META_FILE))
+        manager.log(f"Error writing fine-grained deps meta JSON file {DEPS_META_FILE}")
         error = True
 
     if error:
@@ -1037,14 +1037,14 @@ def read_quickstart_file(options: Options,
         # just ignore it.
         raw_quickstart: Dict[str, Any] = {}
         try:
-            with open(options.quickstart_file, "r") as f:
+            with open(options.quickstart_file) as f:
                 raw_quickstart = json.load(f)
 
             quickstart = {}
             for file, (x, y, z) in raw_quickstart.items():
                 quickstart[file] = (x, y, z)
         except Exception as e:
-            print("Warning: Failed to load quickstart file: {}\n".format(str(e)), file=stdout)
+            print(f"Warning: Failed to load quickstart file: {str(e)}\n", file=stdout)
     return quickstart
 
 
@@ -1095,7 +1095,7 @@ def _load_json_file(file: str, manager: BuildManager,
     t0 = time.time()
     try:
         data = manager.metastore.read(file)
-    except IOError:
+    except OSError:
         manager.log(log_error + file)
         return None
     manager.add_stats(metastore_read_time=time.time() - t0)
@@ -1221,11 +1221,11 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     """
     # TODO: May need to take more build options into account
     meta_json, data_json, _ = get_cache_names(id, path, manager.options)
-    manager.trace('Looking for {} at {}'.format(id, meta_json))
+    manager.trace(f'Looking for {id} at {meta_json}')
     t0 = time.time()
     meta = _load_json_file(meta_json, manager,
-                           log_success='Meta {} '.format(id),
-                           log_error='Could not load cache for {}: '.format(id))
+                           log_success=f'Meta {id} ',
+                           log_error=f'Could not load cache for {id}: ')
     t1 = time.time()
     if meta is None:
         return None
@@ -1243,7 +1243,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if (m.id != id or
             m.mtime is None or m.size is None or
             m.dependencies is None or m.data_mtime is None):
-        manager.log('Metadata abandoned for {}: attributes are missing'.format(id))
+        manager.log(f'Metadata abandoned for {id}: attributes are missing')
         return None
 
     # Ignore cache if generated by an older mypy version.
@@ -1251,7 +1251,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
             or m.options is None
             or len(m.dependencies) + len(m.suppressed) != len(m.dep_prios)
             or len(m.dependencies) + len(m.suppressed) != len(m.dep_lines)):
-        manager.log('Metadata abandoned for {}: new attributes are missing'.format(id))
+        manager.log(f'Metadata abandoned for {id}: new attributes are missing')
         return None
 
     # Ignore cache if (relevant) options aren't the same.
@@ -1265,7 +1265,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         # Older versions included debug_cache, but it's silly to compare it.
         del cached_options['debug_cache']
     if cached_options != current_options:
-        manager.log('Metadata abandoned for {}: options differ'.format(id))
+        manager.log(f'Metadata abandoned for {id}: options differ')
         if manager.options.verbosity >= 2:
             for key in sorted(set(cached_options) | set(current_options)):
                 if cached_options.get(key) != current_options.get(key):
@@ -1275,7 +1275,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if manager.old_plugins_snapshot and manager.plugins_snapshot:
         # Check if plugins are still the same.
         if manager.plugins_snapshot != manager.old_plugins_snapshot:
-            manager.log('Metadata abandoned for {}: plugins differ'.format(id))
+            manager.log(f'Metadata abandoned for {id}: plugins differ')
             return None
     # So that plugins can return data with tuples in it without
     # things silently always invalidating modules, we round-trip
@@ -1284,7 +1284,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
         manager.plugin.report_config_data(ReportConfigContext(id, path, is_check=True))
     ))
     if m.plugin_data != plugin_data:
-        manager.log('Metadata abandoned for {}: plugin configuration differs'.format(id))
+        manager.log(f'Metadata abandoned for {id}: plugin configuration differs')
         return None
 
     manager.add_stats(fresh_metas=1)
@@ -1306,11 +1306,11 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     # we use cache data file mtime to propagate information about changes in the dependencies.
 
     if meta is None:
-        manager.log('Metadata not found for {}'.format(id))
+        manager.log(f'Metadata not found for {id}')
         return None
 
     if meta.ignore_all and not ignore_all:
-        manager.log('Metadata abandoned for {}: errors were previously ignored'.format(id))
+        manager.log(f'Metadata abandoned for {id}: errors were previously ignored')
         return None
 
     t0 = time.time()
@@ -1321,10 +1321,10 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         try:
             data_mtime = manager.getmtime(meta.data_json)
         except OSError:
-            manager.log('Metadata abandoned for {}: failed to stat data_json'.format(id))
+            manager.log(f'Metadata abandoned for {id}: failed to stat data_json')
             return None
         if data_mtime != meta.data_mtime:
-            manager.log('Metadata abandoned for {}: data cache is modified'.format(id))
+            manager.log(f'Metadata abandoned for {id}: data cache is modified')
             return None
 
     if bazel:
@@ -1335,7 +1335,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     except OSError:
         return None
     if not (stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode)):
-        manager.log('Metadata abandoned for {}: file {} does not exist'.format(id, path))
+        manager.log(f'Metadata abandoned for {id}: file {path} does not exist')
         return None
 
     manager.add_stats(validate_stat_time=time.time() - t0)
@@ -1358,7 +1358,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
     size = st.st_size
     # Bazel ensures the cache is valid.
     if size != meta.size and not bazel and not fine_grained_cache:
-        manager.log('Metadata abandoned for {}: file {} has different size'.format(id, path))
+        manager.log(f'Metadata abandoned for {id}: file {path} has different size')
         return None
 
     # Bazel ensures the cache is valid.
@@ -1371,7 +1371,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             # the file is up to date even though the mtime is wrong, without needing to hash it.
             qmtime, qsize, qhash = manager.quickstart_state[path]
             if int(qmtime) == mtime and qsize == size and qhash == meta.hash:
-                manager.log('Metadata fresh (by quickstart) for {}: file {}'.format(id, path))
+                manager.log(f'Metadata fresh (by quickstart) for {id}: file {path}')
                 meta = meta._replace(mtime=mtime, path=path)
                 return meta
 
@@ -1387,7 +1387,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
         manager.add_stats(validate_hash_time=time.time() - t0)
         if source_hash != meta.hash:
             if fine_grained_cache:
-                manager.log('Using stale metadata for {}: file {}'.format(id, path))
+                manager.log(f'Using stale metadata for {id}: file {path}')
                 return meta
             else:
                 manager.log('Metadata abandoned for {}: file {} has different hash'.format(
@@ -1430,7 +1430,7 @@ def validate_meta(meta: Optional[CacheMeta], id: str, path: Optional[str],
             return meta
 
     # It's a match on (id, path, size, hash, mtime).
-    manager.log('Metadata fresh for {}: file {}'.format(id, path))
+    manager.log(f'Metadata fresh for {id}: file {path}')
     return meta
 
 
@@ -1504,7 +1504,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     try:
         st = manager.get_stat(path)
     except OSError as err:
-        manager.log("Cannot get stat for {}: {}".format(path, err))
+        manager.log(f"Cannot get stat for {path}: {err}")
         # Remove apparently-invalid cache files.
         # (This is purely an optimization.)
         for filename in [data_json, meta_json]:
@@ -1518,13 +1518,13 @@ def write_cache(id: str, path: str, tree: MypyFile,
     # Write data cache file, if applicable
     # Note that for Bazel we don't record the data file's mtime.
     if old_interface_hash == interface_hash:
-        manager.trace("Interface for {} is unchanged".format(id))
+        manager.trace(f"Interface for {id} is unchanged")
     else:
-        manager.trace("Interface for {} has changed".format(id))
+        manager.trace(f"Interface for {id} has changed")
         if not metastore.write(data_json, data_str):
             # Most likely the error is the replace() call
             # (see https://github.com/python/mypy/issues/3215).
-            manager.log("Error writing data JSON file {}".format(data_json))
+            manager.log(f"Error writing data JSON file {data_json}")
             # Let's continue without writing the meta file.  Analysis:
             # If the replace failed, we've changed nothing except left
             # behind an extraneous temporary file; if the replace
@@ -1538,7 +1538,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
     try:
         data_mtime = manager.getmtime(data_json)
     except OSError:
-        manager.log("Error in os.stat({!r}), skipping cache write".format(data_json))
+        manager.log(f"Error in os.stat({data_json!r}), skipping cache write")
         return interface_hash, None
 
     mtime = 0 if bazel else int(st.st_mtime)
@@ -1573,7 +1573,7 @@ def write_cache(id: str, path: str, tree: MypyFile,
         # Most likely the error is the replace() call
         # (see https://github.com/python/mypy/issues/3215).
         # The next run will simply find the cache entry out of date.
-        manager.log("Error writing meta JSON file {}".format(meta_json))
+        manager.log(f"Error writing meta JSON file {meta_json}")
 
     return interface_hash, cache_meta_from_dict(meta, data_json)
 
@@ -1597,7 +1597,7 @@ def delete_cache(id: str, path: str, manager: BuildManager) -> None:
             manager.metastore.remove(filename)
         except OSError as e:
             if e.errno != errno.ENOENT:
-                manager.log("Error deleting cache file {}: {}".format(filename, e.strerror))
+                manager.log(f"Error deleting cache file {filename}: {e.strerror}")
 
 
 """Dependency manager.
@@ -1908,7 +1908,7 @@ class State:
             # know about modules that have cache information and defer
             # handling new modules until the fine-grained update.
             if manager.use_fine_grained_cache():
-                manager.log("Deferring module to fine-grained update %s (%s)" % (path, id))
+                manager.log(f"Deferring module to fine-grained update {path} ({id})")
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
@@ -2036,9 +2036,9 @@ class State:
         cached = self.id in manager.ast_cache
         modules = manager.modules
         if not cached:
-            manager.log("Parsing %s (%s)" % (self.xpath, self.id))
+            manager.log(f"Parsing {self.xpath} ({self.id})")
         else:
-            manager.log("Using cached AST for %s (%s)" % (self.xpath, self.id))
+            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
 
         t0 = time_ref()
 
@@ -2051,7 +2051,7 @@ class State:
                     source = decode_python_encoding(manager.fscache.read(path),
                                                     manager.options.python_version)
                     self.source_hash = manager.fscache.hash_digest(path)
-                except IOError as ioerr:
+                except OSError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
                     # other systems, but os.strerror(ioerr.errno) does not, so we use that.
                     # (We want the error messages to be platform-independent so that the
@@ -2062,9 +2062,9 @@ class State:
                         module_with_blocker=self.id) from ioerr
                 except (UnicodeDecodeError, DecodeError) as decodeerr:
                     if self.path.endswith('.pyd'):
-                        err = "mypy: stubgen does not support .pyd files: '{}'".format(self.path)
+                        err = f"mypy: stubgen does not support .pyd files: '{self.path}'"
                     else:
-                        err = "mypy: can't decode file '{}': {}".format(self.path, str(decodeerr))
+                        err = f"mypy: can't decode file '{self.path}': {str(decodeerr)}"
                     raise CompileError([err], module_with_blocker=self.id) from decodeerr
             elif self.path and self.manager.fscache.isdir(self.path):
                 source = ''
@@ -2333,16 +2333,16 @@ class State:
         dep_lines = self.dependency_lines()
         assert self.source_hash is not None
         assert len(set(self.dependencies)) == len(self.dependencies), (
-            "Duplicates in dependencies list for {} ({})".format(self.id, self.dependencies))
+            f"Duplicates in dependencies list for {self.id} ({self.dependencies})")
         new_interface_hash, self.meta = write_cache(
             self.id, self.path, self.tree,
             list(self.dependencies), list(self.suppressed),
             dep_prios, dep_lines, self.interface_hash, self.source_hash, self.ignore_all,
             self.manager)
         if new_interface_hash == self.interface_hash:
-            self.manager.log("Cached module {} has same interface".format(self.id))
+            self.manager.log(f"Cached module {self.id} has same interface")
         else:
-            self.manager.log("Cached module {} has changed interface".format(self.id))
+            self.manager.log(f"Cached module {self.id} has changed interface")
             self.mark_interface_stale()
             self.interface_hash = new_interface_hash
 
@@ -2466,11 +2466,11 @@ def find_module_and_diagnose(manager: BuildManager,
             pass
         elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
-            manager.log("Silencing %s (%s)" % (result, id))
+            manager.log(f"Silencing {result} ({id})")
         elif follow_imports == 'skip' or follow_imports == 'error':
             # In 'error' mode, produce special error messages.
             if id not in manager.missing_modules:
-                manager.log("Skipping %s (%s)" % (result, id))
+                manager.log(f"Skipping {result} ({id})")
             if follow_imports == 'error':
                 if ancestor_for:
                     skipping_ancestor(manager, id, result, ancestor_for)
@@ -2489,7 +2489,7 @@ def find_module_and_diagnose(manager: BuildManager,
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
-                'mypy: "%s" shadows library module "%s"' % (os.path.relpath(result), id),
+                f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
                 'note: A user-defined top-level module with name "%s" is not supported' % id
             ])
         return (result, follow_imports)
@@ -2632,7 +2632,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_import_context(caller_state.import_context)
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
-                          'Import of "%s" ignored' % (id,),
+                          f'Import of "{id}" ignored',
                           severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
@@ -2648,7 +2648,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     # so we'd need to cache the decision.
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
-    manager.errors.report(-1, -1, 'Ancestor package "%s" ignored' % (id,),
+    manager.errors.report(-1, -1, f'Ancestor package "{id}" ignored',
                           severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
@@ -2784,7 +2784,7 @@ class NodeInfo:
     def dumps(self) -> str:
         """Convert to JSON string."""
         total_size = sum(self.sizes.values())
-        return "[%s, %s, %s,\n     %s,\n     %s]" % (json.dumps(self.node_id),
+        return "[{}, {}, {},\n     {},\n     {}]".format(json.dumps(self.node_id),
                                                      json.dumps(total_size),
                                                      json.dumps(self.scc),
                                                      json.dumps(self.sizes),
@@ -2798,7 +2798,7 @@ def dump_timing_stats(path: str, graph: Graph) -> None:
     with open(path, 'w') as f:
         for k in sorted(graph.keys()):
             v = graph[k]
-            f.write('{} {}\n'.format(v.id, v.time_spent_us))
+            f.write(f'{v.id} {v.time_spent_us}\n')
 
 
 def dump_graph(graph: Graph, stdout: Optional[TextIO] = None) -> None:
@@ -2873,7 +2873,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(
                 -1, -1,
-                'Duplicate module named "%s" (also at "%s")' % (st.id, graph[st.id].xpath),
+                f'Duplicate module named "{st.id}" (also at "{graph[st.id].xpath}")',
                 blocker=True,
             )
             manager.errors.report(
@@ -3081,11 +3081,11 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.trace("Queuing %s SCC (%s)" % (fresh_msg, scc_str))
+            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
-                manager.log("Processing {} queued fresh SCCs".format(len(fresh_scc_queue)))
+                manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
                 # Defer processing fresh SCCs until we actually run into a stale SCC
                 # and need the earlier modules to be loaded.
                 #
@@ -3105,7 +3105,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
-                manager.log("Processing SCC singleton (%s) as %s" % (scc_str, fresh_msg))
+                manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)

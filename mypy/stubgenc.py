@@ -73,7 +73,7 @@ def generate_stub_for_c_module(module_name: str,
             continue
         if name not in done and not inspect.ismodule(obj):
             type_str = strip_or_import(get_type_fullname(type(obj)), module, imports)
-            variables.append('%s: %s' % (name, type_str))
+            variables.append(f'{name}: {type_str}')
     output = []
     for line in sorted(set(imports)):
         output.append(line)
@@ -133,7 +133,7 @@ def is_c_type(obj: object) -> bool:
 
 
 def is_pybind11_overloaded_function_docstring(docstr: str, name: str) -> bool:
-    return docstr.startswith("{}(*args, **kwargs)\n".format(name) +
+    return docstr.startswith(f"{name}(*args, **kwargs)\n" +
                              "Overloaded function.\n\n")
 
 
@@ -254,7 +254,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         if arg_module == 'builtins':
             stripped_type = typ[len('builtins') + 1:]
         else:
-            imports.append('import %s' % (arg_module,))
+            imports.append(f'import {arg_module}')
     if stripped_type == 'NoneType':
         stripped_type = 'None'
     return stripped_type
@@ -304,14 +304,14 @@ def generate_c_property_stub(name: str, obj: object,
     if is_static_property(obj):
         trailing_comment = "  # read-only" if readonly else ""
         static_properties.append(
-            '{}: ClassVar[{}] = ...{}'.format(name, inferred, trailing_comment)
+            f'{name}: ClassVar[{inferred}] = ...{trailing_comment}'
         )
     else:  # regular property
         if readonly:
             ro_properties.append('@property')
-            ro_properties.append('def {}(self) -> {}: ...'.format(name, inferred))
+            ro_properties.append(f'def {name}(self) -> {inferred}: ...')
         else:
-            rw_properties.append('{}: {}'.format(name, inferred))
+            rw_properties.append(f'{name}: {inferred}')
 
 
 def generate_c_type_stub(module: ModuleType,
@@ -370,7 +370,7 @@ def generate_c_type_stub(module: ModuleType,
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            static_properties.append('%s: ClassVar[%s] = ...' % (
+            static_properties.append('{}: ClassVar[{}] = ...'.format(
                 attr, strip_or_import(get_type_fullname(type(value)), module, imports)))
     all_bases = type.mro(obj)
     if all_bases[-1] is object:
@@ -398,7 +398,7 @@ def generate_c_type_stub(module: ModuleType,
     else:
         bases_str = ''
     if types or static_properties or rw_properties or methods or ro_properties:
-        output.append('class %s%s:' % (class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}:')
         for line in types:
             if output and output[-1] and \
                     not output[-1].startswith('class') and line.startswith('class'):
@@ -413,11 +413,11 @@ def generate_c_type_stub(module: ModuleType,
         for line in ro_properties:
             output.append('    %s' % line)
     else:
-        output.append('class %s%s: ...' % (class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}: ...')
 
 
 def get_type_fullname(typ: type) -> str:
-    return '%s.%s' % (typ.__module__, getattr(typ, '__qualname__', typ.__name__))
+    return '{}.{}'.format(typ.__module__, getattr(typ, '__qualname__', typ.__name__))
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:

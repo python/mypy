@@ -28,20 +28,20 @@ def parse_version(v: str) -> Tuple[int, int]:
     m = re.match(r'\A(\d)\.(\d+)\Z', v)
     if not m:
         raise argparse.ArgumentTypeError(
-            "Invalid python version '{}' (expected format: 'x.y')".format(v))
+            f"Invalid python version '{v}' (expected format: 'x.y')")
     major, minor = int(m.group(1)), int(m.group(2))
     if major == 2:
         if minor != 7:
             raise argparse.ArgumentTypeError(
-                "Python 2.{} is not supported (must be 2.7)".format(minor))
+                f"Python 2.{minor} is not supported (must be 2.7)")
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
             raise argparse.ArgumentTypeError(
-                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
+                "Python 3.{} is not supported (must be {}.{} or higher)".format(minor,
                                                                     *defaults.PYTHON3_VERSION_MIN))
     else:
         raise argparse.ArgumentTypeError(
-            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+            f"Python major version '{major}' out of range (must be 2 or 3)")
     return major, minor
 
 
@@ -105,7 +105,7 @@ def check_follow_imports(choice: str) -> str:
         raise argparse.ArgumentTypeError(
             "invalid choice '{}' (choose from {})".format(
                 choice,
-                ', '.join("'{}'".format(x) for x in choices)))
+                ', '.join(f"'{x}'" for x in choices)))
     return choice
 
 
@@ -196,7 +196,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 parser = config_parser
                 config_types = ini_config_types
         except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
-            print("%s: %s" % (config_file, err), file=stderr)
+            print(f"{config_file}: {err}", file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
                 continue
@@ -214,7 +214,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             print("%s: No [mypy] section in config file" % file_read, file=stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]: ' % (file_read, 'mypy')
+        prefix = '{}: [{}]: '.format(file_read, 'mypy')
         updates, report_dirs = parse_section(
             prefix, options, set_strict_flags, section, config_types, stderr)
         for k, v in updates.items():
@@ -258,7 +258,7 @@ def get_prefix(file_read: str, name: str) -> str:
     else:
         module_name_str = name
 
-    return '%s: [%s]: ' % (file_read, module_name_str)
+    return f'{file_read}: [{module_name_str}]: '
 
 
 def is_toml(filename: str) -> bool:
@@ -369,7 +369,7 @@ def parse_section(prefix: str, template: Options,
                     if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = str(section[key])
                     else:
-                        print("%sUnrecognized report type: %s" % (prefix, key),
+                        print(f"{prefix}Unrecognized report type: {key}",
                               file=stderr)
                     continue
                 if key.startswith('x_'):
@@ -386,7 +386,7 @@ def parse_section(prefix: str, template: Options,
                 elif key == 'strict':
                     pass  # Special handling below
                 else:
-                    print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
+                    print(f"{prefix}Unrecognized option: {key} = {section[key]}",
                           file=stderr)
                 if invert:
                     dv = getattr(template, options_key, None)
@@ -404,19 +404,19 @@ def parse_section(prefix: str, template: Options,
                     v = not v
             elif callable(ct):
                 if invert:
-                    print("%sCan not invert non-boolean key %s" % (prefix, options_key),
+                    print(f"{prefix}Can not invert non-boolean key {options_key}",
                           file=stderr)
                     continue
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s%s: %s" % (prefix, key, err), file=stderr)
+                    print(f"{prefix}{key}: {err}", file=stderr)
                     continue
             else:
-                print("%sDon't know what type %s should have" % (prefix, key), file=stderr)
+                print(f"{prefix}Don't know what type {key} should have", file=stderr)
                 continue
         except ValueError as err:
-            print("%s%s: %s" % (prefix, key, err), file=stderr)
+            print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == 'strict':
             if v:
@@ -493,7 +493,7 @@ def mypy_comments_to_config_map(line: str,
             name = entry
             value = None
         else:
-            name, value = [x.strip() for x in entry.split('=', 1)]
+            name, value = (x.strip() for x in entry.split('=', 1))
 
         name = name.replace('-', '_')
         if value is None:

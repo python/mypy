@@ -408,7 +408,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
                 self.fail(err_msg, lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
@@ -545,14 +545,14 @@ class ASTConverter:
         if isinstance(arg, Name):
             v = arg.id
         elif isinstance(arg, ast27_Tuple):
-            v = '__tuple_arg_{}'.format(index + 1)
+            v = f'__tuple_arg_{index + 1}'
             rvalue = NameExpr(v)
             rvalue.set_line(line)
             assignment = AssignmentStmt([self.visit(arg)], rvalue)
             assignment.set_line(line)
             decompose_stmts.append(assignment)
         else:
-            raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
+            raise RuntimeError(f"'{ast27.dump(arg)}' is not a valid argument.")
         return Var(v)
 
     def get_type(self,
@@ -578,7 +578,7 @@ class ASTConverter:
         if isinstance(n, Name):
             return n.id
         elif isinstance(n, Attribute):
-            return "{}.{}".format(self.stringify_name(n.value), n.attr)
+            return f"{self.stringify_name(n.value)}.{n.attr}"
         else:
             assert False, "can't stringify " + str(type(n))
 

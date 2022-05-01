@@ -361,20 +361,20 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
-            prefix = '%s.%s' % (self.scope.current_full_target(), info.name)
+            prefix = f'{self.scope.current_full_target()}.{info.name}'
             for name, symnode in info.names.items():
                 if not name.startswith('_') and isinstance(symnode.node, Var):
                     typ = symnode.node.type
                     if typ:
                         self.add_type_dependencies(typ)
                         self.add_type_dependencies(typ, target=make_trigger(prefix))
-                        attr_target = make_trigger('%s.%s' % (prefix, name))
+                        attr_target = make_trigger(f'{prefix}.{name}')
                         self.add_type_dependencies(typ, target=attr_target)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypedDictExpr):
             # Depend on the underlying typeddict type
             info = rvalue.analyzed.info
             assert info.typeddict_type is not None
-            prefix = '%s.%s' % (self.scope.current_full_target(), info.name)
+            prefix = f'{self.scope.current_full_target()}.{info.name}'
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, EnumCallExpr):
             # Enum values are currently not checked, but for future we add the deps on them
@@ -440,7 +440,7 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = self.get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
+                attr_trigger = make_trigger('{}.{}'.format(self.scope.current_full_target(),
                                                        lvalue.name))
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
@@ -827,10 +827,10 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):
-            member = '%s.%s' % (typ.type.fullname, name)
+            member = f'{typ.type.fullname}.{name}'
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-            member = '%s.%s' % (typ.type_object().fullname, name)
+            member = f'{typ.type_object().fullname}.{name}'
             triggers = [make_trigger(member)]
             triggers.extend(self.attribute_triggers(typ.fallback, name))
             return triggers

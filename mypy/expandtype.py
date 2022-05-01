@@ -164,7 +164,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             elif isinstance(repl, UninhabitedType):
                 return None
             else:
-                raise NotImplementedError("Invalid type to expand: {}".format(repl))
+                raise NotImplementedError(f"Invalid type to expand: {repl}")
         else:
             raise NotImplementedError
 

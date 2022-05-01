@@ -89,8 +89,8 @@ def compare_symbol_table_snapshots(
     Return a set of fully-qualified names (e.g., 'mod.func' or 'mod.Class.method').
     """
     # Find names only defined only in one version.
-    names1 = {'%s.%s' % (name_prefix, name) for name in snapshot1}
-    names2 = {'%s.%s' % (name_prefix, name) for name in snapshot2}
+    names1 = {f'{name_prefix}.{name}' for name in snapshot1}
+    names2 = {f'{name_prefix}.{name}' for name in snapshot2}
     triggers = names1 ^ names2
 
     # Look for names defined in both versions that are different.
@@ -99,7 +99,7 @@ def compare_symbol_table_snapshots(
         item2 = snapshot2[name]
         kind1 = item1[0]
         kind2 = item2[0]
-        item_name = '%s.%s' % (name_prefix, name)
+        item_name = f'{name_prefix}.{name}'
         if kind1 != kind2:
             # Different kind of node in two snapshots -> trivially different.
             triggers.add(item_name)
@@ -338,7 +338,7 @@ class SnapshotTypeVisitor(TypeVisitor[SnapshotItem]):
         return ('CallableType',
                 snapshot_types(typ.arg_types),
                 snapshot_type(typ.ret_type),
-                tuple([encode_optional_str(name) for name in typ.arg_names]),
+                tuple(encode_optional_str(name) for name in typ.arg_names),
                 tuple(typ.arg_kinds),
                 typ.is_type_obj(),
                 typ.is_ellipsis_args)

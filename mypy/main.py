@@ -36,7 +36,7 @@ def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
     except os.error as err:
-        print("stat(%r) -> %s" % (path, err))
+        print(f"stat({path!r}) -> {err}")
         raise
     else:
         print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
@@ -231,11 +231,11 @@ def invert_flag_name(flag: str) -> str:
     if len(split) == 2:
         prefix, rest = split
         if prefix in flag_prefix_map:
-            return '--{}-{}'.format(flag_prefix_map[prefix], rest)
+            return f'--{flag_prefix_map[prefix]}-{rest}'
         elif prefix == 'no':
-            return '--{}'.format(rest)
+            return f'--{rest}'
 
-    return '--no-{}'.format(flag[2:])
+    return f'--no-{flag[2:]}'
 
 
 class PythonExecutableInferenceError(Exception):
@@ -248,9 +248,9 @@ def python_executable_prefix(v: str) -> List[str]:
         # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
         # execute an installed Python 3.8 interpreter. See also:
         # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
-        return ['py', '-{}'.format(v)]
+        return ['py', f'-{v}']
     else:
-        return ['python{}'.format(v)]
+        return [f'python{v}']
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
@@ -460,7 +460,7 @@ def process_options(args: List[str],
             group = parser
 
         if help is not argparse.SUPPRESS:
-            help += " (inverse: {})".format(inverse)
+            help += f" (inverse: {inverse})"
 
         arg = group.add_argument(flag,
                                  action='store_false' if default else 'store_true',
@@ -1050,11 +1050,11 @@ def process_options(args: List[str],
         cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
-                fail("Package name '{}' cannot have a slash in it.".format(p),
+                fail(f"Package name '{p}' cannot have a slash in it.",
                      stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p), stderr, options)
+                fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1133,7 +1133,7 @@ def process_cache_map(parser: argparse.ArgumentParser,
 
 def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
     if options.junit_xml:
-        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        py_version = f'{options.python_version[0]}_{options.python_version[1]}'
         util.write_junit_xml(
             td, serious, messages, options.junit_xml, py_version, options.platform)
 

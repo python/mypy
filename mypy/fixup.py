@@ -81,7 +81,7 @@ class NodeFixer(NodeVisitor[None]):
                         assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
                         value.node = stnode.node
                     elif not self.allow_missing:
-                        assert False, "Could not find cross-ref %s" % (cross_ref,)
+                        assert False, f"Could not find cross-ref {cross_ref}"
                     else:
                         # We have a missing crossref in allow missing mode, need to put something
                         value.node = missing_info(self.modules)
@@ -92,7 +92,7 @@ class NodeFixer(NodeVisitor[None]):
                 elif value.node is not None:
                     value.node.accept(self)
                 else:
-                    assert False, 'Unexpected empty node %r: %s' % (key, value)
+                    assert False, f'Unexpected empty node {key!r}: {value}'
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:

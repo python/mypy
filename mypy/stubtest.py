@@ -105,9 +105,9 @@ class Error:
 
         stub_loc_str = ""
         if stub_line:
-            stub_loc_str += " at line {}".format(stub_line)
+            stub_loc_str += f" at line {stub_line}"
         if stub_file:
-            stub_loc_str += " in file {}".format(Path(stub_file))
+            stub_loc_str += f" in file {Path(stub_file)}"
 
         runtime_line = None
         runtime_file = None
@@ -123,9 +123,9 @@ class Error:
 
         runtime_loc_str = ""
         if runtime_line:
-            runtime_loc_str += " at line {}".format(runtime_line)
+            runtime_loc_str += f" at line {runtime_line}"
         if runtime_file:
-            runtime_loc_str += " in file {}".format(Path(runtime_file))
+            runtime_loc_str += f" in file {Path(runtime_file)}"
 
         output = [
             _style("error: ", color="red", bold=True),
@@ -172,7 +172,7 @@ def test_module(module_name: str) -> Iterator[Error]:
             # mentioned in __all__
             __import__(module_name, fromlist=["*"])
     except Exception as e:
-        yield Error([module_name], "failed to import: {}".format(e), stub, MISSING)
+        yield Error([module_name], f"failed to import: {e}", stub, MISSING)
         return
 
     with warnings.catch_warnings():
@@ -207,11 +207,11 @@ def verify_mypyfile(
         return
 
     # Check things in the stub
-    to_check = set(
+    to_check = {
         m
         for m, o in stub.names.items()
         if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    )
+    }
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         obj = getattr(r, attr)
@@ -302,7 +302,7 @@ def verify_typeinfo(
     for entry in sorted(to_check):
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
-            mangled_entry = "_{}{}".format(stub.name, entry)
+            mangled_entry = f"_{stub.name}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:
@@ -478,7 +478,7 @@ class Signature(Generic[T]):
             arg_type = get_type(arg)
             return (
                 get_name(arg)
-                + (": {}".format(arg_type) if arg_type else "")
+                + (f": {arg_type}" if arg_type else "")
                 + (" = ..." if has_default(arg) else "")
             )
 
@@ -550,7 +550,7 @@ class Signature(Generic[T]):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
-                    "__{}".format(index)
+                    f"__{index}"
                     if arg.variable.name.startswith("__") or assume_positional_only
                     else arg.variable.name
                 )
@@ -649,24 +649,24 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
-                    yield 'runtime does not have argument "{}"'.format(stub_arg.variable.name)
+                    yield f'runtime does not have argument "{stub_arg.variable.name}"'
                 else:
-                    yield 'stub argument "{}" is not keyword-only'.format(stub_arg.variable.name)
+                    yield f'stub argument "{stub_arg.variable.name}" is not keyword-only'
             if stub.varpos is not None:
-                yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
+                yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos):]:
             if runtime_arg.name not in stub.kwonly:
-                yield 'stub does not have argument "{}"'.format(runtime_arg.name)
+                yield f'stub does not have argument "{runtime_arg.name}"'
             else:
-                yield 'runtime argument "{}" is not keyword-only'.format(runtime_arg.name)
+                yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
 
     # Checks involving *args
     if len(stub.pos) <= len(runtime.pos) or runtime.varpos is None:
         if stub.varpos is None and runtime.varpos is not None:
-            yield 'stub does not have *args argument "{}"'.format(runtime.varpos.name)
+            yield f'stub does not have *args argument "{runtime.varpos.name}"'
         if stub.varpos is not None and runtime.varpos is None:
-            yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
+            yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
 
     # Check keyword-only args
     for arg in sorted(set(stub.kwonly) & set(runtime.kwonly)):
@@ -682,26 +682,26 @@ def _verify_signature(
         # takes *kwargs, since runtime logic may prevent additional arguments from actually being
         # accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
-            yield 'runtime does not have argument "{}"'.format(arg)
+            yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
-        if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
+        if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
             if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
-                yield 'stub argument "{}" is not keyword-only'.format(arg)
+                yield f'stub argument "{arg}" is not keyword-only'
         else:
-            yield 'stub does not have argument "{}"'.format(arg)
+            yield f'stub does not have argument "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
         # As mentioned above, don't enforce that the stub takes **kwargs.
         # Also check against positional parameters, to avoid a nitpicky message when an argument
         # isn't marked as keyword-only
-        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
+        stub_pos_names = {stub_arg.variable.name for stub_arg in stub.pos}
         # Ideally we'd do a strict subset check, but in practice the errors from that aren't useful
         if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield 'stub does not have **kwargs argument "{}"'.format(runtime.varkw.name)
+            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
-        yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
+        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
 
 
 @verify.register(nodes.FuncItem)
@@ -803,7 +803,7 @@ def verify_var(
         if should_error:
             yield Error(
                 object_path,
-                "variable differs from runtime type {}".format(runtime_type),
+                f"variable differs from runtime type {runtime_type}",
                 stub,
                 runtime,
             )
@@ -855,7 +855,7 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_desc=str(stub.type) + "\nInferred signature: {}".format(stub_sig),
+            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
             runtime_desc="def " + str(signature),
         )
 
@@ -1400,7 +1400,7 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
             # This lets us allowlist errors that don't manifest at all on some systems
             if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
-                print("note: unused allowlist entry {}".format(w))
+                print(f"note: unused allowlist entry {w}")
 
     # Print the generated allowlist
     if args.generate_allowlist:
