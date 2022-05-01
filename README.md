@@ -68,7 +68,7 @@ number = input("What is your favourite number?")
 print("It is", number + 1)  # error: Unsupported operand types for + ("str" and "int")
 ```
 
-See [the documentation](https://mypy.readthedocs.io/en/stable/introduction.html) for more examples.
+See [the documentation](https://mypy.readthedocs.io/en/stable/index.html) for more examples.
 
 In particular, see:
 - [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
