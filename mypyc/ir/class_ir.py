@@ -69,11 +69,11 @@ from mypyc.common import PROPSET_PREFIX
 # The 'shadow_method', if present, contains the method that should be
 # placed in the class's shadow vtable (if it has one).
 
-class VTableMethod(NamedTuple):
-    cls: 'ClassIR'
-    name: str
-    method: FuncIR
-    shadow_method: Optional[FuncIR]
+VTableMethod = NamedTuple(
+    'VTableMethod', [('cls', 'ClassIR'),
+                     ('name', str),
+                     ('method', FuncIR),
+                     ('shadow_method', Optional[FuncIR])])
 
 
 VTableEntries = List[VTableMethod]
@@ -173,7 +173,7 @@ class ClassIR:
 
     def vtable_entry(self, name: str) -> int:
         assert self.vtable is not None, "vtable not computed yet"
-        assert name in self.vtable, '{!r} has no attribute {!r}'.format(self.name, name)
+        assert name in self.vtable, f'{self.name!r} has no attribute {name!r}'
         return self.vtable[name]
 
     def attr_details(self, name: str) -> Tuple[RType, 'ClassIR']:
@@ -182,7 +182,7 @@ class ClassIR:
                 return ir.attributes[name], ir
             if name in ir.property_types:
                 return ir.property_types[name], ir
-        raise KeyError('{!r} has no attribute {!r}'.format(self.name, name))
+        raise KeyError(f'{self.name!r} has no attribute {name!r}')
 
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
@@ -191,7 +191,7 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.method_decls:
                 return ir.method_decls[name]
-        raise KeyError('{!r} has no attribute {!r}'.format(self.name, name))
+        raise KeyError(f'{self.name!r} has no attribute {name!r}')
 
     def method_sig(self, name: str) -> FuncSignature:
         return self.method_decl(name).sig

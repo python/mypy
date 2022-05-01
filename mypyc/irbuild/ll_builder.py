@@ -838,7 +838,7 @@ class LowLevelIRBuilder:
 
     def get_native_type(self, cls: ClassIR) -> Value:
         """Load native type object."""
-        fullname = '{}.{}'.format(cls.module_name, cls.name)
+        fullname = f'{cls.module_name}.{cls.name}'
         return self.load_native_type_object(fullname)
 
     def load_native_type_object(self, fullname: str) -> Value:

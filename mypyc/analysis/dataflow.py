@@ -125,7 +125,7 @@ class AnalysisResult(Generic[T]):
         self.after = after
 
     def __str__(self) -> str:
-        return 'before: {}\nafter: {}\n'.format(self.before, self.after)
+        return f'before: {self.before}\nafter: {self.after}\n'
 
 
 GenAndKill = Tuple[Set[Value], Set[Value]]

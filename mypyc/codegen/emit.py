@@ -385,19 +385,19 @@ class Emitter:
         x = 'X' if is_xdec else ''
         if is_int_rprimitive(rtype):
             if rare:
-                self.emit_line('CPyTagged_{}DecRef({});'.format(x, dest))
+                self.emit_line(f'CPyTagged_{x}DecRef({dest});')
             else:
                 # Inlined
-                self.emit_line('CPyTagged_{}DECREF({});'.format(x, dest))
+                self.emit_line(f'CPyTagged_{x}DECREF({dest});')
         elif isinstance(rtype, RTuple):
             for i, item_type in enumerate(rtype.types):
                 self.emit_dec_ref(f'{dest}.f{i}', item_type, is_xdec=is_xdec, rare=rare)
         elif not rtype.is_unboxed:
             if rare:
-                self.emit_line('CPy_{}DecRef({});'.format(x, dest))
+                self.emit_line(f'CPy_{x}DecRef({dest});')
             else:
                 # Inlined
-                self.emit_line('CPy_{}DECREF({});'.format(x, dest))
+                self.emit_line(f'CPy_{x}DECREF({dest});')
         # Otherwise assume it's an unboxed, pointerless value and do nothing.
 
     def pretty_name(self, typ: RType) -> str:
@@ -687,7 +687,7 @@ class Emitter:
         error = error or AssignHandler()
         # TODO: Verify refcount handling.
         if isinstance(error, AssignHandler):
-            failure = '{} = {};'.format(dest, self.c_error_value(typ))
+            failure = f'{dest} = {self.c_error_value(typ)};'
         elif isinstance(error, GotoHandler):
             failure = 'goto %s;' % error.label
         else:

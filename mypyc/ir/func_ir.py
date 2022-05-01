@@ -58,7 +58,7 @@ class FuncSignature:
         self.ret_type = ret_type
 
     def __repr__(self) -> str:
-        return 'FuncSignature(args={!r}, ret={!r})'.format(self.args, self.ret_type)
+        return f'FuncSignature(args={self.args!r}, ret={self.ret_type!r})'
 
     def serialize(self) -> JsonDict:
         return {'args': [t.serialize() for t in self.args], 'ret_type': self.ret_type.serialize()}

@@ -207,7 +207,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('{} = {};'.format(dest, src))
+            self.emit_line(f'{dest} = {src};')
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
         typ = op.dest.type
@@ -226,7 +226,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             values = [self.c_undefined_value(item) for item in op.type.types]
             tmp = self.temp_name()
             self.emit_line('{} {} = {{ {} }};'.format(self.ctype(op.type), tmp, ', '.join(values)))
-            self.emit_line('{} = {};'.format(self.reg(op), tmp))
+            self.emit_line(f'{self.reg(op)} = {tmp};')
         else:
             self.emit_line('{} = {};'.format(self.reg(op),
                                          self.c_error_value(op.type)))
@@ -392,7 +392,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = repr(op.ann)
             if not any(x in s for x in ('/*', '*/', '\0')):
                 ann = ' /* %s */' % s
-        self.emit_line('{} = {};{}'.format(dest, name, ann))
+        self.emit_line(f'{dest} = {name};{ann}')
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
@@ -400,7 +400,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             value = '(PyTypeObject *)%s' % value
-        self.emit_line('{} = {};'.format(name, value))
+        self.emit_line(f'{name} = {value};')
         self.emit_inc_ref(name, op.value.type)
 
     def visit_tuple_get(self, op: TupleGet) -> None:
@@ -421,7 +421,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         args = ', '.join(self.reg(arg) for arg in op.args)
         lib = self.emitter.get_group_prefix(op.fn)
         cname = op.fn.cname(self.names)
-        self.emit_line('{}{}{}{}({});'.format(dest, lib, NATIVE_PREFIX, cname, args))
+        self.emit_line(f'{dest}{lib}{NATIVE_PREFIX}{cname}({args});')
 
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
@@ -517,13 +517,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = repr(op.ann)
             if not any(x in s for x in ('/*', '*/', '\0')):
                 ann = ' /* %s */' % s
-        self.emit_line('{} = {};{}'.format(dest, op.identifier, ann))
+        self.emit_line(f'{dest} = {op.identifier};{ann}')
 
     def visit_int_op(self, op: IntOp) -> None:
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line('{} = {} {} {};'.format(dest, lhs, op.op_str[op.op], rhs))
+        self.emit_line(f'{dest} = {lhs} {op.op_str[op.op]} {rhs};')
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         dest = self.reg(op)
@@ -553,7 +553,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         src = self.reg(op.src)
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
-        self.emit_line('{} = *({} *){};'.format(dest, type, src))
+        self.emit_line(f'{dest} = *({type} *){src};')
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -562,7 +562,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('*({} *){} = {};'.format(dest_type, dest, src))
+            self.emit_line(f'*({dest_type} *){dest} = {src};')
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
@@ -577,7 +577,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         typ = op.type
         dest = self.reg(op)
         src = self.reg(op.src) if isinstance(op.src, Register) else op.src
-        self.emit_line('{} = ({})&{};'.format(dest, typ._ctype, src))
+        self.emit_line(f'{dest} = ({typ._ctype})&{src};')
 
     def visit_keep_alive(self, op: KeepAlive) -> None:
         # This is a no-op.

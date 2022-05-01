@@ -120,7 +120,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         args = ', '.join(self.format('%r', arg) for arg in op.args)
         # TODO: Display long name?
         short_name = op.fn.shortname
-        s = '{}({})'.format(short_name, args)
+        s = f'{short_name}({args})'
         if not op.is_void:
             s = self.format('%r = ', op) + s
         return s

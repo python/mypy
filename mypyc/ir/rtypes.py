@@ -776,10 +776,10 @@ class RArray(RType):
         return visitor.visit_rarray(self)
 
     def __str__(self) -> str:
-        return '{}[{}]'.format(self.item_type, self.length)
+        return f'{self.item_type}[{self.length}]'
 
     def __repr__(self) -> str:
-        return '<RArray {!r}[{}]>'.format(self.item_type, self.length)
+        return f'<RArray {self.item_type!r}[{self.length}]>'
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RArray) and self.item_type == other.item_type
