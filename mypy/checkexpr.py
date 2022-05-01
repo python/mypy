@@ -118,6 +118,16 @@ class TooManyUnions(Exception):
     """
 
 
+def allow_fast_container_literal(t: ProperType) -> bool:
+    return (
+        isinstance(t, Instance)
+        or (
+                isinstance(t, TupleType)
+                and all(allow_fast_container_literal(get_proper_type(it)) for it in t.items)
+        )
+    )
+
+
 def extract_refexpr_names(expr: RefExpr) -> Set[str]:
     """Recursively extracts all module references from a reference expression.
 
@@ -3265,7 +3275,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Limitations:
          - no active type context
          - no star expressions
-         - the joined type of all entries must be an Instance type
+         - the joined type of all entries must be an Instance or Tuple type
         """
         ctx = self.type_context[-1]
         if ctx:
@@ -3277,7 +3287,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return None
             values.append(self.accept(item))
         vt = join.join_type_list(values)
-        if not isinstance(vt, Instance):
+        if not allow_fast_container_literal(vt):
             return None
         return self.chk.named_generic_type(container_fullname, [vt])
 
@@ -3377,7 +3387,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         Limitations:
          - no active type context
          - only supported star expressions are other dict instances
-         - the joined types of all keys and values must be Instance types
+         - the joined types of all keys and values must be Instance or Tuple types
         """
         ctx = self.type_context[-1]
         if ctx:
@@ -3401,7 +3411,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 values.append(self.accept(value))
         kt = join.join_type_list(keys)
         vt = join.join_type_list(values)
-        if not (isinstance(kt, Instance) and isinstance(vt, Instance)):
+        if not (allow_fast_container_literal(kt) and allow_fast_container_literal(vt)):
             return None
         if stargs and (stargs[0] != kt or stargs[1] != vt):
             return None
