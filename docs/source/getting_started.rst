@@ -443,8 +443,29 @@ can automatically find. (see :ref:`installed-packages` for the details).
 However, if the third party library does *not* come bundled with type hints,
 mypy will not try and guess what the types are: it'll assume the entire library
 is :ref:`dynamically typed <dynamic-typing>` and report an error whenever you
-import the library. We discuss strategies for handling this category of errors
-in :ref:`ignore-missing-imports`.
+import the library.
+
+You can install the stubs for third-party packages like this:
+
+.. code-block:: shell
+
+  $ python3 -m pip install types-requests
+
+The stubs are usually packaged in a distribution named
+``types-<distribution>``.  Note that the distribution name may be
+different from the name of the package that you import. For example,
+``types-PyYAML`` contains stubs for the ``yaml`` package. Mypy can
+often suggest the name of the stub distribution:
+
+.. code-block:: text
+
+    prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+    ...
+
+You can also :ref:`create
+stubs <stub-files>` easily. We discuss strategies for handling errors
+about missing stubs in :ref:`ignore-missing-imports`.
 
 Configuring mypy
 ****************
