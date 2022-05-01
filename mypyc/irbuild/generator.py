@@ -64,7 +64,7 @@ def instantiate_generator_class(builder: IRBuilder) -> Value:
 
 
 def setup_generator_class(builder: IRBuilder) -> ClassIR:
-    name = '{}_gen'.format(builder.fn_info.namespaced_name())
+    name = f'{builder.fn_info.namespaced_name()}_gen'
 
     generator_class_ir = ClassIR(name, builder.module_name, is_generated=True)
     generator_class_ir.attributes[ENV_ATTR_NAME] = RInstance(builder.fn_info.env_class)

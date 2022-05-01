@@ -666,7 +666,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                builder.error('"{}" cannot be deleted'.format(target.attr), line)
+                builder.error(f'"{target.attr}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = ' +
                     '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)

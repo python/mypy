@@ -17,7 +17,7 @@ from mypyc.ir.rtypes import (
 from mypyc.ir.func_ir import FuncIR, FUNC_STATICMETHOD
 
 
-class FnError(object):
+class FnError:
     def __init__(self, source: Union[Op, BasicBlock], desc: str) -> None:
         self.source = source
         self.desc = desc
@@ -129,8 +129,7 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
     return errors
 
 
-disjoint_types = set(
-    [
+disjoint_types = {
         int_rprimitive.name,
         bytes_rprimitive.name,
         str_rprimitive.name,
@@ -139,8 +138,7 @@ disjoint_types = set(
         set_rprimitive.name,
         tuple_rprimitive.name,
         range_rprimitive.name,
-    ]
-)
+}
 
 
 def can_coerce_to(src: RType, dest: RType) -> bool:
