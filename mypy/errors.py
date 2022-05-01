@@ -634,10 +634,6 @@ class Errors:
         """Are there any errors for the given file?"""
         return file in self.error_info_map
 
-    def most_recent_error_location(self) -> Tuple[int, int]:
-        info = self.error_info_map[self.file][-1]
-        return info.line, info.column
-
     def raise_error(self, use_stdout: bool = True) -> NoReturn:
         """Raise a CompileError with the generated messages.
 
