@@ -145,7 +145,7 @@ class Register(Value):
         return False
 
     def __repr__(self) -> str:
-        return '<Register %r at %s>' % (self.name, hex(id(self)))
+        return '<Register {!r} at {}>'.format(self.name, hex(id(self)))
 
 
 class Integer(Value):
@@ -279,7 +279,7 @@ class ControlOp(Op):
 
     def set_target(self, i: int, new: BasicBlock) -> None:
         """Update a basic block target."""
-        raise AssertionError("Invalid set_target({}, {})".format(self, i))
+        raise AssertionError(f"Invalid set_target({self}, {i})")
 
 
 class Goto(ControlOp):
@@ -474,7 +474,7 @@ class DecRef(RegisterOp):
         self.is_xdec = is_xdec
 
     def __repr__(self) -> str:
-        return '<%sDecRef %r>' % ('X' if self.is_xdec else '', self.src)
+        return '<{}DecRef {!r}>'.format('X' if self.is_xdec else '', self.src)
 
     def sources(self) -> List[Value]:
         return [self.src]
@@ -1372,5 +1372,6 @@ class OpVisitor(Generic[T]):
 #
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple('DeserMaps',
-                       [('classes', Dict[str, 'ClassIR']), ('functions', Dict[str, 'FuncIR'])])
+class DeserMaps(NamedTuple):
+    classes: Dict[str, 'ClassIR']
+    functions: Dict[str, 'FuncIR']

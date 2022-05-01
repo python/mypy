@@ -19,8 +19,8 @@ class TestHeaderInclusion(unittest.TestCase):
 
         def check_name(name: str) -> None:
             if name.startswith('CPy'):
-                assert re.search(r'\b{}\b'.format(name), header), (
-                    '"{}" is used in mypyc.primitives but not declared in CPy.h'.format(name))
+                assert re.search(fr'\b{name}\b', header), (
+                    f'"{name}" is used in mypyc.primitives but not declared in CPy.h')
 
         for values in [registry.method_call_ops.values(),
                        registry.function_ops.values(),
@@ -33,7 +33,7 @@ class TestHeaderInclusion(unittest.TestCase):
                     check_name(op.c_function_name)
 
         primitives_path = os.path.join(os.path.dirname(__file__), '..', 'primitives')
-        for fnam in glob.glob('{}/*.py'.format(primitives_path)):
+        for fnam in glob.glob(f'{primitives_path}/*.py'):
             with open(fnam) as f:
                 content = f.read()
             for name in re.findall(r'c_function_name=["\'](CPy[A-Z_a-z0-9]+)', content):

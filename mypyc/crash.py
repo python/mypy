@@ -27,5 +27,5 @@ def crash_report(module_path: str, line: int) -> 'NoReturn':
     print('Traceback (most recent call last):')
     for s in traceback.format_list(tb + tb2):
         print(s.rstrip('\n'))
-    print('{}:{}: {}: {}'.format(module_path, line, type(err).__name__, err))
+    print(f'{module_path}:{line}: {type(err).__name__}: {err}')
     raise SystemExit(2)
