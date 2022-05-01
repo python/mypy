@@ -67,7 +67,7 @@ def make_change_wrappers(filename: str) -> Tuple[Command, Command]:
 
     def setup() -> None:
         nonlocal copy
-        with open(filename, 'r') as stream:
+        with open(filename) as stream:
             copy = stream.read()
         with open(filename, 'a') as stream:
             stream.write('\n\nfoo = 3')
@@ -102,48 +102,48 @@ def main() -> None:
         lambda: None,
         lambda: execute(["python3", "-m", "mypy", "mypy"]),
         lambda: None)
-    print("Baseline:   {}".format(baseline))
+    print(f"Baseline:   {baseline}")
 
     cold = test(
         lambda: delete_folder(".mypy_cache"),
         lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
         lambda: None)
-    print("Cold cache: {}".format(cold))
+    print(f"Cold cache: {cold}")
 
     warm = test(
         lambda: None,
         lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
         lambda: None)
-    print("Warm cache: {}".format(warm))
+    print(f"Warm cache: {warm}")
 
     print()
 
     deltas = []
     for filename in glob.iglob("mypy/**/*.py", recursive=True):
-        print("{} {}".format(verb, filename))
+        print(f"{verb} {filename}")
         
         setup, teardown = make_wrappers(filename)
         delta = test(
             setup,
             lambda: execute(["python3", "-m", "mypy", "-i", "mypy"]),
             teardown)
-        print("    Time: {}".format(delta))
+        print(f"    Time: {delta}")
         deltas.append(delta)
     print()
 
     print("Initial:")
-    print("    Baseline:   {}".format(baseline))
-    print("    Cold cache: {}".format(cold))
-    print("    Warm cache: {}".format(warm))
+    print(f"    Baseline:   {baseline}")
+    print(f"    Cold cache: {cold}")
+    print(f"    Warm cache: {warm}")
     print()
     print("Aggregate:")
-    print("    Times:      {}".format(deltas))
-    print("    Mean:       {}".format(statistics.mean(deltas)))
-    print("    Median:     {}".format(statistics.median(deltas)))
-    print("    Stdev:      {}".format(statistics.stdev(deltas)))
-    print("    Min:        {}".format(min(deltas)))
-    print("    Max:        {}".format(max(deltas)))
-    print("    Total:      {}".format(sum(deltas)))
+    print(f"    Times:      {deltas}")
+    print(f"    Mean:       {statistics.mean(deltas)}")
+    print(f"    Median:     {statistics.median(deltas)}")
+    print(f"    Stdev:      {statistics.stdev(deltas)}")
+    print(f"    Min:        {min(deltas)}")
+    print(f"    Max:        {max(deltas)}")
+    print(f"    Total:      {sum(deltas)}")
     print()
 
 if __name__ == '__main__':
