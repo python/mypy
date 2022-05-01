@@ -327,9 +327,9 @@ Types and classes
 *****************
 
 So far, we've only seen examples of pre-existing types like the ``int``
-or ``float`` builtins, or the ``List`` and ``Dict`` types from the typing
-module. However, these aren't the only types you can use: in fact, you can
-use any Python class as a type!
+or ``float`` builtins, or generic types from ``collections.abc`` and
+``typing``, such as ``Iterable``. However, these aren't the only types you can
+use: in fact, you can use any Python class as a type!
 
 For example, suppose you've defined a custom class representing a bank account:
 
@@ -442,49 +442,12 @@ and is what mypy used to identify the correct types for our example above.
 
 Mypy can understand third party libraries in the same way as long as those
 libraries come bundled with stub files or have inline annotations that mypy
-can automatically find. (see :ref:`fix-missing-imports` and
-:ref:`installed-packages` for the details). However, if the third party library
-does *not* come bundled with type hints, mypy will not try and guess what
-the types are: it'll assume the entire library is
-:ref:`dynamically typed <dynamic-typing>` and report an error
-whenever you import the library.
-
-We discuss strategies for handling this category of errors in
-:ref:`ignore-missing-imports`, but in short, there are three things you can do:
-
-1. Look for a separate package containing stubs for that library. For example,
-   you can install the stubs for the ``requests`` package like this:
-
-.. code-block:: shell
-
-  python3 -m pip install types-requests
-
-The stubs are usually packaged in a distribution named
-``types-<distribution>``.  Note that the distribution name may be
-different from the name of the package that you import. For example,
-``types-PyYAML`` contains stubs for the ``yaml`` package. Mypy can
-often suggest the name of the stub distribution:
-
-.. code-block:: text
-
-  prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
-  prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
-  ...
-
-.. note::
-
-   Starting in mypy 0.900, most third-party package stubs must be
-   installed explicitly. This decouples mypy and stub versioning,
-   allowing stubs to updated without updating mypy. This also allows
-   stubs not originally included with mypy to be installed. Earlier
-   mypy versions included a fixed set of stubs for third-party
-   packages.
-
-2. :ref:`Create your own stub files <stub-files>` for that library.
-
-3. :ref:`Silence the errors <ignore-missing-imports>` and accept that
-   any uses of the library will remain dynamically typed.
-
+can automatically find. (see :ref:`installed-packages` for the details).
+However, if the third party library does *not* come bundled with type hints,
+mypy will not try and guess what the types are: it'll assume the entire library
+is :ref:`dynamically typed <dynamic-typing>` and report an error whenever you
+import the library. We discuss strategies for handling this category of errors
+in :ref:`ignore-missing-imports`.
 
 Configuring mypy
 ****************
