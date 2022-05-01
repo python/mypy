@@ -75,6 +75,7 @@ class VTableMethod(NamedTuple):
     method: FuncIR
     shadow_method: Optional[FuncIR]
 
+
 VTableEntries = List[VTableMethod]
 
 

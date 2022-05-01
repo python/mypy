@@ -626,8 +626,10 @@ class RStruct(RType):
                                                 for name, typ in zip(self.names, self.types)))
 
     def __repr__(self) -> str:
-        return '<RStruct {}{{{}}}>'.format(self.name, ', '.join(name + ":" + repr(typ) for name, typ
-                                                          in zip(self.names, self.types)))
+        return '<RStruct {}{{{}}}>'.format(
+            self.name, ', '.join(name + ":" + repr(typ)
+            for name, typ in zip(self.names, self.types))
+        )
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RStruct) and self.name == other.name
