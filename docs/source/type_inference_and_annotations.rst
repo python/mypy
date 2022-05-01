@@ -251,3 +251,12 @@ Similarly, you can also ignore all mypy checks in a file, by adding a
     # This is a test file, skipping type checking in it.
     import unittest
     ...
+
+Finally, adding a ``@typing.no_type_check`` decorator to a class, method or
+function has the effect of ignoring that class, method or function.
+
+.. code-block:: python
+
+    @typing.no_type_check
+    def foo() -> str:
+       return 12345  # No error!
