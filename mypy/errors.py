@@ -5,8 +5,8 @@ import traceback
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
-from typing import Tuple, List, TypeVar, Set, Dict, NoReturn, Optional, TextIO, Callable, Union
-from typing_extensions import Final, Literal
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
+from typing_extensions import Final, Literal, NoReturn
 
 from mypy.scope import Scope
 from mypy.options import Options
