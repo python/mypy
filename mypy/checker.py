@@ -2424,7 +2424,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         seen: List[Type] = []
         for expr in s.types:
             if expr and isinstance(expr, NameExpr) and isinstance(expr.node, TypeInfo):
-                with self.expr_checker.msg.disable_errors():
+                with self.expr_checker.msg.filter_errors():
                     typ = get_proper_type(self.check_except_handler_test(expr))
                 if isinstance(typ, AnyType) or isinstance(typ, UnionType):
                     continue
