@@ -6,8 +6,7 @@ from contextlib import contextmanager
 from mypy.backports import OrderedDict
 
 from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence
-from typing_extensions import Final
-from mypy_extensions import DefaultNamedArg
+from typing_extensions import Final, Protocol
 
 from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
 from mypy.options import Options
@@ -1241,8 +1240,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
 
-# Mypyc doesn't support callback protocols yet.
-MsgCallback = Callable[[str, Context, DefaultNamedArg(Optional[ErrorCode], 'code')], None]
+
+class MsgCallback(Protocol):
+    def __call__(
+        self,
+        __msg: str,
+        __ctx: Context,
+        *,
+        code: Optional[ErrorCode] = None
+    ) -> None: ...
 
 
 def get_omitted_any(disallow_any: bool, fail: MsgCallback, note: MsgCallback,
