@@ -250,7 +250,7 @@ def parse_type_comment(type_comment: str,
     except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
-            err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
             errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
             return None, None
         else:
@@ -833,7 +833,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
                 self.fail(err_msg, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
@@ -1751,7 +1751,7 @@ class TypeConverter:
                 typ = converted
             else:
                 self.fail(
-                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    f'Unexpected argument "{k.arg}" for argument constructor',
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
@@ -1840,7 +1840,7 @@ class TypeConverter:
             # RawExpressionType so we just pass in 'None' for now. We'll report the
             # appropriate error at a later stage.
             numeric_value = None
-            type_name = 'builtins.{}'.format(type(value).__name__)
+            type_name = f'builtins.{type(value).__name__}'
         return RawExpressionType(
             numeric_value,
             type_name,
@@ -1939,7 +1939,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
         else:
             return self.invalid_type(n)
 
@@ -1959,5 +1959,5 @@ def stringify_name(n: AST) -> Optional[str]:
     elif isinstance(n, Attribute):
         sv = stringify_name(n.value)
         if sv is not None:
-            return "{}.{}".format(sv, n.attr)
+            return f"{sv}.{n.attr}"
     return None  # Can't do it.

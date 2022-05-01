@@ -69,8 +69,7 @@ def get_edge_candidates(o: object) -> Iterator[Tuple[object, object]]:
             except AssertionError:
                 pass
     if isinstance(o, Mapping):
-        for k, v in o.items():
-            yield k, v
+        yield from o.items()
     elif isinstance(o, Iterable) and not isinstance(o, str):
         for i, e in enumerate(o):
             yield i, e

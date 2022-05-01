@@ -29,7 +29,7 @@ class GcLogger:
             self.gc_collected += info['collected']
             self.gc_uncollectable += info['uncollectable']
         else:
-            assert False, "Unrecognized gc phase (%r)" % (phase,)
+            assert False, "Unrecognized gc phase ({!r})".format(phase)
 
     def __exit__(self, *args: object) -> None:
         while self.gc_callback in gc.callbacks:

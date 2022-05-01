@@ -591,7 +591,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
-        assert False, "This should be never called, got {}".format(left)
+        assert False, f"This should be never called, got {left}"
 
 
 T = TypeVar('T', Instance, TypeAliasType)
@@ -1588,7 +1588,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
-        assert False, "This should be never called, got {}".format(left)
+        assert False, f"This should be never called, got {left}"
 
 
 def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False) -> bool:

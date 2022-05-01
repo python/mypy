@@ -325,7 +325,7 @@ class Options:
         return d
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.snapshot()))
+        return f'Options({pprint.pformat(self.snapshot())})'
 
     def apply_changes(self, changes: Dict[str, object]) -> 'Options':
         new_options = Options()

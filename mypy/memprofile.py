@@ -94,7 +94,7 @@ def find_recursive_objects(objs: List[object]) -> None:
     We use this since gc.get_objects() does not return objects without pointers
     in them such as strings.
     """
-    seen = set(id(o) for o in objs)
+    seen = {id(o) for o in objs}
 
     def visit(o: object) -> None:
         if id(o) not in seen:

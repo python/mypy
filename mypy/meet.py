@@ -444,8 +444,8 @@ def are_tuples_overlapping(left: Type, right: Type, *,
     left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
-    assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
-    assert isinstance(right, TupleType), 'Type {} is not a tuple'.format(right)
+    assert isinstance(left, TupleType), f'Type {left} is not a tuple'
+    assert isinstance(right, TupleType), f'Type {right} is not a tuple'
     if len(left.items) != len(right.items):
         return False
     return all(is_overlapping_types(l, r,
@@ -712,7 +712,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)

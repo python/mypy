@@ -121,8 +121,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
                         context, code=codes.TYPE_VAR)
                 else:
-                    class_name = '"{}"'.format(type.name)
-                    actual_type_name = '"{}"'.format(actual.type.name)
+                    class_name = f'"{type.name}"'
+                    actual_type_name = f'"{actual.type.name}"'
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                             arg_name, class_name, actual_type_name),

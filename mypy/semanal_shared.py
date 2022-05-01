@@ -189,7 +189,7 @@ def set_callable_name(sig: Type, fdef: FuncDef) -> ProperType:
             else:
                 class_name = fdef.info.name
             return sig.with_name(
-                '{} of {}'.format(fdef.name, class_name))
+                f'{fdef.name} of {class_name}')
         else:
             return sig.with_name(fdef.name)
     else:

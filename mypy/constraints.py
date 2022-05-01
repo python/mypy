@@ -45,7 +45,7 @@ class Constraint:
         op_str = '<:'
         if self.op == SUPERTYPE_OF:
             op_str = ':>'
-        return '{} {} {}'.format(self.type_var, op_str, self.target)
+        return f'{self.type_var} {op_str} {self.target}'
 
 
 def infer_constraints_for_callable(
@@ -748,7 +748,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                        " (should have been handled in infer_constraints)")
 
     def visit_type_alias_type(self, template: TypeAliasType) -> List[Constraint]:
-        assert False, "This should be never called, got {}".format(template)
+        assert False, f"This should be never called, got {template}"
 
     def infer_against_any(self, types: Iterable[Type], any_type: AnyType) -> List[Constraint]:
         res: List[Constraint] = []
@@ -791,7 +791,7 @@ def neg_op(op: int) -> int:
     elif op == SUPERTYPE_OF:
         return SUBTYPE_OF
     else:
-        raise ValueError('Invalid operator {}'.format(op))
+        raise ValueError(f'Invalid operator {op}')
 
 
 def find_matching_overload_item(overloaded: Overloaded, template: CallableType) -> CallableType:

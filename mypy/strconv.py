@@ -39,7 +39,7 @@ class StrConv(NodeVisitor[str]):
 
     def format_id(self, o: object) -> str:
         if self.id_mapper:
-            return '<{}>'.format(self.get_id(o))
+            return f'<{self.get_id(o)}>'
         else:
             return ''
 
@@ -53,7 +53,7 @@ class StrConv(NodeVisitor[str]):
         tag = short_type(obj) + ':' + str(obj.get_line())
         if self.show_ids:
             assert self.id_mapper is not None
-            tag += '<{}>'.format(self.get_id(obj))
+            tag += f'<{self.get_id(obj)}>'
         return dump_tagged(nodes, tag, self)
 
     def func_helper(self, o: 'mypy.nodes.FuncItem') -> List[object]:
@@ -109,7 +109,7 @@ class StrConv(NodeVisitor[str]):
         a = []
         for id, as_id in o.ids:
             if as_id is not None:
-                a.append('{} : {}'.format(id, as_id))
+                a.append(f'{id} : {as_id}')
             else:
                 a.append(id)
         return 'Import:{}({})'.format(o.line, ', '.join(a))
@@ -118,7 +118,7 @@ class StrConv(NodeVisitor[str]):
         a = []
         for name, as_name in o.names:
             if as_name is not None:
-                a.append('{} : {}'.format(name, as_name))
+                a.append(f'{name} : {as_name}')
             else:
                 a.append(name)
         return 'ImportFrom:{}({}, [{}])'.format(o.line, "." * o.relative + o.id, ', '.join(a))
@@ -133,7 +133,7 @@ class StrConv(NodeVisitor[str]):
         a.insert(0, o.name)
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
-            a.insert(1, 'MaxPos({})'.format(o.max_pos))
+            a.insert(1, f'MaxPos({o.max_pos})')
         if o.is_abstract:
             a.insert(-1, 'Abstract')
         if o.is_static:
@@ -170,11 +170,11 @@ class StrConv(NodeVisitor[str]):
         if o.type_vars:
             a.insert(1, ('TypeVars', o.type_vars))
         if o.metaclass:
-            a.insert(1, 'Metaclass({})'.format(o.metaclass))
+            a.insert(1, f'Metaclass({o.metaclass})')
         if o.decorators:
             a.insert(1, ('Decorators', o.decorators))
         if o.info and o.info._promote:
-            a.insert(1, 'Promote({})'.format(o.info._promote))
+            a.insert(1, f'Promote({o.info._promote})')
         if o.info and o.info.tuple_type:
             a.insert(1, ('TupleType', [o.info.tuple_type]))
         if o.info and o.info.fallback_to_any:
@@ -329,16 +329,16 @@ class StrConv(NodeVisitor[str]):
     # Simple expressions
 
     def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -> str:
-        return 'IntExpr({})'.format(o.value)
+        return f'IntExpr({o.value})'
 
     def visit_str_expr(self, o: 'mypy.nodes.StrExpr') -> str:
-        return 'StrExpr({})'.format(self.str_repr(o.value))
+        return f'StrExpr({self.str_repr(o.value)})'
 
     def visit_bytes_expr(self, o: 'mypy.nodes.BytesExpr') -> str:
-        return 'BytesExpr({})'.format(self.str_repr(o.value))
+        return f'BytesExpr({self.str_repr(o.value)})'
 
     def visit_unicode_expr(self, o: 'mypy.nodes.UnicodeExpr') -> str:
-        return 'UnicodeExpr({})'.format(self.str_repr(o.value))
+        return f'UnicodeExpr({self.str_repr(o.value)})'
 
     def str_repr(self, s: str) -> str:
         s = re.sub(r'\\u[0-9a-fA-F]{4}', lambda m: '\\' + m.group(0), s)
@@ -346,10 +346,10 @@ class StrConv(NodeVisitor[str]):
                       lambda m: r'\u%.4x' % ord(m.group(0)), s)
 
     def visit_float_expr(self, o: 'mypy.nodes.FloatExpr') -> str:
-        return 'FloatExpr({})'.format(o.value)
+        return f'FloatExpr({o.value})'
 
     def visit_complex_expr(self, o: 'mypy.nodes.ComplexExpr') -> str:
-        return 'ComplexExpr({})'.format(o.value)
+        return f'ComplexExpr({o.value})'
 
     def visit_ellipsis(self, o: 'mypy.nodes.EllipsisExpr') -> str:
         return 'Ellipsis'
@@ -362,7 +362,7 @@ class StrConv(NodeVisitor[str]):
                                   o.is_inferred_def or o.is_special_form,
                                   o.node)
         if isinstance(o.node, mypy.nodes.Var) and o.node.is_final:
-            pretty += ' = {}'.format(o.node.final_value)
+            pretty += f' = {o.node.final_value}'
         return short_type(o) + '(' + pretty + ')'
 
     def pretty_name(self, name: str, kind: Optional[int], fullname: Optional[str],
@@ -379,13 +379,13 @@ class StrConv(NodeVisitor[str]):
         elif kind == mypy.nodes.GDEF or (fullname != name and
                                          fullname is not None):
             # Append fully qualified name for global references.
-            n += ' [{}{}]'.format(fullname, id)
+            n += f' [{fullname}{id}]'
         elif kind == mypy.nodes.LDEF:
             # Add tag to signify a local reference.
-            n += ' [l{}]'.format(id)
+            n += f' [l{id}]'
         elif kind == mypy.nodes.MDEF:
             # Add tag to signify a member reference.
-            n += ' [m{}]'.format(id)
+            n += f' [m{id}]'
         else:
             n += id
         return n
@@ -481,7 +481,7 @@ class StrConv(NodeVisitor[str]):
         if o.values:
             a += [('Values', o.values)]
         if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
-            a += ['UpperBound({})'.format(o.upper_bound)]
+            a += [f'UpperBound({o.upper_bound})']
         return self.dump(a, o)
 
     def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> str:
@@ -493,7 +493,7 @@ class StrConv(NodeVisitor[str]):
         if o.variance == mypy.nodes.CONTRAVARIANT:
             a += ['Variance(CONTRAVARIANT)']
         if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
-            a += ['UpperBound({})'.format(o.upper_bound)]
+            a += [f'UpperBound({o.upper_bound})']
         return self.dump(a, o)
 
     def visit_type_var_tuple_expr(self, o: 'mypy.nodes.TypeVarTupleExpr') -> str:
@@ -505,11 +505,11 @@ class StrConv(NodeVisitor[str]):
         if o.variance == mypy.nodes.CONTRAVARIANT:
             a += ['Variance(CONTRAVARIANT)']
         if not mypy.types.is_named_instance(o.upper_bound, 'builtins.object'):
-            a += ['UpperBound({})'.format(o.upper_bound)]
+            a += [f'UpperBound({o.upper_bound})']
         return self.dump(a, o)
 
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> str:
-        return 'TypeAliasExpr({})'.format(o.type)
+        return f'TypeAliasExpr({o.type})'
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
         return 'NamedTupleExpr:{}({}, {})'.format(o.line,
@@ -517,14 +517,14 @@ class StrConv(NodeVisitor[str]):
                                                   o.info.tuple_type)
 
     def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
-        return 'EnumCallExpr:{}({}, {})'.format(o.line, o.info.name, o.items)
+        return f'EnumCallExpr:{o.line}({o.info.name}, {o.items})'
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
         return 'TypedDictExpr:{}({})'.format(o.line,
                                              o.info.name)
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
-        return 'PromoteExpr:{}({})'.format(o.line, o.type)
+        return f'PromoteExpr:{o.line}({o.type})'
 
     def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> str:
         return 'NewTypeExpr:{}({}, {})'.format(o.line, o.name,

@@ -811,7 +811,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
                 if fullname not in sum_types:
                     sum_types[fullname] = (set(get_enum_values(typ.fallback))
                                            if typ.fallback.type.is_enum
-                                           else set((True, False)),
+                                           else {True, False},
                                            [])
                 literals, indexes = sum_types[fullname]
                 literals.discard(typ.value)

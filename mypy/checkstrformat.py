@@ -519,7 +519,7 @@ class StringFormatterChecker:
             dummy, fnam="<format>", module=None, options=self.chk.options, errors=temp_errors
         )
         if temp_errors.is_errors():
-            self.msg.fail('Syntax error in format specifier "{}"'.format(spec.field),
+            self.msg.fail(f'Syntax error in format specifier "{spec.field}"',
                           ctx, code=codes.STRING_FORMATTING)
             return TempNode(AnyType(TypeOfAny.from_error))
 
