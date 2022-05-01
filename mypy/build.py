@@ -22,7 +22,7 @@ import sys
 import time
 import types
 
-from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
+from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, NoReturn, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union, Callable, TextIO)
 from typing_extensions import ClassVar, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import TypedDict
@@ -398,7 +398,7 @@ def load_plugins_from_config(
     if line == -1:
         line = 1  # We need to pick some line number that doesn't look too confusing
 
-    def plugin_error(message: str) -> None:
+    def plugin_error(message: str) -> NoReturn:
         errors.report(line, 0, message)
         errors.raise_error(use_stdout=False)
 

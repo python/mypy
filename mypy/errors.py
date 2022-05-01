@@ -1,11 +1,17 @@
 import os.path
 import sys
 import traceback
+
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
+<<<<<<< HEAD
 from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
 from typing_extensions import Final, Literal
+=======
+from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, NoReturn
+from typing_extensions import Final
+>>>>>>> cbce51f94 (Fix missing NoReturn annotations and incorrect try placements)
 
 from mypy.scope import Scope
 from mypy.options import Options
@@ -633,7 +639,11 @@ class Errors:
         """Are there any errors for the given file?"""
         return file in self.error_info_map
 
-    def raise_error(self, use_stdout: bool = True) -> None:
+    def most_recent_error_location(self) -> Tuple[int, int]:
+        info = self.error_info_map[self.file][-1]
+        return info.line, info.column
+
+    def raise_error(self, use_stdout: bool = True) -> NoReturn:
         """Raise a CompileError with the generated messages.
 
         Render the messages suitable for displaying.
@@ -908,7 +918,7 @@ def report_internal_error(err: Exception,
                           options: Options,
                           stdout: Optional[TextIO] = None,
                           stderr: Optional[TextIO] = None,
-                          ) -> None:
+                          ) -> NoReturn:
     """Report internal error and exit.
 
     This optionally starts pdb or shows a traceback.

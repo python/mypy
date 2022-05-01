@@ -7,8 +7,8 @@ import subprocess
 import sys
 import time
 
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
-from typing_extensions import Final, NoReturn
+from typing import Any, Dict, IO, List, NoReturn, Optional, Sequence, Tuple, TextIO, Union
+from typing_extensions import Final
 
 from mypy import build
 from mypy import defaults
@@ -1138,7 +1138,7 @@ def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options
             td, serious, messages, options.junit_xml, py_version, options.platform)
 
 
-def fail(msg: str, stderr: TextIO, options: Options) -> None:
+def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
     stderr.write('%s\n' % msg)
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)

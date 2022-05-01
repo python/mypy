@@ -209,8 +209,8 @@ class Server:
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
+        server = IPCServer(CONNECTION_NAME, self.timeout)
         try:
-            server = IPCServer(CONNECTION_NAME, self.timeout)
             with open(self.status_file, 'w') as f:
                 json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
                 f.write('\n')  # I like my JSON with a trailing newline
@@ -298,11 +298,11 @@ class Server:
     def cmd_run(self, version: str, args: Sequence[str],
                 is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
+        stderr = io.StringIO()
+        stdout = io.StringIO()
         try:
             # Process options can exit on improper arguments, so we need to catch that and
             # capture stderr so the client can report it
-            stderr = io.StringIO()
-            stdout = io.StringIO()
             with redirect_stderr(stderr):
                 with redirect_stdout(stdout):
                     sources, options = mypy.main.process_options(
