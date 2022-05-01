@@ -1,19 +1,59 @@
 import ssl
 import sys
-from _typeshed import StrOrBytesPath
+from _typeshed import StrOrBytesPath, SupportsRead
+from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from email.message import Message
 from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
 from http.cookiejar import CookieJar
-from typing import IO, Any, Callable, ClassVar, Mapping, NoReturn, Pattern, Sequence, Tuple, TypeVar, overload
+from typing import IO, Any, ClassVar, NoReturn, Pattern, TypeVar, overload
+from typing_extensions import TypeAlias
 from urllib.error import HTTPError
 from urllib.response import addclosehook, addinfourl
 
+__all__ = [
+    "Request",
+    "OpenerDirector",
+    "BaseHandler",
+    "HTTPDefaultErrorHandler",
+    "HTTPRedirectHandler",
+    "HTTPCookieProcessor",
+    "ProxyHandler",
+    "HTTPPasswordMgr",
+    "HTTPPasswordMgrWithDefaultRealm",
+    "HTTPPasswordMgrWithPriorAuth",
+    "AbstractBasicAuthHandler",
+    "HTTPBasicAuthHandler",
+    "ProxyBasicAuthHandler",
+    "AbstractDigestAuthHandler",
+    "HTTPDigestAuthHandler",
+    "ProxyDigestAuthHandler",
+    "HTTPHandler",
+    "FileHandler",
+    "FTPHandler",
+    "CacheFTPHandler",
+    "DataHandler",
+    "UnknownHandler",
+    "HTTPErrorProcessor",
+    "urlopen",
+    "install_opener",
+    "build_opener",
+    "pathname2url",
+    "url2pathname",
+    "getproxies",
+    "urlretrieve",
+    "urlcleanup",
+    "URLopener",
+    "FancyURLopener",
+    "HTTPSHandler",
+]
+
 _T = TypeVar("_T")
-_UrlopenRet = Any
+_UrlopenRet: TypeAlias = Any
+_DataType: TypeAlias = bytes | SupportsRead[bytes] | Iterable[bytes] | None
 
 def urlopen(
     url: str | Request,
-    data: bytes | None = ...,
+    data: _DataType | None = ...,
     timeout: float | None = ...,
     *,
     cafile: str | None = ...,
@@ -51,8 +91,8 @@ class Request:
     host: str
     origin_req_host: str
     selector: str
-    data: bytes | None
-    headers: dict[str, str]
+    data: _DataType
+    headers: MutableMapping[str, str]
     unredirected_hdrs: dict[str, str]
     unverifiable: bool
     method: str | None
@@ -60,8 +100,8 @@ class Request:
     def __init__(
         self,
         url: str,
-        data: bytes | None = ...,
-        headers: dict[str, str] = ...,
+        data: _DataType = ...,
+        headers: MutableMapping[str, str] = ...,
         origin_req_host: str | None = ...,
         unverifiable: bool = ...,
         method: str | None = ...,
@@ -83,7 +123,7 @@ class Request:
 class OpenerDirector:
     addheaders: list[tuple[str, str]]
     def add_handler(self, handler: BaseHandler) -> None: ...
-    def open(self, fullurl: str | Request, data: bytes | None = ..., timeout: float | None = ...) -> _UrlopenRet: ...
+    def open(self, fullurl: str | Request, data: _DataType = ..., timeout: float | None = ...) -> _UrlopenRet: ...
     def error(self, proto: str, *args: Any) -> _UrlopenRet: ...
     def close(self) -> None: ...
 
@@ -92,6 +132,7 @@ class BaseHandler:
     parent: OpenerDirector
     def add_parent(self, parent: OpenerDirector) -> None: ...
     def close(self) -> None: ...
+    def __lt__(self, other: object) -> bool: ...
 
 class HTTPDefaultErrorHandler(BaseHandler):
     def http_error_default(
@@ -196,9 +237,9 @@ class HTTPSHandler(AbstractHTTPHandler):
     def https_request(self, request: Request) -> Request: ...  # undocumented
 
 class FileHandler(BaseHandler):
-    names: ClassVar[Tuple[str, ...] | None]  # undocumented
+    names: ClassVar[tuple[str, ...] | None]  # undocumented
     def file_open(self, req: Request) -> addinfourl: ...
-    def get_names(self) -> Tuple[str, ...]: ...  # undocumented
+    def get_names(self) -> tuple[str, ...]: ...  # undocumented
     def open_local_file(self, req: Request) -> addinfourl: ...  # undocumented
 
 class DataHandler(BaseHandler):
@@ -241,7 +282,7 @@ def urlretrieve(
     url: str,
     filename: StrOrBytesPath | None = ...,
     reporthook: Callable[[int, int, int], None] | None = ...,
-    data: bytes | None = ...,
+    data: _DataType = ...,
 ) -> tuple[str, HTTPMessage]: ...
 def urlcleanup() -> None: ...
 

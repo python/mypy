@@ -400,7 +400,22 @@ reveal_type(D)  # N: Revealed type is "def (b: Any) -> __main__.D"
 
 [builtins fixtures/bool.pyi]
 
+[case testAttrsNewPackage]
+import attrs
+@attrs.define
+class A:
+    a: int = attrs.field()
+    b: bool
 
+@attrs.frozen
+class B:
+    a: bool
+    b: int
+
+reveal_type(A)  # N: Revealed type is "def (a: builtins.int, b: builtins.bool) -> __main__.A"
+reveal_type(B)  # N: Revealed type is "def (a: builtins.bool, b: builtins.int) -> __main__.B"
+
+[builtins fixtures/bool.pyi]
 
 [case testAttrsDataClass]
 import attr
@@ -445,9 +460,9 @@ class A(Generic[T]):
         return self.x  # E: Incompatible return value type (got "List[T]", expected "T")
 reveal_type(A) # N: Revealed type is "def [T] (x: builtins.list[T`1], y: T`1) -> __main__.A[T`1]"
 a = A([1], 2)
-reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int*]"
-reveal_type(a.x)  # N: Revealed type is "builtins.list[builtins.int*]"
-reveal_type(a.y)  # N: Revealed type is "builtins.int*"
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a.x)  # N: Revealed type is "builtins.list[builtins.int]"
+reveal_type(a.y)  # N: Revealed type is "builtins.int"
 
 A(['str'], 7)  # E: Cannot infer type argument 1 of "A"
 A([1], '2')  # E: Cannot infer type argument 1 of "A"
@@ -492,12 +507,12 @@ class Sub(Base[S]):
     pass
 
 sub_int = Sub[int](attr=1)
-reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int*]"
-reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int*"
+reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int]"
+reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int"
 
 sub_str = Sub[str](attr='ok')
-reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str*]"
-reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str]"
+reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/bool.pyi]
 
@@ -522,9 +537,9 @@ class Sub(Base[int, str, float]):
 
 sub = Sub(one=1, two='ok', three=3.14)
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.one)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.two)  # N: Revealed type is "builtins.str*"
-reveal_type(sub.three)  # N: Revealed type is "builtins.float*"
+reveal_type(sub.one)  # N: Revealed type is "builtins.int"
+reveal_type(sub.two)  # N: Revealed type is "builtins.str"
+reveal_type(sub.three)  # N: Revealed type is "builtins.float"
 
 [builtins fixtures/bool.pyi]
 
@@ -551,8 +566,8 @@ class Sub(Middle[str]):
 
 sub = Sub(base_attr=1, middle_attr='ok')
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int"
+reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/bool.pyi]
 
@@ -1133,6 +1148,27 @@ A(None, None)
 
 [builtins fixtures/attr.pyi]
 
+[case testAttrsOptionalConverterNewPackage]
+# flags: --strict-optional
+import attrs
+from attrs.converters import optional
+from typing import Optional
+
+def converter(s:int) -> str:
+    return 'hello'
+
+
+@attrs.define
+class A:
+    y: Optional[int] = attrs.field(converter=optional(int))
+    z: Optional[str] = attrs.field(converter=optional(converter))
+
+
+A(None, None)
+
+[builtins fixtures/attr.pyi]
+
+
 [case testAttrsTypeVarNoCollision]
 from typing import TypeVar, Generic
 import attr
@@ -1464,4 +1500,94 @@ class C:
     def __attrs_post_init__(self) -> None:
         self.b = 1  # E: Trying to assign name "b" that is not in "__slots__" of type "__main__.C"
         self.c = 2  # E: Trying to assign name "c" that is not in "__slots__" of type "__main__.C"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgs]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    x: int
+    y: int
+    # Not included:
+    z: int = attr.field(kw_only=True)
+    i: int = attr.field(init=False)
+
+reveal_type(ToMatch(x=1, y=2, z=3).__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+reveal_type(ToMatch(1, 2, z=3).__match_args__)      # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsDefaultCase]
+# flags: --python-version 3.10
+import attr
+
+@attr.s(auto_attribs=True)
+class ToMatch1:
+    x: int
+    y: int
+
+t1: ToMatch1
+reveal_type(t1.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+
+@attr.define
+class ToMatch2:
+    x: int
+    y: int
+
+t2: ToMatch2
+reveal_type(t2.__match_args__)  # N: Revealed type is "Tuple[Literal['x']?, Literal['y']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOverrideExisting]
+# flags: --python-version 3.10
+import attr
+from typing import Final
+
+@attr.s(match_args=True, auto_attribs=True)
+class ToMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+# It works the same way runtime does:
+reveal_type(ToMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+
+@attr.s(auto_attribs=True)
+class WithoutMatch:
+    __match_args__: Final = ('a', 'b')
+    x: int
+    y: int
+
+reveal_type(WithoutMatch(x=1, y=2).__match_args__)  # N: Revealed type is "Tuple[Literal['a']?, Literal['b']?]"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsWithMatchArgsOldVersion]
+# flags: --python-version 3.9
+import attr
+
+@attr.s(match_args=True)
+class NoMatchArgs:
+    ...
+
+n: NoMatchArgs
+
+reveal_type(n.__match_args__)  # E: "NoMatchArgs" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+[builtins fixtures/attr.pyi]
+
+[case testAttrsMultipleInheritance]
+# flags: --python-version 3.10
+import attr
+
+@attr.s
+class A:
+    x = attr.ib(type=int)
+
+@attr.s
+class B:
+    y = attr.ib(type=int)
+
+class AB(A, B):
+    pass
 [builtins fixtures/attr.pyi]

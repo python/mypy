@@ -3,8 +3,12 @@ import unittest.case
 import unittest.loader
 import unittest.result
 import unittest.suite
+from collections.abc import Iterable
 from types import ModuleType
-from typing import Any, Iterable, Protocol, Type
+from typing import Any, Protocol
+
+MAIN_EXAMPLES: str
+MODULE_EXAMPLES: str
 
 class _TestRunner(Protocol):
     def run(self, test: unittest.suite.TestSuite | unittest.case.TestCase) -> unittest.result.TestResult: ...
@@ -27,7 +31,7 @@ class TestProgram:
         module: None | str | ModuleType = ...,
         defaultTest: str | Iterable[str] | None = ...,
         argv: list[str] | None = ...,
-        testRunner: Type[_TestRunner] | _TestRunner | None = ...,
+        testRunner: type[_TestRunner] | _TestRunner | None = ...,
         testLoader: unittest.loader.TestLoader = ...,
         exit: bool = ...,
         verbosity: int = ...,
@@ -44,6 +48,7 @@ class TestProgram:
         def createTests(self, from_discovery: bool = ..., Loader: unittest.loader.TestLoader | None = ...) -> None: ...
     else:
         def createTests(self) -> None: ...
+
     def runTests(self) -> None: ...  # undocumented
 
 main = TestProgram

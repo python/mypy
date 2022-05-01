@@ -6,7 +6,8 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -163,7 +164,7 @@ def _analyze_member_access(name: str,
         return analyze_typeddict_access(name, typ, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
-    elif isinstance(typ, TypeVarType):
+    elif isinstance(typ, TypeVarLikeType):
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
@@ -272,13 +273,11 @@ def analyze_type_type_member_access(name: str,
     # Similar to analyze_type_callable_attribute_access.
     item = None
     fallback = mx.named_type('builtins.type')
-    ignore_messages = mx.msg.copy()
-    ignore_messages.disable_errors().__enter__()
     if isinstance(typ.item, Instance):
         item = typ.item
     elif isinstance(typ.item, AnyType):
-        mx = mx.copy_modified(messages=ignore_messages)
-        return _analyze_member_access(name, fallback, mx, override_info)
+        with mx.msg.filter_errors():
+            return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TypeVarType):
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
@@ -286,8 +285,8 @@ def analyze_type_type_member_access(name: str,
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
         elif isinstance(upper_bound, AnyType):
-            mx = mx.copy_modified(messages=ignore_messages)
-            return _analyze_member_access(name, fallback, mx, override_info)
+            with mx.msg.filter_errors():
+                return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TupleType):
         item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
@@ -296,6 +295,7 @@ def analyze_type_type_member_access(name: str,
         # Access member on metaclass object via Type[Type[C]]
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
+    ignore_messages = False
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
         result = analyze_class_attribute_access(item, name, mx, override_info)
@@ -304,10 +304,12 @@ def analyze_type_type_member_access(name: str,
                 return result
             else:
                 # We don't want errors on metaclass lookup for classes with Any fallback
-                mx = mx.copy_modified(messages=ignore_messages)
+                ignore_messages = True
     if item is not None:
         fallback = item.type.metaclass_type or fallback
-    return _analyze_member_access(name, fallback, mx, override_info)
+
+    with mx.msg.filter_errors(filter_errors=ignore_messages):
+        return _analyze_member_access(name, fallback, mx, override_info)
 
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
@@ -831,8 +833,8 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         name: str,
                                         mx: MemberContext,
                                         ) -> Optional[Type]:
-    # Skip "_order_" and "__order__", since Enum will remove it
-    if name in ("_order_", "__order__"):
+    # Skip these since Enum will remove it
+    if name in ENUM_REMOVED_PROPS:
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
@@ -841,12 +843,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
-    # When we analyze enums, the corresponding Instance is always considered to be erased
-    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-    # in typeshed. However, this is really more of an implementation detail of how Enums
-    # are typed, and we really don't want to treat every single Enum value as if it were
-    # from type variable substitution. So we reset the 'erased' field here.
-    return itype.copy_modified(erased=False, last_known_value=enum_literal)
+    return itype.copy_modified(last_known_value=enum_literal)
 
 
 def analyze_typeddict_access(name: str, typ: TypedDictType,

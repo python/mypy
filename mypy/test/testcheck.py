@@ -91,6 +91,7 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-typevar-tuple.test',
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
@@ -164,6 +165,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.

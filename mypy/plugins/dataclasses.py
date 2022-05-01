@@ -19,6 +19,7 @@ from mypy.types import (
     get_proper_type, AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
+from mypy.state import state
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {
@@ -101,10 +102,8 @@ class DataclassAttribute:
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
-        if not isinstance(self.type, TypeVarType):
-            return
-
-        self.type = map_type_from_supertype(self.type, sub_type, self.info)
+        if self.type is not None:
+            self.type = map_type_from_supertype(self.type, sub_type, self.info)
 
 
 class DataclassTransformer:
@@ -210,6 +209,7 @@ class DataclassTransformer:
                 )
 
         if decorator_arguments['frozen']:
+            self._propertize_callables(attributes, settable=False)
             self._freeze(attributes)
         else:
             self._propertize_callables(attributes)
@@ -227,7 +227,7 @@ class DataclassTransformer:
             literals: List[Type] = [LiteralType(attr.name, str_type)
                         for attr in attributes if attr.is_in_init]
             match_args_type = TupleType(literals, ctx.api.named_type("builtins.tuple"))
-            add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type, final=True)
+            add_attribute_to_class(ctx.api, ctx.cls, "__match_args__", match_args_type)
 
         self._add_dataclass_fields_magic_attribute()
 
@@ -401,7 +401,11 @@ class DataclassTransformer:
                 name: str = data["name"]
                 if name not in known_attrs:
                     attr = DataclassAttribute.deserialize(info, data, ctx.api)
-                    attr.expand_typevar_from_subtype(ctx.cls.info)
+                    # TODO: We shouldn't be performing type operations during the main
+                    #       semantic analysis pass, since some TypeInfo attributes might
+                    #       still be in flux. This should be performed in a later phase.
+                    with state.strict_optional_set(ctx.api.options.strict_optional):
+                        attr.expand_typevar_from_subtype(ctx.cls.info)
                     known_attrs.add(name)
                     super_attrs.append(attr)
                 elif all_attrs:
@@ -466,7 +470,9 @@ class DataclassTransformer:
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 
-    def _propertize_callables(self, attributes: List[DataclassAttribute]) -> None:
+    def _propertize_callables(self,
+                              attributes: List[DataclassAttribute],
+                              settable: bool = True) -> None:
         """Converts all attributes with callable types to @property methods.
 
         This avoids the typechecker getting confused and thinking that
@@ -480,7 +486,7 @@ class DataclassTransformer:
                 var = attr.to_var()
                 var.info = info
                 var.is_property = True
-                var.is_settable_property = True
+                var.is_settable_property = settable
                 var._fullname = info.fullname + '.' + var.name
                 info.names[var.name] = SymbolTableNode(MDEF, var)
 

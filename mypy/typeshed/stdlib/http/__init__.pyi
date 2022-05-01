@@ -2,6 +2,8 @@ import sys
 from enum import IntEnum
 from typing_extensions import Literal
 
+__all__ = ["HTTPStatus"]
+
 class HTTPStatus(IntEnum):
     @property
     def phrase(self) -> str: ...

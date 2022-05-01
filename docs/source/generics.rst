@@ -295,8 +295,8 @@ In this way, for example, you can typecheck chaining of setter methods:
            self.width = w
            return self
 
-   circle = Circle().set_scale(0.5).set_radius(2.7)  # type: Circle
-   square = Square().set_scale(0.5).set_width(3.2)  # type: Square
+   circle: Circle = Circle().set_scale(0.5).set_radius(2.7)
+   square: Square = Square().set_scale(0.5).set_width(3.2)
 
 Without using generic ``self``, the last two lines could not be type-checked properly.
 
@@ -310,7 +310,7 @@ For class methods, you can also define generic ``cls``, using :py:class:`Type[T]
    T = TypeVar('T', bound='Friend')
 
    class Friend:
-       other = None  # type: Friend
+       other: "Friend" = None
 
        @classmethod
        def make_pair(cls: Type[T]) -> tuple[T, T]:
@@ -672,6 +672,10 @@ protocols mostly follow the normal rules for generic classes. Example:
    x: Box[float] = ...
    y: Box[int] = ...
    x = y  # Error -- Box is invariant
+
+Per :pep:`PEP 544: Generic protocols <544#generic-protocols>`, ``class
+ClassName(Protocol[T])`` is allowed as a shorthand for ``class
+ClassName(Protocol, Generic[T])``.
 
 The main difference between generic protocols and ordinary generic
 classes is that mypy checks that the declared variances of generic

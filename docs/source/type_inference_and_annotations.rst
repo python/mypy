@@ -44,23 +44,6 @@ type:
 
    x: Union[int, str] = 1.1  # Error!
 
-The variable annotation syntax is available starting from Python 3.6.
-In earlier Python versions, you can use a special comment after an
-assignment statement to declare the type of a variable:
-
-.. code-block:: python
-
-   x = 1  # type: Union[int, str]
-
-We'll use both syntax variants in examples. The syntax variants are
-mostly interchangeable, but the variable annotation syntax allows
-defining the type of a variable without initialization, which is not
-possible with the comment syntax:
-
-.. code-block:: python
-
-   x: str  # Declare type of 'x' without initialization
-
 .. note::
 
    The best way to think about this is that the type annotation sets the
@@ -181,27 +164,6 @@ Working around the issue is easy by adding a type annotation:
     ...
     a: list[int] = []  # OK
     foo(a)
-
-Declaring multiple variable types at a time
-*******************************************
-
-You can declare more than a single variable at a time, but only with
-a type comment. In order to nicely work with multiple assignment, you
-must give each variable a type separately:
-
-.. code-block:: python
-
-   i, found = 0, False  # type: int, bool
-
-You can optionally use parentheses around the types, assignment targets
-and assigned expression:
-
-.. code-block:: python
-
-   i, found = 0, False  # type: (int, bool)      # OK
-   (i, found) = 0, False  # type: int, bool      # OK
-   i, found = (0, False)  # type: int, bool      # OK
-   (i, found) = (0, False)  # type: (int, bool)  # OK
 
 Starred expressions
 *******************

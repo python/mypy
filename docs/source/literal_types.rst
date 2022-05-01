@@ -1,7 +1,10 @@
+Literal types and Enums
+=======================
+
 .. _literal_types:
 
 Literal types
-=============
+-------------
 
 Literal types let you indicate that an expression is equal to some specific
 primitive value. For example, if we annotate a variable with type ``Literal["foo"]``,
@@ -289,8 +292,8 @@ using ``isinstance()``:
 This feature is sometimes called "sum types" or "discriminated union types"
 in other programming languages.
 
-Exhaustiveness checks
-*********************
+Exhaustiveness checking
+***********************
 
 You may want to check that some code covers all possible
 ``Literal`` or ``Enum`` cases. Example:
@@ -356,6 +359,35 @@ mypy will spot the error:
       # expected "NoReturn"
       assert_never(x)
 
+If runtime checking against unexpected values is not needed, you can
+leave out the ``assert_never`` call in the above example, and mypy
+will still generate an error about function ``validate`` returning
+without a value:
+
+.. code-block:: python
+
+  PossibleValues = Literal['one', 'two', 'three']
+
+  # Error: Missing return statement
+  def validate(x: PossibleValues) -> bool:
+      if x == 'one':
+          return True
+      elif x == 'two':
+          return False
+
+Exhaustiveness checking is also supported for match statements (Python 3.10 and later):
+
+.. code-block:: python
+
+  def validate(x: PossibleValues) -> bool:
+      match x:
+          case 'one':
+              return True
+          case 'two':
+              return False
+      assert_never(x)
+
+
 Limitations
 ***********
 
@@ -369,3 +401,131 @@ whatever type the parameter has. For example, ``Literal[3]`` is treated as a
 subtype of ``int`` and so will inherit all of ``int``'s methods directly. This
 means that ``Literal[3].__add__`` accepts the same arguments and has the same
 return type as ``int.__add__``.
+
+
+Enums
+-----
+
+Mypy has special support for :py:class:`enum.Enum` and its subclasses:
+:py:class:`enum.IntEnum`, :py:class:`enum.Flag`, :py:class:`enum.IntFlag`,
+and :py:class:`enum.StrEnum`.
+
+.. code-block:: python
+
+  from enum import Enum
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+  reveal_type(Direction.up)  # Revealed type is "Literal[Direction.up]?"
+  reveal_type(Direction.down)  # Revealed type is "Literal[Direction.down]?"
+
+You can use enums to annotate types as you would expect:
+
+.. code-block:: python
+
+  class Movement:
+      def __init__(self, direction: Direction, speed: float) -> None:
+          self.direction = direction
+          self.speed = speed
+
+  Movement(Direction.up, 5.0)  # ok
+  Movement('up', 5.0)  # E: Argument 1 to "Movement" has incompatible type "str"; expected "Direction"
+
+Exhaustiveness checking
+***********************
+
+Similar to ``Literal`` types, ``Enum`` supports exhaustiveness checking.
+Let's start with a definition:
+
+.. code-block:: python
+
+  from enum import Enum
+  from typing import NoReturn
+
+  def assert_never(value: NoReturn) -> NoReturn:
+      # This also works in runtime as well:
+      assert False, 'This code should never be reached, got: {0}'.format(value)
+
+  class Direction(Enum):
+      up = 'up'
+      down = 'down'
+
+Now, let's use an exhaustiveness check:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction is Direction.up:
+          reveal_type(direction)  # N: Revealed type is "Literal[Direction.up]"
+          print('Going up!')
+          return
+      elif direction is Direction.down:
+          print('Down')
+          return
+      # This line is never reached
+      assert_never(direction)
+
+If we forget to handle one of the cases, mypy will generate an error:
+
+.. code-block:: python
+
+  def choose_direction(direction: Direction) -> None:
+      if direction == Direction.up:
+          print('Going up!')
+          return
+      assert_never(direction)  # E: Argument 1 to "assert_never" has incompatible type "Direction"; expected "NoReturn"
+
+Exhaustiveness checking is also supported for match statements (Python 3.10 and later).
+
+Extra Enum checks
+*****************
+
+Mypy also tries to support special features of ``Enum``
+the same way Python's runtime does:
+
+- Any ``Enum`` class with values is implicitly :ref:`final <final_attrs>`.
+  This is what happens in CPython:
+
+  .. code-block:: python
+
+    >>> class AllDirection(Direction):
+    ...     left = 'left'
+    ...     right = 'right'
+    Traceback (most recent call last):
+      ...
+    TypeError: Other: cannot extend enumeration 'Some'
+
+  Mypy also catches this error:
+
+  .. code-block:: python
+
+    class AllDirection(Direction):  # E: Cannot inherit from final class "Some"
+        left = 'left'
+        right = 'right'
+
+- All ``Enum`` fields are implicitly ``final`` as well.
+
+  .. code-block:: python
+
+    Direction.up = '^'  # E: Cannot assign to final attribute "up"
+
+- All field names are checked to be unique.
+
+  .. code-block:: python
+
+     class Some(Enum):
+        x = 1
+        x = 2  # E: Attempted to reuse member name "x" in Enum definition "Some"
+
+- Base classes have no conflicts and mixin types are correct.
+
+  .. code-block:: python
+
+    class WrongEnum(str, int, enum.Enum):
+        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "int"
+        ...
+
+    class MixinAfterEnum(enum.Enum, Mixin): # E: No base classes are allowed after "enum.Enum"
+        ...

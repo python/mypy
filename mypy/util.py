@@ -8,6 +8,7 @@ import sys
 import hashlib
 import io
 import shutil
+import time
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -435,11 +436,12 @@ def check_python_version(program: str) -> None:
                  "please upgrade to 3.6 or newer".format(name=program))
 
 
-def count_stats(errors: List[str]) -> Tuple[int, int]:
-    """Count total number of errors and files in error list."""
-    errors = [e for e in errors if ': error:' in e]
-    files = {e.split(':')[0] for e in errors}
-    return len(errors), len(files)
+def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+    """Count total number of errors, notes and error_files in message list."""
+    errors = [e for e in messages if ': error:' in e]
+    error_files = {e.split(':')[0] for e in errors}
+    notes = [e for e in messages if ': note:' in e]
+    return len(errors), len(notes), len(error_files)
 
 
 def split_words(msg: str) -> List[str]:
@@ -517,6 +519,8 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
+    if sys.platform == "win32":
+        assert False, "curses is not available on Windows"
     set_color = ''.join([cup[:-1].decode(), 'm'])
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
@@ -580,7 +584,7 @@ class FancyFormatter:
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if not CURSES_ENABLED:
+        if sys.platform == "win32" or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
@@ -760,3 +764,12 @@ def is_stub_package_file(file: str) -> bool:
 
 def unnamed_function(name: Optional[str]) -> bool:
     return name is not None and name == "_"
+
+
+# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
+# (or when mypy properly handles alternate definitions based on python version check
+time_ref = time.perf_counter
+
+
+def time_spent_us(t0: float) -> int:
+    return int((time.perf_counter() - t0) * 1e6)

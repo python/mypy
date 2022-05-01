@@ -201,7 +201,7 @@ section of the command line docs.
 
     A regular expression that matches file names, directory names and paths
     which mypy should ignore while recursively discovering files to check.
-    Use forward slashes on all platforms.
+    Use forward slashes (``/``) as directory separators on all platforms.
 
     .. code-block:: ini
 
@@ -237,8 +237,9 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = [
-            "^file1\\.py$",  # TOML's double-quoted strings require escaping backslashes
-            '^file2\.py$',  # but TOML's single-quoted strings do not
+              "^one\\.py$",  # TOML's double-quoted strings require escaping backslashes
+              'two\.pyi$',  # but TOML's single-quoted strings do not
+              '^three\.',
           ]
 
        A single, multi-line string:
@@ -247,9 +248,10 @@ section of the command line docs.
 
           [tool.mypy]
           exclude = '''(?x)(
-              ^file1\.py$
-              |^file2\.py$,
-          )'''
+              ^one\.py$    # files named "one.py"
+              | two\.pyi$  # or files ending with "two.pyi"
+              | ^three\.   # or files starting with "three."
+          )'''  # TOML's single-quoted strings do not require escaping backslashes
 
        See :ref:`using-a-pyproject-toml`.
 
@@ -613,6 +615,24 @@ section of the command line docs.
 
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
+    Example where this can be useful:
+
+    .. code-block:: python
+
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
+           items = [item.split() for item in items]
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. confval:: local_partial_types
 
@@ -627,6 +647,14 @@ section of the command line docs.
     :type: comma-separated list of strings
 
     Allows disabling one or multiple error codes globally.
+
+.. confval:: enable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows enabling one or multiple error codes globally.
+
+    Note: This option will override disabled error codes from the disable_error_code option.
 
 .. confval:: implicit_reexport
 
@@ -647,6 +675,13 @@ section of the command line docs.
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
+
+.. confval:: strict_concatenate
+
+    :type: boolean
+    :default: False
+
+    Make arguments prepended via ``Concatenate`` be truly positional-only.
 
 .. confval:: strict_equality
 

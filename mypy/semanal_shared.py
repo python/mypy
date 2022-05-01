@@ -2,8 +2,8 @@
 
 from abc import abstractmethod
 
-from typing import Optional, List, Callable
-from typing_extensions import Final
+from typing import Optional, List, Callable, Union
+from typing_extensions import Final, Protocol
 from mypy_extensions import trait
 
 from mypy.nodes import (
@@ -11,7 +11,8 @@ from mypy.nodes import (
     SymbolNode, SymbolTable
 )
 from mypy.types import (
-    Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type
+    Type, FunctionLike, Instance, TupleType, TPDICT_FB_NAMES, ProperType, get_proper_type,
+    ParamSpecType, ParamSpecFlavor, Parameters, TypeVarId
 )
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.errorcodes import ErrorCode
@@ -212,3 +213,46 @@ def calculate_tuple_fallback(typ: TupleType) -> None:
     fallback = typ.partial_fallback
     assert fallback.type.fullname == 'builtins.tuple'
     fallback.args = (join.join_type_list(list(typ.items)),) + fallback.args[1:]
+
+
+class _NamedTypeCallback(Protocol):
+    def __call__(
+        self, fully_qualified_name: str, args: Optional[List[Type]] = None
+    ) -> Instance: ...
+
+
+def paramspec_args(
+    name: str, fullname: str, id: Union[TypeVarId, int], *,
+    named_type_func: _NamedTypeCallback, line: int = -1, column: int = -1,
+    prefix: Optional[Parameters] = None
+) -> ParamSpecType:
+    return ParamSpecType(
+        name,
+        fullname,
+        id,
+        flavor=ParamSpecFlavor.ARGS,
+        upper_bound=named_type_func('builtins.tuple', [named_type_func('builtins.object')]),
+        line=line,
+        column=column,
+        prefix=prefix
+    )
+
+
+def paramspec_kwargs(
+    name: str, fullname: str, id: Union[TypeVarId, int], *,
+    named_type_func: _NamedTypeCallback, line: int = -1, column: int = -1,
+    prefix: Optional[Parameters] = None
+) -> ParamSpecType:
+    return ParamSpecType(
+        name,
+        fullname,
+        id,
+        flavor=ParamSpecFlavor.KWARGS,
+        upper_bound=named_type_func(
+            'builtins.dict',
+            [named_type_func('builtins.str'), named_type_func('builtins.object')]
+        ),
+        line=line,
+        column=column,
+        prefix=prefix
+    )

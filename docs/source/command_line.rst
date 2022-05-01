@@ -524,7 +524,16 @@ of the above sections.
            # 'items' has type list[str]
            items = [item.split() for item in items]
            # 'items' now has type list[list[str]]
-           ...
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. option:: --local-partial-types
 
@@ -539,11 +548,11 @@ of the above sections.
         from typing import Optional
 
         a = None  # Need type annotation here if using --local-partial-types
-        b = None  # type: Optional[int]
+        b: Optional[int] = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz = None  # type: Optional[int]
+            baz: Optional[int] = None
 
             def __init__(self) -> None:
                 self.bar = 1
@@ -607,6 +616,7 @@ of the above sections.
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
     .. code-block:: python
 
@@ -614,20 +624,21 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
 .. option:: --enable-error-code
 
     This flag allows enabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
-    Note: This flag will override disabled error codes from the --disable-error-code
-    flag
+    Note: This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     .. code-block:: python
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 

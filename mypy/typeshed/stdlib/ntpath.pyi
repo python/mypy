@@ -44,15 +44,101 @@ from posixpath import (
 )
 from typing import AnyStr, overload
 
-altsep: str
-if sys.version_info < (3, 7) and sys.platform == "win32":
+if sys.version_info >= (3, 7) or sys.platform != "win32":
+    __all__ = [
+        "normcase",
+        "isabs",
+        "join",
+        "splitdrive",
+        "split",
+        "splitext",
+        "basename",
+        "dirname",
+        "commonprefix",
+        "getsize",
+        "getmtime",
+        "getatime",
+        "getctime",
+        "islink",
+        "exists",
+        "lexists",
+        "isdir",
+        "isfile",
+        "ismount",
+        "expanduser",
+        "expandvars",
+        "normpath",
+        "abspath",
+        "curdir",
+        "pardir",
+        "sep",
+        "pathsep",
+        "defpath",
+        "altsep",
+        "extsep",
+        "devnull",
+        "realpath",
+        "supports_unicode_filenames",
+        "relpath",
+        "samefile",
+        "sameopenfile",
+        "samestat",
+        "commonpath",
+    ]
+else:
+    __all__ = [
+        "normcase",
+        "isabs",
+        "join",
+        "splitdrive",
+        "split",
+        "splitext",
+        "basename",
+        "dirname",
+        "commonprefix",
+        "getsize",
+        "getmtime",
+        "getatime",
+        "getctime",
+        "islink",
+        "exists",
+        "lexists",
+        "isdir",
+        "isfile",
+        "ismount",
+        "expanduser",
+        "expandvars",
+        "normpath",
+        "abspath",
+        "splitunc",
+        "curdir",
+        "pardir",
+        "sep",
+        "pathsep",
+        "defpath",
+        "altsep",
+        "extsep",
+        "devnull",
+        "realpath",
+        "supports_unicode_filenames",
+        "relpath",
+        "samefile",
+        "sameopenfile",
+        "samestat",
+        "commonpath",
+    ]
+
     def splitunc(p: AnyStr) -> tuple[AnyStr, AnyStr]: ...  # deprecated
 
-# Similar to posixpath, but have slightly different argument names
+altsep: str
+
+# First parameter is not actually pos-only,
+# but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
+# as the parameter name is different in posixpath.join()
 @overload
-def join(path: StrPath, *paths: StrPath) -> str: ...
+def join(__path: StrPath, *paths: StrPath) -> str: ...
 @overload
-def join(path: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(__path: BytesPath, *paths: BytesPath) -> bytes: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 10):

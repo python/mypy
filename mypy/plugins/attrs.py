@@ -18,18 +18,19 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method,
-    deserialize_and_fixup_type
+    deserialize_and_fixup_type, add_attribute_to_class,
 )
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
     Overloaded, UnionType, FunctionLike, Instance, get_proper_type,
+    LiteralType,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
 
-KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
+KW_ONLY_PYTHON_2_UNSUPPORTED: Final = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers: Final = {
@@ -40,14 +41,16 @@ attr_class_makers: Final = {
 attr_dataclass_makers: Final = {
     'attr.dataclass',
 }
-attr_frozen_makers: Final = {"attr.frozen"}
-attr_define_makers: Final = {"attr.define", "attr.mutable"}
+attr_frozen_makers: Final = {"attr.frozen", "attrs.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable", "attrs.define", "attrs.mutable"}
 attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
     'attr.field',
+    'attrs.field',
 }
+attr_optional_converters: Final = {'attr.converters.optional', 'attrs.converters.optional'}
 
 SELF_TVAR_NAME: Final = "_AT"
 MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
@@ -278,6 +281,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
+    match_args = _get_decorator_bool_argument(ctx, 'match_args', True)
 
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
@@ -307,6 +311,10 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
     if slots:
         _add_slots(ctx, attributes)
+    if match_args and ctx.api.options.python_version[:2] >= (3, 10):
+        # `.__match_args__` is only added for python3.10+, but the argument
+        # exists for earlier versions as well.
+        _add_match_args(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -603,7 +611,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
 
         if (isinstance(converter, CallExpr)
                 and isinstance(converter.callee, RefExpr)
-                and converter.callee.fullname == "attr.converters.optional"
+                and converter.callee.fullname in attr_optional_converters
                 and converter.args
                 and converter.args[0]):
             # Special handling for attr.converters.optional(type)
@@ -733,10 +741,12 @@ def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
         ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
     attributes_type = Instance(ti, [])
 
+    # TODO: refactor using `add_attribute_to_class`
     var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
     var.info = ctx.cls.info
     var.is_classvar = True
     var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
+    var.allow_incompatible_override = True
     ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
         kind=MDEF,
         node=var,
@@ -749,6 +759,29 @@ def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
                attributes: List[Attribute]) -> None:
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
+
+
+def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
+                    attributes: List[Attribute]) -> None:
+    if ('__match_args__' not in ctx.cls.info.names
+            or ctx.cls.info.names['__match_args__'].plugin_generated):
+        str_type = ctx.api.named_type('builtins.str')
+        match_args = TupleType(
+            [
+                str_type.copy_modified(
+                    last_known_value=LiteralType(attr.name, fallback=str_type),
+                )
+                for attr in attributes
+                if not attr.kw_only and attr.init
+            ],
+            fallback=ctx.api.named_type('builtins.tuple'),
+        )
+        add_attribute_to_class(
+            api=ctx.api,
+            cls=ctx.cls,
+            name='__match_args__',
+            typ=match_args,
+        )
 
 
 class MethodAdder:

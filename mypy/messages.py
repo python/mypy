@@ -15,23 +15,25 @@ import re
 import difflib
 from textwrap import dedent
 
-from typing import cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union
+from typing import (
+    cast, List, Dict, Any, Sequence, Iterable, Iterator, Tuple, Set, Optional, Union, Callable
+)
 from typing_extensions import Final
 
 from mypy.erasetype import erase_type
-from mypy.errors import Errors
+from mypy.errors import Errors, ErrorWatcher, ErrorInfo
 from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    ParamSpecType, get_proper_types
+    ParamSpecType, Parameters, get_proper_types
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, TempNode, SYMBOL_FUNCBASE_TYPES
+    CallExpr, IndexExpr, StrExpr, SymbolTable, SYMBOL_FUNCBASE_TYPES
 )
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
@@ -39,6 +41,7 @@ from mypy.subtypes import (
     IS_SETTABLE, IS_CLASSVAR, IS_CLASS_OR_STATIC,
 )
 from mypy.sametypes import is_same_type
+from mypy.typeops import separate_union_literals
 from mypy.util import unmangle
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
@@ -103,66 +106,38 @@ class MessageBuilder:
 
     modules: Dict[str, MypyFile]
 
-    # Number of times errors have been disabled.
-    disable_count = 0
-
     # Hack to deduplicate error messages from union types
-    disable_type_names_count = 0
+    _disable_type_names: List[bool]
 
     def __init__(self, errors: Errors, modules: Dict[str, MypyFile]) -> None:
         self.errors = errors
         self.modules = modules
-        self.disable_count = 0
-        self.disable_type_names_count = 0
+        self._disable_type_names = []
 
     #
     # Helpers
     #
 
-    def copy(self) -> 'MessageBuilder':
-        new = MessageBuilder(self.errors.copy(), self.modules)
-        new.disable_count = self.disable_count
-        new.disable_type_names_count = self.disable_type_names_count
-        return new
+    def filter_errors(self, *, filter_errors: bool = True,
+                      save_filtered_errors: bool = False) -> ErrorWatcher:
+        return ErrorWatcher(self.errors, filter_errors=filter_errors,
+                            save_filtered_errors=save_filtered_errors)
 
-    def clean_copy(self) -> 'MessageBuilder':
-        errors = self.errors.copy()
-        errors.error_info_map = OrderedDict()
-        return MessageBuilder(errors, self.modules)
-
-    def add_errors(self, messages: 'MessageBuilder') -> None:
+    def add_errors(self, errors: List[ErrorInfo]) -> None:
         """Add errors in messages to this builder."""
-        if self.disable_count <= 0:
-            for errs in messages.errors.error_info_map.values():
-                for info in errs:
-                    self.errors.add_error_info(info)
-
-    @contextmanager
-    def disable_errors(self) -> Iterator[None]:
-        self.disable_count += 1
-        try:
-            yield
-        finally:
-            self.disable_count -= 1
+        for info in errors:
+            self.errors.add_error_info(info)
 
     @contextmanager
     def disable_type_names(self) -> Iterator[None]:
-        self.disable_type_names_count += 1
+        self._disable_type_names.append(True)
         try:
             yield
         finally:
-            self.disable_type_names_count -= 1
+            self._disable_type_names.pop()
 
-    def is_errors(self) -> bool:
-        return self.errors.is_errors()
-
-    def most_recent_context(self) -> Context:
-        """Return a dummy context matching the most recent generated error in current file."""
-        line, column = self.errors.most_recent_error_location()
-        node = TempNode(NoneType())
-        node.line = line
-        node.column = column
-        return node
+    def are_type_names_disabled(self) -> bool:
+        return len(self._disable_type_names) > 0 and self._disable_type_names[-1]
 
     def report(self,
                msg: str,
@@ -181,12 +156,11 @@ class MessageBuilder:
             end_line = context.end_line
         else:
             end_line = None
-        if self.disable_count <= 0:
-            self.errors.report(context.get_line() if context else -1,
-                               context.get_column() if context else -1,
-                               msg, severity=severity, file=file, offset=offset,
-                               origin_line=origin.get_line() if origin else None,
-                               end_line=end_line, code=code, allow_dups=allow_dups)
+        self.errors.report(context.get_line() if context else -1,
+                           context.get_column() if context else -1,
+                           msg, severity=severity, file=file, offset=offset,
+                           origin_line=origin.get_line() if origin else None,
+                           end_line=end_line, code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
@@ -306,7 +280,7 @@ class MessageBuilder:
                 extra = ' (not iterable)'
             elif member == '__aiter__':
                 extra = ' (not async iterable)'
-            if not self.disable_type_names_count:
+            if not self.are_type_names_disabled():
                 failed = False
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
@@ -388,7 +362,7 @@ class MessageBuilder:
         else:
             right_str = format_type(right_type)
 
-        if self.disable_type_names_count:
+        if self.are_type_names_disabled():
             msg = 'Unsupported operand types for {} (likely involving Union)'.format(op)
         else:
             msg = 'Unsupported operand types for {} ({} and {})'.format(
@@ -397,7 +371,7 @@ class MessageBuilder:
 
     def unsupported_left_operand(self, op: str, typ: Type,
                                  context: Context) -> None:
-        if self.disable_type_names_count:
+        if self.are_type_names_disabled():
             msg = 'Unsupported left operand type for {} (some union)'.format(op)
         else:
             msg = 'Unsupported left operand type for {} ({})'.format(
@@ -622,6 +596,32 @@ class MessageBuilder:
                                is_operator=True)
             if call:
                 self.note_call(original_caller_type, call, context, code=code)
+
+        self.maybe_note_concatenate_pos_args(original_caller_type, callee_type, context, code)
+
+    def maybe_note_concatenate_pos_args(self,
+                                        original_caller_type: ProperType,
+                                        callee_type: ProperType,
+                                        context: Context,
+                                        code: Optional[ErrorCode] = None) -> None:
+        # pos-only vs positional can be confusing, with Concatenate
+        if (isinstance(callee_type, CallableType) and
+                isinstance(original_caller_type, CallableType) and
+                (original_caller_type.from_concatenate or callee_type.from_concatenate)):
+            names: List[str] = []
+            for c, o in zip(
+                              callee_type.formal_arguments(),
+                              original_caller_type.formal_arguments()):
+                if None in (c.pos, o.pos):
+                    # non-positional
+                    continue
+                if c.name != o.name and c.name is None and o.name is not None:
+                    names.append(o.name)
+
+            if names:
+                missing_arguments = '"' + '", "'.join(names) + '"'
+                self.note(f'This may be because "{original_caller_type.name}" has arguments '
+                          f'named: {missing_arguments}', context, code=code)
 
     def invalid_index_type(self, index_type: Type, expected_type: Type, base_str: str,
                            context: Context, *, code: ErrorCode) -> None:
@@ -953,11 +953,8 @@ class MessageBuilder:
         if isinstance(typ, Instance) and is_mapping:
             self.fail('Keywords must be strings', context)
         else:
-            suffix = ''
-            if isinstance(typ, Instance):
-                suffix = ', not {}'.format(format_type(typ))
             self.fail(
-                'Argument after ** must be a mapping{}'.format(suffix),
+                'Argument after ** must be a mapping, not {}'.format(format_type(typ)),
                 context, code=codes.ARG_TYPE)
 
     def undefined_in_superclass(self, member: str, context: Context) -> None:
@@ -1173,9 +1170,12 @@ class MessageBuilder:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
         sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
-        self.note("Revealed local types are:", context)
-        for line in ['    {}: {}'.format(k, v) for k, v in sorted_locals.items()]:
-            self.note(line, context)
+        if sorted_locals:
+            self.note("Revealed local types are:", context)
+            for k, v in sorted_locals.items():
+                self.note('    {}: {}'.format(k, v), context)
+        else:
+            self.note("There are no locals to reveal", context)
 
     def unsupported_type_type(self, item: Type, context: Context) -> None:
         self.fail('Cannot instantiate type "Type[{}]"'.format(format_type_bare(item)), context)
@@ -1183,6 +1183,11 @@ class MessageBuilder:
     def redundant_cast(self, typ: Type, context: Context) -> None:
         self.fail('Redundant cast to {}'.format(format_type(typ)), context,
                   code=codes.REDUNDANT_CAST)
+
+    def assert_type_fail(self, source_type: Type, target_type: Type, context: Context) -> None:
+        self.fail(f"Expression is of type {format_type(source_type)}, "
+                  f"not {format_type(target_type)}", context,
+                  code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
         self.fail("{} becomes {} due to an unfollowed import".format(prefix, format_type(typ)),
@@ -1651,6 +1656,32 @@ def quote_type_string(type_string: str) -> str:
     return '"{}"'.format(type_string)
 
 
+def format_callable_args(arg_types: List[Type], arg_kinds: List[ArgKind],
+                         arg_names: List[Optional[str]], format: Callable[[Type], str],
+                         verbosity: int) -> str:
+    """Format a bunch of Callable arguments into a string"""
+    arg_strings = []
+    for arg_name, arg_type, arg_kind in zip(
+            arg_names, arg_types, arg_kinds):
+        if (arg_kind == ARG_POS and arg_name is None
+                or verbosity == 0 and arg_kind.is_positional()):
+
+            arg_strings.append(format(arg_type))
+        else:
+            constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
+            if arg_kind.is_star() or arg_name is None:
+                arg_strings.append("{}({})".format(
+                    constructor,
+                    format(arg_type)))
+            else:
+                arg_strings.append("{}({}, {})".format(
+                    constructor,
+                    format(arg_type),
+                    repr(arg_name)))
+
+    return ", ".join(arg_strings)
+
+
 def format_type_inner(typ: Type,
                       verbosity: int,
                       fullnames: Optional[Set[str]]) -> str:
@@ -1663,6 +1694,16 @@ def format_type_inner(typ: Type,
     """
     def format(typ: Type) -> str:
         return format_type_inner(typ, verbosity, fullnames)
+
+    def format_list(types: Sequence[Type]) -> str:
+        return ', '.join(format(typ) for typ in types)
+
+    def format_literal_value(typ: LiteralType) -> str:
+        if typ.is_enum_literal():
+            underlying_type = format(typ.fallback)
+            return '{}.{}'.format(underlying_type, typ.value)
+        else:
+            return typ.value_repr()
 
     # TODO: show type alias names in errors.
     typ = get_proper_type(typ)
@@ -1686,28 +1727,31 @@ def format_type_inner(typ: Type,
         elif itype.type.fullname in reverse_builtin_aliases:
             alias = reverse_builtin_aliases[itype.type.fullname]
             alias = alias.split('.')[-1]
-            items = [format(arg) for arg in itype.args]
-            return '{}[{}]'.format(alias, ', '.join(items))
+            return '{}[{}]'.format(alias, format_list(itype.args))
         else:
             # There are type arguments. Convert the arguments to strings.
-            a: List[str] = []
-            for arg in itype.args:
-                a.append(format(arg))
-            s = ', '.join(a)
-            return '{}[{}]'.format(base_str, s)
+            return '{}[{}]'.format(base_str, format_list(itype.args))
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
     elif isinstance(typ, ParamSpecType):
-        return typ.name_with_suffix()
+        # Concatenate[..., P]
+        if typ.prefix.arg_types:
+            args = format_callable_args(
+                typ.prefix.arg_types,
+                typ.prefix.arg_kinds,
+                typ.prefix.arg_names,
+                format,
+                verbosity)
+
+            return f'[{args}, **{typ.name_with_suffix()}]'
+        else:
+            return typ.name_with_suffix()
     elif isinstance(typ, TupleType):
         # Prefer the name of the fallback class (if not tuple), as it's more informative.
         if typ.partial_fallback.type.fullname != 'builtins.tuple':
             return format(typ.partial_fallback)
-        items = []
-        for t in typ.items:
-            items.append(format(t))
-        s = 'Tuple[{}]'.format(', '.join(items))
+        s = 'Tuple[{}]'.format(format_list(typ.items))
         return s
     elif isinstance(typ, TypedDictType):
         # If the TypedDictType is named, return the name
@@ -1722,24 +1766,34 @@ def format_type_inner(typ: Type,
         s = 'TypedDict({{{}}})'.format(', '.join(items))
         return s
     elif isinstance(typ, LiteralType):
-        if typ.is_enum_literal():
-            underlying_type = format(typ.fallback)
-            return 'Literal[{}.{}]'.format(underlying_type, typ.value)
-        else:
-            return str(typ)
+        return 'Literal[{}]'.format(format_literal_value(typ))
     elif isinstance(typ, UnionType):
-        # Only print Unions as Optionals if the Optional wouldn't have to contain another Union
-        print_as_optional = (len(typ.items) -
-                             sum(isinstance(get_proper_type(t), NoneType)
-                                 for t in typ.items) == 1)
-        if print_as_optional:
-            rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
-            return 'Optional[{}]'.format(format(rest[0]))
+        literal_items, union_items = separate_union_literals(typ)
+
+        # Coalesce multiple Literal[] members. This also changes output order.
+        # If there's just one Literal item, retain the original ordering.
+        if len(literal_items) > 1:
+            literal_str = 'Literal[{}]'.format(
+                ', '.join(format_literal_value(t) for t in literal_items)
+            )
+
+            if len(union_items) == 1 and isinstance(get_proper_type(union_items[0]), NoneType):
+                return 'Optional[{}]'.format(literal_str)
+            elif union_items:
+                return 'Union[{}, {}]'.format(format_list(union_items), literal_str)
+            else:
+                return literal_str
         else:
-            items = []
-            for t in typ.items:
-                items.append(format(t))
-            s = 'Union[{}]'.format(', '.join(items))
+            # Only print Union as Optional if the Optional wouldn't have to contain another Union
+            print_as_optional = (len(typ.items) -
+                                 sum(isinstance(get_proper_type(t), NoneType)
+                                     for t in typ.items) == 1)
+            if print_as_optional:
+                rest = [t for t in typ.items if not isinstance(get_proper_type(t), NoneType)]
+                return 'Optional[{}]'.format(format(rest[0]))
+            else:
+                s = 'Union[{}]'.format(format_list(typ.items))
+
             return s
     elif isinstance(typ, NoneType):
         return 'None'
@@ -1769,27 +1823,14 @@ def format_type_inner(typ: Type,
                 return 'Callable[..., {}]'.format(return_type)
             param_spec = func.param_spec()
             if param_spec is not None:
-                return f'Callable[{param_spec.name}, {return_type}]'
-            arg_strings = []
-            for arg_name, arg_type, arg_kind in zip(
-                    func.arg_names, func.arg_types, func.arg_kinds):
-                if (arg_kind == ARG_POS and arg_name is None
-                        or verbosity == 0 and arg_kind.is_positional()):
-
-                    arg_strings.append(format(arg_type))
-                else:
-                    constructor = ARG_CONSTRUCTOR_NAMES[arg_kind]
-                    if arg_kind.is_star() or arg_name is None:
-                        arg_strings.append("{}({})".format(
-                            constructor,
-                            format(arg_type)))
-                    else:
-                        arg_strings.append("{}({}, {})".format(
-                            constructor,
-                            format(arg_type),
-                            repr(arg_name)))
-
-            return 'Callable[[{}], {}]'.format(", ".join(arg_strings), return_type)
+                return f'Callable[{format(param_spec)}, {return_type}]'
+            args = format_callable_args(
+                func.arg_types,
+                func.arg_kinds,
+                func.arg_names,
+                format,
+                verbosity)
+            return 'Callable[[{}], {}]'.format(args, return_type)
         else:
             # Use a simple representation for function types; proper
             # function types may result in long and difficult-to-read
@@ -1797,6 +1838,14 @@ def format_type_inner(typ: Type,
             return 'overloaded function'
     elif isinstance(typ, UnboundType):
         return str(typ)
+    elif isinstance(typ, Parameters):
+        args = format_callable_args(
+            typ.arg_types,
+            typ.arg_kinds,
+            typ.arg_names,
+            format,
+            verbosity)
+        return f'[{args}]'
     elif typ is None:
         raise RuntimeError('Type is None')
     else:
