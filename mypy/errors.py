@@ -5,13 +5,8 @@ import traceback
 from mypy.backports import OrderedDict
 from collections import defaultdict
 
-<<<<<<< HEAD
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
+from typing import Tuple, List, TypeVar, Set, Dict, NoReturn, Optional, TextIO, Callable, Union
 from typing_extensions import Final, Literal
-=======
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, NoReturn
-from typing_extensions import Final
->>>>>>> cbce51f94 (Fix missing NoReturn annotations and incorrect try placements)
 
 from mypy.scope import Scope
 from mypy.options import Options
