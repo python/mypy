@@ -1240,7 +1240,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
 TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]
 
-# Mypyc doesn't support callback protocols yet.
+
 class MsgCallback(Protocol):
     def __call__(
         self,
