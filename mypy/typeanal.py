@@ -1247,7 +1247,7 @@ class MsgCallback(Protocol):
         __msg: str,
         __ctx: Context,
         *,
-        code: Optional[ErrorCode] = ...
+        code: Optional[ErrorCode] = None
     ) -> None: ...
 
 
