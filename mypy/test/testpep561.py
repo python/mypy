@@ -43,7 +43,7 @@ def virtualenv(
         proc = subprocess.run([sys.executable,
                                '-m',
                                'virtualenv',
-                               '-p{}'.format(python_executable),
+                               f'-p{python_executable}',
                                venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE)
         if proc.returncode != 0:
             err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
@@ -118,12 +118,12 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
             program = testcase.name + '.py'
             with open(program, 'w', encoding='utf-8') as f:
                 for s in testcase.input:
-                    f.write('{}\n'.format(s))
+                    f.write(f'{s}\n')
             cmd_line.append(program)
 
         cmd_line.extend(['--no-error-summary'])
         if python_executable != sys.executable:
-            cmd_line.append('--python-executable={}'.format(python_executable))
+            cmd_line.append(f'--python-executable={python_executable}')
 
         steps = testcase.find_steps()
         if steps != [[]]:
@@ -144,7 +144,7 @@ def test_pep561(testcase: DataDrivenTestCase) -> None:
                     # Normalize paths so that the output is the same on Windows and Linux/macOS.
                     line = line.replace(test_temp_dir + os.sep, test_temp_dir + '/')
                     output.append(line.rstrip("\r\n"))
-            iter_count = '' if i == 0 else ' on iteration {}'.format(i + 1)
+            iter_count = '' if i == 0 else f' on iteration {i + 1}'
             expected = testcase.output if i == 0 else testcase.output2.get(i + 1, [])
 
             assert_string_arrays_equal(expected, output,
@@ -189,14 +189,14 @@ def test_mypy_path_is_respected() -> None:
             mypy_config_path = os.path.join(temp_dir, 'mypy.ini')
             with open(mypy_config_path, 'w') as mypy_file:
                 mypy_file.write('[mypy]\n')
-                mypy_file.write('mypy_path = ./{}\n'.format(packages))
+                mypy_file.write(f'mypy_path = ./{packages}\n')
 
             with virtualenv() as venv:
                 venv_dir, python_executable = venv
 
                 cmd_line_args = []
                 if python_executable != sys.executable:
-                    cmd_line_args.append('--python-executable={}'.format(python_executable))
+                    cmd_line_args.append(f'--python-executable={python_executable}')
                 cmd_line_args.extend(['--config-file', mypy_config_path,
                                       '--package', pkg_name])
 

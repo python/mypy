@@ -866,9 +866,9 @@ class JoinSuite(Suite):
         actual = str(result)
         expected = str(join)
         assert_equal(actual, expected,
-                     'join({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert is_subtype(s, result), '{} not subtype of {}'.format(s, result)
-        assert is_subtype(t, result), '{} not subtype of {}'.format(t, result)
+                     f'join({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(s, result), f'{s} not subtype of {result}'
+        assert is_subtype(t, result), f'{t} not subtype of {result}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -1081,9 +1081,9 @@ class MeetSuite(Suite):
         actual = str(result)
         expected = str(meet)
         assert_equal(actual, expected,
-                     'meet({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert is_subtype(result, s), '{} not subtype of {}'.format(result, s)
-        assert is_subtype(result, t), '{} not subtype of {}'.format(result, t)
+                     f'meet({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(result, s), f'{result} not subtype of {s}'
+        assert is_subtype(result, t), f'{result} not subtype of {t}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -1132,14 +1132,14 @@ class SameTypeSuite(Suite):
     def assert_simple_is_same(self, s: Type, t: Type, expected: bool, strict: bool) -> None:
         actual = is_same_type(s, t)
         assert_equal(actual, expected,
-                     'is_same_type({}, {}) is {{}} ({{}} expected)'.format(s, t))
+                     f'is_same_type({s}, {t}) is {{}} ({{}} expected)')
 
         if strict:
             actual2 = (s == t)
             assert_equal(actual2, expected,
-                         '({} == {}) is {{}} ({{}} expected)'.format(s, t))
+                         f'({s} == {t}) is {{}} ({{}} expected)')
             assert_equal(hash(s) == hash(t), expected,
-                         '(hash({}) == hash({}) is {{}} ({{}} expected)'.format(s, t))
+                         f'(hash({s}) == hash({t}) is {{}} ({{}} expected)')
 
 
 class RemoveLastKnownValueSuite(Suite):
