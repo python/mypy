@@ -1908,7 +1908,7 @@ class State:
             # know about modules that have cache information and defer
             # handling new modules until the fine-grained update.
             if manager.use_fine_grained_cache():
-                manager.log("Deferring module to fine-grained update {} ({})".format(path, id))
+                manager.log(f"Deferring module to fine-grained update {path} ({id})")
                 raise ModuleNotFound
 
             # Parse the file (and then some) to get the dependencies.
@@ -2036,9 +2036,9 @@ class State:
         cached = self.id in manager.ast_cache
         modules = manager.modules
         if not cached:
-            manager.log("Parsing {} ({})".format(self.xpath, self.id))
+            manager.log(f"Parsing {self.xpath} ({self.id})")
         else:
-            manager.log("Using cached AST for {} ({})".format(self.xpath, self.id))
+            manager.log(f"Using cached AST for {self.xpath} ({self.id})")
 
         t0 = time_ref()
 
@@ -2466,11 +2466,11 @@ def find_module_and_diagnose(manager: BuildManager,
             pass
         elif follow_imports == 'silent':
             # Still import it, but silence non-blocker errors.
-            manager.log("Silencing {} ({})".format(result, id))
+            manager.log(f"Silencing {result} ({id})")
         elif follow_imports == 'skip' or follow_imports == 'error':
             # In 'error' mode, produce special error messages.
             if id not in manager.missing_modules:
-                manager.log("Skipping {} ({})".format(result, id))
+                manager.log(f"Skipping {result} ({id})")
             if follow_imports == 'error':
                 if ancestor_for:
                     skipping_ancestor(manager, id, result, ancestor_for)
@@ -2489,7 +2489,7 @@ def find_module_and_diagnose(manager: BuildManager,
                 and not options.use_builtins_fixtures
                 and not options.custom_typeshed_dir):
             raise CompileError([
-                'mypy: "{}" shadows library module "{}"'.format(os.path.relpath(result), id),
+                f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
                 'note: A user-defined top-level module with name "%s" is not supported' % id
             ])
         return (result, follow_imports)
@@ -2632,7 +2632,7 @@ def skipping_module(manager: BuildManager, line: int, caller_state: Optional[Sta
     manager.errors.set_import_context(caller_state.import_context)
     manager.errors.set_file(caller_state.xpath, caller_state.id)
     manager.errors.report(line, 0,
-                          'Import of "{}" ignored'.format(id),
+                          f'Import of "{id}" ignored',
                           severity='error')
     manager.errors.report(line, 0,
                           "(Using --follow-imports=error, module not passed on command line)",
@@ -2648,7 +2648,7 @@ def skipping_ancestor(manager: BuildManager, id: str, path: str, ancestor_for: '
     # so we'd need to cache the decision.
     manager.errors.set_import_context([])
     manager.errors.set_file(ancestor_for.xpath, ancestor_for.id)
-    manager.errors.report(-1, -1, 'Ancestor package "{}" ignored'.format(id),
+    manager.errors.report(-1, -1, f'Ancestor package "{id}" ignored',
                           severity='error', only_once=True)
     manager.errors.report(-1, -1,
                           "(Using --follow-imports=error, submodule passed on command line)",
@@ -2873,7 +2873,7 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
             manager.errors.set_file(st.xpath, st.id)
             manager.errors.report(
                 -1, -1,
-                'Duplicate module named "{}" (also at "{}")'.format(st.id, graph[st.id].xpath),
+                f'Duplicate module named "{st.id}" (also at "{graph[st.id].xpath}")',
                 blocker=True,
             )
             manager.errors.report(
@@ -3081,7 +3081,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
 
         scc_str = " ".join(scc)
         if fresh:
-            manager.trace("Queuing {} SCC ({})".format(fresh_msg, scc_str))
+            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
             fresh_scc_queue.append(scc)
         else:
             if len(fresh_scc_queue) > 0:
@@ -3105,7 +3105,7 @@ def process_graph(graph: Graph, manager: BuildManager) -> None:
                 fresh_scc_queue = []
             size = len(scc)
             if size == 1:
-                manager.log("Processing SCC singleton ({}) as {}".format(scc_str, fresh_msg))
+                manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
             else:
                 manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
             process_stale_scc(graph, scc, manager)

@@ -1010,7 +1010,7 @@ class MessageBuilder:
         self.fail('Cannot determine type of "%s"' % name, context, code=codes.HAS_TYPE)
 
     def cannot_determine_type_in_base(self, name: str, base: str, context: Context) -> None:
-        self.fail('Cannot determine type of "{}" in base class "{}"'.format(name, base), context)
+        self.fail(f'Cannot determine type of "{name}" in base class "{base}"', context)
 
     def no_formal_self(self, name: str, item: CallableType, context: Context) -> None:
         self.fail('Attribute function "%s" with type %s does not accept self argument'

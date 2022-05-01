@@ -73,7 +73,7 @@ def generate_stub_for_c_module(module_name: str,
             continue
         if name not in done and not inspect.ismodule(obj):
             type_str = strip_or_import(get_type_fullname(type(obj)), module, imports)
-            variables.append('{}: {}'.format(name, type_str))
+            variables.append(f'{name}: {type_str}')
     output = []
     for line in sorted(set(imports)):
         output.append(line)
@@ -254,7 +254,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         if arg_module == 'builtins':
             stripped_type = typ[len('builtins') + 1:]
         else:
-            imports.append('import {}'.format(arg_module))
+            imports.append(f'import {arg_module}')
     if stripped_type == 'NoneType':
         stripped_type = 'None'
     return stripped_type
@@ -398,7 +398,7 @@ def generate_c_type_stub(module: ModuleType,
     else:
         bases_str = ''
     if types or static_properties or rw_properties or methods or ro_properties:
-        output.append('class {}{}:'.format(class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}:')
         for line in types:
             if output and output[-1] and \
                     not output[-1].startswith('class') and line.startswith('class'):
@@ -413,7 +413,7 @@ def generate_c_type_stub(module: ModuleType,
         for line in ro_properties:
             output.append('    %s' % line)
     else:
-        output.append('class {}{}: ...'.format(class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}: ...')
 
 
 def get_type_fullname(typ: type) -> str:

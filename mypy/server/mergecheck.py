@@ -73,11 +73,11 @@ def path_to_str(path: List[Tuple[object, object]]) -> str:
             result += '[%s]' % repr(attr)
         else:
             if isinstance(obj, Var):
-                result += '.{}({}:{})'.format(attr, t, obj.name)
+                result += f'.{attr}({t}:{obj.name})'
             elif t in ('BuildManager', 'FineGrainedBuildManager'):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.
                 result += '.%s' % attr
             else:
-                result += '.{}({})'.format(attr, t)
+                result += f'.{attr}({t})'
     return result

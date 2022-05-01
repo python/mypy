@@ -420,7 +420,7 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '{}.{}'.format(info.fullname, var.name)
+            var._fullname = f'{info.fullname}.{var.name}'
             info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]

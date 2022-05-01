@@ -250,7 +250,7 @@ class SuggestionEngine:
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
-            ["{}:{}: {}".format(path, line, self.format_args(arg_kinds, arg_names, arg_types))
+            [f"{path}:{line}: {self.format_args(arg_kinds, arg_names, arg_types)}"
              for path, line, arg_kinds, _, arg_names, arg_types in callsites]
         ))
 
@@ -483,7 +483,7 @@ class SuggestionEngine:
                     arg = '**' + arg
                 elif kind.is_named():
                     if name:
-                        arg = "{}={}".format(name, arg)
+                        arg = f"{name}={arg}"
             args.append(arg)
         return "(%s)" % (", ".join(args))
 
@@ -511,7 +511,7 @@ class SuggestionEngine:
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
-                raise SuggestionFailure("Cannot find module for {}".format(key))
+                raise SuggestionFailure(f"Cannot find module for {key}")
             modname, tail = target
             node = self.find_node_by_module_and_name(modname, tail)
 

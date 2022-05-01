@@ -1660,7 +1660,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Serializing NameExpr: {}".format(self)
+        assert False, f"Serializing NameExpr: {self}"
 
 
 class MemberExpr(RefExpr):
@@ -3358,7 +3358,7 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname
         else:
-            assert self.node is not None, '{}:{}'.format(prefix, name)
+            assert self.node is not None, f'{prefix}:{name}'
             if prefix is not None:
                 fullname = self.node.fullname
                 if (fullname is not None and '.' in fullname

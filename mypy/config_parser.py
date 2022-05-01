@@ -196,7 +196,7 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 parser = config_parser
                 config_types = ini_config_types
         except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
-            print("{}: {}".format(config_file, err), file=stderr)
+            print(f"{config_file}: {err}", file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
                 continue
@@ -258,7 +258,7 @@ def get_prefix(file_read: str, name: str) -> str:
     else:
         module_name_str = name
 
-    return '{}: [{}]: '.format(file_read, module_name_str)
+    return f'{file_read}: [{module_name_str}]: '
 
 
 def is_toml(filename: str) -> bool:
@@ -369,7 +369,7 @@ def parse_section(prefix: str, template: Options,
                     if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = str(section[key])
                     else:
-                        print("{}Unrecognized report type: {}".format(prefix, key),
+                        print(f"{prefix}Unrecognized report type: {key}",
                               file=stderr)
                     continue
                 if key.startswith('x_'):
@@ -386,7 +386,7 @@ def parse_section(prefix: str, template: Options,
                 elif key == 'strict':
                     pass  # Special handling below
                 else:
-                    print("{}Unrecognized option: {} = {}".format(prefix, key, section[key]),
+                    print(f"{prefix}Unrecognized option: {key} = {section[key]}",
                           file=stderr)
                 if invert:
                     dv = getattr(template, options_key, None)
@@ -404,19 +404,19 @@ def parse_section(prefix: str, template: Options,
                     v = not v
             elif callable(ct):
                 if invert:
-                    print("{}Can not invert non-boolean key {}".format(prefix, options_key),
+                    print(f"{prefix}Can not invert non-boolean key {options_key}",
                           file=stderr)
                     continue
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("{}{}: {}".format(prefix, key, err), file=stderr)
+                    print(f"{prefix}{key}: {err}", file=stderr)
                     continue
             else:
-                print("{}Don't know what type {} should have".format(prefix, key), file=stderr)
+                print(f"{prefix}Don't know what type {key} should have", file=stderr)
                 continue
         except ValueError as err:
-            print("{}{}: {}".format(prefix, key, err), file=stderr)
+            print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == 'strict':
             if v:

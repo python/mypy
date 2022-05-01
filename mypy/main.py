@@ -36,7 +36,7 @@ def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
     except os.error as err:
-        print("stat({!r}) -> {}".format(path, err))
+        print(f"stat({path!r}) -> {err}")
         raise
     else:
         print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %

@@ -1132,9 +1132,9 @@ def target_from_node(module: str,
         return module
     else:  # OverloadedFuncDef or FuncDef
         if node.info:
-            return '{}.{}'.format(node.info.fullname, node.name)
+            return f'{node.info.fullname}.{node.name}'
         else:
-            return '{}.{}'.format(module, node.name)
+            return f'{module}.{node.name}'
 
 
 if sys.platform != "win32":
