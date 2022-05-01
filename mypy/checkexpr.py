@@ -1386,10 +1386,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         # TODO(jukka): We could return as soon as we find an error if messages is None.
 
-        # Collect list of all actual arguments matched to formal arguments.
-        all_actuals: List[int] = []
+        # Collect dict of all actual arguments matched to formal arguments, with occurrence count
+        all_actuals: Dict[int, int] = {}
         for actuals in formal_to_actual:
-            all_actuals.extend(actuals)
+            for a in actuals:
+                all_actuals[a] = all_actuals.get(a, 0) + 1
 
         ok, is_unexpected_arg_error = self.check_for_extra_actual_arguments(
             callee, actual_types, actual_kinds, actual_names, all_actuals, context)
@@ -1423,7 +1424,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                          actual_types: List[Type],
                                          actual_kinds: List[ArgKind],
                                          actual_names: Optional[Sequence[Optional[str]]],
-                                         all_actuals: List[int],
+                                         all_actuals: Dict[int, int],
                                          context: Context) -> Tuple[bool, bool]:
         """Check for extra actual arguments.
 
@@ -1457,7 +1458,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   or kind == nodes.ARG_STAR2):
                 actual_type = get_proper_type(actual_types[i])
                 if isinstance(actual_type, (TupleType, TypedDictType)):
-                    if all_actuals.count(i) < len(actual_type.items):
+                    if all_actuals.get(i, 0) < len(actual_type.items):
                         # Too many tuple/dict items as some did not match.
                         if (kind != nodes.ARG_STAR2
                                 or not isinstance(actual_type, TypedDictType)):

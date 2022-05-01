@@ -278,7 +278,7 @@ class FineGrainedSuite(DataSuite):
 
         """
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        regex = f'# cmd{incremental_step}: mypy ([a-zA-Z0-9_./ ]+)$'
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
         if alt_m is not None:
             # Optionally return a different command if in a later step
@@ -328,7 +328,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
+        regex = f'# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
