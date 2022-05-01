@@ -72,5 +72,4 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
-                                                                testcase.line))
+        f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')

@@ -70,7 +70,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
             return
     else:
         interpreter = python3_path
-        mypy_cmdline.append('--python-version={}'.format('.'.join(map(str, PYTHON3_VERSION))))
+        mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
     m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
     if m:

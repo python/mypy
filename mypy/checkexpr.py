@@ -263,7 +263,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             result = self.object_type()
         else:
             if isinstance(node, PlaceholderNode):
-                assert False, 'PlaceholderNode %r leaked to checker' % node.fullname
+                assert False, f'PlaceholderNode {node.fullname!r} leaked to checker'
             # Unknown reference; use any type implicitly to avoid
             # generating extra type errors.
             result = AnyType(TypeOfAny.from_error)

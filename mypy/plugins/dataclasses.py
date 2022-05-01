@@ -195,7 +195,7 @@ class DataclassTransformer:
                 if existing_method is not None and not existing_method.plugin_generated:
                     assert existing_method.node
                     ctx.api.fail(
-                        'You may not have a custom %s method when order=True' % method_name,
+                        f'You may not have a custom {method_name} method when order=True',
                         existing_method.node,
                     )
 

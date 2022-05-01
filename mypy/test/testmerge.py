@@ -98,8 +98,7 @@ class ASTMergeSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
         options = parse_options(source, testcase, incremental_step=1)
@@ -142,7 +141,7 @@ class ASTMergeSuite(DataSuite):
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
             return self.dump_types(manager)
-        assert False, 'Invalid kind %s' % kind
+        assert False, f'Invalid kind {kind}'
 
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
@@ -177,8 +176,7 @@ class ASTMergeSuite(DataSuite):
                 return 'UNBOUND_IMPORTED'
             return 'None'
         if isinstance(node.node, Node):
-            s = '{}<{}>'.format(str(type(node.node).__name__),
-                                self.id_mapper.id(node.node))
+            s = f'{str(type(node.node).__name__)}<{self.id_mapper.id(node.node)}>'
         else:
             s = f'? ({type(node.node)})'
         if (isinstance(node.node, Var) and node.node.type and
@@ -230,9 +228,7 @@ class ASTMergeSuite(DataSuite):
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
                                                             str(n) + str(type_map[n]))):
                     typ = type_map[expr]
-                    a.append('{}:{}: {}'.format(short_type(expr),
-                                                expr.line,
-                                                self.format_type(typ)))
+                    a.append(f'{short_type(expr)}:{expr.line}: {self.format_type(typ)}')
         return a
 
     def format_type(self, typ: Type) -> str:

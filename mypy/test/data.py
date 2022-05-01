@@ -162,13 +162,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             triggered = item.data
         else:
             raise ValueError(
-                'Invalid section header {} in {} at line {}'.format(
-                    item.id, case.file, item.line))
+                f'Invalid section header {item.id} in {case.file} at line {item.line}')
 
     if out_section_missing:
         raise ValueError(
-            '{}, line {}: Required output section not found'.format(
-                case.file, first_item.line))
+            f'{case.file}, line {first_item.line}: Required output section not found')
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -500,8 +498,7 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                     output.append(
                         f'{fnam}:{i + 1}: {severity}: {message}')
                 else:
-                    output.append('{}:{}:{}: {}: {}'.format(
-                        fnam, i + 1, col, severity, message))
+                    output.append(f'{fnam}:{i + 1}:{col}: {severity}: {message}')
 
 
 def fix_win_path(line: str) -> str:

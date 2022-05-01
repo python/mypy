@@ -211,10 +211,10 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
-            print("%s: No [mypy] section in config file" % file_read, file=stderr)
+            print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser['mypy']
-        prefix = '{}: [{}]: '.format(file_read, 'mypy')
+        prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
             prefix, options, set_strict_flags, section, config_types, stderr)
         for k, v in updates.items():
@@ -322,7 +322,7 @@ def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
         for module in modules:
             module_overrides = override.copy()
             del module_overrides['module']
-            old_config_name = 'mypy-%s' % module
+            old_config_name = f'mypy-{module}'
             if old_config_name not in result:
                 result[old_config_name] = module_overrides
             else:
@@ -447,7 +447,7 @@ def convert_to_boolean(value: Optional[Any]) -> bool:
     if not isinstance(value, str):
         value = str(value)
     if value.lower() not in configparser.RawConfigParser.BOOLEAN_STATES:
-        raise ValueError('Not a boolean: %s' % value)
+        raise ValueError(f'Not a boolean: {value}')
     return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
 
 
@@ -552,7 +552,7 @@ def get_config_module_names(filename: Optional[str], modules: List[str]) -> str:
         return ''
 
     if not is_toml(filename):
-        return ", ".join("[mypy-%s]" % module for module in modules)
+        return ", ".join(f"[mypy-{module}]" for module in modules)
 
     return "module = ['%s']" % ("', '".join(sorted(modules)))
 

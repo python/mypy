@@ -743,7 +743,7 @@ class FancyFormatter:
         if blockers:
             msg += ' (errors prevented further checking)'
         else:
-            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
+            msg += f" (checked {n_sources} source file{'s' if n_sources != 1 else ''})"
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)

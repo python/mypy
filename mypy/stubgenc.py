@@ -47,7 +47,7 @@ def generate_stub_for_c_module(module_name: str,
     will be overwritten.
     """
     module = importlib.import_module(module_name)
-    assert is_c_module(module), '%s is not a C module' % module_name
+    assert is_c_module(module), f'{module_name} is not a C module'
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
@@ -90,7 +90,7 @@ def generate_stub_for_c_module(module_name: str,
     output = add_typing_import(output)
     with open(target, 'w') as file:
         for line in output:
-            file.write('%s\n' % line)
+            file.write(f'{line}\n')
 
 
 def add_typing_import(output: List[str]) -> List[str]:
@@ -100,7 +100,7 @@ def add_typing_import(output: List[str]) -> List[str]:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
-        return ['from typing import %s' % ', '.join(names), ''] + output
+        return [f"from typing import {', '.join(names)}", ''] + output
     else:
         return output[:]
 
@@ -405,19 +405,19 @@ def generate_c_type_stub(module: ModuleType,
                 output.append('')
             output.append('    ' + line)
         for line in static_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in rw_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in methods:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in ro_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
     else:
         output.append(f'class {class_name}{bases_str}: ...')
 
 
 def get_type_fullname(typ: type) -> str:
-    return '{}.{}'.format(typ.__module__, getattr(typ, '__qualname__', typ.__name__))
+    return f"{typ.__module__}.{getattr(typ, '__qualname__', typ.__name__)}"
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:

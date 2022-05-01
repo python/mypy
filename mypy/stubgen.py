@@ -309,8 +309,8 @@ class AliasPrinter(NodeVisitor[str]):
             elif kind == ARG_NAMED:
                 args.append(f'{name}={arg.accept(self)}')
             else:
-                raise ValueError("Unknown argument kind %s in call" % kind)
-        return "{}({})".format(callee, ", ".join(args))
+                raise ValueError(f"Unknown argument kind {kind} in call")
+        return f"{callee}({', '.join(args)})"
 
     def visit_name_expr(self, node: NameExpr) -> str:
         self.stubgen.import_tracker.require_name(node.name)
@@ -339,7 +339,7 @@ class AliasPrinter(NodeVisitor[str]):
         return ", ".join(n.accept(self) for n in node.items)
 
     def visit_list_expr(self, node: ListExpr) -> str:
-        return "[{}]".format(", ".join(n.accept(self) for n in node.items))
+        return f"[{', '.join(n.accept(self) for n in node.items)}]"
 
     def visit_ellipsis(self, node: EllipsisExpr) -> str:
         return "..."
@@ -454,7 +454,7 @@ class ImportTracker:
 
         # Now generate all the from ... import ... lines collected in module_map
         for module, names in sorted(module_map.items()):
-            result.append("from {} import {}\n".format(module, ', '.join(sorted(names))))
+            result.append(f"from {module} import {', '.join(sorted(names))}\n")
         return result
 
 
@@ -589,7 +589,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 self.add('\n')
             self.add('# Names in __all__ with no definition:\n')
             for name in sorted(undefined_names):
-                self.add('#   %s\n' % name)
+                self.add(f'#   {name}\n')
 
     def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
         """@property with setters and getters, or @overload chain"""
@@ -635,7 +635,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         for s in self._decorators:
             self.add(s)
         self.clear_decorators()
-        self.add("{}{}def {}(".format(self._indent, 'async ' if o.is_coroutine else '', o.name))
+        self.add(f"{self._indent}{'async ' if o.is_coroutine else ''}def {o.name}(")
         self.record_name(o.name)
         args: List[str] = []
         for i, arg_ in enumerate(o.arguments):
@@ -799,7 +799,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         is_abstract = False
         is_overload = False
         if expr.name == 'setter' and isinstance(expr.expr, NameExpr):
-            self.add_decorator('%s.setter' % expr.expr.name)
+            self.add_decorator(f'{expr.expr.name}.setter')
         elif (isinstance(expr.expr, NameExpr) and
               (expr.expr.name == 'abc' or
                self.import_tracker.reverse_alias.get(expr.expr.name) == 'abc') and
@@ -835,7 +835,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                self.import_tracker.reverse_alias.get(expr.expr.name) in TYPING_MODULE_NAMES) and
               expr.name == 'overload'):
             self.import_tracker.require_name(expr.expr.name)
-            self.add_decorator('{}.{}'.format(expr.expr.name, 'overload'))
+            self.add_decorator(f"{expr.expr.name}.overload")
             is_overload = True
         return is_abstract, is_overload
 
@@ -865,7 +865,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             base_types.append(type_str)
             self.add_typing_import('Protocol')
         if base_types:
-            self.add('(%s)' % ', '.join(base_types))
+            self.add(f"({', '.join(base_types)})")
         self.add(':\n')
         n = len(self._output)
         self._indent += '    '
@@ -1036,7 +1036,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         super().visit_if_stmt(o)
 
     def visit_import_all(self, o: ImportAll) -> None:
-        self.add_import_line('from {}{} import *\n'.format('.' * o.relative, o.id))
+        self.add_import_line(f"from {'.' * o.relative}{o.id} import *\n")
 
     def visit_import_from(self, o: ImportFrom) -> None:
         exported_names: Set[str] = set()
@@ -1227,7 +1227,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if can_infer_optional and \
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
             self.add_typing_import('Incomplete')
-            return '{} | None'.format(self.typing_name('Incomplete'))
+            return f"{self.typing_name('Incomplete')} | None"
         if can_be_any:
             self.add_typing_import('Incomplete')
             return self.typing_name('Incomplete')
@@ -1492,7 +1492,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     if errors.is_blockers():
         # Syntax error!
         for m in errors.new_messages():
-            sys.stderr.write('%s\n' % m)
+            sys.stderr.write(f'{m}\n')
         sys.exit(1)
 
 
@@ -1504,7 +1504,7 @@ def generate_asts_for_modules(py_modules: List[StubSource],
     if not py_modules:
         return  # Nothing to do here, but there may be C modules
     if verbose:
-        print('Processing %d files...' % len(py_modules))
+        print(f'Processing {len(py_modules)} files...')
     if parse_only:
         for mod in py_modules:
             parse_source_file(mod, mypy_options)
@@ -1557,7 +1557,7 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     """
     all_sigs: List[Sig] = []
     all_class_sigs: List[Sig] = []
-    for path in glob.glob('%s/*.rst' % doc_dir):
+    for path in glob.glob(f'{doc_dir}/*.rst'):
         with open(path) as f:
             loc_sigs, loc_class_sigs = parse_all_signatures(f.readlines())
         all_sigs += loc_sigs
@@ -1610,9 +1610,9 @@ def generate_stubs(options: Options) -> None:
     if not options.quiet and num_modules > 0:
         print('Processed %d modules' % num_modules)
         if len(files) == 1:
-            print('Generated %s' % files[0])
+            print(f'Generated {files[0]}')
         else:
-            print('Generated files under %s' % common_dir_prefix(files) + os.sep)
+            print(f'Generated files under {common_dir_prefix(files)}' + os.sep)
 
 
 HEADER = """%(prog)s [-h] [--py2] [more options, see -h]

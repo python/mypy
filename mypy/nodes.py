@@ -483,7 +483,7 @@ class ImportedName(SymbolNode):
         assert False, "ImportedName should never be serialized"
 
     def __str__(self) -> str:
-        return 'ImportedName(%s)' % self.target_fullname
+        return f'ImportedName({self.target_fullname})'
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -2778,7 +2778,7 @@ class TypeInfo(SymbolNode):
             raise KeyError(name)
 
     def __repr__(self) -> str:
-        return '<TypeInfo %s>' % self.fullname
+        return f'<TypeInfo {self.fullname}>'
 
     def __bool__(self) -> bool:
         # We defined this here instead of just overriding it in
@@ -2859,8 +2859,7 @@ class TypeInfo(SymbolNode):
 
         head = 'TypeInfo' + str_conv.format_id(self)
         if self.bases:
-            base = 'Bases({})'.format(', '.join(type_str(base)
-                                                for base in self.bases))
+            base = f"Bases({', '.join(type_str(base) for base in self.bases)})"
         mro = 'Mro({})'.format(', '.join(item.fullname + str_conv.format_id(item)
                                          for item in self.mro))
         names = []

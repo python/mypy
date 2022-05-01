@@ -48,9 +48,7 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
 
 REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
 
-REGISTER_CALLABLE_CALL_METHOD: Final = 'functools.{}.__call__'.format(
-    REGISTER_RETURN_CLASS
-)
+REGISTER_CALLABLE_CALL_METHOD: Final = f'functools.{REGISTER_RETURN_CLASS}.__call__'
 
 
 def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]

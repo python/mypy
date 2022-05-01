@@ -791,9 +791,9 @@ def process_options(args: List[str],
         description='Generate a report in the specified format.')
     for report_type in sorted(defaults.REPORTER_NAMES):
         if report_type not in {'memory-xml'}:
-            report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
+            report_group.add_argument(f"--{report_type.replace('_', '-')}-report",
                                       metavar='DIR',
-                                      dest='special-opts:%s_report' % report_type)
+                                      dest=f'special-opts:{report_type}_report')
 
     other_group = parser.add_argument_group(
         title='Miscellaneous')
@@ -918,7 +918,7 @@ def process_options(args: List[str],
     # Don't explicitly test if "config_file is not None" for this check.
     # This lets `--config-file=` (an empty string) be used to disable all config files.
     if config_file and not os.path.exists(config_file):
-        parser.error("Cannot find config file '%s'" % config_file)
+        parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
 
@@ -989,8 +989,7 @@ def process_options(args: List[str],
 
     invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
     if invalid_codes:
-        parser.error("Invalid error code(s): %s" %
-                     ', '.join(sorted(invalid_codes)))
+        parser.error(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
 
     options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
     options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
@@ -1090,17 +1089,17 @@ def process_package_roots(fscache: Optional[FileSystemCache],
     package_root = []
     for root in options.package_root:
         if os.path.isabs(root):
-            parser.error("Package root cannot be absolute: %r" % root)
+            parser.error(f"Package root cannot be absolute: {root!r}")
         drive, root = os.path.splitdrive(root)
         if drive and drive != current_drive:
-            parser.error("Package root must be on current drive: %r" % (drive + root))
+            parser.error(f"Package root must be on current drive: {drive + root!r}")
         # Empty package root is always okay.
         if root:
             root = os.path.relpath(root)  # Normalize the heck out of it.
             if not root.endswith(os.sep):
                 root = root + os.sep
             if root.startswith(dotdotslash):
-                parser.error("Package root cannot be above current directory: %r" % root)
+                parser.error(f"Package root cannot be above current directory: {root!r}")
             if root in trivial_paths:
                 root = ''
         package_root.append(root)
@@ -1119,9 +1118,9 @@ def process_cache_map(parser: argparse.ArgumentParser,
     for i in range(0, n, 3):
         source, meta_file, data_file = special_opts.cache_map[i:i + 3]
         if source in options.cache_map:
-            parser.error("Duplicate --cache-map source %s)" % source)
+            parser.error(f"Duplicate --cache-map source {source})")
         if not source.endswith('.py') and not source.endswith('.pyi'):
-            parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
+            parser.error(f"Invalid --cache-map source {source} (triple[0] must be *.py[i])")
         if not meta_file.endswith('.meta.json'):
             parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
                          meta_file)
@@ -1140,7 +1139,7 @@ def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
-    stderr.write('%s\n' % msg)
+    stderr.write(f'{msg}\n')
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
 

@@ -54,10 +54,10 @@ def walk_packages(inspect: ModuleInspect,
     """
     for package_name in packages:
         if package_name in NOT_IMPORTABLE_MODULES:
-            print('%s: Skipped (blacklisted)' % package_name)
+            print(f'{package_name}: Skipped (blacklisted)')
             continue
         if verbose:
-            print('Trying to import %r for runtime introspection' % package_name)
+            print(f'Trying to import {package_name!r} for runtime introspection')
         try:
             prop = inspect.get_package_properties(package_name)
         except InspectError:
@@ -144,7 +144,7 @@ def find_module_path_and_all_py3(inspect: ModuleInspect,
 
     # TODO: Support custom interpreters.
     if verbose:
-        print('Trying to import %r for runtime introspection' % module)
+        print(f'Trying to import {module!r} for runtime introspection')
     try:
         mod = inspect.get_package_properties(module)
     except InspectError as e:
@@ -166,7 +166,7 @@ def generate_guarded(mod: str, target: str,
     Optionally report success.
     """
     if verbose:
-        print('Processing %s' % mod)
+        print(f'Processing {mod}')
     try:
         yield
     except Exception as e:
@@ -177,7 +177,7 @@ def generate_guarded(mod: str, target: str,
             print("Stub generation failed for", mod, file=sys.stderr)
     else:
         if verbose:
-            print('Created %s' % target)
+            print(f'Created {target}')
 
 
 PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}

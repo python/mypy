@@ -1040,4 +1040,4 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
         for target in sorted(targets):
-            print('    %s' % target)
+            print(f'    {target}')

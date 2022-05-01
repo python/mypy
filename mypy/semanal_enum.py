@@ -119,11 +119,11 @@ class EnumCallAnalyzer:
         """
         args = call.args
         if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Unexpected arguments to {class_name}()", call)
         if len(args) < 2:
-            return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Too few arguments for {class_name}()", call)
         if len(args) > 6:
-            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Too many arguments for {class_name}()", call)
         valid_name = [None, 'value', 'names', 'module', 'qualname', 'type', 'start']
         for arg_name in call.arg_names:
             if arg_name not in valid_name:
@@ -140,7 +140,7 @@ class EnumCallAnalyzer:
             names = args[1]
         if not isinstance(value, (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
-                "%s() expects a string literal as the first argument" % class_name, call)
+                f"{class_name}() expects a string literal as the first argument", call)
         items = []
         values: List[Optional[Expression]] = []
         if isinstance(names, (StrExpr, UnicodeExpr)):
@@ -171,7 +171,7 @@ class EnumCallAnalyzer:
             for key, value in names.items:
                 if not isinstance(key, (StrExpr, UnicodeExpr)):
                     return self.fail_enum_call_arg(
-                        "%s() with dict literal requires string literals" % class_name, call)
+                        f"{class_name}() with dict literal requires string literals", call)
                 items.append(key.value)
                 values.append(value)
         elif isinstance(args[1], RefExpr) and isinstance(args[1].node, Var):
@@ -198,7 +198,7 @@ class EnumCallAnalyzer:
                 class_name,
                 call)
         if len(items) == 0:
-            return self.fail_enum_call_arg("%s() needs at least one item" % class_name, call)
+            return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:
             values = [None] * len(items)
         assert len(items) == len(values)

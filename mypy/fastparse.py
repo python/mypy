@@ -56,7 +56,7 @@ try:
     if sys.version_info >= (3, 8):
         import ast as ast3
         assert 'kind' in ast3.Constant._fields, \
-               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+               f"This 3.8.0 alpha ({sys.version.split()[0]}) is too old; 3.8.0a3 required"
         # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
         # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (

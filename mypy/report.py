@@ -181,8 +181,7 @@ class LineCountReporter(AbstractReporter):
         with open(os.path.join(self.output_dir, "linecount.txt"), "w") as f:
             f.write("{:7} {:7} {:6} {:6} total\n".format(*total_counts))
             for c, p in counts:
-                f.write('{:7} {:7} {:6} {:6} {}\n'.format(
-                    c[0], c[1], c[2], c[3], p))
+                f.write(f'{c[0]:7} {c[1]:7} {c[2]:6} {c[3]:6} {p}\n')
 
 
 register_reporter('linecount', LineCountReporter)
@@ -490,7 +489,7 @@ class MemoryXmlReporter(AbstractReporter):
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
+                f'type="text/xsl" href="{pathname2url(xslt_path)}"')
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
@@ -526,7 +525,7 @@ class MemoryXmlReporter(AbstractReporter):
                              total=str(file_info.total()))
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
+                f'type="text/xsl" href="{pathname2url(xslt_path)}"')
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 

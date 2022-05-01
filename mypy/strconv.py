@@ -112,7 +112,7 @@ class StrConv(NodeVisitor[str]):
                 a.append(f'{id} : {as_id}')
             else:
                 a.append(id)
-        return 'Import:{}({})'.format(o.line, ', '.join(a))
+        return f"Import:{o.line}({', '.join(a)})"
 
     def visit_import_from(self, o: 'mypy.nodes.ImportFrom') -> str:
         a = []
@@ -121,10 +121,10 @@ class StrConv(NodeVisitor[str]):
                 a.append(f'{name} : {as_name}')
             else:
                 a.append(name)
-        return 'ImportFrom:{}({}, [{}])'.format(o.line, "." * o.relative + o.id, ', '.join(a))
+        return f"ImportFrom:{o.line}({'.' * o.relative + o.id}, [{', '.join(a)}])"
 
     def visit_import_all(self, o: 'mypy.nodes.ImportAll') -> str:
-        return 'ImportAll:{}({})'.format(o.line, "." * o.relative + o.id)
+        return f"ImportAll:{o.line}({'.' * o.relative + o.id})"
 
     # Definitions
 
@@ -418,7 +418,7 @@ class StrConv(NodeVisitor[str]):
             elif kind == mypy.nodes.ARG_STAR2:
                 extra.append(('DictVarArg', [o.args[i]]))
             else:
-                raise RuntimeError("unknown kind %s" % kind)
+                raise RuntimeError(f"unknown kind {kind}")
         a: List[Any] = [o.callee, ("Args", args)]
         return self.dump(a + extra, o)
 
@@ -512,23 +512,19 @@ class StrConv(NodeVisitor[str]):
         return f'TypeAliasExpr({o.type})'
 
     def visit_namedtuple_expr(self, o: 'mypy.nodes.NamedTupleExpr') -> str:
-        return 'NamedTupleExpr:{}({}, {})'.format(o.line,
-                                                  o.info.name,
-                                                  o.info.tuple_type)
+        return f'NamedTupleExpr:{o.line}({o.info.name}, {o.info.tuple_type})'
 
     def visit_enum_call_expr(self, o: 'mypy.nodes.EnumCallExpr') -> str:
         return f'EnumCallExpr:{o.line}({o.info.name}, {o.items})'
 
     def visit_typeddict_expr(self, o: 'mypy.nodes.TypedDictExpr') -> str:
-        return 'TypedDictExpr:{}({})'.format(o.line,
-                                             o.info.name)
+        return f'TypedDictExpr:{o.line}({o.info.name})'
 
     def visit__promote_expr(self, o: 'mypy.nodes.PromoteExpr') -> str:
         return f'PromoteExpr:{o.line}({o.type})'
 
     def visit_newtype_expr(self, o: 'mypy.nodes.NewTypeExpr') -> str:
-        return 'NewTypeExpr:{}({}, {})'.format(o.line, o.name,
-                                               self.dump([o.old_type], o))
+        return f'NewTypeExpr:{o.line}({o.name}, {self.dump([o.old_type], o)})'
 
     def visit_lambda_expr(self, o: 'mypy.nodes.LambdaExpr') -> str:
         a = self.func_helper(o)

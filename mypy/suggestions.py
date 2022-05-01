@@ -485,7 +485,7 @@ class SuggestionEngine:
                     if name:
                         arg = f"{name}={arg}"
             args.append(arg)
-        return "(%s)" % (", ".join(args))
+        return f"({', '.join(args)})"
 
     def find_node(self, key: str) -> Tuple[str, str, FuncDef]:
         """From a target name, return module/target names and the func def.
@@ -518,10 +518,10 @@ class SuggestionEngine:
         if isinstance(node, Decorator):
             node = self.extract_from_decorator(node)
             if not node:
-                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+                raise SuggestionFailure(f"Object {key} is a decorator we can't handle")
 
         if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s is not a function" % key)
+            raise SuggestionFailure(f"Object {key} is not a function")
 
         return modname, tail, node
 
@@ -686,10 +686,7 @@ class SuggestionEngine:
 
     def format_signature(self, sig: PyAnnotateSignature) -> str:
         """Format a callable type in a way suitable as an annotation... kind of"""
-        return "({}) -> {}".format(
-            ", ".join(sig['arg_types']),
-            sig['return_type']
-        )
+        return f"({', '.join(sig['arg_types'])}) -> {sig['return_type']}"
 
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
         if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
@@ -843,7 +840,7 @@ class TypeFormatter(TypeStrVisitor):
             # other thing, and I suspect this will produce more better
             # results than falling back to `...`
             args = [typ.accept(self) for typ in t.arg_types]
-            arg_str = "[{}]".format(", ".join(args))
+            arg_str = f"[{', '.join(args)}]"
 
         return f"Callable[{arg_str}, {t.ret_type.accept(self)}]"
 

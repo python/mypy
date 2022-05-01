@@ -130,15 +130,13 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
         if testcase.triggered:
             assert_string_arrays_equal(
                 testcase.triggered,
                 self.format_triggered(all_triggered),
-                'Invalid active triggers ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+                f'Invalid active triggers ({testcase.file}, line {testcase.line})')
 
     def get_options(self,
                     source: str,

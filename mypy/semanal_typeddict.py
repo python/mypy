@@ -86,7 +86,7 @@ class TypedDictAnalyzer:
                         typeddict_bases.append(expr)
                     else:
                         assert isinstance(expr.node, TypeInfo)
-                        self.fail('Duplicate base class "%s"' % expr.node.name, defn)
+                        self.fail(f'Duplicate base class "{expr.node.name}"', defn)
                 else:
                     self.fail("All bases of a new TypedDict must be TypedDict types", defn)
 

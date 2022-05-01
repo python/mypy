@@ -9,7 +9,7 @@ WILDCARD_TAG: Final = "[wildcard]"
 
 
 def make_trigger(name: str) -> str:
-    return '<%s>' % name
+    return f'<{name}>'
 
 
 def make_wildcard_trigger(module: str) -> str:

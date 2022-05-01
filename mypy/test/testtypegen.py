@@ -68,5 +68,4 @@ class TypeExportSuite(DataSuite):
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid type checker output ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+            f'Invalid type checker output ({testcase.file}, line {testcase.line})')

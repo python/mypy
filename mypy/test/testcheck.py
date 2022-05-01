@@ -346,7 +346,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
+                assert isinstance(path, str), f"Can't find ad hoc case file: {module_name}"
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

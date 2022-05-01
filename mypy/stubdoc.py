@@ -311,8 +311,8 @@ def build_signature(positional: Sequence[str],
         if arg.startswith('*'):
             args.append(arg)
         else:
-            args.append('%s=...' % arg)
-    sig = '(%s)' % ', '.join(args)
+            args.append(f'{arg}=...')
+    sig = f"({', '.join(args)})"
     # Ad-hoc fixes.
     sig = sig.replace('(self)', '')
     return sig

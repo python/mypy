@@ -366,7 +366,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         for name in CORE_BUILTIN_CLASSES:
             cdef = ClassDef(name, Block([]))  # Dummy ClassDef, will be replaced later
             info = TypeInfo(SymbolTable(), cdef, 'builtins')
-            info._fullname = 'builtins.%s' % name
+            info._fullname = f'builtins.{name}'
             names[name] = SymbolTableNode(GDEF, info)
 
         bool_info = names['bool'].node
@@ -388,7 +388,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         for name, typ in special_var_types:
             v = Var(name, typ)
-            v._fullname = 'builtins.%s' % name
+            v._fullname = f'builtins.{name}'
             file_node.names[name] = SymbolTableNode(GDEF, v)
 
     #
@@ -1107,7 +1107,7 @@ class SemanticAnalyzer(NodeVisitor[None],
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
         if not self.type or self.is_func_scope():
-            self.fail('"%s" used with a non-method' % decorator, context)
+            self.fail(f'"{decorator}" used with a non-method', context)
 
     #
     # Classes
@@ -1722,7 +1722,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return False
         dup = find_duplicate(info.direct_base_classes())
         if dup:
-            self.fail('Duplicate base class "%s"' % dup.name, defn, blocker=True)
+            self.fail(f'Duplicate base class "{dup.name}"', defn, blocker=True)
             return False
         return not cycle
 
@@ -1749,7 +1749,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             elif isinstance(defn.metaclass, MemberExpr):
                 metaclass_name = get_member_expr_fullname(defn.metaclass)
             if metaclass_name is None:
-                self.fail('Dynamic metaclass not supported for "%s"' % defn.name, defn.metaclass)
+                self.fail(f'Dynamic metaclass not supported for "{defn.name}"', defn.metaclass)
                 return
             sym = self.lookup_qualified(metaclass_name, defn.metaclass)
             if sym is None:
@@ -1766,7 +1766,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 self.defer(defn)
                 return
             if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
-                self.fail('Invalid metaclass "%s"' % metaclass_name, defn.metaclass)
+                self.fail(f'Invalid metaclass "{metaclass_name}"', defn.metaclass)
                 return
             if not sym.node.is_metaclass():
                 self.fail('Metaclasses not inheriting from "type" are not supported',
@@ -1788,7 +1788,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Inconsistency may happen due to multiple baseclasses even in classes that
             # do not declare explicit metaclass, but it's harder to catch at this stage
             if defn.metaclass is not None:
-                self.fail('Inconsistent metaclass structure for "%s"' % defn.name, defn)
+                self.fail(f'Inconsistent metaclass structure for "{defn.name}"', defn)
         else:
             if defn.info.metaclass_type.type.has_base('enum.EnumMeta'):
                 defn.info.is_enum = True
@@ -1953,7 +1953,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 alternatives = set(module.names.keys()).difference({source_id})
                 matches = best_matches(source_id, alternatives)[:3]
                 if matches:
-                    suggestion = "; maybe {}?".format(pretty_seq(matches, "or"))
+                    suggestion = f"; maybe {pretty_seq(matches, 'or')}?"
                     message += f"{suggestion}"
         self.fail(message, context, code=codes.ATTR_DEFINED)
         self.add_unknown_imported_symbol(
@@ -3120,7 +3120,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                              # Also give error for another type variable with the same name.
                              (isinstance(existing.node, TypeVarExpr) and
                               existing.node is call.analyzed)):
-            self.fail('Cannot redefine "%s" as a type variable' % name, s)
+            self.fail(f'Cannot redefine "{name}" as a type variable', s)
             return False
 
         if self.options.disallow_any_unimported:
