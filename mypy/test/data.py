@@ -16,16 +16,19 @@ from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
 root_dir = os.path.normpath(PREFIX)
 
+
 # File modify/create operation: copy module contents from source_path.
 class UpdateFile(NamedTuple):
     module: str
     content: str
     target_path: str
 
+
 # File delete operation: delete module file.
 class DeleteFile(NamedTuple):
     module: str
     path: str
+
 
 FileOperation = Union[UpdateFile, DeleteFile]
 
