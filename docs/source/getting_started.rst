@@ -317,11 +317,6 @@ syntax like so:
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-   # If you want compatibility with even older versions of Python
-   my_global_dict = {}  # type: Dict[int, float]
-
-.. _pep526: https://www.python.org/dev/peps/pep-0526/
-
 
 .. _stubs-intro:
 
@@ -400,7 +395,7 @@ in instances of it into our ``transfer`` function:
     audited = AuditedBankAccount('Charlie', 300)
     transfer(account_1, audited, 100)   # Type checks!
 
-This behavior is actually a fundamental aspect of the PEP 484 type system: when 
+This behavior is actually a fundamental aspect of the PEP 484 type system: when
 we annotate some variable with a type ``T``, we are actually telling mypy that
 variable can be assigned an instance of ``T``, or an instance of a *subclass* of ``T``.
 The same rule applies to type hints on parameters or fields.
@@ -504,6 +499,7 @@ resources:
   you encounter problems.
 
 * You can ask questions about mypy in the
+  `mypy issue tracker <https://github.com/python/mypy/issues>`_ and
   typing `Gitter chat <https://gitter.im/python/typing>`_.
 
 You can also continue reading this document and skip sections that
