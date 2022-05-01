@@ -123,4 +123,4 @@ class TypeVarLikeScope:
         me = ", ".join(f'{k}: {v.name}`{v.id}' for k, v in self.scope.items())
         if self.parent is None:
             return me
-        return f"{str(self.parent)} <- {me}"
+        return f"{self.parent} <- {me}"

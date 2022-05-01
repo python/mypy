@@ -263,7 +263,7 @@ def analyze_type_callable_member_access(name: str,
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, f'Unexpected type {repr(ret_type)}'
+        assert False, f'Unexpected type {ret_type!r}'
 
 
 def analyze_type_type_member_access(name: str,
