@@ -627,7 +627,7 @@ class StubgenPythonSuite(DataSuite):
             result.append('<%s was not generated>' % path.replace('\\', '/'))
             return
         if header:
-            result.append('# {}'.format(path[4:]))
+            result.append(f'# {path[4:]}')
         with open(path, encoding='utf8') as file:
             result.extend(file.read().splitlines())
 

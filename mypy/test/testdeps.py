@@ -67,7 +67,7 @@ class GetDependenciesSuite(DataSuite):
                 if source.startswith(('<enum', '<typing', '<mypy')):
                     # Remove noise.
                     continue
-                line = '%s -> %s' % (source, ', '.join(sorted(targets)))
+                line = '{} -> {}'.format(source, ', '.join(sorted(targets)))
                 # Clean up output a bit
                 line = line.replace('__main__', 'm')
                 a.append(line)

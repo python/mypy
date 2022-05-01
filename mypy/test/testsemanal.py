@@ -126,7 +126,7 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
                           options=get_semanal_options(src, testcase),
                           alt_lib_path=test_temp_dir)
         a = res.errors
-        assert a, 'No errors reported in {}, line {}'.format(testcase.file, testcase.line)
+        assert a, f'No errors reported in {testcase.file}, line {testcase.line}'
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
@@ -135,7 +135,7 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
+        f'Invalid compiler output ({testcase.file}, line {testcase.line})')
 
 
 # SymbolNode table export test cases
@@ -158,7 +158,7 @@ class SemAnalSymtableSuite(DataSuite):
                 raise CompileError(a)
             for f in sorted(result.files.keys()):
                 if f not in ('builtins', 'typing', 'abc'):
-                    a.append('{}:'.format(f))
+                    a.append(f'{f}:')
                     for s in str(result.files[f].names).split('\n'):
                         a.append('  ' + s)
         except CompileError as e:
@@ -212,6 +212,6 @@ class TypeInfoMap(Dict[str, TypeInfo]):
                                        not x.startswith('typing.') and
                                        not x.startswith('abc.')):
                 ti = ('\n' + '  ').join(str(y).split('\n'))
-                a.append('  {} : {}'.format(x, ti))
+                a.append(f'  {x} : {ti}')
         a[-1] += ')'
         return '\n'.join(a)
