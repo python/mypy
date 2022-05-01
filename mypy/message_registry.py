@@ -60,10 +60,15 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
     'Incompatible types in "async with" for "__aexit__"'
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
+INVALID_TYPE_FOR_SLOTS: Final = 'Invalid type for "__slots__"'
+
+ASYNC_FOR_OUTSIDE_COROUTINE: Final = '"async for" outside async function'
+ASYNC_WITH_OUTSIDE_COROUTINE: Final = '"async with" outside async function'
 
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
+INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage('Incompatible types in capture pattern')
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
@@ -140,6 +145,7 @@ NOT_CALLABLE: Final = '{} not callable'
 PYTHON2_PRINT_FILE_TYPE: Final = (
     'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
 )
+TYPE_MUST_BE_USED: Final = 'Value of type {} must be used'
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
@@ -150,6 +156,7 @@ BARE_GENERIC: Final = "Missing type parameters for generic type {}"
 IMPLICIT_GENERIC_ANY_BUILTIN: Final = (
     'Implicit generic "Any". Use "{}" and specify generic parameters'
 )
+INVALID_UNPACK = "{} cannot be unpacked (must be tuple or TypeVarTuple)"
 
 # TypeVar
 INCOMPATIBLE_TYPEVAR_VALUE: Final = 'Value of type variable "{}" of {} cannot be {}'
@@ -203,6 +210,11 @@ CANNOT_ACCESS_FINAL_INSTANCE_ATTR: Final = (
 )
 CANNOT_MAKE_DELETABLE_FINAL: Final = ErrorMessage("Deletable attribute cannot be final")
 
+# Enum
+ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN: Final = ErrorMessage(
+    'Assigned "__members__" will be overridden by "Enum" internally'
+)
+
 # ClassVar
 CANNOT_OVERRIDE_INSTANCE_VAR: Final = ErrorMessage(
     'Cannot override instance variable (previously declared on base class "{}") with class '
@@ -229,3 +241,19 @@ TOO_MANY_UNION_COMBINATIONS: Final = ErrorMessage(
 CONTIGUOUS_ITERABLE_EXPECTED: Final = ErrorMessage("Contiguous iterable with same type expected")
 ITERABLE_TYPE_EXPECTED: Final = ErrorMessage("Invalid type '{}' for *expr (iterable expected)")
 TYPE_GUARD_POS_ARG_REQUIRED: Final = ErrorMessage("Type guard requires positional argument")
+
+# Match Statement
+MISSING_MATCH_ARGS: Final = 'Class "{}" doesn\'t define "__match_args__"'
+OR_PATTERN_ALTERNATIVE_NAMES: Final = "Alternative patterns bind different names"
+CLASS_PATTERN_GENERIC_TYPE_ALIAS: Final = (
+    "Class pattern class must not be a type alias with type parameters"
+)
+CLASS_PATTERN_TYPE_REQUIRED: Final = 'Expected type in class pattern; found "{}"'
+CLASS_PATTERN_TOO_MANY_POSITIONAL_ARGS: Final = "Too many positional patterns for class pattern"
+CLASS_PATTERN_KEYWORD_MATCHES_POSITIONAL: Final = (
+    'Keyword "{}" already matches a positional pattern'
+)
+CLASS_PATTERN_DUPLICATE_KEYWORD_PATTERN: Final = 'Duplicate keyword pattern "{}"'
+CLASS_PATTERN_UNKNOWN_KEYWORD: Final = 'Class "{}" has no attribute "{}"'
+MULTIPLE_ASSIGNMENTS_IN_PATTERN: Final = 'Multiple assignments to name "{}" in pattern'
+CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'

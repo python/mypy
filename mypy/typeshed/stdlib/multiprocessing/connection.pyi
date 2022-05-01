@@ -2,19 +2,17 @@ import socket
 import sys
 import types
 from _typeshed import Self
-from typing import Any, Iterable, Tuple, Type, Union
+from collections.abc import Iterable
+from typing import Any, Union
+from typing_extensions import SupportsIndex, TypeAlias
 
-if sys.version_info >= (3, 8):
-    from typing import SupportsIndex
+__all__ = ["Client", "Listener", "Pipe", "wait"]
 
 # https://docs.python.org/3/library/multiprocessing.html#address-formats
-_Address = Union[str, Tuple[str, int]]
+_Address: TypeAlias = Union[str, tuple[str, int]]
 
 class _ConnectionBase:
-    if sys.version_info >= (3, 8):
-        def __init__(self, handle: SupportsIndex, readable: bool = ..., writable: bool = ...) -> None: ...
-    else:
-        def __init__(self, handle: int, readable: bool = ..., writable: bool = ...) -> None: ...
+    def __init__(self, handle: SupportsIndex, readable: bool = ..., writable: bool = ...) -> None: ...
     @property
     def closed(self) -> bool: ...  # undocumented
     @property
@@ -31,7 +29,7 @@ class _ConnectionBase:
     def poll(self, timeout: float | None = ...) -> bool: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
 
 class Connection(_ConnectionBase): ...
@@ -51,7 +49,7 @@ class Listener:
     def last_accepted(self) -> _Address | None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, exc_tb: types.TracebackType | None
     ) -> None: ...
 
 def deliver_challenge(connection: Connection, authkey: bytes) -> None: ...

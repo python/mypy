@@ -336,6 +336,7 @@ class C:
     b: bool
     c: C
     d: object
+    e: int
 
 def setattrs(o: C, a: List[int], b: bool, c: C) -> None:
     o.a = a
@@ -346,6 +347,8 @@ def getattrs(o: C) -> Tuple[List[int], bool, C]:
     return o.a, o.b, o.c
 [file driver.py]
 from native import C, setattrs, getattrs
+from testutil import assertRaises
+
 c1 = C()
 c2 = C()
 aa = [2]
@@ -358,6 +361,18 @@ assert c is c2
 o = object()
 c1.d = o
 assert c1.d is o
+
+c3 = C()
+with assertRaises(AttributeError, "attribute 'a' of 'C' undefined"):
+    c3.a
+with assertRaises(AttributeError, "attribute 'b' of 'C' undefined"):
+    c3.b
+with assertRaises(AttributeError, "attribute 'c' of 'C' undefined"):
+    c3.c
+with assertRaises(AttributeError, "attribute 'd' of 'C' undefined"):
+    c3.d
+with assertRaises(AttributeError, "attribute 'e' of 'C' undefined"):
+    c3.e
 
 [case testInitMethodWithMissingNoneReturnAnnotation]
 class C:
@@ -1801,7 +1816,7 @@ class B(A):
     def x(self, val : int) -> None:
         self._x = val + 1
 
-#Inerits base property setters and getters
+# Inherits base property setters and getters
 class C(A):
     def __init__(self) -> None:
         A.__init__(self)

@@ -1,14 +1,20 @@
 import sys
+from collections.abc import Mapping
 from socket import socket
-from typing import Any, Mapping, Type
-from typing_extensions import Literal, Protocol
+from typing import Any, Protocol
+from typing_extensions import Literal
 
 from . import base_events, constants, events, futures, streams, transports
+
+if sys.version_info >= (3, 7):
+    __all__ = ("BaseProactorEventLoop",)
+else:
+    __all__ = ["BaseProactorEventLoop"]
 
 if sys.version_info >= (3, 8):
     class _WarnCallbackProtocol(Protocol):
         def __call__(
-            self, message: str, category: Type[Warning] | None = ..., stacklevel: int = ..., source: Any | None = ...
+            self, message: str, category: type[Warning] | None = ..., stacklevel: int = ..., source: Any | None = ...
         ) -> None: ...
 
 class _ProactorBasePipeTransport(transports._FlowControlMixin, transports.BaseTransport):
@@ -21,23 +27,35 @@ class _ProactorBasePipeTransport(transports._FlowControlMixin, transports.BaseTr
         extra: Mapping[Any, Any] | None = ...,
         server: events.AbstractServer | None = ...,
     ) -> None: ...
-    def __repr__(self) -> str: ...
     if sys.version_info >= (3, 8):
         def __del__(self, _warn: _WarnCallbackProtocol = ...) -> None: ...
     else:
         def __del__(self) -> None: ...
+
     def get_write_buffer_size(self) -> int: ...
 
 class _ProactorReadPipeTransport(_ProactorBasePipeTransport, transports.ReadTransport):
-    def __init__(
-        self,
-        loop: events.AbstractEventLoop,
-        sock: socket,
-        protocol: streams.StreamReaderProtocol,
-        waiter: futures.Future[Any] | None = ...,
-        extra: Mapping[Any, Any] | None = ...,
-        server: events.AbstractServer | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 10):
+        def __init__(
+            self,
+            loop: events.AbstractEventLoop,
+            sock: socket,
+            protocol: streams.StreamReaderProtocol,
+            waiter: futures.Future[Any] | None = ...,
+            extra: Mapping[Any, Any] | None = ...,
+            server: events.AbstractServer | None = ...,
+            buffer_size: int = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            loop: events.AbstractEventLoop,
+            sock: socket,
+            protocol: streams.StreamReaderProtocol,
+            waiter: futures.Future[Any] | None = ...,
+            extra: Mapping[Any, Any] | None = ...,
+            server: events.AbstractServer | None = ...,
+        ) -> None: ...
 
 class _ProactorBaseWritePipeTransport(_ProactorBasePipeTransport, transports.WriteTransport):
     def __init__(

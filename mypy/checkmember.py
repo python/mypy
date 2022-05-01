@@ -6,13 +6,14 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
     MypyFile, TypeVarExpr, ARG_POS, ARG_STAR, ARG_STAR2, Decorator,
     OverloadedFuncDef, TypeAlias, TempNode, is_final_node,
-    SYMBOL_FUNCBASE_TYPES,
+    SYMBOL_FUNCBASE_TYPES, IndexExpr
 )
 from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
@@ -67,7 +68,8 @@ class MemberContext:
         self.chk.handle_cannot_determine_type(name, context)
 
     def copy_modified(self, *, messages: Optional[MessageBuilder] = None,
-                      self_type: Optional[Type] = None) -> 'MemberContext':
+                      self_type: Optional[Type] = None,
+                      is_lvalue: Optional[bool] = None) -> 'MemberContext':
         mx = MemberContext(self.is_lvalue, self.is_super, self.is_operator,
                            self.original_type, self.context, self.msg, self.chk,
                            self.self_type, self.module_symbol_table)
@@ -75,6 +77,8 @@ class MemberContext:
             mx.msg = messages
         if self_type is not None:
             mx.self_type = self_type
+        if is_lvalue is not None:
+            mx.is_lvalue = is_lvalue
         return mx
 
 
@@ -153,12 +157,14 @@ def _analyze_member_access(name: str,
     elif isinstance(typ, TupleType):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, tuple_fallback(typ), mx, override_info)
-    elif isinstance(typ, (TypedDictType, LiteralType, FunctionLike)):
+    elif isinstance(typ, (LiteralType, FunctionLike)):
         # Actually look up from the fallback instance type.
         return _analyze_member_access(name, typ.fallback, mx, override_info)
+    elif isinstance(typ, TypedDictType):
+        return analyze_typeddict_access(name, typ, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
-    elif isinstance(typ, TypeVarType):
+    elif isinstance(typ, TypeVarLikeType):
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
@@ -195,7 +201,7 @@ def analyze_instance_member_access(name: str,
 
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
-    if method:
+    if method and not isinstance(method, Decorator):
         if method.is_property:
             assert isinstance(method, OverloadedFuncDef)
             first_item = cast(Decorator, method.items[0])
@@ -267,13 +273,11 @@ def analyze_type_type_member_access(name: str,
     # Similar to analyze_type_callable_attribute_access.
     item = None
     fallback = mx.named_type('builtins.type')
-    ignore_messages = mx.msg.copy()
-    ignore_messages.disable_errors().__enter__()
     if isinstance(typ.item, Instance):
         item = typ.item
     elif isinstance(typ.item, AnyType):
-        mx = mx.copy_modified(messages=ignore_messages)
-        return _analyze_member_access(name, fallback, mx, override_info)
+        with mx.msg.filter_errors():
+            return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TypeVarType):
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
@@ -281,8 +285,8 @@ def analyze_type_type_member_access(name: str,
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
         elif isinstance(upper_bound, AnyType):
-            mx = mx.copy_modified(messages=ignore_messages)
-            return _analyze_member_access(name, fallback, mx, override_info)
+            with mx.msg.filter_errors():
+                return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TupleType):
         item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
@@ -291,6 +295,7 @@ def analyze_type_type_member_access(name: str,
         # Access member on metaclass object via Type[Type[C]]
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
+    ignore_messages = False
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
         result = analyze_class_attribute_access(item, name, mx, override_info)
@@ -299,20 +304,21 @@ def analyze_type_type_member_access(name: str,
                 return result
             else:
                 # We don't want errors on metaclass lookup for classes with Any fallback
-                mx = mx.copy_modified(messages=ignore_messages)
+                ignore_messages = True
     if item is not None:
         fallback = item.type.metaclass_type or fallback
-    return _analyze_member_access(name, fallback, mx, override_info)
+
+    with mx.msg.filter_errors(filter_errors=ignore_messages):
+        return _analyze_member_access(name, fallback, mx, override_info)
 
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
-    mx.msg.disable_type_names += 1
-    results = []
-    for subtype in typ.relevant_items():
-        # Self types should be bound to every individual item of a union.
-        item_mx = mx.copy_modified(self_type=subtype)
-        results.append(_analyze_member_access(name, subtype, item_mx))
-    mx.msg.disable_type_names -= 1
+    with mx.msg.disable_type_names():
+        results = []
+        for subtype in typ.relevant_items():
+            # Self types should be bound to every individual item of a union.
+            item_mx = mx.copy_modified(self_type=subtype)
+            results.append(_analyze_member_access(name, subtype, item_mx))
     return make_simplified_union(results)
 
 
@@ -388,29 +394,35 @@ def analyze_member_var_access(name: str,
         if not mx.is_lvalue:
             for method_name in ('__getattribute__', '__getattr__'):
                 method = info.get_method(method_name)
+
                 # __getattribute__ is defined on builtins.object and returns Any, so without
                 # the guard this search will always find object.__getattribute__ and conclude
                 # that the attribute exists
                 if method and method.info.fullname != 'builtins.object':
-                    function = function_type(method, mx.named_type('builtins.function'))
-                    bound_method = bind_self(function, mx.self_type)
+                    bound_method = analyze_decorator_or_funcbase_access(
+                        defn=method, itype=itype, info=info,
+                        self_type=mx.self_type, name=method_name, mx=mx)
                     typ = map_instance_to_supertype(itype, method.info)
                     getattr_type = get_proper_type(expand_type_by_instance(bound_method, typ))
                     if isinstance(getattr_type, CallableType):
                         result = getattr_type.ret_type
+                    else:
+                        result = getattr_type
 
-                        # Call the attribute hook before returning.
-                        fullname = '{}.{}'.format(method.info.fullname, name)
-                        hook = mx.chk.plugin.get_attribute_hook(fullname)
-                        if hook:
-                            result = hook(AttributeContext(get_proper_type(mx.original_type),
-                                                           result, mx.context, mx.chk))
-                        return result
+                    # Call the attribute hook before returning.
+                    fullname = '{}.{}'.format(method.info.fullname, name)
+                    hook = mx.chk.plugin.get_attribute_hook(fullname)
+                    if hook:
+                        result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                                       result, mx.context, mx.chk))
+                    return result
         else:
             setattr_meth = info.get_method('__setattr__')
             if setattr_meth and setattr_meth.info.fullname != 'builtins.object':
-                setattr_func = function_type(setattr_meth, mx.named_type('builtins.function'))
-                bound_type = bind_self(setattr_func, mx.self_type)
+                bound_type = analyze_decorator_or_funcbase_access(
+                    defn=setattr_meth, itype=itype, info=info,
+                    self_type=mx.self_type, name=name,
+                    mx=mx.copy_modified(is_lvalue=False))
                 typ = map_instance_to_supertype(itype, setattr_meth.info)
                 setattr_type = get_proper_type(expand_type_by_instance(bound_type, typ))
                 if isinstance(setattr_type, CallableType) and len(setattr_type.arg_types) > 0:
@@ -439,32 +451,24 @@ def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Cont
             msg.cant_assign_to_final(name, attr_assign=True, ctx=ctx)
 
 
-def analyze_descriptor_access(instance_type: Type,
-                              descriptor_type: Type,
-                              named_type: Callable[[str], Instance],
-                              msg: MessageBuilder,
-                              context: Context, *,
-                              chk: 'mypy.checker.TypeChecker') -> Type:
+def analyze_descriptor_access(descriptor_type: Type,
+                              mx: MemberContext) -> Type:
     """Type check descriptor access.
 
     Arguments:
-        instance_type: The type of the instance on which the descriptor
-            attribute is being accessed (the type of ``a`` in ``a.f`` when
-            ``f`` is a descriptor).
         descriptor_type: The type of the descriptor attribute being accessed
             (the type of ``f`` in ``a.f`` when ``f`` is a descriptor).
-        context: The node defining the context of this inference.
+        mx: The current member access context.
     Return:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
-    instance_type = get_proper_type(instance_type)
+    instance_type = get_proper_type(mx.original_type)
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
         return make_simplified_union([
-            analyze_descriptor_access(instance_type, typ, named_type,
-                                      msg, context, chk=chk)
+            analyze_descriptor_access(typ, mx)
             for typ in descriptor_type.items
         ])
     elif not isinstance(descriptor_type, Instance):
@@ -474,13 +478,15 @@ def analyze_descriptor_access(instance_type: Type,
         return descriptor_type
 
     dunder_get = descriptor_type.type.get_method('__get__')
-
     if dunder_get is None:
-        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        mx.msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type),
+                    mx.context)
         return AnyType(TypeOfAny.from_error)
 
-    function = function_type(dunder_get, named_type('builtins.function'))
-    bound_method = bind_self(function, descriptor_type)
+    bound_method = analyze_decorator_or_funcbase_access(
+        defn=dunder_get, itype=descriptor_type, info=descriptor_type.type,
+        self_type=descriptor_type, name='__set__', mx=mx)
+
     typ = map_instance_to_supertype(descriptor_type, dunder_get.info)
     dunder_get_type = expand_type_by_instance(bound_method, typ)
 
@@ -493,19 +499,19 @@ def analyze_descriptor_access(instance_type: Type,
     else:
         owner_type = instance_type
 
-    callable_name = chk.expr_checker.method_fullname(descriptor_type, "__get__")
-    dunder_get_type = chk.expr_checker.transform_callee_type(
+    callable_name = mx.chk.expr_checker.method_fullname(descriptor_type, "__get__")
+    dunder_get_type = mx.chk.expr_checker.transform_callee_type(
         callable_name, dunder_get_type,
-        [TempNode(instance_type, context=context),
-         TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        [TempNode(instance_type, context=mx.context),
+         TempNode(TypeType.make_normalized(owner_type), context=mx.context)],
+        [ARG_POS, ARG_POS], mx.context, object_type=descriptor_type,
     )
 
-    _, inferred_dunder_get_type = chk.expr_checker.check_call(
+    _, inferred_dunder_get_type = mx.chk.expr_checker.check_call(
         dunder_get_type,
-        [TempNode(instance_type, context=context),
-         TempNode(TypeType.make_normalized(owner_type), context=context)],
-        [ARG_POS, ARG_POS], context, object_type=descriptor_type,
+        [TempNode(instance_type, context=mx.context),
+         TempNode(TypeType.make_normalized(owner_type), context=mx.context)],
+        [ARG_POS, ARG_POS], mx.context, object_type=descriptor_type,
         callable_name=callable_name)
 
     inferred_dunder_get_type = get_proper_type(inferred_dunder_get_type)
@@ -514,7 +520,8 @@ def analyze_descriptor_access(instance_type: Type,
         return inferred_dunder_get_type
 
     if not isinstance(inferred_dunder_get_type, CallableType):
-        msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type), context)
+        mx.msg.fail(message_registry.DESCRIPTOR_GET_NOT_CALLABLE.format(descriptor_type),
+                    mx.context)
         return AnyType(TypeOfAny.from_error)
 
     return inferred_dunder_get_type.ret_type
@@ -603,8 +610,7 @@ def analyze_var(name: str,
     fullname = '{}.{}'.format(var.info.fullname, name)
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
-        result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                           mx.msg, mx.context, chk=mx.chk)
+        result = analyze_descriptor_access(result, mx)
     if hook:
         result = hook(AttributeContext(get_proper_type(mx.original_type),
                                        result, mx.context, mx.chk))
@@ -783,8 +789,7 @@ def analyze_class_attribute_access(itype: Instance,
         result = add_class_tvars(t, isuper, is_classmethod,
                                  mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
-            result = analyze_descriptor_access(mx.original_type, result, mx.named_type,
-                                               mx.msg, mx.context, chk=mx.chk)
+            result = analyze_descriptor_access(result, mx)
         return result
     elif isinstance(node.node, Var):
         mx.not_ready_callback(name, mx.context)
@@ -828,8 +833,8 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         name: str,
                                         mx: MemberContext,
                                         ) -> Optional[Type]:
-    # Skip "_order_" and "__order__", since Enum will remove it
-    if name in ("_order_", "__order__"):
+    # Skip these since Enum will remove it
+    if name in ENUM_REMOVED_PROPS:
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
@@ -838,12 +843,41 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
-    # When we analyze enums, the corresponding Instance is always considered to be erased
-    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-    # in typeshed. However, this is really more of an implementation detail of how Enums
-    # are typed, and we really don't want to treat every single Enum value as if it were
-    # from type variable substitution. So we reset the 'erased' field here.
-    return itype.copy_modified(erased=False, last_known_value=enum_literal)
+    return itype.copy_modified(last_known_value=enum_literal)
+
+
+def analyze_typeddict_access(name: str, typ: TypedDictType,
+                             mx: MemberContext, override_info: Optional[TypeInfo]) -> Type:
+    if name == '__setitem__':
+        if isinstance(mx.context, IndexExpr):
+            # Since we can get this during `a['key'] = ...`
+            # it is safe to assume that the context is `IndexExpr`.
+            item_type = mx.chk.expr_checker.visit_typeddict_index_expr(
+                typ, mx.context.index)
+        else:
+            # It can also be `a.__setitem__(...)` direct call.
+            # In this case `item_type` can be `Any`,
+            # because we don't have args available yet.
+            # TODO: check in `default` plugin that `__setitem__` is correct.
+            item_type = AnyType(TypeOfAny.implementation_artifact)
+        return CallableType(
+            arg_types=[mx.chk.named_type('builtins.str'), item_type],
+            arg_kinds=[ARG_POS, ARG_POS],
+            arg_names=[None, None],
+            ret_type=NoneType(),
+            fallback=mx.chk.named_type('builtins.function'),
+            name=name,
+        )
+    elif name == '__delitem__':
+        return CallableType(
+            arg_types=[mx.chk.named_type('builtins.str')],
+            arg_kinds=[ARG_POS],
+            arg_names=[None],
+            ret_type=NoneType(),
+            fallback=mx.chk.named_type('builtins.function'),
+            name=name,
+        )
+    return _analyze_member_access(name, typ.fallback, mx, override_info)
 
 
 def add_class_tvars(t: ProperType, isuper: Optional[Instance],
@@ -971,6 +1005,27 @@ def type_object_type(info: TypeInfo, named_type: Callable[[str], Instance]) -> P
         assert isinstance(method.type, FunctionLike)  # is_valid_constructor() ensures this
         t = method.type
     return type_object_type_from_function(t, info, method.info, fallback, is_new)
+
+
+def analyze_decorator_or_funcbase_access(
+    defn: Union[Decorator, FuncBase],
+    itype: Instance,
+    info: TypeInfo,
+    self_type: Optional[Type],
+    name: str,
+    mx: MemberContext,
+) -> Type:
+    """Analyzes the type behind method access.
+
+    The function itself can possibly be decorated.
+    See: https://github.com/python/mypy/issues/10409
+    """
+    if isinstance(defn, Decorator):
+        return analyze_var(name, defn.var, itype, info, mx)
+    return bind_self(
+        function_type(defn,  mx.chk.named_type('builtins.function')),
+        original_type=self_type,
+    )
 
 
 def is_valid_constructor(n: Optional[SymbolNode]) -> bool:

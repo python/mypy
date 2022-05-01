@@ -1,10 +1,43 @@
 import sys
-from _typeshed import SupportsGetItem, SupportsItemAccess
-from builtins import type as _type
+from _typeshed import Self, SupportsGetItem, SupportsItemAccess
+from builtins import list as _list, type as _type
 from collections.abc import Iterable, Iterator, Mapping
-from typing import IO, Any, Protocol, TypeVar
+from types import TracebackType
+from typing import IO, Any, Protocol
 
-_T = TypeVar("_T", bound=FieldStorage)
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "MiniFieldStorage",
+        "FieldStorage",
+        "parse",
+        "parse_multipart",
+        "parse_header",
+        "test",
+        "print_exception",
+        "print_environ",
+        "print_form",
+        "print_directory",
+        "print_arguments",
+        "print_environ_usage",
+    ]
+else:
+    __all__ = [
+        "MiniFieldStorage",
+        "FieldStorage",
+        "parse",
+        "parse_qs",
+        "parse_qsl",
+        "parse_multipart",
+        "parse_header",
+        "test",
+        "print_exception",
+        "print_environ",
+        "print_form",
+        "print_directory",
+        "print_arguments",
+        "print_environ_usage",
+        "escape",
+    ]
 
 def parse(
     fp: IO[Any] | None = ...,
@@ -53,11 +86,8 @@ class MiniFieldStorage:
     name: Any
     value: Any
     def __init__(self, name: Any, value: Any) -> None: ...
-    def __repr__(self) -> str: ...
 
-_list = list
-
-class FieldStorage(object):
+class FieldStorage:
     FieldStorageClass: _type | None
     keep_blank_values: int
     strict_parsing: int
@@ -94,9 +124,8 @@ class FieldStorage(object):
         max_num_fields: int | None = ...,
         separator: str = ...,
     ) -> None: ...
-    def __enter__(self: _T) -> _T: ...
-    def __exit__(self, *args: Any) -> None: ...
-    def __repr__(self) -> str: ...
+    def __enter__(self: Self) -> Self: ...
+    def __exit__(self, *args: object) -> None: ...
     def __iter__(self) -> Iterator[str]: ...
     def __getitem__(self, key: str) -> Any: ...
     def getvalue(self, key: str, default: Any = ...) -> Any: ...
@@ -108,3 +137,11 @@ class FieldStorage(object):
     def __bool__(self) -> bool: ...
     # In Python 3 it returns bytes or str IO depending on an internal flag
     def make_file(self) -> IO[Any]: ...
+
+def print_exception(
+    type: type[BaseException] | None = ...,
+    value: BaseException | None = ...,
+    tb: TracebackType | None = ...,
+    limit: int | None = ...,
+) -> None: ...
+def print_arguments() -> None: ...

@@ -91,12 +91,13 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-typevar-tuple.test',
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
     'check-singledispatch.test',
     'check-slots.test',
-    'check-formatting.test'
+    'check-formatting.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -104,6 +105,8 @@ if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
 if sys.version_info >= (3, 9):
     typecheck_files.append('check-python39.test')
+if sys.version_info >= (3, 10):
+    typecheck_files.append('check-python310.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
@@ -162,6 +165,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.

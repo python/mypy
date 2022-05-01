@@ -142,11 +142,11 @@ L0:
     r1 = A()
     x = r1
     x = y
-    r2 = box(short_int, 2)
+    r2 = object 1
     z = r2
     r3 = A()
     a = r3
-    r4 = box(short_int, 2)
+    r4 = object 1
     a.a = r4; r5 = is_error
     r6 = box(None, 1)
     a.a = r6; r7 = is_error
@@ -166,7 +166,7 @@ def f(x):
     r2 :: object
     r3 :: bit
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = CPyList_SetItem(x, 0, r0)
     r2 = box(None, 1)
     r3 = CPyList_SetItem(x, 2, r2)
@@ -417,13 +417,13 @@ L2:
     if r11 goto L3 else goto L4 :: bool
 L3:
     r12 = cast(__main__.B, o)
-    r13 = box(short_int, 2)
+    r13 = object 1
     r14 = r12.f(r13)
     r7 = r14
     goto L5
 L4:
     r15 = cast(__main__.C, o)
-    r16 = box(short_int, 2)
+    r16 = object 1
     r17 = r15.f(r16)
     r18 = box(int, r17)
     r7 = r18

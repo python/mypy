@@ -27,7 +27,7 @@ from typing import (
 )
 from typing_extensions import TypedDict
 
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike, UninhabitedType,
@@ -344,9 +344,11 @@ class SuggestionEngine:
             types.append(arg_types)
         return types
 
-    def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
-        return [self.manager.all_types[arg.initializer] if arg.initializer else None
-                for arg in fdef.arguments]
+    def get_default_arg_types(self, fdef: FuncDef) -> List[Optional[Type]]:
+        return [
+            self.manager.all_types[arg.initializer] if arg.initializer else None
+            for arg in fdef.arguments
+        ]
 
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
@@ -437,11 +439,11 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
                 self.get_starting_type(node),
-                self.get_default_arg_types(graph[mod], node),
+                self.get_default_arg_types(node),
                 callsites,
                 uses,
             )
@@ -452,7 +454,7 @@ class SuggestionEngine:
         # Now try to find the return type!
         self.try_type(node, best)
         returns = get_return_types(self.manager.all_types, node)
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             if returns:
                 ret_types = generate_type_combinations(returns)
             else:
@@ -632,11 +634,8 @@ class SuggestionEngine:
         finally:
             func.unanalyzed_type = old
 
-    def reload(self, state: State, check_errors: bool = False) -> List[str]:
-        """Recheck the module given by state.
-
-        If check_errors is true, raise an exception if there are errors.
-        """
+    def reload(self, state: State) -> List[str]:
+        """Recheck the module given by state."""
         assert state.path is not None
         self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])
@@ -989,7 +988,7 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
 
     # Turn strict optional on when simplifying the union since we
     # don't want to drop Nones.
-    with strict_optional_set(True):
+    with state.strict_optional_set(True):
         return make_simplified_union(new_items)
 
 

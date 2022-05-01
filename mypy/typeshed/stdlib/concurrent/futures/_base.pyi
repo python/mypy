@@ -2,21 +2,23 @@ import sys
 import threading
 from _typeshed import Self
 from abc import abstractmethod
-from collections.abc import Container, Iterable, Iterator, Sequence
+from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from logging import Logger
-from typing import Any, Callable, Generic, Protocol, Set, TypeVar, overload
+from types import TracebackType
+from typing import Any, Generic, Protocol, TypeVar, overload
+from typing_extensions import Literal, ParamSpec, SupportsIndex
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
-FIRST_COMPLETED: str
-FIRST_EXCEPTION: str
-ALL_COMPLETED: str
-PENDING: str
-RUNNING: str
-CANCELLED: str
-CANCELLED_AND_NOTIFIED: str
-FINISHED: str
+FIRST_COMPLETED: Literal["FIRST_COMPLETED"]
+FIRST_EXCEPTION: Literal["FIRST_EXCEPTION"]
+ALL_COMPLETED: Literal["ALL_COMPLETED"]
+PENDING: Literal["PENDING"]
+RUNNING: Literal["RUNNING"]
+CANCELLED: Literal["CANCELLED"]
+CANCELLED_AND_NOTIFIED: Literal["CANCELLED_AND_NOTIFIED"]
+FINISHED: Literal["FINISHED"]
 _FUTURE_STATES: list[str]
 _STATE_TO_DESCRIPTION_MAP: dict[str, str]
 LOGGER: Logger
@@ -32,8 +34,8 @@ if sys.version_info >= (3, 7):
     class BrokenExecutor(RuntimeError): ...
 
 _T = TypeVar("_T")
-
 _T_co = TypeVar("_T_co", covariant=True)
+_P = ParamSpec("_P")
 
 # Copied over Collection implementation as it does not exist in Python 2 and <3.6.
 # Also to solve pytype issues with _Collection.
@@ -59,9 +61,10 @@ class Future(Generic[_T]):
 
 class Executor:
     if sys.version_info >= (3, 9):
-        def submit(self, __fn: Callable[..., _T], *args: Any, **kwargs: Any) -> Future[_T]: ...
+        def submit(self, __fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
     else:
-        def submit(self, fn: Callable[..., _T], *args: Any, **kwargs: Any) -> Future[_T]: ...
+        def submit(self, fn: Callable[_P, _T], *args: _P.args, **kwargs: _P.kwargs) -> Future[_T]: ...
+
     def map(
         self, fn: Callable[..., _T], *iterables: Iterable[Any], timeout: float | None = ..., chunksize: int = ...
     ) -> Iterator[_T]: ...
@@ -69,21 +72,28 @@ class Executor:
         def shutdown(self, wait: bool = ..., *, cancel_futures: bool = ...) -> None: ...
     else:
         def shutdown(self, wait: bool = ...) -> None: ...
+
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool | None: ...
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> bool | None: ...
 
 def as_completed(fs: Iterable[Future[_T]], timeout: float | None = ...) -> Iterator[Future[_T]]: ...
 
 # Ideally this would be a namedtuple, but mypy doesn't support generic tuple types. See #1976
-class DoneAndNotDoneFutures(Sequence[Set[Future[_T]]]):
-    done: set[Future[_T]]
-    not_done: set[Future[_T]]
+class DoneAndNotDoneFutures(Sequence[set[Future[_T]]]):
+    if sys.version_info >= (3, 10):
+        __match_args__ = ("done", "not_done")
+    @property
+    def done(self) -> set[Future[_T]]: ...
+    @property
+    def not_done(self) -> set[Future[_T]]: ...
     def __new__(_cls, done: set[Future[_T]], not_done: set[Future[_T]]) -> DoneAndNotDoneFutures[_T]: ...
     def __len__(self) -> int: ...
     @overload
-    def __getitem__(self, i: int) -> set[Future[_T]]: ...
+    def __getitem__(self, __i: SupportsIndex) -> set[Future[_T]]: ...
     @overload
-    def __getitem__(self, s: slice) -> DoneAndNotDoneFutures[_T]: ...
+    def __getitem__(self, __s: slice) -> DoneAndNotDoneFutures[_T]: ...
 
 def wait(fs: Iterable[Future[_T]], timeout: float | None = ..., return_when: str = ...) -> DoneAndNotDoneFutures[_T]: ...
 
@@ -120,4 +130,4 @@ class _AcquireFutures:
     futures: Iterable[Future[Any]]
     def __init__(self, futures: Iterable[Future[Any]]) -> None: ...
     def __enter__(self) -> None: ...
-    def __exit__(self, *args: Any) -> None: ...
+    def __exit__(self, *args: object) -> None: ...

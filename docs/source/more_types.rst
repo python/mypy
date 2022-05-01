@@ -84,7 +84,7 @@ certain values from base class instances. Example:
         ...
 
 However, this approach introduces some runtime overhead. To avoid this, the typing
-module provides a helper function :py:func:`NewType <typing.NewType>` that creates simple unique types with
+module provides a helper object :py:func:`NewType <typing.NewType>` that creates simple unique types with
 almost zero runtime overhead. Mypy will treat the statement
 ``Derived = NewType('Derived', Base)`` as being roughly equivalent to the following
 definition:
@@ -95,7 +95,7 @@ definition:
         def __init__(self, _x: Base) -> None:
             ...
 
-However, at runtime, ``NewType('Derived', Base)`` will return a dummy function that
+However, at runtime, ``NewType('Derived', Base)`` will return a dummy callable that
 simply returns its argument:
 
 .. code-block:: python
@@ -120,14 +120,14 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
     name_by_id(42)          # Fails type check
     name_by_id(UserId(42))  # OK
 
-    num = UserId(5) + 1     # type: int
+    num: int = UserId(5) + 1
 
 :py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
 type is assigned. The second argument must be a properly subclassable class, i.e.,
 not a type construct like :py:data:`~typing.Union`, etc.
 
-The function returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
+The callable returned by :py:func:`NewType <typing.NewType>` accepts only one argument; this is equivalent to
 supporting only one constructor accepting an instance of the base class (see above).
 Example:
 
@@ -148,8 +148,7 @@ Example:
     tcp_packet = TcpPacketId(127, 0)  # Fails in type checker and at runtime
 
 You cannot use :py:func:`isinstance` or :py:func:`issubclass` on the object returned by
-:py:func:`~typing.NewType`, because function objects don't support these operations. You cannot
-create subclasses of these objects either.
+:py:func:`~typing.NewType`, nor can you subclass an object returned by :py:func:`~typing.NewType`.
 
 .. note::
 
@@ -295,10 +294,10 @@ return type by using overloads like so:
    subtypes, you can use a :ref:`value restriction
    <type-variable-value-restriction>`.
 
-The default values of a function's arguments don't affect its signature, only
+The default values of a function's arguments don't affect its signature -- only
 the absence or presence of a default value does. So in order to reduce
-redundancy it's possible to replace default values in overload definitions with
-`...` as a placeholder.
+redundancy, it's possible to replace default values in overload definitions with
+``...`` as a placeholder:
 
 .. code-block:: python
 
@@ -582,6 +581,115 @@ with ``Union[int, slice]`` and ``Union[T, Sequence]``.
    to returning ``Any`` only if the input arguments also contain ``Any``.
 
 
+Conditional overloads
+---------------------
+
+Sometimes it is useful to define overloads conditionally.
+Common use cases include types that are unavailable at runtime or that
+only exist in a certain Python version. All existing overload rules still apply.
+For example, there must be at least two overloads.
+
+.. note::
+
+    Mypy can only infer a limited number of conditions.
+    Supported ones currently include :py:data:`~typing.TYPE_CHECKING`, ``MYPY``,
+    :ref:`version_and_platform_checks`, :option:`--always-true <mypy --always-true>`,
+    and :option:`--always-false <mypy --always-false>` values.
+
+.. code-block:: python
+
+    from typing import TYPE_CHECKING, Any, overload
+
+    if TYPE_CHECKING:
+        class A: ...
+        class B: ...
+
+
+    if TYPE_CHECKING:
+        @overload
+        def func(var: A) -> A: ...
+
+        @overload
+        def func(var: B) -> B: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(A()))  # Revealed type is "A"
+
+.. code-block:: python
+
+    # flags: --python-version 3.10
+    import sys
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+    class C: ...
+    class D: ...
+
+
+    if sys.version_info < (3, 7):
+        @overload
+        def func(var: A) -> A: ...
+
+    elif sys.version_info >= (3, 10):
+        @overload
+        def func(var: B) -> B: ...
+
+    else:
+        @overload
+        def func(var: C) -> C: ...
+
+    @overload
+    def func(var: D) -> D: ...
+
+    def func(var: Any) -> Any:
+        return var
+
+
+    reveal_type(func(B()))  # Revealed type is "B"
+    reveal_type(func(C()))  # No overload variant of "func" matches argument type "C"
+        # Possible overload variants:
+        #     def func(var: B) -> B
+        #     def func(var: D) -> D
+        # Revealed type is "Any"
+
+
+.. note::
+
+    In the last example, mypy is executed with
+    :option:`--python-version 3.10 <mypy --python-version>`.
+    Therefore, the condition ``sys.version_info >= (3, 10)`` will match and
+    the overload for ``B`` will be added.
+    The overloads for ``A`` and ``C`` are ignored!
+    The overload for ``D`` is not defined conditionally and thus is also added.
+
+When mypy cannot infer a condition to be always ``True`` or always ``False``,
+an error is emitted.
+
+.. code-block:: python
+
+    from typing import Any, overload
+
+    class A: ...
+    class B: ...
+
+
+    def g(bool_var: bool) -> None:
+        if bool_var:  # Condition can't be inferred, unable to merge overloads
+            @overload
+            def func(var: A) -> A: ...
+
+            @overload
+            def func(var: B) -> B: ...
+
+        def func(var: Any) -> Any: ...
+
+        reveal_type(func(A()))  # Revealed type is "Any"
+
+
 .. _advanced_self:
 
 Advanced uses of self-types
@@ -766,68 +874,6 @@ value of type :py:class:`Coroutine[Any, Any, T] <typing.Coroutine>`, which is a 
     :ref:`reveal_type() <reveal-type>` displays the inferred static type of
     an expression.
 
-If you want to use coroutines in Python 3.4, which does not support
-the ``async def`` syntax, you can instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-decorator to convert a generator into a coroutine.
-
-Note that we set the ``YieldType`` of the generator to be ``Any`` in the
-following example. This is because the exact yield type is an implementation
-detail of the coroutine runner (e.g. the :py:mod:`asyncio` event loop) and your
-coroutine shouldn't have to know or care about what precisely that type is.
-
-.. code-block:: python
-
-   from typing import Any, Generator
-   import asyncio
-
-   @asyncio.coroutine
-   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
-       while count > 0:
-           print('T-minus {} ({})'.format(count, tag))
-           yield from asyncio.sleep(0.1)
-           count -= 1
-       return "Blastoff!"
-
-   loop = asyncio.get_event_loop()
-   loop.run_until_complete(countdown_2("USS Enterprise", 5))
-   loop.close()
-
-As before, the result of calling a generator decorated with :py:func:`@asyncio.coroutine <asyncio.coroutine>`
-will be a value of type :py:class:`Awaitable[T] <typing.Awaitable>`.
-
-.. note::
-
-   At runtime, you are allowed to add the :py:func:`@asyncio.coroutine <asyncio.coroutine>` decorator to
-   both functions and generators. This is useful when you want to mark a
-   work-in-progress function as a coroutine, but have not yet added ``yield`` or
-   ``yield from`` statements:
-
-   .. code-block:: python
-
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> str:
-          # todo: add yield/yield from to turn this into a generator
-          return "placeholder"
-
-   However, mypy currently does not support converting functions into
-   coroutines. Support for this feature will be added in a future version, but
-   for now, you can manually force the function to be a generator by doing
-   something like this:
-
-   .. code-block:: python
-
-      from typing import Generator
-      import asyncio
-
-      @asyncio.coroutine
-      def serialize(obj: object) -> Generator[None, None, str]:
-          # todo: add yield/yield from to turn this into a generator
-          if False:
-              yield
-          return "placeholder"
-
 You may also choose to create a subclass of :py:class:`~typing.Awaitable` instead:
 
 .. code-block:: python
@@ -887,11 +933,29 @@ To create an iterable coroutine, subclass :py:class:`~typing.AsyncIterator`:
    loop.run_until_complete(countdown_4("Serenity", 5))
    loop.close()
 
-For a more concrete example, the mypy repo has a toy webcrawler that
-demonstrates how to work with coroutines. One version
-`uses async/await <https://github.com/python/mypy/blob/master/test-data/samples/crawl2.py>`_
-and one
-`uses yield from <https://github.com/python/mypy/blob/master/test-data/samples/crawl.py>`_.
+If you use coroutines in legacy code that was originally written for
+Python 3.4, which did not support the ``async def`` syntax, you would
+instead use the :py:func:`@asyncio.coroutine <asyncio.coroutine>`
+decorator to convert a generator into a coroutine, and use a
+generator type as the return type:
+
+.. code-block:: python
+
+   from typing import Any, Generator
+   import asyncio
+
+   @asyncio.coroutine
+   def countdown_2(tag: str, count: int) -> Generator[Any, None, str]:
+       while count > 0:
+           print('T-minus {} ({})'.format(count, tag))
+           yield from asyncio.sleep(0.1)
+           count -= 1
+       return "Blastoff!"
+
+   loop = asyncio.get_event_loop()
+   loop.run_until_complete(countdown_2("USS Enterprise", 5))
+   loop.close()
+
 
 .. _typeddict:
 
@@ -921,7 +985,7 @@ dictionary value depends on the key:
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
-   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
+   movie: Movie = {'name': 'Blade Runner', 'year': 1982}
 
 ``Movie`` is a ``TypedDict`` type with two items: ``'name'`` (with type ``str``)
 and ``'year'`` (with type ``int``). Note that we used an explicit type
@@ -1016,7 +1080,7 @@ keys. This will be flagged as an error:
 .. code-block:: python
 
    # Error: 'year' missing
-   toy_story = {'name': 'Toy Story'}  # type: Movie
+   toy_story: Movie = {'name': 'Toy Story'}
 
 Sometimes you want to allow keys to be left out when creating a
 ``TypedDict`` object. You can provide the ``total=False`` argument to
@@ -1026,7 +1090,7 @@ Sometimes you want to allow keys to be left out when creating a
 
    GuiOptions = TypedDict(
        'GuiOptions', {'language': str, 'color': str}, total=False)
-   options = {}  # type: GuiOptions  # Okay
+   options: GuiOptions = {}  # Okay
    options['language'] = 'en'
 
 You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)
@@ -1151,5 +1215,5 @@ TypedDict in the same way you can with regular objects.
 Instead, you can use the :ref:`tagged union pattern <tagged_unions>`. The referenced
 section of the docs has a full description with an example, but in short, you will
 need to give each TypedDict the same key where each value has a unique
-unique :ref:`Literal type <literal_types>`. Then, check that key to distinguish
+:ref:`Literal type <literal_types>`. Then, check that key to distinguish
 between your TypedDicts.

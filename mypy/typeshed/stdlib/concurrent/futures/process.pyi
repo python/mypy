@@ -1,11 +1,11 @@
 import sys
-from collections.abc import Generator, Iterable, Mapping, MutableMapping, MutableSequence
+from collections.abc import Callable, Generator, Iterable, Mapping, MutableMapping, MutableSequence
 from multiprocessing.connection import Connection
 from multiprocessing.context import BaseContext, Process
 from multiprocessing.queues import Queue, SimpleQueue
 from threading import Lock, Semaphore, Thread
 from types import TracebackType
-from typing import Any, Callable, Generic, Tuple, TypeVar
+from typing import Any, Generic, TypeVar
 from weakref import ref
 
 from ._base import Executor, Future
@@ -31,13 +31,12 @@ _MAX_WINDOWS_WORKERS: int
 class _RemoteTraceback(Exception):
     tb: str
     def __init__(self, tb: TracebackType) -> None: ...
-    def __str__(self) -> str: ...
 
 class _ExceptionWithTraceback:
     exc: BaseException
     tb: TracebackType
     def __init__(self, exc: BaseException, tb: TracebackType) -> None: ...
-    def __reduce__(self) -> str | Tuple[Any, ...]: ...
+    def __reduce__(self) -> str | tuple[Any, ...]: ...
 
 def _rebuild_exc(exc: Exception, tb: str) -> Exception: ...
 
@@ -82,9 +81,10 @@ if sys.version_info >= (3, 7):
             def __init__(
                 self, max_size: int | None = ..., *, ctx: BaseContext, pending_work_items: dict[int, _WorkItem[Any]]
             ) -> None: ...
+
         def _on_queue_feeder_error(self, e: Exception, obj: _CallItem) -> None: ...
 
-def _get_chunks(*iterables: Any, chunksize: int) -> Generator[Tuple[Any, ...], None, None]: ...
+def _get_chunks(*iterables: Any, chunksize: int) -> Generator[tuple[Any, ...], None, None]: ...
 def _process_chunk(fn: Callable[..., Any], chunk: tuple[Any, None, None]) -> Generator[Any, None, None]: ...
 def _sendback_result(
     result_queue: SimpleQueue[_WorkItem[Any]], work_id: int, result: Any | None = ..., exception: Exception | None = ...
@@ -95,7 +95,7 @@ if sys.version_info >= (3, 7):
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
         initializer: Callable[..., None] | None,
-        initargs: Tuple[Any, ...],
+        initargs: tuple[Any, ...],
     ) -> None: ...
 
 else:
@@ -131,6 +131,7 @@ def _chain_from_iterable_of_lists(iterable: Iterable[MutableSequence[Any]]) -> A
 
 if sys.version_info >= (3, 7):
     from ._base import BrokenExecutor
+
     class BrokenProcessPool(BrokenExecutor): ...
 
 else:
@@ -139,7 +140,7 @@ else:
 class ProcessPoolExecutor(Executor):
     _mp_context: BaseContext | None = ...
     _initializer: Callable[..., None] | None = ...
-    _initargs: Tuple[Any, ...] = ...
+    _initargs: tuple[Any, ...] = ...
     _executor_manager_thread: _ThreadWakeup
     _processes: MutableMapping[int, Process]
     _shutdown_thread: bool
@@ -158,10 +159,11 @@ class ProcessPoolExecutor(Executor):
             max_workers: int | None = ...,
             mp_context: BaseContext | None = ...,
             initializer: Callable[..., None] | None = ...,
-            initargs: Tuple[Any, ...] = ...,
+            initargs: tuple[Any, ...] = ...,
         ) -> None: ...
     else:
         def __init__(self, max_workers: int | None = ...) -> None: ...
     if sys.version_info >= (3, 9):
         def _start_executor_manager_thread(self) -> None: ...
+
     def _adjust_process_count(self) -> None: ...

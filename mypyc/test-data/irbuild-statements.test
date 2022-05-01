@@ -760,8 +760,8 @@ def delList():
     r8 :: bit
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r1 :: builtins.object*
@@ -769,7 +769,7 @@ L0:
     set_mem r5, r2 :: builtins.object*
     keep_alive r0
     l = r0
-    r6 = box(short_int, 2)
+    r6 = object 1
     r7 = PyObject_DelItem(l, r6)
     r8 = r7 >= 0 :: signed
     return 1
@@ -789,13 +789,13 @@ def delListMultiple():
     r24 :: bit
 L0:
     r0 = PyList_New(7)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
-    r3 = box(short_int, 6)
-    r4 = box(short_int, 8)
-    r5 = box(short_int, 10)
-    r6 = box(short_int, 12)
-    r7 = box(short_int, 14)
+    r1 = object 1
+    r2 = object 2
+    r3 = object 3
+    r4 = object 4
+    r5 = object 5
+    r6 = object 6
+    r7 = object 7
     r8 = get_element_ptr r0 ob_item :: PyListObject
     r9 = load_mem r8 :: ptr*
     set_mem r9, r1 :: builtins.object*
@@ -813,13 +813,13 @@ L0:
     set_mem r15, r7 :: builtins.object*
     keep_alive r0
     l = r0
-    r16 = box(short_int, 2)
+    r16 = object 1
     r17 = PyObject_DelItem(l, r16)
     r18 = r17 >= 0 :: signed
-    r19 = box(short_int, 4)
+    r19 = object 2
     r20 = PyObject_DelItem(l, r19)
     r21 = r20 >= 0 :: signed
-    r22 = box(short_int, 6)
+    r22 = object 3
     r23 = PyObject_DelItem(l, r22)
     r24 = r23 >= 0 :: signed
     return 1
@@ -842,8 +842,8 @@ def delDict():
 L0:
     r0 = 'one'
     r1 = 'two'
-    r2 = box(short_int, 2)
-    r3 = box(short_int, 4)
+    r2 = object 1
+    r3 = object 2
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     d = r4
     r5 = 'one'
@@ -864,10 +864,10 @@ L0:
     r1 = 'two'
     r2 = 'three'
     r3 = 'four'
-    r4 = box(short_int, 2)
-    r5 = box(short_int, 4)
-    r6 = box(short_int, 6)
-    r7 = box(short_int, 8)
+    r4 = object 1
+    r5 = object 2
+    r6 = object 3
+    r7 = object 4
     r8 = CPyDict_Build(4, r0, r4, r1, r5, r2, r6, r3, r7)
     d = r8
     r9 = 'one'

@@ -6,7 +6,8 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, AnyType, UninhabitedType, NoneType, ErasedType, DeletedType,
     TypeVarType, LiteralType, Instance, CallableType, TupleType, TypedDictType, UnionType,
     Overloaded, TypeType, CallableArgument, UnboundType, TypeList, StarType, EllipsisType,
-    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType
+    PlaceholderType, PartialType, RawExpressionType, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 
 
@@ -38,6 +39,12 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         pass
 
     def visit_param_spec(self, t: ParamSpecType) -> None:
+        pass
+
+    def visit_parameters(self, t: Parameters) -> None:
+        self.traverse_types(t.arg_types)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
         pass
 
     def visit_literal_type(self, t: LiteralType) -> None:
@@ -99,6 +106,9 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         self.traverse_types(t.args)
+
+    def visit_unpack_type(self, t: UnpackType) -> None:
+        t.type.accept(self)
 
     # Helpers
 

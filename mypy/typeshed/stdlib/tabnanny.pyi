@@ -1,5 +1,7 @@
 from _typeshed import StrOrBytesPath
-from typing import Iterable
+from collections.abc import Iterable
+
+__all__ = ["check", "NannyNag", "process_tokens"]
 
 verbose: int
 filename_only: int

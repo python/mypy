@@ -1,13 +1,16 @@
 import sys
 import types
 from _typeshed import StrPath
-from typing import Any, Callable, Mapping, Optional, Sequence, Tuple, TypeVar
-from typing_extensions import ParamSpec
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any, TypeVar
+from typing_extensions import ParamSpec, TypeAlias
+
+__all__ = ["Trace", "CoverageResults"]
 
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
-_localtrace = Callable[[types.FrameType, str, Any], Callable[..., Any]]
-_fileModuleFunction = Tuple[str, Optional[str], str]
+_localtrace: TypeAlias = Callable[[types.FrameType, str, Any], Callable[..., Any]]
+_fileModuleFunction: TypeAlias = tuple[str, str | None, str]
 
 class CoverageResults:
     def __init__(
@@ -43,9 +46,10 @@ class Trace:
         self, cmd: str | types.CodeType, globals: Mapping[str, Any] | None = ..., locals: Mapping[str, Any] | None = ...
     ) -> None: ...
     if sys.version_info >= (3, 9):
-        def runfunc(self, __func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...  # type: ignore
+        def runfunc(self, __func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...
     else:
-        def runfunc(self, func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...  # type: ignore
+        def runfunc(self, func: Callable[_P, _T], *args: _P.args, **kw: _P.kwargs) -> _T: ...
+
     def file_module_function_of(self, frame: types.FrameType) -> _fileModuleFunction: ...
     def globaltrace_trackcallers(self, frame: types.FrameType, why: str, arg: Any) -> None: ...
     def globaltrace_countfuncs(self, frame: types.FrameType, why: str, arg: Any) -> None: ...

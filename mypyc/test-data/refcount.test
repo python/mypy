@@ -548,12 +548,14 @@ def f():
     a :: list
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 0)
-    r2 = box(short_int, 2)
+    r1 = object 0
+    r2 = object 1
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
+    inc_ref r1
     set_mem r4, r1 :: builtins.object*
     r5 = r4 + WORD_SIZE*1
+    inc_ref r2
     set_mem r5, r2 :: builtins.object*
     a = r0
     dec_ref a
@@ -682,9 +684,8 @@ L0:
     r0 = load_address PyLong_Type
     r1 = 'base'
     r2 = PyTuple_Pack(1, x)
-    r3 = box(short_int, 4)
+    r3 = object 2
     r4 = CPyDict_Build(1, r1, r3)
-    dec_ref r3
     r5 = PyObject_Call(r0, r2, r4)
     dec_ref r2
     dec_ref r4

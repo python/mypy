@@ -187,6 +187,29 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (cpy_r_b == 2) goto CPyL9;""",
                          next_block=next_block)
 
+    def test_branch_rare(self) -> None:
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        next_block = BasicBlock(9)
+        self.assert_emit(Branch(self.b, BasicBlock(8), next_block, Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        self.assert_emit(b,
+                         """if (likely(!cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (likely(cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+
     def test_call(self) -> None:
         decl = FuncDecl('myfn', None, 'mod',
                         FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))
@@ -258,12 +281,38 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
-               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+               if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
-                   CPyTagged_INCREF(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_INCREF(cpy_r_r0);
                }
             """)
+
+    def test_get_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, 'x', 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_x;
+               if (unlikely(cpy_r_r0 == 2)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'x' of 'A' undefined");
+               }
+            """)
+
+    def test_get_attr_merged(self) -> None:
+        op = GetAttr(self.r, 'y', 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            CPyTagged_INCREF(cpy_r_r0);
+            goto CPyL9;
+            """,
+            next_branch=branch)
 
     def test_set_attr(self) -> None:
         self.assert_emit(
@@ -396,7 +445,8 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                     expected: str,
                     next_block: Optional[BasicBlock] = None,
                     *,
-                    rare: bool = False) -> None:
+                    rare: bool = False,
+                    next_branch: Optional[Branch] = None) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -408,6 +458,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
         visitor.next_block = next_block
         visitor.rare = rare
+        if next_branch:
+            visitor.ops = [op, next_branch]
+        else:
+            visitor.ops = [op]
+        visitor.op_index = 0
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments

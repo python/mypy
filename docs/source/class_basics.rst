@@ -44,19 +44,6 @@ As in Python generally, a variable defined in the class body can be used
 as a class or an instance variable. (As discussed in the next section, you
 can override this with a :py:data:`~typing.ClassVar` annotation.)
 
-Type comments work as well, if you need to support Python versions earlier
-than 3.6:
-
-.. code-block:: python
-
-   class A:
-       x = None  # type: list[int]  # Declare attribute 'x' of type list[int]
-
-Note that attribute definitions in the class body that use a type comment
-are special: a ``None`` value is valid as the initializer, even though
-the declared type is not optional. This should be used sparingly, as this can
-result in ``None``-related runtime errors that mypy can't detect.
-
 Similarly, you can give explicit types to instance variables defined
 in a method:
 
@@ -322,8 +309,8 @@ Slots
 *****
 
 When a class has explicitly defined
-`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_
-mypy will check that all attributes assigned to are members of `__slots__`.
+`__slots__ <https://docs.python.org/3/reference/datamodel.html#slots>`_,
+mypy will check that all attributes assigned to are members of ``__slots__``:
 
 .. code-block:: python
 
@@ -333,13 +320,19 @@ mypy will check that all attributes assigned to are members of `__slots__`.
       def __init__(self, name: str, year: int) -> None:
          self.name = name
          self.year = year
-         self.released = True  # E: Trying to assign name "released" that is not in "__slots__" of type "Album"
+         # Error: Trying to assign name "released" that is not in "__slots__" of type "Album"
+         self.released = True
 
   my_album = Album('Songs about Python', 2021)
 
-Mypy will only check attribute assignments against `__slots__` when the following conditions hold:
+Mypy will only check attribute assignments against ``__slots__`` when
+the following conditions hold:
 
-1. All base classes (except builtin ones) must have explicit ``__slots__`` defined (mirrors CPython's behaviour)
-2. ``__slots__`` does not include ``__dict__``, since if ``__slots__`` includes ``__dict__``
-   it allows setting any attribute, similar to when ``__slots__`` is not defined (mirrors CPython's behaviour)
-3. All values in ``__slots__`` must be statically known. For example, no variables: only string literals.
+1. All base classes (except builtin ones) must have explicit
+   ``__slots__`` defined (this mirrors Python semantics).
+
+2. ``__slots__`` does not include ``__dict__``. If ``__slots__``
+   includes ``__dict__``, arbitrary attributes can be set, similar to
+   when ``__slots__`` is not defined (this mirrors Python semantics).
+
+3. All values in ``__slots__`` must be string literals.

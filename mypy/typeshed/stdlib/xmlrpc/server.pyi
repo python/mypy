@@ -2,12 +2,14 @@ import http.server
 import pydoc
 import socketserver
 import sys
+from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Pattern, Protocol, Tuple, Type, Union
+from typing import Any, Pattern, Protocol
+from typing_extensions import TypeAlias
 from xmlrpc.client import Fault
 
 # TODO: Recursive type on tuple, list, dict
-_Marshallable = Union[None, bool, int, float, str, bytes, Tuple[Any, ...], List[Any], Dict[Any, Any], datetime]
+_Marshallable: TypeAlias = None | bool | int | float | str | bytes | tuple[Any, ...] | list[Any] | dict[Any, Any] | datetime
 
 # The dispatch accepts anywhere from 0 to N arguments, no easy way to allow this in mypy
 class _DispatchArity0(Protocol):
@@ -30,7 +32,9 @@ class _DispatchArity4(Protocol):
 class _DispatchArityN(Protocol):
     def __call__(self, *args: _Marshallable) -> _Marshallable: ...
 
-_DispatchProtocol = Union[_DispatchArity0, _DispatchArity1, _DispatchArity2, _DispatchArity3, _DispatchArity4, _DispatchArityN]
+_DispatchProtocol: TypeAlias = (
+    _DispatchArity0 | _DispatchArity1 | _DispatchArity2 | _DispatchArity3 | _DispatchArity4 | _DispatchArityN
+)
 
 def resolve_dotted_attribute(obj: Any, attr: str, allow_dotted_names: bool = ...) -> Any: ...  # undocumented
 def list_public_methods(obj: Any) -> list[str]: ...  # undocumented
@@ -48,12 +52,13 @@ class SimpleXMLRPCDispatcher:  # undocumented
         def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
     else:
         def register_function(self, function: _DispatchProtocol, name: str | None = ...) -> Callable[..., Any]: ...
+
     def register_introspection_functions(self) -> None: ...
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(
         self,
         data: str,
-        dispatch_method: Callable[[str | None, Tuple[_Marshallable, ...]], Fault | Tuple[_Marshallable, ...]] | None = ...,
+        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = ...,
         path: Any | None = ...,
     ) -> str: ...  # undocumented
     def system_listMethods(self) -> list[str]: ...  # undocumented
@@ -81,7 +86,7 @@ class SimpleXMLRPCServer(socketserver.TCPServer, SimpleXMLRPCDispatcher):
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,
@@ -97,7 +102,7 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,
@@ -109,7 +114,7 @@ class MultiPathXMLRPCServer(SimpleXMLRPCServer):  # undocumented
     def _marshaled_dispatch(
         self,
         data: str,
-        dispatch_method: Callable[[str | None, Tuple[_Marshallable, ...]], Fault | Tuple[_Marshallable, ...]] | None = ...,
+        dispatch_method: Callable[[str | None, tuple[_Marshallable, ...]], Fault | tuple[_Marshallable, ...]] | None = ...,
         path: Any | None = ...,
     ) -> str: ...
 
@@ -120,7 +125,16 @@ class CGIXMLRPCRequestHandler(SimpleXMLRPCDispatcher):
     def handle_request(self, request_text: str | None = ...) -> None: ...
 
 class ServerHTMLDoc(pydoc.HTMLDoc):  # undocumented
-    def docroutine(self, object: object, name: str, mod: str | None = ..., funcs: Mapping[str, str] = ..., classes: Mapping[str, str] = ..., methods: Mapping[str, str] = ..., cl: type | None = ...) -> str: ...  # type: ignore
+    def docroutine(  # type: ignore[override]
+        self,
+        object: object,
+        name: str,
+        mod: str | None = ...,
+        funcs: Mapping[str, str] = ...,
+        classes: Mapping[str, str] = ...,
+        methods: Mapping[str, str] = ...,
+        cl: type | None = ...,
+    ) -> str: ...
     def docserver(self, server_name: str, package_documentation: str, methods: dict[str, str]) -> str: ...
 
 class XMLRPCDocGenerator:  # undocumented
@@ -141,7 +155,7 @@ class DocXMLRPCServer(SimpleXMLRPCServer, XMLRPCDocGenerator):
     def __init__(
         self,
         addr: tuple[str, int],
-        requestHandler: Type[SimpleXMLRPCRequestHandler] = ...,
+        requestHandler: type[SimpleXMLRPCRequestHandler] = ...,
         logRequests: bool = ...,
         allow_none: bool = ...,
         encoding: str | None = ...,
