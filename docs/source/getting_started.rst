@@ -317,7 +317,6 @@ syntax like so:
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-
 .. _stubs-intro:
 
 Types and classes
@@ -459,9 +458,9 @@ often suggest the name of the stub distribution:
 
 .. code-block:: text
 
-    prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
-    prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
-    ...
+  prog.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+  prog.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+  ...
 
 You can also :ref:`create
 stubs <stub-files>` easily. We discuss strategies for handling errors
