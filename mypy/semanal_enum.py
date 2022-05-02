@@ -13,15 +13,15 @@ from mypy.nodes import (
 )
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
-from mypy.types import get_proper_type, LiteralType
+from mypy.types import get_proper_type, LiteralType, ENUM_REMOVED_PROPS
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.
 ENUM_BASES: Final = frozenset((
-    'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag',
+    'enum.Enum', 'enum.IntEnum', 'enum.Flag', 'enum.IntFlag', 'enum.StrEnum',
 ))
 ENUM_SPECIAL_PROPS: Final = frozenset((
-    'name', 'value', '_name_', '_value_', '_order_', '__order__',
+    'name', 'value', '_name_', '_value_', *ENUM_REMOVED_PROPS,
     # Also attributes from `object`:
     '__module__', '__annotations__', '__doc__', '__slots__', '__dict__',
 ))
@@ -106,7 +106,7 @@ class EnumCallAnalyzer:
             var = Var(item)
             var.info = info
             var.is_property = True
-            var._fullname = '{}.{}'.format(info.fullname, item)
+            var._fullname = f'{info.fullname}.{item}'
             info.names[item] = SymbolTableNode(MDEF, var)
         return info
 
@@ -119,15 +119,15 @@ class EnumCallAnalyzer:
         """
         args = call.args
         if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
-            return self.fail_enum_call_arg("Unexpected arguments to %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Unexpected arguments to {class_name}()", call)
         if len(args) < 2:
-            return self.fail_enum_call_arg("Too few arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Too few arguments for {class_name}()", call)
         if len(args) > 6:
-            return self.fail_enum_call_arg("Too many arguments for %s()" % class_name, call)
+            return self.fail_enum_call_arg(f"Too many arguments for {class_name}()", call)
         valid_name = [None, 'value', 'names', 'module', 'qualname', 'type', 'start']
         for arg_name in call.arg_names:
             if arg_name not in valid_name:
-                self.fail_enum_call_arg('Unexpected keyword argument "{}"'.format(arg_name), call)
+                self.fail_enum_call_arg(f'Unexpected keyword argument "{arg_name}"', call)
         value, names = None, None
         for arg_name, arg in zip(call.arg_names, args):
             if arg_name == 'value':
@@ -140,7 +140,7 @@ class EnumCallAnalyzer:
             names = args[1]
         if not isinstance(value, (StrExpr, UnicodeExpr)):
             return self.fail_enum_call_arg(
-                "%s() expects a string literal as the first argument" % class_name, call)
+                f"{class_name}() expects a string literal as the first argument", call)
         items = []
         values: List[Optional[Expression]] = []
         if isinstance(names, (StrExpr, UnicodeExpr)):
@@ -171,7 +171,7 @@ class EnumCallAnalyzer:
             for key, value in names.items:
                 if not isinstance(key, (StrExpr, UnicodeExpr)):
                     return self.fail_enum_call_arg(
-                        "%s() with dict literal requires string literals" % class_name, call)
+                        f"{class_name}() with dict literal requires string literals", call)
                 items.append(key.value)
                 values.append(value)
         elif isinstance(args[1], RefExpr) and isinstance(args[1].node, Var):
@@ -198,7 +198,7 @@ class EnumCallAnalyzer:
                 class_name,
                 call)
         if len(items) == 0:
-            return self.fail_enum_call_arg("%s() needs at least one item" % class_name, call)
+            return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:
             values = [None] * len(items)
         assert len(items) == len(values)

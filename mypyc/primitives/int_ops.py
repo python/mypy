@@ -124,6 +124,7 @@ def int_unary_op(name: str, c_function_name: str) -> CFunctionDescription:
 int_neg_op = int_unary_op('-', 'CPyTagged_Negate')
 int_invert_op = int_unary_op('~', 'CPyTagged_Invert')
 
+
 # Primitives related to integer comparison operations:
 
 # Description for building int comparison ops
@@ -138,6 +139,7 @@ IntComparisonOpDescription = NamedTuple(
                                     ('c_func_description', CFunctionDescription),
                                     ('c_func_negated', bool),
                                     ('c_func_swap_operands', bool)])
+
 
 # Equals operation on two boxed tagged integers
 int_equal_ = custom_op(

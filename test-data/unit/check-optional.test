@@ -466,7 +466,7 @@ def f() -> Generator[str, None, None]: pass
 x = f()
 reveal_type(x)  # N: Revealed type is "typing.Generator[builtins.str, None, None]"
 l = [f()]
-reveal_type(l)  # N: Revealed type is "builtins.list[typing.Generator*[builtins.str, None, None]]"
+reveal_type(l)  # N: Revealed type is "builtins.list[typing.Generator[builtins.str, None, None]]"
 [builtins fixtures/list.pyi]
 
 [case testNoneListTernary]
@@ -648,14 +648,14 @@ def u(x: T, y: S) -> Union[S, T]: pass
 a = None # type: Any
 
 # Test both orders
-reveal_type(u(C(), None))  # N: Revealed type is "Union[None, __main__.C*]"
-reveal_type(u(None, C()))  # N: Revealed type is "Union[__main__.C*, None]"
+reveal_type(u(C(), None))  # N: Revealed type is "Union[None, __main__.C]"
+reveal_type(u(None, C()))  # N: Revealed type is "Union[__main__.C, None]"
 
 reveal_type(u(a, None))  # N: Revealed type is "Union[None, Any]"
 reveal_type(u(None, a))  # N: Revealed type is "Union[Any, None]"
 
-reveal_type(u(1, None))  # N: Revealed type is "Union[None, builtins.int*]"
-reveal_type(u(None, 1))  # N: Revealed type is "Union[builtins.int*, None]"
+reveal_type(u(1, None))  # N: Revealed type is "Union[None, builtins.int]"
+reveal_type(u(None, 1))  # N: Revealed type is "Union[builtins.int, None]"
 
 [case testOptionalAndAnyBaseClass]
 from typing import Any, Optional

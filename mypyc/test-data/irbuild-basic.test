@@ -720,7 +720,7 @@ L0:
     r0 = builtins :: module
     r1 = 'print'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = box(short_int, 10)
+    r3 = object 5
     r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
     return 1
 
@@ -738,7 +738,7 @@ L0:
     r0 = builtins :: module
     r1 = 'print'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = box(short_int, 10)
+    r3 = object 5
     r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
     return 1
 
@@ -810,7 +810,7 @@ def g(y):
 L0:
     r0 = g(y)
     r1 = PyList_New(1)
-    r2 = box(short_int, 2)
+    r2 = object 1
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r2 :: builtins.object*
@@ -838,7 +838,7 @@ def g(y):
     r7 :: bit
     r8, r9 :: object
 L0:
-    r0 = box(short_int, 2)
+    r0 = object 1
     r1 = g(r0)
     r2 = PyList_New(1)
     r3 = get_element_ptr r2 ob_item :: PyListObject
@@ -851,7 +851,7 @@ L0:
     r7 = CPyList_SetItem(a, 0, r6)
     r8 = box(bool, 1)
     y = r8
-    r9 = box(short_int, 6)
+    r9 = object 3
     return r9
 
 [case testCoerceToObject2]
@@ -869,11 +869,22 @@ def f(a, o):
     r2 :: int
     r3 :: object
 L0:
-    r0 = box(short_int, 2)
+    r0 = object 1
     a.x = r0; r1 = is_error
     r2 = a.n
     r3 = box(int, r2)
     o = r3
+    return 1
+
+[case testAssertType]
+from typing import assert_type
+def f(x: int) -> None:
+    y = assert_type(x, int)
+[out]
+def f(x):
+    x, y :: int
+L0:
+    y = x
     return 1
 
 [case testDownCast]
@@ -909,20 +920,19 @@ L0:
 [case testDownCastSpecialCases]
 from typing import cast, Optional, Tuple
 class A: pass
-def f(o: Optional[A], n: int, t: Tuple[int, ...]) -> None:
+def f(o: Optional[A], n: int, t: Tuple[int, ...], tt: Tuple[int, int]) -> None:
     a = cast(A, o)
     m = cast(bool, n)
-    tt: Tuple[int, int]
     t = tt
 [out]
-def f(o, n, t):
+def f(o, n, t, tt):
     o :: union[__main__.A, None]
     n :: int
     t :: tuple
+    tt :: tuple[int, int]
     r0, a :: __main__.A
     r1 :: object
     r2, m :: bool
-    tt :: tuple[int, int]
     r3 :: object
 L0:
     r0 = cast(__main__.A, o)
@@ -1205,7 +1215,7 @@ L0:
     r0 = load_address PyLong_Type
     r1 = 'base'
     r2 = PyTuple_Pack(1, x)
-    r3 = box(short_int, 4)
+    r3 = object 2
     r4 = CPyDict_Build(1, r1, r3)
     r5 = PyObject_Call(r0, r2, r4)
     r6 = unbox(int, r5)
@@ -1232,7 +1242,7 @@ L0:
     r0 = 'insert'
     r1 = CPyObject_GetAttr(xs, r0)
     r2 = 'x'
-    r3 = box(short_int, 0)
+    r3 = object 0
     r4 = PyTuple_Pack(1, r3)
     r5 = box(int, first)
     r6 = CPyDict_Build(1, r2, r5)
@@ -1243,7 +1253,7 @@ L0:
     r11 = 'i'
     r12 = PyTuple_Pack(0)
     r13 = box(int, second)
-    r14 = box(short_int, 2)
+    r14 = object 1
     r15 = CPyDict_Build(2, r10, r13, r11, r14)
     r16 = PyObject_Call(r9, r12, r15)
     return xs
@@ -1483,7 +1493,7 @@ L1:
 L2:
     r5 = __main__.globals :: static
     r6 = 'x'
-    r7 = box(short_int, 2)
+    r7 = object 1
     r8 = CPyDict_SetItem(r5, r6, r7)
     r9 = r8 >= 0 :: signed
     r10 = __main__.globals :: static
@@ -1517,7 +1527,7 @@ L0:
     r0 = m :: module
     r1 = 'f'
     r2 = CPyObject_GetAttr(r0, r1)
-    r3 = box(short_int, 2)
+    r3 = object 1
     r4 = PyObject_CallFunctionObjArgs(r2, r3, 0)
     r5 = cast(str, r4)
     return r5
@@ -1546,7 +1556,7 @@ def main():
     r1 :: union[int, str]
     r2, x :: int
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = foo(r0)
     r2 = unbox(int, r1)
     x = r2
@@ -1599,7 +1609,7 @@ def main():
     r1 :: __main__.A
     r2, x :: __main__.B
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = foo(r0)
     r2 = cast(__main__.B, r1)
     x = r2
@@ -1714,7 +1724,7 @@ L0:
     r2 = 'f'
     r3 = CPyDict_GetItem(r1, r2)
     r4 = PyList_New(1)
-    r5 = box(short_int, 2)
+    r5 = object 1
     r6 = get_element_ptr r4 ob_item :: PyListObject
     r7 = load_mem r6 :: ptr*
     set_mem r7, r5 :: builtins.object*
@@ -1758,9 +1768,9 @@ L0:
     r0 = 'a'
     r1 = 'b'
     r2 = 'c'
-    r3 = box(short_int, 2)
-    r4 = box(short_int, 4)
-    r5 = box(short_int, 6)
+    r3 = object 1
+    r4 = object 2
+    r5 = object 3
     r6 = CPyDict_Build(3, r0, r3, r1, r4, r2, r5)
     r7 = __main__.globals :: static
     r8 = 'f'
@@ -1788,8 +1798,8 @@ def h():
 L0:
     r0 = 'b'
     r1 = 'c'
-    r2 = box(short_int, 4)
-    r3 = box(short_int, 6)
+    r2 = object 2
+    r3 = object 3
     r4 = CPyDict_Build(2, r0, r2, r1, r3)
     r5 = __main__.globals :: static
     r6 = 'f'
@@ -1797,7 +1807,7 @@ L0:
     r8 = PyDict_New()
     r9 = CPyDict_UpdateInDisplay(r8, r4)
     r10 = r9 >= 0 :: signed
-    r11 = box(short_int, 2)
+    r11 = object 1
     r12 = PyTuple_Pack(1, r11)
     r13 = PyObject_Call(r7, r12, r8)
     r14 = unbox(tuple[int, int, int], r13)
@@ -1914,9 +1924,9 @@ def f():
 L0:
     r0 = PyList_New(0)
     r1 = PyList_New(3)
-    r2 = box(short_int, 2)
-    r3 = box(short_int, 4)
-    r4 = box(short_int, 6)
+    r2 = object 1
+    r3 = object 2
+    r4 = object 3
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
     set_mem r6, r2 :: builtins.object*
@@ -2013,9 +2023,9 @@ def f():
 L0:
     r0 = PyDict_New()
     r1 = PyList_New(3)
-    r2 = box(short_int, 2)
-    r3 = box(short_int, 4)
-    r4 = box(short_int, 6)
+    r2 = object 1
+    r3 = object 2
+    r4 = object 3
     r5 = get_element_ptr r1 ob_item :: PyListObject
     r6 = load_mem r5 :: ptr*
     set_mem r6, r2 :: builtins.object*
@@ -2430,7 +2440,7 @@ def SubclassedTrait.boxed(self):
     self :: __main__.SubclassedTrait
     r0 :: object
 L0:
-    r0 = box(short_int, 6)
+    r0 = object 3
     return r0
 def DerivingObject.this(self):
     self :: __main__.DerivingObject
@@ -2638,7 +2648,7 @@ L2:
     r57 = __main__.globals :: static
     r58 = 'Lol'
     r59 = CPyDict_GetItem(r57, r58)
-    r60 = box(short_int, 2)
+    r60 = object 1
     r61 = PyObject_CallFunctionObjArgs(r59, r60, r56, 0)
     r62 = cast(tuple, r61)
     r63 = __main__.globals :: static
@@ -2667,9 +2677,9 @@ L2:
     r86 = CPyDict_SetItem(r84, r85, r83)
     r87 = r86 >= 0 :: signed
     r88 = PyList_New(3)
-    r89 = box(short_int, 2)
-    r90 = box(short_int, 4)
-    r91 = box(short_int, 6)
+    r89 = object 1
+    r90 = object 2
+    r91 = object 3
     r92 = get_element_ptr r88 ob_item :: PyListObject
     r93 = load_mem r92 :: ptr*
     set_mem r93, r89 :: builtins.object*
@@ -3739,9 +3749,9 @@ def range_object():
     r10 :: bit
 L0:
     r0 = load_address PyRange_Type
-    r1 = box(short_int, 8)
-    r2 = box(short_int, 24)
-    r3 = box(short_int, 4)
+    r1 = object 4
+    r2 = object 12
+    r3 = object 2
     r4 = PyObject_CallFunctionObjArgs(r0, r1, r2, r3, 0)
     r5 = cast(range, r4)
     r = r5
@@ -3785,6 +3795,7 @@ L3:
     goto L1
 L4:
     return 1
+
 [case testLocalRedefinition]
 # mypy: allow-redefinition
 def f() -> None:

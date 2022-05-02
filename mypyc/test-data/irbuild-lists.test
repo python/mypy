@@ -54,7 +54,7 @@ def f(x):
     r0 :: object
     r1 :: bit
 L0:
-    r0 = box(short_int, 2)
+    r0 = object 1
     r1 = CPyList_SetItem(x, 0, r0)
     return 1
 
@@ -95,8 +95,8 @@ def f():
     x :: list
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r1 :: builtins.object*
@@ -145,7 +145,7 @@ L0:
     r0 = CPySequence_Multiply(a, 4)
     b = r0
     r1 = PyList_New(1)
-    r2 = box(short_int, 8)
+    r2 = object 4
     r3 = get_element_ptr r1 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r2 :: builtins.object*
@@ -217,7 +217,7 @@ L1:
     if r4 goto L2 else goto L4 :: bool
 L2:
     r5 = CPyList_GetItem(l, i)
-    r6 = box(short_int, 2)
+    r6 = object 1
     r7 = PyNumber_InPlaceAdd(r5, r6)
     r8 = CPyList_SetItem(l, i, r7)
 L3:
@@ -242,8 +242,8 @@ def f(x, y):
     r10 :: bit
 L0:
     r0 = PyList_New(2)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r1 = object 1
+    r2 = object 2
     r3 = get_element_ptr r0 ob_item :: PyListObject
     r4 = load_mem r3 :: ptr*
     set_mem r4, r1 :: builtins.object*
@@ -252,7 +252,7 @@ L0:
     keep_alive r0
     r6 = CPyList_Extend(r0, x)
     r7 = CPyList_Extend(r0, y)
-    r8 = box(short_int, 6)
+    r8 = object 3
     r9 = PyList_Append(r0, r8)
     r10 = r9 >= 0 :: signed
     return r0

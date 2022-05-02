@@ -127,7 +127,7 @@ class TestRun(MypycDataSuite):
     base_path = test_temp_dir
     optional_out = True
     multi_file = False
-    separate = False
+    separate = False  # If True, using separate (incremental) compilation
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
@@ -263,7 +263,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
-        assert glob.glob('native.*.{}'.format(suffix))
+        assert glob.glob(f'native.*.{suffix}') or glob.glob(f'native.{suffix}')
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
@@ -309,7 +309,7 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output'
                 expected = testcase.output
             else:
-                msg = 'Invalid output (step {})'.format(incremental_step)
+                msg = f'Invalid output (step {incremental_step})'
                 expected = testcase.output2.get(incremental_step, [])
 
             if not expected:
@@ -347,7 +347,11 @@ class TestRun(MypycDataSuite):
 
 
 class TestRunMultiFile(TestRun):
-    """Run the main multi-module tests in multi-file compilation mode."""
+    """Run the main multi-module tests in multi-file compilation mode.
+
+    In multi-file mode each module gets compiled into a separate C file,
+    but all modules (C files) are compiled together.
+    """
 
     multi_file = True
     test_name_suffix = '_multi'
@@ -358,7 +362,20 @@ class TestRunMultiFile(TestRun):
 
 
 class TestRunSeparate(TestRun):
-    """Run the main multi-module tests in separate compilation mode."""
+    """Run the main multi-module tests in separate compilation mode.
+
+    In this mode there are multiple compilation groups, which are compiled
+    incrementally. Each group is compiled to a separate C file, and these C
+    files are compiled separately.
+
+    Each compiled module is placed into a separate compilation group, unless
+    overridden by a special comment. Consider this example:
+
+      # separate: [(["other.py", "other_b.py"], "stuff")]
+
+    This puts other.py and other_b.py into a compilation group named "stuff".
+    Any files not mentioned in the comment will get single-file groups.
+    """
 
     separate = True
     test_name_suffix = '_separate'

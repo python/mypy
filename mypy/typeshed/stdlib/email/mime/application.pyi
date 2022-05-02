@@ -1,8 +1,9 @@
+from collections.abc import Callable
+from email import _ParamsType
 from email.mime.nonmultipart import MIMENonMultipart
 from email.policy import Policy
-from typing import Callable, Optional, Union
 
-_ParamsType = Union[str, None, tuple[str, Optional[str], str]]
+__all__ = ["MIMEApplication"]
 
 class MIMEApplication(MIMENonMultipart):
     def __init__(

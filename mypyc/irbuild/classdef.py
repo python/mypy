@@ -8,7 +8,7 @@ from mypy.nodes import (
     ClassDef, FuncDef, OverloadedFuncDef, PassStmt, AssignmentStmt, CallExpr, NameExpr, StrExpr,
     ExpressionStmt, TempNode, Decorator, Lvalue, MemberExpr, RefExpr, TypeInfo, is_class_var
 )
-from mypy.types import Instance, get_proper_type
+from mypy.types import Instance, get_proper_type, ENUM_REMOVED_PROPS
 from mypyc.ir.ops import (
     Value, Register, Call, LoadErrorValue, LoadStatic, InitStatic, TupleSet, SetAttr, Return,
     BasicBlock, Branch, MethodCall, NAMESPACE_TYPE, LoadAddress
@@ -517,8 +517,8 @@ def add_non_ext_class_attr(builder: IRBuilder,
         if (
             cdef.info.bases
             and cdef.info.bases[0].type.fullname == 'enum.Enum'
-            # Skip "_order_" and "__order__", since Enum will remove it
-            and lvalue.name not in ('_order_', '__order__')
+            # Skip these since Enum will remove it
+            and lvalue.name not in ENUM_REMOVED_PROPS
         ):
             # Enum values are always boxed, so use object_rprimitive.
             attr_to_cache.append((lvalue, object_rprimitive))
@@ -588,11 +588,11 @@ def check_deletable_declaration(builder: IRBuilder, cl: ClassIR, line: int) -> N
     for attr in cl.deletable:
         if attr not in cl.attributes:
             if not cl.has_attr(attr):
-                builder.error('Attribute "{}" not defined'.format(attr), line)
+                builder.error(f'Attribute "{attr}" not defined', line)
                 continue
             for base in cl.mro:
                 if attr in base.property_types:
-                    builder.error('Cannot make property "{}" deletable'.format(attr), line)
+                    builder.error(f'Cannot make property "{attr}" deletable', line)
                     break
             else:
                 _, base = cl.attr_details(attr)

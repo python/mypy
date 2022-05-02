@@ -131,8 +131,7 @@ def should_skip_path(path: str) -> bool:
 def iterate_python_lines(path: str) -> Iterator[Tuple[int, str]]:
     """Return an iterator over (line number, line text) from a Python file."""
     with tokenize.open(path) as input_file:
-        for line_info in enumerate(input_file, 1):
-            yield line_info
+        yield from enumerate(input_file, 1)
 
 
 class FuncCounterVisitor(TraverserVisitor):
@@ -182,8 +181,7 @@ class LineCountReporter(AbstractReporter):
         with open(os.path.join(self.output_dir, "linecount.txt"), "w") as f:
             f.write("{:7} {:7} {:6} {:6} total\n".format(*total_counts))
             for c, p in counts:
-                f.write('{:7} {:7} {:6} {:6} {}\n'.format(
-                    c[0], c[1], c[2], c[3], p))
+                f.write(f'{c[0]:7} {c[1]:7} {c[2]:6} {c[3]:6} {p}\n')
 
 
 register_reporter('linecount', LineCountReporter)
@@ -245,10 +243,10 @@ class AnyExpressionsReporter(AbstractReporter):
             f.write(separator + '\n')
             for row_values in rows:
                 r = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(row_values, widths)))
-                f.writelines(r + '\n')
+                f.write(r + '\n')
             f.write(separator + '\n')
             footer_str = ("{:>{}}" * len(widths)).format(*itertools.chain(*zip(footer, widths)))
-            f.writelines(footer_str + '\n')
+            f.write(footer_str + '\n')
 
     def _report_any_exprs(self) -> None:
         total_any = sum(num_any for num_any, _ in self.counts.values())
@@ -262,10 +260,10 @@ class AnyExpressionsReporter(AbstractReporter):
         for filename in sorted(self.counts):
             (num_any, num_total) = self.counts[filename]
             coverage = (float(num_total - num_any) / float(num_total)) * 100
-            coverage_str = '{:.2f}%'.format(coverage)
+            coverage_str = f'{coverage:.2f}%'
             rows.append([filename, str(num_any), str(num_total), coverage_str])
         rows.sort(key=lambda x: x[0])
-        total_row = ["Total", str(total_any), str(total_expr), '{:.2f}%'.format(total_coverage)]
+        total_row = ["Total", str(total_any), str(total_expr), f'{total_coverage:.2f}%']
         self._write_out_report('any-exprs.txt', column_names, rows, total_row)
 
     def _report_types_of_anys(self) -> None:
@@ -491,7 +489,7 @@ class MemoryXmlReporter(AbstractReporter):
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
+                f'type="text/xsl" href="{pathname2url(xslt_path)}"')
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
@@ -506,7 +504,7 @@ class MemoryXmlReporter(AbstractReporter):
             for typ in visitor.any_line_map[lineno]:
                 counter[typ.type_of_any] += 1
             for any_type, occurrences in counter.items():
-                result += "\n{} (x{})".format(type_of_any_name_map[any_type], occurrences)
+                result += f"\n{type_of_any_name_map[any_type]} (x{occurrences})"
             return result
         else:
             return "No Anys on this line!"
@@ -527,7 +525,7 @@ class MemoryXmlReporter(AbstractReporter):
                              total=str(file_info.total()))
         xslt_path = os.path.relpath('mypy-html.xslt', '.')
         transform_pi = etree.ProcessingInstruction('xml-stylesheet',
-                'type="text/xsl" href="%s"' % pathname2url(xslt_path))
+                f'type="text/xsl" href="{pathname2url(xslt_path)}"')
         root.addprevious(transform_pi)
         self.schema.assertValid(doc)
 
@@ -541,10 +539,10 @@ def get_line_rate(covered_lines: int, total_lines: int) -> str:
     if total_lines == 0:
         return str(1.0)
     else:
-        return '{:.4f}'.format(covered_lines / total_lines)
+        return f'{covered_lines / total_lines:.4f}'
 
 
-class CoberturaPackage(object):
+class CoberturaPackage:
     """Container for XML and statistics mapping python modules to Cobertura package."""
 
     def __init__(self, name: str) -> None:

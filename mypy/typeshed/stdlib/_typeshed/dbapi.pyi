@@ -3,11 +3,12 @@
 
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
+from typing_extensions import TypeAlias
 
-DBAPITypeCode = Any | None
+DBAPITypeCode: TypeAlias = Any | None
 # Strictly speaking, this should be a Sequence, but the type system does
 # not support fixed-length sequences.
-DBAPIColumnDescription = tuple[str, DBAPITypeCode, int | None, int | None, int | None, int | None, bool | None]
+DBAPIColumnDescription: TypeAlias = tuple[str, DBAPITypeCode, int | None, int | None, int | None, int | None, bool | None]
 
 class DBAPIConnection(Protocol):
     def close(self) -> object: ...

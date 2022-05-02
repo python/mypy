@@ -40,15 +40,15 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_branch(self, op: Branch) -> str:
         fmt, typ = self.branch_op_names[op.op]
         if op.negated:
-            fmt = 'not {}'.format(fmt)
+            fmt = f'not {fmt}'
 
         cond = self.format(fmt, op.value)
         tb = ''
         if op.traceback_entry:
             tb = ' (error at %s:%d)' % op.traceback_entry
-        fmt = 'if {} goto %l{} else goto %l'.format(cond, tb)
+        fmt = f'if {cond} goto %l{tb} else goto %l'
         if typ:
-            fmt += ' :: {}'.format(typ)
+            fmt += f' :: {typ}'
         return self.format(fmt, op.true, op.false)
 
     def visit_return(self, op: Return) -> str:
@@ -83,16 +83,16 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r.%s = %r; %r = is_error', op.obj, op.attr, op.src, op)
 
     def visit_load_static(self, op: LoadStatic) -> str:
-        ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
+        ann = f'  ({repr(op.ann)})' if op.ann else ''
         name = op.identifier
         if op.module_name is not None:
-            name = '{}.{}'.format(op.module_name, name)
+            name = f'{op.module_name}.{name}'
         return self.format('%r = %s :: %s%s', op, name, op.namespace, ann)
 
     def visit_init_static(self, op: InitStatic) -> str:
         name = op.identifier
         if op.module_name is not None:
-            name = '{}.{}'.format(op.module_name, name)
+            name = f'{op.module_name}.{name}'
         return self.format('%s = %r :: %s', name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
@@ -106,21 +106,21 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         s = self.format('inc_ref %r', op.src)
         # TODO: Remove bool check (it's unboxed)
         if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
-            s += ' :: {}'.format(short_name(op.src.type.name))
+            s += f' :: {short_name(op.src.type.name)}'
         return s
 
     def visit_dec_ref(self, op: DecRef) -> str:
         s = self.format('%sdec_ref %r', 'x' if op.is_xdec else '', op.src)
         # TODO: Remove bool check (it's unboxed)
         if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
-            s += ' :: {}'.format(short_name(op.src.type.name))
+            s += f' :: {short_name(op.src.type.name)}'
         return s
 
     def visit_call(self, op: Call) -> str:
         args = ', '.join(self.format('%r', arg) for arg in op.args)
         # TODO: Display long name?
         short_name = op.fn.shortname
-        s = '%s(%s)' % (short_name, args)
+        s = f'{short_name}({args})'
         if not op.is_void:
             s = self.format('%r = ', op) + s
         return s
@@ -163,7 +163,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
 
     def visit_load_global(self, op: LoadGlobal) -> str:
-        ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
+        ann = f'  ({repr(op.ann)})' if op.ann else ''
         return self.format('%r = load_global %s :: static%s', op, op.identifier, ann)
 
     def visit_int_op(self, op: IntOp) -> str:
@@ -248,7 +248,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                     # String
                     result.append(str(arg))
                 else:
-                    raise ValueError('Invalid format sequence %{}'.format(typespec))
+                    raise ValueError(f'Invalid format sequence %{typespec}')
                 i = n + 2
             else:
                 i = n
@@ -267,7 +267,7 @@ def format_registers(func_ir: FuncIR,
             i += 1
             group.append(names[regs[i]])
         i += 1
-        result.append('%s :: %s' % (', '.join(group), regs[i0].type))
+        result.append('{} :: {}'.format(', '.join(group), regs[i0].type))
     return result
 
 

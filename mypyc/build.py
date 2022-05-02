@@ -200,7 +200,7 @@ def generate_c(sources: List[BuildSource],
 
     t1 = time.time()
     if compiler_options.verbose:
-        print("Parsed and typechecked in {:.3f}s".format(t1 - t0))
+        print(f"Parsed and typechecked in {t1 - t0:.3f}s")
 
     if not messages and result:
         errors = Errors()
@@ -212,7 +212,7 @@ def generate_c(sources: List[BuildSource],
 
     t2 = time.time()
     if compiler_options.verbose:
-        print("Compiled to C in {:.3f}s".format(t2 - t1))
+        print(f"Compiled to C in {t2 - t1:.3f}s")
 
     # ... you know, just in case.
     if options.junit_xml:
@@ -304,12 +304,12 @@ def write_file(path: str, contents: str) -> None:
     try:
         with open(path, 'rb') as f:
             old_contents: Optional[bytes] = f.read()
-    except IOError:
+    except OSError:
         old_contents = None
     if old_contents != encoded_contents:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'wb') as f:
-            f.write(encoded_contents)
+        with open(path, 'wb') as g:
+            g.write(encoded_contents)
 
         # Fudge the mtime forward because otherwise when two builds happen close
         # together (like in a test) setuptools might not realize the source is newer
@@ -513,8 +513,8 @@ def mypycify(
     cflags: List[str] = []
     if compiler.compiler_type == 'unix':
         cflags += [
-            '-O{}'.format(opt_level),
-            '-g{}'.format(debug_level),
+            f'-O{opt_level}',
+            f'-g{debug_level}',
             '-Werror', '-Wno-unused-function', '-Wno-unused-label',
             '-Wno-unreachable-code', '-Wno-unused-variable',
             '-Wno-unused-command-line-argument', '-Wno-unknown-warning-option',
@@ -523,10 +523,20 @@ def mypycify(
             # This flag is needed for gcc but does not exist on clang.
             cflags += ['-Wno-unused-but-set-variable']
     elif compiler.compiler_type == 'msvc':
-        if opt_level == '3':
+        # msvc doesn't have levels, '/O2' is full and '/Od' is disable
+        if opt_level == '0':
+            opt_level = 'd'
+        elif opt_level in ('1', '2', '3'):
             opt_level = '2'
+        if debug_level == '0':
+            debug_level = "NONE"
+        elif debug_level == '1':
+            debug_level = "FASTLINK"
+        elif debug_level in ('2', '3'):
+            debug_level = "FULL"
         cflags += [
-            '/O{}'.format(opt_level),
+            f'/O{opt_level}',
+            f'/DEBUG:{debug_level}',
             '/wd4102',  # unreferenced label
             '/wd4101',  # unreferenced local variable
             '/wd4146',  # negating unsigned int

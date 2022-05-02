@@ -5,6 +5,8 @@ from typing import Any, Generic, TypeVar
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
+__all__ = ["Queue", "SimpleQueue", "JoinableQueue"]
+
 _T = TypeVar("_T")
 
 class Queue(queue.Queue[_T]):
@@ -30,6 +32,7 @@ class SimpleQueue(Generic[_T]):
     def __init__(self, *, ctx: Any = ...) -> None: ...
     if sys.version_info >= (3, 9):
         def close(self) -> None: ...
+
     def empty(self) -> bool: ...
     def get(self) -> _T: ...
     def put(self, item: _T) -> None: ...

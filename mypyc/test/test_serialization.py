@@ -46,27 +46,27 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
     The `trail` argument is used in error messages.
     """
 
-    assert type(x) is type(y), ("Type mismatch at {}".format(trail), type(x), type(y))
+    assert type(x) is type(y), (f"Type mismatch at {trail}", type(x), type(y))
     if isinstance(x, (FuncDecl, FuncIR, ClassIR)):
-        assert x.fullname == y.fullname, "Name mismatch at {}".format(trail)
+        assert x.fullname == y.fullname, f"Name mismatch at {trail}"
     elif isinstance(x, OrderedDict):
-        assert len(x.keys()) == len(y.keys()), "Keys mismatch at {}".format(trail)
+        assert len(x.keys()) == len(y.keys()), f"Keys mismatch at {trail}"
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):
             assert_blobs_same(xk, yk, trail + ("keys",))
             assert_blobs_same(xv, yv, trail + (xk,))
     elif isinstance(x, dict):
-        assert x.keys() == y.keys(), "Keys mismatch at {}".format(trail)
+        assert x.keys() == y.keys(), f"Keys mismatch at {trail}"
         for k in x.keys():
             assert_blobs_same(x[k], y[k], trail + (k,))
     elif isinstance(x, Iterable) and not isinstance(x, str):
         for i, (xv, yv) in enumerate(zip(x, y)):
             assert_blobs_same(xv, yv, trail + (i,))
     elif isinstance(x, RType):
-        assert is_same_type(x, y), "RType mismatch at {}".format(trail)
+        assert is_same_type(x, y), f"RType mismatch at {trail}"
     elif isinstance(x, FuncSignature):
-        assert is_same_signature(x, y), "Signature mismatch at {}".format(trail)
+        assert is_same_signature(x, y), f"Signature mismatch at {trail}"
     else:
-        assert x == y, "Value mismatch at {}".format(trail)
+        assert x == y, f"Value mismatch at {trail}"
 
 
 def assert_modules_same(ir1: ModuleIR, ir2: ModuleIR) -> None:

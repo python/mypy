@@ -157,7 +157,7 @@ Arguments with default values can be annotated like so:
        # 'kwargs' has type 'dict[str, float]' (a dict of strs to floats)
        for arg in args:
            print(arg)
-       for key, value in kwargs:
+       for key, value in kwargs.items():
            print(key, value)
 
 Additional types, and the typing module
@@ -316,9 +316,6 @@ syntax like so:
 
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
-
-   # If you want compatibility with even older versions of Python
-   my_global_dict = {}  # type: Dict[int, float]
 
 .. _stubs-intro:
 

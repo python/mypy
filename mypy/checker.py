@@ -37,7 +37,8 @@ from mypy.types import (
     UnionType, TypeVarId, TypeVarType, PartialType, DeletedType, UninhabitedType,
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
-    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType
+    get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
+    OVERLOAD_NAMES,
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -83,9 +84,10 @@ from mypy.options import Options
 from mypy.plugin import Plugin, CheckerPluginInterface
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.scope import Scope
-from mypy import state, errorcodes as codes
+from mypy import errorcodes as codes
+from mypy.state import state
 from mypy.traverser import has_return_statement, all_return_statements
-from mypy.errorcodes import ErrorCode
+from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
 from mypy.util import is_typeshed_file, is_dunder, is_sunder
 
 T = TypeVar('T')
@@ -95,26 +97,23 @@ DEFAULT_LAST_PASS: Final = 1  # Pass numbers start at 0
 DeferredNodeType: _TypeAlias = Union[FuncDef, LambdaExpr, OverloadedFuncDef, Decorator]
 FineGrainedDeferredNodeType: _TypeAlias = Union[FuncDef, MypyFile, OverloadedFuncDef]
 
+
 # A node which is postponed to be processed during the next pass.
 # In normal mode one can defer functions and methods (also decorated and/or overloaded)
 # and lambda expressions. Nested functions can't be deferred -- only top-level functions
 # and methods of classes not defined within a function can be deferred.
-DeferredNode = NamedTuple(
-    'DeferredNode',
-    [
-        ('node', DeferredNodeType),
-        ('active_typeinfo', Optional[TypeInfo]),  # And its TypeInfo (for semantic analysis
-                                                  # self type handling)
-    ])
+class DeferredNode(NamedTuple):
+    node: DeferredNodeType
+    # And its TypeInfo (for semantic analysis self type handling
+    active_typeinfo: Optional[TypeInfo]
+
 
 # Same as above, but for fine-grained mode targets. Only top-level functions/methods
 # and module top levels are allowed as such.
-FineGrainedDeferredNode = NamedTuple(
-    'FineGrainedDeferredNode',
-    [
-        ('node', FineGrainedDeferredNodeType),
-        ('active_typeinfo', Optional[TypeInfo]),
-    ])
+class FineGrainedDeferredNode(NamedTuple):
+    node: FineGrainedDeferredNodeType
+    active_typeinfo: Optional[TypeInfo]
+
 
 # Data structure returned by find_isinstance_check representing
 # information learned from the truth or falsehood of a condition.  The
@@ -129,25 +128,23 @@ FineGrainedDeferredNode = NamedTuple(
 # (such as two references to the same variable). TODO: it would
 # probably be better to have the dict keyed by the nodes' literal_hash
 # field instead.
-
 TypeMap: _TypeAlias = Optional[Dict[Expression, Type]]
+
 
 # An object that represents either a precise type or a type with an upper bound;
 # it is important for correct type inference with isinstance.
-TypeRange = NamedTuple(
-    'TypeRange',
-    [
-        ('item', Type),
-        ('is_upper_bound', bool),  # False => precise type
-    ])
+class TypeRange(NamedTuple):
+    item: Type
+    is_upper_bound: bool  # False => precise type
+
 
 # Keeps track of partial types in a single scope. In fine-grained incremental
 # mode partial types initially defined at the top level cannot be completed in
 # a function, and we use the 'is_function' attribute to enforce this.
-PartialTypeScope = NamedTuple('PartialTypeScope', [('map', Dict[Var, Context]),
-                                                   ('is_function', bool),
-                                                   ('is_local', bool),
-                                                   ])
+class PartialTypeScope(NamedTuple):
+    map: Dict[Var, Context]
+    is_function: bool
+    is_local: bool
 
 
 class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
@@ -600,7 +597,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.msg.overloaded_signatures_arg_specific(i + 1, defn.impl)
 
                 # Is the overload alternative's return type a subtype of the implementation's?
-                if not is_subtype_no_promote(sig1.ret_type, impl.ret_type):
+                if not (is_subtype_no_promote(sig1.ret_type, impl.ret_type) or
+                        is_subtype_no_promote(impl.ret_type, sig1.ret_type)):
                     self.msg.overloaded_signatures_ret_specific(i + 1, defn.impl)
 
     # Here's the scoop about generators and coroutines.
@@ -888,7 +886,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
                             for idx, arg_type in enumerate(fdef.type.arg_types):
                                 if has_any_from_unimported_type(arg_type):
-                                    prefix = "Argument {} to \"{}\"".format(idx + 1, fdef.name)
+                                    prefix = f'Argument {idx + 1} to "{fdef.name}"'
                                     self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
@@ -1059,9 +1057,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             name = arg.variable.name
             msg = 'Incompatible default for '
             if name.startswith('__tuple_arg_'):
-                msg += "tuple argument {}".format(name[12:])
+                msg += f"tuple argument {name[12:]}"
             else:
-                msg += 'argument "{}"'.format(name)
+                msg += f'argument "{name}"'
             self.check_simple_assignment(
                 arg.variable.type,
                 arg.initializer,
@@ -1438,13 +1436,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not is_subtype(typ, method_type):
             self.msg.invalid_signature_for_special_method(typ, context, '__setattr__')
 
+    def check_slots_definition(self, typ: Type, context: Context) -> None:
+        """Check the type of __slots__."""
+        str_type = self.named_type("builtins.str")
+        expected_type = UnionType([str_type,
+                                   self.named_generic_type("typing.Iterable", [str_type])])
+        self.check_subtype(typ, expected_type, context,
+                           message_registry.INVALID_TYPE_FOR_SLOTS,
+                           'actual type',
+                           'expected type',
+                           code=codes.ASSIGNMENT)
+
     def check_match_args(self, var: Var, typ: Type, context: Context) -> None:
-        """Check that __match_args__ is final and contains literal strings"""
-
-        if not var.is_final:
-            self.note("__match_args__ must be final for checking of match statements to work",
-                      context, code=codes.LITERAL_REQ)
-
+        """Check that __match_args__ contains literal strings"""
         typ = get_proper_type(typ)
         if not isinstance(typ, TupleType) or \
                 not all([is_string_literal(item) for item in typ.items]):
@@ -1834,9 +1838,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if typ.is_protocol and typ.defn.type_vars:
             self.check_protocol_variance(defn)
         if not defn.has_incompatible_baseclass and defn.info.is_enum:
-            for base in defn.info.mro[1:-1]:  # we don't need self and `object`
-                if base.is_enum and base.fullname not in ENUM_BASES:
-                    self.check_final_enum(defn, base)
+            self.check_enum(defn)
 
     def check_final_deletable(self, typ: TypeInfo) -> None:
         # These checks are only for mypyc. Only perform some checks that are easier
@@ -1894,13 +1896,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # all other bases have already been checked.
             break
 
+    def check_enum(self, defn: ClassDef) -> None:
+        assert defn.info.is_enum
+        if defn.info.fullname not in ENUM_BASES:
+            for sym in defn.info.names.values():
+                if (isinstance(sym.node, Var) and sym.node.has_explicit_value and
+                        sym.node.name == '__members__'):
+                    # `__members__` will always be overwritten by `Enum` and is considered
+                    # read-only so we disallow assigning a value to it
+                    self.fail(
+                        message_registry.ENUM_MEMBERS_ATTR_WILL_BE_OVERRIDEN, sym.node
+                    )
+        for base in defn.info.mro[1:-1]:  # we don't need self and `object`
+            if base.is_enum and base.fullname not in ENUM_BASES:
+                self.check_final_enum(defn, base)
+
+        self.check_enum_bases(defn)
+        self.check_enum_new(defn)
+
     def check_final_enum(self, defn: ClassDef, base: TypeInfo) -> None:
         for sym in base.names.values():
             if self.is_final_enum_value(sym):
                 self.fail(
-                    'Cannot extend enum with existing members: "{}"'.format(
-                        base.name,
-                    ),
+                    f'Cannot extend enum with existing members: "{base.name}"',
                     defn,
                 )
                 break
@@ -1930,6 +1948,50 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if self.is_stub or sym.node.has_explicit_value:
             return True
         return False
+
+    def check_enum_bases(self, defn: ClassDef) -> None:
+        enum_base: Optional[Instance] = None
+        for base in defn.info.bases:
+            if enum_base is None and base.type.is_enum:
+                enum_base = base
+                continue
+            elif enum_base is not None:
+                self.fail(
+                    f'No base classes are allowed after "{enum_base}"',
+                    defn,
+                )
+                break
+
+    def check_enum_new(self, defn: ClassDef) -> None:
+        def has_new_method(info: TypeInfo) -> bool:
+            new_method = info.get('__new__')
+            return bool(
+                new_method
+                and new_method.node
+                and new_method.node.fullname != 'builtins.object.__new__'
+            )
+
+        has_new = False
+        for base in defn.info.bases:
+            candidate = False
+
+            if base.type.is_enum:
+                # If we have an `Enum`, then we need to check all its bases.
+                candidate = any(
+                    not b.is_enum and has_new_method(b)
+                    for b in base.type.mro[1:-1]
+                )
+            else:
+                candidate = has_new_method(base.type)
+
+            if candidate and has_new:
+                self.fail(
+                    'Only a single data type mixin is allowed for Enum subtypes, '
+                    'found extra "{}"'.format(base),
+                    defn,
+                )
+            elif candidate:
+                has_new = True
 
     def check_protocol_variance(self, defn: ClassDef) -> None:
         """Check that protocol definition is compatible with declared
@@ -2057,8 +2119,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.cant_override_final(name, base2.name, ctx)
         if is_final_node(first.node):
             self.check_if_final_var_override_writable(name, second.node, ctx)
-        # __slots__ and __deletable__ are special and the type can vary across class hierarchy.
-        if name in ('__slots__', '__deletable__'):
+        # Some attributes like __slots__ and __deletable__ are special, and the type can
+        # vary across class hierarchy.
+        if isinstance(second.node, Var) and second.node.allow_incompatible_override:
             ok = True
         if not ok:
             self.msg.base_class_definitions_incompatible(name, base1, base2,
@@ -2126,7 +2189,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.expr, EllipsisExpr):
                 return True
             elif isinstance(s.expr, CallExpr):
-                with self.expr_checker.msg.disable_errors():
+                with self.expr_checker.msg.filter_errors():
                     typ = get_proper_type(self.expr_checker.accept(
                         s.expr, allow_none_return=True, always_allow_any=True))
 
@@ -2224,16 +2287,24 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             self.check_getattr_method(signature, lvalue, name)
 
+                if name == '__slots__':
+                    typ = lvalue_type or self.expr_checker.accept(rvalue)
+                    self.check_slots_definition(typ, lvalue)
                 if name == '__match_args__' and inferred is not None:
                     typ = self.expr_checker.accept(rvalue)
                     self.check_match_args(inferred, typ, lvalue)
 
             # Defer PartialType's super type checking.
             if (isinstance(lvalue, RefExpr) and
-                    not (isinstance(lvalue_type, PartialType) and lvalue_type.type is None)):
+                    not (isinstance(lvalue_type, PartialType) and
+                         lvalue_type.type is None) and
+                    not (isinstance(lvalue, NameExpr) and lvalue.name == '__match_args__')):
                 if self.check_compatibility_all_supers(lvalue, lvalue_type, rvalue):
                     # We hit an error on this line; don't check for any others
                     return
+
+            if isinstance(lvalue, MemberExpr) and lvalue.name == '__match_args__':
+                self.fail(message_registry.CANNOT_MODIFY_MATCH_ARGS, lvalue)
 
             if lvalue_type:
                 if isinstance(lvalue_type, PartialType) and lvalue_type.type is None:
@@ -2331,7 +2402,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
             if inferred:
                 rvalue_type = self.expr_checker.accept(rvalue)
-                if not inferred.is_final:
+                if not (inferred.is_final or (isinstance(lvalue, NameExpr) and
+                                              lvalue.name == '__match_args__')):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
@@ -2414,16 +2486,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             last_immediate_base = direct_bases[-1] if direct_bases else None
 
             for base in lvalue_node.info.mro[1:]:
-                # Only check __slots__ against the 'object'
-                # If a base class defines a Tuple of 3 elements, a child of
-                # this class should not be allowed to define it as a Tuple of
-                # anything other than 3 elements. The exception to this rule
-                # is __slots__, where it is allowed for any child class to
-                # redefine it.
-                if lvalue_node.name == "__slots__" and base.fullname != "builtins.object":
-                    continue
-                # We don't care about the type of "__deletable__".
-                if lvalue_node.name == "__deletable__":
+                # The type of "__slots__" and some other attributes usually doesn't need to
+                # be compatible with a base class. We'll still check the type of "__slots__"
+                # against "object" as an exception.
+                if (isinstance(lvalue_node, Var) and lvalue_node.allow_incompatible_override and
+                        not (lvalue_node.name == "__slots__" and
+                             base.fullname == "builtins.object")):
                     continue
 
                 if is_private(lvalue_node.name):
@@ -2501,7 +2569,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return self.check_subtype(compare_type, base_type, rvalue,
                                       message_registry.INCOMPATIBLE_TYPES_IN_ASSIGNMENT,
                                       'expression has type',
-                                      'base class "%s" defined the type as' % base.name,
+                                      f'base class "{base.name}" defined the type as',
                                       code=codes.ASSIGNMENT)
         return True
 
@@ -3233,8 +3301,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
             elif lvalue_type:
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
-                                   '{} has type'.format(rvalue_name),
-                                   '{} has type'.format(lvalue_name), code=code)
+                                   f'{rvalue_name} has type',
+                                   f'{lvalue_name} has type', code=code)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
@@ -3302,7 +3370,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # For non-overloaded setters, the result should be type-checked like a regular assignment.
         # Hence, we first only try to infer the type by using the rvalue as type context.
         type_context = rvalue
-        with self.msg.disable_errors():
+        with self.msg.filter_errors():
             _, inferred_dunder_set_type = self.expr_checker.check_call(
                 dunder_set_type,
                 [TempNode(instance_type, context=context), type_context],
@@ -3386,8 +3454,32 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                                            [key_type, value_type])
                         del partial_types[var]
 
+    def type_requires_usage(self, typ: Type) -> Optional[Tuple[str, ErrorCode]]:
+        """Some types require usage in all cases. The classic example is
+        an unused coroutine.
+
+        In the case that it does require usage, returns a note to attach
+        to the error message.
+        """
+        proper_type = get_proper_type(typ)
+        if isinstance(proper_type, Instance):
+            # We use different error codes for generic awaitable vs coroutine.
+            # Coroutines are on by default, whereas generic awaitables are not.
+            if proper_type.type.fullname == "typing.Coroutine":
+                return ("Are you missing an await?", UNUSED_COROUTINE)
+            if proper_type.type.get("__await__") is not None:
+                return ("Are you missing an await?", UNUSED_AWAITABLE)
+        return None
+
     def visit_expression_stmt(self, s: ExpressionStmt) -> None:
-        self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        expr_type = self.expr_checker.accept(s.expr, allow_none_return=True, always_allow_any=True)
+        error_note_and_code = self.type_requires_usage(expr_type)
+        if error_note_and_code:
+            error_note, code = error_note_and_code
+            self.fail(
+                message_registry.TYPE_MUST_BE_USED.format(format_type(expr_type)), s, code=code
+            )
+            self.note(error_note, s, code=code)
 
     def visit_return_stmt(self, s: ReturnStmt) -> None:
         """Type check a return statement."""
@@ -3548,7 +3640,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if s.expr:
             self.type_check_raise(s.expr, s)
         if s.from_expr:
-            self.type_check_raise(s.from_expr, s, True)
+            self.type_check_raise(s.from_expr, s, optional=True)
         self.binder.unreachable()
 
     def type_check_raise(self, e: Expression, s: RaiseStmt,
@@ -3557,23 +3649,93 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, DeletedType):
             self.msg.deleted_as_rvalue(typ, e)
             return
-        exc_type = self.named_type('builtins.BaseException')
-        expected_type = UnionType([exc_type, TypeType(exc_type)])
-        if optional:
-            expected_type.items.append(NoneType())
+
         if self.options.python_version[0] == 2:
-            # allow `raise type, value, traceback`
-            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
-            # TODO: Also check tuple item types.
-            any_type = AnyType(TypeOfAny.implementation_artifact)
-            tuple_type = self.named_type('builtins.tuple')
-            expected_type.items.append(TupleType([any_type, any_type], tuple_type))
-            expected_type.items.append(TupleType([any_type, any_type, any_type], tuple_type))
-        self.check_subtype(typ, expected_type, s, message_registry.INVALID_EXCEPTION)
+            # Since `raise` has very different rule on python2, we use a different helper.
+            # https://github.com/python/mypy/pull/11289
+            self._type_check_raise_python2(e, s, typ)
+            return
+
+        # Python3 case:
+        exc_type = self.named_type('builtins.BaseException')
+        expected_type_items = [exc_type, TypeType(exc_type)]
+        if optional:
+            # This is used for `x` part in a case like `raise e from x`,
+            # where we allow `raise e from None`.
+            expected_type_items.append(NoneType())
+
+        self.check_subtype(
+            typ, UnionType.make_union(expected_type_items), s,
+            message_registry.INVALID_EXCEPTION,
+        )
 
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
+
+    def _type_check_raise_python2(self, e: Expression, s: RaiseStmt, typ: ProperType) -> None:
+        # Python2 has two possible major cases:
+        # 1. `raise expr`, where `expr` is some expression, it can be:
+        #    - Exception typ
+        #    - Exception instance
+        #    - Old style class (not supported)
+        #    - Tuple, where 0th item is exception type or instance
+        # 2. `raise exc, msg, traceback`, where:
+        #    - `exc` is exception type (not instance!)
+        #    - `traceback` is `types.TracebackType | None`
+        # Important note: `raise exc, msg` is not the same as `raise (exc, msg)`
+        # We call `raise exc, msg, traceback` - legacy mode.
+        exc_type = self.named_type('builtins.BaseException')
+        exc_inst_or_type = UnionType([exc_type, TypeType(exc_type)])
+
+        if (not s.legacy_mode and (isinstance(typ, TupleType) and typ.items
+                or (isinstance(typ, Instance) and typ.args
+                    and typ.type.fullname == 'builtins.tuple'))):
+            # `raise (exc, ...)` case:
+            item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
+            self.check_subtype(
+                item, exc_inst_or_type, s,
+                'When raising a tuple, first element must by derived from BaseException',
+            )
+            return
+        elif s.legacy_mode:
+            # `raise Exception, msg` case
+            # `raise Exception, msg, traceback` case
+            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
+            assert isinstance(typ, TupleType)  # Is set in fastparse2.py
+            if (len(typ.items) >= 2
+                    and isinstance(get_proper_type(typ.items[1]), NoneType)):
+                expected_type: Type = exc_inst_or_type
+            else:
+                expected_type = TypeType(exc_type)
+            self.check_subtype(
+                typ.items[0], expected_type, s,
+                f'Argument 1 must be "{expected_type}" subtype',
+            )
+
+            # Typecheck `traceback` part:
+            if len(typ.items) == 3:
+                # Now, we typecheck `traceback` argument if it is present.
+                # We do this after the main check for better error message
+                # and better ordering: first about `BaseException` subtype,
+                # then about `traceback` type.
+                traceback_type = UnionType.make_union([
+                    self.named_type('types.TracebackType'),
+                    NoneType(),
+                ])
+                self.check_subtype(
+                    typ.items[2], traceback_type, s,
+                    f'Argument 3 must be "{traceback_type}" subtype',
+                )
+        else:
+            expected_type_items = [
+                # `raise Exception` and `raise Exception()` cases:
+                exc_type, TypeType(exc_type),
+            ]
+            self.check_subtype(
+                typ, UnionType.make_union(expected_type_items),
+                s, message_registry.INVALID_EXCEPTION,
+            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""
@@ -3813,7 +3975,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # may be different from the declared signature.
         sig: Type = self.function_type(e.func)
         for d in reversed(e.decorators):
-            if refers_to_fullname(d, 'typing.overload'):
+            if refers_to_fullname(d, OVERLOAD_NAMES):
                 self.fail(message_registry.MULTIPLE_OVERLOADS_REQUIRED, e)
                 continue
             dec = self.expr_checker.accept(d)
@@ -3973,36 +4135,57 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(subject_type, DeletedType):
                 self.msg.deleted_as_rvalue(subject_type, s)
 
+            # We infer types of patterns twice. The first pass is used
+            # to infer the types of capture variables. The type of a
+            # capture variable may depend on multiple patterns (it
+            # will be a union of all capture types). This pass ignores
+            # guard expressions.
             pattern_types = [self.pattern_checker.accept(p, subject_type) for p in s.patterns]
-
             type_maps: List[TypeMap] = [t.captures for t in pattern_types]
-            self.infer_variable_types_from_type_maps(type_maps)
+            inferred_types = self.infer_variable_types_from_type_maps(type_maps)
 
-            for pattern_type, g, b in zip(pattern_types, s.guards, s.bodies):
+            # The second pass narrows down the types and type checks bodies.
+            for p, g, b in zip(s.patterns, s.guards, s.bodies):
+                current_subject_type = self.expr_checker.narrow_type_from_binder(s.subject,
+                                                                                 subject_type)
+                pattern_type = self.pattern_checker.accept(p, current_subject_type)
                 with self.binder.frame_context(can_skip=True, fall_through=2):
                     if b.is_unreachable or isinstance(get_proper_type(pattern_type.type),
                                                       UninhabitedType):
                         self.push_type_map(None)
+                        else_map: TypeMap = {}
                     else:
-                        self.binder.put(s.subject, pattern_type.type)
+                        pattern_map, else_map = conditional_types_to_typemaps(
+                            s.subject,
+                            pattern_type.type,
+                            pattern_type.rest_type
+                        )
+                        self.remove_capture_conflicts(pattern_type.captures,
+                                                      inferred_types)
+                        self.push_type_map(pattern_map)
                         self.push_type_map(pattern_type.captures)
                     if g is not None:
-                        gt = get_proper_type(self.expr_checker.accept(g))
+                        with self.binder.frame_context(can_skip=True, fall_through=3):
+                            gt = get_proper_type(self.expr_checker.accept(g))
 
-                        if isinstance(gt, DeletedType):
-                            self.msg.deleted_as_rvalue(gt, s)
+                            if isinstance(gt, DeletedType):
+                                self.msg.deleted_as_rvalue(gt, s)
 
-                        if_map, _ = self.find_isinstance_check(g)
+                            guard_map, guard_else_map = self.find_isinstance_check(g)
+                            else_map = or_conditional_maps(else_map, guard_else_map)
 
-                        self.push_type_map(if_map)
-                    self.accept(b)
+                            self.push_type_map(guard_map)
+                            self.accept(b)
+                    else:
+                        self.accept(b)
+                self.push_type_map(else_map)
 
             # This is needed due to a quirk in frame_context. Without it types will stay narrowed
             # after the match.
             with self.binder.frame_context(can_skip=False, fall_through=2):
                 pass
 
-    def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> None:
+    def infer_variable_types_from_type_maps(self, type_maps: List[TypeMap]) -> Dict[Var, Type]:
         all_captures: Dict[Var, List[Tuple[NameExpr, Type]]] = defaultdict(list)
         for tm in type_maps:
             if tm is not None:
@@ -4012,28 +4195,38 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         assert isinstance(node, Var)
                         all_captures[node].append((expr, typ))
 
+        inferred_types: Dict[Var, Type] = {}
         for var, captures in all_captures.items():
-            conflict = False
+            already_exists = False
             types: List[Type] = []
             for expr, typ in captures:
                 types.append(typ)
 
-                previous_type, _, inferred = self.check_lvalue(expr)
+                previous_type, _, _ = self.check_lvalue(expr)
                 if previous_type is not None:
-                    conflict = True
-                    self.check_subtype(typ, previous_type, expr,
-                                       msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
-                                       subtype_label="pattern captures type",
-                                       supertype_label="variable has type")
-                    for type_map in type_maps:
-                        if type_map is not None and expr in type_map:
-                            del type_map[expr]
+                    already_exists = True
+                    if self.check_subtype(typ, previous_type, expr,
+                                          msg=message_registry.INCOMPATIBLE_TYPES_IN_CAPTURE,
+                                          subtype_label="pattern captures type",
+                                          supertype_label="variable has type"):
+                        inferred_types[var] = previous_type
 
-            if not conflict:
+            if not already_exists:
                 new_type = UnionType.make_union(types)
                 # Infer the union type at the first occurrence
                 first_occurrence, _ = captures[0]
+                inferred_types[var] = new_type
                 self.infer_variable_type(var, first_occurrence, new_type, first_occurrence)
+        return inferred_types
+
+    def remove_capture_conflicts(self, type_map: TypeMap, inferred_types: Dict[Var, Type]) -> None:
+        if type_map:
+            for expr, typ in list(type_map.items()):
+                if isinstance(expr, NameExpr):
+                    node = expr.node
+                    assert isinstance(node, Var)
+                    if node not in inferred_types or not is_subtype(typ, inferred_types[node]):
+                        del type_map[expr]
 
     def make_fake_typeinfo(self,
                            curr_module_fullname: str,
@@ -4102,7 +4295,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 curr_module_: MypyFile,
         ) -> Tuple[TypeInfo, str]:
             names_list = pretty_seq([x.type.name for x in base_classes_], "and")
-            short_name = '<subclass of {}>'.format(names_list)
+            short_name = f'<subclass of {names_list}>'
             full_name_ = gen_unique_name(short_name, curr_module_.names)
             cdef, info_ = self.make_fake_typeinfo(
                 curr_module_.fullname,
@@ -4112,9 +4305,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
             return info_, full_name_
 
-        old_msg = self.msg
-        new_msg = old_msg.clean_copy()
-        self.msg = new_msg
         base_classes = _get_base_classes(instances)
         # We use the pretty_names_list for error messages but can't
         # use it for the real name that goes into the symbol table
@@ -4122,24 +4312,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         pretty_names_list = pretty_seq(format_type_distinctly(*base_classes, bare=True), "and")
         try:
             info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
-            self.check_multiple_inheritance(info)
-            if new_msg.is_errors():
+            with self.msg.filter_errors() as local_errors:
+                self.check_multiple_inheritance(info)
+            if local_errors.has_new_errors():
                 # "class A(B, C)" unsafe, now check "class A(C, B)":
-                new_msg = new_msg.clean_copy()
-                self.msg = new_msg
                 base_classes = _get_base_classes(instances[::-1])
                 info, full_name = _make_fake_typeinfo_and_full_name(base_classes, curr_module)
-                self.check_multiple_inheritance(info)
+                with self.msg.filter_errors() as local_errors:
+                    self.check_multiple_inheritance(info)
             info.is_intersection = True
         except MroError:
             if self.should_report_unreachable_issues():
-                old_msg.impossible_intersection(
+                self.msg.impossible_intersection(
                     pretty_names_list, "inconsistent method resolution order", ctx)
             return None
-        finally:
-            self.msg = old_msg
 
-        if new_msg.is_errors():
+        if local_errors.has_new_errors():
             if self.should_report_unreachable_issues():
                 self.msg.impossible_intersection(
                     pretty_names_list, "incompatible method signatures", ctx)
@@ -4159,7 +4347,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # have a valid fullname and a corresponding entry in a symbol table. We generate
         # a unique name inside the symbol table of the current module.
         cur_module = cast(MypyFile, self.scope.stack[0])
-        gen_name = gen_unique_name("<callable subtype of {}>".format(typ.type.name),
+        gen_name = gen_unique_name(f"<callable subtype of {typ.type.name}>",
                                    cur_module.names)
 
         # Synthesize a fake TypeInfo
@@ -4774,20 +4962,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 member_name = expr.name
 
                 def replay_lookup(new_parent_type: ProperType) -> Optional[Type]:
-                    msg_copy = self.msg.clean_copy()
-                    member_type = analyze_member_access(
-                        name=member_name,
-                        typ=new_parent_type,
-                        context=parent_expr,
-                        is_lvalue=False,
-                        is_super=False,
-                        is_operator=False,
-                        msg=msg_copy,
-                        original_type=new_parent_type,
-                        chk=self,
-                        in_literal_context=False,
-                    )
-                    if msg_copy.is_errors():
+                    with self.msg.filter_errors() as w:
+                        member_type = analyze_member_access(
+                            name=member_name,
+                            typ=new_parent_type,
+                            context=parent_expr,
+                            is_lvalue=False,
+                            is_super=False,
+                            is_operator=False,
+                            msg=self.msg,
+                            original_type=new_parent_type,
+                            chk=self,
+                            in_literal_context=False,
+                        )
+                    if w.has_new_errors():
                         return None
                     else:
                         return member_type
@@ -5040,7 +5228,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                       code: Optional[ErrorCode] = None,
                       outer_context: Optional[Context] = None) -> bool:
         """Generate an error if the subtype is not compatible with supertype."""
-        if is_subtype(subtype, supertype):
+        if is_subtype(subtype, supertype, options=self.options):
             return True
 
         if isinstance(msg, ErrorMessage):
@@ -5076,6 +5264,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.note(note, context, code=code)
         if note_msg:
             self.note(note_msg, context, code=code)
+        self.msg.maybe_note_concatenate_pos_args(subtype, supertype, context, code=code)
         if (isinstance(supertype, Instance) and supertype.type.is_protocol and
                 isinstance(subtype, (Instance, TupleType, TypedDictType))):
             self.msg.report_protocol_problems(subtype, supertype, context, code=code)
@@ -5171,7 +5360,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 table = cast(MypyFile, b.node).names
                 if name in table:
                     return table[name]
-            raise KeyError('Failed lookup: {}'.format(name))
+            raise KeyError(f'Failed lookup: {name}')
 
     def lookup_qualified(self, name: str) -> SymbolTableNode:
         if '.' not in name:
@@ -5521,6 +5710,14 @@ def conditional_types(current_type: Type,
     None means no new information can be inferred. If default is set it is returned
     instead."""
     if proposed_type_ranges:
+        if len(proposed_type_ranges) == 1:
+            target = proposed_type_ranges[0].item
+            target = get_proper_type(target)
+            if isinstance(target, LiteralType) and (target.is_enum_literal()
+                                                    or isinstance(target.value, bool)):
+                enum_name = target.fallback.type.fullname
+                current_type = try_expanding_sum_type_to_union(current_type,
+                                                               enum_name)
         proposed_items = [type_range.item for type_range in proposed_type_ranges]
         proposed_type = make_simplified_union(proposed_items)
         if isinstance(proposed_type, AnyType):
@@ -5687,7 +5884,7 @@ def and_conditional_maps(m1: TypeMap, m2: TypeMap) -> TypeMap:
     # arbitrarily give precedence to m2. (In the future, we could use
     # an intersection type.)
     result = m2.copy()
-    m2_keys = set(literal_hash(n2) for n2 in m2)
+    m2_keys = {literal_hash(n2) for n2 in m2}
     for n1 in m1:
         if literal_hash(n1) not in m2_keys:
             result[n1] = m1[n1]
@@ -6357,7 +6554,7 @@ def is_static(func: Union[FuncBase, Decorator]) -> bool:
         return is_static(func.func)
     elif isinstance(func, FuncBase):
         return func.is_static
-    assert False, "Unexpected func type: {}".format(type(func))
+    assert False, f"Unexpected func type: {type(func)}"
 
 
 def is_subtype_no_promote(left: Type, right: Type) -> bool:
