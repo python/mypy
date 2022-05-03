@@ -24,8 +24,8 @@ _CONFIG_VALUE_TYPES: _TypeAlias = Union[
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
-def parse_version(v: str) -> Tuple[int, int]:
-    m = re.match(r'\A(\d)\.(\d+)\Z', v)
+def parse_version(v: Union[str, float]) -> Tuple[int, int]:
+    m = re.match(r'\A(\d)\.(\d+)\Z', str(v))
     if not m:
         raise argparse.ArgumentTypeError(
             "Invalid python version '{}' (expected format: 'x.y')".format(v))
@@ -36,25 +36,19 @@ def parse_version(v: str) -> Tuple[int, int]:
                 "Python 2.{} is not supported (must be 2.7)".format(minor))
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
-            raise argparse.ArgumentTypeError(
-                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
-                                                                    *defaults.PYTHON3_VERSION_MIN))
+            msg = "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(
+                minor,
+                *defaults.PYTHON3_VERSION_MIN
+            )
+
+            if isinstance(v, float):
+                msg += ". You may need to put quotes around your version"
+
+            raise argparse.ArgumentTypeError(msg)
     else:
         raise argparse.ArgumentTypeError(
             "Python major version '{}' out of range (must be 2 or 3)".format(major))
     return major, minor
-
-
-def check_type_parse_version(s: Any) -> Tuple[int, int]:
-    try:
-        return parse_version(str(s))
-    except argparse.ArgumentTypeError as e:
-        if not isinstance(s, str):
-            raise argparse.ArgumentTypeError(
-                "expected argument type str, got {} instead"
-                .format(type(s).__name__))
-        else:
-            raise e
 
 
 def try_split(v: Union[str, Sequence[str]], split_regex: str = '[,]') -> List[str]:
@@ -154,7 +148,7 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
 # Reuse the ini_config_types and overwrite the diff
 toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update({
-    'python_version': check_type_parse_version,
+    'python_version': parse_version,
     'strict_optional_whitelist': try_split,
     'mypy_path': lambda s: [expand_path(p) for p in try_split(s, '[,:]')],
     'files': lambda s: split_and_match_files_list(try_split(s)),
