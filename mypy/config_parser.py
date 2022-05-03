@@ -42,7 +42,7 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
             )
 
             if isinstance(v, float):
-                msg += ". You may need to put quotes around your version"
+                msg += ". You may need to put quotes around your Python version"
 
             raise argparse.ArgumentTypeError(msg)
     else:
