@@ -276,7 +276,7 @@ reveal_type(a)
 [file .mypy/baseline.json]
 {"main.py": [{"line": 1, "code": "misc", "message": "test"}]}
 [out]
-pkg/main.py:2:13: note: Revealed type is "builtins.int"
+pkg/main.py:2:13: note: Revealed type is "int"
 Success: no issues found in 1 source file
 
 
@@ -290,7 +290,7 @@ def foo() -> None:
 {"main.py": [{"line": 1, "code": "misc", "message": "test"}]}
 [out]
 pkg/main.py:3:5: note: Revealed local types are:
-pkg/main.py:3:5: note:     a: builtins.int
+pkg/main.py:3:5: note:     a: int
 Success: no issues found in 1 source file
 
 
