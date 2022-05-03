@@ -1,0 +1,14 @@
+[case testGenericMethod]
+from typing import TypeVar, Generic, Union, List
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class A(Generic[T2]):
+    def f(self, t: T, t2: T2) -> Union[List[int], str]:
+        reveal_type(t)  # N:21: Revealed type is "T@f"
+        reveal_type(t2)  # N:21: Revealed type is "T2@A"
+        return ""
+
+reveal_type(A.f)  # N:13: Revealed type is "def [T2 (from A), T] (self: __main__.A[T2], t: T, t2: T2) -> list[int] | str"
+reveal_type(A[int]().f)  # N:13: Revealed type is "def [T] (t: T, t2: int) -> list[int] | str"

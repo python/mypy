@@ -61,7 +61,9 @@ class TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
 
-    def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
+    def bind_new(
+        self, name: str, tvar_expr: TypeVarLikeExpr, scopename: Optional[str] = None
+    ) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1
             i = self.class_id
@@ -80,7 +82,8 @@ class TypeVarLikeScope:
                 upper_bound=tvar_expr.upper_bound,
                 variance=tvar_expr.variance,
                 line=tvar_expr.line,
-                column=tvar_expr.column
+                column=tvar_expr.column,
+                scopename=scopename,
             )
         elif isinstance(tvar_expr, ParamSpecExpr):
             tvar_def = ParamSpecType(

@@ -3,6 +3,8 @@
 ## [Unreleased]
 ### Added
 - `ignore_any_from_errors` option to suppress `no-any-expr` messages from other errors
+### Enhancements
+- Render types a lot better in output messages
 
 ## [1.3.0]
 ### Added

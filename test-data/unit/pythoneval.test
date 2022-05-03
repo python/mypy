@@ -1207,10 +1207,10 @@ for a, b in x.items():
 [out]
 _testNoCrashOnGenericUnionUnpacking.py:6: note: Revealed type is "builtins.str"
 _testNoCrashOnGenericUnionUnpacking.py:7: note: Revealed type is "builtins.str"
-_testNoCrashOnGenericUnionUnpacking.py:10: note: Revealed type is "builtins.str | builtins.int"
-_testNoCrashOnGenericUnionUnpacking.py:11: note: Revealed type is "builtins.str | builtins.int"
-_testNoCrashOnGenericUnionUnpacking.py:15: note: Revealed type is "builtins.int | builtins.str"
-_testNoCrashOnGenericUnionUnpacking.py:16: note: Revealed type is "builtins.int | builtins.str"
+_testNoCrashOnGenericUnionUnpacking.py:10: note: Revealed type is "Union[builtins.str, builtins.int]"
+_testNoCrashOnGenericUnionUnpacking.py:11: note: Revealed type is "Union[builtins.str, builtins.int]"
+_testNoCrashOnGenericUnionUnpacking.py:15: note: Revealed type is "Union[builtins.int, builtins.str]"
+_testNoCrashOnGenericUnionUnpacking.py:16: note: Revealed type is "Union[builtins.int, builtins.str]"
 
 [case testMetaclassOpAccess]
 from typing import Type
@@ -1257,7 +1257,7 @@ bar: Type[Union[A, B]]
 res = bar * 4
 reveal_type(res)
 [out]
-_testMetaclassOpAccessUnion.py:16: note: Revealed type is "builtins.str | builtins.int"
+_testMetaclassOpAccessUnion.py:16: note: Revealed type is "Union[builtins.str, builtins.int]"
 
 [case testMetaclassOpAccessAny]
 from typing import Type

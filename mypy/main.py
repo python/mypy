@@ -974,7 +974,7 @@ def process_options(args: List[str],
     options = Options()
 
     if dummy.legacy:
-        if "__MYPY_UNDER_TEST__" not in os.environ:
+        if not os.getenv("__MYPY_UNDER_TEST__"):
             mypy.options._based = True
 
     def set_strict_flags() -> None:

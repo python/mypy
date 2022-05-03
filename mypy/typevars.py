@@ -19,7 +19,7 @@ def fill_typevars(typ: TypeInfo) -> Union[Instance, TupleType]:
         if isinstance(tv, TypeVarType):
             tv = TypeVarType(
                 tv.name, tv.fullname, tv.id, tv.values,
-                tv.upper_bound, tv.variance, line=-1, column=-1,
+                tv.upper_bound, tv.variance, line=-1, column=-1, scopename=typ.name
             )
         else:
             assert isinstance(tv, ParamSpecType)

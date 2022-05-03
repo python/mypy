@@ -220,4 +220,4 @@ reveal_type(B.f)  # N:13: Revealed type is "Overload(def (self: __main__.B) -> b
 class A:
     def __new__(cls): ...  # E:5: "__new__" must return a class instance (got "None")  [misc]
 
-reveal_type(A.__new__)  # N:13: Revealed type is "def (cls: Type[__main__.A])"
+reveal_type(A.__new__)  # N:13: Revealed type is "def (cls: type[__main__.A])"
