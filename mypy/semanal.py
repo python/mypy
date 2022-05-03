@@ -4927,7 +4927,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         # when it can also be a FuncBase. Once fixed, `f` in the following can be removed.
         # See also https://github.com/mypyc/mypyc/issues/892
         f = cast(Any, lambda x: x)
-        if isinstance(f(symbol_node), (FuncBase, Var)):
+        if isinstance(f(symbol_node), (Decorator, FuncBase, Var)):
             # For imports in class scope, we construct a new node to represent the symbol and
             # set its `info` attribute to `self.type`.
             existing = self.current_symbol_table().get(name)
@@ -4935,7 +4935,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # The redefinition checks in `add_symbol_table_node` don't work for our
                 # constructed Var / FuncBase, so check for possible redefinitions here.
                 existing is not None
-                and isinstance(f(existing.node), (FuncBase, Var))
+                and isinstance(f(existing.node), (Decorator, FuncBase, Var))
                 and (
                     isinstance(f(existing.type), f(AnyType))
                     or f(existing.type) == f(symbol_node).type
@@ -4944,7 +4944,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return existing.node
 
             # Construct the new node
-            if isinstance(f(symbol_node), FuncBase):
+            if isinstance(f(symbol_node), (FuncBase, Decorator)):
                 # In theory we could construct a new node here as well, but in practice
                 # it doesn't work well, see #12197
                 typ: Optional[Type] = AnyType(TypeOfAny.from_error)
