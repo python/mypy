@@ -261,6 +261,7 @@ class DataDrivenTestCase(pytest.Item):
         self.line = line
         self.old_cwd: Optional[str] = None
         self.tmpdir: Optional[tempfile.TemporaryDirectory[str]] = None
+        os.environ["__MYPY_UNDER_TEST__"] = "1"
 
     def runtest(self) -> None:
         if self.skip:

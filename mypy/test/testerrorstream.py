@@ -26,7 +26,6 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
     import mypy.options
     mypy.options._based = False
     options = Options()
-    mypy.options._based = True
     options.show_traceback = True
 
     logged_messages: List[str] = []
