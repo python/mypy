@@ -561,6 +561,15 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "a"
 
+[case testPythonVersionWrongFormatPyProjectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.10
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+== Return code: 0
+
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
 [file mypy.ini]
