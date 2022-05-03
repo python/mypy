@@ -1,10 +1,12 @@
 #!/bin/bash
 
+set -e
+
 cd "$(dirname $0)/.."
 
 # Install dependencies, demo project and mypy
 python -m pip install -r test-requirements.txt
-python -m pip install test-data/pybind11_mypy_demo
+python -m pip install ./test-data/pybind11_mypy_demo
 python -m pip install .
 
 # Remove expected stubs and generate new inplace
