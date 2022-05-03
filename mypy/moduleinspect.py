@@ -138,7 +138,7 @@ class ModuleInspect:
         if res is None:
             # The process died; recover and report error.
             self._start()
-            raise InspectError('Process died when importing %r' % package_id)
+            raise InspectError(f'Process died when importing {package_id!r}')
         if isinstance(res, str):
             # Error importing module
             if self.counter > 0:

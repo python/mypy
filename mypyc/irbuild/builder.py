@@ -419,7 +419,7 @@ class IRBuilder:
             if class_name is None:
                 name = lvalue.name
             else:
-                name = '{}.{}'.format(class_name, lvalue.name)
+                name = f'{class_name}.{lvalue.name}'
             assert name is not None, "Full name not set for variable"
             coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
             self.final_names.append((name, coerced.type))
@@ -432,7 +432,7 @@ class IRBuilder:
         module, name = split_name
         return self.builder.load_static_checked(
             typ, name, module, line=line,
-            error_msg='value for final name "{}" was not set'.format(error_name))
+            error_msg=f'value for final name "{error_name}" was not set')
 
     def load_final_literal_value(self, val: Union[int, str, bytes, float, bool],
                                  line: int) -> Value:
@@ -685,7 +685,7 @@ class IRBuilder:
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
-        name = '{}{}'.format(TEMP_ATTR_NAME, self.temp_counter)
+        name = f'{TEMP_ATTR_NAME}{self.temp_counter}'
         self.temp_counter += 1
         target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
         # Shouldn't be able to fail, so -1 for line
@@ -817,7 +817,7 @@ class IRBuilder:
                 is_final = sym.node.is_final or expr_fullname == 'enum.Enum'
                 if is_final:
                     final_var = sym.node
-                    fullname = '{}.{}'.format(sym.node.info.fullname, final_var.name)
+                    fullname = f'{sym.node.info.fullname}.{final_var.name}'
                     native = self.is_native_module(expr.expr.node.module_name)
         elif self.is_module_member_expr(expr):
             # a module attribute

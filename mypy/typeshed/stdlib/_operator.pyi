@@ -1,21 +1,7 @@
 import sys
-from typing import (
-    Any,
-    AnyStr,
-    Callable,
-    Container,
-    Generic,
-    Iterable,
-    Mapping,
-    MutableMapping,
-    MutableSequence,
-    Protocol,
-    Sequence,
-    SupportsAbs,
-    TypeVar,
-    overload,
-)
-from typing_extensions import ParamSpec, SupportsIndex, final
+from collections.abc import Callable, Container, Iterable, Mapping, MutableMapping, MutableSequence, Sequence
+from typing import Any, AnyStr, Generic, Protocol, SupportsAbs, TypeVar, overload
+from typing_extensions import ParamSpec, SupportsIndex, TypeAlias, final
 
 _R = TypeVar("_R")
 _T = TypeVar("_T")
@@ -40,7 +26,7 @@ class _SupportsDunderLE(Protocol):
 class _SupportsDunderGE(Protocol):
     def __ge__(self, __other: Any) -> Any: ...
 
-_SupportsComparison = _SupportsDunderLE | _SupportsDunderGE | _SupportsDunderGT | _SupportsDunderLT
+_SupportsComparison: TypeAlias = _SupportsDunderLE | _SupportsDunderGE | _SupportsDunderGT | _SupportsDunderLT
 
 class _SupportsInversion(Protocol[_T_co]):
     def __invert__(self) -> _T_co: ...

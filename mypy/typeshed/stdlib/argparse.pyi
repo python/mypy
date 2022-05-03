@@ -1,20 +1,7 @@
 import sys
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Generator,
-    Generic,
-    Iterable,
-    NewType,
-    NoReturn,
-    Pattern,
-    Protocol,
-    Sequence,
-    TypeVar,
-    overload,
-)
-from typing_extensions import Literal
+from collections.abc import Callable, Generator, Iterable, Sequence
+from typing import IO, Any, Generic, NewType, NoReturn, Pattern, Protocol, TypeVar, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = [
@@ -62,6 +49,15 @@ _T = TypeVar("_T")
 _ActionT = TypeVar("_ActionT", bound=Action)
 _ArgumentParserT = TypeVar("_ArgumentParserT", bound=ArgumentParser)
 _N = TypeVar("_N")
+# more precisely, Literal["store", "store_const", "store_true",
+# "store_false", "append", "append_const", "count", "help", "version",
+# "extend"], but using this would make it hard to annotate callers
+# that don't use a literal argument
+_ActionStr: TypeAlias = str
+# more precisely, Literal["?", "*", "+", "...", "A...",
+# "==SUPPRESS=="], but using this would make it hard to annotate
+# callers that don't use a literal argument
+_NArgsStr: TypeAlias = str
 
 ONE_OR_MORE: Literal["+"]
 OPTIONAL: Literal["?"]
@@ -106,11 +102,8 @@ class _ActionsContainer:
     def add_argument(
         self,
         *name_or_flags: str,
-        action: Literal[
-            "store", "store_const", "store_true", "store_false", "append", "append_const", "count", "help", "version", "extend"
-        ]
-        | type[Action] = ...,
-        nargs: int | Literal["?", "*", "+", "...", "A...", "==SUPPRESS=="] | _SUPPRESS_T = ...,
+        action: _ActionStr | type[Action] = ...,
+        nargs: int | _NArgsStr | _SUPPRESS_T = ...,
         const: Any = ...,
         default: Any = ...,
         type: Callable[[str], _T] | FileType = ...,

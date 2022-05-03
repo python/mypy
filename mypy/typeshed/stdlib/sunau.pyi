@@ -1,9 +1,9 @@
 import sys
 from _typeshed import Self
 from typing import IO, Any, NamedTuple, NoReturn, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
-_File = str | IO[bytes]
+_File: TypeAlias = str | IO[bytes]
 
 class Error(Exception): ...
 

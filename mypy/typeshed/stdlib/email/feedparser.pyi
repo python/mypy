@@ -1,9 +1,11 @@
-from email import _MessageT
+from collections.abc import Callable
 from email.message import Message
 from email.policy import Policy
-from typing import Callable, Generic, overload
+from typing import Generic, TypeVar, overload
 
 __all__ = ["FeedParser", "BytesFeedParser"]
+
+_MessageT = TypeVar("_MessageT", bound=Message)
 
 class FeedParser(Generic[_MessageT]):
     @overload

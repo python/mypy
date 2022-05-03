@@ -23,7 +23,7 @@ import string
 from typing_extensions import Final
 
 
-CHAR_MAP: Final = ["\\{:03o}".format(i) for i in range(256)]
+CHAR_MAP: Final = [f"\\{i:03o}" for i in range(256)]
 
 # It is safe to use string.printable as it always uses the C locale.
 for c in string.printable:
@@ -32,7 +32,7 @@ for c in string.printable:
 # These assignments must come last because we prioritize simple escape
 # sequences over any other representation.
 for c in ('\'', '"', '\\', 'a', 'b', 'f', 'n', 'r', 't', 'v'):
-    escaped = '\\{}'.format(c)
+    escaped = f'\\{c}'
     decoded = escaped.encode('ascii').decode('unicode_escape')
     CHAR_MAP[ord(decoded)] = escaped
 

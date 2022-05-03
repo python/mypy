@@ -2,11 +2,12 @@ import sys
 from _typeshed import Self
 from types import TracebackType
 from typing import TypeVar, overload
+from typing_extensions import TypeAlias
 
 if sys.platform != "win32":
     _T = TypeVar("_T")
-    _KeyType = str | bytes
-    _ValueType = str | bytes
+    _KeyType: TypeAlias = str | bytes
+    _ValueType: TypeAlias = str | bytes
 
     class error(OSError): ...
     library: str

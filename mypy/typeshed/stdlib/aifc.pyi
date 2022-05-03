@@ -2,7 +2,7 @@ import sys
 from _typeshed import Self
 from types import TracebackType
 from typing import IO, Any, NamedTuple, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["Error", "open"]
@@ -19,8 +19,8 @@ class _aifc_params(NamedTuple):
     comptype: bytes
     compname: bytes
 
-_File = str | IO[bytes]
-_Marker = tuple[int, int, bytes]
+_File: TypeAlias = str | IO[bytes]
+_Marker: TypeAlias = tuple[int, int, bytes]
 
 class Aifc_read:
     def __init__(self, f: _File) -> None: ...

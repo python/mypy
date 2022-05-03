@@ -1,0 +1,29 @@
+[case testTypeVarTupleBasic]
+from typing import Any, Tuple
+from typing_extensions import Unpack, TypeVarTuple
+
+Ts = TypeVarTuple("Ts")
+
+def f(a: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return a
+
+any: Any
+args: Tuple[int, str] = (1, 'x')
+args2: Tuple[bool, str] = (False, 'y')
+args3: Tuple[int, str, bool] = (2, 'z', True)
+varargs: Tuple[int, ...] = (1, 2, 3)
+
+reveal_type(f(args))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+
+reveal_type(f(varargs))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+f(0)  # E: Argument 1 to "f" has incompatible type "int"; expected <nothing>
+
+def g(a: Tuple[Unpack[Ts]], b: Tuple[Unpack[Ts]]) -> Tuple[Unpack[Ts]]:
+    return a
+
+reveal_type(g(args, args))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(g(args, args2))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
+reveal_type(g(args, args3))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(g(any, any))  # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]

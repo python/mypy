@@ -2,10 +2,10 @@ import sys
 import threading
 from _typeshed import Self
 from abc import abstractmethod
-from collections.abc import Container, Iterable, Iterator, Sequence
+from collections.abc import Callable, Container, Iterable, Iterator, Sequence
 from logging import Logger
 from types import TracebackType
-from typing import Any, Callable, Generic, Protocol, TypeVar, overload
+from typing import Any, Generic, Protocol, TypeVar, overload
 from typing_extensions import Literal, ParamSpec, SupportsIndex
 
 if sys.version_info >= (3, 9):

@@ -83,5 +83,4 @@ def test_parse_error(testcase: DataDrivenTestCase) -> None:
         # are equivalent.
         assert_string_arrays_equal(
             testcase.output, e.messages,
-            'Invalid compiler output ({}, line {})'.format(testcase.file,
-                                                           testcase.line))
+            f'Invalid compiler output ({testcase.file}, line {testcase.line})')

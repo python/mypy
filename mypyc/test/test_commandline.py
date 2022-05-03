@@ -59,7 +59,7 @@ class TestCommandLine(MypycDataSuite):
                     cwd='tmp')
         finally:
             suffix = 'pyd' if sys.platform == 'win32' else 'so'
-            so_paths = glob.glob('tmp/**/*.{}'.format(suffix), recursive=True)
+            so_paths = glob.glob(f'tmp/**/*.{suffix}', recursive=True)
             for path in so_paths:
                 os.remove(path)
 

@@ -1,5 +1,6 @@
 import sys
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 7):

@@ -53,13 +53,10 @@ non_sequence_match_type_names: Final = [
 # For every Pattern a PatternType can be calculated. This requires recursively calculating
 # the PatternTypes of the sub-patterns first.
 # Using the data in the PatternType the match subject and captured names can be narrowed/inferred.
-PatternType = NamedTuple(
-    'PatternType',
-    [
-        ('type', Type),  # The type the match subject can be narrowed to
-        ('rest_type', Type),  # The remaining type if the pattern didn't match
-        ('captures', Dict[Expression, Type]),  # The variables captured by the pattern
-    ])
+class PatternType(NamedTuple):
+    type: Type  # The type the match subject can be narrowed to
+    rest_type: Type  # The remaining type if the pattern didn't match
+    captures: Dict[Expression, Type]  # The variables captured by the pattern
 
 
 class PatternChecker(PatternVisitor[PatternType]):
@@ -396,8 +393,7 @@ class PatternChecker(PatternVisitor[PatternType]):
             if is_subtype(current_type, mapping) and isinstance(current_type, Instance):
                 mapping_inst = map_instance_to_supertype(current_type, mapping.type)
                 dict_typeinfo = self.chk.lookup_typeinfo("builtins.dict")
-                dict_type = fill_typevars(dict_typeinfo)
-                rest_type = expand_type_by_instance(dict_type, mapping_inst)
+                rest_type = Instance(dict_typeinfo, mapping_inst.args)
             else:
                 object_type = self.chk.named_type("builtins.object")
                 rest_type = self.chk.named_generic_type("builtins.dict",
@@ -417,43 +413,39 @@ class PatternChecker(PatternVisitor[PatternType]):
                               mapping_type: Type,
                               key: Expression
                               ) -> Optional[Type]:
-        local_errors = self.msg.clean_copy()
-        local_errors.disable_count = 0
         mapping_type = get_proper_type(mapping_type)
         if isinstance(mapping_type, TypedDictType):
-            result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
-                mapping_type, key, local_errors=local_errors)
+            with self.msg.filter_errors() as local_errors:
+                result: Optional[Type] = self.chk.expr_checker.visit_typeddict_index_expr(
+                    mapping_type, key)
+                has_local_errors = local_errors.has_new_errors()
             # If we can't determine the type statically fall back to treating it as a normal
             # mapping
-            if local_errors.is_errors():
-                local_errors = self.msg.clean_copy()
-                local_errors.disable_count = 0
+            if has_local_errors:
+                with self.msg.filter_errors() as local_errors:
+                    result = self.get_simple_mapping_item_type(pattern,
+                                                               mapping_type,
+                                                               key)
+
+                    if local_errors.has_new_errors():
+                        result = None
+        else:
+            with self.msg.filter_errors():
                 result = self.get_simple_mapping_item_type(pattern,
                                                            mapping_type,
-                                                           key,
-                                                           local_errors)
-
-                if local_errors.is_errors():
-                    result = None
-        else:
-            result = self.get_simple_mapping_item_type(pattern,
-                                                       mapping_type,
-                                                       key,
-                                                       local_errors)
+                                                           key)
         return result
 
     def get_simple_mapping_item_type(self,
                                      pattern: MappingPattern,
                                      mapping_type: Type,
-                                     key: Expression,
-                                     local_errors: MessageBuilder
+                                     key: Expression
                                      ) -> Type:
         result, _ = self.chk.expr_checker.check_method_call_by_name('__getitem__',
                                                                     mapping_type,
                                                                     [key],
                                                                     [ARG_POS],
-                                                                    pattern,
-                                                                    local_errors=local_errors)
+                                                                    pattern)
         return result
 
     def visit_class_pattern(self, o: ClassPattern) -> PatternType:
@@ -508,14 +500,14 @@ class PatternChecker(PatternVisitor[PatternType]):
                                        pattern_type.captures)
                 captures = pattern_type.captures
             else:
-                local_errors = self.msg.clean_copy()
-                match_args_type = analyze_member_access("__match_args__", typ, o,
-                                                        False, False, False,
-                                                        local_errors,
-                                                        original_type=typ,
-                                                        chk=self.chk)
-
-                if local_errors.is_errors():
+                with self.msg.filter_errors() as local_errors:
+                    match_args_type = analyze_member_access("__match_args__", typ, o,
+                                                            False, False, False,
+                                                            self.msg,
+                                                            original_type=typ,
+                                                            chk=self.chk)
+                    has_local_errors = local_errors.has_new_errors()
+                if has_local_errors:
                     self.msg.fail(message_registry.MISSING_MATCH_ARGS.format(typ), o)
                     return self.early_non_match()
 
@@ -562,20 +554,21 @@ class PatternChecker(PatternVisitor[PatternType]):
         can_match = True
         for keyword, pattern in keyword_pairs:
             key_type: Optional[Type] = None
-            local_errors = self.msg.clean_copy()
-            if keyword is not None:
-                key_type = analyze_member_access(keyword,
-                                                 narrowed_type,
-                                                 pattern,
-                                                 False,
-                                                 False,
-                                                 False,
-                                                 local_errors,
-                                                 original_type=new_type,
-                                                 chk=self.chk)
-            else:
-                key_type = AnyType(TypeOfAny.from_error)
-            if local_errors.is_errors() or key_type is None:
+            with self.msg.filter_errors() as local_errors:
+                if keyword is not None:
+                    key_type = analyze_member_access(keyword,
+                                                     narrowed_type,
+                                                     pattern,
+                                                     False,
+                                                     False,
+                                                     False,
+                                                     self.msg,
+                                                     original_type=new_type,
+                                                     chk=self.chk)
+                else:
+                    key_type = AnyType(TypeOfAny.from_error)
+                has_local_errors = local_errors.has_new_errors()
+            if has_local_errors or key_type is None:
                 key_type = AnyType(TypeOfAny.from_error)
                 self.msg.fail(message_registry.CLASS_PATTERN_UNKNOWN_KEYWORD.format(typ, keyword),
                               pattern)
@@ -632,7 +625,7 @@ class PatternChecker(PatternVisitor[PatternType]):
                         ) -> None:
         # Calculating this would not be needed if TypeMap directly used literal hashes instead of
         # expressions, as suggested in the TODO above it's definition
-        already_captured = set(literal_hash(expr) for expr in original_type_map)
+        already_captured = {literal_hash(expr) for expr in original_type_map}
         for expr, typ in extra_type_map.items():
             if literal_hash(expr) in already_captured:
                 node = get_var(expr)

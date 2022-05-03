@@ -1,7 +1,7 @@
+from collections.abc import Sequence
 import sys
 from _typeshed import StrOrBytesPath
 from types import SimpleNamespace
-from typing import Sequence
 
 if sys.version_info >= (3, 9):
     CORE_VENV_DEPS: tuple[str, ...]

@@ -1,8 +1,9 @@
 import sys
 from _typeshed import Self, SupportsWrite
+from collections.abc import Generator, Iterable, Iterator, Mapping
 from types import FrameType, TracebackType
-from typing import IO, Any, Generator, Iterable, Iterator, Mapping, overload
-from typing_extensions import Literal
+from typing import IO, Any, overload
+from typing_extensions import Literal, TypeAlias
 
 __all__ = [
     "extract_stack",
@@ -26,7 +27,7 @@ __all__ = [
     "walk_tb",
 ]
 
-_PT = tuple[str, int, str, str | None]
+_PT: TypeAlias = tuple[str, int, str, str | None]
 
 def print_tb(tb: TracebackType | None, limit: int | None = ..., file: IO[str] | None = ...) -> None: ...
 

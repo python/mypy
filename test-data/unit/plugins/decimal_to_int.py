@@ -4,7 +4,7 @@ from mypy.plugin import Plugin
 
 class MyPlugin(Plugin):
     def get_type_analyze_hook(self, fullname):
-        if fullname == "decimal.Decimal":
+        if fullname in ("decimal.Decimal", "_decimal.Decimal"):
             return decimal_to_int_hook
         return None
 

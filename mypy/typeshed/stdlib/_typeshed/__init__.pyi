@@ -6,8 +6,10 @@ import array
 import ctypes
 import mmap
 import sys
+from collections.abc import Awaitable, Container, Iterable, Set as AbstractSet
 from os import PathLike
-from typing import AbstractSet, Any, Awaitable, Container, Generic, Iterable, Protocol, TypeVar
+from types import TracebackType
+from typing import Any, Generic, Protocol, TypeVar, Union
 from typing_extensions import Final, Literal, TypeAlias, final
 
 _KT = TypeVar("_KT")
@@ -99,7 +101,7 @@ StrPath: TypeAlias = str | PathLike[str]  # stable
 BytesPath: TypeAlias = bytes | PathLike[bytes]  # stable
 StrOrBytesPath: TypeAlias = str | bytes | PathLike[str] | PathLike[bytes]  # stable
 
-OpenTextModeUpdating = Literal[
+OpenTextModeUpdating: TypeAlias = Literal[
     "r+",
     "+r",
     "rt+",
@@ -196,6 +198,9 @@ ReadOnlyBuffer: TypeAlias = bytes  # stable
 WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
 ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
+
+ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
+OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]
 
 # stable
 if sys.version_info >= (3, 10):

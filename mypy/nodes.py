@@ -123,6 +123,8 @@ type_aliases: Final = {
     'typing.DefaultDict': 'collections.defaultdict',
     'typing.Deque': 'collections.deque',
     'typing.OrderedDict': 'collections.OrderedDict',
+    # HACK: a lie in lieu of actual support for PEP 675
+    'typing.LiteralString': 'builtins.str',
 }
 
 # This keeps track of the oldest supported Python version where the corresponding
@@ -137,12 +139,15 @@ type_aliases_source_versions: Final = {
     'typing.DefaultDict': (2, 7),
     'typing.Deque': (2, 7),
     'typing.OrderedDict': (3, 7),
+    'typing.LiteralString': (3, 11),
 }
 
 # This keeps track of aliases in `typing_extensions`, which we treat specially.
 typing_extensions_aliases: Final = {
     # See: https://github.com/python/mypy/issues/11528
     'typing_extensions.OrderedDict': 'collections.OrderedDict',
+    # HACK: a lie in lieu of actual support for PEP 675
+    'typing_extensions.LiteralString': 'builtins.str',
 }
 
 reverse_builtin_aliases: Final = {
@@ -156,6 +161,8 @@ _nongen_builtins: Final = {"builtins.tuple": "typing.Tuple", "builtins.enumerate
 _nongen_builtins.update((name, alias) for alias, name in type_aliases.items())
 # Drop OrderedDict from this for backward compatibility
 del _nongen_builtins['collections.OrderedDict']
+# HACK: consequence of hackily treating LiteralString as an alias for str
+del _nongen_builtins['builtins.str']
 
 
 def get_nongen_builtins(python_version: Tuple[int, int]) -> Dict[str, str]:
@@ -247,7 +254,7 @@ class SymbolNode(Node):
         method = deserialize_map.get(classname)
         if method is not None:
             return method(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
+        raise NotImplementedError(f'unexpected .class {classname}')
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
@@ -476,7 +483,7 @@ class ImportedName(SymbolNode):
         assert False, "ImportedName should never be serialized"
 
     def __str__(self) -> str:
-        return 'ImportedName(%s)' % self.target_fullname
+        return f'ImportedName({self.target_fullname})'
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -1653,7 +1660,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Serializing NameExpr: %s" % (self,)
+        assert False, f"Serializing NameExpr: {self}"
 
 
 class MemberExpr(RefExpr):
@@ -1938,6 +1945,22 @@ class CastExpr(Expression):
         return visitor.visit_cast_expr(self)
 
 
+class AssertTypeExpr(Expression):
+    """Represents a typing.assert_type(expr, type) call."""
+    __slots__ = ('expr', 'type')
+
+    expr: Expression
+    type: "mypy.types.Type"
+
+    def __init__(self, expr: Expression, typ: 'mypy.types.Type') -> None:
+        super().__init__()
+        self.expr = expr
+        self.type = typ
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_assert_type_expr(self)
+
+
 class RevealExpr(Expression):
     """Reveal type expression reveal_type(expr) or reveal_locals() expression."""
 
@@ -2210,7 +2233,10 @@ CONTRAVARIANT: Final = 2
 
 
 class TypeVarLikeExpr(SymbolNode, Expression):
-    """Base class for TypeVarExpr and ParamSpecExpr."""
+    """Base class for TypeVarExpr, ParamSpecExpr and TypeVarTupleExpr.
+
+    Note that they are constructed by the semantic analyzer.
+    """
 
     __slots__ = ('_name', '_fullname', 'upper_bound', 'variance')
 
@@ -2309,6 +2335,34 @@ class ParamSpecExpr(TypeVarLikeExpr):
     def deserialize(cls, data: JsonDict) -> 'ParamSpecExpr':
         assert data['.class'] == 'ParamSpecExpr'
         return ParamSpecExpr(
+            data['name'],
+            data['fullname'],
+            mypy.types.deserialize_type(data['upper_bound']),
+            data['variance']
+        )
+
+
+class TypeVarTupleExpr(TypeVarLikeExpr):
+    """Type variable tuple expression TypeVarTuple(...)."""
+
+    __slots__ = ()
+
+    def accept(self, visitor: ExpressionVisitor[T]) -> T:
+        return visitor.visit_type_var_tuple_expr(self)
+
+    def serialize(self) -> JsonDict:
+        return {
+            '.class': 'TypeVarTupleExpr',
+            'name': self._name,
+            'fullname': self._fullname,
+            'upper_bound': self.upper_bound.serialize(),
+            'variance': self.variance,
+        }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarTupleExpr':
+        assert data['.class'] == 'TypeVarTupleExpr'
+        return TypeVarTupleExpr(
             data['name'],
             data['fullname'],
             mypy.types.deserialize_type(data['upper_bound']),
@@ -2724,7 +2778,7 @@ class TypeInfo(SymbolNode):
             raise KeyError(name)
 
     def __repr__(self) -> str:
-        return '<TypeInfo %s>' % self.fullname
+        return f'<TypeInfo {self.fullname}>'
 
     def __bool__(self) -> bool:
         # We defined this here instead of just overriding it in
@@ -2805,8 +2859,7 @@ class TypeInfo(SymbolNode):
 
         head = 'TypeInfo' + str_conv.format_id(self)
         if self.bases:
-            base = 'Bases({})'.format(', '.join(type_str(base)
-                                                for base in self.bases))
+            base = f"Bases({', '.join(type_str(base) for base in self.bases)})"
         mro = 'Mro({})'.format(', '.join(item.fullname + str_conv.format_id(item)
                                          for item in self.mro))
         names = []
@@ -2814,18 +2867,18 @@ class TypeInfo(SymbolNode):
             description = name + str_conv.format_id(self.names[name].node)
             node = self.names[name].node
             if isinstance(node, Var) and node.type:
-                description += ' ({})'.format(type_str(node.type))
+                description += f' ({type_str(node.type)})'
             names.append(description)
         items = [
-            'Name({})'.format(self.fullname),
+            f'Name({self.fullname})',
             base,
             mro,
             ('Names', names),
         ]
         if self.declared_metaclass:
-            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+            items.append(f'DeclaredMetaclass({type_str(self.declared_metaclass)})')
         if self.metaclass_type:
-            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
+            items.append(f'MetaclassType({type_str(self.metaclass_type)})')
         return mypy.strconv.dump_tagged(
             items,
             head,
@@ -2853,6 +2906,8 @@ class TypeInfo(SymbolNode):
                     None if self.typeddict_type is None else self.typeddict_type.serialize(),
                 'flags': get_flags(self, TypeInfo.FLAGS),
                 'metadata': self.metadata,
+                'slots': list(sorted(self.slots)) if self.slots is not None else None,
+                'deletable_attributes': self.deletable_attributes,
                 }
         return data
 
@@ -2890,6 +2945,8 @@ class TypeInfo(SymbolNode):
         ti.typeddict_type = (None if data['typeddict_type'] is None
                             else mypy.types.TypedDictType.deserialize(data['typeddict_type']))
         ti.metadata = data['metadata']
+        ti.slots = set(data['slots']) if data['slots'] is not None else None
+        ti.deletable_attributes = data['deletable_attributes']
         set_flags(ti, data['flags'])
         return ti
 
@@ -3270,12 +3327,12 @@ class SymbolTableNode:
         return new
 
     def __str__(self) -> str:
-        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
+        s = f'{node_kinds[self.kind]}/{short_type(self.node)}'
         if isinstance(self.node, SymbolNode):
-            s += ' ({})'.format(self.node.fullname)
+            s += f' ({self.node.fullname})'
         # Include declared type of variables and functions.
         if self.type is not None:
-            s += ' : {}'.format(self.type)
+            s += f' : {self.type}'
         return s
 
     def serialize(self, prefix: str, name: str) -> JsonDict:
@@ -3300,7 +3357,7 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname
         else:
-            assert self.node is not None, '%s:%s' % (prefix, name)
+            assert self.node is not None, f'{prefix}:{name}'
             if prefix is not None:
                 fullname = self.node.fullname
                 if (fullname is not None and '.' in fullname
@@ -3308,7 +3365,7 @@ class SymbolTableNode:
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     assert not isinstance(self.node, PlaceholderNode), (
-                        'Definition of {} is unexpectedly incomplete'.format(fullname)
+                        f'Definition of {fullname} is unexpectedly incomplete'
                     )
                     data['cross_ref'] = fullname
                     return data
@@ -3410,7 +3467,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
         initial = get_member_expr_fullname(expr.expr)
     else:
         return None
-    return '{}.{}'.format(initial, expr.name)
+    return f'{initial}.{expr.name}'
 
 
 deserialize_map: Final = {
@@ -3461,7 +3518,7 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
     seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail('Duplicate argument "{}" in {}'.format(name, description), node)
+            fail(f'Duplicate argument "{name}" in {description}', node)
             break
         seen_names.add(name)
 

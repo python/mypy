@@ -8,7 +8,7 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
     ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
-    UnpackType
+    UnpackType, TypeVarTupleType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -257,6 +257,11 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return t
         return self.default(self.s)
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
     def visit_unpack_type(self, t: UnpackType) -> UnpackType:
         raise NotImplementedError
 
@@ -446,7 +451,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)

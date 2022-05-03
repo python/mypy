@@ -132,6 +132,16 @@ REVEAL_TYPE_NAMES: Final = (
     'typing_extensions.reveal_type',
 )
 
+ASSERT_TYPE_NAMES: Final = (
+    'typing.assert_type',
+    'typing_extensions.assert_type',
+)
+
+OVERLOAD_NAMES: Final = (
+    'typing.overload',
+    'typing_extensions.overload',
+)
+
 # Attributes that can optionally be defined in the body of a subclass of
 # enum.Enum but are removed from the class __dict__ by EnumMeta.
 ENUM_REMOVED_PROPS: Final = (
@@ -190,7 +200,7 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
     method = deserialize_map.get(classname)
     if method is not None:
         return method(data)
-    raise NotImplementedError('unexpected .class {}'.format(classname))
+    raise NotImplementedError(f'unexpected .class {classname}')
 
 
 class Type(mypy.nodes.Context):
@@ -225,11 +235,11 @@ class Type(mypy.nodes.Context):
         return self.accept(TypeStrVisitor())
 
     def serialize(self) -> Union[JsonDict, str]:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+        raise NotImplementedError(f'Cannot serialize {self.__class__.__name__} instance')
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'Type':
-        raise NotImplementedError('Cannot deserialize {} instance'.format(cls.__name__))
+        raise NotImplementedError(f'Cannot deserialize {cls.__name__} instance')
 
 
 class TypeAliasType(Type):
@@ -365,7 +375,7 @@ class TypeGuardedType(Type):
         self.type_guard = type_guard
 
     def __repr__(self) -> str:
-        return "TypeGuard({})".format(self.type_guard)
+        return f"TypeGuard({self.type_guard})"
 
 
 class RequiredType(Type):
@@ -378,9 +388,9 @@ class RequiredType(Type):
 
     def __repr__(self) -> str:
         if self.required:
-            return "Required[{}]".format(self.item)
+            return f"Required[{self.item}]"
         else:
-            return "NotRequired[{}]".format(self.item)
+            return f"NotRequired[{self.item}]"
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return self.item.accept(visitor)
@@ -416,9 +426,15 @@ class TypeVarId:
     # Class variable used for allocating fresh ids for metavariables.
     next_raw_id: ClassVar[int] = 1
 
-    def __init__(self, raw_id: int, meta_level: int = 0) -> None:
+    # Fullname of class (or potentially function in the future) which
+    # declares this type variable (not the fullname of the TypeVar
+    # definition!), or ''
+    namespace: str
+
+    def __init__(self, raw_id: int, meta_level: int = 0, *, namespace: str = '') -> None:
         self.raw_id = raw_id
         self.meta_level = meta_level
+        self.namespace = namespace
 
     @staticmethod
     def new(meta_level: int) -> 'TypeVarId':
@@ -432,7 +448,8 @@ class TypeVarId:
     def __eq__(self, other: object) -> bool:
         if isinstance(other, TypeVarId):
             return (self.raw_id == other.raw_id and
-                    self.meta_level == other.meta_level)
+                    self.meta_level == other.meta_level and
+                    self.namespace == other.namespace)
         else:
             return False
 
@@ -440,7 +457,7 @@ class TypeVarId:
         return not (self == other)
 
     def __hash__(self) -> int:
-        return hash((self.raw_id, self.meta_level))
+        return hash((self.raw_id, self.meta_level, self.namespace))
 
     def is_meta_var(self) -> bool:
         return self.meta_level > 0
@@ -514,6 +531,7 @@ class TypeVarType(TypeVarLikeType):
                 'name': self.name,
                 'fullname': self.fullname,
                 'id': self.id.raw_id,
+                'namespace': self.id.namespace,
                 'values': [v.serialize() for v in self.values],
                 'upper_bound': self.upper_bound.serialize(),
                 'variance': self.variance,
@@ -525,7 +543,7 @@ class TypeVarType(TypeVarLikeType):
         return TypeVarType(
             data['name'],
             data['fullname'],
-            data['id'],
+            TypeVarId(data['id'], namespace=data['namespace']),
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
@@ -641,6 +659,48 @@ class ParamSpecType(TypeVarLikeType):
             deserialize_type(data['upper_bound']),
             prefix=Parameters.deserialize(data['prefix'])
         )
+
+
+class TypeVarTupleType(TypeVarLikeType):
+    """Type that refers to a TypeVarTuple.
+
+    See PEP646 for more information.
+    """
+    def serialize(self) -> JsonDict:
+        assert not self.id.is_meta_var()
+        return {'.class': 'TypeVarTupleType',
+                'name': self.name,
+                'fullname': self.fullname,
+                'id': self.id.raw_id,
+                'upper_bound': self.upper_bound.serialize(),
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'TypeVarTupleType':
+        assert data['.class'] == 'TypeVarTupleType'
+        return TypeVarTupleType(
+            data['name'],
+            data['fullname'],
+            data['id'],
+            deserialize_type(data['upper_bound']),
+        )
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return visitor.visit_type_var_tuple(self)
+
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeVarTupleType):
+            return NotImplemented
+        return self.id == other.id
+
+    @staticmethod
+    def new_unification_variable(old: 'TypeVarTupleType') -> 'TypeVarTupleType':
+        new_id = TypeVarId.new(meta_level=1)
+        return TypeVarTupleType(old.name, old.fullname, new_id, old.upper_bound,
+                             line=old.line, column=old.column)
 
 
 class UnboundType(ProperType):
@@ -1201,11 +1261,11 @@ class FunctionLike(ProperType):
     def get_name(self) -> Optional[str]: pass
 
 
-FormalArgument = NamedTuple('FormalArgument', [
-    ('name', Optional[str]),
-    ('pos', Optional[int]),
-    ('typ', Type),
-    ('required', bool)])
+class FormalArgument(NamedTuple):
+    name: Optional[str]
+    pos: Optional[int]
+    typ: Type
+    required: bool
 
 
 # TODO: should this take bound typevars too? what would this take?
@@ -1575,7 +1635,7 @@ class CallableType(FunctionLike):
         This takes into account *arg and **kwargs but excludes keyword-only args."""
         if self.is_var_arg or self.is_kw_arg:
             return sys.maxsize
-        return sum([kind.is_positional() for kind in self.arg_kinds])
+        return sum(kind.is_positional() for kind in self.arg_kinds)
 
     def formal_arguments(self, include_star_args: bool = False) -> List[FormalArgument]:
         """Return a list of the formal arguments of this callable, ignoring *arg and **kwargs.
@@ -2174,7 +2234,7 @@ class LiteralType(ProperType):
 
         # If this is backed by an enum,
         if self.is_enum_literal():
-            return '{}.{}'.format(fallback_name, self.value)
+            return f'{fallback_name}.{self.value}'
 
         if fallback_name == 'builtins.bytes':
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
@@ -2462,7 +2522,7 @@ class PlaceholderType(ProperType):
     def serialize(self) -> str:
         # We should never get here since all placeholders should be replaced
         # during semantic analysis.
-        assert False, "Internal error: unresolved placeholder type {}".format(self.fullname)
+        assert False, f"Internal error: unresolved placeholder type {self.fullname}"
 
 
 @overload
@@ -2533,18 +2593,18 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_unbound_type(self, t: UnboundType) -> str:
         s = t.name + '?'
         if t.args:
-            s += '[{}]'.format(self.list_str(t.args))
+            s += f'[{self.list_str(t.args)}]'
         return s
 
     def visit_type_list(self, t: TypeList) -> str:
-        return '<TypeList {}>'.format(self.list_str(t.items))
+        return f'<TypeList {self.list_str(t.items)}>'
 
     def visit_callable_argument(self, t: CallableArgument) -> str:
         typ = t.typ.accept(self)
         if t.name is None:
-            return "{}({})".format(t.constructor, typ)
+            return f"{t.constructor}({typ})"
         else:
-            return "{}({}, {})".format(t.constructor, typ, t.name)
+            return f"{t.constructor}({typ}, {t.name})"
 
     def visit_any(self, t: AnyType) -> str:
         if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
@@ -2564,35 +2624,35 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.source is None:
             return "<Deleted>"
         else:
-            return "<Deleted '{}'>".format(t.source)
+            return f"<Deleted '{t.source}'>"
 
     def visit_instance(self, t: Instance) -> str:
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
-            s = '{}?'.format(t.last_known_value)
+            s = f'{t.last_known_value}?'
         else:
             s = t.type.fullname or t.type.name or '<???>'
 
         if t.args:
             if t.type.fullname == 'builtins.tuple':
                 assert len(t.args) == 1
-                s += '[{}, ...]'.format(self.list_str(t.args))
+                s += f'[{self.list_str(t.args)}, ...]'
             else:
-                s += '[{}]'.format(self.list_str(t.args))
+                s += f'[{self.list_str(t.args)}]'
         if self.id_mapper:
-            s += '<{}>'.format(self.id_mapper.id(t.type))
+            s += f'<{self.id_mapper.id(t.type)}>'
         return s
 
     def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:
             # Anonymous type variable type (only numeric id).
-            s = '`{}'.format(t.id)
+            s = f'`{t.id}'
         else:
             # Named type variable type.
-            s = '{}`{}'.format(t.name, t.id)
+            s = f'{t.name}`{t.id}'
         if self.id_mapper and t.upper_bound:
-            s += '(upper_bound={})'.format(t.upper_bound.accept(self))
+            s += f'(upper_bound={t.upper_bound.accept(self)})'
         return s
 
     def visit_param_spec(self, t: ParamSpecType) -> str:
@@ -2639,6 +2699,15 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
         return f'[{s}]'
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> str:
+        if t.name is None:
+            # Anonymous type variable type (only numeric id).
+            s = f'`{t.id}'
+        else:
+            # Named type variable type.
+            s = f'{t.name}`{t.id}'
+        return s
+
     def visit_callable_type(self, t: CallableType) -> str:
         param_spec = t.param_spec()
         if param_spec is not None:
@@ -2671,13 +2740,13 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += ', '
             s += f'*{n}.args, **{n}.kwargs'
 
-        s = '({})'.format(s)
+        s = f'({s})'
 
         if not isinstance(get_proper_type(t.ret_type), NoneType):
             if t.type_guard is not None:
-                s += ' -> TypeGuard[{}]'.format(t.type_guard.accept(self))
+                s += f' -> TypeGuard[{t.type_guard.accept(self)}]'
             else:
-                s += ' -> {}'.format(t.ret_type.accept(self))
+                s += f' -> {t.ret_type.accept(self)}'
 
         if t.variables:
             vs = []
@@ -2685,39 +2754,39 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 if isinstance(var, TypeVarType):
                     # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
                     if var.values:
-                        vals = '({})'.format(', '.join(val.accept(self) for val in var.values))
-                        vs.append('{} in {}'.format(var.name, vals))
+                        vals = f"({', '.join(val.accept(self) for val in var.values)})"
+                        vs.append(f'{var.name} in {vals}')
                     elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                        vs.append('{} <: {}'.format(var.name, var.upper_bound.accept(self)))
+                        vs.append(f'{var.name} <: {var.upper_bound.accept(self)}')
                     else:
                         vs.append(var.name)
                 else:
                     # For other TypeVarLikeTypes, just use the name
                     vs.append(var.name)
-            s = '{} {}'.format('[{}]'.format(', '.join(vs)), s)
+            s = f"[{', '.join(vs)}] {s}"
 
-        return 'def {}'.format(s)
+        return f'def {s}'
 
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
         for i in t.items:
             a.append(i.accept(self))
-        return 'Overload({})'.format(', '.join(a))
+        return f"Overload({', '.join(a)})"
 
     def visit_tuple_type(self, t: TupleType) -> str:
         s = self.list_str(t.items)
         if t.partial_fallback and t.partial_fallback.type:
             fallback_name = t.partial_fallback.type.fullname
             if fallback_name != 'builtins.tuple':
-                return 'Tuple[{}, fallback={}]'.format(s, t.partial_fallback.accept(self))
-        return 'Tuple[{}]'.format(s)
+                return f'Tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
+        return f'Tuple[{s}]'
 
     def visit_typeddict_type(self, t: TypedDictType) -> str:
         def item_str(name: str, typ: str) -> str:
             if name in t.required_keys:
-                return '{!r}: {}'.format(name, typ)
+                return f'{name!r}: {typ}'
             else:
-                return '{!r}?: {}'.format(name, typ)
+                return f'{name!r}?: {typ}'
 
         s = '{' + ', '.join(item_str(name, typ.accept(self))
                             for name, typ in t.items.items()) + '}'
@@ -2725,21 +2794,21 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.fallback and t.fallback.type:
             if t.fallback.type.fullname not in TPDICT_FB_NAMES:
                 prefix = repr(t.fallback.type.fullname) + ', '
-        return 'TypedDict({}{})'.format(prefix, s)
+        return f'TypedDict({prefix}{s})'
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> str:
         return repr(t.literal_value)
 
     def visit_literal_type(self, t: LiteralType) -> str:
-        return 'Literal[{}]'.format(t.value_repr())
+        return f'Literal[{t.value_repr()}]'
 
     def visit_star_type(self, t: StarType) -> str:
         s = t.type.accept(self)
-        return '*{}'.format(s)
+        return f'*{s}'
 
     def visit_union_type(self, t: UnionType) -> str:
         s = self.list_str(t.items)
-        return 'Union[{}]'.format(s)
+        return f'Union[{s}]'
 
     def visit_partial_type(self, t: PartialType) -> str:
         if t.type is None:
@@ -2752,10 +2821,10 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return '...'
 
     def visit_type_type(self, t: TypeType) -> str:
-        return 'Type[{}]'.format(t.item.accept(self))
+        return f'Type[{t.item.accept(self)}]'
 
     def visit_placeholder_type(self, t: PlaceholderType) -> str:
-        return '<placeholder {}>'.format(t.fullname)
+        return f'<placeholder {t.fullname}>'
 
     def visit_type_alias_type(self, t: TypeAliasType) -> str:
         if t.alias is not None:
@@ -2767,7 +2836,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return '<alias (unfixed)>'
 
     def visit_unpack_type(self, t: UnpackType) -> str:
-        return 'Unpack[{}]'.format(t.type.accept(self))
+        return f'Unpack[{t.type.accept(self)}]'
 
     def list_str(self, a: Iterable[Type]) -> str:
         """Convert items of an array to strings (pretty-print types)

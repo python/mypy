@@ -8,7 +8,7 @@ if sys.version_info >= (3, 9):
     from types import GenericAlias
 
 if sys.version_info >= (3, 10):
-    from typing import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Reversible, Sequence
+    from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, MutableSequence, Reversible, Sequence
 else:
     from _collections_abc import *
 

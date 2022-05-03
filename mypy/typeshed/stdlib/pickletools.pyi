@@ -1,8 +1,10 @@
-from typing import IO, Any, Callable, Iterator, MutableMapping
+from collections.abc import Callable, Iterator, MutableMapping
+from typing import IO, Any
+from typing_extensions import TypeAlias
 
 __all__ = ["dis", "genops", "optimize"]
 
-_Reader = Callable[[IO[bytes]], Any]
+_Reader: TypeAlias = Callable[[IO[bytes]], Any]
 bytes_types: tuple[type[Any], ...]
 
 UP_TO_NEWLINE: int

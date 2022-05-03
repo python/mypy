@@ -84,7 +84,7 @@ assert all(cmd in cmds for cmd in FAST_FAIL)
 def run_cmd(name: str) -> int:
     status = 0
     cmd = cmds[name]
-    print('run %s: %s' % (name, cmd))
+    print(f'run {name}: {cmd}')
     proc = subprocess.run(cmd, stderr=subprocess.STDOUT)
     if proc.returncode:
         print('\nFAILED: %s' % name)
@@ -105,7 +105,7 @@ def start_background_cmd(name: str) -> Popen:
 def wait_background_cmd(name: str, proc: Popen) -> int:
     output = proc.communicate()[0]
     status = proc.returncode
-    print('run %s: %s' % (name, cmds[name]))
+    print(f'run {name}: {cmds[name]}')
     if status:
         print(output.decode().rstrip())
         print('\nFAILED: %s' % name)

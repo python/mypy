@@ -8,6 +8,7 @@ import sys
 import hashlib
 import io
 import shutil
+import time
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -742,7 +743,7 @@ class FancyFormatter:
         if blockers:
             msg += ' (errors prevented further checking)'
         else:
-            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
+            msg += f" (checked {n_sources} source file{'s' if n_sources != 1 else ''})"
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
@@ -763,3 +764,12 @@ def is_stub_package_file(file: str) -> bool:
 
 def unnamed_function(name: Optional[str]) -> bool:
     return name is not None and name == "_"
+
+
+# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
+# (or when mypy properly handles alternate definitions based on python version check
+time_ref = time.perf_counter
+
+
+def time_spent_us(t0: float) -> int:
+    return int((time.perf_counter() - t0) * 1e6)

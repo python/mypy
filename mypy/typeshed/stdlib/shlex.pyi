@@ -1,6 +1,7 @@
 import sys
 from _typeshed import Self
-from typing import Iterable, TextIO
+from collections.abc import Iterable
+from typing import TextIO
 
 if sys.version_info >= (3, 8):
     __all__ = ["shlex", "split", "quote", "join"]

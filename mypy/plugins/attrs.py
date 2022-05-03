@@ -251,7 +251,7 @@ def _get_decorator_optional_bool_argument(
                     return False
                 if attr_value.fullname == 'builtins.None':
                     return None
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), ctx.reason)
+            ctx.api.fail(f'"{name}" argument must be True or False.', ctx.reason)
             return default
         return default
     else:
@@ -683,7 +683,7 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
             # can modify it.
             var = Var(attribute.name, ctx.cls.info[attribute.name].type)
             var.info = ctx.cls.info
-            var._fullname = '%s.%s' % (ctx.cls.info.fullname, var.name)
+            var._fullname = f'{ctx.cls.info.fullname}.{var.name}'
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
             var.is_property = True
 

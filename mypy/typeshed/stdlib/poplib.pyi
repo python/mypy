@@ -1,15 +1,12 @@
 import socket
 import ssl
-import sys
+from builtins import list as _list  # conflicts with a method named "list"
 from typing import Any, BinaryIO, NoReturn, Pattern, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
-if sys.version_info >= (3, 10):
-    __all__ = ["POP3", "error_proto", "POP3_SSL"]
-else:
-    __all__ = ["POP3", "error_proto"]
+__all__ = ["POP3", "error_proto", "POP3_SSL"]
 
-_LongResp = tuple[bytes, list[bytes], int]
+_LongResp: TypeAlias = tuple[bytes, list[bytes], int]
 
 class error_proto(Exception): ...
 
@@ -19,8 +16,6 @@ CR: Literal[b"\r"]
 LF: Literal[b"\n"]
 CRLF: Literal[b"\r\n"]
 HAVE_SSL: bool
-
-_list = list  # conflicts with a method named "list"
 
 class POP3:
     encoding: str
