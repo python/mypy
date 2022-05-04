@@ -1394,3 +1394,8 @@ class C: pass
 b \d+
 b\.c \d+
 .*
+
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass

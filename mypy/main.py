@@ -869,7 +869,7 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
-    parser.add_argument('--enable-incomplete-features', default=False,
+    parser.add_argument('--enable-incomplete-features', action='store_true',
                         help=argparse.SUPPRESS)
 
     # options specifying code to check
