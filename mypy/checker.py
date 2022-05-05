@@ -2376,20 +2376,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for l in lvalues:
             if isinstance(l, TupleExpr):
                 self.check_assignment_for_untyped(l.items)
-            elif isinstance(l, NameExpr) and l.node:
-                if not isinstance(l.node, Var):
-                    continue
-                t = get_proper_type(l.node.type)
-                if not t:
-                    # No type? it's either deferred or can't be inferred (handled elsewhere)
-                    continue
-                if is_unannotated_any(t) or isinstance(t, UntypedType):
-                    self.msg.untyped_name_usage(l.name, l)
-            elif isinstance(l, MemberExpr):
-                # FuncDef and TypeInfo are reported in other places
-                if not l.node or not isinstance(l.node, Var):
-                    continue
-                t = get_proper_type(l.node.type)
+            elif isinstance(l, (NameExpr, MemberExpr)):
+                t = get_proper_type(self.type_map.get(l))
                 if not t:
                     # No type? it's either deferred or can't be inferred (handled elsewhere)
                     continue
@@ -3512,6 +3500,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    f'{rvalue_name} has type',
                                    f'{lvalue_name} has type', code=code)
+                if isinstance(rvalue, (NameExpr, MemberExpr)):
+                    if (
+                        self.options.disallow_untyped_calls
+                        and isinstance(rvalue_type, UntypedType)
+                    ):
+                        self.msg.untyped_name_usage(rvalue.name, rvalue)
+                    elif self.options.disallow_any_expr and isinstance(rvalue_type, AnyType):
+                        self.msg.disallowed_any_type(rvalue_type, rvalue)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,

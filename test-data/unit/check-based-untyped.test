@@ -1,15 +1,22 @@
-[case testUntypedAttribute]
+[case testUntypedReference]
 from basedtyping import Untyped
 a: Untyped
+c: int
+
 a = 1  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+c = a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
 del a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+
 class A:
-    a: Untyped
+    b: Untyped
 a1: A
-del a1.a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
-del a1.a[1]  # E: Expression has type "Untyped"  [no-any-expr]
-del a1.a.b  # E: Expression has type "Untyped"  [no-any-expr] \
-            # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+del a1.b  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+del a1.b[1]  # E: Expression has type "Untyped"  [no-any-expr]
+del a1.b.c  # E: Expression has type "Untyped"  [no-any-expr] \
+            # E: Usage of untyped name "c" in typed context  [no-untyped-usage]
+a2: A
+c = a1.b  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+a1.b = 1  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
 
 
 [case testUntypedIndex]
@@ -55,3 +62,23 @@ def f2(a: Untyped) -> int: ...
 f1(1)
 f2(1)  # E: Call to incomplete function "f2" in typed context  [no-untyped-call] \
        # N: Type is "def (a: Untyped) -> int"
+
+
+[case testUntypedProperty]
+# flags: --allow-untyped-defs --allow-any-decorated
+from basedtyping import Untyped
+
+class A:
+    @property
+    def foo(self): ...
+    @foo.setter
+    def foo(self, value): ...
+    @property
+    def bar(self) -> Untyped: ...
+    @bar.setter
+    def bar(self, value: Untyped) -> None: ...
+
+a: A
+a.foo = 1  # E: Usage of untyped name "foo" in typed context  [no-untyped-usage]
+a.bar = 1  # E: Usage of untyped name "bar" in typed context  [no-untyped-usage]
+[builtins fixtures/property.pyi]
