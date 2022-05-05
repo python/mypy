@@ -2547,7 +2547,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Checks a call to an overloaded function."""
         # Normalize unpacked kwargs before checking the call.
         callee = callee.with_unpacked_kwargs()
-        arg_types = self.infer_arg_types_in_empty_context(args)
+        # We perform the infer step with Any's allowed
+        # We do not want `--disallow-any-expr` to affect the inferred types
+        # TODO: consider which other options should not affect the overload inference.
+        disallow_any_expr = self.chk.options.disallow_any_expr
+        self.chk.options.disallow_any_expr = False
+        try:
+            # We suppress notes here for the case of `reveal_type` within a lambda argument.
+            with self.msg.filter_errors(
+                filter_errors=lambda _, error_info: error_info.severity == "note"
+            ):
+                arg_types = self.infer_arg_types_in_empty_context(args)
+        finally:
+            self.chk.options.disallow_any_expr = disallow_any_expr
         # Step 1: Filter call targets to remove ones where the argument counts don't match
         plausible_targets = self.plausible_overload_call_targets(
             arg_types, arg_kinds, arg_names, callee
