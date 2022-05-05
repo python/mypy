@@ -38,7 +38,7 @@ from mypy.patterns import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
-    TypeOfAny, Instance, RawExpressionType, ProperType, UnionType,
+    TypeOfAny, Instance, RawExpressionType, ProperType, UnionType, UntypedType,
 )
 from mypy import defaults
 from mypy import message_registry, errorcodes as codes
@@ -815,7 +815,7 @@ class ASTConverter:
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.unannotated)
+                                 else UntypedType()
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
@@ -825,7 +825,7 @@ class ASTConverter:
                                                      line=lineno,
                                                      override_column=n.col_offset)
                                        .translate_expr_list(func_type_ast.argtypes))
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated)
+                    arg_types = [a if a is not None else UntypedType()
                                 for a in translated_args]
                 return_type = TypeConverter(self.errors,
                                             line=lineno).visit(func_type_ast.returns)
@@ -864,11 +864,11 @@ class ASTConverter:
                           blocker=False)
             else:
                 func_type = CallableType([a if a is not None else
-                                          AnyType(TypeOfAny.unannotated) for a in arg_types],
+                                          UntypedType() for a in arg_types],
                                          arg_kinds,
                                          arg_names,
                                          return_type if return_type is not None else
-                                         AnyType(TypeOfAny.unannotated),
+                                         UntypedType(),
                                          _dummy_fallback)
 
         func_def = FuncDef(

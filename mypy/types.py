@@ -943,17 +943,68 @@ class AnyType(ProperType):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType', 'type_of_any': self.type_of_any,
+        return {'.class': type(self).__name__, 'type_of_any': self.type_of_any,
                 'source_any': self.source_any.serialize() if self.source_any is not None else None,
                 'missing_import_name': self.missing_import_name}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
-        assert data['.class'] == 'AnyType'
+        assert data['.class'] == cls.__name__
         source = data['source_any']
-        return AnyType(data['type_of_any'],
-                       AnyType.deserialize(source) if source is not None else None,
-                       data['missing_import_name'])
+        return cls(type_of_any=data['type_of_any'],
+                   source_any=cast(
+                       AnyType, deserialize_type(source)) if source is not None else None,
+                   missing_import_name=data['missing_import_name'])
+
+    def describe(self) -> str:
+        if not mypy.options._based:
+            return 'Any'
+
+        def describe_type_of_any(type_of_any: int = self.type_of_any) -> Optional[str]:
+            if type_of_any == TypeOfAny.unannotated:
+                return "unannotated"
+            elif type_of_any == TypeOfAny.explicit:
+                return None
+            elif type_of_any == TypeOfAny.from_unimported_type:
+                return "from unimported type"
+            elif type_of_any == TypeOfAny.from_omitted_generics:
+                return "from omitted generics"
+            elif type_of_any == TypeOfAny.from_error:
+                return "from error"
+            elif type_of_any == TypeOfAny.special_form:
+                return None
+            elif type_of_any == TypeOfAny.from_another_any:
+                return (describe_type_of_any(self.source_any.type_of_any)
+                        if self.source_any else None)
+            elif type_of_any == TypeOfAny.implementation_artifact:
+                return "from a limitation"
+            elif type_of_any == TypeOfAny.suggestion_engine:
+                return "from a suggestion"
+            assert False, "unreachable"
+        description = self.__class__.__name__.split("Type")[0]
+        type_of = describe_type_of_any()
+        if type_of:
+            return f'{description} ({type_of})'
+        return description
+
+
+class UntypedType(AnyType):
+    def __init__(self,
+                 type_of_any: int = TypeOfAny.unannotated,
+                 source_any: Optional['AnyType'] = None,
+                 missing_import_name: Optional[str] = None,
+                 line: int = -1,
+                 column: int = -1):
+        super().__init__(type_of_any,
+                         source_any=source_any,
+                         missing_import_name=missing_import_name,
+                         line=line,
+                         column=column)
+
+    def describe(self) -> str:
+        if not mypy.options._based:
+            return super().describe()
+        return "Untyped"
 
 
 class UninhabitedType(ProperType):
@@ -2650,7 +2701,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_any(self, t: AnyType) -> str:
         if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
             return '...'
-        return 'Any'
+        return t.describe()
 
     def visit_none_type(self, t: NoneType) -> str:
         return "None"

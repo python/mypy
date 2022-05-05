@@ -1,0 +1,2670 @@
+-- Test cases for stubgen that generate stubs from Python code
+
+[case testEmptyFile]
+[out]
+
+[case testSingleFunction]
+def f():
+    x = 1
+[out]
+def f(): ...
+
+[case testTwoFunctions]
+def f(a, b):
+    x = 1
+def g(arg):
+    pass
+[out]
+def f(a, b): ...
+def g(arg): ...
+
+[case testDefaultArgInt]
+def f(a, b=2): ...
+def g(b=-1, c=0): ...
+[out]
+def f(a, b: int = ...): ...
+def g(b: int = ..., c: int = ...): ...
+
+[case testDefaultArgNone]
+def f(x=None): ...
+[out]
+from basedtyping import Untyped
+
+def f(x: Untyped | None = ...): ...
+
+[case testDefaultArgBool]
+def f(x=True, y=False): ...
+[out]
+def f(x: bool = ..., y: bool = ...): ...
+
+[case testDefaultArgStr]
+def f(x='foo'): ...
+[out]
+def f(x: str = ...): ...
+
+[case testDefaultArgBytes]
+def f(x=b'foo'): ...
+[out]
+def f(x: bytes = ...): ...
+
+[case testDefaultArgFloat]
+def f(x=1.2): ...
+[out]
+def f(x: float = ...): ...
+
+[case testDefaultArgOther]
+def f(x=ord): ...
+[out]
+def f(x=...): ...
+
+[case testPreserveFunctionAnnotation]
+def f(x: Foo) -> Bar: ...
+def g(x: Foo = Foo()) -> Bar: ...
+[out]
+def f(x: Foo) -> Bar: ...
+def g(x: Foo = ...) -> Bar: ...
+
+[case testPreserveFunctionAnnotationWithArgs]
+def f(x: foo['x']) -> bar: ...
+def g(x: foo[x]) -> bar: ...
+def h(x: foo['x', 'y']) -> bar: ...
+def i(x: foo[x, y]) -> bar: ...
+def j(x: foo['x', y]) -> bar: ...
+def k(x: foo[x, 'y']) -> bar: ...
+def lit_str(x: Literal['str']) -> Literal['str']: ...
+def lit_int(x: Literal[1]) -> Literal[1]: ...
+[out]
+def f(x: foo['x']) -> bar: ...
+def g(x: foo[x]) -> bar: ...
+def h(x: foo['x', 'y']) -> bar: ...
+def i(x: foo[x, y]) -> bar: ...
+def j(x: foo['x', y]) -> bar: ...
+def k(x: foo[x, 'y']) -> bar: ...
+def lit_str(x: Literal['str']) -> Literal['str']: ...
+def lit_int(x: Literal[1]) -> Literal[1]: ...
+
+[case testPreserveVarAnnotation]
+x: Foo
+[out]
+x: Foo
+
+[case testPreserveVarAnnotationWithoutQuotes]
+x: 'Foo'
+[out]
+x: Foo
+
+[case testVarArgs]
+def f(x, *y): ...
+[out]
+def f(x, *y): ...
+
+[case testKwVarArgs]
+def f(x, **y): ...
+[out]
+def f(x, **y): ...
+
+[case testVarArgsWithKwVarArgs]
+def f(a, *b, **c): ...
+def g(a, *b, c=1): ...
+def h(a, *b, c=1, **d): ...
+def i(a, *, b=1): ...
+def j(a, *, b=1, **c): ...
+[out]
+def f(a, *b, **c): ...
+def g(a, *b, c: int = ...): ...
+def h(a, *b, c: int = ..., **d): ...
+def i(a, *, b: int = ...): ...
+def j(a, *, b: int = ..., **c): ...
+
+[case testClass]
+class A:
+    def f(self, x):
+        x = 1
+def g(): ...
+[out]
+class A:
+    def f(self, x): ...
+
+def g(): ...
+
+[case testVariable]
+x = 1
+[out]
+x: int
+
+[case testAnnotatedVariable]
+x: int = 1
+[out]
+x: int
+
+[case testAnnotatedVariableGeneric]
+x: Foo[int, str] = ...
+[out]
+x: Foo[int, str]
+
+[case testAnnotatedVariableOldSyntax]
+x = 1  # type: int
+[out]
+x: int
+
+[case testAnnotatedVariableNone]
+x: None
+[out]
+x: None
+
+[case testAnnotatedVariableNoneOldSyntax]
+x = None  # type: None
+[out]
+x: None
+
+[case testMultipleVariable]
+x = y = 1
+[out]
+x: int
+y: int
+
+[case testClassVariable]
+class C:
+    x = 1
+[out]
+class C:
+    x: int
+
+[case testInitTypeAnnotationPreserved]
+class C:
+    def __init__(self, x: str):
+        pass
+[out]
+class C:
+    def __init__(self, x: str): ...
+
+[case testSelfAssignment]
+class C:
+    def __init__(self):
+        self.x = 1
+        x.y = 2
+[out]
+class C:
+    x: int
+    def __init__(self): ...
+
+[case testSelfAndClassBodyAssignment]
+x = 1
+class C:
+    x = 1
+    def __init__(self):
+        self.x = 1
+        self.x = 1
+[out]
+x: int
+
+class C:
+    x: int
+    def __init__(self): ...
+
+[case testEmptyClass]
+class A: ...
+[out]
+class A: ...
+
+[case testSkipPrivateFunction]
+def _f(): ...
+def g(): ...
+[out]
+def g(): ...
+
+[case testIncludePrivateFunction]
+# flags:  --include-private
+def _f(): ...
+def g(): ...
+[out]
+def _f(): ...
+def g(): ...
+
+[case testSkipPrivateMethod]
+class A:
+    def _f(self): ...
+[out]
+class A: ...
+
+[case testIncludePrivateMethod]
+# flags:  --include-private
+class A:
+    def _f(self): ...
+[out]
+class A:
+    def _f(self): ...
+
+[case testSkipPrivateVar]
+_x = 1
+class A:
+    _y = 1
+[out]
+class A: ...
+
+[case testIncludePrivateVar]
+# flags:  --include-private
+_x = 1
+class A:
+    _y = 1
+[out]
+_x: int
+
+class A:
+    _y: int
+
+[case testSpecialInternalVar]
+__all__ = []
+__author__ = ''
+__version__ = ''
+[out]
+
+[case testBaseClass]
+class A: ...
+class B(A): ...
+[out]
+class A: ...
+class B(A): ...
+
+[case testDecoratedFunction]
+@decorator
+def foo(x): ...
+[out]
+def foo(x): ...
+
+[case testMultipleAssignment]
+x, y = 1, 2
+[out]
+from basedtyping import Untyped
+
+x: Untyped
+y: Untyped
+
+[case testMultipleAssignmentAnnotated]
+x, y = 1, "2" # type: int, str
+[out]
+x: int
+y: str
+
+[case testMultipleAssignment2]
+[x, y] = 1, 2
+[out]
+from basedtyping import Untyped
+
+x: Untyped
+y: Untyped
+
+[case testKeywordOnlyArg]
+def f(x, *, y=1): ...
+def g(x, *, y=1, z=2): ...
+[out]
+def f(x, *, y: int = ...): ...
+def g(x, *, y: int = ..., z: int = ...): ...
+
+[case testProperty]
+class A:
+    @property
+    def f(self):
+        return 1
+    @f.setter
+    def f(self, x): ...
+
+    def h(self):
+        self.f = 1
+[out]
+from basedtyping import Untyped
+
+class A:
+    @property
+    def f(self) -> Untyped: ...
+    @f.setter
+    def f(self, x): ...
+    def h(self): ...
+
+[case testStaticMethod]
+class A:
+    @staticmethod
+    def f(x): ...
+[out]
+class A:
+    @staticmethod
+    def f(x): ...
+
+[case testClassMethod]
+class A:
+    @classmethod
+    def f(cls): ...
+[out]
+class A:
+    @classmethod
+    def f(cls): ...
+
+[case testIfMainCheck]
+def a(): ...
+if __name__ == '__main__':
+    x = 1
+    def f(): ...
+def b(): ...
+[out]
+def a(): ...
+def b(): ...
+
+[case testImportStar]
+from x import *
+from a.b import *
+def f(): ...
+[out]
+from x import *
+from a.b import *
+
+def f(): ...
+
+[case testNoSpacesBetweenEmptyClasses]
+class X:
+    def g(self): ...
+class A: ...
+class B: ...
+class C:
+    def f(self): ...
+[out]
+class X:
+    def g(self): ...
+
+class A: ...
+class B: ...
+
+class C:
+    def f(self): ...
+
+[case testExceptionBaseClasses]
+class A(Exception): ...
+class B(ValueError): ...
+[out]
+class A(Exception): ...
+class B(ValueError): ...
+
+[case testOmitSomeSpecialMethods]
+class A:
+    def __str__(self): ...
+    def __repr__(self): ...
+    def __eq__(self): ...
+    def __getstate__(self): ...
+    def __setstate__(self, state): ...
+[out]
+from basedtyping import Untyped
+
+class A:
+    def __eq__(self) -> Untyped: ...
+
+-- Tests that will perform runtime imports of modules.
+-- Don't use `_import` suffix if there are unquoted forward references.
+
+[case testOmitDefsNotInAll_import]
+__all__ = [] + ['f']
+def f(): ...
+def g(): ...
+[out]
+def f(): ...
+
+[case testOmitDefsNotInAll_semanal]
+__all__ = ['f']
+def f(): ...
+def g(): ...
+[out]
+def f(): ...
+
+[case testVarDefsNotInAll_import]
+__all__ = [] + ['f', 'g']
+def f(): ...
+x = 1
+y = 1
+def g(): ...
+[out]
+def f(): ...
+def g(): ...
+
+[case testIncludeClassNotInAll_import]
+__all__ = [] + ['f']
+def f(): ...
+class A: ...
+[out]
+def f(): ...
+
+class A: ...
+
+[case testAllAndClass_import]
+__all__ = ['A']
+class A:
+    x = 1
+    def f(self): ...
+[out]
+class A:
+    x: int
+    def f(self): ...
+
+[case testSkipMultiplePrivateDefs]
+class A: ...
+_x = 1
+_y = 1
+_z = 1
+class C: ...
+[out]
+class A: ...
+class C: ...
+
+[case testIncludeMultiplePrivateDefs]
+# flags:  --include-private
+class A: ...
+_x = 1
+_y = 1
+_z = 1
+class C: ...
+[out]
+class A: ...
+
+_x: int
+_y: int
+_z: int
+
+class C: ...
+
+[case testIncludeFromImportIfInAll_import]
+from re import match, search, sub
+__all__ = ['match', 'sub', 'x']
+x = 1
+[out]
+from re import match as match, sub as sub
+
+x: int
+
+[case testExportModule_import]
+import re
+__all__ = ['re', 'x']
+x = 1
+y = 2
+[out]
+import re as re
+
+x: int
+
+[case testExportModule2_import]
+import re
+__all__ = ['re', 'x']
+x = 1
+y = 2
+[out]
+import re as re
+
+x: int
+
+[case testExportModuleAs_import]
+import re as rex
+__all__ = ['rex', 'x']
+x = 1
+y = 2
+[out]
+import re as rex
+
+x: int
+
+[case testExportModuleInPackage_import]
+import urllib.parse as p
+__all__ = ['p']
+[out]
+import urllib.parse as p
+
+[case testExportPackageOfAModule_import]
+import urllib.parse
+__all__ = ['urllib']
+
+[out]
+import urllib as urllib
+
+[case testRelativeImportAll]
+from .x import *
+[out]
+from .x import *
+
+[case testCommentForUndefinedName_import]
+__all__ = ['f', 'x', 'C', 'g']
+def f(): ...
+x = 1
+class C:
+    def g(self): ...
+[out]
+def f(): ...
+
+x: int
+
+class C:
+    def g(self): ...
+
+# Names in __all__ with no definition:
+#   g
+
+[case testIgnoreSlots]
+class A:
+    __slots__ = ()
+[out]
+class A: ...
+
+[case testSkipPrivateProperty]
+class A:
+    @property
+    def _foo(self): ...
+[out]
+class A: ...
+
+[case testIncludePrivateProperty]
+# flags:  --include-private
+class A:
+    @property
+    def _foo(self): ...
+[out]
+class A:
+    @property
+    def _foo(self): ...
+
+[case testSkipPrivateStaticAndClassMethod]
+class A:
+    @staticmethod
+    def _foo(): ...
+    @classmethod
+    def _bar(cls): ...
+[out]
+class A: ...
+
+[case testIncludePrivateStaticAndClassMethod]
+# flags:  --include-private
+class A:
+    @staticmethod
+    def _foo(): ...
+    @classmethod
+    def _bar(cls): ...
+[out]
+class A:
+    @staticmethod
+    def _foo(): ...
+    @classmethod
+    def _bar(cls): ...
+
+[case testNamedtuple]
+import collections, x
+X = collections.namedtuple('X', ['a', 'b'])
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+[case testEmptyNamedtuple]
+import collections
+X = collections.namedtuple('X', [])
+[out]
+from typing import NamedTuple
+
+class X(NamedTuple): ...
+
+[case testNamedtupleAltSyntax]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a b')
+xx
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+[case testNamedtupleAltSyntaxUsingComma]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,    b')
+xx
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+[case testNamedtupleAltSyntaxUsingMultipleCommas]
+from collections import namedtuple, xx
+X = namedtuple('X', 'a,,   b')
+xx
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+[case testNamedtupleWithUnderscore]
+from collections import namedtuple as _namedtuple
+def f(): ...
+X = _namedtuple('X', 'a b')
+def g(): ...
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+def f(): ...
+
+class X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+def g(): ...
+
+[case testNamedtupleBaseClass]
+import collections, x
+_X = collections.namedtuple('_X', ['a', 'b'])
+class Y(_X): ...
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class _X(NamedTuple):
+    a: Untyped
+    b: Untyped
+
+class Y(_X): ...
+
+[case testNamedtupleAltSyntaxFieldsTuples]
+from collections import namedtuple, xx
+X = namedtuple('X', ())
+Y = namedtuple('Y', ('a',))
+Z = namedtuple('Z', ('a', 'b', 'c', 'd', 'e'))
+xx
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class X(NamedTuple): ...
+
+class Y(NamedTuple):
+    a: Untyped
+
+class Z(NamedTuple):
+    a: Untyped
+    b: Untyped
+    c: Untyped
+    d: Untyped
+    e: Untyped
+
+[case testDynamicNamedTuple]
+from collections import namedtuple
+N = namedtuple('N', ['x', 'y'] + ['z'])
+[out]
+from basedtyping import Untyped
+
+N: Untyped
+
+[case testArbitraryBaseClass]
+import x
+class D(x.C): ...
+[out]
+import x
+
+class D(x.C): ...
+
+[case testArbitraryBaseClass2]
+import x.y
+class D(x.y.C): ...
+[out]
+import x.y
+
+class D(x.y.C): ...
+
+[case testUnqualifiedArbitraryBaseClassWithNoDef]
+class A(int): ...
+[out]
+class A(int): ...
+
+[case testUnqualifiedArbitraryBaseClass]
+from x import X
+class A(X): ...
+[out]
+from x import X
+
+class A(X): ...
+
+[case testUnqualifiedArbitraryBaseClassWithImportAs]
+from x import X as _X
+class A(_X): ...
+[out]
+from x import X as _X
+
+class A(_X): ...
+
+[case testGenericClass]
+class D(Generic[T]): ...
+[out]
+class D(Generic[T]): ...
+
+[case testObjectBaseClass]
+class A(object): ...
+[out]
+class A: ...
+
+[case testEmptyLines]
+def x(): ...
+def f():
+    class A:
+        def f(self):
+            self.x = 1
+def g(): ...
+[out]
+def x(): ...
+def f(): ...
+def g(): ...
+
+[case testNestedClass]
+class A:
+    class B:
+        x = 1
+        def f(self): ...
+    def g(self): ...
+[out]
+class A:
+    class B:
+        x: int
+        def f(self): ...
+    def g(self): ...
+
+[case testExportViaRelativeImport]
+from .api import get
+[out]
+from .api import get as get
+
+[case testExportViaRelativePackageImport]
+from .packages.urllib3.contrib import parse
+[out]
+from .packages.urllib3.contrib import parse as parse
+
+[case testNoExportViaRelativeImport]
+from . import get
+get()
+[out]
+
+[case testRelativeImportAndBase]
+from .x import X
+class A(X):
+     pass
+[out]
+from .x import X
+
+class A(X): ...
+
+[case testDuplicateDef]
+def syslog(a): pass
+def syslog(a): pass
+[out]
+def syslog(a): ...
+
+[case testAsyncAwait_fast_parser]
+async def f(a):
+   x = await y
+[out]
+async def f(a): ...
+
+[case testInferOptionalOnlyFunc]
+class A:
+    x = None
+    def __init__(self, a=None):
+        self.x = []
+    def method(self, a=None):
+        self.x = []
+[out]
+from basedtyping import Untyped
+
+class A:
+    x: Untyped
+    def __init__(self, a: Untyped | None = ...): ...
+    def method(self, a: Untyped | None = ...): ...
+
+[case testAnnotationImportsFrom]
+import foo
+from collections import defaultdict
+x: defaultdict
+
+[out]
+from collections import defaultdict
+
+x: defaultdict
+
+[case testAnnotationImports]
+import foo
+import collections
+x: collections.defaultdict
+
+[out]
+import collections
+
+x: collections.defaultdict
+
+
+[case testAnnotationImports2]
+from typing import List
+import collections
+x: List[collections.defaultdict]
+
+[out]
+import collections
+from typing import List
+
+x: List[collections.defaultdict]
+
+
+[case testAnnotationFwRefs]
+x: C
+
+class C:
+    attr: C
+
+y: C
+[out]
+x: C
+
+class C:
+    attr: C
+
+y: C
+
+[case testTypeVarPreserved]
+tv = TypeVar('tv')
+
+[out]
+from typing import TypeVar
+
+tv = TypeVar('tv')
+
+[case testTypeVarArgsPreserved]
+tv = TypeVar('tv', int, str)
+
+[out]
+from typing import TypeVar
+
+tv = TypeVar('tv', int, str)
+
+[case testTypeVarNamedArgsPreserved]
+tv = TypeVar('tv', bound=bool, covariant=True)
+
+[out]
+from typing import TypeVar
+
+tv = TypeVar('tv', bound=bool, covariant=True)
+
+[case testTypeAliasPreserved]
+alias = str
+
+[out]
+alias = str
+
+[case testDeepTypeAliasPreserved]
+
+alias = Dict[str, List[str]]
+
+[out]
+alias = Dict[str, List[str]]
+
+[case testDeepGenericTypeAliasPreserved]
+from typing import TypeVar
+
+T = TypeVar('T')
+alias = Union[T, List[T]]
+
+[out]
+from typing import TypeVar
+
+T = TypeVar('T')
+alias = Union[T, List[T]]
+
+[case testEllipsisAliasPreserved]
+
+alias = Tuple[int, ...]
+
+[out]
+alias = Tuple[int, ...]
+
+[case testCallableAliasPreserved]
+
+alias1 = Callable[..., int]
+alias2 = Callable[[str, bool], None]
+
+[out]
+alias1 = Callable[..., int]
+alias2 = Callable[[str, bool], None]
+
+[case testAliasPullsImport]
+from module import Container
+
+alias = Container[Any]
+
+[out]
+from module import Container
+from typing import Any
+
+alias = Container[Any]
+
+[case testAliasOnlyToplevel]
+class Foo:
+    alias = str
+
+[out]
+from basedtyping import Untyped
+
+class Foo:
+    alias: Untyped
+
+[case testAliasExceptions]
+noalias1 = None
+noalias2 = ...
+noalias3 = True
+
+[out]
+from basedtyping import Untyped
+
+noalias1: Untyped
+noalias2: Untyped
+noalias3: bool
+
+-- More features/fixes:
+--   do not export deleted names
+
+[case testFunctionNoReturnInfersReturnNone]
+def f():
+    x = 1
+[out]
+def f(): ...
+
+[case testFunctionReturnNoReturnType]
+def f():
+    return 1
+def g():
+    return
+[out]
+from basedtyping import Untyped
+
+def f() -> Untyped: ...
+def g(): ...
+
+[case testFunctionEllipsisInfersReturnNone]
+def f(): ...
+[out]
+def f(): ...
+
+[case testFunctionYields]
+def f():
+    yield 123
+def g():
+    x = yield
+def h1():
+    yield
+    return
+def h2():
+    yield
+    return "abc"
+def all():
+    x = yield 123
+    return "abc"
+[out]
+from basedtyping import Untyped
+from collections.abc import Generator
+
+def f() -> Generator[Untyped, None, None]: ...
+def g() -> Generator[None, Untyped, None]: ...
+def h1() -> Generator[None, None, None]: ...
+def h2() -> Generator[None, None, Untyped]: ...
+def all() -> Generator[Untyped, Untyped, Untyped]: ...
+
+[case testFunctionYieldsNone]
+def f():
+    yield
+def g():
+    yield None
+
+[out]
+from collections.abc import Generator
+
+def f() -> Generator[None, None, None]: ...
+def g() -> Generator[None, None, None]: ...
+
+[case testGeneratorAlreadyDefined]
+class Generator:
+    pass
+
+def f():
+    yield 123
+[out]
+from basedtyping import Untyped
+from collections.abc import Generator as _Generator
+
+class Generator: ...
+
+def f() -> _Generator[Untyped, None, None]: ...
+
+[case testCallable]
+from typing import Callable
+
+x: Callable[[int, int], int]
+[out]
+from typing import Callable
+
+x: Callable[[int, int], int]
+
+[case testAwaitDef]
+class F:
+    async def f(self):
+        return 1
+
+async def g():
+    return 2
+[out]
+from basedtyping import Untyped
+
+class F:
+    async def f(self) -> Untyped: ...
+
+async def g() -> Untyped: ...
+
+[case testCoroutineImportAsyncio]
+import asyncio
+
+class F:
+    @asyncio.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutine
+def g():
+    return 2
+
+@asyncio.coroutine
+def h():
+    return 3
+[out]
+import asyncio
+from basedtyping import Untyped
+
+class F:
+    @asyncio.coroutine
+    def f(self) -> Untyped: ...
+
+@asyncio.coroutine
+def g() -> Untyped: ...
+@asyncio.coroutine
+def h() -> Untyped: ...
+
+[case testCoroutineImportAsyncioCoroutines]
+import asyncio.coroutines
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio.coroutines
+from basedtyping import Untyped
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self) -> Untyped: ...
+
+@asyncio.coroutines.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineImportAsyncioCoroutinesSub]
+import asyncio
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self):
+        return 1
+
+@asyncio.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio
+from basedtyping import Untyped
+
+class F:
+    @asyncio.coroutines.coroutine
+    def f(self) -> Untyped: ...
+
+@asyncio.coroutines.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineImportTypes]
+import types
+
+class F:
+    @types.coroutine
+    def f(self):
+        return 1
+
+@types.coroutine
+def g():
+    return 2
+[out]
+import types
+from basedtyping import Untyped
+
+class F:
+    @types.coroutine
+    def f(self) -> Untyped: ...
+
+@types.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineFromAsyncioImportCoroutine]
+from asyncio import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from asyncio import coroutine
+from basedtyping import Untyped
+
+class F:
+    @coroutine
+    def f(self) -> Untyped: ...
+
+@coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineFromAsyncioCoroutinesImportCoroutine]
+from asyncio.coroutines import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from asyncio.coroutines import coroutine
+from basedtyping import Untyped
+
+class F:
+    @coroutine
+    def f(self) -> Untyped: ...
+
+@coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineFromTypesImportCoroutine]
+from types import coroutine
+
+class F:
+    @coroutine
+    def f(self):
+        return 1
+
+@coroutine
+def g():
+    return 2
+[out]
+from basedtyping import Untyped
+from types import coroutine
+
+class F:
+    @coroutine
+    def f(self) -> Untyped: ...
+
+@coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineFromAsyncioImportCoroutineAsC]
+from asyncio import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from asyncio import coroutine as c
+from basedtyping import Untyped
+
+class F:
+    @c
+    def f(self) -> Untyped: ...
+
+@c
+def g() -> Untyped: ...
+
+[case testCoroutineFromAsyncioCoroutinesImportCoroutineAsC]
+from asyncio.coroutines import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from asyncio.coroutines import coroutine as c
+from basedtyping import Untyped
+
+class F:
+    @c
+    def f(self) -> Untyped: ...
+
+@c
+def g() -> Untyped: ...
+
+[case testCoroutineFromTypesImportCoroutineAsC]
+from types import coroutine as c
+
+class F:
+    @c
+    def f(self):
+        return 1
+
+@c
+def g():
+    return 2
+[out]
+from basedtyping import Untyped
+from types import coroutine as c
+
+class F:
+    @c
+    def f(self) -> Untyped: ...
+
+@c
+def g() -> Untyped: ...
+
+[case testCoroutineImportAsyncioAsA]
+import asyncio as a
+
+class F:
+    @a.coroutine
+    def f(self):
+        return 1
+
+@a.coroutine
+def g():
+    return 2
+[out]
+import asyncio as a
+from basedtyping import Untyped
+
+class F:
+    @a.coroutine
+    def f(self) -> Untyped: ...
+
+@a.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineImportAsyncioCoroutinesAsC]
+import asyncio.coroutines as c
+
+class F:
+    @c.coroutine
+    def f(self):
+        return 1
+
+@c.coroutine
+def g():
+    return 2
+[out]
+import asyncio.coroutines as c
+from basedtyping import Untyped
+
+class F:
+    @c.coroutine
+    def f(self) -> Untyped: ...
+
+@c.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineImportAsyncioCoroutinesSubAsA]
+import asyncio as a
+
+class F:
+    @a.coroutines.coroutine
+    def f(self):
+        return 1
+
+@a.coroutines.coroutine
+def g():
+    return 2
+[out]
+import asyncio as a
+from basedtyping import Untyped
+
+class F:
+    @a.coroutines.coroutine
+    def f(self) -> Untyped: ...
+
+@a.coroutines.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineImportTypesAsT]
+import types as t
+
+class F:
+    @t.coroutine
+    def f(self):
+        return 1
+
+@t.coroutine
+def g():
+    return 2
+[out]
+import types as t
+from basedtyping import Untyped
+
+class F:
+    @t.coroutine
+    def f(self) -> Untyped: ...
+
+@t.coroutine
+def g() -> Untyped: ...
+
+[case testCoroutineSpecialCase_import]
+import asyncio
+
+__all__ = ['C']
+
+@asyncio.coroutine
+def f():
+    pass
+
+class C:
+    def f(self):
+        pass
+[out]
+import asyncio
+
+class C:
+    def f(self): ...
+
+-- Tests for stub generation from semantically analyzed trees.
+-- These tests are much slower, so use the `_semanal` suffix only when needed.
+
+[case testNestedClass_semanal]
+class Outer:
+    class Inner:
+        pass
+
+A = Outer.Inner
+[out]
+class Outer:
+    class Inner: ...
+A = Outer.Inner
+
+[case testFunctionAlias_semanal]
+from asyncio import coroutine
+
+@coroutine
+def start_server():
+    ...
+
+start = start_server
+[out]
+from asyncio import coroutine
+
+@coroutine
+def start_server(): ...
+start = start_server
+
+[case testModuleAlias_semanal]
+import a
+
+b = a
+[file a.py]
+x = 1
+[out]
+import a
+
+b = a
+
+[case testBadAliasNested_semanal]
+import a
+
+x = registry[a.f]
+[file a.py]
+def f(): ...
+[out]
+from basedtyping import Untyped
+
+x: Untyped
+
+[case testCrossModuleClass_semanal]
+import a
+
+class C:
+    x: A
+    def f(self) -> A: ...
+A = a.A
+[file a.py]
+class A: ...
+[out]
+import a
+
+class C:
+    x: A
+    def f(self) -> A: ...
+A = a.A
+
+[case testCrossModuleFunction_semanal]
+import a
+g = a.f
+[file a.py]
+def f(): ...
+[out]
+import a
+
+g = a.f
+
+[case testPrivateAliasesExcluded_semanal]
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+from basedtyping import Untyped
+
+class C: ...
+
+A: Untyped
+B: Untyped
+
+[case testPrivateAliasesIncluded_semanal]
+# flags: --include-private
+import a, _a
+
+class C: ...
+
+A = a._A
+B = _a.f
+_C = C
+[file a.py]
+class _A: ...
+[file _a.py]
+def f(): ...
+[out]
+import _a
+import a
+
+class C: ...
+A = a._A
+B = _a.f
+_C = C
+
+[case testFinalWrapped_semanal]
+from typing import Final
+
+x: Final = 1
+y: Final = x
+z: Final[object]
+t: Final
+[out]
+from basedtyping import Untyped
+from typing import Final
+
+x: Final[int]
+y: Final[Untyped]
+z: Final[object]
+t: Final[Untyped]
+
+[case testFinalInvalid_semanal]
+Final = 'boom'
+
+x: Final = 1
+[out]
+Final: str
+x: Final
+
+[case testNoFunctionNested_semanal]
+import a
+from typing import Dict, Any
+
+funcs: Dict[Any, Any]
+f = funcs[a.f]
+[out]
+from basedtyping import Untyped
+from typing import Any, Dict
+
+funcs: Dict[Any, Any]
+f: Untyped
+
+[case testAbstractMethodNameExpr]
+from abc import ABCMeta, abstractmethod
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+from abc import ABCMeta, abstractmethod
+from basedtyping import Untyped
+
+class A(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self) -> Untyped: ...
+
+[case testAbstractMethodMemberExpr]
+import abc
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+from basedtyping import Untyped
+
+class A(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def meth(self) -> Untyped: ...
+
+[case testAbstractMethodMemberExpr2]
+import abc as _abc
+
+class A(metaclass=abc.ABCMeta):
+    @_abc.abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc as _abc
+from basedtyping import Untyped
+
+class A(metaclass=abc.ABCMeta):
+    @_abc.abstractmethod
+    def meth(self) -> Untyped: ...
+
+[case testABCMeta_semanal]
+from base import Base
+from abc import abstractmethod
+
+class C(Base):
+    @abstractmethod
+    def other(self):
+        pass
+
+[file base.py]
+from abc import abstractmethod, ABCMeta
+
+class Base(metaclass=ABCMeta):
+    @abstractmethod
+    def meth(self):
+        pass
+[out]
+import abc
+from abc import abstractmethod
+from base import Base
+from basedtyping import Untyped
+
+class C(Base, metaclass=abc.ABCMeta):
+    @abstractmethod
+    def other(self) -> Untyped: ...
+
+[case testInvalidNumberOfArgsInAnnotation]
+def f(x):
+    # type: () -> int
+    return ''
+
+[out]
+from basedtyping import Untyped
+
+def f(x) -> Untyped: ...
+
+[case testFunctionPartiallyAnnotated]
+def f(x):
+    pass
+
+def g(x, y: str):
+    pass
+
+class A:
+    def f(self, x):
+        pass
+
+[out]
+from basedtyping import Untyped
+
+def f(x): ...
+def g(x, y: str) -> Untyped: ...
+
+class A:
+    def f(self, x): ...
+
+[case testExplicitAnyArg]
+from typing import Any
+
+def f(x: Any):
+    pass
+def g(x, y: Any) -> str:
+    pass
+def h(x: Any) -> str:
+    pass
+
+[out]
+from basedtyping import Untyped
+from typing import Any
+
+def f(x: Any) -> Untyped: ...
+def g(x, y: Any) -> str: ...
+def h(x: Any) -> str: ...
+
+[case testExplicitReturnedAny]
+from typing import Any
+
+def f(x: str) -> Any:
+    pass
+def g(x, y: str) -> Any:
+    pass
+def h(x) -> Any:
+    pass
+
+[out]
+from typing import Any
+
+def f(x: str) -> Any: ...
+def g(x, y: str) -> Any: ...
+def h(x) -> Any: ...
+
+[case testPlacementOfDecorators]
+class A:
+    @property
+    def x(self):
+        self.y = 'y'
+        return 'x'
+
+class B:
+    @property
+    def x(self):
+        return 'x'
+
+    @x.setter
+    def x(self, value):
+        self.y = 'y'
+
+[out]
+from basedtyping import Untyped
+
+class A:
+    y: str
+    @property
+    def x(self) -> Untyped: ...
+
+class B:
+    @property
+    def x(self) -> Untyped: ...
+    y: str
+    @x.setter
+    def x(self, value): ...
+
+[case testMisplacedTypeComment]
+def f():
+    x = 0
+
+    # type: str
+    y = ''
+
+[out]
+def f(): ...
+
+[case testConditionalImportAll_semanal]
+__all__ = ['cookielib']
+
+if object():
+    from http import cookiejar as cookielib
+else:
+    import cookielib
+
+[out]
+import cookielib as cookielib
+
+[case testCannotCalculateMRO_semanal]
+class X: pass
+
+class int(int, X):  # Cycle
+    pass
+
+class A: pass
+class B(A): pass
+class C(B): pass
+class D(A, B): pass # No consistent method resolution order
+class E(C, D): pass # Ditto
+
+[out]
+class X: ...
+class int(int, X): ...
+class A: ...
+class B(A): ...
+class C(B): ...
+class D(A, B): ...
+class E(C, D): ...
+
+[case testUnreachableCode_semanal]
+MYPY = False
+class A: pass
+if MYPY:
+    class C(A):
+        def f(self): pass
+else:
+    def f(i):
+        return i
+
+    class C(A):
+        def g(self): pass
+[out]
+MYPY: bool
+
+class A: ...
+
+class C(A):
+    def f(self): ...
+
+[case testAbstractProperty1_semanal]
+import other
+import abc
+
+class A:
+    @abc.abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from basedtyping import Untyped
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def x(self) -> Untyped: ...
+
+[case testAbstractProperty2_semanal]
+import other
+from abc import abstractproperty
+
+class A:
+    @abstractproperty
+    def x(self): pass
+
+[out]
+import abc
+from basedtyping import Untyped
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def x(self) -> Untyped: ...
+
+[case testAbstractProperty3_semanal]
+import other
+from abc import abstractproperty as alias_name
+
+class A:
+    @alias_name
+    def x(self): pass
+
+[out]
+import abc
+from basedtyping import Untyped
+
+class A(metaclass=abc.ABCMeta):
+    @property
+    @abc.abstractmethod
+    def x(self) -> Untyped: ...
+
+[case testClassWithNameUntypedOrOptional]
+Y = object()
+
+def g(x=None): pass
+
+x = g()
+
+class Untyped:
+    pass
+
+def Optional():
+    return 0
+
+[out]
+from basedtyping import Untyped as _Untyped
+
+Y: _Untyped
+
+def g(x: _Untyped | None = ...): ...
+
+x: _Untyped
+
+class Untyped: ...
+
+def Optional() -> _Untyped: ...
+
+[case testExportedNameImported]
+# modules: main a b
+from a import C
+
+class D(C): pass
+
+[file a.py]
+from b import C
+
+[file b.py]
+class C: pass
+
+[out]
+# main.pyi
+from a import C
+
+class D(C): ...
+# a.pyi
+from b import C as C
+# b.pyi
+class C: ...
+
+[case testVendoredSix]
+from p1.vendored import six
+from p1.vendor.six import foobar
+from p1.packages.six.moves import http_client
+from .packages.six.moves import queue
+from p1.vendored.six.moves.http_client import foo
+from p1.vendored.six.moves.urllib.parse import bar
+
+class C(http_client.HTTPMessage): pass
+class D(six.Iterator): pass
+
+[out]
+import six
+from six import foobar as foobar
+from six.moves import http_client, queue as queue
+from six.moves.http_client import foo as foo
+from six.moves.urllib.parse import bar as bar
+
+class C(http_client.HTTPMessage): ...
+class D(six.Iterator): ...
+
+[case testVendoredPackage]
+# modules: main p.vendored.requests p.sub.requests
+from p.vendored.requests import Request
+from p.sub.requests import Request2
+
+x = Request()
+y = Request2()
+
+[file p/__init__.py]
+
+[file p/vendored/__init__.py]
+
+[file p/vendored/requests.py]
+class Request:
+    pass
+
+[file p/sub/__init__.py]
+
+[file p/sub/requests.py]
+class Request2:
+    pass
+
+[out]
+# main.pyi
+from basedtyping import Untyped
+
+x: Untyped
+y: Untyped
+<out/p/vendored/requests.pyi was not generated>
+# p/sub/requests.pyi
+class Request2: ...
+
+[case testTestFiles]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f(): ...
+# p/x.pyi
+def g(): ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
+
+[case testTestFiles_import]
+# modules: p p.x p.tests p.tests.test_foo
+
+[file p/__init__.py]
+def f(): pass
+
+[file p/x.py]
+def g(): pass
+
+[file p/tests/__init__.py]
+
+[file p/tests/test_foo.py]
+def test_thing(): pass
+
+[out]
+# p/__init__.pyi
+def f(): ...
+# p/x.pyi
+def g(): ...
+<out/p/tests.pyi was not generated>
+<out/p/tests/test_foo.pyi was not generated>
+
+[case testVerboseFlag]
+# Just test that --verbose does not break anything in a basic test case.
+# flags: --verbose
+
+def f(x, y): pass
+[out]
+def f(x, y): ...
+
+[case testImportedModuleExits_import]
+# modules: a b c
+
+[file a.py]
+def g(): pass
+
+[file b.py]
+import sys
+def f(): pass
+sys.exit(1)
+
+[file c.py]
+x = 0
+
+[out]
+# a.pyi
+def g(): ...
+# b.pyi
+def f(): ...
+# c.pyi
+x: int
+
+[case testImportedModuleHardExits_import]
+# modules: a b c
+
+[file a.py]
+def g(): pass
+
+[file b.py]
+import os
+def f(): pass
+os._exit(1)  # Kill process
+
+[file c.py]
+x = 0
+
+[out]
+# a.pyi
+def g(): ...
+# b.pyi
+def f(): ...
+# c.pyi
+x: int
+
+[case testImportedModuleHardExits2_import]
+# modules: p/a p/b p/c
+
+[file p/__init__.py]
+
+[file p/a.py]
+def g(): pass
+
+[file p/b.py]
+import os
+def f(): pass
+os._exit(1)  # Kill process
+
+[file p/c.py]
+x = 0
+
+[out]
+# p/a.pyi
+def g(): ...
+# p/b.pyi
+def f(): ...
+# p/c.pyi
+x: int
+
+[case testImportedModuleHardExits3_import]
+# modules: p p/a
+
+[file p/__init__.py]
+import os
+def f(): pass
+os._exit(1)  # Kill process
+
+[file p/a.py]
+def g(): pass
+
+[out]
+# p/__init__.pyi
+def f(): ...
+# p/a.pyi
+def g(): ...
+
+[case testImportedModuleHardExits4_import]
+# flags: -p p
+# modules: p p/a
+
+[file p/__init__.py]
+def ff(): pass
+
+[file p/a.py]
+import os
+def gg(): pass
+os._exit(1)  # Kill process
+
+[out]
+# p/__init__.pyi
+def ff(): ...
+# p/a.pyi
+def gg(): ...
+
+[case testExportInternalImportsByDefault]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A, f
+from m import C
+
+a: A
+c: C
+f()
+
+[file p/a.py]
+class A: pass
+def f(): pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A as A, f as f
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+
+def f(): ...
+
+[case testNoExportOfInternalImportsIfAll_import]
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A
+
+__all__ = ['a']
+
+a = None  # type: A
+b = 0  # type: int
+
+[file p/a.py]
+class A: pass
+
+[out]
+# p/__init__.pyi
+from p.a import A
+
+a: A
+# p/a.pyi
+class A: ...
+
+[case testExportInternalImportsByDefaultFromUnderscorePackage]
+# modules: p
+
+[file p.py]
+from _p import A
+from _m import B
+from _pm import C
+
+a: A
+b: B
+c: C
+
+[file _p.py]
+class A: pass
+
+[file _m.py]
+class B: pass
+
+[file _pm.py]
+class C: pass
+
+[out]
+from _m import B
+from _p import A as A
+from _pm import C
+
+a: A
+b: B
+c: C
+
+[case testDisableExportOfInternalImports]
+# flags: --export-less
+# modules: p p/a
+
+[file p/__init__.py]
+from p.a import A, B
+from m import C
+
+a: A
+c: C
+
+[file p/a.py]
+class A: pass
+class B: pass
+
+[file m.py]
+class C: pass
+
+[out]
+# p/__init__.pyi
+from m import C
+from p.a import A, B as B
+
+a: A
+c: C
+# p/a.pyi
+class A: ...
+class B: ...
+
+[case testExportInternalImportsByDefaultUsingRelativeImport]
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import f
+f()
+
+[file p/b.py]
+def f(): pass
+
+[out]
+from .b import f as f
+
+[case testExportInternalImportsByDefaultSkipPrivate]
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import _f, _g as _g, _i
+from p.b import _h
+_f()
+_h()
+
+[file p/b.py]
+def _f(): pass
+def _g(): pass
+def _h(): pass
+def _i(): pass
+x = 0
+
+[out]
+
+[case testExportInternalImportsByDefaultIncludePrivate]
+# flags: --include-private
+# modules: p.a
+
+[file p/__init__.py]
+
+[file p/a.py]
+from .b import _f
+_f()
+
+[file p/b.py]
+def _f(): pass
+
+[out]
+from .b import _f as _f
+
+[case testHideDunderModuleAttributes]
+from m import (
+    __about__,
+    __author__,
+    __copyright__,
+    __email__,
+    __license__,
+    __summary__,
+    __title__,
+    __uri__,
+    __version__
+)
+
+class A:
+    __uri__ = 0
+
+[file m.py]
+__about__ = ''
+__author__ = ''
+__copyright__ = ''
+__email__ = ''
+__license__ = ''
+__summary__ = ''
+__title__ = ''
+__uri__ = ''
+__version__ = ''
+
+[out]
+class A: ...
+
+[case testHideDunderModuleAttributesWithAll_import]
+from m import (
+    __about__,
+    __author__,
+    __copyright__,
+    __email__,
+    __license__,
+    __summary__,
+    __title__,
+    __uri__,
+    __version__
+)
+
+__all__ = ['__about__', '__author__', '__version__']
+
+[file m.py]
+__about__ = ''
+__author__ = ''
+__copyright__ = ''
+__email__ = ''
+__license__ = ''
+__summary__ = ''
+__title__ = ''
+__uri__ = ''
+__version__ = ''
+
+[out]
+
+[case testAttrsClass_semanal]
+import attr
+
+@attr.s
+class C:
+    x = attr.ib()
+
+[out]
+from basedtyping import Untyped
+
+class C:
+    x: Untyped
+    def __init__(self, x): ...
+    def __lt__(self, other) -> Untyped: ...
+    def __le__(self, other) -> Untyped: ...
+    def __gt__(self, other) -> Untyped: ...
+    def __ge__(self, other) -> Untyped: ...
+
+[case testNamedTupleInClass]
+from collections import namedtuple
+
+class C:
+    N = namedtuple('N', ['x', 'y'])
+[out]
+from basedtyping import Untyped
+from typing import NamedTuple
+
+class C:
+    class N(NamedTuple):
+        x: Untyped
+        y: Untyped
+
+[case testImports_directImportsWithAlias]
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+
+[out]
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+
+[case testImports_directImportsMixed]
+import p.a
+import p.a as a
+import p.b as b
+
+x: a.X
+y: b.Y
+z: p.a.X
+
+[out]
+import p.a as a
+import p.b as b
+import p.a
+
+x: a.X
+y: b.Y
+z: p.a.X
+
+[case testImport_overwrites_directWithAlias_from]
+import p.a as a
+from p import a
+
+x: a.X
+
+[out]
+from p import a as a
+
+x: a.X
+
+[case testImport_overwrites_directWithAlias_fromWithAlias]
+import p.a as a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_overwrites_direct_from]
+import a
+from p import a
+
+x: a.X
+
+[out]
+from p import a as a
+
+x: a.X
+
+[case testImports_overwrites_direct_fromWithAlias]
+import a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_overwrites_from_directWithAlias]
+from p import a
+import p.a as a
+
+x: a.X
+
+[out]
+import p.a as a
+
+x: a.X
+
+[case testImports_overwrites_fromWithAlias_direct]
+import a
+from p import b as a
+
+x: a.X
+
+[out]
+from p import b as a
+
+x: a.X
+
+[case testImports_direct]
+import p.a
+import pp
+
+x: a.X
+y: p.a.Y
+
+[out]
+import p.a
+
+x: a.X
+y: p.a.Y
+
+[case testOverload_fromTypingImport]
+from typing import Tuple, Union, overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @overload
+    def f(self, x: Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: Union[int, Tuple[int, int]]) -> int:
+        pass
+
+@overload
+def f(x: int, y: int) -> int:
+    ...
+
+@overload
+def f(x: Tuple[int, int]) -> int:
+    ...
+
+def f(*args: Union[int, Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+from typing import Tuple, overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int: ...
+    @overload
+    def f(self, x: Tuple[int, int]) -> int: ...
+
+
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: Tuple[int, int]) -> int: ...
+
+[case testOverload_importTyping]
+import typing
+
+class A:
+    @typing.overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @typing.overload
+    def f(self, x: typing.Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+        pass
+
+    @typing.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int:
+        ...
+
+    @typing.overload
+    @classmethod
+    def g(cls, x: typing.Tuple[int, int]) -> int:
+        ...
+
+    @classmethod
+    def g(self, *args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+        pass
+
+@typing.overload
+def f(x: int, y: int) -> int:
+    ...
+
+@typing.overload
+def f(x: typing.Tuple[int, int]) -> int:
+    ...
+
+def f(*args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+import typing
+
+class A:
+    @typing.overload
+    def f(self, x: int, y: int) -> int: ...
+    @typing.overload
+    def f(self, x: typing.Tuple[int, int]) -> int: ...
+    @typing.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int: ...
+    @typing.overload
+    @classmethod
+    def g(cls, x: typing.Tuple[int, int]) -> int: ...
+
+
+@typing.overload
+def f(x: int, y: int) -> int: ...
+@typing.overload
+def f(x: typing.Tuple[int, int]) -> int: ...
+
+
+[case testOverload_importTypingAs]
+import typing as t
+
+class A:
+    @t.overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @t.overload
+    def f(self, x: t.Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: typing.Union[int, t.Tuple[int, int]]) -> int:
+        pass
+
+    @t.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int:
+        ...
+
+    @t.overload
+    @classmethod
+    def g(cls, x: t.Tuple[int, int]) -> int:
+        ...
+
+    @classmethod
+    def g(self, *args: t.Union[int, t.Tuple[int, int]]) -> int:
+        pass
+
+@t.overload
+def f(x: int, y: int) -> int:
+    ...
+
+@t.overload
+def f(x: t.Tuple[int, int]) -> int:
+    ...
+
+def f(*args: t.Union[int, t.Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+import typing as t
+
+class A:
+    @t.overload
+    def f(self, x: int, y: int) -> int: ...
+    @t.overload
+    def f(self, x: t.Tuple[int, int]) -> int: ...
+    @t.overload
+    @classmethod
+    def g(cls, x: int, y: int) -> int: ...
+    @t.overload
+    @classmethod
+    def g(cls, x: t.Tuple[int, int]) -> int: ...
+
+
+@t.overload
+def f(x: int, y: int) -> int: ...
+@t.overload
+def f(x: t.Tuple[int, int]) -> int: ...
+
+[case testProtocol_semanal]
+from typing import Protocol, TypeVar
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str:
+        ...
+
+T = TypeVar('T')
+T2 = TypeVar('T2')
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2:
+        ...
+
+[out]
+from typing import Protocol, TypeVar
+
+class P(Protocol):
+    def f(self, x: int, y: int) -> str: ...
+T = TypeVar('T')
+T2 = TypeVar('T2')
+
+class PT(Protocol[T, T2]):
+    def f(self, x: T) -> T2: ...
+
+[case testNonDefaultKeywordOnlyArgAfterAsterisk]
+def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
+[out]
+from basedtyping import Untyped
+
+def func(*, non_default_kwarg: bool, default_kwarg: bool = ...) -> Untyped: ...
+
+[case testNestedGenerator]
+def f():
+    def g():
+        yield 0
+
+    return 0
+[out]
+from basedtyping import Untyped
+
+def f() -> Untyped: ...

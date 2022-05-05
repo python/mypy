@@ -9,6 +9,7 @@ from mypy.types import (
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
     Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TYPED_NAMEDTUPLE_NAMES, TypeVarTupleType,
+    UntypedType
 )
 import mypy.applytype
 import mypy.constraints
@@ -662,7 +663,7 @@ def is_protocol_implementation(left: Instance, right: Instance,
                 return False
             if isinstance(subtype, PartialType):
                 subtype = NoneType() if subtype.type is None else Instance(
-                    subtype.type, [AnyType(TypeOfAny.unannotated)] * len(subtype.type.type_vars)
+                    subtype.type, [UntypedType()] * len(subtype.type.type_vars)
                 )
             if not proper_subtype:
                 # Nominal check currently ignores arg names

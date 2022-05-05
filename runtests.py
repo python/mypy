@@ -51,8 +51,6 @@ cmds = {
     # Self type check
     'self': [executable, '-m', 'mypy', '--config-file', 'mypy_self_check.ini', "--baseline-file=",
              '-p', 'mypy'],
-    'self_strict': [executable, '-m', 'mypy', '--config-file', 'mypy_self_check_strict.ini', '-p',
-                    'mypy'],
     # Lint
     'lint': ['flake8', '-j0'],
     # Fast test cases only (this is the bulk of the test suite)

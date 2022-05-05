@@ -1,0 +1,84 @@
+[case testUntypedReference]
+from basedtyping import Untyped
+a: Untyped
+c: int
+
+a = 1  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+c = a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+del a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+
+class A:
+    b: Untyped
+a1: A
+del a1.b  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+del a1.b[1]  # E: Expression has type "Untyped"  [no-any-expr]
+del a1.b.c  # E: Expression has type "Untyped"  [no-any-expr] \
+            # E: Usage of untyped name "c" in typed context  [no-untyped-usage]
+a2: A
+c = a1.b  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+a1.b = 1  # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+
+
+[case testUntypedIndex]
+# flags: --allow-any-generics
+from typing import List
+from basedtyping import Untyped
+
+class A(list): ...
+a = A()
+a[0] = 1  # E: Untyped indexed-assignment to "a" in typed context  [no-untyped-usage]
+class B(List[Untyped]):
+    a: A
+b = B()
+b[0] = 1  # E: Untyped indexed-assignment to "b" in typed context  [no-untyped-usage]
+b.a[0] = 1  # E: Untyped indexed-assignment to "a" in typed context  [no-untyped-usage]
+c: Untyped
+c()[1] = 1  # E: Expression has type "Untyped"  [no-any-expr]
+[builtins fixtures/list.pyi]
+
+
+[case testUntypedOmittedGeneric]
+# flags: --allow-any-generics
+from typing import List
+from basedtyping import Untyped
+
+def f1(a: List): ...
+def f2(a: List[Untyped]): ...
+a = [1]
+f1(a)  # E: Call to incomplete function "f1" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: list[Untyped])"
+f2(a)  # E: Call to incomplete function "f2" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: list[Untyped])"
+
+
+[case testIncompleteCall]
+# flags: --allow-any-explicit
+from typing import Any
+from basedtyping import Untyped
+
+def f1(a: Any): ...
+def f2(a: Untyped) -> int: ...
+
+f1(1)
+f2(1)  # E: Call to incomplete function "f2" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: Untyped) -> int"
+
+
+[case testUntypedProperty]
+# flags: --allow-untyped-defs --allow-any-decorated
+from basedtyping import Untyped
+
+class A:
+    @property
+    def foo(self): ...
+    @foo.setter
+    def foo(self, value): ...
+    @property
+    def bar(self) -> Untyped: ...
+    @bar.setter
+    def bar(self, value: Untyped) -> None: ...
+
+a: A
+a.foo = 1  # E: Usage of untyped name "foo" in typed context  [no-untyped-usage]
+a.bar = 1  # E: Usage of untyped name "bar" in typed context  [no-untyped-usage]
+[builtins fixtures/property.pyi]

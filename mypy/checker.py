@@ -12,6 +12,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
+from mypy.checkexpr import has_untyped_type
 from mypy.errorcodes import TYPE_VAR
 from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
@@ -39,7 +40,7 @@ from mypy.types import (
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
-    OVERLOAD_NAMES, UnboundType, is_unannotated_any
+    OVERLOAD_NAMES, UnboundType, is_unannotated_any, UntypedType
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.sametypes import is_same_type
@@ -833,7 +834,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 super_types.update({
                     arg: UnionType.make_union(arg_type) for arg, arg_type in item_arg_types.items()
                 })
-                any_ = AnyType(TypeOfAny.unannotated)
+                any_ = UntypedType()
                 if defn.unanalyzed_type and super_.node.impl:
                     assert isinstance(defn.unanalyzed_type, CallableType)
                     assert isinstance(defn.type, CallableType)
@@ -1001,7 +1002,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         else:
                             arg_types.append(super_type.arg_types[super_i])
                     elif not defn.type:
-                        arg_types.append(AnyType(TypeOfAny.unannotated))
+                        arg_types.append(UntypedType())
                 if defn.type:
                     assert isinstance(defn.type, CallableType)
                     if isinstance(get_proper_type(defn.type.ret_type), AnyType):
@@ -2402,6 +2403,21 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return True
         return False
 
+    def check_assignment_for_untyped(self, lvalues: List[Lvalue]):
+        for l in lvalues:
+            if isinstance(l, TupleExpr):
+                self.check_assignment_for_untyped(l.items)
+            elif isinstance(l, (NameExpr, MemberExpr)):
+                t = get_proper_type(self._type_maps[0].get(l))
+                if not t:
+                    # No type? it's either deferred or can't be inferred (handled elsewhere)
+                    continue
+                if is_unannotated_any(t) or isinstance(t, UntypedType):
+                    self.msg.untyped_name_usage(l.name, l)
+            elif isinstance(l, IndexExpr):
+                if not l.method_type or has_untyped_type(l.method_type):
+                    self.msg.untyped_indexed_assignment(l)
+
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
         """Type check an assignment statement.
 
@@ -2413,7 +2429,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not (s.is_alias_def and self.is_stub):
             with self.enter_final_context(s.is_final_def):
                 self.check_assignment(s.lvalues[-1], s.rvalue, s.type is None, s.new_syntax)
-
         if s.is_alias_def:
             self.check_type_alias_rvalue(s)
 
@@ -2443,6 +2458,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if (s.is_final_def and s.type and not has_no_typevars(s.type)
                 and self.scope.active_class() is not None):
             self.fail(message_registry.DEPENDENT_FINAL_IN_CLASS_BODY, s)
+        if (
+            not self.current_node_deferred
+            and self.options.disallow_untyped_calls and not isinstance(s.rvalue, TempNode)
+        ):
+            self.check_assignment_for_untyped(s.lvalues)
 
     def check_type_alias_rvalue(self, s: AssignmentStmt) -> None:
         if not (self.is_stub and isinstance(s.rvalue, OpExpr) and s.rvalue.op == '|'):
@@ -3511,6 +3531,23 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    f'{rvalue_name} has type',
                                    f'{lvalue_name} has type', code=code)
+                if not self.current_node_deferred and isinstance(rvalue, (NameExpr, MemberExpr)):
+                    if (
+                        self.options.disallow_untyped_calls
+                        and isinstance(rvalue_type, UntypedType)
+                    ):
+                        self.msg.untyped_name_usage(rvalue.name, rvalue)
+                    elif self.options.disallow_any_expr and isinstance(rvalue_type, AnyType):
+                        # TODO: this could probably be extracted to a common call
+                        if self.options.ignore_any_from_error and (
+                            rvalue_type.type_of_any == TypeOfAny.from_error
+                            or rvalue_type.type_of_any == TypeOfAny.from_another_any
+                            and rvalue_type.source_any
+                            and rvalue_type.source_any.type_of_any == TypeOfAny.from_error
+                        ):
+                            pass
+                        else:
+                            self.msg.disallowed_any_type(rvalue_type, rvalue)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
@@ -4164,7 +4201,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             c.column = s.column
             self.expr_checker.accept(c, allow_none_return=True)
         else:
-            s.expr.accept(self.expr_checker)
+            if not self.current_node_deferred:
+                t = get_proper_type(s.expr.accept(self.expr_checker))
+                if isinstance(t, UntypedType) and isinstance(s.expr, (NameExpr, MemberExpr)):
+                    self.msg.untyped_name_usage(s.expr.name, s.expr)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
                     self.binder.assign_type(elt, DeletedType(source=elt.name),
@@ -5763,11 +5803,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if not isinstance(typ, PartialType):
             return typ
         if typ.type is None:
-            return UnionType.make_union([AnyType(TypeOfAny.unannotated), NoneType()])
+            return UnionType.make_union([UntypedType(), NoneType()])
         else:
             return Instance(
                 typ.type,
-                [AnyType(TypeOfAny.unannotated)] * len(typ.type.type_vars))
+                [UntypedType()] * len(typ.type.type_vars))
 
     def is_defined_in_base_class(self, var: Var) -> bool:
         if var.info:

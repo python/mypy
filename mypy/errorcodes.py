@@ -110,6 +110,12 @@ NO_UNTYPED_CALL: Final = ErrorCode(
     "Disallow calling functions without type annotations from annotated functions",
     "General",
 )
+NO_UNTYPED_USAGE: Final = ErrorCode(
+    "no-untyped-usage",
+    "Disallow using members without type annotations",
+    "General",
+    default_enabled=False,
+)
 REDUNDANT_CAST: Final = ErrorCode(
     "redundant-cast", "Check that cast changes type of expression", "General"
 )

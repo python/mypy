@@ -8,7 +8,7 @@ import contextlib
 
 from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern, Optional
 
-from mypy import defaults
+from mypy import defaults, errorcodes
 import mypy.api as api
 
 import pytest
@@ -380,6 +380,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         flag_list: List[str] = flags.group(1).split()
         if based:
             flag_list.insert(0, '--default-return')
+            flag_list.extend(["--enable-error-code", "no-untyped-usage"])
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
         if "--local-partial-types" in flag_list:
             flag_list.remove("--local-partial-types")
@@ -393,6 +394,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options = Options()
         if based:
             options.default_return = True
+            options.enabled_error_codes.add(errorcodes.NO_UNTYPED_USAGE)
         else:
             # TODO: Enable strict optional in test cases by default
             #  (requires *many* test case changes)

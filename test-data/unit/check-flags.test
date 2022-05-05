@@ -1150,8 +1150,8 @@ from typing import Any
 class Foo:
     g: Any = 2
 
-z: int = Foo().g
-x = Foo().g  # type: int
+z: int = Foo().g  # E: Expression has type "Any"
+x = Foo().g  # type: int  # E: Expression has type "Any"
 m: Any = Foo().g  # E: Expression has type "Any"
 n = Foo().g  # type: Any  # E: Expression has type "Any"
 [builtins fixtures/list.pyi]

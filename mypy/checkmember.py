@@ -7,7 +7,7 @@ from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
-    ENUM_REMOVED_PROPS
+    ENUM_REMOVED_PROPS, UntypedType
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -145,6 +145,9 @@ def _analyze_member_access(name: str,
     typ = get_proper_type(typ)
     if isinstance(typ, Instance):
         return analyze_instance_member_access(name, typ, mx, override_info)
+    elif isinstance(typ, UntypedType):
+        # The base object isn't typed.
+        return UntypedType()
     elif isinstance(typ, AnyType):
         # The base object has dynamic type.
         return AnyType(TypeOfAny.from_another_any, source_any=typ)

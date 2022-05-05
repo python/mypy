@@ -5,6 +5,7 @@
 - `ignore_any_from_errors` option to suppress `no-any-expr` messages from other errors
 - Function types are inferred from Overloads, overrides and default values. (no overrides for now sorry)
 - Calls to incomplete functions are an error (configurable with `incomplete_is_typed`)
+- Added a new type `Untyped`, it's like `Any`, but more specific
 ### Enhancements
 - Render types a lot better in output messages
 
