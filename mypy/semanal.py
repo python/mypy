@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance, is_unannotated_any,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance, is_unannotated_any, UntypedType,
 )
 from mypy.typeops import function_type, get_type_vars, infer_impl_from_parts
 from mypy.type_visitor import TypeQuery
@@ -657,7 +657,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                         defn.type = defn.type.copy_modified(ret_type=NoneType())
                 elif self.options.infer_function_types:
                     defn.type = CallableType(
-                        [AnyType(TypeOfAny.unannotated) for _ in defn.arg_kinds],
+                        [UntypedType() for _ in defn.arg_kinds],
                         defn.arg_kinds,
                         defn.arg_names,
                         NoneType(),
@@ -671,7 +671,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 elif self.options.disallow_untyped_defs:
                     self_type = fill_typevars_with_any(defn.info)
                     defn.type = CallableType(
-                        [AnyType(TypeOfAny.unannotated) for _ in defn.arg_kinds],
+                        [UntypedType() for _ in defn.arg_kinds],
                         defn.arg_kinds,
                         defn.arg_names,
                         self_type,
@@ -4773,7 +4773,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         if args is not None:
             # TODO: assert len(args) == len(node.defn.type_vars)
             return Instance(node, args)
-        return Instance(node, [AnyType(TypeOfAny.unannotated)] * len(node.defn.type_vars))
+        return Instance(node, [UntypedType()] * len(node.defn.type_vars))
 
     def builtin_type(self, fully_qualified_name: str) -> Instance:
         """Legacy function -- use named_type() instead."""
@@ -5730,16 +5730,16 @@ def infer_fdef_types_from_defaults(defn: Union[FuncDef, Decorator], self: Semant
                 if arg.variable.is_inferred and arg.initializer:
                     arg.initializer.accept(self)
                     typ = self.analyze_simple_literal_type(arg.initializer, False)
-                arg_types.append(typ or AnyType(TypeOfAny.unannotated))
+                arg_types.append(typ or UntypedType())
         ret_type = None
         if self.options.default_return and self.options.disallow_untyped_defs:
             ret_type = NoneType()
         if any(not isinstance(get_proper_type(t), AnyType) for t in arg_types) or ret_type:
             defn.type = CallableType(arg_types
-                                     or [AnyType(TypeOfAny.unannotated) for _ in defn.arg_kinds],
+                                     or [UntypedType() for _ in defn.arg_kinds],
                                      defn.arg_kinds,
                                      defn.arg_names,
-                                     ret_type or AnyType(TypeOfAny.unannotated),
+                                     ret_type or UntypedType(),
                                      self.named_type('builtins.function'),
                                      line=defn.line,
                                      column=defn.column)

@@ -9,7 +9,7 @@ from typing_extensions import Final
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
-    UnboundType, LiteralType,
+    UnboundType, LiteralType, UntypedType,
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -127,7 +127,7 @@ class NamedTupleAnalyzer:
                 name = stmt.lvalues[0].name
                 items.append(name)
                 if stmt.type is None:
-                    types.append(AnyType(TypeOfAny.unannotated))
+                    types.append(UntypedType())
                 else:
                     analyzed = self.api.anal_type(stmt.type)
                     if analyzed is None:
@@ -338,7 +338,7 @@ class NamedTupleAnalyzer:
                 if not ok:
                     return [], [], [], typename, False
         if not types:
-            types = [AnyType(TypeOfAny.unannotated) for _ in items]
+            types = [UntypedType() for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
             self.fail(f'"{type_name}()" field names cannot start with an underscore: '

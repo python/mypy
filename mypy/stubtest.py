@@ -1172,8 +1172,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         # Give up on properties to avoid issues with things that are typed as attributes.
         return None
 
-    def anytype() -> mypy.types.AnyType:
-        return mypy.types.AnyType(mypy.types.TypeOfAny.unannotated)
+    def anytype() -> mypy.types.UntypedType:
+        return mypy.types.UntypedType()
 
     if isinstance(
         runtime,

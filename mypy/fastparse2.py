@@ -42,7 +42,7 @@ from mypy.nodes import (
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, EllipsisType, TypeOfAny, Instance,
-    ProperType
+    ProperType, UntypedType
 )
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
@@ -393,13 +393,13 @@ class ASTConverter:
                         isinstance(func_type_ast.argtypes[0], ast3.Ellipsis)):
                     arg_types = [a.type_annotation
                                  if a.type_annotation is not None
-                                 else AnyType(TypeOfAny.unannotated)
+                                 else UntypedType()
                                  for a in args]
                 else:
                     # PEP 484 disallows both type annotations and type comments
                     if any(a.type_annotation is not None for a in args):
                         self.fail(message_registry.DUPLICATE_TYPE_SIGNATURES, lineno, n.col_offset)
-                    arg_types = [a if a is not None else AnyType(TypeOfAny.unannotated) for
+                    arg_types = [a if a is not None else UntypedType() for
                                  a in converter.translate_expr_list(func_type_ast.argtypes)]
                 return_type = converter.visit(func_type_ast.returns)
 
@@ -432,7 +432,7 @@ class ASTConverter:
                 self.fail('Type signature has too few arguments', lineno, n.col_offset,
                           blocker=False)
             else:
-                any_type = AnyType(TypeOfAny.unannotated)
+                any_type = UntypedType()
                 func_type = CallableType([a if a is not None else any_type for a in arg_types],
                                         arg_kinds,
                                         arg_names,

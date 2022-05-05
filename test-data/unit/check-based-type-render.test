@@ -12,3 +12,12 @@ class A(Generic[T2]):
 
 reveal_type(A.f)  # N: Revealed type is "def [T2 (from A), T] (self: __main__.A[T2], t: T, t2: T2) -> list[int] | str"
 reveal_type(A[int]().f)  # N: Revealed type is "def [T] (t: T, t2: int) -> list[int] | str"
+
+
+[case testRenderAny]
+# flags: --allow-any-generics --allow-any-expr --allow-any-explicit
+from typing import Any, List
+a: list
+reveal_type(a)  # N: Revealed type is "list[Untyped]"
+b: List[Any]
+reveal_type(b)  # N: Revealed type is "list[Any]"

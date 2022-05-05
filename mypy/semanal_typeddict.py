@@ -5,7 +5,7 @@ from typing import Optional, List, Set, Tuple
 from typing_extensions import Final
 
 from mypy.types import (
-    Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType,
+    Type, TypedDictType, TPDICT_NAMES, RequiredType, UntypedType,
 )
 from mypy.nodes import (
     CallExpr, TypedDictExpr, Expression, NameExpr, Context, StrExpr, BytesExpr, UnicodeExpr,
@@ -161,7 +161,7 @@ class TypedDictAnalyzer:
                 # Append name and type in this case...
                 fields.append(name)
                 if stmt.type is None:
-                    types.append(AnyType(TypeOfAny.unannotated))
+                    types.append(UntypedType())
                 else:
                     analyzed = self.api.anal_type(stmt.type, allow_required=True)
                     if analyzed is None:

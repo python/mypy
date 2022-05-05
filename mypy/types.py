@@ -948,6 +948,53 @@ class AnyType(ProperType):
                        AnyType.deserialize(source) if source is not None else None,
                        data['missing_import_name'])
 
+    def describe(self) -> str:
+        if not mypy.options._based:
+            return 'Any'
+
+        def type_of_any(toa: int = self.type_of_any) -> Optional[str]:
+            if toa == TypeOfAny.unannotated:
+                return "unannotated"
+            elif toa == TypeOfAny.explicit:
+                return None
+            elif toa == TypeOfAny.from_unimported_type:
+                return "from unimported type"
+            elif toa == TypeOfAny.from_omitted_generics:
+                return "from omitted generics"
+            elif toa == TypeOfAny.from_error:
+                return "from error"
+            elif toa == TypeOfAny.special_form:
+                return "special form"
+            elif toa == TypeOfAny.from_another_any:
+                return type_of_any(self.source_any.type_of_any) if self.source_any else None
+            elif toa == TypeOfAny.implementation_artifact:
+                return "from a limitation"
+            elif toa == TypeOfAny.suggestion_engine:
+                return "from a suggestion"
+            assert False, "unreachable"
+        s = self.__class__.__name__.split("Type")[0]
+        type_of = type_of_any()
+        if type_of:
+            return f'{s} ({type_of})'
+        return s
+
+
+class UntypedType(AnyType):
+    def __init__(self,
+                 type_of_any: int = TypeOfAny.unannotated,
+                 missing_import_name: Optional[str] = None,
+                 line: int = -1,
+                 column: int = -1):
+        super().__init__(type_of_any,
+                         missing_import_name=missing_import_name,
+                         line=line,
+                         column=column)
+
+    def describe(self) -> str:
+        if not mypy.options._based:
+            return super().describe()
+        return "Untyped"
+
 
 class UninhabitedType(ProperType):
     """This type has no members.
@@ -2622,7 +2669,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
     def visit_any(self, t: AnyType) -> str:
         if self.any_as_dots and t.type_of_any == TypeOfAny.special_form:
             return '...'
-        return 'Any'
+        return t.describe()
 
     def visit_none_type(self, t: NoneType) -> str:
         return "None"

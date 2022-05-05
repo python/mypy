@@ -4,7 +4,7 @@ from typing import Optional
 
 from mypy.nodes import Expression, Decorator, CallExpr, FuncDef, RefExpr, Var, ARG_POS
 from mypy.types import (
-    Type, CallableType, AnyType, TypeOfAny, TypeVarType, ProperType, get_proper_type
+    Type, CallableType, AnyType, TypeOfAny, TypeVarType, ProperType, get_proper_type, UntypedType
 )
 from mypy.typeops import function_type
 from mypy.typevars import has_no_typevars
@@ -84,7 +84,7 @@ def calculate_return_type(expr: Expression) -> Optional[ProperType]:
             typ = expr.node.type
             if typ is None:
                 # No signature -> default to Any.
-                return AnyType(TypeOfAny.unannotated)
+                return UntypedType()
             # Explicit Any return?
             if isinstance(typ, CallableType):
                 return get_proper_type(typ.ret_type)

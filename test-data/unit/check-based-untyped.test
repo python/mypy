@@ -1,0 +1,57 @@
+[case testUntypedAttribute]
+from basedtyping import Untyped
+a: Untyped
+a = 1  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+del a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+class A:
+    a: Untyped
+a1: A
+del a1.a  # E: Usage of untyped name "a" in typed context  [no-untyped-usage]
+del a1.a[1]  # E: Expression has type "Untyped"  [no-any-expr]
+del a1.a.b  # E: Expression has type "Untyped"  [no-any-expr] \
+            # E: Usage of untyped name "b" in typed context  [no-untyped-usage]
+
+
+[case testUntypedIndex]
+# flags: --allow-any-generics
+from typing import List
+from basedtyping import Untyped
+
+class A(list): ...
+a = A()
+a[0] = 1  # E: Untyped indexed-assignment to "a" in typed context  [no-untyped-usage]
+class B(List[Untyped]):
+    a: A
+b = B()
+b[0] = 1  # E: Untyped indexed-assignment to "b" in typed context  [no-untyped-usage]
+b.a[0] = 1  # E: Untyped indexed-assignment to "a" in typed context  [no-untyped-usage]
+c: Untyped
+c()[1] = 1  # E: Expression has type "Untyped"  [no-any-expr]
+[builtins fixtures/list.pyi]
+
+
+[case testUntypedOmittedGeneric]
+# flags: --allow-any-generics
+from typing import List
+from basedtyping import Untyped
+
+def f1(a: List): ...
+def f2(a: List[Untyped]): ...
+a = [1]
+f1(a)  # E: Call to incomplete function "f1" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: list[Untyped])"
+f2(a)  # E: Call to incomplete function "f2" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: list[Untyped])"
+
+
+[case testIncompleteCall]
+# flags: --allow-any-explicit
+from typing import Any
+from basedtyping import Untyped
+
+def f1(a: Any): ...
+def f2(a: Untyped) -> int: ...
+
+f1(1)
+f2(1)  # E: Call to incomplete function "f2" in typed context  [no-untyped-call] \
+       # N: Type is "def (a: Untyped) -> int"

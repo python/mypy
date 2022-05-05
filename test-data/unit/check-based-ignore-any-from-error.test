@@ -13,13 +13,13 @@ g = f + 1  # E: Expression has type "Any"  [no-any-expr]
 # flags: --no-ignore-any-from-error
 from typing import Any
 a = AMONGUS  # E: Name "AMONGUS" is not defined  [name-defined] \
-             # E: Expression has type "Any"  [no-any-expr]
-b = a + 1  # E: Expression has type "Any"  [no-any-expr]
-c = b()  # E: Expression has type "Any"  [no-any-expr]
-d = [c]  # E: Expression type contains "Any" (has type "list[Any]")  [no-any-expr] \
-         # E: Expression has type "Any"  [no-any-expr]
-e = d[0].d  # E: Expression type contains "Any" (has type "list[Any]")  [no-any-expr] \
-            # E: Expression has type "Any"  [no-any-expr]
-e + 1  # E: Expression has type "Any"  [no-any-expr]
+             # E: Expression has type "Any (from error)"  [no-any-expr]
+b = a + 1  # E: Expression has type "Any (from error)"  [no-any-expr]
+c = b()  # E: Expression has type "Any (from error)"  [no-any-expr]
+d = [c]  # E: Expression type contains "Any" (has type "list[Any (from error)]")  [no-any-expr] \
+         # E: Expression has type "Any (from error)"  [no-any-expr]
+e = d[0].d  # E: Expression type contains "Any" (has type "list[Any (from error)]")  [no-any-expr] \
+            # E: Expression has type "Any (from error)"  [no-any-expr]
+e + 1  # E: Expression has type "Any (from error)"  [no-any-expr]
 f: Any  # E: Explicit "Any" is not allowed  [no-any-explicit]
 g = f + 1  # E: Expression has type "Any"  [no-any-expr]

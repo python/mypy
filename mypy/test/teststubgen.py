@@ -556,7 +556,7 @@ class StubgenPythonSuite(DataSuite):
 
     required_out_section = True
     base_path = '.'
-    files = ['stubgen.test']
+    files = ['stubgen.test', 'stubgen-based.test']
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         with local_sys_path_set():
@@ -578,6 +578,10 @@ class StubgenPythonSuite(DataSuite):
                 f.write(content)
 
         options = self.parse_flags(source, extra)
+        print(testcase.name)
+        print(testcase.file)
+        if "based" not in testcase.file.split(os.sep)[-1]:
+            options.legacy = True
         modules = self.parse_modules(source)
         out_dir = 'out'
         try:

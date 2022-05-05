@@ -15,7 +15,7 @@ from mypy.types import (
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
     TypeAliasType, TypeQuery, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
-    ENUM_REMOVED_PROPS, is_unannotated_any
+    ENUM_REMOVED_PROPS, is_unannotated_any, UntypedType
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -608,15 +608,15 @@ def callable_type(fdef: FuncItem, fallback: Instance,
         self_type: Type = fill_typevars(fdef.info)
         if fdef.is_class or fdef.name == '__new__':
             self_type = TypeType.make_normalized(self_type)
-        args = [self_type] + [AnyType(TypeOfAny.unannotated)] * (len(fdef.arg_names)-1)
+        args = [self_type] + [UntypedType()] * (len(fdef.arg_names)-1)
     else:
-        args = [AnyType(TypeOfAny.unannotated)] * len(fdef.arg_names)
+        args = [UntypedType()] * len(fdef.arg_names)
 
     return CallableType(
         args,
         fdef.arg_kinds,
         fdef.arg_names,
-        ret_type or AnyType(TypeOfAny.unannotated),
+        ret_type or UntypedType(),
         fallback,
         name=fdef.name,
         line=fdef.line,
@@ -951,7 +951,7 @@ def infer_impl_from_parts(impl: OverloadPart, types: List[CallableType], fallbac
     res_arg_types = [
         arg_types2[arg_name]
         if arg_name in arg_types2 and arg_kind not in (ARG_STAR, ARG_STAR2)
-        else AnyType(TypeOfAny.unannotated)
+        else UntypedType()
         for arg_name, arg_kind in zip(impl_func.arg_names, impl_func.arg_kinds)
     ]
     ret_type = UnionType.make_union(ret_types)

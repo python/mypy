@@ -21,7 +21,7 @@ reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: int)"
 # flags: --allow-untyped-defs --allow-any-expr
 
 def f(): ...
-reveal_type(f)  # N: Revealed type is "def () -> Any"
+reveal_type(f)  # N: Revealed type is "def () -> Untyped"
 
 def g(i: int): ...
 reveal_type(g)  # N: Revealed type is "def (i: int)"
@@ -34,20 +34,20 @@ class A:
     def h(self, i: int): ...
     def i(self, i: int, j): ... # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
 
-reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Any"
-reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Any) -> Any"
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Untyped"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Untyped) -> Untyped"
 reveal_type(A.h)  # N: Revealed type is "def (self: __main__.A, i: int)"
-reveal_type(A.i)  # N: Revealed type is "def (self: __main__.A, i: int, j: Any)"
+reveal_type(A.i)  # N: Revealed type is "def (self: __main__.A, i: int, j: Untyped)"
 
 
 [case testIncompleteDefs]
 # flags: --allow-incomplete-defs --allow-untyped-defs --allow-any-expr
 
 def f(i): ...
-reveal_type(f)  # N: Revealed type is "def (i: Any) -> Any"
+reveal_type(f)  # N: Revealed type is "def (i: Untyped) -> Untyped"
 
 def g(i: int, j): ...
-reveal_type(g)  # N: Revealed type is "def (i: int, j: Any)"
+reveal_type(g)  # N: Revealed type is "def (i: int, j: Untyped)"
 
 class A:
     def f(self): ...
@@ -55,10 +55,10 @@ class A:
     def h(self, i: int): ...
     def i(self, i: int, j): ...
 
-reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Any"
-reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Any) -> Any"
+reveal_type(A.f)  # N: Revealed type is "def (self: __main__.A) -> Untyped"
+reveal_type(A.g)  # N: Revealed type is "def (self: __main__.A, i: Untyped) -> Untyped"
 reveal_type(A.h)  # N: Revealed type is "def (self: __main__.A, i: int)"
-reveal_type(A.i)  # N: Revealed type is "def (self: __main__.A, i: int, j: Any)"
+reveal_type(A.i)  # N: Revealed type is "def (self: __main__.A, i: int, j: Untyped)"
 
 
 [case testGenerator]
@@ -101,7 +101,7 @@ class A:
 
 f = lambda x: x
 g = lambda: ...
-reveal_type(f)  # N: Revealed type is "def (x: Any) -> Any"
+reveal_type(f)  # N: Revealed type is "def (x: Untyped) -> Any (special form)"
 reveal_type(g)  # N: Revealed type is "def () -> ellipsis"
 
 
@@ -168,7 +168,7 @@ class A:
     def f(self, i, j: int): ...
     def f(self, i: int = 0, j: int = 0): ...
 
-reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: Any), def (self: __main__.A, i: Any, j: int))"
+reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: Untyped), def (self: __main__.A, i: Untyped, j: int))"
 
 @overload
 def f(): ...
@@ -178,7 +178,7 @@ def f(i): ...
 def f(i, j: int): ...
 def f(i: int = 0, j: int = 0): ...
 
-reveal_type(f)  # N: Revealed type is "Overload(def (), def (i: Any), def (i: Any, j: int))"
+reveal_type(f)  # N: Revealed type is "Overload(def (), def (i: Untyped), def (i: Untyped, j: int))"
 
 
 [case testOverloadUntyped]
@@ -194,7 +194,7 @@ class A:
     def f(self, *, j: int): ...
     def f(self, i: int = 0, j: int = 0): ...
 
-reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: Any), def (self: __main__.A, *, j: int))"
+reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A), def (self: __main__.A, i: Untyped), def (self: __main__.A, *, j: int))"
 
 @overload
 def f(): ...
@@ -204,7 +204,7 @@ def f(i): ...
 def f(*, j: int): ...
 def f(i: int = 0, j: int = 0): ...
 
-reveal_type(f)  # N: Revealed type is "Overload(def (), def (i: Any), def (*, j: int))"
+reveal_type(f)  # N: Revealed type is "Overload(def (), def (i: Untyped), def (*, j: int))"
 
 [case testOverloadOther]
 # flags: --allow-untyped-defs --allow-incomplete-defs --allow-any-expr
@@ -219,7 +219,7 @@ class A:
     def f(self, i, j: int): ...
     def f(self, i: int = 0, j: int = 0) -> object: ...
 
-reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A) -> int, def (self: __main__.A, i: Any), def (self: __main__.A, i: Any, j: int))"
+reveal_type(A.f)  # N: Revealed type is "Overload(def (self: __main__.A) -> int, def (self: __main__.A, i: Untyped), def (self: __main__.A, i: Untyped, j: int))"
 
 class B:
     @overload
@@ -230,7 +230,7 @@ class B:
     def f(self, i, j: int) -> int: ...
     def f(self, i: int = 0, j: int = 0) -> object: ...
 
-reveal_type(B.f)  # N: Revealed type is "Overload(def (self: __main__.B) -> str, def (self: __main__.B, i: Any), def (self: __main__.B, i: Any, j: int) -> int)"
+reveal_type(B.f)  # N: Revealed type is "Overload(def (self: __main__.B) -> str, def (self: __main__.B, i: Untyped), def (self: __main__.B, i: Untyped, j: int) -> int)"
 
 
 [case testNewHasError]

@@ -34,6 +34,7 @@ typecheck_files = [
     'check-based-default-return.test',
     'check-based-ignore-any-from-error.test',
     'check-based-type-render.test',
+    'check-based-untyped.test',
     'check-based-infer-function-types.test',
     'check-based-incomplete-defs.test',
     'check-union-or-syntax.test',

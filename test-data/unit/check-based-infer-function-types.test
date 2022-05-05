@@ -4,10 +4,10 @@
 # flags: --allow-untyped-defs --allow-incomplete-defs --allow-any-expr
 
 def f(): ...
-reveal_type(f)  # N: Revealed type is "def () -> Any"
+reveal_type(f)  # N: Revealed type is "def () -> Untyped"
 
 def g(i=1, b=""): ...
-reveal_type(g)  # N: Revealed type is "def (i: int =, b: str =) -> Any"
+reveal_type(g)  # N: Revealed type is "def (i: int =, b: str =) -> Untyped"
 
 class A1:
     def __new__(cls): ...
@@ -16,8 +16,8 @@ class B1(A1):
     def __new__(cls): ...
     def __init__(self): ...
 
-reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Any"
-reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Any"
+reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Untyped"
+reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Untyped"
 reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1)"
 reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1)"
 
@@ -77,10 +77,10 @@ reveal_type(C.foo)  # N: Revealed type is "def (self: __main__.C, a: object =)"
 # flags: --no-infer-function-types --allow-untyped-defs --allow-incomplete-defs --allow-any-expr --no-default-return
 
 def f(): ...
-reveal_type(f)  # N: Revealed type is "def () -> Any"
+reveal_type(f)  # N: Revealed type is "def () -> Untyped"
 
 def g(i=1, b=""): ...
-reveal_type(g)  # N: Revealed type is "def (i: Any =, b: Any =) -> Any"
+reveal_type(g)  # N: Revealed type is "def (i: Untyped =, b: Untyped =) -> Untyped"
 
 class A1:
     def __new__(cls): ...
@@ -89,10 +89,10 @@ class B1(A1):
     def __new__(cls): ...
     def __init__(self): ...
 
-reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Any"
-reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Any"
-reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1) -> Any"
-reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1) -> Any"
+reveal_type(A1.__new__)  # N: Revealed type is "def (cls: type[__main__.A1]) -> Untyped"
+reveal_type(B1.__new__)  # N: Revealed type is "def (cls: type[__main__.B1]) -> Untyped"
+reveal_type(A1.__init__)  # N: Revealed type is "def (self: __main__.A1) -> Untyped"
+reveal_type(B1.__init__)  # N: Revealed type is "def (self: __main__.B1) -> Untyped"
 
 class A2:
     def __new__(cls, a: int): ...
@@ -101,10 +101,10 @@ class B2(A2):
     def __new__(cls, a): ...
     def __init__(self, a): ...
 
-reveal_type(A2.__new__)  # N: Revealed type is "def (cls: type[__main__.A2], a: int) -> Any"
-reveal_type(B2.__new__)  # N: Revealed type is "def (cls: type[__main__.B2], a: Any) -> Any"
+reveal_type(A2.__new__)  # N: Revealed type is "def (cls: type[__main__.A2], a: int) -> Untyped"
+reveal_type(B2.__new__)  # N: Revealed type is "def (cls: type[__main__.B2], a: Untyped) -> Untyped"
 reveal_type(A2.__init__)  # N: Revealed type is "def (self: __main__.A2, a: int)"
-reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: Any) -> Any"
+reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: Untyped) -> Untyped"
 
 
 [case testSimpleOverload]
@@ -180,7 +180,7 @@ def f(__a: str): ...
 def f(__a: int): ...
 
 def f(*args):  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
-    reveal_type(args)  # N: Revealed type is "tuple[Any, ...]"
+    reveal_type(args)  # N: Revealed type is "tuple[Untyped, ...]"
     if args:
         return "asdf"  # E: No return value expected  [return-value]
 [builtins fixtures/tuple.pyi]
@@ -196,7 +196,7 @@ def f(*, kwargs: str): ...
 def f(*, kwargs: int): ...
 
 def f(**kwargs):  # E: Function is missing a type annotation for one or more arguments  [no-untyped-def]
-    reveal_type(kwargs)  # N: Revealed type is "dict[str, Any]"
+    reveal_type(kwargs)  # N: Revealed type is "dict[str, Untyped]"
     return 1 # E: No return value expected  [return-value]
 [builtins fixtures/dict.pyi]
 

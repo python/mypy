@@ -9,8 +9,8 @@ from mypy.nodes import (
 )
 from mypy.fastparse import parse_type_string
 from mypy.types import (
-    Type, UnboundType, TypeList, EllipsisType, AnyType, CallableArgument, TypeOfAny,
-    RawExpressionType, ProperType, UnionType, ANNOTATED_TYPE_NAMES,
+    Type, UnboundType, TypeList, EllipsisType,  CallableArgument,
+    RawExpressionType, ProperType, UnionType, ANNOTATED_TYPE_NAMES, UntypedType,
 )
 from mypy.options import Options
 
@@ -106,7 +106,7 @@ def expr_to_unanalyzed_type(expr: Expression,
 
         # Go through the constructor args to get its name and type.
         name = None
-        default_type = AnyType(TypeOfAny.unannotated)
+        default_type = UntypedType()
         typ: Type = default_type
         for i, arg in enumerate(expr.args):
             if expr.arg_names[i] is not None:

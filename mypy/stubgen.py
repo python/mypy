@@ -175,7 +175,8 @@ class Options:
                  files: List[str],
                  verbose: bool,
                  quiet: bool,
-                 export_less: bool) -> None:
+                 export_less: bool,
+                 legacy: bool) -> None:
         # See parse_options for descriptions of the flags.
         self.pyversion = pyversion
         self.no_import = no_import
@@ -193,6 +194,7 @@ class Options:
         self.verbose = verbose
         self.quiet = quiet
         self.export_less = export_less
+        self.legacy = legacy
 
 
 class StubSource:
@@ -534,7 +536,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                  _all_: Optional[List[str]], pyversion: Tuple[int, int],
                  include_private: bool = False,
                  analyzed: bool = False,
-                 export_less: bool = False) -> None:
+                 export_less: bool = False,
+                 legacy: bool = False) -> None:
         # Best known value of __all__.
         self._all_ = _all_
         self._output: List[str] = []
@@ -554,6 +557,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.analyzed = analyzed
         # Disable implicit exports of package-internal imports?
         self.export_less = export_less
+        # Don't use based features?
+        self.legacy = legacy
         # Add imports that could be implicitly generated
         self.import_tracker.add_import_from("typing", [("NamedTuple", None)])
         # Names in __all__ are required
@@ -571,6 +576,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         self.referenced_names = find_referenced_names(o)
         known_imports = {
             "_typeshed": ["Incomplete"],
+            "basedtyping": ["Untyped"],
             "typing": ["Any", "TypeVar"],
             "collections.abc": ["Generator"],
         }
@@ -694,21 +700,23 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return_name = 'None'
             for expr, in_assignment in all_yield_expressions(o):
                 if expr.expr is not None and not self.is_none_expr(expr.expr):
-                    self.add_typing_import('Incomplete')
-                    yield_name = 'Incomplete'
+                    yield_name = self.untyped
                 if in_assignment:
-                    self.add_typing_import('Incomplete')
-                    send_name = 'Incomplete'
+                    send_name = self.untyped
             if has_return_statement(o):
-                self.add_typing_import('Incomplete')
-                return_name = 'Incomplete'
+                return_name = self.untyped
             generator_name = self.typing_name('Generator')
             retname = f'{generator_name}[{yield_name}, {send_name}, {return_name}]'
         elif not has_return_statement(o) and not is_abstract:
-            retname = 'None'
+            retname = ''
         retfield = ''
-        if retname is not None:
-            retfield = ' -> ' + retname
+        if not self.legacy:
+            if retname is None:
+                retfield = f' -> {self.untyped}'
+            elif retname:
+                retfield = f' -> {retname}'
+        elif retname is not None:
+            retfield = ' -> ' + (retname or 'None')
 
         self.add(', '.join(args))
         self.add(f"){retfield}: ...\n")
@@ -961,18 +969,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             list_items = cast(List[StrExpr], rvalue.args[1].items)
             items = [item.value for item in list_items]
         else:
-            self.add(f'{self._indent}{lvalue.name}: Incomplete')
-            self.import_tracker.require_name('Incomplete')
+            self.add(f'{self._indent}{lvalue.name}: {self.untyped}')
             return
         self.import_tracker.require_name('NamedTuple')
         self.add(f'{self._indent}class {lvalue.name}(NamedTuple):')
         if len(items) == 0:
             self.add(' ...\n')
         else:
-            self.import_tracker.require_name('Incomplete')
             self.add('\n')
             for item in items:
-                self.add(f'{self._indent}    {item}: Incomplete\n')
+                self.add(f'{self._indent}    {item}: {self.untyped}\n')
         self._state = CLASS
 
     def is_alias_expression(self, expr: Expression, top_level: bool = True) -> bool:
@@ -1151,13 +1157,22 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         else:
             return name
 
-    def add_typing_import(self, name: str) -> None:
+    @property
+    def untyped(self) -> str:
+        if not self.legacy:
+            result = "Untyped"
+        else:
+            result = "Incomplete"
+        return self.add_typing_import(result)
+
+    def add_typing_import(self, name: str) -> str:
         """Add a name to be imported from typing, unless it's imported already.
 
         The import will be internal to the stub.
         """
         name = self.typing_name(name)
         self.import_tracker.require_name(name)
+        return name
 
     def add_abc_import(self, name: str) -> None:
         """Add a name to be imported from collections.abc, unless it's imported already.
@@ -1226,11 +1241,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return 'bool'
         if can_infer_optional and \
                 isinstance(rvalue, NameExpr) and rvalue.name == 'None':
-            self.add_typing_import('Incomplete')
-            return f"{self.typing_name('Incomplete')} | None"
+            return f"{self.untyped} | None"
         if can_be_any:
-            self.add_typing_import('Incomplete')
-            return self.typing_name('Incomplete')
+            return self.untyped
         else:
             return ''
 
@@ -1527,7 +1540,8 @@ def generate_stub_from_ast(mod: StubSource,
                            parse_only: bool = False,
                            pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
                            include_private: bool = False,
-                           export_less: bool = False) -> None:
+                           export_less: bool = False,
+                           legacy: bool = False) -> None:
     """Use analysed (or just parsed) AST to generate type stub for single file.
 
     If directory for target doesn't exist it will created. Existing stub
@@ -1537,7 +1551,8 @@ def generate_stub_from_ast(mod: StubSource,
                         pyversion=pyversion,
                         include_private=include_private,
                         analyzed=not parse_only,
-                        export_less=export_less)
+                        export_less=export_less,
+                        legacy=legacy)
     assert mod.ast is not None, "This function must be used only with analyzed modules"
     mod.ast.accept(gen)
 
@@ -1593,7 +1608,8 @@ def generate_stubs(options: Options) -> None:
             generate_stub_from_ast(mod, target,
                                    options.parse_only, options.pyversion,
                                    options.include_private,
-                                   options.export_less)
+                                   options.export_less,
+                                   options.legacy)
 
     # Separately analyse C modules using different logic.
     for mod in c_modules:
@@ -1664,6 +1680,8 @@ def parse_options(args: List[str]) -> Options:
                              "Python 2 right now)")
     parser.add_argument('-o', '--output', metavar='PATH', dest='output_dir', default='out',
                         help="change the output directory [default: %(default)s]")
+    parser.add_argument("--legacy", action='store_true',
+                        help="don't used based features")
     parser.add_argument('-m', '--module', action='append', metavar='MODULE',
                         dest='modules', default=[],
                         help="generate stub for module; can repeat for more modules")
@@ -1701,7 +1719,8 @@ def parse_options(args: List[str]) -> Options:
                    files=ns.files,
                    verbose=ns.verbose,
                    quiet=ns.quiet,
-                   export_less=ns.export_less)
+                   export_less=ns.export_less,
+                   legacy=ns.legacy)
 
 
 def main() -> None:

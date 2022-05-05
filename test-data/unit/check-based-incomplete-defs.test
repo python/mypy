@@ -2,7 +2,7 @@
 # flags: --config-file tmp/mypy.ini
 from b import foo
 foo(1, 2)  # E: Call to incomplete function "foo" in typed context  [no-untyped-call] \
-           # N: Type is "def (a: int, b: Any)"
+           # N: Type is "def (a: int, b: Untyped)"
 
 [file b.py]
 def foo(a: int, b): ...

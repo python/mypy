@@ -2,7 +2,7 @@ from typing import Dict, List
 
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny, ProperType
+from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny, ProperType, UntypedType
 
 
 def map_instance_to_supertype(instance: Instance,
@@ -89,7 +89,7 @@ def map_instance_to_direct_supertypes(instance: Instance,
     else:
         # Relationship with the supertype not specified explicitly. Use dynamic
         # type arguments implicitly.
-        any_type = AnyType(TypeOfAny.unannotated)
+        any_type = UntypedType()
         return [Instance(supertype, [any_type] * len(supertype.type_vars))]
 
 
