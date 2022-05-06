@@ -317,7 +317,6 @@ syntax like so:
    # If you're using Python 3.6+
    my_global_dict: Dict[int, float] = {}
 
-.. _stubs-intro:
 
 Types and classes
 *****************
@@ -372,11 +371,7 @@ of ``BankAccount``. For example, suppose you write a new class that looks like t
     class AuditedBankAccount(BankAccount):
         def __init__(self, account_name: str, initial_balance: int = 0) -> None:
             super().__init__(account_name, initial_balance)
-
-            # In this case, mypy can't infer the exact type of this field
-            # based on the information available in this constructor, so we
-            # need to add a type annotation.
-            self.audit_log: List[str] = []
+            self.audit_log: list[str] = []
 
         def deposit(self, amount: int) -> None:
             self.audit_log.append(f"Deposited {amount}")
@@ -428,23 +423,20 @@ anywhere, so how did mypy know that ``Path.read_text()`` returns a ``str``,
 or that ``str.replace(...)`` accepts exactly two ``str`` arguments?
 
 The answer is that mypy comes bundled with *stub files* from the
-the `typeshed <https://github.com/python/typeshed>`_ project.
+the `typeshed <https://github.com/python/typeshed>`_ project, which
+contains stub files for the Python builtins, the standard library,
+and selected third-party packages.
 
 A *stub file* is a file containing a skeleton of the public interface
 of that Python module, including classes, variables, functions -- and
-most importantly, their types. Typeshed is a collection of stub files
-for modules in the standard library and select third party libraries
-and is what mypy used to identify the correct types for our example above.
+most importantly, their types.
 
-Mypy can understand third party libraries in the same way as long as those
-libraries come bundled with stub files or have inline annotations that mypy
-can automatically find. (see :ref:`installed-packages` for the details).
-However, if the third party library does *not* come bundled with type hints,
-mypy will not try and guess what the types are: it'll assume the entire library
-is :ref:`dynamically typed <dynamic-typing>` and report an error whenever you
-import the library.
-
-You can install the stubs for third-party packages like this:
+Mypy complains if it can't find a stub (or a real module) for a
+library module that you import. Some modules ship with stubs or inline
+annotations that mypy can automatically find, or you can install
+additional stubs using pip (see :ref:`fix-missing-imports` and
+:ref:`installed-packages` for the details). For example, you can install
+the stubs for the ``requests`` package like this:
 
 .. code-block:: shell
 
