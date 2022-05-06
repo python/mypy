@@ -177,9 +177,7 @@ If you are getting this error, try:
 
 2.  Searching to see if there is a :ref:`PEP 561 compliant stub package <installed-packages>`.
     corresponding to your third party library. Stub packages let you install
-    type hints independently from the library itself. For example, if you want
-    type hints for the `sqlalchemy <https://www.sqlalchemy.org/>`_ library,
-    you can install `sqlalchemy-stubs <https://pypi.org/project/sqlalchemy-stubs/>`_.
+    type hints independently from the library itself.
 
     For example, if you want type hints for the ``django`` library, you can
     install the `django-stubs <https://pypi.org/project/django-stubs/>`_ package.
