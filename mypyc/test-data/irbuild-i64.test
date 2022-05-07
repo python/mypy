@@ -1280,3 +1280,91 @@ L3:
 L4:
     r9 = CPySequence_Multiply(r0, r7)
     return r9
+
+[case testShortIntAndI64Op]
+from mypy_extensions import i64
+from typing import List
+
+def add_i64(a: List[i64], n: i64) -> i64:
+    return len(a) + n
+def add_i64_2(a: List[i64], n: i64) -> i64:
+    return n + len(a)
+def eq_i64(a: List[i64], n: i64) -> bool:
+    if len(a) == n:
+        return True
+    return False
+def lt_i64(a: List[i64], n: i64) -> bool:
+    if n < len(a):
+        return True
+    return False
+[out]
+def add_i64(a, n):
+    a :: list
+    n :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3, r4 :: int64
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = r3 + n
+    return r4
+def add_i64_2(a, n):
+    a :: list
+    n :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3, r4 :: int64
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = n + r3
+    return r4
+def eq_i64(a, n):
+    a :: list
+    n :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: int64
+    r4 :: bit
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = r3 == n
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+def lt_i64(a, n):
+    a :: list
+    n :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: int64
+    r4 :: bit
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = n < r3 :: signed
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0

@@ -1065,7 +1065,7 @@ class LowLevelIRBuilder:
             if op in FIXED_WIDTH_INT_BINARY_OPS:
                 if op.endswith('='):
                     op = op[:-1]
-                if is_fixed_width_rtype(rtype) or is_int_rprimitive(rtype):
+                if is_fixed_width_rtype(rtype) or is_tagged(rtype):
                     if op != '//':
                         op_id = IntOp.op_to_id[op]
                     else:
@@ -1089,7 +1089,7 @@ class LowLevelIRBuilder:
                     return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
         elif is_fixed_width_rtype(rtype):
             if (
-                (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
+                (isinstance(lreg, Integer) or is_tagged(ltype))
                 and op in FIXED_WIDTH_INT_BINARY_OPS
             ):
                 if op.endswith('='):
