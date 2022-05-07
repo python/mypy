@@ -1130,7 +1130,6 @@ L0:
     return r4
 
 [case testBorrowOverI64ListGetItem1]
-from typing import List
 from mypy_extensions import i64
 
 def f(n: i64) -> str:
@@ -1184,6 +1183,61 @@ L0:
     r2 = r1 == 0
     keep_alive a, n
     if r2 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+
+[case testCoerceShortIntToI64]
+from mypy_extensions import i64
+from typing import List
+
+def f(a: List[i64], y: i64) -> bool:
+    if len(a) < y:
+        return True
+    return False
+
+def g(a: List[i64], y: i64) -> bool:
+    if y < len(a):
+        return True
+    return False
+[out]
+def f(a, y):
+    a :: list
+    y :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: int64
+    r4 :: bit
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = r3 < y :: signed
+    if r4 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0
+def g(a, y):
+    a :: list
+    y :: int64
+    r0 :: ptr
+    r1 :: native_int
+    r2 :: short_int
+    r3 :: int64
+    r4 :: bit
+L0:
+    r0 = get_element_ptr a ob_size :: PyVarObject
+    r1 = load_mem r0 :: native_int*
+    keep_alive a
+    r2 = r1 << 1
+    r3 = r2 >> 1
+    r4 = y < r3 :: signed
+    if r4 goto L1 else goto L2 :: bool
 L1:
     return 1
 L2:

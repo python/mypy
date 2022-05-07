@@ -70,6 +70,10 @@ def maybe_process_conditional_comparison(self: IRBuilder,
     left = self.accept(left_expr, can_borrow=borrow_left)
     right = self.accept(right_expr, can_borrow=True)
     if is_fixed_width_rtype(ltype) or is_fixed_width_rtype(rtype):
+        if not is_fixed_width_rtype(ltype):
+            left = self.coerce(left, rtype, e.line)
+        elif not is_fixed_width_rtype(rtype):
+            right = self.coerce(right, ltype, e.line)
         reg = self.binary_op(left, right, op, e.line)
         self.builder.flush_keep_alives()
         self.add_bool_branch(reg, true, false)

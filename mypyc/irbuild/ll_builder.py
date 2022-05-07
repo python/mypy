@@ -208,6 +208,8 @@ class LowLevelIRBuilder:
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
                 return self.coerce_fixed_width_to_int(src, line)
+            elif is_short_int_rprimitive(src_type) and is_fixed_width_rtype(target_type):
+                return self.coerce_short_int_to_fixed_width(src, target_type, line)
             elif (isinstance(src_type, RPrimitive)
                   and isinstance(target_type, RPrimitive)
                   and src_type.is_native_int
@@ -297,6 +299,16 @@ class LowLevelIRBuilder:
 
         self.activate_block(end)
         return res
+
+    def coerce_short_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        if is_int64_rprimitive(target_type):
+            return self.int_op(target_type,
+                               src,
+                               Integer(1, target_type),
+                               IntOp.RIGHT_SHIFT,
+                               line)
+        # TODO: i32
+        assert False, (src.type, target_type)
 
     def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         if is_int32_rprimitive(src.type) and PLATFORM_SIZE == 8:
