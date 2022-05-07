@@ -1077,6 +1077,58 @@ L0:
     keep_alive d, d
     return r4
 
+[case testBorrowOverI64Bitwise]
+from mypy_extensions import i64
+
+def bitwise_simple(c: C) -> i64:
+    return c.x | c.y
+
+def inplace_bitwide_simple(c: C) -> None:
+    c.x &= c.y
+
+def bitwise_borrow(d: D) -> i64:
+    return d.c.x ^ d.c.y
+
+class D:
+    c: C
+
+class C:
+    x: i64
+    y: i64
+[out]
+def bitwise_simple(c):
+    c :: __main__.C
+    r0, r1, r2 :: int64
+L0:
+    r0 = c.x
+    r1 = c.y
+    r2 = r0 | r1
+    return r2
+def inplace_bitwide_simple(c):
+    c :: __main__.C
+    r0, r1, r2 :: int64
+    r3 :: bool
+L0:
+    r0 = c.x
+    r1 = c.y
+    r2 = r0 & r1
+    c.x = r2; r3 = is_error
+    return 1
+def bitwise_borrow(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int64
+    r2 :: __main__.C
+    r3, r4 :: int64
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    r2 = borrow d.c
+    r3 = r2.y
+    r4 = r1 ^ r3
+    keep_alive d, d
+    return r4
+
 [case testBorrowOverI64ListGetItem1]
 from typing import List
 from mypy_extensions import i64
