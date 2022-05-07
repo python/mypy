@@ -322,7 +322,7 @@ this error, try:
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
-on your system in a unconventional way.
+on your system in an unconventional way.
 
 In this case, follow the steps above on how to handle
 :ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
