@@ -648,6 +648,30 @@ reveal_type(f3()) # N: Revealed type is "Union[builtins.int, __main__.Node[built
 
 [builtins fixtures/list.pyi]
 
+[case testGenericTypeAliasesWithNestedArgs]
+# flags: --pretty --show-error-codes
+import other
+a: other.Array[float]
+reveal_type(a) # N: Revealed type is "other.array[Any, other.dtype[builtins.float]]"
+
+[out]
+main:3: error: Type argument "float" of "dtype" must be a subtype of "generic"  [type-var]
+    a: other.Array[float]
+       ^
+[file other.py]
+from typing import Any, Generic, TypeVar
+
+DT = TypeVar("DT", covariant=True, bound=dtype[Any])
+DTS = TypeVar("DTS", covariant=True, bound=generic)
+S = TypeVar("S", bound=Any)
+ST = TypeVar("ST", bound=generic, covariant=True)
+
+class common: pass
+class generic(common): pass
+class dtype(Generic[DTS]): pass
+class array(common, Generic[S, DT]): pass
+Array = array[Any, dtype[ST]]
+
 [case testGenericTypeAliasesAny]
 from typing import TypeVar, Generic
 T = TypeVar('T')
