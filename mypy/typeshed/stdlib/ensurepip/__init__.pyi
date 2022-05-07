@@ -1,3 +1,5 @@
+__all__ = ["version", "bootstrap"]
+
 def version() -> str: ...
 def bootstrap(
     *,

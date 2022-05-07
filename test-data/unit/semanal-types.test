@@ -390,6 +390,17 @@ MypyFile:1(
       IntExpr(1)
       builtins.int)))
 
+[case testAssertType]
+from typing import assert_type
+assert_type(1, int)
+[out]
+MypyFile:1(
+  ImportFrom:1(typing, [assert_type])
+  ExpressionStmt:2(
+    AssertTypeExpr:2(
+      IntExpr(1)
+      builtins.int)))
+
 [case testFunctionTypeVariable]
 from typing import TypeVar
 t = TypeVar('t')
@@ -679,7 +690,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t [__main__.t])
     NameExpr(None [builtins.None])
-    builtins.tuple[Any])
+    builtins.tuple[Any, ...])
   AssignmentStmt:3(
     NameExpr(t1 [__main__.t1])
     NameExpr(None [builtins.None])
@@ -699,7 +710,7 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(t [__main__.t])
     NameExpr(None [builtins.None])
-    builtins.tuple[builtins.int]))
+    builtins.tuple[builtins.int, ...]))
 
 [case testInvalidTupleType]
 from typing import Tuple
@@ -1537,3 +1548,13 @@ MypyFile:1(
   AssignmentStmt:2(
     NameExpr(P* [__main__.P])
     ParamSpecExpr:2()))
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple
+TV = TypeVarTuple("TV")
+[out]
+MypyFile:1(
+  ImportFrom:1(typing_extensions, [TypeVarTuple])
+  AssignmentStmt:2(
+    NameExpr(TV* [__main__.TV])
+    TypeVarTupleExpr:2()))

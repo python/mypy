@@ -11,7 +11,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
-    AssignmentExpr,
+    AssignmentExpr, AssertTypeExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
@@ -203,6 +203,9 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
 def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     if isinstance(expr.analyzed, CastExpr):
         return translate_cast_expr(builder, expr.analyzed)
+    elif isinstance(expr.analyzed, AssertTypeExpr):
+        # Compile to a no-op.
+        return builder.accept(expr.analyzed.expr)
 
     callee = expr.callee
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
@@ -326,11 +329,20 @@ def translate_super_method_call(builder: IRBuilder, expr: CallExpr, callee: Supe
             return translate_call(builder, expr, callee)
 
     ir = builder.mapper.type_to_ir[callee.info]
-    # Search for the method in the mro, skipping ourselves.
+    # Search for the method in the mro, skipping ourselves. We
+    # determine targets of super calls to native methods statically.
     for base in ir.mro[1:]:
         if callee.name in base.method_decls:
             break
     else:
+        if (ir.is_ext_class
+                and ir.builtin_base is None
+                and not ir.inherits_python
+                and callee.name == '__init__'
+                and len(expr.args) == 0):
+            # Call translates to object.__init__(self), which is a
+            # no-op, so omit the call.
+            return builder.none()
         return translate_call(builder, expr, callee)
 
     decl = base.method_decl(callee.name)

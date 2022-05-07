@@ -91,6 +91,7 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-typevar-tuple.test',
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
@@ -164,6 +165,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -326,7 +328,7 @@ class TypeCheckSuite(DataSuite):
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if incremental_step > 1:
-            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_regex = f'# cmd{incremental_step}: mypy -m ([a-zA-Z0-9_. ]+)$'
             alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
             if alt_m is not None:
                 # Optionally return a different command if in a later step

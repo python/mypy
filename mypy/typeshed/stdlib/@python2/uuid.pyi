@@ -1,9 +1,9 @@
-from typing import Any, Text, Tuple
+from typing import Any, Text
 
 # Because UUID has properties called int and bytes we need to rename these temporarily.
 _Int = int
 _Bytes = bytes
-_FieldsType = Tuple[int, int, int, int, int, int]
+_FieldsType = tuple[int, int, int, int, int, int]
 
 class UUID:
     def __init__(

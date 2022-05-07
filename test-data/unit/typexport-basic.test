@@ -101,6 +101,25 @@ NameExpr(8) : B
 CastExpr(9) : B
 NameExpr(9) : B
 
+[case testAssertTypeExpr]
+## AssertTypeExpr|[a-z]
+from typing import Any, assert_type
+d = None # type: Any
+a = None # type: A
+b = None # type: B
+class A: pass
+class B(A): pass
+assert_type(d, Any)
+assert_type(a, A)
+assert_type(b, B)
+[out]
+AssertTypeExpr(8) : Any
+NameExpr(8) : Any
+AssertTypeExpr(9) : A
+NameExpr(9) : A
+AssertTypeExpr(10) : B
+NameExpr(10) : B
+
 [case testArithmeticOps]
 ## OpExpr
 import typing

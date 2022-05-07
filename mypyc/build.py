@@ -308,8 +308,8 @@ def write_file(path: str, contents: str) -> None:
         old_contents = None
     if old_contents != encoded_contents:
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'wb') as f:
-            f.write(encoded_contents)
+        with open(path, 'wb') as g:
+            g.write(encoded_contents)
 
         # Fudge the mtime forward because otherwise when two builds happen close
         # together (like in a test) setuptools might not realize the source is newer
@@ -523,10 +523,20 @@ def mypycify(
             # This flag is needed for gcc but does not exist on clang.
             cflags += ['-Wno-unused-but-set-variable']
     elif compiler.compiler_type == 'msvc':
-        if opt_level == '3':
+        # msvc doesn't have levels, '/O2' is full and '/Od' is disable
+        if opt_level == '0':
+            opt_level = 'd'
+        elif opt_level in ('1', '2', '3'):
             opt_level = '2'
+        if debug_level == '0':
+            debug_level = "NONE"
+        elif debug_level == '1':
+            debug_level = "FASTLINK"
+        elif debug_level in ('2', '3'):
+            debug_level = "FULL"
         cflags += [
             '/O{}'.format(opt_level),
+            f'/DEBUG:{debug_level}',
             '/wd4102',  # unreferenced label
             '/wd4101',  # unreferenced local variable
             '/wd4146',  # negating unsigned int

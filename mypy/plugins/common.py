@@ -5,7 +5,7 @@ from mypy.nodes import (
     FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal import set_callable_name
+from mypy.semanal import set_callable_name, ALLOW_INCOMPATIBLE_OVERRIDE
 from mypy.types import (
     CallableType, Overloaded, Type, TypeVarType, deserialize_type, get_proper_type,
 )
@@ -39,7 +39,7 @@ def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
     if attr_value:
         ret = ctx.api.parse_bool(attr_value)
         if ret is None:
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), expr)
+            ctx.api.fail(f'"{name}" argument must be True or False.', expr)
             return default
         return ret
     return default
@@ -154,6 +154,44 @@ def add_method_to_class(
 
     info.names[name] = SymbolTableNode(MDEF, func, plugin_generated=True)
     info.defn.defs.body.append(func)
+
+
+def add_attribute_to_class(
+        api: SemanticAnalyzerPluginInterface,
+        cls: ClassDef,
+        name: str,
+        typ: Type,
+        final: bool = False,
+        no_serialize: bool = False,
+        override_allow_incompatible: bool = False,
+) -> None:
+    """
+    Adds a new attribute to a class definition.
+    This currently only generates the symbol table entry and no corresponding AssignmentStatement
+    """
+    info = cls.info
+
+    # NOTE: we would like the plugin generated node to dominate, but we still
+    # need to keep any existing definitions so they get semantically analyzed.
+    if name in info.names:
+        # Get a nice unique name instead.
+        r_name = get_unique_redefinition_name(name, info.names)
+        info.names[r_name] = info.names[name]
+
+    node = Var(name, typ)
+    node.info = info
+    node.is_final = final
+    if name in ALLOW_INCOMPATIBLE_OVERRIDE:
+        node.allow_incompatible_override = True
+    else:
+        node.allow_incompatible_override = override_allow_incompatible
+    node._fullname = info.fullname + '.' + name
+    info.names[name] = SymbolTableNode(
+        MDEF,
+        node,
+        plugin_generated=True,
+        no_serialize=no_serialize,
+    )
 
 
 def deserialize_and_fixup_type(

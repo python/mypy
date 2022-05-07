@@ -1,19 +1,20 @@
 import sys
 from _typeshed import Self
+from collections.abc import Callable, Iterable
 from email.message import Message
 from types import TracebackType
-from typing import IO, Any, BinaryIO, Callable, Iterable, Tuple, Type, TypeVar
+from typing import IO, Any, BinaryIO
 
-_AIUT = TypeVar("_AIUT", bound=addbase)
+__all__ = ["addbase", "addclosehook", "addinfo", "addinfourl"]
 
 class addbase(BinaryIO):
     fp: IO[bytes]
     def __init__(self, fp: IO[bytes]) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, type: Type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
-    def __iter__(self: _AIUT) -> _AIUT: ...
+    def __iter__(self: Self) -> Self: ...
     def __next__(self) -> bytes: ...
     def close(self) -> None: ...
     # These methods don't actually exist, but the class inherits at runtime from
@@ -37,7 +38,7 @@ class addbase(BinaryIO):
 
 class addclosehook(addbase):
     closehook: Callable[..., object]
-    hookargs: Tuple[Any, ...]
+    hookargs: tuple[Any, ...]
     def __init__(self, fp: IO[bytes], closehook: Callable[..., object], *hookargs: Any) -> None: ...
 
 class addinfo(addbase):
@@ -51,6 +52,7 @@ class addinfourl(addinfo):
     if sys.version_info >= (3, 9):
         @property
         def status(self) -> int | None: ...
+
     def __init__(self, fp: IO[bytes], headers: Message, url: str, code: int | None = ...) -> None: ...
     def geturl(self) -> str: ...
     def getcode(self) -> int | None: ...

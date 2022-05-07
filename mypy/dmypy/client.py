@@ -14,6 +14,7 @@ import time
 import traceback
 
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple, List
+from typing_extensions import NoReturn
 
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive
 from mypy.ipc import IPCClient, IPCException
@@ -161,7 +162,7 @@ def main(argv: List[str]) -> None:
             sys.exit(2)
 
 
-def fail(msg: str) -> None:
+def fail(msg: str) -> NoReturn:
     print(msg, file=sys.stderr)
     sys.exit(2)
 
