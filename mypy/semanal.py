@@ -1103,6 +1103,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail('Decorated property not supported', dec)
+        if dec.func.is_abstract and dec.func.is_final:
+            self.fail(f"Final method {dec.func.name} has abstract attributes", dec)
 
     def check_decorated_function_is_method(self, decorator: str,
                                            context: Context) -> None:
