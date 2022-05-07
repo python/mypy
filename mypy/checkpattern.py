@@ -23,7 +23,7 @@ from mypy.subtypes import is_subtype
 from mypy.typeops import try_getting_str_literals_from_type, make_simplified_union, \
     coerce_to_literal
 from mypy.types import (
-    ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
+    LiteralType, ProperType, AnyType, TypeOfAny, Instance, Type, UninhabitedType, get_proper_type,
     TypedDictType, TupleType, NoneType, UnionType
 )
 from mypy.typevars import fill_typevars
@@ -183,6 +183,8 @@ class PatternChecker(PatternVisitor[PatternType]):
             o,
             default=current_type
         )
+        if not isinstance(get_proper_type(narrowed_type), (LiteralType, UninhabitedType)):
+            return PatternType(narrowed_type, UnionType.make_union([narrowed_type, rest_type]), {})
         return PatternType(narrowed_type, rest_type, {})
 
     def visit_singleton_pattern(self, o: SingletonPattern) -> PatternType:
