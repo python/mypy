@@ -565,7 +565,7 @@ def func1(name: _T):
 def func2(name: str):
     reveal_type(name)  # N: Revealed type is "builtins.str"
     if identity(name):
-        reveal_type(name)  # N: Revealed type is "builtins.str*"
+        reveal_type(name)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardWithGenericInstance]
@@ -580,7 +580,7 @@ def is_list_of_str(val: _T) -> TypeGuard[List[_T]]:
 def func(name: str):
     reveal_type(name)  # N: Revealed type is "builtins.str"
     if is_list_of_str(name):
-        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str*]"
+        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardWithTupleGeneric]
@@ -595,5 +595,5 @@ def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeGuard[Tuple[_T, _T]]:
 def func(names: Tuple[str, ...]):
     reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str]"
     if is_two_element_tuple(names):
-        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str*, builtins.str*]"
+        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]
