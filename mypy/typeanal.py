@@ -950,7 +950,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     return AnyType(TypeOfAny.from_error)
                 ret = maybe_ret
         else:
-            self.fail('Please use "Callable[[<parameters>], <return type>]" or "Callable"', t)
+            if self.options.disallow_any_generics:
+                self.fail('Please use "Callable[[<parameters>], <return type>]"', t)
+            else:
+                self.fail('Please use "Callable[[<parameters>], <return type>]" or "Callable"', t)
             return AnyType(TypeOfAny.from_error)
         assert isinstance(ret, CallableType)
         return ret.accept(self)
