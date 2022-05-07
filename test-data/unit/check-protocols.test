@@ -2693,7 +2693,7 @@ class A(Protocol):
 
 [builtins fixtures/tuple.pyi]
 
-[case testProrocolSlotsIsNotProtocolMember]
+[case testProtocolSlotsIsNotProtocolMember]
 # https://github.com/python/mypy/issues/11884
 from typing import Protocol
 
