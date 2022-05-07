@@ -198,6 +198,10 @@ fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <
 :py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
 
+**get_class_attribute_hook()** is similar to above, but for attributes on classes rather than instances.
+Unlike above, this does not have special casing for :py:meth:`__getattr__ <object.__getattr__>` or
+:py:meth:`__getattribute__ <object.__getattribute__>`.
+
 **get_class_decorator_hook()** can be used to update class definition for
 given class decorators. For example, you can add some attributes to the class
 to match runtime behaviour:
