@@ -1091,3 +1091,21 @@ class A:
     b: ClassVar[Final[int]]  # E: Final can be only used as an outermost qualifier in a variable annotation
     c: ClassVar[Final] = 1  # E: Final can be only used as an outermost qualifier in a variable annotation
 [out]
+
+[case testFinalClassWithAbstractMethod]
+from typing import final
+from abc import ABC, abstractmethod
+
+@final
+class A(ABC): # E: Final class __main__.A has abstract attributes "B"
+    @abstractmethod
+    def B(self) -> None: ...
+
+[case testFinalDefiningFuncWithAbstractMethod]
+from typing import final
+from abc import ABC, abstractmethod
+
+class A(ABC):
+    @final # E: Method B is both abstract and final
+    @abstractmethod
+    def B(self) -> None: ...
