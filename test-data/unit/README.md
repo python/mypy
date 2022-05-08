@@ -34,16 +34,18 @@ with text "abc..."
 - use `\` to escape the `#` character and indicate that the rest of the line is part of
 the error message
 - repeating `# E: ` several times in one line indicates multiple expected errors in one line
-- `W: ...` and `N: ...` works exactly like `E:`, but report a warning and a note respectively
+- `W: ...` and `N: ...` works exactly like `E: ...`, but report a warning and a note respectively
 - lines that don't contain the above should cause no type check errors
 - optional `[builtins fixtures/...]` tells the type checker to use
 stubs from the indicated file (see Fixtures section below)
-- optional `[out]` is an alternative to the "# E:" notation: it indicates that
+- optional `[out]` is an alternative to the `# E: ` notation: it indicates that
 any text after it contains the expected type checking error messages.
-Usually, "E: " is preferred because it makes it easier to associate the
+Usually, `# E: ` is preferred because it makes it easier to associate the
 errors with the code generating them at a glance, and to change the code of
 the test without having to change line numbers in `[out]`
 - an empty `[out]` section has no effect
+- to add tests for a feature that hasn't been implemented yet, append `-xfail`
+  to the end of the test name
 - to run just this test, use `pytest -n0 -k testNewSyntaxBasics`
 
 
