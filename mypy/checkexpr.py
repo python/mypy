@@ -344,11 +344,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                         ret_type=self.object_type(),
                                         fallback=self.named_type('builtins.function'))
         callee_type = get_proper_type(self.accept(e.callee, type_context, always_allow_any=True))
-        if (isinstance(e.callee, RefExpr)
-                and isinstance(callee_type, CallableType)
-                and callee_type.type_guard is not None):
-            # Cache it for find_isinstance_check()
-            e.callee.type_guard = callee_type.type_guard
         if (self.chk.options.disallow_untyped_calls and
                 self.chk.in_checked_function() and
                 isinstance(callee_type, CallableType)
@@ -886,10 +881,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Unions are special-cased to allow plugins to act on each item in the union.
         elif member is not None and isinstance(object_type, UnionType):
             return self.check_union_call_expr(e, object_type, member)
-        return self.check_call(callee_type, e.args, e.arg_kinds, e,
-                               e.arg_names, callable_node=e.callee,
-                               callable_name=callable_name,
-                               object_type=object_type)[0]
+        ret_type, callee_type = self.check_call(
+            callee_type, e.args, e.arg_kinds, e,
+            e.arg_names, callable_node=e.callee,
+            callable_name=callable_name,
+            object_type=object_type,
+        )
+        proper_callee = get_proper_type(callee_type)
+        if (isinstance(e.callee, RefExpr)
+                and isinstance(proper_callee, CallableType)
+                and proper_callee.type_guard is not None):
+            # Cache it for find_isinstance_check()
+            e.callee.type_guard = proper_callee.type_guard
+        return ret_type
 
     def check_union_call_expr(self, e: CallExpr, object_type: UnionType, member: str) -> Type:
         """"Type check calling a member expression where the base type is a union."""
