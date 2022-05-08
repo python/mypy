@@ -1106,6 +1106,6 @@ from typing import final
 from abc import ABC, abstractmethod
 
 class A(ABC):
-    @final # E: Final method B has abstract attributes
+    @final # E: Method B is both abstract and final
     @abstractmethod
     def B(self) -> None: ...
