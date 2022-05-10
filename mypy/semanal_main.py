@@ -428,7 +428,6 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
                 return sym.fullname
         return None
 
-    saved = (module, info, None)  # module, class, function
     defn = info.defn
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
