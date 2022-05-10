@@ -442,12 +442,12 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
-        tree = graph[module].tree
+        state = graph[module]
+        tree = state.tree
         assert tree
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
-                saved = (module, node.node, None)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
+                with state.manager.semantic_analyzer.file_context(tree, state.options, node.node):
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
