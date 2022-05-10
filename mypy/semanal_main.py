@@ -83,8 +83,8 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     apply_semantic_analyzer_patches(patches)
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
-    # Run class decorator hooks (they requite complete MROs).
-    apply_class_decorator_hooks(graph, scc, errors)
+    # Run class decorator hooks (they requite complete MROs and no placeholders).
+    apply_class_plugin_hooks(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
     check_blockers(graph, scc)
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
@@ -135,7 +135,7 @@ def semantic_analysis_for_targets(
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
-    apply_class_decorator_hooks(graph, [state.id], state.manager.errors)
+    apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
 
 
 def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
@@ -390,7 +390,16 @@ from mypy.nodes import Expression, CallExpr, IndexExpr, RefExpr
 from mypy.plugin import ClassDefContext
 
 
-def apply_class_decorator_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+def apply_class_plugin_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    """Apply class plugin hooks within a SCC.
+
+    We run these after to the main semantic analysis so that the hooks
+    don't need to deal with incomplete definitions such as placeholder
+    types.
+
+    Note that some hooks incorrectly run during the main semantic
+    analysis pass, for historical reasons.
+    """
     incomplete = True
     while incomplete:
         incomplete = False
@@ -411,6 +420,7 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
                          options: Options,
                          file_node: MypyFile,
                          errors: Errors) -> bool:
+    # TODO: Move more class-related hooks here?
     defn = info.defn
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
