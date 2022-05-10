@@ -431,12 +431,12 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
     saved = (module, info, None)  # module, class, function
     defn = info.defn
     for decorator in defn.decorators:
-        decorator_name = get_fullname(decorator)
-        if decorator_name:
-            hook = self.plugin.get_class_decorator_hook_2(decorator_name)
-            if hook:
-                with self.file_context(file_node, options, info):
-                    hook(ClassDefContext(defn, decorator, self))
+        with self.file_context(file_node, options, info):
+            decorator_name = get_fullname(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook_2(decorator_name)
+                if hook:
+                        hook(ClassDefContext(defn, decorator, self))
     return True
 
 
