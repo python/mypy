@@ -135,6 +135,7 @@ def semantic_analysis_for_targets(
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
+    apply_class_decorator_hooks(graph, [state.id], state.manager.errors)
 
 
 def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
