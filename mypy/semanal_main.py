@@ -46,6 +46,7 @@ from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
 from mypy.options import Options
+from mypy.plugin import ClassDefContext
 import mypy.build
 
 if TYPE_CHECKING:
@@ -384,10 +385,6 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                 with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     analyzer.recurse_into_functions = func is not None
                     target.node.accept(analyzer)
-
-
-from mypy.nodes import Expression, CallExpr, IndexExpr, RefExpr
-from mypy.plugin import ClassDefContext
 
 
 def apply_class_plugin_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> None:
