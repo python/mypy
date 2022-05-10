@@ -699,7 +699,7 @@ class Plugin(CommonPluginApi):
         return None
 
     def get_class_decorator_hook_2(self, fullname: str
-                                   ) -> Optional[Callable[[ClassDefContext], None]]:
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
         return None
 
     def get_metaclass_hook(self, fullname: str
@@ -820,7 +820,7 @@ class ChainedPlugin(Plugin):
         return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
 
     def get_class_decorator_hook_2(self, fullname: str
-                                   ) -> Optional[Callable[[ClassDefContext], None]]:
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
         return self._find_hook(lambda plugin: plugin.get_class_decorator_hook_2(fullname))
 
     def get_metaclass_hook(self, fullname: str

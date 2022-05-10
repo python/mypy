@@ -110,7 +110,7 @@ class DataclassTransformer:
     def __init__(self, ctx: ClassDefContext) -> None:
         self._ctx = ctx
 
-    def transform(self) -> None:
+    def transform(self) -> bool:
         """Apply all the necessary transformations to the underlying
         dataclass so as to ensure it is fully type checked according
         to the rules in PEP 557.
@@ -119,12 +119,11 @@ class DataclassTransformer:
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
         if attributes is None:
-            # Some definitions are not ready, defer() should be already called.
-            return
+            # Some definitions are not ready. we need another pass.
+            return False
         for attr in attributes:
             if attr.type is None:
-                ctx.api.defer()
-                return
+                return False
         decorator_arguments = {
             'init': _get_decorator_bool_argument(self._ctx, 'init', True),
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
@@ -236,6 +235,8 @@ class DataclassTransformer:
             'frozen': decorator_arguments['frozen'],
         }
 
+        return True
+
     def add_slots(self,
                   info: TypeInfo,
                   attributes: List[DataclassAttribute],
@@ -315,14 +316,11 @@ class DataclassTransformer:
 
             sym = cls.info.names.get(lhs.name)
             if sym is None:
-                # This name is likely blocked by a star import. We don't need to defer because
-                # defer() is already called by mark_incomplete().
+                # There was probably a semantic analysis error.
                 continue
 
             node = sym.node
-            if isinstance(node, PlaceholderNode):
-                # This node is not ready yet.
-                return None
+            assert not isinstance(node, PlaceholderNode)
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.
@@ -390,6 +388,9 @@ class DataclassTransformer:
         # we'll have unmodified attrs laying around.
         all_attrs = attrs.copy()
         for info in cls.info.mro[1:-1]:
+            if 'dataclass_tag' in info.metadata and 'dataclass' not in info.metadata:
+                # We haven't processed the base class yet. Need another pass.
+                return None
             if 'dataclass' not in info.metadata:
                 continue
 
@@ -517,11 +518,21 @@ class DataclassTransformer:
         )
 
 
-def dataclass_class_maker_callback(ctx: ClassDefContext) -> None:
+def dataclass_tag_callback(ctx: ClassDefContext) -> None:
+    """Record that we have a dataclass in the main semantic analysis pass.
+
+    The later pass implemented by DataclassTransformer will use this
+    to detect dataclasses in base classes.
+    """
+    # The value is ignored, only the existence matters.
+    ctx.cls.info.metadata['dataclass_tag'] = {}
+
+
+def dataclass_class_maker_callback(ctx: ClassDefContext) -> bool:
     """Hooks into the class typechecking process to add support for dataclasses.
     """
     transformer = DataclassTransformer(ctx)
-    transformer.transform()
+    return transformer.transform()
 
 
 def _collect_field_args(expr: Expression,

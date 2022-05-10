@@ -1620,20 +1620,52 @@ Child(x='', y=1)
 Child(x=None, y=None)
 [builtins fixtures/dataclasses.pyi]
 
-[case testDataclassGenericInheritanceSpecialCase]
+[case testDataclassGenericInheritanceSpecialCase1]
 # flags: --python-version 3.7
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, List
 
 T = TypeVar("T")
 
 @dataclass
 class Parent(Generic[T]):
-    key: str
+    x: List[T]
 
 @dataclass
 class Child1(Parent["Child2"]): ...
 
 @dataclass
 class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@dataclass
+class Child1(Parent["Child2"]):
+    x: int
+
+@dataclass
+class Child2(Parent["Child1"]):
+    y: int
+
+@dataclass
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
 [builtins fixtures/dataclasses.pyi]

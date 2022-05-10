@@ -397,8 +397,13 @@ def apply_class_plugin_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> 
     Note that some hooks incorrectly run during the main semantic
     analysis pass, for historical reasons.
     """
+    num_passes = 0
     incomplete = True
+    # If we encounter a base class that has not been processed, we'll run another
+    # pass. This should eventually reach a fixed point.
     while incomplete:
+        assert num_passes < 5, "Internal error: too many class plugin hook passes"
+        num_passes += 1
         incomplete = False
         for module in scc:
             state = graph[module]
@@ -419,14 +424,15 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
                          errors: Errors) -> bool:
     # TODO: Move more class-related hooks here?
     defn = info.defn
+    ok = True
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
             decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
                 if hook:
-                    hook(ClassDefContext(defn, decorator, self))
-    return True
+                    ok = ok and hook(ClassDefContext(defn, decorator, self))
+    return ok
 
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
