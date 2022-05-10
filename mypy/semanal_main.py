@@ -436,7 +436,7 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
                 if hook:
-                        hook(ClassDefContext(defn, decorator, self))
+                    hook(ClassDefContext(defn, decorator, self))
     return True
 
 
