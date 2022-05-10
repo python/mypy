@@ -698,6 +698,10 @@ class Plugin(CommonPluginApi):
         """
         return None
 
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], None]]:
+        return None
+
     def get_metaclass_hook(self, fullname: str
                            ) -> Optional[Callable[[ClassDefContext], None]]:
         """Update class definition for given declared metaclasses.

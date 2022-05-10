@@ -1619,3 +1619,21 @@ Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; exp
 Child(x='', y=1)
 Child(x=None, y=None)
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    key: str
+
+@dataclass
+class Child1(Parent["Child2"]): ...
+
+@dataclass
+class Child2(Parent["Child1"]): ...
+[builtins fixtures/dataclasses.pyi]

@@ -82,6 +82,8 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     apply_semantic_analyzer_patches(patches)
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
+    # Run class decorator hooks (they requite complete MROs).
+    apply_class_decorator_hooks(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
     check_blockers(graph, scc)
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
@@ -380,6 +382,56 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                 with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
                     analyzer.recurse_into_functions = func is not None
                     target.node.accept(analyzer)
+
+
+from mypy.nodes import Expression, CallExpr, IndexExpr, RefExpr
+from mypy.plugin import ClassDefContext
+
+
+def apply_class_decorator_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    incomplete = True
+    while incomplete:
+        incomplete = False
+        for module in scc:
+            state = graph[module]
+            tree = state.tree
+            assert tree
+            for _, node, _ in tree.local_definitions():
+                if isinstance(node.node, TypeInfo):
+                    if not apply_hooks_to_class(state.manager.semantic_analyzer,
+                                                module, node.node, errors):
+                        incomplete = True
+
+
+def apply_hooks_to_class(self: SemanticAnalyzer, module: str, info: TypeInfo,
+                         errors: Errors) -> bool:
+
+    def get_fullname(expr: Expression) -> Optional[str]:
+        if isinstance(expr, CallExpr):
+            return get_fullname(expr.callee)
+        elif isinstance(expr, IndexExpr):
+            return get_fullname(expr.base)
+        elif isinstance(expr, RefExpr):
+            if expr.fullname:
+                return expr.fullname
+            # If we don't have a fullname look it up. This happens because base classes are
+            # analyzed in a different manner (see exprtotype.py) and therefore those AST
+            # nodes will not have full names.
+            sym = self.lookup_type_node(expr)
+            if sym:
+                return sym.fullname
+        return None
+
+    saved = (module, info, None)  # module, class, function
+    with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
+        defn = info.defn
+        for decorator in defn.decorators:
+            decorator_name = get_fullname(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook_2(decorator_name)
+                if hook:
+                    hook(ClassDefContext(defn, decorator, self))
+    return True
 
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
