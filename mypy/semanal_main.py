@@ -45,6 +45,7 @@ from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
+from mypy.options import Options
 import mypy.build
 
 if TYPE_CHECKING:
@@ -399,11 +400,15 @@ def apply_class_decorator_hooks(graph: 'Graph', scc: List[str], errors: Errors) 
             for _, node, _ in tree.local_definitions():
                 if isinstance(node.node, TypeInfo):
                     if not apply_hooks_to_class(state.manager.semantic_analyzer,
-                                                module, node.node, errors):
+                                                module, node.node, state.options, tree, errors):
                         incomplete = True
 
 
-def apply_hooks_to_class(self: SemanticAnalyzer, module: str, info: TypeInfo,
+def apply_hooks_to_class(self: SemanticAnalyzer,
+                         module: str,
+                         info: TypeInfo,
+                         options: Options,
+                         file_node: MypyFile,
                          errors: Errors) -> bool:
 
     def get_fullname(expr: Expression) -> Optional[str]:
@@ -423,13 +428,13 @@ def apply_hooks_to_class(self: SemanticAnalyzer, module: str, info: TypeInfo,
         return None
 
     saved = (module, info, None)  # module, class, function
-    with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
-        defn = info.defn
-        for decorator in defn.decorators:
-            decorator_name = get_fullname(decorator)
-            if decorator_name:
-                hook = self.plugin.get_class_decorator_hook_2(decorator_name)
-                if hook:
+    defn = info.defn
+    for decorator in defn.decorators:
+        decorator_name = get_fullname(decorator)
+        if decorator_name:
+            hook = self.plugin.get_class_decorator_hook_2(decorator_name)
+            if hook:
+                with self.file_context(file_node, options, info):
                     hook(ClassDefContext(defn, decorator, self))
     return True
 

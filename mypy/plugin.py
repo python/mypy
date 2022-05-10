@@ -819,6 +819,10 @@ class ChainedPlugin(Plugin):
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
 
+    def get_class_decorator_hook_2(self, fullname: str
+                                  ) -> Optional[Callable[[ClassDefContext], None]]:
+        return self._find_hook(lambda plugin: plugin.get_class_decorator_hook_2(fullname))
+
     def get_metaclass_hook(self, fullname: str
                            ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_metaclass_hook(fullname))
