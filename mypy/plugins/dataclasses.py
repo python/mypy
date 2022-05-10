@@ -107,6 +107,15 @@ class DataclassAttribute:
 
 
 class DataclassTransformer:
+    """Implement the behavior of @dataclass.
+
+    Note that this may be executed multiple times on the same class, so
+    everything here must be idempotent.
+
+    This runs after the main semantic analysis pass, so you can assume that
+    there are no placeholders.
+    """
+
     def __init__(self, ctx: ClassDefContext) -> None:
         self._ctx = ctx
 
@@ -119,7 +128,7 @@ class DataclassTransformer:
         info = self._ctx.cls.info
         attributes = self.collect_attributes()
         if attributes is None:
-            # Some definitions are not ready. we need another pass.
+            # Some definitions are not ready. We need another pass.
             return False
         for attr in attributes:
             if attr.type is None:
