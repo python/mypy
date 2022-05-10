@@ -411,27 +411,10 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
                          options: Options,
                          file_node: MypyFile,
                          errors: Errors) -> bool:
-
-    def get_fullname(expr: Expression) -> Optional[str]:
-        if isinstance(expr, CallExpr):
-            return get_fullname(expr.callee)
-        elif isinstance(expr, IndexExpr):
-            return get_fullname(expr.base)
-        elif isinstance(expr, RefExpr):
-            if expr.fullname:
-                return expr.fullname
-            # If we don't have a fullname look it up. This happens because base classes are
-            # analyzed in a different manner (see exprtotype.py) and therefore those AST
-            # nodes will not have full names.
-            sym = self.lookup_type_node(expr)
-            if sym:
-                return sym.fullname
-        return None
-
     defn = info.defn
     for decorator in defn.decorators:
         with self.file_context(file_node, options, info):
-            decorator_name = get_fullname(decorator)
+            decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook_2(decorator_name)
                 if hook:
