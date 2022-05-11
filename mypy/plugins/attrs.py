@@ -96,7 +96,7 @@ class Attribute:
             init_type = None
             converter_type = get_proper_type(converter_type)
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
-                init_type = ctx.api.anal_type(converter_type.arg_types[0])
+                init_type = converter_type.arg_types[0]
             elif isinstance(converter_type, Overloaded):
                 types: List[Type] = []
                 for item in converter_type.items:
