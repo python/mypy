@@ -1605,3 +1605,34 @@ class D(Generic[T]):
 class C:
     pass
 [builtins fixtures/attr.pyi]
+
+[case testComplexTypeInAttrIb]
+import a
+
+[file a.py]
+import attr
+import b
+from typing import Callable
+
+@attr.s
+class C:
+    a = attr.ib(type=Lst[int])
+    # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
+    # and a consequence of Callable etc. being set to an int in the test stub.
+    b = attr.ib(type=Callable[[], C])
+[builtins fixtures/bool.pyi]
+
+[file b.py]
+import attr
+import a
+from typing import List as Lst, Optional
+
+@attr.s
+class D:
+    a = attr.ib(type=Lst[int])
+    b = attr.ib(type=Optional[int])
+[builtins fixtures/list.pyi]
+[out]
+tmp/b.py:8: error: Value of type "int" is not indexable
+tmp/a.py:7: error: Name "Lst" is not defined
+tmp/a.py:10: error: Value of type "int" is not indexable
