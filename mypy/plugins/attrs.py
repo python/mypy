@@ -2,12 +2,11 @@
 
 from mypy.backports import OrderedDict
 
-from typing import Optional, Dict, List, cast, Tuple, Iterable, Union
+from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
@@ -23,7 +22,7 @@ from mypy.plugins.common import (
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
     Overloaded, UnionType, FunctionLike, Instance, get_proper_type,
-    LiteralType, deserialize_type
+    LiteralType
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
