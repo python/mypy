@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 cd "$(dirname $0)/.."
 
@@ -10,7 +11,7 @@ python -m pip install ./test-data/pybind11_mypy_demo
 python -m pip install .
 
 # Remove expected stubs and generate new inplace
-STUBGEN_OUTPUT_FOLDER=test-data/pybind11_mypy_demo/stubgen
+STUBGEN_OUTPUT_FOLDER=./test-data/pybind11_mypy_demo/stubgen
 rm -rf $STUBGEN_OUTPUT_FOLDER/*
 stubgen -p pybind11_mypy_demo -o $STUBGEN_OUTPUT_FOLDER
 
