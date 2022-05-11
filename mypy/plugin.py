@@ -692,9 +692,33 @@ class Plugin(CommonPluginApi):
 
         The plugin can modify a TypeInfo _in place_ (for example add some generated
         methods to the symbol table). This hook is called after the class body was
-        semantically analyzed.
+        semantically analyzed, but *there may still be placeholders* (typically
+        caused by forward references).
 
-        The hook is called with full names of all class decorators, for example
+        NOTE: Usually get_class_decorator_hook_2 is the better option, since it
+              guarantees that there are no placeholders.
+
+        The hook is called with full names of all class decorators.
+
+        The hook can be called multiple times per class, so it must be
+        idempotent.
+        """
+        return None
+
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
+        """Update class definition for given class decorators.
+
+        Similar to get_class_decorator_hook, but this runs in a later pass when
+        placeholders have been resolved.
+
+        The hook can return False if some base class hasn't been
+        processed yet using class hooks. It causes all class hooks
+        (that are run in this same pass) to be invoked another time for
+        the file(s) currently being processed.
+
+        The hook can be called multiple times per class, so it must be
+        idempotent.
         """
         return None
 
@@ -814,6 +838,10 @@ class ChainedPlugin(Plugin):
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         return self._find_hook(lambda plugin: plugin.get_class_decorator_hook(fullname))
+
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
+        return self._find_hook(lambda plugin: plugin.get_class_decorator_hook_2(fullname))
 
     def get_metaclass_hook(self, fullname: str
                            ) -> Optional[Callable[[ClassDefContext], None]]:

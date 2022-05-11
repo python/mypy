@@ -117,9 +117,18 @@ class DefaultPlugin(Plugin):
                 auto_attribs_default=None,
             )
         elif fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_class_maker_callback
+            return dataclasses.dataclass_tag_callback
         elif fullname in functools.functools_total_ordering_makers:
             return functools.functools_total_ordering_maker_callback
+
+        return None
+
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
+        from mypy.plugins import dataclasses
+
+        if fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_class_maker_callback
 
         return None
 

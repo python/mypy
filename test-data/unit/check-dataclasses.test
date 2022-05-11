@@ -1207,7 +1207,7 @@ class A2:
 from dataclasses import dataclass
 
 @dataclass
-class A:  # E: Name "x" already defined (possibly by an import)
+class A:
     x: int = 0
     x: int = 0  # E: Name "x" already defined on line 7
 
@@ -1618,4 +1618,70 @@ Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expec
 Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
 Child(x='', y=1)
 Child(x=None, y=None)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase1]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: List[T]
+
+@dataclass
+class Child1(Parent["Child2"]): ...
+
+@dataclass
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@dataclass
+class Child1(Parent["Child2"]):
+    x: int
+
+@dataclass
+class Child2(Parent["Child1"]):
+    y: int
+
+@dataclass
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericWithBound]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="C")
+
+@dataclass
+class C(Generic[T]):
+    x: int
+
+c: C[C]
+d: C[str]  # E: Type argument "str" of "C" must be a subtype of "C[Any]"
+C(x=2)
 [builtins fixtures/dataclasses.pyi]
