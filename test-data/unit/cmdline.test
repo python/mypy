@@ -644,10 +644,10 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**0) # N: Revealed type is "Literal[1]"
 reveal_type(a**1) # N: Revealed type is "builtins.int"
 reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "Literal[1]"
 reveal_type(a**-1) # N: Revealed type is "builtins.float"
 reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
 reveal_type(a**b) # N: Revealed type is "Any"
