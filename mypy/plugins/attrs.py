@@ -260,7 +260,7 @@ def _get_decorator_optional_bool_argument(
 
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: Optional[bool] = False,
-                              frozen_default: bool = False) -> None:
+                              frozen_default: bool = False) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
     attrs is a package that lets you define classes without writing dull boilerplate code.
@@ -286,27 +286,24 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
             ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
-            return
+            return True
         if not info.defn.base_type_exprs:
             # Note: This will not catch subclassing old-style classes.
             ctx.api.fail("attrs only works with new-style classes", info.defn)
-            return
+            return True
         if kw_only:
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
-            return
+            return True
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
     # Check if attribute types are ready.
     for attr in attributes:
         node = info.get(attr.name)
-        if node is None:
-            # This name is likely blocked by a star import. We don't need to defer because
-            # defer() is already called by mark_incomplete().
-            return
-        if node.type is None and not ctx.api.final_iteration:
-            ctx.api.defer()
-            return
+        if node is None or node.type is None:
+            # This name is likely blocked by some semantic analysis error that
+            # should have been reported already.
+            return True
 
     _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
     if slots:
@@ -329,6 +326,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+
+    return True
 
 
 def _get_frozen(ctx: 'mypy.plugin.ClassDefContext', frozen_default: bool) -> bool:

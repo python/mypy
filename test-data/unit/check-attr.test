@@ -1591,3 +1591,17 @@ class B:
 class AB(A, B):
     pass
 [builtins fixtures/attr.pyi]
+
+[case testAttrsForwardReferenceInTypeVarBound]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bound="C")
+
+@attr.define
+class D(Generic[T]):
+    x: int
+
+class C:
+    pass
+[builtins fixtures/attr.pyi]
