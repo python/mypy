@@ -480,7 +480,7 @@ class DynamicClassDefContext(NamedTuple):
 FunctionDecoratorContext = NamedTuple(
     'FunctionDecoratorContext', [
         ('decorator', Expression),
-        ('decoratedFunction', Decorator),
+        ('decorated_function', Decorator),
         ('api', SemanticAnalyzerPluginInterface)
     ]
 )

@@ -9,8 +9,8 @@ class FunctionDecoratorPlugin(Plugin):
 
 
 def my_hook(ctx: FunctionDecoratorContext) -> bool:
-    ctx.decoratedFunction.func.is_property = True
-    ctx.decoratedFunction.var.is_property = True
+    ctx.decorated_function.func.is_property = True
+    ctx.decorated_function.var.is_property = True
 
     return True
 
