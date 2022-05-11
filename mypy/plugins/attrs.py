@@ -300,7 +300,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     # Check if attribute types are ready.
     for attr in attributes:
         node = info.get(attr.name)
-        if node is None or node.type is None:
+        if node is None:
             # This name is likely blocked by some semantic analysis error that
             # should have been reported already.
             return True
