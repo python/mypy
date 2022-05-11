@@ -1669,3 +1669,19 @@ class Parent(Generic[T]):
 Child1(x=1, key='')
 Child2(y=1, key='')
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericWithBound]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="C")
+
+@dataclass
+class C(Generic[T]):
+    x: int
+
+c: C[C]
+d: C[str]  # E: Type argument "str" of "C" must be a subtype of "C[Any]"
+C(x=2)
+[builtins fixtures/dataclasses.pyi]
