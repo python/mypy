@@ -1,4 +1,6 @@
 import sys
+
+# actually csv.Dialect is a different class to _csv.Dialect at runtime, but for typing purposes, they're identical
 from _csv import (
     QUOTE_ALL as QUOTE_ALL,
     QUOTE_MINIMAL as QUOTE_MINIMAL,
@@ -8,6 +10,7 @@ from _csv import (
     Error as Error,
     __version__ as __version__,
     _DialectLike,
+    _QuotingType,
     _reader,
     _writer,
     field_size_limit as field_size_limit,
@@ -18,9 +21,10 @@ from _csv import (
     unregister_dialect as unregister_dialect,
     writer as writer,
 )
-from _typeshed import Self
+from _typeshed import Self, SupportsWrite
 from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Any, Generic, TypeVar, overload
+from typing_extensions import Literal
 
 if sys.version_info >= (3, 8):
     from builtins import dict as _DictReadMapping
@@ -59,7 +63,7 @@ class excel(Dialect):
     doublequote: bool
     skipinitialspace: bool
     lineterminator: str
-    quoting: int
+    quoting: _QuotingType
 
 class excel_tab(excel):
     delimiter: str
@@ -70,7 +74,7 @@ class unix_dialect(Dialect):
     doublequote: bool
     skipinitialspace: bool
     lineterminator: str
-    quoting: int
+    quoting: _QuotingType
 
 class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
     fieldnames: Sequence[_T] | None
@@ -87,8 +91,15 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
         restkey: str | None = ...,
         restval: str | None = ...,
         dialect: _DialectLike = ...,
-        *args: Any,
-        **kwds: Any,
+        *,
+        delimiter: str = ...,
+        quotechar: str | None = ...,
+        escapechar: str | None = ...,
+        doublequote: bool = ...,
+        skipinitialspace: bool = ...,
+        lineterminator: str = ...,
+        quoting: _QuotingType = ...,
+        strict: bool = ...,
     ) -> None: ...
     @overload
     def __init__(
@@ -98,8 +109,15 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
         restkey: str | None = ...,
         restval: str | None = ...,
         dialect: _DialectLike = ...,
-        *args: Any,
-        **kwds: Any,
+        *,
+        delimiter: str = ...,
+        quotechar: str | None = ...,
+        escapechar: str | None = ...,
+        doublequote: bool = ...,
+        skipinitialspace: bool = ...,
+        lineterminator: str = ...,
+        quoting: _QuotingType = ...,
+        strict: bool = ...,
     ) -> None: ...
     def __iter__(self: Self) -> Self: ...
     def __next__(self) -> _DictReadMapping[_T, str]: ...
@@ -107,17 +125,24 @@ class DictReader(Generic[_T], Iterator[_DictReadMapping[_T, str]]):
 class DictWriter(Generic[_T]):
     fieldnames: Collection[_T]
     restval: Any | None
-    extrasaction: str
+    extrasaction: Literal["raise", "ignore"]
     writer: _writer
     def __init__(
         self,
-        f: Any,
+        f: SupportsWrite[str],
         fieldnames: Collection[_T],
         restval: Any | None = ...,
-        extrasaction: str = ...,
+        extrasaction: Literal["raise", "ignore"] = ...,
         dialect: _DialectLike = ...,
-        *args: Any,
-        **kwds: Any,
+        *,
+        delimiter: str = ...,
+        quotechar: str | None = ...,
+        escapechar: str | None = ...,
+        doublequote: bool = ...,
+        skipinitialspace: bool = ...,
+        lineterminator: str = ...,
+        quoting: _QuotingType = ...,
+        strict: bool = ...,
     ) -> None: ...
     if sys.version_info >= (3, 8):
         def writeheader(self) -> Any: ...

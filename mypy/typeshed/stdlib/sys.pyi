@@ -122,6 +122,9 @@ class _flags(_uninstantiable_structseq, _FlagTuple):
     if sys.version_info >= (3, 10):
         @property
         def warn_default_encoding(self) -> int: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        @property
+        def safe_path(self) -> bool: ...
 
 float_info: _float_info
 
@@ -320,9 +323,8 @@ class _asyncgen_hooks(structseq[_AsyncgenHook], tuple[_AsyncgenHook, _AsyncgenHo
 def get_asyncgen_hooks() -> _asyncgen_hooks: ...
 def set_asyncgen_hooks(firstiter: _AsyncgenHook = ..., finalizer: _AsyncgenHook = ...) -> None: ...
 
-if sys.version_info >= (3, 6):
-    if sys.platform == "win32":
-        def _enablelegacywindowsfsencoding() -> None: ...
+if sys.platform == "win32":
+    def _enablelegacywindowsfsencoding() -> None: ...
 
 if sys.version_info >= (3, 7):
     def get_coroutine_origin_tracking_depth() -> int: ...

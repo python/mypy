@@ -78,7 +78,7 @@ _F = TypeVar("_F", bound=Callable[..., Any])
 _P = ParamSpec("_P")
 
 _ExitFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], bool | None]
-_CM_EF = TypeVar("_CM_EF", AbstractContextManager[Any], _ExitFunc)
+_CM_EF = TypeVar("_CM_EF", bound=AbstractContextManager[Any] | _ExitFunc)
 
 class ContextDecorator:
     def __call__(self, func: _F) -> _F: ...
@@ -177,7 +177,7 @@ class ExitStack(AbstractContextManager[ExitStack]):
 
 if sys.version_info >= (3, 7):
     _ExitCoroFunc: TypeAlias = Callable[[type[BaseException] | None, BaseException | None, TracebackType | None], Awaitable[bool]]
-    _ACM_EF = TypeVar("_ACM_EF", AbstractAsyncContextManager[Any], _ExitCoroFunc)
+    _ACM_EF = TypeVar("_ACM_EF", bound=AbstractAsyncContextManager[Any] | _ExitCoroFunc)
 
     class AsyncExitStack(AbstractAsyncContextManager[AsyncExitStack]):
         def __init__(self) -> None: ...

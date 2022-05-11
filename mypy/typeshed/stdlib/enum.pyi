@@ -4,7 +4,7 @@ from _typeshed import Self
 from abc import ABCMeta
 from builtins import property as _builtins_property
 from collections.abc import Iterable, Iterator, Mapping
-from typing import Any, TypeVar, overload
+from typing import Any, Generic, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 11):
@@ -21,6 +21,8 @@ if sys.version_info >= (3, 11):
         "unique",
         "property",
         "verify",
+        "member",
+        "nonmember",
         "FlagBoundary",
         "STRICT",
         "CONFORM",
@@ -53,6 +55,15 @@ _EnumerationT = TypeVar("_EnumerationT", bound=type[Enum])
 # >>> Enum('Foo', names={'RED': 1, 'YELLOW': 2})
 # <enum 'Foo'>
 _EnumNames: TypeAlias = str | Iterable[str] | Iterable[Iterable[str | Any]] | Mapping[str, Any]
+
+if sys.version_info >= (3, 11):
+    class nonmember(Generic[_EnumMemberT]):
+        value: _EnumMemberT
+        def __init__(self, value: _EnumMemberT) -> None: ...
+
+    class member(Generic[_EnumMemberT]):
+        value: _EnumMemberT
+        def __init__(self, value: _EnumMemberT) -> None: ...
 
 class _EnumDict(dict[str, Any]):
     def __init__(self) -> None: ...
@@ -155,7 +166,12 @@ class Enum(metaclass=EnumMeta):
     def _missing_(cls, value: object) -> Any: ...
     @staticmethod
     def _generate_next_value_(name: str, start: int, count: int, last_values: list[Any]) -> Any: ...
-    def __new__(cls: type[Self], value: Any) -> Self: ...
+    # It's not true that `__new__` will accept any argument type,
+    # so ideally we'd use `Any` to indicate that the argument type is inexpressible.
+    # However, using `Any` causes too many false-positives for those using mypy's `--disallow-any-expr`
+    # (see #7752, #2539, mypy/#5788),
+    # and in practice using `object` here has the same effect as using `Any`.
+    def __new__(cls: type[Self], value: object) -> Self: ...
     def __dir__(self) -> list[str]: ...
     def __format__(self, format_spec: str) -> str: ...
     def __hash__(self) -> Any: ...

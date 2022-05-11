@@ -651,6 +651,10 @@ if sys.version_info >= (3, 9):
         @property
         def __parameters__(self) -> tuple[Any, ...]: ...
         def __init__(self, origin: type, args: Any) -> None: ...
+        if sys.version_info >= (3, 11):
+            @property
+            def __unpacked__(self) -> bool: ...
+
         def __getattr__(self, name: str) -> Any: ...  # incomplete
 
 if sys.version_info >= (3, 10):
