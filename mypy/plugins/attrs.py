@@ -109,8 +109,7 @@ class Attribute:
                     types.append(item.arg_types[0])
                 # Make a union of all the valid types.
                 if types:
-                    args = make_simplified_union(types)
-                    init_type = ctx.api.anal_type(args)
+                    init_type = make_simplified_union(types)
 
             if self.converter.is_attr_converters_optional and init_type:
                 # If the converter was attr.converter.optional(type) then add None to
