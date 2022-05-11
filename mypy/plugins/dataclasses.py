@@ -304,6 +304,9 @@ class DataclassTransformer:
           b: SomeOtherType = ...
 
         are collected.
+
+        Return None if some dataclass base class hasn't been processed
+        yet and thus we'll need to ask for another pass.
         """
         # First, collect attributes belonging to the current class.
         ctx = self._ctx

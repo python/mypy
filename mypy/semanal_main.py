@@ -402,7 +402,7 @@ def apply_class_plugin_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> 
     # If we encounter a base class that has not been processed, we'll run another
     # pass. This should eventually reach a fixed point.
     while incomplete:
-        assert num_passes < 5, "Internal error: too many class plugin hook passes"
+        assert num_passes < 10, "Internal error: too many class plugin hook passes"
         num_passes += 1
         incomplete = False
         for module in scc:

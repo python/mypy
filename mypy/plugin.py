@@ -692,7 +692,8 @@ class Plugin(CommonPluginApi):
 
         The plugin can modify a TypeInfo _in place_ (for example add some generated
         methods to the symbol table). This hook is called after the class body was
-        semantically analyzed, but *there may still be placeholders*.
+        semantically analyzed, but *there may still be placeholders* (typically
+        caused by forward references).
 
         NOTE: Usually get_class_decorator_hook_2 is the better option, since it
               guarantees that there are no placeholders.
