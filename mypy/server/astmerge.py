@@ -51,15 +51,16 @@ from mypy.nodes import (
     MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr, TypeAlias,
+    CastExpr, TypeAlias, AssertTypeExpr,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
-    TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    Overloaded, TypeVarDef, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
+    TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
+    Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -103,7 +104,7 @@ def replacement_map_from_symbol_table(
     the given module prefix. Don't recurse into other modules accessible through the symbol
     table.
     """
-    replacements = {}  # type: Dict[SymbolNode, SymbolNode]
+    replacements: Dict[SymbolNode, SymbolNode] = {}
     for name, node in old.items():
         if (name in new and (node.kind == MDEF
                              or node.node and get_prefix(node.node.fullname) == prefix)):
@@ -173,7 +174,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.defs.body = self.replace_statements(node.defs.body)
         info = node.info
         for tv in node.type_vars:
-            self.process_type_var_def(tv)
+            if isinstance(tv, TypeVarType):
+                self.process_type_var_def(tv)
         if info:
             if info.is_named_tuple:
                 self.process_synthetic_type_info(info)
@@ -188,7 +190,7 @@ class NodeReplaceVisitor(TraverserVisitor):
             # Unanalyzed types can have AST node references
             self.fixup_type(node.unanalyzed_type)
 
-    def process_type_var_def(self, tv: TypeVarDef) -> None:
+    def process_type_var_def(self, tv: TypeVarType) -> None:
         for value in tv.values:
             self.fixup_type(value)
         self.fixup_type(tv.upper_bound)
@@ -222,6 +224,10 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_cast_expr(self, node: CastExpr) -> None:
         super().visit_cast_expr(node)
+        self.fixup_type(node.type)
+
+    def visit_assert_type_expr(self, node: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(node)
         self.fixup_type(node.type)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
@@ -370,13 +376,13 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         if typ.fallback is not None:
             typ.fallback.accept(self)
         for tv in typ.variables:
-            if isinstance(tv, TypeVarDef):
+            if isinstance(tv, TypeVarType):
                 tv.upper_bound.accept(self)
                 for value in tv.values:
                     value.accept(self)
 
     def visit_overloaded(self, t: Overloaded) -> None:
-        for item in t.items():
+        for item in t.items:
             item.accept(self)
         # Fallback can be None for overloaded types that haven't been semantically analyzed.
         if t.fallback is not None:
@@ -406,6 +412,19 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.upper_bound.accept(self)
         for value in typ.values:
             value.accept(self)
+
+    def visit_param_spec(self, typ: ParamSpecType) -> None:
+        pass
+
+    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
+        typ.upper_bound.accept(self)
+
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        typ.type.accept(self)
+
+    def visit_parameters(self, typ: Parameters) -> None:
+        for arg in typ.arg_types:
+            arg.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         for value_type in typ.items.values():

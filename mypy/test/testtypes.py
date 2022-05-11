@@ -2,23 +2,23 @@
 
 from typing import List, Tuple
 
-from mypy.test.helpers import Suite, assert_equal, assert_true, assert_false, assert_type, skip
-from mypy.erasetype import erase_type
+from mypy.test.helpers import Suite, assert_equal, assert_type, skip
+from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types, narrow_declared_type
 from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
-    UnboundType, AnyType, CallableType, TupleType, TypeVarDef, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny,
+    UnboundType, AnyType, CallableType, TupleType, TypeVarType, Type, Instance, NoneType,
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, ProperType,
     LiteralType, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.state import strict_optional_set
-from mypy.typeops import true_only, false_only
+from mypy.state import state
+from mypy.typeops import true_only, false_only, make_simplified_union
 
 
 class TypesSuite(Suite):
@@ -78,18 +78,18 @@ class TypesSuite(Suite):
                                    self.fx.std_tuple)), 'Tuple[X?, Any]')
 
     def test_type_variable_binding(self) -> None:
-        assert_equal(str(TypeVarDef('X', 'X', 1, [], self.fx.o)), 'X')
-        assert_equal(str(TypeVarDef('X', 'X', 1, [self.x, self.y], self.fx.o)),
-                     'X in (X?, Y?)')
+        assert_equal(str(TypeVarType('X', 'X', 1, [], self.fx.o)), 'X`1')
+        assert_equal(str(TypeVarType('X', 'X', 1, [self.x, self.y], self.fx.o)),
+                     'X`1')
 
     def test_generic_function_type(self) -> None:
         c = CallableType([self.x, self.y], [ARG_POS, ARG_POS], [None, None],
                      self.y, self.function, name=None,
-                     variables=[TypeVarDef('X', 'X', -1, [], self.fx.o)])
+                     variables=[TypeVarType('X', 'X', -1, [], self.fx.o)])
         assert_equal(str(c), 'def [X] (X?, Y?) -> Y?')
 
-        v = [TypeVarDef('Y', 'Y', -1, [], self.fx.o),
-             TypeVarDef('X', 'X', -2, [], self.fx.o)]
+        v = [TypeVarType('Y', 'Y', -1, [], self.fx.o),
+             TypeVarType('X', 'X', -2, [], self.fx.o)]
         c2 = CallableType([], [], [], NoneType(), self.function, name=None, variables=v)
         assert_equal(str(c2), 'def [Y, X] ()')
 
@@ -226,156 +226,156 @@ class TypeOpsSuite(Suite):
 
     def test_is_more_precise(self) -> None:
         fx = self.fx
-        assert_true(is_more_precise(fx.b, fx.a))
-        assert_true(is_more_precise(fx.b, fx.b))
-        assert_true(is_more_precise(fx.b, fx.b))
-        assert_true(is_more_precise(fx.b, fx.anyt))
-        assert_true(is_more_precise(self.tuple(fx.b, fx.a),
-                                    self.tuple(fx.b, fx.a)))
-        assert_true(is_more_precise(self.tuple(fx.b, fx.b),
-                                    self.tuple(fx.b, fx.a)))
+        assert is_more_precise(fx.b, fx.a)
+        assert is_more_precise(fx.b, fx.b)
+        assert is_more_precise(fx.b, fx.b)
+        assert is_more_precise(fx.b, fx.anyt)
+        assert is_more_precise(self.tuple(fx.b, fx.a),
+                               self.tuple(fx.b, fx.a))
+        assert is_more_precise(self.tuple(fx.b, fx.b),
+                               self.tuple(fx.b, fx.a))
 
-        assert_false(is_more_precise(fx.a, fx.b))
-        assert_false(is_more_precise(fx.anyt, fx.b))
+        assert not is_more_precise(fx.a, fx.b)
+        assert not is_more_precise(fx.anyt, fx.b)
 
     # is_proper_subtype
 
     def test_is_proper_subtype(self) -> None:
         fx = self.fx
 
-        assert_true(is_proper_subtype(fx.a, fx.a))
-        assert_true(is_proper_subtype(fx.b, fx.a))
-        assert_true(is_proper_subtype(fx.b, fx.o))
-        assert_true(is_proper_subtype(fx.b, fx.o))
+        assert is_proper_subtype(fx.a, fx.a)
+        assert is_proper_subtype(fx.b, fx.a)
+        assert is_proper_subtype(fx.b, fx.o)
+        assert is_proper_subtype(fx.b, fx.o)
 
-        assert_false(is_proper_subtype(fx.a, fx.b))
-        assert_false(is_proper_subtype(fx.o, fx.b))
+        assert not is_proper_subtype(fx.a, fx.b)
+        assert not is_proper_subtype(fx.o, fx.b)
 
-        assert_true(is_proper_subtype(fx.anyt, fx.anyt))
-        assert_false(is_proper_subtype(fx.a, fx.anyt))
-        assert_false(is_proper_subtype(fx.anyt, fx.a))
+        assert is_proper_subtype(fx.anyt, fx.anyt)
+        assert not is_proper_subtype(fx.a, fx.anyt)
+        assert not is_proper_subtype(fx.anyt, fx.a)
 
-        assert_true(is_proper_subtype(fx.ga, fx.ga))
-        assert_true(is_proper_subtype(fx.gdyn, fx.gdyn))
-        assert_false(is_proper_subtype(fx.ga, fx.gdyn))
-        assert_false(is_proper_subtype(fx.gdyn, fx.ga))
+        assert is_proper_subtype(fx.ga, fx.ga)
+        assert is_proper_subtype(fx.gdyn, fx.gdyn)
+        assert not is_proper_subtype(fx.ga, fx.gdyn)
+        assert not is_proper_subtype(fx.gdyn, fx.ga)
 
-        assert_true(is_proper_subtype(fx.t, fx.t))
-        assert_false(is_proper_subtype(fx.t, fx.s))
+        assert is_proper_subtype(fx.t, fx.t)
+        assert not is_proper_subtype(fx.t, fx.s)
 
-        assert_true(is_proper_subtype(fx.a, UnionType([fx.a, fx.b])))
-        assert_true(is_proper_subtype(UnionType([fx.a, fx.b]),
-                                      UnionType([fx.a, fx.b, fx.c])))
-        assert_false(is_proper_subtype(UnionType([fx.a, fx.b]),
-                                       UnionType([fx.b, fx.c])))
+        assert is_proper_subtype(fx.a, UnionType([fx.a, fx.b]))
+        assert is_proper_subtype(UnionType([fx.a, fx.b]),
+                                 UnionType([fx.a, fx.b, fx.c]))
+        assert not is_proper_subtype(UnionType([fx.a, fx.b]),
+                                     UnionType([fx.b, fx.c]))
 
     def test_is_proper_subtype_covariance(self) -> None:
         fx_co = self.fx_co
 
-        assert_true(is_proper_subtype(fx_co.gsab, fx_co.gb))
-        assert_true(is_proper_subtype(fx_co.gsab, fx_co.ga))
-        assert_false(is_proper_subtype(fx_co.gsaa, fx_co.gb))
-        assert_true(is_proper_subtype(fx_co.gb, fx_co.ga))
-        assert_false(is_proper_subtype(fx_co.ga, fx_co.gb))
+        assert is_proper_subtype(fx_co.gsab, fx_co.gb)
+        assert is_proper_subtype(fx_co.gsab, fx_co.ga)
+        assert not is_proper_subtype(fx_co.gsaa, fx_co.gb)
+        assert is_proper_subtype(fx_co.gb, fx_co.ga)
+        assert not is_proper_subtype(fx_co.ga, fx_co.gb)
 
     def test_is_proper_subtype_contravariance(self) -> None:
         fx_contra = self.fx_contra
 
-        assert_true(is_proper_subtype(fx_contra.gsab, fx_contra.gb))
-        assert_false(is_proper_subtype(fx_contra.gsab, fx_contra.ga))
-        assert_true(is_proper_subtype(fx_contra.gsaa, fx_contra.gb))
-        assert_false(is_proper_subtype(fx_contra.gb, fx_contra.ga))
-        assert_true(is_proper_subtype(fx_contra.ga, fx_contra.gb))
+        assert is_proper_subtype(fx_contra.gsab, fx_contra.gb)
+        assert not is_proper_subtype(fx_contra.gsab, fx_contra.ga)
+        assert is_proper_subtype(fx_contra.gsaa, fx_contra.gb)
+        assert not is_proper_subtype(fx_contra.gb, fx_contra.ga)
+        assert is_proper_subtype(fx_contra.ga, fx_contra.gb)
 
     def test_is_proper_subtype_invariance(self) -> None:
         fx = self.fx
 
-        assert_true(is_proper_subtype(fx.gsab, fx.gb))
-        assert_false(is_proper_subtype(fx.gsab, fx.ga))
-        assert_false(is_proper_subtype(fx.gsaa, fx.gb))
-        assert_false(is_proper_subtype(fx.gb, fx.ga))
-        assert_false(is_proper_subtype(fx.ga, fx.gb))
+        assert is_proper_subtype(fx.gsab, fx.gb)
+        assert not is_proper_subtype(fx.gsab, fx.ga)
+        assert not is_proper_subtype(fx.gsaa, fx.gb)
+        assert not is_proper_subtype(fx.gb, fx.ga)
+        assert not is_proper_subtype(fx.ga, fx.gb)
 
     def test_is_proper_subtype_and_subtype_literal_types(self) -> None:
         fx = self.fx
 
-        lit1 = LiteralType(1, fx.a)
-        lit2 = LiteralType("foo", fx.d)
-        lit3 = LiteralType("bar", fx.d)
+        lit1 = fx.lit1
+        lit2 = fx.lit2
+        lit3 = fx.lit3
 
-        assert_true(is_proper_subtype(lit1, fx.a))
-        assert_false(is_proper_subtype(lit1, fx.d))
-        assert_false(is_proper_subtype(fx.a, lit1))
-        assert_true(is_proper_subtype(fx.uninhabited, lit1))
-        assert_false(is_proper_subtype(lit1, fx.uninhabited))
-        assert_true(is_proper_subtype(lit1, lit1))
-        assert_false(is_proper_subtype(lit1, lit2))
-        assert_false(is_proper_subtype(lit2, lit3))
+        assert is_proper_subtype(lit1, fx.a)
+        assert not is_proper_subtype(lit1, fx.d)
+        assert not is_proper_subtype(fx.a, lit1)
+        assert is_proper_subtype(fx.uninhabited, lit1)
+        assert not is_proper_subtype(lit1, fx.uninhabited)
+        assert is_proper_subtype(lit1, lit1)
+        assert not is_proper_subtype(lit1, lit2)
+        assert not is_proper_subtype(lit2, lit3)
 
-        assert_true(is_subtype(lit1, fx.a))
-        assert_false(is_subtype(lit1, fx.d))
-        assert_false(is_subtype(fx.a, lit1))
-        assert_true(is_subtype(fx.uninhabited, lit1))
-        assert_false(is_subtype(lit1, fx.uninhabited))
-        assert_true(is_subtype(lit1, lit1))
-        assert_false(is_subtype(lit1, lit2))
-        assert_false(is_subtype(lit2, lit3))
+        assert is_subtype(lit1, fx.a)
+        assert not is_subtype(lit1, fx.d)
+        assert not is_subtype(fx.a, lit1)
+        assert is_subtype(fx.uninhabited, lit1)
+        assert not is_subtype(lit1, fx.uninhabited)
+        assert is_subtype(lit1, lit1)
+        assert not is_subtype(lit1, lit2)
+        assert not is_subtype(lit2, lit3)
 
-        assert_false(is_proper_subtype(lit1, fx.anyt))
-        assert_false(is_proper_subtype(fx.anyt, lit1))
+        assert not is_proper_subtype(lit1, fx.anyt)
+        assert not is_proper_subtype(fx.anyt, lit1)
 
-        assert_true(is_subtype(lit1, fx.anyt))
-        assert_true(is_subtype(fx.anyt, lit1))
+        assert is_subtype(lit1, fx.anyt)
+        assert is_subtype(fx.anyt, lit1)
 
     def test_subtype_aliases(self) -> None:
         A1, _ = self.fx.def_alias_1(self.fx.a)
         AA1, _ = self.fx.def_alias_1(self.fx.a)
-        assert_true(is_subtype(A1, AA1))
-        assert_true(is_subtype(AA1, A1))
+        assert is_subtype(A1, AA1)
+        assert is_subtype(AA1, A1)
 
         A2, _ = self.fx.def_alias_2(self.fx.a)
         AA2, _ = self.fx.def_alias_2(self.fx.a)
-        assert_true(is_subtype(A2, AA2))
-        assert_true(is_subtype(AA2, A2))
+        assert is_subtype(A2, AA2)
+        assert is_subtype(AA2, A2)
 
         B1, _ = self.fx.def_alias_1(self.fx.b)
         B2, _ = self.fx.def_alias_2(self.fx.b)
-        assert_true(is_subtype(B1, A1))
-        assert_true(is_subtype(B2, A2))
-        assert_false(is_subtype(A1, B1))
-        assert_false(is_subtype(A2, B2))
+        assert is_subtype(B1, A1)
+        assert is_subtype(B2, A2)
+        assert not is_subtype(A1, B1)
+        assert not is_subtype(A2, B2)
 
-        assert_false(is_subtype(A2, A1))
-        assert_true(is_subtype(A1, A2))
+        assert not is_subtype(A2, A1)
+        assert is_subtype(A1, A2)
 
     # can_be_true / can_be_false
 
     def test_empty_tuple_always_false(self) -> None:
         tuple_type = self.tuple()
-        assert_true(tuple_type.can_be_false)
-        assert_false(tuple_type.can_be_true)
+        assert tuple_type.can_be_false
+        assert not tuple_type.can_be_true
 
     def test_nonempty_tuple_always_true(self) -> None:
         tuple_type = self.tuple(AnyType(TypeOfAny.special_form),
                                 AnyType(TypeOfAny.special_form))
-        assert_true(tuple_type.can_be_true)
-        assert_false(tuple_type.can_be_false)
+        assert tuple_type.can_be_true
+        assert not tuple_type.can_be_false
 
     def test_union_can_be_true_if_any_true(self) -> None:
         union_type = UnionType([self.fx.a, self.tuple()])
-        assert_true(union_type.can_be_true)
+        assert union_type.can_be_true
 
     def test_union_can_not_be_true_if_none_true(self) -> None:
         union_type = UnionType([self.tuple(), self.tuple()])
-        assert_false(union_type.can_be_true)
+        assert not union_type.can_be_true
 
     def test_union_can_be_false_if_any_false(self) -> None:
         union_type = UnionType([self.fx.a, self.tuple()])
-        assert_true(union_type.can_be_false)
+        assert union_type.can_be_false
 
     def test_union_can_not_be_false_if_none_false(self) -> None:
         union_type = UnionType([self.tuple(self.fx.a), self.tuple(self.fx.d)])
-        assert_false(union_type.can_be_false)
+        assert not union_type.can_be_false
 
     # true_only / false_only
 
@@ -386,16 +386,16 @@ class TypeOpsSuite(Suite):
     def test_true_only_of_true_type_is_idempotent(self) -> None:
         always_true = self.tuple(AnyType(TypeOfAny.special_form))
         to = true_only(always_true)
-        assert_true(always_true is to)
+        assert always_true is to
 
     def test_true_only_of_instance(self) -> None:
         to = true_only(self.fx.a)
         assert_equal(str(to), "A")
-        assert_true(to.can_be_true)
-        assert_false(to.can_be_false)
+        assert to.can_be_true
+        assert not to.can_be_false
         assert_type(Instance, to)
         # The original class still can be false
-        assert_true(self.fx.a.can_be_false)
+        assert self.fx.a.can_be_false
 
     def test_true_only_of_union(self) -> None:
         tup_type = self.tuple(AnyType(TypeOfAny.special_form))
@@ -405,39 +405,39 @@ class TypeOpsSuite(Suite):
         to = true_only(union_type)
         assert isinstance(to, UnionType)
         assert_equal(len(to.items), 2)
-        assert_true(to.items[0].can_be_true)
-        assert_false(to.items[0].can_be_false)
-        assert_true(to.items[1] is tup_type)
+        assert to.items[0].can_be_true
+        assert not to.items[0].can_be_false
+        assert to.items[1] is tup_type
 
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
             assert_type(UninhabitedType, fo)
 
     def test_false_only_tuple(self) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, NoneType())
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, UninhabitedType())
 
     def test_false_only_of_false_type_is_idempotent(self) -> None:
         always_false = NoneType()
         fo = false_only(always_false)
-        assert_true(always_false is fo)
+        assert always_false is fo
 
     def test_false_only_of_instance(self) -> None:
         fo = false_only(self.fx.a)
         assert_equal(str(fo), "A")
-        assert_false(fo.can_be_true)
-        assert_true(fo.can_be_false)
+        assert not fo.can_be_true
+        assert fo.can_be_false
         assert_type(Instance, fo)
         # The original class still can be true
-        assert_true(self.fx.a.can_be_true)
+        assert self.fx.a.can_be_true
 
     def test_false_only_of_union(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             tup_type = self.tuple()
             # Union of something that is unknown, something that is always true, something
             # that is always false
@@ -447,9 +447,90 @@ class TypeOpsSuite(Suite):
             fo = false_only(union_type)
             assert isinstance(fo, UnionType)
             assert_equal(len(fo.items), 2)
-            assert_false(fo.items[0].can_be_true)
-            assert_true(fo.items[0].can_be_false)
-            assert_true(fo.items[1] is tup_type)
+            assert not fo.items[0].can_be_true
+            assert fo.items[0].can_be_false
+            assert fo.items[1] is tup_type
+
+    def test_simplified_union(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.a, fx.a], fx.a)
+        self.assert_simplified_union([fx.a, fx.b], fx.a)
+        self.assert_simplified_union([fx.a, fx.d], UnionType([fx.a, fx.d]))
+        self.assert_simplified_union([fx.a, fx.uninhabited], fx.a)
+        self.assert_simplified_union([fx.ga, fx.gs2a], fx.ga)
+        self.assert_simplified_union([fx.ga, fx.gsab], UnionType([fx.ga, fx.gsab]))
+        self.assert_simplified_union([fx.ga, fx.gsba], fx.ga)
+        self.assert_simplified_union([fx.a, UnionType([fx.d])], UnionType([fx.a, fx.d]))
+        self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
+        self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
+                                     UnionType([fx.b, fx.c, fx.d]))
+
+    def test_simplified_union_with_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit1, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit2, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit1], fx.lit1)
+        self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
+        self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
+        self.assert_simplified_union([fx.lit1, fx.uninhabited], fx.lit1)
+        self.assert_simplified_union([fx.lit1_inst, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1_inst, fx.lit1_inst], fx.lit1_inst)
+        self.assert_simplified_union([fx.lit1_inst, fx.lit2_inst],
+                                     UnionType([fx.lit1_inst, fx.lit2_inst]))
+        self.assert_simplified_union([fx.lit1_inst, fx.lit3_inst],
+                                     UnionType([fx.lit1_inst, fx.lit3_inst]))
+        self.assert_simplified_union([fx.lit1_inst, fx.uninhabited], fx.lit1_inst)
+        self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
+        self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
+
+    def test_simplified_union_with_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.str_type], fx.str_type)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1], fx.lit_str1)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3],
+                                     UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.uninhabited],
+                                     UnionType([fx.lit_str1, fx.lit_str2]))
+
+    def test_simplify_very_large_union(self) -> None:
+        fx = self.fx
+        literals = []
+        for i in range(5000):
+            literals.append(LiteralType("v%d" % i, fx.str_type))
+        # This shouldn't be very slow, even if the union is big.
+        self.assert_simplified_union([*literals, fx.str_type], fx.str_type)
+
+    def test_simplified_union_with_str_instance_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.str_type],
+                                     fx.str_type)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str1_inst, fx.lit_str1_inst],
+                                     fx.lit_str1_inst)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1_inst,
+                                                fx.lit_str2_inst,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.uninhabited],
+                                     UnionType([fx.lit_str1_inst, fx.lit_str2_inst]))
+
+    def test_simplified_union_with_mixed_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1,
+                                                fx.lit_str2,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
+                                     UnionType([fx.lit_str1, fx.lit_str1_inst]))
+
+    def assert_simplified_union(self, original: List[Type], union: Type) -> None:
+        assert_equal(make_simplified_union(original), union)
+        assert_equal(make_simplified_union(list(reversed(original))), union)
 
     # Helpers
 
@@ -461,10 +542,10 @@ class TypeOpsSuite(Suite):
         argument types a1, ... an and return type r and type arguments
         vars.
         """
-        tv = []  # type: List[TypeVarDef]
+        tv: List[TypeVarType] = []
         n = -1
         for v in vars:
-            tv.append(TypeVarDef(v, v, n, [], self.fx.o))
+            tv.append(TypeVarType(v, v, n, [], self.fx.o))
             n -= 1
         return CallableType(list(a[:-1]),
                             [ARG_POS] * (len(a) - 1),
@@ -477,7 +558,9 @@ class TypeOpsSuite(Suite):
 
 class JoinSuite(Suite):
     def setUp(self) -> None:
-        self.fx = TypeFixture()
+        self.fx = TypeFixture(INVARIANT)
+        self.fx_co = TypeFixture(COVARIANT)
+        self.fx_contra = TypeFixture(CONTRAVARIANT)
 
     def test_trivial_cases(self) -> None:
         for simple in self.fx.a, self.fx.o, self.fx.b:
@@ -576,16 +659,16 @@ class JoinSuite(Suite):
         true_a = true_only(self.fx.a)
         false_o = false_only(self.fx.o)
         j = join_simple(self.fx.o, true_a, false_o)
-        assert_true(j.can_be_true)
-        assert_true(j.can_be_false)
+        assert j.can_be_true
+        assert j.can_be_false
 
     def test_mixed_truth_restricted_type(self) -> None:
         # join_types against differently restricted truthiness types drops restrictions.
         true_any = true_only(AnyType(TypeOfAny.special_form))
         false_o = false_only(self.fx.o)
         j = join_types(true_any, false_o)
-        assert_true(j.can_be_true)
-        assert_true(j.can_be_false)
+        assert j.can_be_true
+        assert j.can_be_false
 
     def test_other_mixed_types(self) -> None:
         # In general, joining unrelated types produces object.
@@ -597,11 +680,6 @@ class JoinSuite(Suite):
                     self.assert_join(t1, t2, self.fx.o)
 
     def test_simple_generics(self) -> None:
-        self.assert_join(self.fx.ga, self.fx.ga, self.fx.ga)
-        self.assert_join(self.fx.ga, self.fx.gb, self.fx.ga)
-        self.assert_join(self.fx.ga, self.fx.gd, self.fx.o)
-        self.assert_join(self.fx.ga, self.fx.g2a, self.fx.o)
-
         self.assert_join(self.fx.ga, self.fx.nonet, self.fx.ga)
         self.assert_join(self.fx.ga, self.fx.anyt, self.fx.anyt)
 
@@ -609,23 +687,43 @@ class JoinSuite(Suite):
                   self.callable(self.fx.a, self.fx.b)]:
             self.assert_join(t, self.fx.ga, self.fx.o)
 
+    def test_generics_invariant(self) -> None:
+        self.assert_join(self.fx.ga, self.fx.ga, self.fx.ga)
+        self.assert_join(self.fx.ga, self.fx.gb, self.fx.o)
+        self.assert_join(self.fx.ga, self.fx.gd, self.fx.o)
+        self.assert_join(self.fx.ga, self.fx.g2a, self.fx.o)
+
+    def test_generics_covariant(self) -> None:
+        self.assert_join(self.fx_co.ga, self.fx_co.ga, self.fx_co.ga)
+        self.assert_join(self.fx_co.ga, self.fx_co.gb, self.fx_co.ga)
+        self.assert_join(self.fx_co.ga, self.fx_co.gd, self.fx_co.go)
+        self.assert_join(self.fx_co.ga, self.fx_co.g2a, self.fx_co.o)
+
+    def test_generics_contravariant(self) -> None:
+        self.assert_join(self.fx_contra.ga, self.fx_contra.ga, self.fx_contra.ga)
+        # TODO: this can be more precise than "object", see a comment in mypy/join.py
+        self.assert_join(self.fx_contra.ga, self.fx_contra.gb, self.fx_contra.o)
+        self.assert_join(self.fx_contra.ga, self.fx_contra.g2a, self.fx_contra.o)
+
     def test_generics_with_multiple_args(self) -> None:
-        self.assert_join(self.fx.hab, self.fx.hab, self.fx.hab)
-        self.assert_join(self.fx.hab, self.fx.hbb, self.fx.hab)
-        self.assert_join(self.fx.had, self.fx.haa, self.fx.o)
+        self.assert_join(self.fx_co.hab, self.fx_co.hab, self.fx_co.hab)
+        self.assert_join(self.fx_co.hab, self.fx_co.hbb, self.fx_co.hab)
+        self.assert_join(self.fx_co.had, self.fx_co.haa, self.fx_co.hao)
 
     def test_generics_with_inheritance(self) -> None:
-        self.assert_join(self.fx.gsab, self.fx.gb, self.fx.gb)
-        self.assert_join(self.fx.gsba, self.fx.gb, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gd, self.fx.o)
+        self.assert_join(self.fx_co.gsab, self.fx_co.gb, self.fx_co.gb)
+        self.assert_join(self.fx_co.gsba, self.fx_co.gb, self.fx_co.ga)
+        self.assert_join(self.fx_co.gsab, self.fx_co.gd, self.fx_co.go)
 
     def test_generics_with_inheritance_and_shared_supertype(self) -> None:
-        self.assert_join(self.fx.gsba, self.fx.gs2a, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gs2a, self.fx.ga)
-        self.assert_join(self.fx.gsab, self.fx.gs2d, self.fx.o)
+        self.assert_join(self.fx_co.gsba, self.fx_co.gs2a, self.fx_co.ga)
+        self.assert_join(self.fx_co.gsab, self.fx_co.gs2a, self.fx_co.ga)
+        self.assert_join(self.fx_co.gsab, self.fx_co.gs2d, self.fx_co.go)
 
     def test_generic_types_and_any(self) -> None:
         self.assert_join(self.fx.gdyn, self.fx.ga, self.fx.gdyn)
+        self.assert_join(self.fx_co.gdyn, self.fx_co.ga, self.fx_co.gdyn)
+        self.assert_join(self.fx_contra.gdyn, self.fx_contra.ga, self.fx_contra.gdyn)
 
     def test_callables_with_any(self) -> None:
         self.assert_join(self.callable(self.fx.a, self.fx.a, self.fx.anyt,
@@ -704,7 +802,7 @@ class JoinSuite(Suite):
         self.assert_join(t1, t1, t1)
         j = join_types(t1, t1)
         assert isinstance(j, CallableType)
-        assert_true(j.is_type_obj())
+        assert j.is_type_obj()
 
         self.assert_join(t1, t2, tr)
         self.assert_join(t1, self.fx.type_type, self.fx.type_type)
@@ -723,9 +821,9 @@ class JoinSuite(Suite):
     def test_literal_type(self) -> None:
         a = self.fx.a
         d = self.fx.d
-        lit1 = LiteralType(1, a)
-        lit2 = LiteralType(2, a)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_join(lit1, lit1, lit1)
         self.assert_join(lit1, a, a)
@@ -768,11 +866,9 @@ class JoinSuite(Suite):
         actual = str(result)
         expected = str(join)
         assert_equal(actual, expected,
-                     'join({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert_true(is_subtype(s, result),
-                    '{} not subtype of {}'.format(s, result))
-        assert_true(is_subtype(t, result),
-                    '{} not subtype of {}'.format(t, result))
+                     f'join({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(s, result), f'{s} not subtype of {result}'
+        assert is_subtype(t, result), f'{t} not subtype of {result}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -951,10 +1047,9 @@ class MeetSuite(Suite):
 
     def test_literal_type(self) -> None:
         a = self.fx.a
-        d = self.fx.d
-        lit1 = LiteralType(1, a)
-        lit2 = LiteralType(2, a)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_meet(lit1, lit1, lit1)
         self.assert_meet(lit1, a, lit1)
@@ -966,15 +1061,15 @@ class MeetSuite(Suite):
         self.assert_meet(lit1, self.fx.anyt, lit1)
         self.assert_meet(lit1, self.fx.o, lit1)
 
-        assert_true(is_same_type(lit1, narrow_declared_type(lit1, a)))
-        assert_true(is_same_type(lit2, narrow_declared_type(lit2, a)))
+        assert is_same_type(lit1, narrow_declared_type(lit1, a))
+        assert is_same_type(lit2, narrow_declared_type(lit2, a))
 
     # FIX generic interfaces + ranges
 
     def assert_meet_uninhabited(self, s: Type, t: Type) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             self.assert_meet(s, t, self.fx.nonet)
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             self.assert_meet(s, t, self.fx.uninhabited)
 
     def assert_meet(self, s: Type, t: Type, meet: Type) -> None:
@@ -986,11 +1081,9 @@ class MeetSuite(Suite):
         actual = str(result)
         expected = str(meet)
         assert_equal(actual, expected,
-                     'meet({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert_true(is_subtype(result, s),
-                    '{} not subtype of {}'.format(result, s))
-        assert_true(is_subtype(result, t),
-                    '{} not subtype of {}'.format(result, t))
+                     f'meet({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(result, s), f'{result} not subtype of {s}'
+        assert is_subtype(result, t), f'{result} not subtype of {t}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -1010,16 +1103,17 @@ class SameTypeSuite(Suite):
         self.fx = TypeFixture()
 
     def test_literal_type(self) -> None:
+        a = self.fx.a
         b = self.fx.b  # Reminder: b is a subclass of a
-        d = self.fx.d
 
-        lit1 = LiteralType(1, b)
-        lit2 = LiteralType(2, b)
-        lit3 = LiteralType("foo", d)
+        lit1 = self.fx.lit1
+        lit2 = self.fx.lit2
+        lit3 = self.fx.lit3
 
         self.assert_same(lit1, lit1)
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit1, lit2]))
         self.assert_same(UnionType([lit1, lit2]), UnionType([lit2, lit1]))
+        self.assert_same(UnionType([a, b]), UnionType([b, a]))
         self.assert_not_same(lit1, b)
         self.assert_not_same(lit1, lit2)
         self.assert_not_same(lit1, lit3)
@@ -1038,11 +1132,54 @@ class SameTypeSuite(Suite):
     def assert_simple_is_same(self, s: Type, t: Type, expected: bool, strict: bool) -> None:
         actual = is_same_type(s, t)
         assert_equal(actual, expected,
-                     'is_same_type({}, {}) is {{}} ({{}} expected)'.format(s, t))
+                     f'is_same_type({s}, {t}) is {{}} ({{}} expected)')
 
         if strict:
             actual2 = (s == t)
             assert_equal(actual2, expected,
-                         '({} == {}) is {{}} ({{}} expected)'.format(s, t))
+                         f'({s} == {t}) is {{}} ({{}} expected)')
             assert_equal(hash(s) == hash(t), expected,
-                         '(hash({}) == hash({}) is {{}} ({{}} expected)'.format(s, t))
+                         f'(hash({s}) == hash({t}) is {{}} ({{}} expected)')
+
+
+class RemoveLastKnownValueSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_optional(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_two_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_multiple_same_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.a])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.a, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+        t = UnionType.make_union([self.fx.a, self.fx.nonet, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet, self.fx.b])
+
+    def test_single_last_known_value(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_last_known_values_with_merge(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.lit2_inst, self.fx.lit4_inst])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.lit1_inst,
+                                  self.fx.b,
+                                  self.fx.lit2_inst,
+                                  self.fx.lit4_inst])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_generics(self) -> None:
+        t = UnionType.make_union([self.fx.ga, self.fx.gb])
+        self.assert_union_result(t, [self.fx.ga, self.fx.gb])
+
+    def assert_union_result(self, t: ProperType, expected: List[Type]) -> None:
+        t2 = remove_instance_last_known_values(t)
+        assert type(t2) is UnionType
+        assert t2.items == expected

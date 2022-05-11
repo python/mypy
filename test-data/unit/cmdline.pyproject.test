@@ -1,0 +1,135 @@
+-- Tests for command line parsing
+-- ------------------------------
+--
+-- The initial line specifies the command line, in the format
+--
+--   # cmd: mypy <options>
+--
+-- Note that # flags: --some-flag IS NOT SUPPORTED.
+-- Use # cmd: mypy --some-flag ...
+--
+-- '== Return code: <value>' is added to the output when the process return code
+-- is "nonobvious" -- that is, when it is something other than 0 if there are no
+-- messages and 1 if there are.
+
+-- Directories/packages on the command line
+-- ----------------------------------------
+
+[case testNonArrayOverridesPyprojectTOML]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[tool.mypy]
+\[tool.mypy.overrides]
+module = "x"
+disallow_untyped_defs = false
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+pyproject.toml: tool.mypy.overrides sections must be an array. Please make sure you are using double brackets like so: [[tool.mypy.overrides]]
+== Return code: 0
+
+[case testNoModuleInOverridePyprojectTOML]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+disallow_untyped_defs = false
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+pyproject.toml: toml config file contains a [[tool.mypy.overrides]] section, but no module to override was specified.
+== Return code: 0
+
+[case testInvalidModuleInOverridePyprojectTOML]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = 0
+disallow_untyped_defs = false
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+pyproject.toml: toml config file contains a [[tool.mypy.overrides]] section with a module value that is not a string or a list of strings
+== Return code: 0
+
+[case testConflictingModuleInOverridesPyprojectTOML]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[tool.mypy]
+\[[tool.mypy.overrides]]
+module = 'x'
+disallow_untyped_defs = false
+\[[tool.mypy.overrides]]
+module = ['x']
+disallow_untyped_defs = true
+[file x.py]
+def f(a):
+    pass
+def g(a: int) -> int:
+    return f(a)
+[out]
+pyproject.toml: toml config file contains [[tool.mypy.overrides]] sections with conflicting values. Module 'x' has two different values for 'disallow_untyped_defs'
+== Return code: 0
+
+[case testMultilineLiteralExcludePyprojectTOML]
+# cmd: mypy x
+[file pyproject.toml]
+\[tool.mypy]
+exclude = '''(?x)(
+    (^|/)[^/]*skipme_\.py$
+    |(^|/)_skipme[^/]*\.py$
+)'''
+[file x/__init__.py]
+i: int = 0
+[file x/_skipme_please.py]
+This isn't even syntatically valid!
+[file x/please_skipme_.py]
+Neither is this!
+
+[case testMultilineBasicExcludePyprojectTOML]
+# cmd: mypy x
+[file pyproject.toml]
+\[tool.mypy]
+exclude = """(?x)(
+    (^|/)[^/]*skipme_\\.py$
+    |(^|/)_skipme[^/]*\\.py$
+)"""
+[file x/__init__.py]
+i: int = 0
+[file x/_skipme_please.py]
+This isn't even syntatically valid!
+[file x/please_skipme_.py]
+Neither is this!
+
+[case testSequenceExcludePyprojectTOML]
+# cmd: mypy x
+[file pyproject.toml]
+\[tool.mypy]
+exclude = [
+    '(^|/)[^/]*skipme_\.py$',  # literal (no escaping)
+    "(^|/)_skipme[^/]*\\.py$",  # basic (backslash needs escaping)
+]
+[file x/__init__.py]
+i: int = 0
+[file x/_skipme_please.py]
+This isn't even syntatically valid!
+[file x/please_skipme_.py]
+Neither is this!
+
+[case testPyprojectTOMLUnicode]
+# cmd: mypy x.py
+[file pyproject.toml]
+\[project]
+description = "Factory ⸻ A code generator 🏭"
+\[tool.mypy]
+[file x.py]

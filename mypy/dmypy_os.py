@@ -10,8 +10,8 @@ if sys.platform == 'win32':
     PROCESS_QUERY_LIMITED_INFORMATION = ctypes.c_ulong(0x1000)
 
     kernel32 = ctypes.windll.kernel32
-    OpenProcess = kernel32.OpenProcess  # type: Callable[[DWORD, int, int], HANDLE]
-    GetExitCodeProcess = kernel32.GetExitCodeProcess  # type: Callable[[HANDLE, Any], int]
+    OpenProcess: Callable[[DWORD, int, int], HANDLE] = kernel32.OpenProcess
+    GetExitCodeProcess: Callable[[HANDLE, Any], int] = kernel32.GetExitCodeProcess
 else:
     import os
     import signal
@@ -38,6 +38,6 @@ def alive(pid: int) -> bool:
 def kill(pid: int) -> None:
     """Kill the process."""
     if sys.platform == 'win32':
-        subprocess.check_output("taskkill /pid {pid} /f /t".format(pid=pid))
+        subprocess.check_output(f"taskkill /pid {pid} /f /t")
     else:
         os.kill(pid, signal.SIGKILL)

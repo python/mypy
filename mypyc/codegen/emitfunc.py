@@ -1,6 +1,6 @@
 """Code generation for native function bodies."""
 
-from typing import Union
+from typing import List, Union, Optional
 from typing_extensions import Final
 
 from mypyc.common import (
@@ -8,19 +8,20 @@ from mypyc.common import (
 )
 from mypyc.codegen.emit import Emitter
 from mypyc.ir.ops import (
-    OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
+    Op, OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive
 )
 from mypyc.ir.rtypes import (
-    RType, RTuple, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
-    is_pointer_rprimitive
+    RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
+    is_pointer_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.pprint import generate_names_for_ir
+from mypyc.analysis.blockfreq import frequently_executed_blocks
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.
@@ -30,13 +31,13 @@ DEBUG_ERRORS = False
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
     args = ', '.join(emitter.ctype(arg.type) for arg in fn.args) or 'void'
     ret = emitter.ctype(fn.ret_type)
-    return '{} (*)({})'.format(ret, args)
+    return f'{ret} (*)({args})'
 
 
 def native_function_header(fn: FuncDecl, emitter: Emitter) -> str:
     args = []
     for arg in fn.sig.args:
-        args.append('{}{}{}'.format(emitter.ctype_spaced(arg.type), REG_PREFIX, arg.name))
+        args.append(f'{emitter.ctype_spaced(arg.type)}{REG_PREFIX}{arg.name}')
 
     return '{ret_type}{name}({args})'.format(
         ret_type=emitter.ctype_spaced(fn.sig.ret_type),
@@ -53,12 +54,14 @@ def generate_native_function(fn: FuncIR,
     body = Emitter(emitter.context, names)
     visitor = FunctionEmitterVisitor(body, declarations, source_path, module_name)
 
-    declarations.emit_line('{} {{'.format(native_function_header(fn.decl, emitter)))
+    declarations.emit_line(f'{native_function_header(fn.decl, emitter)} {{')
     body.indent()
 
     for r in all_values(fn.arg_regs, fn.blocks):
         if isinstance(r.type, RTuple):
             emitter.declare_tuple_struct(r.type)
+        if isinstance(r.type, RArray):
+            continue  # Special: declared on first assignment
 
         if r in fn.arg_regs:
             continue  # Skip the arguments
@@ -71,13 +74,27 @@ def generate_native_function(fn: FuncIR,
                                                                      init=init))
 
     # Before we emit the blocks, give them all labels
-    for i, block in enumerate(fn.blocks):
+    blocks = fn.blocks
+    for i, block in enumerate(blocks):
         block.label = i
 
-    for block in fn.blocks:
+    common = frequently_executed_blocks(fn.blocks[0])
+
+    for i in range(len(blocks)):
+        block = blocks[i]
+        visitor.rare = block not in common
+        next_block = None
+        if i + 1 < len(blocks):
+            next_block = blocks[i + 1]
         body.emit_label(block)
-        for op in block.ops:
-            op.accept(visitor)
+        visitor.next_block = next_block
+
+        ops = block.ops
+        visitor.ops = ops
+        visitor.op_index = 0
+        while visitor.op_index < len(ops):
+            ops[visitor.op_index].accept(visitor)
+            visitor.op_index += 1
 
     body.emit_line('}')
 
@@ -96,23 +113,40 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.declarations = declarations
         self.source_path = source_path
         self.module_name = module_name
+        self.literals = emitter.context.literals
+        self.rare = False
+        # Next basic block to be processed after the current one (if any), set by caller
+        self.next_block: Optional[BasicBlock] = None
+        # Ops in the basic block currently being processed, set by caller
+        self.ops: List[Op] = []
+        # Current index within ops; visit methods can increment this to skip/merge ops
+        self.op_index = 0
 
     def temp_name(self) -> str:
         return self.emitter.temp_name()
 
     def visit_goto(self, op: Goto) -> None:
-        self.emit_line('goto %s;' % self.label(op.label))
+        if op.label is not self.next_block:
+            self.emit_line('goto %s;' % self.label(op.label))
 
     def visit_branch(self, op: Branch) -> None:
-        neg = '!' if op.negated else ''
+        true, false = op.true, op.false
+        negated = op.negated
+        negated_rare = False
+        if true is self.next_block and op.traceback_entry is None:
+            # Switch true/false since it avoids an else block.
+            true, false = false, true
+            negated = not negated
+            negated_rare = True
 
+        neg = '!' if negated else ''
         cond = ''
         if op.op == Branch.BOOL:
             expr_result = self.reg(op.value)
-            cond = '{}{}'.format(neg, expr_result)
+            cond = f'{neg}{expr_result}'
         elif op.op == Branch.IS_ERROR:
             typ = op.value.type
-            compare = '!=' if op.negated else '=='
+            compare = '!=' if negated else '=='
             if isinstance(typ, RTuple):
                 # TODO: What about empty tuple?
                 cond = self.emitter.tuple_undefined_check_cond(typ,
@@ -128,17 +162,29 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
         # For error checks, tell the compiler the branch is unlikely
         if op.traceback_entry is not None or op.rare:
-            cond = 'unlikely({})'.format(cond)
+            if not negated_rare:
+                cond = f'unlikely({cond})'
+            else:
+                cond = f'likely({cond})'
 
-        self.emit_line('if ({}) {{'.format(cond))
-
-        self.emit_traceback(op)
-
-        self.emit_lines(
-            'goto %s;' % self.label(op.true),
-            '} else',
-            '    goto %s;' % self.label(op.false)
-        )
+        if false is self.next_block:
+            if op.traceback_entry is None:
+                self.emit_line(f'if ({cond}) goto {self.label(true)};')
+            else:
+                self.emit_line(f'if ({cond}) {{')
+                self.emit_traceback(op)
+                self.emit_lines(
+                    'goto %s;' % self.label(true),
+                    '}'
+                )
+        else:
+            self.emit_line(f'if ({cond}) {{')
+            self.emit_traceback(op)
+            self.emit_lines(
+                'goto %s;' % self.label(true),
+                '} else',
+                '    goto %s;' % self.label(false)
+            )
 
     def visit_return(self, op: Return) -> None:
         value_str = self.reg(op.value)
@@ -149,10 +195,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         tuple_type = op.tuple_type
         self.emitter.declare_tuple_struct(tuple_type)
         if len(op.items) == 0:  # empty tuple
-            self.emit_line('{}.empty_struct_error_flag = 0;'.format(dest))
+            self.emit_line(f'{dest}.empty_struct_error_flag = 0;')
         else:
             for i, item in enumerate(op.items):
-                self.emit_line('{}.f{} = {};'.format(dest, i, self.reg(item)))
+                self.emit_line(f'{dest}.f{i} = {self.reg(item)};')
         self.emit_inc_ref(dest, tuple_type)
 
     def visit_assign(self, op: Assign) -> None:
@@ -161,17 +207,42 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('%s = %s;' % (dest, src))
+            self.emit_line(f'{dest} = {src};')
+
+    def visit_assign_multi(self, op: AssignMulti) -> None:
+        typ = op.dest.type
+        assert isinstance(typ, RArray)
+        dest = self.reg(op.dest)
+        # RArray values can only be assigned to once, so we can always
+        # declare them on initialization.
+        self.emit_line('%s%s[%d] = {%s};' % (
+            self.emitter.ctype_spaced(typ.item_type),
+            dest,
+            len(op.src),
+            ', '.join(self.reg(s) for s in op.src)))
 
     def visit_load_error_value(self, op: LoadErrorValue) -> None:
         if isinstance(op.type, RTuple):
             values = [self.c_undefined_value(item) for item in op.type.types]
             tmp = self.temp_name()
-            self.emit_line('%s %s = { %s };' % (self.ctype(op.type), tmp, ', '.join(values)))
-            self.emit_line('%s = %s;' % (self.reg(op), tmp))
+            self.emit_line('{} {} = {{ {} }};'.format(self.ctype(op.type), tmp, ', '.join(values)))
+            self.emit_line(f'{self.reg(op)} = {tmp};')
         else:
-            self.emit_line('%s = %s;' % (self.reg(op),
+            self.emit_line('{} = {};'.format(self.reg(op),
                                          self.c_error_value(op.type)))
+
+    def visit_load_literal(self, op: LoadLiteral) -> None:
+        index = self.literals.literal_index(op.value)
+        s = repr(op.value)
+        if not any(x in s for x in ('/*', '*/', '\0')):
+            ann = ' /* %s */' % s
+        else:
+            ann = ''
+        if not is_int_rprimitive(op.type):
+            self.emit_line('%s = CPyStatics[%d];%s' % (self.reg(op), index, ann))
+        else:
+            self.emit_line('%s = (CPyTagged)CPyStatics[%d] | 1;%s' % (
+                self.reg(op), index, ann))
 
     def get_attr_expr(self, obj: str, op: Union[GetAttr, SetAttr], decl_cl: ClassIR) -> str:
         """Generate attribute accessor for normal (non-property) access.
@@ -180,7 +251,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         classes, and *(obj + attr_offset) for attributes defined by traits. We also
         insert all necessary C casts here.
         """
-        cast = '({} *)'.format(op.class_type.struct_name(self.emitter.names))
+        cast = f'({op.class_type.struct_name(self.emitter.names)} *)'
         if decl_cl.is_trait and op.class_type.class_ir.is_trait:
             # For pure trait access find the offset first, offsets
             # are ordered by attribute position in the cl.attributes dict.
@@ -188,23 +259,23 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             trait_attr_index = list(decl_cl.attributes).index(op.attr)
             # TODO: reuse these names somehow?
             offset = self.emitter.temp_name()
-            self.declarations.emit_line('size_t {};'.format(offset))
+            self.declarations.emit_line(f'size_t {offset};')
             self.emitter.emit_line('{} = {};'.format(
                 offset,
                 'CPy_FindAttrOffset({}, {}, {})'.format(
                     self.emitter.type_struct_name(decl_cl),
-                    '({}{})->vtable'.format(cast, obj),
+                    f'({cast}{obj})->vtable',
                     trait_attr_index,
                 )
             ))
-            attr_cast = '({} *)'.format(self.ctype(op.class_type.attr_type(op.attr)))
-            return '*{}((char *){} + {})'.format(attr_cast, obj, offset)
+            attr_cast = f'({self.ctype(op.class_type.attr_type(op.attr))} *)'
+            return f'*{attr_cast}((char *){obj} + {offset})'
         else:
             # Cast to something non-trait. Note: for this to work, all struct
             # members for non-trait classes must obey monotonic linear growth.
             if op.class_type.class_ir.is_trait:
                 assert not decl_cl.is_trait
-                cast = '({} *)'.format(decl_cl.struct_name(self.emitter.names))
+                cast = f'({decl_cl.struct_name(self.emitter.names)} *)'
             return '({}{})->{}'.format(
                 cast, obj, self.emitter.attr(op.attr)
             )
@@ -230,18 +301,46 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            self.emitter.emit_line('{} = {};'.format(dest, attr_expr))
-            if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(
-                    attr_rtype, attr_expr, '==', unlikely=True
-                )
-                exc_class = 'PyExc_AttributeError'
-                self.emitter.emit_lines(
+            self.emitter.emit_line(f'{dest} = {attr_expr};')
+            self.emitter.emit_undefined_attr_check(
+                attr_rtype, dest, '==', unlikely=True
+            )
+            exc_class = 'PyExc_AttributeError'
+            merged_branch = None
+            branch = self.next_branch()
+            if branch is not None:
+                if (branch.value is op
+                        and branch.op == Branch.IS_ERROR
+                        and branch.traceback_entry is not None
+                        and not branch.negated):
+                    # Generate code for the following branch here to avoid
+                    # redundant branches in the generate code.
+                    self.emit_attribute_error(branch, cl.name, op.attr)
+                    self.emit_line('goto %s;' % self.label(branch.true))
+                    merged_branch = branch
+                    self.emitter.emit_line('}')
+            if not merged_branch:
+                self.emitter.emit_line(
                     'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                        exc_class, repr(op.attr), repr(cl.name)),
-                    '} else {')
-                self.emitter.emit_inc_ref(attr_expr, attr_rtype)
+                        exc_class, repr(op.attr), repr(cl.name)))
+
+            if attr_rtype.is_refcounted:
+                if not merged_branch:
+                    self.emitter.emit_line('} else {')
+                self.emitter.emit_inc_ref(dest, attr_rtype)
+            if merged_branch:
+                if merged_branch.false is not self.next_block:
+                    self.emit_line('goto %s;' % self.label(merged_branch.false))
+                self.op_index += 1
+            else:
                 self.emitter.emit_line('}')
+
+    def next_branch(self) -> Optional[Branch]:
+        if self.op_index + 1 < len(self.ops):
+            next_op = self.ops[self.op_index + 1]
+            if isinstance(next_op, Branch):
+                return next_op
+        return None
 
     def visit_set_attr(self, op: SetAttr) -> None:
         dest = self.reg(op)
@@ -272,15 +371,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 self.emitter.emit_line('}')
             # This steal the reference to src, so we don't need to increment the arg
             self.emitter.emit_lines(
-                '{} = {};'.format(attr_expr, src),
-                '{} = 1;'.format(dest),
+                f'{attr_expr} = {src};',
+                f'{dest} = 1;',
             )
 
-    PREFIX_MAP = {
+    PREFIX_MAP: Final = {
         NAMESPACE_STATIC: STATIC_PREFIX,
         NAMESPACE_TYPE: TYPE_PREFIX,
         NAMESPACE_MODULE: MODULE_PREFIX,
-    }  # type: Final
+    }
 
     def visit_load_static(self, op: LoadStatic) -> None:
         dest = self.reg(op)
@@ -293,7 +392,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = repr(op.ann)
             if not any(x in s for x in ('/*', '*/', '\0')):
                 ann = ' /* %s */' % s
-        self.emit_line('%s = %s;%s' % (dest, name, ann))
+        self.emit_line(f'{dest} = {name};{ann}')
 
     def visit_init_static(self, op: InitStatic) -> None:
         value = self.reg(op.value)
@@ -301,13 +400,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         name = self.emitter.static_name(op.identifier, op.module_name, prefix)
         if op.namespace == NAMESPACE_TYPE:
             value = '(PyTypeObject *)%s' % value
-        self.emit_line('%s = %s;' % (name, value))
+        self.emit_line(f'{name} = {value};')
         self.emit_inc_ref(name, op.value.type)
 
     def visit_tuple_get(self, op: TupleGet) -> None:
         dest = self.reg(op)
         src = self.reg(op.src)
-        self.emit_line('{} = {}.f{};'.format(dest, src, op.index))
+        self.emit_line(f'{dest} = {src}.f{op.index};')
         self.emit_inc_ref(dest, op.type)
 
     def get_dest_assign(self, dest: Value) -> str:
@@ -322,7 +421,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         args = ', '.join(self.reg(arg) for arg in op.args)
         lib = self.emitter.get_group_prefix(op.fn)
         cname = op.fn.cname(self.names)
-        self.emit_line('%s%s%s%s(%s);' % (dest, lib, NATIVE_PREFIX, cname, args))
+        self.emit_line(f'{dest}{lib}{NATIVE_PREFIX}{cname}({args});')
 
     def visit_method_call(self, op: MethodCall) -> None:
         """Call native method."""
@@ -332,7 +431,6 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rtype = op.receiver_type
         class_ir = rtype.class_ir
         name = op.method
-        method_idx = rtype.method_index(name)
         method = rtype.class_ir.get_method(name)
         assert method is not None
 
@@ -343,7 +441,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # turned into the class for class methods
         obj_args = (
             [] if method.decl.kind == FUNC_STATICMETHOD else
-            ['(PyObject *)Py_TYPE({})'.format(obj)] if method.decl.kind == FUNC_CLASSMETHOD else
+            [f'(PyObject *)Py_TYPE({obj})'] if method.decl.kind == FUNC_CLASSMETHOD else
             [obj])
         args = ', '.join(obj_args + [self.reg(arg) for arg in op.args])
         mtype = native_function_type(method, self.emitter)
@@ -355,6 +453,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 dest, lib, NATIVE_PREFIX, method.cname(self.names), args))
         else:
             # Call using vtable.
+            method_idx = rtype.method_index(name)
             self.emit_line('{}CPY_GET_METHOD{}({}, {}, {}, {}, {})({}); /* {} */'.format(
                 dest, version, obj, self.emitter.type_struct_name(rtype.class_ir),
                 method_idx, rtype.struct_name(self.names), mtype, args, op.method))
@@ -365,7 +464,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_dec_ref(self, op: DecRef) -> None:
         src = self.reg(op.src)
-        self.emit_dec_ref(src, op.src.type, op.is_xdec)
+        self.emit_dec_ref(src, op.src.type, is_xdec=op.is_xdec)
 
     def visit_box(self, op: Box) -> None:
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
@@ -386,7 +485,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             if isinstance(op.value, str):
                 message = op.value.replace('"', '\\"')
                 self.emitter.emit_line(
-                    'PyErr_SetString(PyExc_{}, "{}");'.format(op.class_name, message))
+                    f'PyErr_SetString(PyExc_{op.class_name}, "{message}");')
             elif isinstance(op.value, Value):
                 self.emitter.emit_line(
                     'PyErr_SetObject(PyExc_{}, {});'.format(op.class_name,
@@ -394,8 +493,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             else:
                 assert False, 'op value type must be either str or Value'
         else:
-            self.emitter.emit_line('PyErr_SetNone(PyExc_{});'.format(op.class_name))
-        self.emitter.emit_line('{} = 0;'.format(self.reg(op)))
+            self.emitter.emit_line(f'PyErr_SetNone(PyExc_{op.class_name});')
+        self.emitter.emit_line(f'{self.reg(op)} = 0;')
 
     def visit_call_c(self, op: CallC) -> None:
         if op.is_void:
@@ -403,13 +502,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             dest = self.get_dest_assign(op)
         args = ', '.join(self.reg(arg) for arg in op.args)
-        self.emitter.emit_line("{}{}({});".format(dest, op.function_name, args))
+        self.emitter.emit_line(f"{dest}{op.function_name}({args});")
 
     def visit_truncate(self, op: Truncate) -> None:
         dest = self.reg(op)
         value = self.reg(op.src)
         # for C backend the generated code are straight assignments
-        self.emit_line("{} = {};".format(dest, value))
+        self.emit_line(f"{dest} = {value};")
 
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
@@ -418,13 +517,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = repr(op.ann)
             if not any(x in s for x in ('/*', '*/', '\0')):
                 ann = ' /* %s */' % s
-        self.emit_line('%s = %s;%s' % (dest, op.identifier, ann))
+        self.emit_line(f'{dest} = {op.identifier};{ann}')
 
     def visit_int_op(self, op: IntOp) -> None:
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
-        self.emit_line('%s = %s %s %s;' % (dest, lhs, op.op_str[op.op], rhs))
+        self.emit_line(f'{dest} = {lhs} {op.op_str[op.op]} {rhs};')
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
         dest = self.reg(op)
@@ -432,15 +531,21 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         rhs = self.reg(op.rhs)
         lhs_cast = ""
         rhs_cast = ""
-        signed_op = {ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE}
-        unsigned_op = {ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE}
-        if op.op in signed_op:
+        if op.op in (ComparisonOp.SLT, ComparisonOp.SGT, ComparisonOp.SLE, ComparisonOp.SGE):
+            # Always signed comparison op
             lhs_cast = self.emit_signed_int_cast(op.lhs.type)
             rhs_cast = self.emit_signed_int_cast(op.rhs.type)
-        elif op.op in unsigned_op:
+        elif op.op in (ComparisonOp.ULT, ComparisonOp.UGT, ComparisonOp.ULE, ComparisonOp.UGE):
+            # Always unsigned comparison op
             lhs_cast = self.emit_unsigned_int_cast(op.lhs.type)
             rhs_cast = self.emit_unsigned_int_cast(op.rhs.type)
-        self.emit_line('%s = %s%s %s %s%s;' % (dest, lhs_cast, lhs,
+        elif isinstance(op.lhs, Integer) and op.lhs.value < 0:
+            # Force signed ==/!= with negative operand
+            rhs_cast = self.emit_signed_int_cast(op.rhs.type)
+        elif isinstance(op.rhs, Integer) and op.rhs.value < 0:
+            # Force signed ==/!= with negative operand
+            lhs_cast = self.emit_signed_int_cast(op.lhs.type)
+        self.emit_line('{} = {}{} {} {}{};'.format(dest, lhs_cast, lhs,
                                                op.op_str[op.op], rhs_cast, rhs))
 
     def visit_load_mem(self, op: LoadMem) -> None:
@@ -448,7 +553,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         src = self.reg(op.src)
         # TODO: we shouldn't dereference to type that are pointer type so far
         type = self.ctype(op.type)
-        self.emit_line('%s = *(%s *)%s;' % (dest, type, src))
+        self.emit_line(f'{dest} = *({type} *){src};')
 
     def visit_set_mem(self, op: SetMem) -> None:
         dest = self.reg(op.dest)
@@ -457,7 +562,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
-            self.emit_line('*(%s *)%s = %s;' % (dest_type, dest, src))
+            self.emit_line(f'*({dest_type} *){dest} = {src};')
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> None:
         dest = self.reg(op)
@@ -465,14 +570,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # TODO: support tuple type
         assert isinstance(op.src_type, RStruct)
         assert op.field in op.src_type.names, "Invalid field name."
-        self.emit_line('%s = (%s)&((%s *)%s)->%s;' % (dest, op.type._ctype, op.src_type.name,
+        self.emit_line('{} = ({})&(({} *){})->{};'.format(dest, op.type._ctype, op.src_type.name,
                                                       src, op.field))
 
     def visit_load_address(self, op: LoadAddress) -> None:
         typ = op.type
         dest = self.reg(op)
         src = self.reg(op.src) if isinstance(op.src, Register) else op.src
-        self.emit_line('%s = (%s)&%s;' % (dest, typ._ctype, src))
+        self.emit_line(f'{dest} = ({typ._ctype})&{src};')
+
+    def visit_keep_alive(self, op: KeepAlive) -> None:
+        # This is a no-op.
+        pass
 
     # Helpers
 
@@ -484,7 +593,16 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             val = reg.value
             if val == 0 and is_pointer_rprimitive(reg.type):
                 return "NULL"
-            return str(val)
+            s = str(val)
+            if val >= (1 << 31):
+                # Avoid overflowing signed 32-bit int
+                s += 'ULL'
+            elif val == -(1 << 63):
+                # Avoid overflowing C integer literal
+                s = '(-9223372036854775807LL - 1)'
+            elif val <= -(1 << 31):
+                s += 'LL'
+            return s
         else:
             return self.emitter.reg(reg)
 
@@ -504,10 +622,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_lines(*lines)
 
     def emit_inc_ref(self, dest: str, rtype: RType) -> None:
-        self.emitter.emit_inc_ref(dest, rtype)
+        self.emitter.emit_inc_ref(dest, rtype, rare=self.rare)
 
     def emit_dec_ref(self, dest: str, rtype: RType, is_xdec: bool) -> None:
-        self.emitter.emit_dec_ref(dest, rtype, is_xdec)
+        self.emitter.emit_dec_ref(dest, rtype, is_xdec=is_xdec, rare=self.rare)
 
     def emit_declaration(self, line: str) -> None:
         self.declarations.emit_line(line)
@@ -522,6 +640,19 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                 globals_static))
             if DEBUG_ERRORS:
                 self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+
+    def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
+        assert op.traceback_entry is not None
+        globals_static = self.emitter.static_name('globals', self.module_name)
+        self.emit_line('CPy_AttributeError("%s", "%s", "%s", "%s", %d, %s);' % (
+            self.source_path.replace("\\", "\\\\"),
+            op.traceback_entry[0],
+            class_name,
+            attr,
+            op.traceback_entry[1],
+            globals_static))
+        if DEBUG_ERRORS:
+            self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
 
     def emit_signed_int_cast(self, type: RType) -> str:
         if is_tagged(type):

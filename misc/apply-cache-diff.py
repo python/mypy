@@ -24,7 +24,7 @@ def make_cache(input_dir: str, sqlite: bool) -> MetadataStore:
 
 def apply_diff(cache_dir: str, diff_file: str, sqlite: bool = False) -> None:
     cache = make_cache(cache_dir, sqlite)
-    with open(diff_file, "r") as f:
+    with open(diff_file) as f:
         diff = json.load(f)
 
     old_deps = json.loads(cache.read("@deps.meta.json"))

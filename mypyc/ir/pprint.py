@@ -1,6 +1,7 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
-from typing import Any, Dict, List
+from collections import defaultdict
+from typing import Any, Dict, List, Union, Sequence, Tuple
 
 from typing_extensions import Final
 
@@ -9,11 +10,14 @@ from mypyc.ir.ops import (
     Goto, Branch, Return, Unreachable, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
-    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp
+    GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
+    AssignMulti, KeepAlive, Op
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
 from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive, RType
+
+ErrorSource = Union[BasicBlock, Op]
 
 
 class IRPrettyPrintVisitor(OpVisitor[str]):
@@ -28,23 +32,23 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_goto(self, op: Goto) -> str:
         return self.format('goto %l', op.label)
 
-    branch_op_names = {
+    branch_op_names: Final = {
         Branch.BOOL: ('%r', 'bool'),
         Branch.IS_ERROR: ('is_error(%r)', ''),
-    }  # type: Final
+    }
 
     def visit_branch(self, op: Branch) -> str:
         fmt, typ = self.branch_op_names[op.op]
         if op.negated:
-            fmt = 'not {}'.format(fmt)
+            fmt = f'not {fmt}'
 
         cond = self.format(fmt, op.value)
         tb = ''
         if op.traceback_entry:
             tb = ' (error at %s:%d)' % op.traceback_entry
-        fmt = 'if {} goto %l{} else goto %l'.format(cond, tb)
+        fmt = f'if {cond} goto %l{tb} else goto %l'
         if typ:
-            fmt += ' :: {}'.format(typ)
+            fmt += f' :: {typ}'
         return self.format(fmt, op.true, op.false)
 
     def visit_return(self, op: Return) -> str:
@@ -56,8 +60,21 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
     def visit_assign(self, op: Assign) -> str:
         return self.format('%r = %r', op.dest, op.src)
 
+    def visit_assign_multi(self, op: AssignMulti) -> str:
+        return self.format('%r = [%s]',
+                           op.dest,
+                           ', '.join(self.format('%r', v) for v in op.src))
+
     def visit_load_error_value(self, op: LoadErrorValue) -> str:
         return self.format('%r = <error> :: %s', op, op.type)
+
+    def visit_load_literal(self, op: LoadLiteral) -> str:
+        prefix = ''
+        # For values that have a potential unboxed representation, make
+        # it explicit that this is a Python object.
+        if isinstance(op.value, int):
+            prefix = 'object '
+        return self.format('%r = %s%s', op, prefix, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
         return self.format('%r = %r.%s', op, op.obj, op.attr)
@@ -66,16 +83,16 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r.%s = %r; %r = is_error', op.obj, op.attr, op.src, op)
 
     def visit_load_static(self, op: LoadStatic) -> str:
-        ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
+        ann = f'  ({repr(op.ann)})' if op.ann else ''
         name = op.identifier
         if op.module_name is not None:
-            name = '{}.{}'.format(op.module_name, name)
+            name = f'{op.module_name}.{name}'
         return self.format('%r = %s :: %s%s', op, name, op.namespace, ann)
 
     def visit_init_static(self, op: InitStatic) -> str:
         name = op.identifier
         if op.module_name is not None:
-            name = '{}.{}'.format(op.module_name, name)
+            name = f'{op.module_name}.{name}'
         return self.format('%s = %r :: %s', name, op.value, op.namespace)
 
     def visit_tuple_get(self, op: TupleGet) -> str:
@@ -89,21 +106,21 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         s = self.format('inc_ref %r', op.src)
         # TODO: Remove bool check (it's unboxed)
         if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
-            s += ' :: {}'.format(short_name(op.src.type.name))
+            s += f' :: {short_name(op.src.type.name)}'
         return s
 
     def visit_dec_ref(self, op: DecRef) -> str:
         s = self.format('%sdec_ref %r', 'x' if op.is_xdec else '', op.src)
         # TODO: Remove bool check (it's unboxed)
         if is_bool_rprimitive(op.src.type) or is_int_rprimitive(op.src.type):
-            s += ' :: {}'.format(short_name(op.src.type.name))
+            s += f' :: {short_name(op.src.type.name)}'
         return s
 
     def visit_call(self, op: Call) -> str:
         args = ', '.join(self.format('%r', arg) for arg in op.args)
         # TODO: Display long name?
         short_name = op.fn.shortname
-        s = '%s(%s)' % (short_name, args)
+        s = f'{short_name}({args})'
         if not op.is_void:
             s = self.format('%r = ', op) + s
         return s
@@ -146,7 +163,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
 
     def visit_load_global(self, op: LoadGlobal) -> str:
-        ann = '  ({})'.format(repr(op.ann)) if op.ann else ''
+        ann = f'  ({repr(op.ann)})' if op.ann else ''
         return self.format('%r = load_global %s :: static%s', op, op.identifier, ann)
 
     def visit_int_op(self, op: IntOp) -> str:
@@ -163,18 +180,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                            op.rhs, sign_format)
 
     def visit_load_mem(self, op: LoadMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("%r = load_mem %r%s :: %t*", op, op.src, base, op.type)
+        return self.format("%r = load_mem %r :: %t*", op, op.src, op.type)
 
     def visit_set_mem(self, op: SetMem) -> str:
-        if op.base:
-            base = self.format(', %r', op.base)
-        else:
-            base = ''
-        return self.format("set_mem %r, %r%s :: %t*", op.dest, op.src, base, op.dest_type)
+        return self.format("set_mem %r, %r :: %t*", op.dest, op.src, op.dest_type)
 
     def visit_get_element_ptr(self, op: GetElementPtr) -> str:
         return self.format("%r = get_element_ptr %r %s :: %t", op, op.src, op.field, op.src_type)
@@ -184,6 +193,10 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
             return self.format("%r = load_address %r", op, op.src)
         else:
             return self.format("%r = load_address %s", op, op.src)
+
+    def visit_keep_alive(self, op: KeepAlive) -> str:
+        return self.format('keep_alive %s' % ', '.join(self.format('%r', v)
+                                                       for v in op.src))
 
     # Helpers
 
@@ -235,7 +248,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
                     # String
                     result.append(str(arg))
                 else:
-                    raise ValueError('Invalid format sequence %{}'.format(typespec))
+                    raise ValueError(f'Invalid format sequence %{typespec}')
                 i = n + 2
             else:
                 i = n
@@ -254,18 +267,19 @@ def format_registers(func_ir: FuncIR,
             i += 1
             group.append(names[regs[i]])
         i += 1
-        result.append('%s :: %s' % (', '.join(group), regs[i0].type))
+        result.append('{} :: {}'.format(', '.join(group), regs[i0].type))
     return result
 
 
 def format_blocks(blocks: List[BasicBlock],
-                  names: Dict[Value, str]) -> List[str]:
+                  names: Dict[Value, str],
+                  source_to_error: Dict[ErrorSource, List[str]]) -> List[str]:
     """Format a list of IR basic blocks into a human-readable form."""
     # First label all of the blocks
     for i, block in enumerate(blocks):
         block.label = i
 
-    handler_map = {}  # type: Dict[BasicBlock, List[BasicBlock]]
+    handler_map: Dict[BasicBlock, List[BasicBlock]] = {}
     for b in blocks:
         if b.error_handler:
             handler_map.setdefault(b.error_handler, []).append(b)
@@ -280,14 +294,22 @@ def format_blocks(blocks: List[BasicBlock],
             handler_msg = ' (handler for {})'.format(', '.join(labels))
 
         lines.append('L%d:%s' % (block.label, handler_msg))
+        if block in source_to_error:
+            for error in source_to_error[block]:
+                lines.append(f"  ERR: {error}")
         ops = block.ops
         if (isinstance(ops[-1], Goto) and i + 1 < len(blocks)
-                and ops[-1].label == blocks[i + 1]):
-            # Hide the last goto if it just goes to the next basic block.
+                and ops[-1].label == blocks[i + 1]
+                and not source_to_error.get(ops[-1], [])):
+            # Hide the last goto if it just goes to the next basic block,
+            # and there are no assocatiated errors with the op.
             ops = ops[:-1]
         for op in ops:
             line = '    ' + op.accept(visitor)
             lines.append(line)
+            if op in source_to_error:
+                for error in source_to_error[op]:
+                    lines.append(f"  ERR: {error}")
 
         if not isinstance(block.ops[-1], (Goto, Branch, Return, Unreachable)):
             # Each basic block needs to exit somewhere.
@@ -295,7 +317,7 @@ def format_blocks(blocks: List[BasicBlock],
     return lines
 
 
-def format_func(fn: FuncIR) -> List[str]:
+def format_func(fn: FuncIR, errors: Sequence[Tuple[ErrorSource, str]] = ()) -> List[str]:
     lines = []
     cls_prefix = fn.class_name + '.' if fn.class_name else ''
     lines.append('def {}{}({}):'.format(cls_prefix, fn.name,
@@ -303,7 +325,12 @@ def format_func(fn: FuncIR) -> List[str]:
     names = generate_names_for_ir(fn.arg_regs, fn.blocks)
     for line in format_registers(fn, names):
         lines.append('    ' + line)
-    code = format_blocks(fn.blocks, names)
+
+    source_to_error = defaultdict(list)
+    for source, error in errors:
+        source_to_error[source].append(error)
+
+    code = format_blocks(fn.blocks, names, source_to_error)
     lines.extend(code)
     return lines
 
@@ -323,7 +350,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
     Give names such as 'r5' to temp values in IR which are useful when
     pretty-printing or generating C. Ensure generated names are unique.
     """
-    names = {}  # type: Dict[Value, str]
+    names: Dict[Value, str] = {}
     used_names = set()
 
     temp_index = 0
@@ -340,7 +367,7 @@ def generate_names_for_ir(args: List[Register], blocks: List[BasicBlock]) -> Dic
                 if source not in names:
                     values.append(source)
 
-            if isinstance(op, Assign):
+            if isinstance(op, (Assign, AssignMulti)):
                 values.append(op.dest)
             elif isinstance(op, ControlOp) or op.is_void:
                 continue

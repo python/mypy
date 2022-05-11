@@ -18,15 +18,15 @@ def g():
 L0:
 L1:
     r0 = builtins :: module
-    r1 = load_global CPyStatic_unicode_1 :: static  ('object')
+    r1 = 'object'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = PyObject_CallFunctionObjArgs(r2, 0)
     goto L5
 L2: (handler for L1)
     r4 = CPy_CatchError()
-    r5 = load_global CPyStatic_unicode_2 :: static  ('weeee')
+    r5 = 'weeee'
     r6 = builtins :: module
-    r7 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r7 = 'print'
     r8 = CPyObject_GetAttr(r6, r7)
     r9 = PyObject_CallFunctionObjArgs(r8, r5, 0)
 L3:
@@ -66,20 +66,20 @@ L1:
     if b goto L2 else goto L3 :: bool
 L2:
     r0 = builtins :: module
-    r1 = load_global CPyStatic_unicode_1 :: static  ('object')
+    r1 = 'object'
     r2 = CPyObject_GetAttr(r0, r1)
     r3 = PyObject_CallFunctionObjArgs(r2, 0)
     goto L4
 L3:
-    r4 = load_global CPyStatic_unicode_2 :: static  ('hi')
+    r4 = 'hi'
     r5 = PyObject_Str(r4)
 L4:
     goto L8
 L5: (handler for L1, L2, L3, L4)
     r6 = CPy_CatchError()
-    r7 = load_global CPyStatic_unicode_3 :: static  ('weeee')
+    r7 = 'weeee'
     r8 = builtins :: module
-    r9 = load_global CPyStatic_unicode_4 :: static  ('print')
+    r9 = 'print'
     r10 = CPyObject_GetAttr(r8, r9)
     r11 = PyObject_CallFunctionObjArgs(r10, r7, 0)
 L6:
@@ -129,30 +129,30 @@ def g():
     r27 :: bit
 L0:
 L1:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('a')
+    r0 = 'a'
     r1 = builtins :: module
-    r2 = load_global CPyStatic_unicode_2 :: static  ('print')
+    r2 = 'print'
     r3 = CPyObject_GetAttr(r1, r2)
     r4 = PyObject_CallFunctionObjArgs(r3, r0, 0)
 L2:
     r5 = builtins :: module
-    r6 = load_global CPyStatic_unicode_3 :: static  ('object')
+    r6 = 'object'
     r7 = CPyObject_GetAttr(r5, r6)
     r8 = PyObject_CallFunctionObjArgs(r7, 0)
     goto L8
 L3: (handler for L2)
     r9 = CPy_CatchError()
     r10 = builtins :: module
-    r11 = load_global CPyStatic_unicode_4 :: static  ('AttributeError')
+    r11 = 'AttributeError'
     r12 = CPyObject_GetAttr(r10, r11)
     r13 = CPy_ExceptionMatches(r12)
     if r13 goto L4 else goto L5 :: bool
 L4:
     r14 = CPy_GetExcValue()
     e = r14
-    r15 = load_global CPyStatic_unicode_5 :: static  ('b')
+    r15 = 'b'
     r16 = builtins :: module
-    r17 = load_global CPyStatic_unicode_2 :: static  ('print')
+    r17 = 'print'
     r18 = CPyObject_GetAttr(r16, r17)
     r19 = PyObject_CallFunctionObjArgs(r18, r15, e, 0)
     goto L6
@@ -170,9 +170,9 @@ L8:
     goto L12
 L9: (handler for L1, L6, L7, L8)
     r21 = CPy_CatchError()
-    r22 = load_global CPyStatic_unicode_6 :: static  ('weeee')
+    r22 = 'weeee'
     r23 = builtins :: module
-    r24 = load_global CPyStatic_unicode_2 :: static  ('print')
+    r24 = 'print'
     r25 = CPyObject_GetAttr(r23, r24)
     r26 = PyObject_CallFunctionObjArgs(r25, r22, 0)
 L10:
@@ -218,27 +218,27 @@ L1:
 L2: (handler for L1)
     r0 = CPy_CatchError()
     r1 = builtins :: module
-    r2 = load_global CPyStatic_unicode_1 :: static  ('KeyError')
+    r2 = 'KeyError'
     r3 = CPyObject_GetAttr(r1, r2)
     r4 = CPy_ExceptionMatches(r3)
     if r4 goto L3 else goto L4 :: bool
 L3:
-    r5 = load_global CPyStatic_unicode_2 :: static  ('weeee')
+    r5 = 'weeee'
     r6 = builtins :: module
-    r7 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r7 = 'print'
     r8 = CPyObject_GetAttr(r6, r7)
     r9 = PyObject_CallFunctionObjArgs(r8, r5, 0)
     goto L7
 L4:
     r10 = builtins :: module
-    r11 = load_global CPyStatic_unicode_4 :: static  ('IndexError')
+    r11 = 'IndexError'
     r12 = CPyObject_GetAttr(r10, r11)
     r13 = CPy_ExceptionMatches(r12)
     if r13 goto L5 else goto L6 :: bool
 L5:
-    r14 = load_global CPyStatic_unicode_5 :: static  ('yo')
+    r14 = 'yo'
     r15 = builtins :: module
-    r16 = load_global CPyStatic_unicode_3 :: static  ('print')
+    r16 = 'print'
     r17 = CPyObject_GetAttr(r15, r16)
     r18 = PyObject_CallFunctionObjArgs(r17, r14, 0)
     goto L7
@@ -279,9 +279,9 @@ L0:
 L1:
     if b goto L2 else goto L3 :: bool
 L2:
-    r0 = load_global CPyStatic_unicode_1 :: static  ('hi')
+    r0 = 'hi'
     r1 = builtins :: module
-    r2 = load_global CPyStatic_unicode_2 :: static  ('Exception')
+    r2 = 'Exception'
     r3 = CPyObject_GetAttr(r1, r2)
     r4 = PyObject_CallFunctionObjArgs(r3, r0, 0)
     CPy_Raise(r4)
@@ -296,9 +296,9 @@ L6: (handler for L1, L2, L3)
     r7 = CPy_CatchError()
     r6 = r7
 L7:
-    r8 = load_global CPyStatic_unicode_3 :: static  ('finally')
+    r8 = 'finally'
     r9 = builtins :: module
-    r10 = load_global CPyStatic_unicode_4 :: static  ('print')
+    r10 = 'print'
     r11 = CPyObject_GetAttr(r9, r10)
     r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
     if is_error(r6) goto L9 else goto L8
@@ -347,18 +347,18 @@ def foo(x):
 L0:
     r0 = PyObject_CallFunctionObjArgs(x, 0)
     r1 = PyObject_Type(r0)
-    r2 = load_global CPyStatic_unicode_3 :: static  ('__exit__')
+    r2 = '__exit__'
     r3 = CPyObject_GetAttr(r1, r2)
-    r4 = load_global CPyStatic_unicode_4 :: static  ('__enter__')
+    r4 = '__enter__'
     r5 = CPyObject_GetAttr(r1, r4)
     r6 = PyObject_CallFunctionObjArgs(r5, r0, 0)
     r7 = 1
 L1:
 L2:
     y = r6
-    r8 = load_global CPyStatic_unicode_5 :: static  ('hello')
+    r8 = 'hello'
     r9 = builtins :: module
-    r10 = load_global CPyStatic_unicode_6 :: static  ('print')
+    r10 = 'print'
     r11 = CPyObject_GetAttr(r9, r10)
     r12 = PyObject_CallFunctionObjArgs(r11, r8, 0)
     goto L8
@@ -415,3 +415,4 @@ L19:
     unreachable
 L20:
     return 1
+

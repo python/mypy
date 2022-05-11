@@ -45,9 +45,9 @@ def get_package_properties(package_id: str) -> ModuleProperties:
         package = importlib.import_module(package_id)
     except BaseException as e:
         raise InspectError(str(e)) from e
-    name = getattr(package, '__name__', package_id)
-    file = getattr(package, '__file__', None)
-    path = getattr(package, '__path__', None)  # type: Optional[List[str]]
+    name = getattr(package, "__name__", package_id)
+    file = getattr(package, "__file__", None)
+    path: Optional[List[str]] = getattr(package, "__path__", None)
     if not isinstance(path, list):
         path = None
     pkg_all = getattr(package, '__all__', None)
@@ -118,8 +118,8 @@ class ModuleInspect:
         self._start()
 
     def _start(self) -> None:
-        self.tasks = Queue()  # type: Queue[str]
-        self.results = Queue()  # type: Queue[Union[ModuleProperties, str]]
+        self.tasks: Queue[str] = Queue()
+        self.results: Queue[Union[ModuleProperties, str]] = Queue()
         self.proc = Process(target=worker, args=(self.tasks, self.results, sys.path))
         self.proc.start()
         self.counter = 0  # Number of successful roundtrips
@@ -138,7 +138,7 @@ class ModuleInspect:
         if res is None:
             # The process died; recover and report error.
             self._start()
-            raise InspectError('Process died when importing %r' % package_id)
+            raise InspectError(f'Process died when importing {package_id!r}')
         if isinstance(res, str):
             # Error importing module
             if self.counter > 0:

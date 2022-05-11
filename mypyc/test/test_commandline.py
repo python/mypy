@@ -47,8 +47,7 @@ class TestCommandLine(MypycDataSuite):
         out = b''
         try:
             # Compile program
-            cmd = subprocess.run([sys.executable,
-                                  os.path.join(base_path, 'scripts', 'mypyc')] + args,
+            cmd = subprocess.run([sys.executable, '-m', 'mypyc', *args],
                                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd='tmp')
             if 'ErrorOutput' in testcase.name or cmd.returncode != 0:
                 out += cmd.stdout
@@ -60,7 +59,7 @@ class TestCommandLine(MypycDataSuite):
                     cwd='tmp')
         finally:
             suffix = 'pyd' if sys.platform == 'win32' else 'so'
-            so_paths = glob.glob('tmp/**/*.{}'.format(suffix), recursive=True)
+            so_paths = glob.glob(f'tmp/**/*.{suffix}', recursive=True)
             for path in so_paths:
                 os.remove(path)
 

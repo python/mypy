@@ -25,8 +25,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageSlash]
 # cmd: mypy pkg/
@@ -38,8 +38,8 @@ undef
 undef
 import pkg.subpkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subpkg/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subpkg/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackage]
 # cmd: mypy dir
@@ -48,8 +48,8 @@ undef
 [file dir/subdir/b.py]
 undef
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageDuplicate]
 # cmd: mypy dir
@@ -58,8 +58,9 @@ undef
 [file dir/subdir/a.py]
 undef
 [out]
-dir/a.py: error: Duplicate module named 'a' (also at 'dir/subdir/a.py')
-dir/a.py: error: Are you missing an __init__.py?
+dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
+dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -71,21 +72,21 @@ import b
 undef
 import a
 [out]
-dir/a.py:1: error: Name 'undef' is not defined
-dir/subdir/b.py:1: error: Name 'undef' is not defined
+dir/a.py:1: error: Name "undef" is not defined
+dir/subdir/b.py:1: error: Name "undef" is not defined
 
 [case testCmdlinePackageContainingSubdir]
 # cmd: mypy pkg
 [file pkg/__init__.py]
 [file pkg/a.py]
 undef
-import a
+import pkg.a
 [file pkg/subdir/a.py]
 undef
 import pkg.a
 [out]
-pkg/a.py:1: error: Name 'undef' is not defined
-pkg/subdir/a.py:1: error: Name 'undef' is not defined
+pkg/a.py:1: error: Name "undef" is not defined
+pkg/subdir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineNonPackageContainingPackage]
 # cmd: mypy dir
@@ -96,8 +97,8 @@ import subpkg.a
 [file dir/subpkg/a.py]
 undef
 [out]
-dir/subpkg/a.py:1: error: Name 'undef' is not defined
-dir/a.py:1: error: Name 'undef' is not defined
+dir/subpkg/a.py:1: error: Name "undef" is not defined
+dir/a.py:1: error: Name "undef" is not defined
 
 [case testCmdlineInvalidPackageName]
 # cmd: mypy dir/sub.pkg/a.py
@@ -124,20 +125,9 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 [file two/mod/__init__.py]
 # type: ignore
 [out]
-two/mod/__init__.py: error: Duplicate module named 'mod' (also at 'one/mod/__init__.py')
-== Return code: 2
-
-[case promptsForgotInit]
-# cmd: mypy a.py one/mod/a.py
-[file one/__init__.py]
-# type: ignore
-[file a.py]
-# type: ignore
-[file one/mod/a.py]
-#type: ignore
-[out]
-one/mod/a.py: error: Duplicate module named 'a' (also at 'a.py')
-one/mod/a.py: error: Are you missing an __init__.py?
+two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
+two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testFlagsFile]
@@ -318,13 +308,13 @@ mypy.ini: [mypy-*]: Per-module sections should only specify per-module flags (py
 [file mypy.ini]
 \[mypy]
 mypy_path =
-    foo:bar
-    , baz
-[file foo/foo.pyi]
+    foo_dir:bar_dir
+    , baz_dir
+[file foo_dir/foo.pyi]
 def foo(x: int) -> str: ...
-[file bar/bar.pyi]
+[file bar_dir/bar.pyi]
 def bar(x: str) -> list: ...
-[file baz/baz.pyi]
+[file baz_dir/baz.pyi]
 def baz(x: list) -> dict: ...
 [file file.py]
 import no_stubs
@@ -334,8 +324,8 @@ from baz import baz
 baz(bar(foo(42)))
 baz(bar(foo('oof')))
 [out]
-file.py:1: error: Cannot find implementation or library stub for module named 'no_stubs'
-file.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+file.py:1: error: Cannot find implementation or library stub for module named "no_stubs"
+file.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int"
 
 [case testIgnoreErrorsConfig]
@@ -409,8 +399,8 @@ follow_imports = skip
 [file a.py]
 /  # No error reported
 [out]
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
@@ -425,10 +415,10 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: error: Import of 'a' ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
-main.py:2: note: Revealed type is 'Any'
-main.py:4: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
+main.py:3: error: Import of "a" ignored
+main.py:3: note: (Using --follow-imports=error, module not passed on command line)
+main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
 # cmd: mypy main.py
@@ -463,12 +453,12 @@ bla bla
 bla bla
 [out]
 normal.py:2: error: Unsupported operand types for + ("int" and "str")
-main.py:4: error: Import of 'error' ignored
+main.py:4: error: Import of "error" ignored
 main.py:4: note: (Using --follow-imports=error, module not passed on command line)
-main.py:5: note: Revealed type is 'builtins.int'
-main.py:6: note: Revealed type is 'builtins.int'
-main.py:7: note: Revealed type is 'Any'
-main.py:8: note: Revealed type is 'Any'
+main.py:5: note: Revealed type is "builtins.int"
+main.py:6: note: Revealed type is "builtins.int"
+main.py:7: note: Revealed type is "Any"
+main.py:8: note: Revealed type is "Any"
 
 [case testConfigFollowImportsInvalid]
 # cmd: mypy main.py
@@ -489,9 +479,9 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = False
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'missing'
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:2: note: Revealed type is 'Any'
+main.py:1: error: Cannot find implementation or library stub for module named "missing"
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main.py:2: note: Revealed type is "Any"
 
 [case testConfigSilentMissingImportsOn]
 # cmd: mypy main.py
@@ -502,7 +492,7 @@ reveal_type(missing.x)  # Expect Any
 \[mypy]
 ignore_missing_imports = True
 [out]
-main.py:2: note: Revealed type is 'Any'
+main.py:2: note: Revealed type is "Any"
 
 
 [case testFailedImportOnWrongCWD]
@@ -518,11 +508,11 @@ import missing
 [file main/grandparent.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'parent'
+main.py:1: error: Cannot find implementation or library stub for module named "parent"
 main.py:1: note: You may be running mypy in a subpackage, mypy should be run on the package root
-main.py:2: error: Cannot find implementation or library stub for module named 'grandparent'
-main.py:3: error: Cannot find implementation or library stub for module named 'missing'
-main.py:3: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:2: error: Cannot find implementation or library stub for module named "grandparent"
+main.py:3: error: Cannot find implementation or library stub for module named "missing"
+main.py:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testImportInParentButNoInit]
 # cmd: mypy main.py
@@ -532,8 +522,8 @@ import needs_init
 [file main/needs_init.py]
 [file main/__init__.py]
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'needs_init'
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
+main.py:1: error: Cannot find implementation or library stub for module named "needs_init"
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testConfigNoErrorForUnknownXFlagInSubsection]
 # cmd: mypy -c pass
@@ -550,15 +540,15 @@ undef
 [file c.d.pyi]
 whatever
 [out]
-c.d.pyi:1: error: Name 'whatever' is not defined
-a.b.py:1: error: Name 'undef' is not defined
+c.d.pyi:1: error: Name "whatever" is not defined
+a.b.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameOKFolder]
 # cmd: mypy my.folder
 [file my.folder/tst.py]
 undef
 [out]
-my.folder/tst.py:1: error: Name 'undef' is not defined
+my.folder/tst.py:1: error: Name "undef" is not defined
 
 [case testDotInFilenameNoImport]
 # cmd: mypy main.py
@@ -567,9 +557,18 @@ import a.b
 [file a.b.py]
 whatever
 [out]
-main.py:1: error: Cannot find implementation or library stub for module named 'a.b'
-main.py:1: note: See https://mypy.readthedocs.io/en/latest/running_mypy.html#missing-imports
-main.py:1: error: Cannot find implementation or library stub for module named 'a'
+main.py:1: error: Cannot find implementation or library stub for module named "a.b"
+main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+main.py:1: error: Cannot find implementation or library stub for module named "a"
+
+[case testPythonVersionWrongFormatPyProjectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.10
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+== Return code: 0
 
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
@@ -645,19 +644,15 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is 'builtins.int'
-reveal_type(a**1) # N: Revealed type is 'builtins.int'
-reveal_type(a**2) # N: Revealed type is 'builtins.int'
-reveal_type(a**-0) # N: Revealed type is 'builtins.int'
-reveal_type(a**-1) # N: Revealed type is 'builtins.float'
-reveal_type(a**(-2)) # N: Revealed type is 'builtins.float'
-reveal_type(a**b) # N: Revealed type is 'Any'
-reveal_type(a.__pow__(2)) # N: Revealed type is 'builtins.int'
-reveal_type(a.__pow__(a)) # N: Revealed type is 'Any'
-a.__pow__() # E: All overload variants of "__pow__" of "int" require at least one argument \
-            # N: Possible overload variants: \
-            # N:     def __pow__(self, Literal[2], Optional[int] = ...) -> int \
-            # N:     def __pow__(self, int, Optional[int] = ...) -> Any
+reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**1) # N: Revealed type is "builtins.int"
+reveal_type(a**2) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-1) # N: Revealed type is "builtins.float"
+reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
+reveal_type(a**b) # N: Revealed type is "Any"
+reveal_type(a.__pow__(2)) # N: Revealed type is "builtins.int"
+reveal_type(a.__pow__(a)) # N: Revealed type is "Any"
 
 [case testDisallowAnyGenericsBuiltinCollections]
 # cmd: mypy m.py
@@ -765,6 +760,9 @@ def foo(
 [out]
 a.py:1: error: unexpected EOF while parsing
 == Return code: 2
+[out version>=3.10]
+a.py:1: error: '(' was never closed
+== Return code: 2
 
 [case testParseErrorAnnots]
 # cmd: mypy a.py
@@ -800,7 +798,7 @@ c.py:2: error: Argument 1 to "bar" has incompatible type "str"; expected "int"
 [case testSrcPEP420Packages]
 # cmd: mypy -p anamespace --namespace-packages
 [file mypy.ini]
-\[mypy]]
+\[mypy]
 mypy_path = src
 [file src/setup.cfg]
 [file src/anamespace/foo/__init__.py]
@@ -841,7 +839,7 @@ follow_imports_for_stubs = True
 import math
 math.frobnicate()
 [out]
-main.py:1: error: Import of 'math' ignored
+main.py:1: error: Import of "math" ignored
 main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 
 [case testFollowImportStubs2]
@@ -950,12 +948,18 @@ fail
 [file foo/lol.py]
 fail
 [out]
-foo/lol.py:1: error: Name 'fail' is not defined
-emarg/foo.py:1: error: Name 'fail' is not defined
-emarg/hatch/villip/mankangulisk.py:1: error: Name 'fail' is not defined
+foo/lol.py:1: error: Name "fail" is not defined
+emarg/foo.py:1: error: Name "fail" is not defined
+emarg/hatch/villip/mankangulisk.py:1: error: Name "fail" is not defined
 
 [case testPackageRootEmpty]
-# cmd: mypy --package-root= a/b/c.py main.py
+# cmd: mypy --no-namespace-packages --package-root= a/b/c.py main.py
+[file a/b/c.py]
+[file main.py]
+import a.b.c
+
+[case testPackageRootEmptyNamespacePackage]
+# cmd: mypy --namespace-packages --package-root= a/b/c.py main.py
 [file a/b/c.py]
 [file main.py]
 import a.b.c
@@ -999,8 +1003,8 @@ fail
 [file b.py]
 fail
 [out]
-b.py:1: error: Name 'fail' is not defined
-a.py:1: error: Name 'fail' is not defined
+b.py:1: error: Name "fail" is not defined
+a.py:1: error: Name "fail" is not defined
 
 [case testIniFilesGlobbing]
 # cmd: mypy
@@ -1012,8 +1016,8 @@ fail
 [file c.py]
 fail
 [out]
-a/b.py:1: error: Name 'fail' is not defined
-c.py:1: error: Name 'fail' is not defined
+a/b.py:1: error: Name "fail" is not defined
+c.py:1: error: Name "fail" is not defined
 
 [case testIniFilesCmdlineOverridesConfig]
 # cmd: mypy override.py
@@ -1049,7 +1053,7 @@ y = []  # type: List[int]
 x = y
 [out]
 bad.py:4: error: Incompatible types in assignment (expression has type "List[int]", variable has type "List[float]")
-bad.py:4: note: "List" is invariant -- see http://mypy.readthedocs.io/en/latest/common_issues.html#variance
+bad.py:4: note: "List" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance
 bad.py:4: note: Consider using "Sequence" instead, which is covariant
 Found 1 error in 1 file (checked 1 source file)
 
@@ -1149,7 +1153,9 @@ import foo.bar
 [file src/foo/bar.py]
 1+'x'
 [out]
-src/foo/bar.py: error: Source file found twice under different module names: 'src.foo.bar' and 'foo.bar'
+src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
+src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewhere, b) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -1248,6 +1254,14 @@ x: str = 0
 pkg/x.py:1: error: invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
+[out version>=3.10]
+pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
+[out version>=3.10.3]
+pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
 
 [case testCmdlinePackageAndFile]
 # cmd: mypy -p pkg file
@@ -1282,3 +1296,106 @@ y = 0  # type: str
 [out]
 pkg.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
+[case testCmdlineNonInteractiveWithoutInstallTypes]
+# cmd: mypy --non-interactive -m pkg
+[out]
+error: --non-interactive is only supported with --install-types
+== Return code: 2
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineNonInteractiveInstallTypesNothingToDoNoError]
+# cmd: mypy --install-types --non-interactive -m pkg
+[file pkg.py]
+1 + 2
+[out]
+
+[case testCmdlineNonInteractiveInstallTypesNoSitePackages]
+# cmd: mypy --install-types --non-interactive --no-site-packages -m pkg
+[out]
+error: --install-types not supported without python executable or site packages
+== Return code: 2
+
+[case testCmdlineInteractiveInstallTypesNothingToDo]
+# cmd: mypy --install-types -m pkg
+[file pkg.py]
+1()
+[out]
+pkg.py:1: error: "int" not callable
+
+[case testCmdlineExclude]
+# cmd: mypy --exclude abc .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineMultipleExclude]
+# cmd: mypy --exclude abc --exclude b/ .
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = abc
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+b/bpkg.py:1: error: "int" not callable
+
+[case testCmdlineCfgMultipleExclude]
+# cmd: mypy .
+[file mypy.ini]
+\[mypy]
+exclude = (?x)(
+    ^abc/
+    |^b/
+  )
+[file abc/apkg.py]
+1()
+[file b/bpkg.py]
+1()
+[file c/cpkg.py]
+1()
+[out]
+c/cpkg.py:1: error: "int" not callable
+
+
+[case testCmdlineTimingStats]
+# cmd: mypy --timing-stats timing.txt .
+[file b/__init__.py]
+[file b/c.py]
+class C: pass
+[outfile-re timing.txt]
+.*
+b \d+
+b\.c \d+
+.*
+
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass

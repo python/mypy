@@ -26,6 +26,15 @@ CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
+    if ((uintptr_t)ptr > PY_SSIZE_T_MAX) {
+        PyObject *object = PyLong_FromVoidPtr(ptr);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return CPyTagged_FromSsize_t((Py_ssize_t)ptr);
+    }
+}
+
 CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
@@ -190,16 +199,17 @@ CPyTagged CPyTagged_Multiply(CPyTagged left, CPyTagged right) {
 }
 
 CPyTagged CPyTagged_FloorDivide(CPyTagged left, CPyTagged right) {
-    if (CPyTagged_CheckShort(left) && CPyTagged_CheckShort(right)
+    if (CPyTagged_CheckShort(left)
+        && CPyTagged_CheckShort(right)
         && !CPyTagged_MaybeFloorDivideFault(left, right)) {
-        Py_ssize_t result = ((Py_ssize_t)left / CPyTagged_ShortAsSsize_t(right)) & ~1;
+        Py_ssize_t result = CPyTagged_ShortAsSsize_t(left) / CPyTagged_ShortAsSsize_t(right);
         if (((Py_ssize_t)left < 0) != (((Py_ssize_t)right) < 0)) {
-            if (result / 2 * right != left) {
+            if (result * right != left) {
                 // Round down
-                result -= 2;
+                result--;
             }
         }
-        return result;
+        return result << 1;
     }
     PyObject *left_obj = CPyTagged_AsObject(left);
     PyObject *right_obj = CPyTagged_AsObject(right);

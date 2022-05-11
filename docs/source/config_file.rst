@@ -4,8 +4,8 @@ The mypy configuration file
 ===========================
 
 Mypy supports reading configuration settings from a file.  By default
-it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``setup.cfg`` in
-the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
+it uses the file ``mypy.ini`` with a fallback to ``.mypy.ini``, then ``pyproject.toml``,
+then ``setup.cfg`` in the current directory, then ``$XDG_CONFIG_HOME/mypy/config``, then
 ``~/.config/mypy/config``, and finally ``.mypy.ini`` in the user home directory
 if none of them are found; the :option:`--config-file <mypy --config-file>` command-line flag can be used
 to read a different file instead (see :ref:`config-file-flag`).
@@ -13,9 +13,7 @@ to read a different file instead (see :ref:`config-file-flag`).
 It is important to understand that there is no merging of configuration
 files, as it would lead to ambiguity.  The :option:`--config-file <mypy --config-file>` flag
 has the highest precedence and must be correct; otherwise mypy will report
-an error and exit.  Without command line option, mypy will look for defaults,
-but will use only one of them.  The first one to read is ``mypy.ini``,
-then ``.mypy.ini``, and finally ``setup.cfg``.
+an error and exit.  Without command line option, mypy will look for configuration files in the above mentioned order.
 
 Most flags correspond closely to :ref:`command-line flags
 <command-line>` but there are some differences in flag names and some
@@ -35,7 +33,7 @@ section names in square brackets and flag settings of the form
 `NAME = VALUE`. Comments start with ``#`` characters.
 
 - A section named ``[mypy]`` must be present.  This specifies
-  the global flags. The ``setup.cfg`` file is an exception to this.
+  the global flags.
 
 - Additional sections named ``[mypy-PATTERN1,PATTERN2,...]`` may be
   present, where ``PATTERN1``, ``PATTERN2``, etc., are comma-separated
@@ -177,6 +175,11 @@ section of the command line docs.
     Multiple paths are always separated with a ``:`` or ``,`` regardless of the platform.
     User home directory and environment variables will be expanded.
 
+    Relative paths are treated relative to the working directory of the mypy command,
+    not the config file.
+    Use the ``MYPY_CONFIG_FILE_DIR`` environment variable to refer to paths relative to
+    the config file (e.g. ``mypy_path = $MYPY_CONFIG_FILE_DIR/src``).
+
     This option may only be set in the global section (``[mypy]``).
 
     **Note:** On Windows, use UNC paths to avoid using ``:`` (e.g. ``\\127.0.0.1\X$\MyDir`` where ``X`` is the drive letter).
@@ -192,6 +195,66 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: exclude
+
+    :type: regular expression
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes (``/``) as directory separators on all platforms.
+
+    .. code-block:: ini
+
+      [mypy]
+      exclude = (?x)(
+          ^one\.py$    # files named "one.py"
+          | two\.pyi$  # or files ending with "two.pyi"
+          | ^three\.   # or files starting with "three."
+        )
+
+    Crafting a single regular expression that excludes multiple files while remaining
+    human-readable can be a challenge. The above example demonstrates one approach.
+    ``(?x)`` enables the ``VERBOSE`` flag for the subsequent regular expression, which
+    `ignores most whitespace and supports comments`__. The above is equivalent to:
+    ``(^one\.py$|two\.pyi$|^three\.)``.
+
+    .. __: https://docs.python.org/3/library/re.html#re.X
+
+    For more details, see :option:`--exclude <mypy --exclude>`.
+
+    This option may only be set in the global section (``[mypy]``).
+
+    .. note::
+
+       Note that the TOML equivalent differs slightly. It can be either a single string
+       (including a multi-line string) -- which is treated as a single regular
+       expression -- or an array of such strings. The following TOML examples are
+       equivalent to the above INI example.
+
+       Array of strings:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = [
+              "^one\\.py$",  # TOML's double-quoted strings require escaping backslashes
+              'two\.pyi$',  # but TOML's single-quoted strings do not
+              '^three\.',
+          ]
+
+       A single, multi-line string:
+
+       .. code-block:: toml
+
+          [tool.mypy]
+          exclude = '''(?x)(
+              ^one\.py$    # files named "one.py"
+              | two\.pyi$  # or files ending with "two.pyi"
+              | ^three\.   # or files starting with "three."
+          )'''  # TOML's single-quoted strings do not require escaping backslashes
+
+       See :ref:`using-a-pyproject-toml`.
+
 .. confval:: namespace_packages
 
     :type: boolean
@@ -199,6 +262,19 @@ section of the command line docs.
 
     Enables :pep:`420` style namespace packages.  See the
     corresponding flag :option:`--namespace-packages <mypy --namespace-packages>` for more information.
+
+    This option may only be set in the global section (``[mypy]``).
+
+.. confval:: explicit_package_bases
+
+    :type: boolean
+    :default: False
+
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :confval:`namespace_packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
 
     This option may only be set in the global section (``[mypy]``).
 
@@ -226,6 +302,10 @@ section of the command line docs.
     ``error``.  For explanations see the discussion for the
     :option:`--follow-imports <mypy --follow-imports>` command line flag.
 
+    Using this option in a per-module section (potentially with a wildcard,
+    as described at the top of this page) is a good way to prevent mypy from
+    checking portions of your code.
+
     If this option is used in a per-module section, the module name should
     match the name of the *imported* module, not the module containing the
     import statement.
@@ -244,6 +324,10 @@ section of the command line docs.
 
     Used in conjunction with :confval:`follow_imports=error <follow_imports>`, this can be used
     to make any use of a particular ``typeshed`` module an error.
+
+    .. note::
+
+         This is not supported by the mypy daemon.
 
 .. confval:: python_executable
 
@@ -287,7 +371,7 @@ Platform configuration
     :type: string
 
     Specifies the Python version used to parse and check the target
-    program.  The string should be in the format ``DIGIT.DIGIT`` --
+    program.  The string should be in the format ``MAJOR.MINOR`` --
     for example ``2.7``.  The default is the version of the Python
     interpreter used to run mypy.
 
@@ -531,6 +615,24 @@ section of the command line docs.
 
     Allows variables to be redefined with an arbitrary type, as long as the redefinition
     is in the same block and nesting level as the original definition.
+    Example where this can be useful:
+
+    .. code-block:: python
+
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
+           items = [item.split() for item in items]
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. confval:: local_partial_types
 
@@ -538,12 +640,21 @@ section of the command line docs.
     :default: False
 
     Disallows inferring variable type for ``None`` from two assignments in different scopes.
+    This is always implicitly enabled when using the :ref:`mypy daemon <mypy_daemon>`.
 
 .. confval:: disable_error_code
 
     :type: comma-separated list of strings
 
     Allows disabling one or multiple error codes globally.
+
+.. confval:: enable_error_code
+
+    :type: comma-separated list of strings
+
+    Allows enabling one or multiple error codes globally.
+
+    Note: This option will override disabled error codes from the disable_error_code option.
 
 .. confval:: implicit_reexport
 
@@ -565,6 +676,13 @@ section of the command line docs.
        from foo import bar
        __all__ = ['bar']
 
+.. confval:: strict_concatenate
+
+    :type: boolean
+    :default: False
+
+    Make arguments prepended via ``Concatenate`` be truly positional-only.
+
 .. confval:: strict_equality
 
     :type: boolean
@@ -572,6 +690,18 @@ section of the command line docs.
 
    Prohibit equality checks, identity checks, and container checks between
    non-overlapping types.
+
+.. confval:: strict
+
+    :type: boolean
+    :default: False
+
+   Enable all optional error checking flags.  You can see the list of
+   flags enabled by strict mode in the full :option:`mypy --help`
+   output.
+
+   Note: the exact list of flags enabled by :confval:`strict` may
+   change over time.
 
 
 Configuring error messages
@@ -764,7 +894,9 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: html_report / xslt_html_report
 
@@ -772,7 +904,9 @@ format into the specified directory.
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: linecount_report
 
@@ -802,7 +936,9 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. confval:: xml_report
 
@@ -810,7 +946,9 @@ format into the specified directory.
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 
 Miscellaneous
@@ -850,5 +988,90 @@ These options may only be set in the global section (``[mypy]``).
 
     Controls how much debug output will be generated.  Higher numbers are more verbose.
 
+
+.. _using-a-pyproject-toml:
+
+Using a pyproject.toml file
+***************************
+
+Instead of using a ``mypy.ini`` file, a ``pyproject.toml`` file (as specified by
+`PEP 518`_) may be used instead. A few notes on doing so:
+
+* The ``[mypy]`` section should have ``tool.`` prepended to its name:
+
+  * I.e., ``[mypy]`` would become ``[tool.mypy]``
+
+* The module specific sections should be moved into ``[[tool.mypy.overrides]]`` sections:
+
+  * For example, ``[mypy-packagename]`` would become:
+
+.. code-block:: toml
+
+  [[tool.mypy.overrides]]
+  module = 'packagename'
+  ...
+
+* Multi-module specific sections can be moved into a single ``[[tool.mypy.overrides]]`` section with a
+  module property set to an array of modules:
+
+  * For example, ``[mypy-packagename,packagename2]`` would become:
+
+.. code-block:: toml
+
+  [[tool.mypy.overrides]]
+  module = [
+      'packagename',
+      'packagename2'
+  ]
+  ...
+
+* The following care should be given to values in the ``pyproject.toml`` files as compared to ``ini`` files:
+
+  * Strings must be wrapped in double quotes, or single quotes if the string contains special characters
+
+  * Boolean values should be all lower case
+
+Please see the `TOML Documentation`_ for more details and information on
+what is allowed in a ``toml`` file. See `PEP 518`_ for more information on the layout
+and structure of the ``pyproject.toml`` file.
+
+Example ``pyproject.toml``
+**************************
+
+Here is an example of a ``pyproject.toml`` file. To use this config file, place it at the root
+of your repo (or append it to the end of an existing ``pyproject.toml`` file) and run mypy.
+
+.. code-block:: toml
+
+    # mypy global options:
+
+    [tool.mypy]
+    python_version = "2.7"
+    warn_return_any = true
+    warn_unused_configs = true
+    exclude = [
+        '^file1\.py$',  # TOML literal string (single-quotes, no escaping necessary)
+        "^file2\\.py$",  # TOML basic string (double-quotes, backslash and other characters need escaping)
+    ]
+
+    # mypy per-module options:
+
+    [[tool.mypy.overrides]]
+    module = "mycode.foo.*"
+    disallow_untyped_defs = true
+
+    [[tool.mypy.overrides]]
+    module = "mycode.bar"
+    warn_return_any = false
+
+    [[tool.mypy.overrides]]
+    module = [
+        "somelibrary",
+        "some_other_library"
+    ]
+    ignore_missing_imports = true
+
 .. _lxml: https://pypi.org/project/lxml/
 .. _SQLite: https://www.sqlite.org/
+.. _PEP 518: https://www.python.org/dev/peps/pep-0518/
+.. _TOML Documentation: https://toml.io/

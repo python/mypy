@@ -1,17 +1,19 @@
-from typing import Dict, List
+from contextlib import contextmanager
+from typing import Dict, Iterator, List, Set
 from typing_extensions import Final
 
 from mypy.nodes import (
     Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
-    WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, StarExpr, ImportFrom,
-    MemberExpr, IndexExpr, Import, ClassDef
+    WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, MatchStmt, StarExpr,
+    ImportFrom, MemberExpr, IndexExpr, Import, ImportAll, ClassDef
 )
+from mypy.patterns import AsPattern
 from mypy.traverser import TraverserVisitor
 
 # Scope kinds
-FILE = 0  # type: Final
-FUNCTION = 1  # type: Final
-CLASS = 2  # type: Final
+FILE: Final = 0
+FUNCTION: Final = 1
+CLASS: Final = 2
 
 
 class VariableRenameVisitor(TraverserVisitor):
@@ -53,20 +55,20 @@ class VariableRenameVisitor(TraverserVisitor):
         # Number of surrounding loop statements
         self.loop_depth = 0
         # Map block id to loop depth.
-        self.block_loop_depth = {}  # type: Dict[int, int]
+        self.block_loop_depth: Dict[int, int] = {}
         # Stack of block ids being processed.
-        self.blocks = []  # type: List[int]
+        self.blocks: List[int] = []
         # List of scopes; each scope maps short (unqualified) name to block id.
-        self.var_blocks = []  # type: List[Dict[str, int]]
+        self.var_blocks: List[Dict[str, int]] = []
 
         # References to variables that we may need to rename. List of
         # scopes; each scope is a mapping from name to list of collections
         # of names that refer to the same logical variable.
-        self.refs = []  # type: List[Dict[str, List[List[NameExpr]]]]
+        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
         # Number of reads of the most recent definition of a variable (per scope)
-        self.num_reads = []  # type: List[Dict[str, int]]
+        self.num_reads: List[Dict[str, int]] = []
         # Kinds of nested scopes (FILE, FUNCTION or CLASS)
-        self.scope_kinds = []  # type: List[int]
+        self.scope_kinds: List[int] = []
 
     def visit_mypy_file(self, file_node: MypyFile) -> None:
         """Rename variables within a file.
@@ -74,61 +76,47 @@ class VariableRenameVisitor(TraverserVisitor):
         This is the main entry point to this class.
         """
         self.clear()
-        self.enter_scope(FILE)
-        self.enter_block()
-
-        for d in file_node.defs:
-            d.accept(self)
-
-        self.leave_block()
-        self.leave_scope()
+        with self.enter_scope(FILE), self.enter_block():
+            for d in file_node.defs:
+                d.accept(self)
 
     def visit_func_def(self, fdef: FuncDef) -> None:
         # Conservatively do not allow variable defined before a function to
         # be redefined later, since function could refer to either definition.
         self.reject_redefinition_of_vars_in_scope()
 
-        self.enter_scope(FUNCTION)
-        self.enter_block()
+        with self.enter_scope(FUNCTION), self.enter_block():
+            for arg in fdef.arguments:
+                name = arg.variable.name
+                # 'self' can't be redefined since it's special as it allows definition of
+                # attributes. 'cls' can't be used to define attributes so we can ignore it.
+                can_be_redefined = name != 'self'  # TODO: Proper check
+                self.record_assignment(arg.variable.name, can_be_redefined)
+                self.handle_arg(name)
 
-        for arg in fdef.arguments:
-            name = arg.variable.name
-            # 'self' can't be redefined since it's special as it allows definition of
-            # attributes. 'cls' can't be used to define attributes so we can ignore it.
-            can_be_redefined = name != 'self'  # TODO: Proper check
-            self.record_assignment(arg.variable.name, can_be_redefined)
-            self.handle_arg(name)
-
-        for stmt in fdef.body.body:
-            stmt.accept(self)
-
-        self.leave_block()
-        self.leave_scope()
+            for stmt in fdef.body.body:
+                stmt.accept(self)
 
     def visit_class_def(self, cdef: ClassDef) -> None:
         self.reject_redefinition_of_vars_in_scope()
-        self.enter_scope(CLASS)
-        super().visit_class_def(cdef)
-        self.leave_scope()
+        with self.enter_scope(CLASS):
+            super().visit_class_def(cdef)
 
     def visit_block(self, block: Block) -> None:
-        self.enter_block()
-        super().visit_block(block)
-        self.leave_block()
+        with self.enter_block():
+            super().visit_block(block)
 
     def visit_while_stmt(self, stmt: WhileStmt) -> None:
-        self.enter_loop()
-        super().visit_while_stmt(stmt)
-        self.leave_loop()
+        with self.enter_loop():
+            super().visit_while_stmt(stmt)
 
     def visit_for_stmt(self, stmt: ForStmt) -> None:
         stmt.expr.accept(self)
         self.analyze_lvalue(stmt.index, True)
         # Also analyze as non-lvalue so that every for loop index variable is assumed to be read.
         stmt.index.accept(self)
-        self.enter_loop()
-        stmt.body.accept(self)
-        self.leave_loop()
+        with self.enter_loop():
+            stmt.body.accept(self)
         if stmt.else_body:
             stmt.else_body.accept(self)
 
@@ -142,9 +130,8 @@ class VariableRenameVisitor(TraverserVisitor):
         # Variables defined by a try statement get special treatment in the
         # type checker which allows them to be always redefined, so no need to
         # do renaming here.
-        self.enter_try()
-        super().visit_try_stmt(stmt)
-        self.leave_try()
+        with self.enter_try():
+            super().visit_try_stmt(stmt)
 
     def visit_with_stmt(self, stmt: WithStmt) -> None:
         for expr in stmt.expr:
@@ -172,6 +159,21 @@ class VariableRenameVisitor(TraverserVisitor):
         s.rvalue.accept(self)
         for lvalue in s.lvalues:
             self.analyze_lvalue(lvalue)
+
+    def visit_match_stmt(self, s: MatchStmt) -> None:
+        for i in range(len(s.patterns)):
+            with self.enter_block():
+                s.patterns[i].accept(self)
+                guard = s.guards[i]
+                if guard is not None:
+                    guard.accept(self)
+                # We already entered a block, so visit this block's statements directly
+                for stmt in s.bodies[i].body:
+                    stmt.accept(self)
+
+    def visit_capture_pattern(self, p: AsPattern) -> None:
+        if p.name is not None:
+            self.analyze_lvalue(p.name)
 
     def analyze_lvalue(self, lvalue: Lvalue, is_nested: bool = False) -> None:
         """Process assignment; in particular, keep track of (re)defined names.
@@ -260,14 +262,8 @@ class VariableRenameVisitor(TraverserVisitor):
                 # as it will be publicly visible outside the module.
                 to_rename = refs[:-1]
             for i, item in enumerate(to_rename):
-                self.rename_refs(item, i)
+                rename_refs(item, i)
         self.refs.pop()
-
-    def rename_refs(self, names: List[NameExpr], index: int) -> None:
-        name = names[0].name
-        new_name = name + "'" * (index + 1)
-        for expr in names:
-            expr.name = new_name
 
     # Helpers for determining which assignments define new variables
 
@@ -275,40 +271,48 @@ class VariableRenameVisitor(TraverserVisitor):
         self.blocks = []
         self.var_blocks = []
 
-    def enter_block(self) -> None:
+    @contextmanager
+    def enter_block(self) -> Iterator[None]:
         self.block_id += 1
         self.blocks.append(self.block_id)
         self.block_loop_depth[self.block_id] = self.loop_depth
+        try:
+            yield
+        finally:
+            self.blocks.pop()
 
-    def leave_block(self) -> None:
-        self.blocks.pop()
-
-    def enter_try(self) -> None:
+    @contextmanager
+    def enter_try(self) -> Iterator[None]:
         self.disallow_redef_depth += 1
+        try:
+            yield
+        finally:
+            self.disallow_redef_depth -= 1
 
-    def leave_try(self) -> None:
-        self.disallow_redef_depth -= 1
-
-    def enter_loop(self) -> None:
+    @contextmanager
+    def enter_loop(self) -> Iterator[None]:
         self.loop_depth += 1
-
-    def leave_loop(self) -> None:
-        self.loop_depth -= 1
+        try:
+            yield
+        finally:
+            self.loop_depth -= 1
 
     def current_block(self) -> int:
         return self.blocks[-1]
 
-    def enter_scope(self, kind: int) -> None:
+    @contextmanager
+    def enter_scope(self, kind: int) -> Iterator[None]:
         self.var_blocks.append({})
         self.refs.append({})
         self.num_reads.append({})
         self.scope_kinds.append(kind)
-
-    def leave_scope(self) -> None:
-        self.flush_refs()
-        self.var_blocks.pop()
-        self.num_reads.pop()
-        self.scope_kinds.pop()
+        try:
+            yield
+        finally:
+            self.flush_refs()
+            self.var_blocks.pop()
+            self.num_reads.pop()
+            self.scope_kinds.pop()
 
     def is_nested(self) -> int:
         return len(self.var_blocks) > 1
@@ -334,7 +338,7 @@ class VariableRenameVisitor(TraverserVisitor):
         """Reject redefinition of variables in the innermost loop.
 
         If there is an early exit from a loop, there may be ambiguity about which
-        value may escpae the loop. Example where this matters:
+        value may escape the loop. Example where this matters:
 
           while f():
               x = 0
@@ -382,3 +386,162 @@ class VariableRenameVisitor(TraverserVisitor):
         else:
             # Assigns to an existing variable.
             return False
+
+
+class LimitedVariableRenameVisitor(TraverserVisitor):
+    """Perform some limited variable renaming in with statements.
+
+    This allows reusing a variable in multiple with statements with
+    different types. For example, the two instances of 'x' can have
+    incompatible types:
+
+       with C() as x:
+           f(x)
+       with D() as x:
+           g(x)
+
+    The above code gets renamed conceptually into this (not valid Python!):
+
+       with C() as x':
+           f(x')
+       with D() as x:
+           g(x)
+
+    If there's a reference to a variable defined in 'with' outside the
+    statement, or if there's any trickiness around variable visibility
+    (e.g. function definitions), we give up and won't perform renaming.
+
+    The main use case is to allow binding both readable and writable
+    binary files into the same variable. These have different types:
+
+        with open(fnam, 'rb') as f: ...
+        with open(fnam, 'wb') as f: ...
+    """
+
+    def __init__(self) -> None:
+        # Short names of variables bound in with statements using "as"
+        # in a surrounding scope
+        self.bound_vars: List[str] = []
+        # Stack of names that can't be safely renamed, per scope ('*' means that
+        # no names can be renamed)
+        self.skipped: List[Set[str]] = []
+        # References to variables that we may need to rename. Stack of
+        # scopes; each scope is a mapping from name to list of collections
+        # of names that refer to the same logical variable.
+        self.refs: List[Dict[str, List[List[NameExpr]]]] = []
+
+    def visit_mypy_file(self, file_node: MypyFile) -> None:
+        """Rename variables within a file.
+
+        This is the main entry point to this class.
+        """
+        with self.enter_scope():
+            for d in file_node.defs:
+                d.accept(self)
+
+    def visit_func_def(self, fdef: FuncDef) -> None:
+        self.reject_redefinition_of_vars_in_scope()
+        with self.enter_scope():
+            for arg in fdef.arguments:
+                self.record_skipped(arg.variable.name)
+            super().visit_func_def(fdef)
+
+    def visit_class_def(self, cdef: ClassDef) -> None:
+        self.reject_redefinition_of_vars_in_scope()
+        with self.enter_scope():
+            super().visit_class_def(cdef)
+
+    def visit_with_stmt(self, stmt: WithStmt) -> None:
+        for expr in stmt.expr:
+            expr.accept(self)
+        old_len = len(self.bound_vars)
+        for target in stmt.target:
+            if target is not None:
+                self.analyze_lvalue(target)
+        for target in stmt.target:
+            if target:
+                target.accept(self)
+        stmt.body.accept(self)
+
+        while len(self.bound_vars) > old_len:
+            self.bound_vars.pop()
+
+    def analyze_lvalue(self, lvalue: Lvalue) -> None:
+        if isinstance(lvalue, NameExpr):
+            name = lvalue.name
+            if name in self.bound_vars:
+                # Name bound in a surrounding with statement, so it can be renamed
+                self.visit_name_expr(lvalue)
+            else:
+                var_info = self.refs[-1]
+                if name not in var_info:
+                    var_info[name] = []
+                var_info[name].append([])
+                self.bound_vars.append(name)
+        elif isinstance(lvalue, (ListExpr, TupleExpr)):
+            for item in lvalue.items:
+                self.analyze_lvalue(item)
+        elif isinstance(lvalue, MemberExpr):
+            lvalue.expr.accept(self)
+        elif isinstance(lvalue, IndexExpr):
+            lvalue.base.accept(self)
+            lvalue.index.accept(self)
+        elif isinstance(lvalue, StarExpr):
+            self.analyze_lvalue(lvalue.expr)
+
+    def visit_import(self, imp: Import) -> None:
+        # We don't support renaming imports
+        for id, as_id in imp.ids:
+            self.record_skipped(as_id or id)
+
+    def visit_import_from(self, imp: ImportFrom) -> None:
+        # We don't support renaming imports
+        for id, as_id in imp.names:
+            self.record_skipped(as_id or id)
+
+    def visit_import_all(self, imp: ImportAll) -> None:
+        # Give up, since we don't know all imported names yet
+        self.reject_redefinition_of_vars_in_scope()
+
+    def visit_name_expr(self, expr: NameExpr) -> None:
+        name = expr.name
+        if name in self.bound_vars:
+            # Record reference so that it can be renamed later
+            for scope in reversed(self.refs):
+                if name in scope:
+                    scope[name][-1].append(expr)
+        else:
+            self.record_skipped(name)
+
+    @contextmanager
+    def enter_scope(self) -> Iterator[None]:
+        self.skipped.append(set())
+        self.refs.append({})
+        yield None
+        self.flush_refs()
+
+    def reject_redefinition_of_vars_in_scope(self) -> None:
+        self.record_skipped('*')
+
+    def record_skipped(self, name: str) -> None:
+        self.skipped[-1].add(name)
+
+    def flush_refs(self) -> None:
+        ref_dict = self.refs.pop()
+        skipped = self.skipped.pop()
+        if '*' not in skipped:
+            for name, refs in ref_dict.items():
+                if len(refs) <= 1 or name in skipped:
+                    continue
+                # At module top level we must not rename the final definition,
+                # as it may be publicly visible
+                to_rename = refs[:-1]
+                for i, item in enumerate(to_rename):
+                    rename_refs(item, i)
+
+
+def rename_refs(names: List[NameExpr], index: int) -> None:
+    name = names[0].name
+    new_name = name + "'" * (index + 1)
+    for expr in names:
+        expr.name = new_name

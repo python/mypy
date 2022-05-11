@@ -8,7 +8,7 @@ def f(d):
     r0, r1 :: object
     r2 :: bool
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = CPyDict_GetItem(d, r0)
     r2 = unbox(bool, r1)
     return r2
@@ -24,7 +24,7 @@ def f(d):
     r2 :: int32
     r3 :: bit
 L0:
-    r0 = box(short_int, 0)
+    r0 = object 0
     r1 = box(bool, 0)
     r2 = CPyDict_SetItem(d, r0, r1)
     r3 = r2 >= 0 :: signed
@@ -34,6 +34,19 @@ L0:
 from typing import Dict
 def f() -> None:
     d = {}  # type: Dict[bool, int]
+[out]
+def f():
+    r0, d :: dict
+L0:
+    r0 = PyDict_New()
+    d = r0
+    return 1
+
+[case testNewEmptyDictViaFunc]
+from typing import Dict
+def f() -> None:
+    d: Dict[bool, int] = dict()
+
 [out]
 def f():
     r0, d :: dict
@@ -52,9 +65,9 @@ def f(x):
     r1, r2 :: object
     r3, d :: dict
 L0:
-    r0 = load_global CPyStatic_unicode_1 :: static
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
+    r0 = ''
+    r1 = object 1
+    r2 = object 2
     r3 = CPyDict_Build(2, r1, r2, r0, x)
     d = r3
     return 1
@@ -74,7 +87,7 @@ def f(d):
     r2 :: bit
     r3 :: bool
 L0:
-    r0 = box(short_int, 8)
+    r0 = object 4
     r1 = PyDict_Contains(d, r0)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
@@ -101,7 +114,7 @@ def f(d):
     r2 :: bit
     r3, r4 :: bool
 L0:
-    r0 = box(short_int, 8)
+    r0 = object 4
     r1 = PyDict_Contains(d, r0)
     r2 = r1 >= 0 :: signed
     r3 = truncate r1: int32 to builtins.bool
@@ -141,8 +154,8 @@ def increment(d):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, k :: str
@@ -165,7 +178,7 @@ L2:
     r8 = cast(str, r7)
     k = r8
     r9 = CPyDict_GetItem(d, k)
-    r10 = box(short_int, 2)
+    r10 = object 1
     r11 = PyNumber_InPlaceAdd(r9, r10)
     r12 = CPyDict_SetItem(d, k, r11)
     r13 = r12 >= 0 :: signed
@@ -194,12 +207,12 @@ def f(x, y):
     r6 :: int32
     r7 :: bit
 L0:
-    r0 = load_global CPyStatic_unicode_3 :: static  ('z')
-    r1 = box(short_int, 4)
+    r0 = 'z'
+    r1 = object 2
     r2 = CPyDict_Build(1, x, r1)
     r3 = CPyDict_UpdateInDisplay(r2, y)
     r4 = r3 >= 0 :: signed
-    r5 = box(short_int, 6)
+    r5 = object 3
     r6 = CPyDict_SetItem(r2, r0, r5)
     r7 = r6 >= 0 :: signed
     return r2
@@ -219,8 +232,8 @@ def print_dict_methods(d1, d2):
     r1 :: native_int
     r2 :: short_int
     r3 :: object
-    r4 :: tuple[bool, int, object]
-    r5 :: int
+    r4 :: tuple[bool, short_int, object]
+    r5 :: short_int
     r6 :: bool
     r7 :: object
     r8, v :: int
@@ -233,8 +246,8 @@ def print_dict_methods(d1, d2):
     r16 :: native_int
     r17 :: short_int
     r18 :: object
-    r19 :: tuple[bool, int, object, object]
-    r20 :: int
+    r19 :: tuple[bool, short_int, object, object]
+    r20 :: short_int
     r21 :: bool
     r22, r23 :: object
     r24, r25, k :: int
@@ -324,3 +337,125 @@ def f(d):
 L0:
     r0 = CPyDict_Clear(d)
     return 1
+
+[case testDictCopy]
+from typing import Dict
+def f(d: Dict[int, int]) -> Dict[int, int]:
+    return d.copy()
+[out]
+def f(d):
+    d, r0 :: dict
+L0:
+    r0 = CPyDict_Copy(d)
+    return r0
+
+[case testDictSetdefault]
+from typing import Dict
+def f(d: Dict[object, object]) -> object:
+    return d.setdefault('a', 'b')
+
+def f2(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', set())
+    else:
+        return d.setdefault('a', set('b'))
+
+def f3(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', [])
+    else:
+        return d.setdefault('a', [1])
+
+def f4(d: Dict[object, object], flag: bool) -> object:
+    if flag:
+        return d.setdefault('a', {})
+    else:
+        return d.setdefault('a', {'c': 1})
+[out]
+def f(d):
+    d :: dict
+    r0, r1 :: str
+    r2 :: object
+L0:
+    r0 = 'a'
+    r1 = 'b'
+    r2 = CPyDict_SetDefault(d, r0, r1)
+    return r2
+def f2(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2, r3 :: str
+    r4 :: set
+    r5, r6 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 3)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = 'b'
+    r4 = PySet_New(r3)
+    r5 = CPyDict_SetDefault(d, r2, r4)
+    return r5
+L3:
+    r6 = box(None, 1)
+    return r6
+def f3(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2 :: str
+    r3 :: list
+    r4 :: object
+    r5, r6 :: ptr
+    r7, r8 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 1)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = PyList_New(1)
+    r4 = object 1
+    r5 = get_element_ptr r3 ob_item :: PyListObject
+    r6 = load_mem r5 :: ptr*
+    set_mem r6, r4 :: builtins.object*
+    keep_alive r3
+    r7 = CPyDict_SetDefault(d, r2, r3)
+    return r7
+L3:
+    r8 = box(None, 1)
+    return r8
+def f4(d, flag):
+    d :: dict
+    flag :: bool
+    r0 :: str
+    r1 :: object
+    r2, r3 :: str
+    r4 :: object
+    r5 :: dict
+    r6, r7 :: object
+L0:
+    if flag goto L1 else goto L2 :: bool
+L1:
+    r0 = 'a'
+    r1 = CPyDict_SetDefaultWithEmptyDatatype(d, r0, 2)
+    return r1
+L2:
+    r2 = 'a'
+    r3 = 'c'
+    r4 = object 1
+    r5 = CPyDict_Build(1, r3, r4)
+    r6 = CPyDict_SetDefault(d, r2, r5)
+    return r6
+L3:
+    r7 = box(None, 1)
+    return r7
+

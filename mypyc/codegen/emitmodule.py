@@ -5,7 +5,7 @@
 
 import os
 import json
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
 
 from mypy.nodes import MypyFile
@@ -23,16 +23,19 @@ from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.prepare import load_type_map
 from mypyc.irbuild.mapper import Mapper
 from mypyc.common import (
-    PREFIX, TOP_LEVEL_NAME, INT_PREFIX, MODULE_PREFIX, RUNTIME_C_FILES, shared_lib_name,
+    PREFIX, TOP_LEVEL_NAME, MODULE_PREFIX, RUNTIME_C_FILES, short_id_from_name, use_fastcall,
+    use_vectorcall, shared_lib_name,
 )
-from mypyc.codegen.cstring import encode_as_c_string, encode_bytes_as_c_string
+from mypyc.codegen.cstring import c_string_initializer
+from mypyc.codegen.literals import Literals
 from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
 from mypyc.codegen.emitfunc import generate_native_function, native_function_header
 from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
 from mypyc.codegen.emitwrapper import (
     generate_wrapper_function, wrapper_function_header,
+    generate_legacy_wrapper_function, legacy_wrapper_function_header,
 )
-from mypyc.ir.ops import LiteralsMap, DeserMaps
+from mypyc.ir.ops import DeserMaps, LoadLiteral
 from mypyc.ir.rtypes import RType, RTuple
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.class_ir import ClassIR
@@ -94,7 +97,7 @@ class MypycPlugin(Plugin):
     def __init__(
             self, options: Options, compiler_options: CompilerOptions, groups: Groups) -> None:
         super().__init__(options)
-        self.group_map = {}  # type: Dict[str, Tuple[Optional[str], List[str]]]
+        self.group_map: Dict[str, Tuple[Optional[str], List[str]]] = {}
         for sources, name in groups:
             modules = sorted(source.module for source in sources)
             for id in modules:
@@ -277,16 +280,15 @@ def compile_ir_to_c(
 
     # Generate C code for each compilation group. Each group will be
     # compiled into a separate extension module.
-    ctext = {}  # type: Dict[Optional[str], List[Tuple[str, str]]]
+    ctext: Dict[Optional[str], List[Tuple[str, str]]] = {}
     for group_sources, group_name in groups:
         group_modules = [(source.module, modules[source.module]) for source in group_sources
                          if source.module in modules]
         if not group_modules:
             ctext[group_name] = []
             continue
-        literals = mapper.literals[group_name]
         generator = GroupGenerator(
-            literals, group_modules, source_paths,
+            group_modules, source_paths,
             group_name, mapper.group_map, names,
             compiler_options
         )
@@ -342,7 +344,7 @@ def write_cache(
         # If the metadata isn't there, skip writing the cache.
         try:
             meta_data = result.manager.metastore.read(meta_path)
-        except IOError:
+        except OSError:
             continue
 
         newpath = get_state_ir_cache_name(st)
@@ -405,6 +407,10 @@ def compile_modules_to_c(
     group_map = {source.module: lib_name for group, lib_name in groups for source in group}
     mapper = Mapper(group_map)
 
+    # Sometimes when we call back into mypy, there might be errors.
+    # We don't want to crash when that happens.
+    result.manager.errors.set_file('<mypyc>', module=None, scope=None)
+
     modules = compile_modules_to_ir(result, mapper, compiler_options, errors)
     ctext = compile_ir_to_c(groups, modules, result, mapper, compiler_options)
 
@@ -416,11 +422,15 @@ def compile_modules_to_c(
 
 def generate_function_declaration(fn: FuncIR, emitter: Emitter) -> None:
     emitter.context.declarations[emitter.native_function_name(fn.decl)] = HeaderDeclaration(
-        '{};'.format(native_function_header(fn.decl, emitter)),
+        f'{native_function_header(fn.decl, emitter)};',
         needs_export=True)
     if fn.name != TOP_LEVEL_NAME:
-        emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
-            '{};'.format(wrapper_function_header(fn, emitter.names)))
+        if is_fastcall_supported(fn, emitter.capi_version):
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                f'{wrapper_function_header(fn, emitter.names)};')
+        else:
+            emitter.context.declarations[PREFIX + fn.cname(emitter.names)] = HeaderDeclaration(
+                f'{legacy_wrapper_function_header(fn, emitter.names)};')
 
 
 def pointerize(decl: str, name: str) -> str:
@@ -428,10 +438,10 @@ def pointerize(decl: str, name: str) -> str:
     # This doesn't work in general but does work for all our types...
     if '(' in decl:
         # Function pointer. Stick an * in front of the name and wrap it in parens.
-        return decl.replace(name, '(*{})'.format(name))
+        return decl.replace(name, f'(*{name})')
     else:
         # Non-function pointer. Just stick an * in front of the name.
-        return decl.replace(name, '*{}'.format(name))
+        return decl.replace(name, f'*{name}')
 
 
 def group_dir(group_name: str) -> str:
@@ -441,7 +451,6 @@ def group_dir(group_name: str) -> str:
 
 class GroupGenerator:
     def __init__(self,
-                 literals: LiteralsMap,
                  modules: List[Tuple[str, ModuleIR]],
                  source_paths: Dict[str, str],
                  group_name: Optional[str],
@@ -455,7 +464,6 @@ class GroupGenerator:
         one .c file per module if in multi_file mode.)
 
         Arguments:
-            literals: The literals declared in this group
             modules: (name, ir) pairs for each module in the group
             source_paths: Map from module names to source file paths
             group_name: The name of the group (or None if this is single-module compilation)
@@ -464,14 +472,13 @@ class GroupGenerator:
             multi_file: Whether to put each module in its own source file regardless
                         of group structure.
         """
-        self.literals = literals
         self.modules = modules
         self.source_paths = source_paths
         self.context = EmitterContext(names, group_name, group_map)
         self.names = names
         # Initializations of globals to simple values that we can't
         # do statically because the windows loader is bad.
-        self.simple_inits = []  # type: List[Tuple[str, str]]
+        self.simple_inits: List[Tuple[str, str]] = []
         self.group_name = group_name
         self.use_shared_lib = group_name is not None
         self.compiler_options = compiler_options
@@ -489,29 +496,29 @@ class GroupGenerator:
         file_contents = []
         multi_file = self.use_shared_lib and self.multi_file
 
+        # Collect all literal refs in IR.
+        for _, module in self.modules:
+            for fn in module.functions:
+                collect_literals(fn, self.context.literals)
+
         base_emitter = Emitter(self.context)
         # Optionally just include the runtime library c files to
         # reduce the number of compiler invocations needed
         if self.compiler_options.include_runtime_files:
             for name in RUNTIME_C_FILES:
-                base_emitter.emit_line('#include "{}"'.format(name))
-        base_emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
-        base_emitter.emit_line('#include "__native_internal{}.h"'.format(self.short_group_suffix))
+                base_emitter.emit_line(f'#include "{name}"')
+        base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
+        base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
         emitter = base_emitter
 
-        for (_, literal), identifier in self.literals.items():
-            if isinstance(literal, int):
-                symbol = emitter.static_name(identifier, None)
-                self.declare_global('CPyTagged ', symbol)
-            else:
-                self.declare_static_pyobject(identifier, emitter)
+        self.generate_literal_tables()
 
         for module_name, module in self.modules:
             if multi_file:
                 emitter = Emitter(self.context)
-                emitter.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+                emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
                 emitter.emit_line(
-                    '#include "__native_internal{}.h"'.format(self.short_group_suffix))
+                    f'#include "__native_internal{self.short_group_suffix}.h"')
 
             self.declare_module(module_name, emitter)
             self.declare_internal_globals(module_name, emitter)
@@ -529,11 +536,14 @@ class GroupGenerator:
                 generate_native_function(fn, emitter, self.source_paths[module_name], module_name)
                 if fn.name != TOP_LEVEL_NAME:
                     emitter.emit_line()
-                    generate_wrapper_function(
-                        fn, emitter, self.source_paths[module_name], module_name)
-
+                    if is_fastcall_supported(fn, emitter.capi_version):
+                        generate_wrapper_function(
+                            fn, emitter, self.source_paths[module_name], module_name)
+                    else:
+                        generate_legacy_wrapper_function(
+                            fn, emitter, self.source_paths[module_name], module_name)
             if multi_file:
-                name = ('__native_{}.c'.format(emitter.names.private_name(module_name)))
+                name = (f'__native_{emitter.names.private_name(module_name)}.c')
                 file_contents.append((name, ''.join(emitter.fragments)))
 
         # The external header file contains type declarations while
@@ -541,17 +551,17 @@ class GroupGenerator:
         # (which are shared between shared libraries via dynamic
         # exports tables and not accessed directly.)
         ext_declarations = Emitter(self.context)
-        ext_declarations.emit_line('#ifndef MYPYC_NATIVE{}_H'.format(self.group_suffix))
-        ext_declarations.emit_line('#define MYPYC_NATIVE{}_H'.format(self.group_suffix))
+        ext_declarations.emit_line(f'#ifndef MYPYC_NATIVE{self.group_suffix}_H')
+        ext_declarations.emit_line(f'#define MYPYC_NATIVE{self.group_suffix}_H')
         ext_declarations.emit_line('#include <Python.h>')
         ext_declarations.emit_line('#include <CPy.h>')
 
         declarations = Emitter(self.context)
-        declarations.emit_line('#ifndef MYPYC_NATIVE_INTERNAL{}_H'.format(self.group_suffix))
-        declarations.emit_line('#define MYPYC_NATIVE_INTERNAL{}_H'.format(self.group_suffix))
+        declarations.emit_line(f'#ifndef MYPYC_NATIVE_INTERNAL{self.group_suffix}_H')
+        declarations.emit_line(f'#define MYPYC_NATIVE_INTERNAL{self.group_suffix}_H')
         declarations.emit_line('#include <Python.h>')
         declarations.emit_line('#include <CPy.h>')
-        declarations.emit_line('#include "__native{}.h"'.format(self.short_group_suffix))
+        declarations.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         declarations.emit_line()
         declarations.emit_line('int CPyGlobalsInit(void);')
         declarations.emit_line()
@@ -568,9 +578,9 @@ class GroupGenerator:
             short_lib = exported_name(lib.split('.')[-1])
             declarations.emit_lines(
                 '#include <{}>'.format(
-                    os.path.join(group_dir(lib), "__native_{}.h".format(short_lib))
+                    os.path.join(group_dir(lib), f"__native_{short_lib}.h")
                 ),
-                'struct export_table_{} exports_{};'.format(elib, elib)
+                f'struct export_table_{elib} exports_{elib};'
             )
 
         sorted_decls = self.toposort_declarations()
@@ -584,7 +594,7 @@ class GroupGenerator:
             decls = ext_declarations if declaration.is_type else declarations
             if not declaration.is_type:
                 decls.emit_lines(
-                    'extern {}'.format(declaration.decl[0]), *declaration.decl[1:])
+                    f'extern {declaration.decl[0]}', *declaration.decl[1:])
                 # If there is a definition, emit it. Otherwise repeat the declaration
                 # (without an extern).
                 if declaration.defn:
@@ -604,13 +614,42 @@ class GroupGenerator:
 
         output_dir = group_dir(self.group_name) if self.group_name else ''
         return file_contents + [
-            (os.path.join(output_dir, '__native{}.c'.format(self.short_group_suffix)),
+            (os.path.join(output_dir, f'__native{self.short_group_suffix}.c'),
              ''.join(emitter.fragments)),
-            (os.path.join(output_dir, '__native_internal{}.h'.format(self.short_group_suffix)),
+            (os.path.join(output_dir, f'__native_internal{self.short_group_suffix}.h'),
              ''.join(declarations.fragments)),
-            (os.path.join(output_dir, '__native{}.h'.format(self.short_group_suffix)),
+            (os.path.join(output_dir, f'__native{self.short_group_suffix}.h'),
              ''.join(ext_declarations.fragments)),
         ]
+
+    def generate_literal_tables(self) -> None:
+        """Generate tables containing descriptions of Python literals to construct.
+
+        We will store the constructed literals in a single array that contains
+        literals of all types. This way we can refer to an arbitrary literal by
+        its index.
+        """
+        literals = self.context.literals
+        # During module initialization we store all the constructed objects here
+        self.declare_global('PyObject *[%d]' % literals.num_literals(), 'CPyStatics')
+        # Descriptions of str literals
+        init_str = c_string_array_initializer(literals.encoded_str_values())
+        self.declare_global('const char * const []', 'CPyLit_Str', initializer=init_str)
+        # Descriptions of bytes literals
+        init_bytes = c_string_array_initializer(literals.encoded_bytes_values())
+        self.declare_global('const char * const []', 'CPyLit_Bytes', initializer=init_bytes)
+        # Descriptions of int literals
+        init_int = c_string_array_initializer(literals.encoded_int_values())
+        self.declare_global('const char * const []', 'CPyLit_Int', initializer=init_int)
+        # Descriptions of float literals
+        init_floats = c_array_initializer(literals.encoded_float_values())
+        self.declare_global('const double []', 'CPyLit_Float', initializer=init_floats)
+        # Descriptions of complex literals
+        init_complex = c_array_initializer(literals.encoded_complex_values())
+        self.declare_global('const double []', 'CPyLit_Complex', initializer=init_complex)
+        # Descriptions of tuple literals
+        init_tuple = c_array_initializer(literals.encoded_tuple_values())
+        self.declare_global('const int []', 'CPyLit_Tuple', initializer=init_tuple)
 
     def generate_export_table(self, decl_emitter: Emitter, code_emitter: Emitter) -> None:
         """Generate the declaration and definition of the group's export struct.
@@ -660,7 +699,7 @@ class GroupGenerator:
 
         decl_emitter.emit_lines(
             '',
-            'struct export_table{} {{'.format(self.group_suffix),
+            f'struct export_table{self.group_suffix} {{',
         )
         for name, decl in decls.items():
             if decl.needs_export:
@@ -670,11 +709,11 @@ class GroupGenerator:
 
         code_emitter.emit_lines(
             '',
-            'static struct export_table{} exports = {{'.format(self.group_suffix),
+            f'static struct export_table{self.group_suffix} exports = {{',
         )
         for name, decl in decls.items():
             if decl.needs_export:
-                code_emitter.emit_line('&{},'.format(name))
+                code_emitter.emit_line(f'&{name},')
 
         code_emitter.emit_line('};')
 
@@ -733,13 +772,13 @@ class GroupGenerator:
         for mod, _ in self.modules:
             name = exported_name(mod)
             emitter.emit_lines(
-                'extern PyObject *CPyInit_{}(void);'.format(name),
+                f'extern PyObject *CPyInit_{name}(void);',
                 'capsule = PyCapsule_New((void *)CPyInit_{}, "{}.init_{}", NULL);'.format(
                     name, shared_lib_name(self.group_name), name),
                 'if (!capsule) {',
                 'goto fail;',
                 '}',
-                'res = PyObject_SetAttrString(module, "init_{}", capsule);'.format(name),
+                f'res = PyObject_SetAttrString(module, "init_{name}", capsule);',
                 'Py_DECREF(capsule);',
                 'if (res < 0) {',
                 'goto fail;',
@@ -754,7 +793,7 @@ class GroupGenerator:
                     shared_lib_name(group)),
                 'struct export_table_{} *pexports_{} = PyCapsule_Import("{}.exports", 0);'.format(
                     egroup, egroup, shared_lib_name(group)),
-                'if (!pexports_{}) {{'.format(egroup),
+                f'if (!pexports_{egroup}) {{',
                 'goto fail;',
                 '}',
                 'memcpy(&exports_{group}, pexports_{group}, sizeof(exports_{group}));'.format(
@@ -782,46 +821,12 @@ class GroupGenerator:
 
         emitter.emit_line('CPy_Init();')
         for symbol, fixup in self.simple_inits:
-            emitter.emit_line('{} = {};'.format(symbol, fixup))
+            emitter.emit_line(f'{symbol} = {fixup};')
 
-        for (_, literal), identifier in self.literals.items():
-            symbol = emitter.static_name(identifier, None)
-            if isinstance(literal, int):
-                actual_symbol = symbol
-                symbol = INT_PREFIX + symbol
-                emitter.emit_line(
-                    'PyObject * {} = PyLong_FromString(\"{}\", NULL, 10);'.format(
-                        symbol, str(literal))
-                )
-            elif isinstance(literal, float):
-                emitter.emit_line(
-                    '{} = PyFloat_FromDouble({});'.format(symbol, str(literal))
-                )
-            elif isinstance(literal, complex):
-                emitter.emit_line(
-                    '{} = PyComplex_FromDoubles({}, {});'.format(
-                        symbol, str(literal.real), str(literal.imag))
-                )
-            elif isinstance(literal, str):
-                emitter.emit_line(
-                    '{} = PyUnicode_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_as_c_string(literal))
-                )
-            elif isinstance(literal, bytes):
-                emitter.emit_line(
-                    '{} = PyBytes_FromStringAndSize({}, {});'.format(
-                        symbol, *encode_bytes_as_c_string(literal))
-                )
-            else:
-                assert False, ('Literals must be integers, floating point numbers, or strings,',
-                               'but the provided literal is of type {}'.format(type(literal)))
-            emitter.emit_lines('if (unlikely({} == NULL))'.format(symbol),
-                               '    return -1;')
-            # Ints have an unboxed representation.
-            if isinstance(literal, int):
-                emitter.emit_line(
-                    '{} = CPyTagged_FromObject({});'.format(actual_symbol, symbol)
-                )
+        values = 'CPyLit_Str, CPyLit_Bytes, CPyLit_Int, CPyLit_Float, CPyLit_Complex, CPyLit_Tuple'
+        emitter.emit_lines(f'if (CPyStatics_Initialize(CPyStatics, {values}) < 0) {{',
+                           'return -1;',
+                           '}')
 
         emitter.emit_lines(
             'is_initialized = 1;',
@@ -833,28 +838,34 @@ class GroupGenerator:
         """Emit the PyModuleDef struct for a module and the module init function."""
         # Emit module methods
         module_prefix = emitter.names.private_name(module_name)
-        emitter.emit_line('static PyMethodDef {}module_methods[] = {{'.format(module_prefix))
+        emitter.emit_line(f'static PyMethodDef {module_prefix}module_methods[] = {{')
         for fn in module.functions:
             if fn.class_name is not None or fn.name == TOP_LEVEL_NAME:
                 continue
+            name = short_id_from_name(fn.name, fn.decl.shortname, fn.line)
+            if is_fastcall_supported(fn, emitter.capi_version):
+                flag = 'METH_FASTCALL'
+            else:
+                flag = 'METH_VARARGS'
             emitter.emit_line(
-                ('{{"{name}", (PyCFunction){prefix}{cname}, METH_VARARGS | METH_KEYWORDS, '
+                ('{{"{name}", (PyCFunction){prefix}{cname}, {flag} | METH_KEYWORDS, '
                  'NULL /* docstring */}},').format(
-                    name=fn.name,
-                    cname=fn.cname(emitter.names),
-                    prefix=PREFIX))
+                     name=name,
+                     cname=fn.cname(emitter.names),
+                     prefix=PREFIX,
+                     flag=flag))
         emitter.emit_line('{NULL, NULL, 0, NULL}')
         emitter.emit_line('};')
         emitter.emit_line()
 
         # Emit module definition struct
-        emitter.emit_lines('static struct PyModuleDef {}module = {{'.format(module_prefix),
+        emitter.emit_lines(f'static struct PyModuleDef {module_prefix}module = {{',
                            'PyModuleDef_HEAD_INIT,',
-                           '"{}",'.format(module_name),
+                           f'"{module_name}",',
                            'NULL, /* docstring */',
                            '-1,       /* size of per-interpreter state of the module,',
                            '             or -1 if the module keeps state in global variables. */',
-                           '{}module_methods'.format(module_prefix),
+                           f'{module_prefix}module_methods',
                            '};')
         emitter.emit_line()
         # Emit module init function. If we are compiling just one module, this
@@ -863,11 +874,12 @@ class GroupGenerator:
         # the shared library, and in this case we use an internal module
         # initialized function that will be called by the shim.
         if not self.use_shared_lib:
-            declaration = 'PyMODINIT_FUNC PyInit_{}(void)'.format(module_name)
+            declaration = f'PyMODINIT_FUNC PyInit_{module_name}(void)'
         else:
-            declaration = 'PyObject *CPyInit_{}(void)'.format(exported_name(module_name))
+            declaration = f'PyObject *CPyInit_{exported_name(module_name)}(void)'
         emitter.emit_lines(declaration,
                            '{')
+        emitter.emit_line('PyObject* modname = NULL;')
         # Store the module reference in a static and return it when necessary.
         # This is separate from the *global* reference to the module that will
         # be populated when it is imported by a compiled module. We want that
@@ -875,42 +887,57 @@ class GroupGenerator:
         # imported, whereas this we want to have to stop a circular import.
         module_static = self.module_internal_static_name(module_name, emitter)
 
-        emitter.emit_lines('if ({}) {{'.format(module_static),
-                           'Py_INCREF({});'.format(module_static),
-                           'return {};'.format(module_static),
+        emitter.emit_lines(f'if ({module_static}) {{',
+                           f'Py_INCREF({module_static});',
+                           f'return {module_static};',
                            '}')
 
-        emitter.emit_lines('{} = PyModule_Create(&{}module);'.format(module_static, module_prefix),
-                           'if (unlikely({} == NULL))'.format(module_static),
-                           '    return NULL;')
+        emitter.emit_lines(f'{module_static} = PyModule_Create(&{module_prefix}module);',
+                           f'if (unlikely({module_static} == NULL))',
+                           '    goto fail;')
         emitter.emit_line(
-            'PyObject *modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
+            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(
                 module_static))
 
         module_globals = emitter.static_name('globals', module_name)
-        emitter.emit_lines('{} = PyModule_GetDict({});'.format(module_globals, module_static),
-                           'if (unlikely({} == NULL))'.format(module_globals),
-                           '    return NULL;')
+        emitter.emit_lines(f'{module_globals} = PyModule_GetDict({module_static});',
+                           f'if (unlikely({module_globals} == NULL))',
+                           '    goto fail;')
 
         # HACK: Manually instantiate generated classes here
+        type_structs: List[str] = []
         for cl in module.classes:
+            type_struct = emitter.type_struct_name(cl)
+            type_structs.append(type_struct)
             if cl.is_generated:
-                type_struct = emitter.type_struct_name(cl)
                 emitter.emit_lines(
                     '{t} = (PyTypeObject *)CPyType_FromTemplate('
                     '(PyObject *){t}_template, NULL, modname);'
                     .format(t=type_struct))
-                emitter.emit_lines('if (unlikely(!{}))'.format(type_struct),
-                                   '    return NULL;')
+                emitter.emit_lines(f'if (unlikely(!{type_struct}))',
+                                   '    goto fail;')
 
         emitter.emit_lines('if (CPyGlobalsInit() < 0)',
-                           '    return NULL;')
+                           '    goto fail;')
 
         self.generate_top_level_call(module, emitter)
 
         emitter.emit_lines('Py_DECREF(modname);')
 
-        emitter.emit_line('return {};'.format(module_static))
+        emitter.emit_line(f'return {module_static};')
+        emitter.emit_lines('fail:',
+                           f'Py_CLEAR({module_static});',
+                           'Py_CLEAR(modname);')
+        for name, typ in module.final_names:
+            static_name = emitter.static_name(name, module_name)
+            emitter.emit_dec_ref(static_name, typ, is_xdec=True)
+            undef = emitter.c_undefined_value(typ)
+            emitter.emit_line(f'{static_name} = {undef};')
+        # the type objects returned from CPyType_FromTemplate are all new references
+        # so we have to decref them
+        for t in type_structs:
+            emitter.emit_line(f'Py_CLEAR({t});')
+        emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
     def generate_top_level_call(self, module: ModuleIR, emitter: Emitter) -> None:
@@ -919,9 +946,9 @@ class GroupGenerator:
         for fn in reversed(module.functions):
             if fn.name == TOP_LEVEL_NAME:
                 emitter.emit_lines(
-                    'char result = {}();'.format(emitter.native_function_name(fn.decl)),
+                    f'char result = {emitter.native_function_name(fn.decl)}();',
                     'if (result == 2)',
-                    '    return NULL;',
+                    '    goto fail;',
                 )
                 break
 
@@ -935,7 +962,7 @@ class GroupGenerator:
         This runs in O(V + E).
         """
         result = []
-        marked_declarations = OrderedDict()  # type: Dict[str, MarkedDeclaration]
+        marked_declarations: Dict[str, MarkedDeclaration] = OrderedDict()
         for k, v in self.context.declarations.items():
             marked_declarations[k] = MarkedDeclaration(v, False)
 
@@ -958,13 +985,19 @@ class GroupGenerator:
     def declare_global(self, type_spaced: str, name: str,
                        *,
                        initializer: Optional[str] = None) -> None:
+        if '[' not in type_spaced:
+            base = f'{type_spaced}{name}'
+        else:
+            a, b = type_spaced.split('[', 1)
+            base = f'{a}{name}[{b}'
+
         if not initializer:
             defn = None
         else:
-            defn = ['{}{} = {};'.format(type_spaced, name, initializer)]
+            defn = [f'{base} = {initializer};']
         if name not in self.context.declarations:
             self.context.declarations[name] = HeaderDeclaration(
-                '{}{};'.format(type_spaced, name),
+                f'{base};',
                 defn=defn,
             )
 
@@ -995,7 +1028,7 @@ class GroupGenerator:
         for name, typ in final_names:
             static_name = emitter.static_name(name, module)
             emitter.context.declarations[static_name] = HeaderDeclaration(
-                '{}{};'.format(emitter.ctype_spaced(typ), static_name),
+                f'{emitter.ctype_spaced(typ)}{static_name};',
                 [self.final_definition(module, name, typ, emitter)],
                 needs_export=True)
 
@@ -1008,7 +1041,7 @@ class GroupGenerator:
             undefined = '{{ {} }}'.format(''.join(emitter.tuple_undefined_value_helper(typ)))
         else:
             undefined = emitter.c_undefined_value(typ)
-        return '{}{} = {};'.format(emitter.ctype_spaced(typ), static_name, undefined)
+        return f'{emitter.ctype_spaced(typ)}{static_name} = {undefined};'
 
     def declare_static_pyobject(self, identifier: str, emitter: Emitter) -> None:
         symbol = emitter.static_name(identifier, None)
@@ -1018,7 +1051,7 @@ class GroupGenerator:
 def sort_classes(classes: List[Tuple[str, ClassIR]]) -> List[Tuple[str, ClassIR]]:
     mod_name = {ir: name for name, ir in classes}
     irs = [ir for _, ir in classes]
-    deps = OrderedDict()  # type: Dict[ClassIR, Set[ClassIR]]
+    deps: Dict[ClassIR, Set[ClassIR]] = OrderedDict()
     for ir in irs:
         if ir not in deps:
             deps[ir] = set()
@@ -1038,7 +1071,7 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
     This runs in O(V + E).
     """
     result = []
-    visited = set()  # type: Set[T]
+    visited: Set[T] = set()
 
     def visit(item: T) -> None:
         if item in visited:
@@ -1054,3 +1087,65 @@ def toposort(deps: Dict[T, Set[T]]) -> List[T]:
         visit(item)
 
     return result
+
+
+def is_fastcall_supported(fn: FuncIR, capi_version: Tuple[int, int]) -> bool:
+    if fn.class_name is not None:
+        if fn.name == '__call__':
+            # We can use vectorcalls (PEP 590) when supported
+            return use_vectorcall(capi_version)
+        # TODO: Support fastcall for __init__.
+        return use_fastcall(capi_version) and fn.name != '__init__'
+    return use_fastcall(capi_version)
+
+
+def collect_literals(fn: FuncIR, literals: Literals) -> None:
+    """Store all Python literal object refs in fn.
+
+    Collecting literals must happen only after we have the final IR.
+    This way we won't include literals that have been optimized away.
+    """
+    for block in fn.blocks:
+        for op in block.ops:
+            if isinstance(op, LoadLiteral):
+                literals.record_literal(op.value)
+
+
+def c_array_initializer(components: List[str]) -> str:
+    """Construct an initializer for a C array variable.
+
+    Components are C expressions valid in an initializer.
+
+    For example, if components are ["1", "2"], the result
+    would be "{1, 2}", which can be used like this:
+
+        int a[] = {1, 2};
+
+    If the result is long, split it into multiple lines.
+    """
+    res = []
+    current: List[str] = []
+    cur_len = 0
+    for c in components:
+        if not current or cur_len + 2 + len(c) < 70:
+            current.append(c)
+            cur_len += len(c) + 2
+        else:
+            res.append(', '.join(current))
+            current = [c]
+            cur_len = len(c)
+    if not res:
+        # Result fits on a single line
+        return '{%s}' % ', '.join(current)
+    # Multi-line result
+    res.append(', '.join(current))
+    return '{\n    ' + ',\n    '.join(res) + '\n}'
+
+
+def c_string_array_initializer(components: List[bytes]) -> str:
+    result = []
+    result.append('{\n')
+    for s in components:
+        result.append('    ' + c_string_initializer(s) + ',\n')
+    result.append('}')
+    return ''.join(result)

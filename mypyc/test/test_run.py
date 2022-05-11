@@ -12,11 +12,11 @@ import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
-from mypy.test.data import DataDrivenTestCase, UpdateFile
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.helpers import copy_and_fudge_mtime, assert_module_equivalence
+from mypy.test.helpers import assert_module_equivalence, perform_file_operations
 
 from mypyc.codegen import emitmodule
 from mypyc.options import CompilerOptions
@@ -36,6 +36,7 @@ files = [
     'run-floats.test',
     'run-bools.test',
     'run-strings.test',
+    'run-bytes.test',
     'run-tuples.test',
     'run-lists.test',
     'run-dicts.test',
@@ -50,7 +51,13 @@ files = [
     'run-multimodule.test',
     'run-bench.test',
     'run-mypy-sim.test',
+    'run-dunders.test',
+    'run-singledispatch.test',
+    'run-attrs.test',
 ]
+
+if sys.version_info >= (3, 7):
+    files.append('run-python37.test')
 if sys.version_info >= (3, 8):
     files.append('run-python38.test')
 
@@ -120,7 +127,7 @@ class TestRun(MypycDataSuite):
     base_path = test_temp_dir
     optional_out = True
     multi_file = False
-    separate = False
+    separate = False  # If True, using separate (incremental) compilation
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         # setup.py wants to be run from the root directory of the package, which we accommodate
@@ -130,7 +137,8 @@ class TestRun(MypycDataSuite):
             self.run_case_inner(testcase)
 
     def run_case_inner(self, testcase: DataDrivenTestCase) -> None:
-        os.mkdir(WORKDIR)
+        if not os.path.isdir(WORKDIR):  # (one test puts something in build...)
+            os.mkdir(WORKDIR)
 
         text = '\n'.join(testcase.input)
 
@@ -156,16 +164,7 @@ class TestRun(MypycDataSuite):
 
             step += 1
             with chdir_manager('..'):
-                for op in operations:
-                    if isinstance(op, UpdateFile):
-                        # Modify/create file
-                        copy_and_fudge_mtime(op.source_path, op.target_path)
-                    else:
-                        # Delete file
-                        try:
-                            os.remove(op.path)
-                        except FileNotFoundError:
-                            pass
+                perform_file_operations(operations)
             self.run_case_step(testcase, step)
 
     def run_case_step(self, testcase: DataDrivenTestCase, incremental_step: int) -> None:
@@ -245,6 +244,7 @@ class TestRun(MypycDataSuite):
             check_serialization_roundtrip(ir)
 
         opt_level = int(os.environ.get('MYPYC_OPT_LEVEL', 0))
+        debug_level = int(os.environ.get('MYPYC_DEBUG_LEVEL', 0))
 
         setup_file = os.path.abspath(os.path.join(WORKDIR, 'setup.py'))
         # We pass the C file information to the build script via setup.py unfortunately
@@ -253,7 +253,8 @@ class TestRun(MypycDataSuite):
                                         separate,
                                         cfiles,
                                         self.multi_file,
-                                        opt_level))
+                                        opt_level,
+                                        debug_level))
 
         if not run_setup(setup_file, ['build_ext', '--inplace']):
             if testcase.config.getoption('--mypyc-showc'):
@@ -262,7 +263,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
-        assert glob.glob('native.*.{}'.format(suffix))
+        assert glob.glob(f'native.*.{suffix}') or glob.glob(f'native.{suffix}')
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
@@ -308,7 +309,7 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output'
                 expected = testcase.output
             else:
-                msg = 'Invalid output (step {})'.format(incremental_step)
+                msg = f'Invalid output (step {incremental_step})'
                 expected = testcase.output2.get(incremental_step, [])
 
             if not expected:
@@ -346,7 +347,11 @@ class TestRun(MypycDataSuite):
 
 
 class TestRunMultiFile(TestRun):
-    """Run the main multi-module tests in multi-file compilation mode."""
+    """Run the main multi-module tests in multi-file compilation mode.
+
+    In multi-file mode each module gets compiled into a separate C file,
+    but all modules (C files) are compiled together.
+    """
 
     multi_file = True
     test_name_suffix = '_multi'
@@ -357,7 +362,20 @@ class TestRunMultiFile(TestRun):
 
 
 class TestRunSeparate(TestRun):
-    """Run the main multi-module tests in separate compilation mode."""
+    """Run the main multi-module tests in separate compilation mode.
+
+    In this mode there are multiple compilation groups, which are compiled
+    incrementally. Each group is compiled to a separate C file, and these C
+    files are compiled separately.
+
+    Each compiled module is placed into a separate compilation group, unless
+    overridden by a special comment. Consider this example:
+
+      # separate: [(["other.py", "other_b.py"], "stuff")]
+
+    This puts other.py and other_b.py into a compilation group named "stuff".
+    Any files not mentioned in the comment will get single-file groups.
+    """
 
     separate = True
     test_name_suffix = '_separate'

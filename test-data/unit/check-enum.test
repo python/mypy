@@ -6,10 +6,42 @@ class Medal(Enum):
     gold = 1
     silver = 2
     bronze = 3
-reveal_type(Medal.bronze)  # N: Revealed type is 'Literal[__main__.Medal.bronze]?'
+reveal_type(Medal.bronze)  # N: Revealed type is "Literal[__main__.Medal.bronze]?"
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
+
+-- Creation from Enum call
+-- -----------------------
+
+[case testEnumCreatedFromStringLiteral]
+from enum import Enum
+from typing_extensions import Literal
+
+x: Literal['ANT BEE CAT DOG'] = 'ANT BEE CAT DOG'
+Animal = Enum('Animal', x)
+reveal_type(Animal.ANT)  # N: Revealed type is "Literal[__main__.Animal.ANT]?"
+reveal_type(Animal.BEE)  # N: Revealed type is "Literal[__main__.Animal.BEE]?"
+reveal_type(Animal.CAT)  # N: Revealed type is "Literal[__main__.Animal.CAT]?"
+reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
+
+[builtins fixtures/tuple.pyi]
+
+[case testEnumCreatedFromFinalValue]
+from enum import Enum
+from typing_extensions import Final
+
+x: Final['str'] = 'ANT BEE CAT DOG'
+Animal = Enum('Animal', x)
+reveal_type(Animal.ANT)  # N: Revealed type is "Literal[__main__.Animal.ANT]?"
+reveal_type(Animal.BEE)  # N: Revealed type is "Literal[__main__.Animal.BEE]?"
+reveal_type(Animal.CAT)  # N: Revealed type is "Literal[__main__.Animal.CAT]?"
+reveal_type(Animal.DOG)  # N: Revealed type is "Literal[__main__.Animal.DOG]?"
+
+[builtins fixtures/tuple.pyi]
+
+-- Creation from EnumMeta
+-- ----------------------
 
 [case testEnumFromEnumMetaBasics]
 from enum import EnumMeta
@@ -20,7 +52,7 @@ class Medal(metaclass=EnumMeta):
     # Without __init__ the definition fails at runtime, but we want to verify that mypy
     # uses `enum.EnumMeta` and not `enum.Enum` as the definition of what is enum.
     def __init__(self, *args): pass
-reveal_type(Medal.bronze)  # N: Revealed type is 'Literal[__main__.Medal.bronze]?'
+reveal_type(Medal.bronze)  # N: Revealed type is "Literal[__main__.Medal.bronze]?"
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -35,7 +67,7 @@ class Medal(Achievement):
     bronze = None
     # See comment in testEnumFromEnumMetaBasics
     def __init__(self, *args): pass
-reveal_type(Medal.bronze)  # N: Revealed type is 'Literal[__main__.Medal.bronze]?'
+reveal_type(Medal.bronze)  # N: Revealed type is "Literal[__main__.Medal.bronze]?"
 m = Medal.gold
 if int():
     m = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "Medal")
@@ -55,8 +87,8 @@ class Truth(Enum):
     false = False
 x = ''
 x = Truth.true.name
-reveal_type(Truth.true.name)    # N: Revealed type is 'Literal['true']?'
-reveal_type(Truth.false.value)  # N: Revealed type is 'builtins.bool'
+reveal_type(Truth.true.name)    # N: Revealed type is "Literal['true']?"
+reveal_type(Truth.false.value)  # N: Revealed type is "Literal[False]?"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueExtended]
@@ -66,7 +98,7 @@ class Truth(Enum):
     false = False
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'builtins.bool'
+    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueAllAuto]
@@ -76,7 +108,7 @@ class Truth(Enum):
     false = auto()
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'builtins.int'
+    reveal_type(truth.value) # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
 
 [case testEnumValueSomeAuto]
@@ -86,11 +118,11 @@ class Truth(Enum):
     false = auto()
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'builtins.int'
+    reveal_type(truth.value) # N: Revealed type is "builtins.int"
 [builtins fixtures/primitives.pyi]
 
 [case testEnumValueExtraMethods]
-from enum import Enum, auto
+from enum import Enum
 class Truth(Enum):
     true = True
     false = False
@@ -99,7 +131,7 @@ class Truth(Enum):
         return 'bar'
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'builtins.bool'
+    reveal_type(truth.value) # N: Revealed type is "Union[Literal[True]?, Literal[False]?]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumValueCustomAuto]
@@ -116,7 +148,7 @@ class Truth(AutoName):
     false = auto()
 
 def infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'builtins.str'
+    reveal_type(truth.value) # N: Revealed type is "builtins.str"
 [builtins fixtures/primitives.pyi]
 
 [case testEnumValueInhomogenous]
@@ -126,7 +158,21 @@ class Truth(Enum):
     false = 0
 
 def cannot_infer_truth(truth: Truth) -> None:
-    reveal_type(truth.value) # N: Revealed type is 'Any'
+    reveal_type(truth.value) # N: Revealed type is "Any"
+[builtins fixtures/bool.pyi]
+
+[case testEnumValueSameType]
+from enum import Enum
+
+def newbool() -> bool:
+    ...
+
+class Truth(Enum):
+    true = newbool()
+    false = newbool()
+
+def infer_truth(truth: Truth) -> None:
+    reveal_type(truth.value) # N: Revealed type is "builtins.bool"
 [builtins fixtures/bool.pyi]
 
 [case testEnumUnique]
@@ -186,6 +232,20 @@ an_enum = SomeIntEnum.x
 an_enum = returns_some_int_enum()
 [out]
 
+[case testStrEnumCreation]
+# flags: --python-version 3.11
+from enum import StrEnum
+
+class MyStrEnum(StrEnum):
+    x = 'x'
+    y = 'y'
+
+reveal_type(MyStrEnum.x)  # N: Revealed type is "Literal[__main__.MyStrEnum.x]?"
+reveal_type(MyStrEnum.x.value)  # N: Revealed type is "Literal['x']?"
+reveal_type(MyStrEnum.y)  # N: Revealed type is "Literal[__main__.MyStrEnum.y]?"
+reveal_type(MyStrEnum.y.value)  # N: Revealed type is "Literal['y']?"
+[out]
+
 [case testEnumMethods]
 from enum import Enum
 
@@ -240,7 +300,7 @@ class E(IntEnum):
 x = None  # type: int
 reveal_type(E(x))
 [out]
-main:5: note: Revealed type is '__main__.E*'
+main:5: note: Revealed type is "__main__.E"
 
 [case testEnumIndex]
 from enum import IntEnum
@@ -249,7 +309,7 @@ class E(IntEnum):
 s = None  # type: str
 reveal_type(E[s])
 [out]
-main:5: note: Revealed type is '__main__.E'
+main:5: note: Revealed type is "__main__.E"
 
 [case testEnumIndexError]
 from enum import IntEnum
@@ -264,16 +324,16 @@ from enum import Enum
 class E(Enum):
     a = 1
     b = 2
-reveal_type(E['a'])  # N: Revealed type is '__main__.E'
+reveal_type(E['a'])  # N: Revealed type is "__main__.E"
 E['a']
 x = E['a']
-reveal_type(x)  # N: Revealed type is '__main__.E'
+reveal_type(x)  # N: Revealed type is "__main__.E"
 
 def get_member(name: str) -> E:
     val = E[name]
     return val
 
-reveal_type(get_member('a'))  # N: Revealed type is '__main__.E'
+reveal_type(get_member('a'))  # N: Revealed type is "__main__.E"
 
 [case testGenericEnum]
 from enum import Enum
@@ -285,7 +345,7 @@ class F(Generic[T], Enum):  # E: Enum class cannot be generic
     x: T
     y: T
 
-reveal_type(F[int].x)  # N: Revealed type is '__main__.F[builtins.int*]'
+reveal_type(F[int].x)  # N: Revealed type is "__main__.F[builtins.int]"
 
 [case testEnumFlag]
 from enum import Flag
@@ -319,7 +379,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:8: note: Revealed type is '__main__.E@4'
+main:8: note: Revealed type is "__main__.E@4"
 
 [case testEnumInClassBody]
 from enum import Enum
@@ -343,10 +403,10 @@ reveal_type(E.bar.value)
 reveal_type(I.bar)
 reveal_type(I.baz.value)
 [out]
-main:4: note: Revealed type is 'Literal[__main__.E.foo]?'
-main:5: note: Revealed type is 'Any'
-main:6: note: Revealed type is 'Literal[__main__.I.bar]?'
-main:7: note: Revealed type is 'builtins.int'
+main:4: note: Revealed type is "Literal[__main__.E.foo]?"
+main:5: note: Revealed type is "Any"
+main:6: note: Revealed type is "Literal[__main__.I.bar]?"
+main:7: note: Revealed type is "builtins.int"
 
 [case testFunctionalEnumListOfStrings]
 from enum import Enum, IntEnum
@@ -355,8 +415,8 @@ F = IntEnum('F', ['bar', 'baz'])
 reveal_type(E.foo)
 reveal_type(F.baz)
 [out]
-main:4: note: Revealed type is 'Literal[__main__.E.foo]?'
-main:5: note: Revealed type is 'Literal[__main__.F.baz]?'
+main:4: note: Revealed type is "Literal[__main__.E.foo]?"
+main:5: note: Revealed type is "Literal[__main__.F.baz]?"
 
 [case testFunctionalEnumListOfPairs]
 from enum import Enum, IntEnum
@@ -367,10 +427,10 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: note: Revealed type is 'Literal[__main__.E.foo]?'
-main:5: note: Revealed type is 'Literal[__main__.F.baz]?'
-main:6: note: Revealed type is 'Literal[1]?'
-main:7: note: Revealed type is 'Literal['bar']?'
+main:4: note: Revealed type is "Literal[__main__.E.foo]?"
+main:5: note: Revealed type is "Literal[__main__.F.baz]?"
+main:6: note: Revealed type is "Literal[1]?"
+main:7: note: Revealed type is "Literal['bar']?"
 
 [case testFunctionalEnumDict]
 from enum import Enum, IntEnum
@@ -381,10 +441,10 @@ reveal_type(F.baz)
 reveal_type(E.foo.value)
 reveal_type(F.bar.name)
 [out]
-main:4: note: Revealed type is 'Literal[__main__.E.foo]?'
-main:5: note: Revealed type is 'Literal[__main__.F.baz]?'
-main:6: note: Revealed type is 'Literal[1]?'
-main:7: note: Revealed type is 'Literal['bar']?'
+main:4: note: Revealed type is "Literal[__main__.E.foo]?"
+main:5: note: Revealed type is "Literal[__main__.F.baz]?"
+main:6: note: Revealed type is "Literal[1]?"
+main:7: note: Revealed type is "Literal['bar']?"
 
 
 [case testEnumKeywordsArgs]
@@ -425,7 +485,7 @@ main:2: error: Too few arguments for Enum()
 main:3: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:4: error: Too many arguments for Enum()
 main:5: error: Enum() expects a string, tuple, list or dict literal as the second argument
-main:5: error: Name 'foo' is not defined
+main:5: error: Name "foo" is not defined
 main:7: error: Enum() expects a string, tuple, list or dict literal as the second argument
 main:8: error: Too few arguments for IntEnum()
 main:9: error: IntEnum() expects a string, tuple, list or dict literal as the second argument
@@ -437,7 +497,7 @@ main:14: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:15: error: Enum() with tuple or list expects strings or (name, value) pairs
 main:16: error: IntEnum() with tuple or list expects strings or (name, value) pairs
 main:17: error: Enum() with dict literal requires string literals
-main:18: error: Unexpected keyword argument 'keyword'
+main:18: error: Unexpected keyword argument "keyword"
 main:19: error: Unexpected arguments to Enum()
 main:20: error: Unexpected arguments to Enum()
 main:22: error: "Type[W]" has no attribute "c"
@@ -446,14 +506,14 @@ main:22: error: "Type[W]" has no attribute "c"
 from enum import Flag, IntFlag
 A = Flag('A', 'x y')
 B = IntFlag('B', 'a b')
-reveal_type(A.x)        # N: Revealed type is 'Literal[__main__.A.x]?'
-reveal_type(B.a)        # N: Revealed type is 'Literal[__main__.B.a]?'
-reveal_type(A.x.name)   # N: Revealed type is 'Literal['x']?'
-reveal_type(B.a.name)   # N: Revealed type is 'Literal['a']?'
+reveal_type(A.x)        # N: Revealed type is "Literal[__main__.A.x]?"
+reveal_type(B.a)        # N: Revealed type is "Literal[__main__.B.a]?"
+reveal_type(A.x.name)   # N: Revealed type is "Literal['x']?"
+reveal_type(B.a.name)   # N: Revealed type is "Literal['a']?"
 
 # TODO: The revealed type should be 'int' here
-reveal_type(A.x.value)  # N: Revealed type is 'Any'
-reveal_type(B.a.value)  # N: Revealed type is 'Any'
+reveal_type(A.x.value)  # N: Revealed type is "Any"
+reveal_type(B.a.value)  # N: Revealed type is "Any"
 
 [case testAnonymousFunctionalEnum]
 from enum import Enum
@@ -464,7 +524,7 @@ class A:
 a = A()
 reveal_type(a.x)
 [out]
-main:7: note: Revealed type is '__main__.A.E@4'
+main:7: note: Revealed type is "__main__.A.E@4"
 
 [case testFunctionalEnumInClassBody]
 from enum import Enum
@@ -480,10 +540,10 @@ if int():
 [case testFunctionalEnumProtocols]
 from enum import IntEnum
 Color = IntEnum('Color', 'red green blue')
-reveal_type(Color['green'])  # N: Revealed type is '__main__.Color'
+reveal_type(Color['green'])  # N: Revealed type is "__main__.Color"
 for c in Color:
-    reveal_type(c)  # N: Revealed type is '__main__.Color*'
-reveal_type(list(Color))  # N: Revealed type is 'builtins.list[__main__.Color*]'
+    reveal_type(c)  # N: Revealed type is "__main__.Color"
+reveal_type(list(Color))  # N: Revealed type is "builtins.list[__main__.Color]"
 
 [builtins fixtures/list.pyi]
 
@@ -505,7 +565,8 @@ def fn(x: F) -> None:
 fn(b)
 [out]
 
-[case testFunctionalEnum_python2]
+[case testFunctionalEnum_python2-skip]
+# TODO: Needs to have enum34 stubs somehow
 from enum import Enum
 Eu = Enum(u'Eu', u'a b')
 Eb = Enum(b'Eb', b'a b')
@@ -534,11 +595,11 @@ F = Enum('F', 'a b')
 [rechecked]
 [stale]
 [out1]
-main:2: note: Revealed type is 'Literal[m.E.a]?'
-main:3: note: Revealed type is 'Literal[m.F.b]?'
+main:2: note: Revealed type is "Literal[m.E.a]?"
+main:3: note: Revealed type is "Literal[m.F.b]?"
 [out2]
-main:2: note: Revealed type is 'Literal[m.E.a]?'
-main:3: note: Revealed type is 'Literal[m.F.b]?'
+main:2: note: Revealed type is "Literal[m.E.a]?"
+main:3: note: Revealed type is "Literal[m.F.b]?"
 
 [case testEnumAuto]
 from enum import Enum, auto
@@ -546,7 +607,7 @@ class Test(Enum):
     a = auto()
     b = auto()
 
-reveal_type(Test.a)  # N: Revealed type is 'Literal[__main__.Test.a]?'
+reveal_type(Test.a)  # N: Revealed type is "Literal[__main__.Test.a]?"
 [builtins fixtures/primitives.pyi]
 
 [case testEnumAttributeAccessMatrix]
@@ -561,18 +622,18 @@ class A2(Enum):
 class A3(Enum):
     x = 1
 
-is_x(reveal_type(A1.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(A1.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(A1.x.value)         # N: Revealed type is 'Any'
-reveal_type(A1.x._value_)       # N: Revealed type is 'Any'
-is_x(reveal_type(A2.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(A2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(A2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(A2.x._value_)       # N: Revealed type is 'builtins.int'
-is_x(reveal_type(A3.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(A3.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(A3.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(A3.x._value_)       # N: Revealed type is 'builtins.int'
+is_x(reveal_type(A1.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(A1.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(A1.x.value)         # N: Revealed type is "Any"
+reveal_type(A1.x._value_)       # N: Revealed type is "Any"
+is_x(reveal_type(A2.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(A2.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(A2.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(A2.x._value_)       # N: Revealed type is "builtins.int"
+is_x(reveal_type(A3.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(A3.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(A3.x.value)         # N: Revealed type is "Literal[1]?"
+reveal_type(A3.x._value_)       # N: Revealed type is "Literal[1]?"
 
 B1 = IntEnum('B1', 'x')
 class B2(IntEnum):
@@ -582,18 +643,18 @@ class B3(IntEnum):
 
 # TODO: getting B1.x._value_ and B2.x._value_ to have type 'int' requires a typeshed change
 
-is_x(reveal_type(B1.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(B1.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(B1.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(B1.x._value_)       # N: Revealed type is 'Any'
-is_x(reveal_type(B2.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(B2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(B2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(B2.x._value_)       # N: Revealed type is 'builtins.int'
-is_x(reveal_type(B3.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(B3.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(B3.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(B3.x._value_)       # N: Revealed type is 'builtins.int'
+is_x(reveal_type(B1.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(B1.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(B1.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(B1.x._value_)       # N: Revealed type is "Any"
+is_x(reveal_type(B2.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(B2.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(B2.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(B2.x._value_)       # N: Revealed type is "builtins.int"
+is_x(reveal_type(B3.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(B3.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(B3.x.value)         # N: Revealed type is "Literal[1]?"
+reveal_type(B3.x._value_)       # N: Revealed type is "Literal[1]?"
 
 # TODO: C1.x.value and C2.x.value should also be of type 'int'
 # This requires either a typeshed change or a plugin refinement
@@ -604,18 +665,18 @@ class C2(IntFlag):
 class C3(IntFlag):
     x = 1
 
-is_x(reveal_type(C1.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(C1.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(C1.x.value)         # N: Revealed type is 'Any'
-reveal_type(C1.x._value_)       # N: Revealed type is 'Any'
-is_x(reveal_type(C2.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(C2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(C2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(C2.x._value_)       # N: Revealed type is 'builtins.int'
-is_x(reveal_type(C3.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(C3.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(C3.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(C3.x._value_)       # N: Revealed type is 'builtins.int'
+is_x(reveal_type(C1.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(C1.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(C1.x.value)         # N: Revealed type is "Any"
+reveal_type(C1.x._value_)       # N: Revealed type is "Any"
+is_x(reveal_type(C2.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(C2.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(C2.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(C2.x._value_)       # N: Revealed type is "builtins.int"
+is_x(reveal_type(C3.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(C3.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(C3.x.value)         # N: Revealed type is "Literal[1]?"
+reveal_type(C3.x._value_)       # N: Revealed type is "Literal[1]?"
 
 D1 = Flag('D1', 'x')
 class D2(Flag):
@@ -623,18 +684,18 @@ class D2(Flag):
 class D3(Flag):
     x = 1
 
-is_x(reveal_type(D1.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(D1.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(D1.x.value)         # N: Revealed type is 'Any'
-reveal_type(D1.x._value_)       # N: Revealed type is 'Any'
-is_x(reveal_type(D2.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(D2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(D2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(D2.x._value_)       # N: Revealed type is 'builtins.int'
-is_x(reveal_type(D3.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(D3.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(D3.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(D3.x._value_)       # N: Revealed type is 'builtins.int'
+is_x(reveal_type(D1.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(D1.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(D1.x.value)         # N: Revealed type is "Any"
+reveal_type(D1.x._value_)       # N: Revealed type is "Any"
+is_x(reveal_type(D2.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(D2.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(D2.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(D2.x._value_)       # N: Revealed type is "builtins.int"
+is_x(reveal_type(D3.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(D3.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(D3.x.value)         # N: Revealed type is "Literal[1]?"
+reveal_type(D3.x._value_)       # N: Revealed type is "Literal[1]?"
 
 # TODO: Generalize our enum functional API logic to work with subclasses of Enum
 # See https://github.com/python/mypy/issues/6037
@@ -646,14 +707,14 @@ class E2(Parent):
 class E3(Parent):
     x = 1
 
-is_x(reveal_type(E2.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(E2.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(E2.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(E2.x._value_)       # N: Revealed type is 'builtins.int'
-is_x(reveal_type(E3.x.name))    # N: Revealed type is 'Literal['x']'
-is_x(reveal_type(E3.x._name_))  # N: Revealed type is 'Literal['x']'
-reveal_type(E3.x.value)         # N: Revealed type is 'builtins.int'
-reveal_type(E3.x._value_)       # N: Revealed type is 'builtins.int'
+is_x(reveal_type(E2.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(E2.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(E2.x.value)         # N: Revealed type is "builtins.int"
+reveal_type(E2.x._value_)       # N: Revealed type is "builtins.int"
+is_x(reveal_type(E3.x.name))    # N: Revealed type is "Literal['x']"
+is_x(reveal_type(E3.x._name_))  # N: Revealed type is "Literal['x']"
+reveal_type(E3.x.value)         # N: Revealed type is "Literal[1]?"
+reveal_type(E3.x._value_)       # N: Revealed type is "Literal[1]?"
 
 
 # TODO: Figure out if we can construct enums using EnumMetas using the functional API.
@@ -690,9 +751,9 @@ from enum import Enum
 class SomeEnum(Enum):
     a = "foo"
 [out]
-main:2: note: Revealed type is 'builtins.int'
+main:2: note: Revealed type is "Literal[1]?"
 [out2]
-main:2: note: Revealed type is 'builtins.str'
+main:2: note: Revealed type is "Literal['foo']?"
 
 [case testEnumReachabilityChecksBasic]
 from enum import Enum
@@ -705,41 +766,45 @@ class Foo(Enum):
 
 x: Literal[Foo.A, Foo.B, Foo.C]
 if x is Foo.A:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif x is Foo.B:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B]"
 elif x is Foo.C:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(x)  # No output here: this branch is unreachable
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 
 if Foo.A is x:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif Foo.B is x:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B]"
 elif Foo.C is x:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(x)  # No output here: this branch is unreachable
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 
 y: Foo
 if y is Foo.A:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif y is Foo.B:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.B]"
 elif y is Foo.C:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(y)  # No output here: this branch is unreachable
+reveal_type(y) # N: Revealed type is "__main__.Foo"
 
 if Foo.A is y:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif Foo.B is y:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.B]"
 elif Foo.C is y:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.C]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.C]"
 else:
     reveal_type(y)  # No output here: this branch is unreachable
+reveal_type(y) # N: Revealed type is "__main__.Foo"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityChecksWithOrdering]
@@ -755,9 +820,9 @@ Foo._order_  # E: "Type[Foo]" has no attribute "_order_"
 
 x: Literal[Foo.A, Foo.B]
 if x is Foo.A:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif x is Foo.B:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
     reveal_type(x)  # No output here: this branch is unreachable
 
@@ -770,25 +835,25 @@ Bar.__order__  # E: "Type[Bar]" has no attribute "__order__"
 
 y: Literal[Bar.A, Bar.B]
 if y is Bar.A:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Bar.A]"
 elif y is Bar.B:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Bar.B]'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Bar.B]"
 else:
     reveal_type(y)  # No output here: this branch is unreachable
 
 x2: Foo
 if x2 is Foo.A:
-    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.A]"
 elif x2 is Foo.B:
-    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
     reveal_type(x2)  # No output here: this branch is unreachable
 
 y2: Bar
 if y2 is Bar.A:
-    reveal_type(y2)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+    reveal_type(y2)  # N: Revealed type is "Literal[__main__.Bar.A]"
 elif y2 is Bar.B:
-    reveal_type(y2)  # N: Revealed type is 'Literal[__main__.Bar.B]'
+    reveal_type(y2)  # N: Revealed type is "Literal[__main__.Bar.B]"
 else:
     reveal_type(y2)  # No output here: this branch is unreachable
 [builtins fixtures/tuple.pyi]
@@ -809,45 +874,49 @@ y: Literal[Foo.A]
 z: Final = Foo.A
 
 if x is y:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 if y is x:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 
 if x is z:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 if z is x:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
+reveal_type(x) # N: Revealed type is "__main__.Foo"
 
 if y is z:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
     reveal_type(y)  # No output: this branch is unreachable
     reveal_type(z)  # No output: this branch is unreachable
 if z is y:
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(z)  # N: Revealed type is 'Literal[__main__.Foo.A]?'
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(z)  # N: Revealed type is "Literal[__main__.Foo.A]?"
     accepts_foo_a(z)
 else:
     reveal_type(y)  # No output: this branch is unreachable
@@ -869,18 +938,18 @@ z: Literal[Foo.B, Foo.C]
 
 # For the sake of simplicity, no narrowing is done when the narrower type is a Union.
 if x is y:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
-    reveal_type(y)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
 else:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
-    reveal_type(y)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
 
 if y is z:
-    reveal_type(y)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]'
-    reveal_type(z)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
+    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
+    reveal_type(z)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 else:
-    reveal_type(y)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]'
-    reveal_type(z)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]'
+    reveal_type(y)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Foo.B]]"
+    reveal_type(z)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityWithNone]
@@ -895,19 +964,20 @@ class Foo(Enum):
 
 x: Optional[Foo]
 if x:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[__main__.Foo, None]'
+    reveal_type(x)  # N: Revealed type is "Union[__main__.Foo, None]"
 
 if x is not None:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
 else:
-    reveal_type(x)  # N: Revealed type is 'None'
+    reveal_type(x)  # N: Revealed type is "None"
 
 if x is Foo.A:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C], None]'
+    reveal_type(x)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C], None]"
+reveal_type(x) # N: Revealed type is "Union[__main__.Foo, None]"
 [builtins fixtures/bool.pyi]
 
 [case testEnumReachabilityWithMultipleEnums]
@@ -924,21 +994,24 @@ class Bar(Enum):
 
 x1: Union[Foo, Bar]
 if x1 is Foo.A:
-    reveal_type(x1)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.A]"
 else:
-    reveal_type(x1)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], __main__.Bar]'
+    reveal_type(x1)  # N: Revealed type is "Union[Literal[__main__.Foo.B], __main__.Bar]"
+reveal_type(x1) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 
 x2: Union[Foo, Bar]
 if x2 is Bar.A:
-    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Bar.A]'
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Bar.A]"
 else:
-    reveal_type(x2)  # N: Revealed type is 'Union[__main__.Foo, Literal[__main__.Bar.B]]'
+    reveal_type(x2)  # N: Revealed type is "Union[__main__.Foo, Literal[__main__.Bar.B]]"
+reveal_type(x2) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 
 x3: Union[Foo, Bar]
 if x3 is Foo.A or x3 is Bar.A:
-    reveal_type(x3)  # N: Revealed type is 'Union[Literal[__main__.Foo.A], Literal[__main__.Bar.A]]'
+    reveal_type(x3)  # N: Revealed type is "Union[Literal[__main__.Foo.A], Literal[__main__.Bar.A]]"
 else:
-    reveal_type(x3)  # N: Revealed type is 'Union[Literal[__main__.Foo.B], Literal[__main__.Bar.B]]'
+    reveal_type(x3)  # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Bar.B]]"
+reveal_type(x3) # N: Revealed type is "Union[__main__.Foo, __main__.Bar]"
 
 [builtins fixtures/bool.pyi]
 
@@ -957,13 +1030,13 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
                         # E: Unsupported left operand type for + ("Empty") \
                         # N: Left operand is of type "Union[int, None, Empty]"
     if x is _empty:
-        reveal_type(x)  # N: Revealed type is 'Literal[__main__.Empty.token]'
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
     elif x is None:
-        reveal_type(x)  # N: Revealed type is 'None'
+        reveal_type(x)  # N: Revealed type is "None"
         return 1
     else:  # At this point typechecker knows that x can only have type int
-        reveal_type(x)  # N: Revealed type is 'builtins.int'
+        reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
 [builtins fixtures/primitives.pyi]
 
@@ -977,14 +1050,14 @@ class Reason(Enum):
 
 def process(response: Union[str, Reason] = '') -> str:
     if response is Reason.timeout:
-        reveal_type(response)  # N: Revealed type is 'Literal[__main__.Reason.timeout]'
+        reveal_type(response)  # N: Revealed type is "Literal[__main__.Reason.timeout]"
         return 'TIMEOUT'
     elif response is Reason.error:
-        reveal_type(response)  # N: Revealed type is 'Literal[__main__.Reason.error]'
+        reveal_type(response)  # N: Revealed type is "Literal[__main__.Reason.error]"
         return 'ERROR'
     else:
         # response can be only str, all other possible values exhausted
-        reveal_type(response)  # N: Revealed type is 'builtins.str'
+        reveal_type(response)  # N: Revealed type is "builtins.str"
         return 'PROCESSED: ' + response
 [builtins fixtures/primitives.pyi]
 
@@ -1004,13 +1077,13 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
                         # E: Unsupported left operand type for + ("Empty") \
                         # N: Left operand is of type "Union[int, None, Empty]"
     if x is _empty:
-        reveal_type(x)  # N: Revealed type is 'Literal[__main__.Empty.token]'
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
     elif x is None:
-        reveal_type(x)  # N: Revealed type is 'None'
+        reveal_type(x)  # N: Revealed type is "None"
         return 1
     else:  # At this point typechecker knows that x can only have type int
-        reveal_type(x)  # N: Revealed type is 'builtins.int'
+        reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
 [builtins fixtures/primitives.pyi]
 
@@ -1033,13 +1106,13 @@ def func(x: Union[int, None, Empty] = _empty) -> int:
                         # E: Unsupported left operand type for + ("Empty") \
                         # N: Left operand is of type "Union[int, None, Empty]"
     if x is _empty:
-        reveal_type(x)  # N: Revealed type is 'Literal[__main__.Empty.token]'
+        reveal_type(x)  # N: Revealed type is "Literal[__main__.Empty.token]"
         return 0
     elif x is None:
-        reveal_type(x)  # N: Revealed type is 'None'
+        reveal_type(x)  # N: Revealed type is "None"
         return 1
     else:  # At this point typechecker knows that x can only have type int
-        reveal_type(x)  # N: Revealed type is 'builtins.int'
+        reveal_type(x)  # N: Revealed type is "builtins.int"
         return x + 2
 [builtins fixtures/primitives.pyi]
 
@@ -1050,7 +1123,7 @@ class A:
     def __init__(self) -> None:
         self.b = Enum("x", [("foo", "bar")])  # E: Enum type as attribute is not supported
 
-reveal_type(A().b)  # N: Revealed type is 'Any'
+reveal_type(A().b)  # N: Revealed type is "Any"
 
 [case testEnumReachabilityWithChaining]
 from enum import Enum
@@ -1065,40 +1138,40 @@ y: Foo
 # We can't narrow anything in the else cases -- what if
 # x is Foo.A and y is Foo.B or vice versa, for example?
 if x is y is Foo.A:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.A]"
 elif x is y is Foo.B:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
-    reveal_type(x)   # N: Revealed type is '__main__.Foo'
-    reveal_type(y)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)       # N: Revealed type is '__main__.Foo'
-reveal_type(y)       # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is "__main__.Foo"
+    reveal_type(y)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)       # N: Revealed type is "__main__.Foo"
+reveal_type(y)       # N: Revealed type is "__main__.Foo"
 
 if x is Foo.A is y:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.A]"
 elif x is Foo.B is y:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
-    reveal_type(x)   # N: Revealed type is '__main__.Foo'
-    reveal_type(y)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)       # N: Revealed type is '__main__.Foo'
-reveal_type(y)       # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is "__main__.Foo"
+    reveal_type(y)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)       # N: Revealed type is "__main__.Foo"
+reveal_type(y)       # N: Revealed type is "__main__.Foo"
 
 if Foo.A is x is y:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.A]"
 elif Foo.B is x is y:
-    reveal_type(x)   # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(y)   # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)   # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(y)   # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
-    reveal_type(x)   # N: Revealed type is '__main__.Foo'
-    reveal_type(y)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)       # N: Revealed type is '__main__.Foo'
-reveal_type(y)       # N: Revealed type is '__main__.Foo'
+    reveal_type(x)   # N: Revealed type is "__main__.Foo"
+    reveal_type(y)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)       # N: Revealed type is "__main__.Foo"
+reveal_type(y)       # N: Revealed type is "__main__.Foo"
 
 [builtins fixtures/primitives.pyi]
 
@@ -1118,29 +1191,29 @@ y: Foo
 
 # No conflict
 if x is Foo.A < y is Foo.B:
-    reveal_type(x)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(y)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(y)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
     # Note: we can't narrow in this case. What if both x and y
     # are Foo.A, for example?
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
-    reveal_type(y)  # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
-reveal_type(y)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+    reveal_type(y)  # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
+reveal_type(y)      # N: Revealed type is "__main__.Foo"
 
 # The standard output when we end up inferring two disjoint facts about the same expr
 if x is Foo.A and x is Foo.B:
     reveal_type(x)  # E: Statement is unreachable
 else:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 # ..and we get the same result if we have two disjoint groups within the same comp expr
 if x is Foo.A < x is Foo.B:
     reveal_type(x)  # E: Statement is unreachable
 else:
-    reveal_type(x)  # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
+    reveal_type(x)  # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
 [builtins fixtures/primitives.pyi]
 
 [case testEnumReachabilityWithChainingDirectConflict]
@@ -1157,24 +1230,24 @@ x: Foo
 if x is Foo.A is Foo.B:
    reveal_type(x)   # E: Statement is unreachable
 else:
-   reveal_type(x)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
+   reveal_type(x)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 literal_a: Literal[Foo.A]
 literal_b: Literal[Foo.B]
 if x is literal_a is literal_b:
    reveal_type(x)   # E: Statement is unreachable
 else:
-   reveal_type(x)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
+   reveal_type(x)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 final_a: Final = Foo.A
 final_b: Final = Foo.B
 if x is final_a is final_b:
    reveal_type(x)   # E: Statement is unreachable
 else:
-   reveal_type(x)   # N: Revealed type is '__main__.Foo'
-reveal_type(x)      # N: Revealed type is '__main__.Foo'
+   reveal_type(x)   # N: Revealed type is "__main__.Foo"
+reveal_type(x)      # N: Revealed type is "__main__.Foo"
 
 [builtins fixtures/primitives.pyi]
 
@@ -1198,23 +1271,23 @@ x4: Foo
 x5: Foo
 
 if x0 is x1 is Foo.A is x2 < x3 is Foo.B is x4 is x5:
-    reveal_type(x0)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(x1)  # N: Revealed type is 'Literal[__main__.Foo.A]'
-    reveal_type(x2)  # N: Revealed type is 'Literal[__main__.Foo.A]'
+    reveal_type(x0)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(x1)  # N: Revealed type is "Literal[__main__.Foo.A]"
+    reveal_type(x2)  # N: Revealed type is "Literal[__main__.Foo.A]"
 
-    reveal_type(x3)  # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(x4)  # N: Revealed type is 'Literal[__main__.Foo.B]'
-    reveal_type(x5)  # N: Revealed type is 'Literal[__main__.Foo.B]'
+    reveal_type(x3)  # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(x4)  # N: Revealed type is "Literal[__main__.Foo.B]"
+    reveal_type(x5)  # N: Revealed type is "Literal[__main__.Foo.B]"
 else:
     # We unfortunately can't narrow away anything. For example,
     # what if x0 == Foo.A and x1 == Foo.B or vice versa?
-    reveal_type(x0)  # N: Revealed type is '__main__.Foo'
-    reveal_type(x1)  # N: Revealed type is '__main__.Foo'
-    reveal_type(x2)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x0)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x1)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x2)  # N: Revealed type is "__main__.Foo"
 
-    reveal_type(x3)  # N: Revealed type is '__main__.Foo'
-    reveal_type(x4)  # N: Revealed type is '__main__.Foo'
-    reveal_type(x5)  # N: Revealed type is '__main__.Foo'
+    reveal_type(x3)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x4)  # N: Revealed type is "__main__.Foo"
+    reveal_type(x5)  # N: Revealed type is "__main__.Foo"
 [builtins fixtures/primitives.pyi]
 
 [case testPrivateAttributeNotAsEnumMembers]
@@ -1240,5 +1313,770 @@ class Comparator(enum.Enum):
     def foo(self) -> int:
         return Comparator.__foo__[self.value]
 
-reveal_type(Comparator.__foo__)  # N: Revealed type is 'builtins.dict[builtins.str, builtins.int]'
+reveal_type(Comparator.__foo__)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+[builtins fixtures/dict.pyi]
+
+[case testEnumWithInstanceAttributes]
+from enum import Enum
+class Foo(Enum):
+    def __init__(self, value: int) -> None:
+        self.foo = "bar"
+    A = 1
+    B = 2
+
+a = Foo.A
+reveal_type(a.value)    # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+reveal_type(a._value_)  # N: Revealed type is "Union[Literal[1]?, Literal[2]?]"
+
+[case testNewSetsUnexpectedValueType]
+from enum import Enum
+
+class bytes:
+    def __new__(cls): pass
+
+class Foo(bytes, Enum):
+    def __new__(cls, value: int) -> 'Foo':
+        obj = bytes.__new__(cls)
+        obj._value_ = "Number %d" % value
+        return obj
+    A = 1
+    B = 2
+
+a = Foo.A
+reveal_type(a.value)    # N: Revealed type is "Any"
+reveal_type(a._value_)  # N: Revealed type is "Any"
+[builtins fixtures/__new__.pyi]
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testValueTypeWithNewInParentClass]
+from enum import Enum
+
+class bytes:
+    def __new__(cls): pass
+
+class Foo(bytes, Enum):
+    def __new__(cls, value: int) -> 'Foo':
+        obj = bytes.__new__(cls)
+        obj._value_ = "Number %d" % value
+        return obj
+
+class Bar(Foo):
+    A = 1
+    B = 2
+
+a = Bar.A
+reveal_type(a.value)    # N: Revealed type is "Any"
+reveal_type(a._value_)  # N: Revealed type is "Any"
+[builtins fixtures/__new__.pyi]
+[builtins fixtures/primitives.pyi]
+[typing fixtures/typing-medium.pyi]
+
+[case testEnumNarrowedToTwoLiterals]
+# Regression test: two literals of an enum would be joined
+# as the full type, regardless of the amount of elements
+# the enum contains.
+from enum import Enum
+from typing import Union
+from typing_extensions import Literal
+
+class Foo(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+def f(x: Foo):
+    if x is Foo.A:
+        return x
+    if x is Foo.B:
+        pass
+    reveal_type(x) # N: Revealed type is "Union[Literal[__main__.Foo.B], Literal[__main__.Foo.C]]"
+
+[builtins fixtures/bool.pyi]
+
+[case testEnumTypeCompatibleWithLiteralUnion]
+from enum import Enum
+from typing_extensions import Literal
+
+class E(Enum):
+    A = 1
+    B = 2
+    C = 3
+
+e: E
+a: Literal[E.A, E.B, E.C] = e
+b: Literal[E.A, E.B] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.B]")
+c: Literal[E.A, E.C] = e  # E: Incompatible types in assignment (expression has type "E", variable has type "Literal[E.A, E.C]")
+b = a  # E: Incompatible types in assignment (expression has type "Literal[E.A, E.B, E.C]", variable has type "Literal[E.A, E.B]")
+[builtins fixtures/bool.pyi]
+
+[case testIntEnumWithNewTypeValue]
+from typing import NewType
+from enum import IntEnum
+
+N = NewType("N", int)
+
+class E(IntEnum):
+    A = N(0)
+
+reveal_type(E.A.value) # N: Revealed type is "__main__.N"
+
+
+[case testEnumFinalValues]
+from enum import Enum
+class Medal(Enum):
+    gold = 1
+    silver = 2
+
+# Another value:
+Medal.gold = 0  # E: Cannot assign to final attribute "gold"
+# Same value:
+Medal.silver = 2  # E: Cannot assign to final attribute "silver"
+
+
+[case testEnumFinalValuesCannotRedefineValueProp]
+from enum import Enum
+class Types(Enum):
+    key = 0
+    value = 1
+
+
+[case testEnumReusedKeys]
+# https://github.com/python/mypy/issues/11248
+from enum import Enum
+class Correct(Enum):
+    x = 'y'
+    y = 'x'
+class Foo(Enum):
+    A = 1
+    A = 'a'  # E: Attempted to reuse member name "A" in Enum definition "Foo" \
+             # E: Incompatible types in assignment (expression has type "str", variable has type "int")
+reveal_type(Foo.A.value)  # N: Revealed type is "Literal[1]?"
+
+class Bar(Enum):
+    A = 1
+    B = A = 2  # E: Attempted to reuse member name "A" in Enum definition "Bar"
+class Baz(Enum):
+    A = 1
+    B, A = (1, 2)  # E: Attempted to reuse member name "A" in Enum definition "Baz"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumReusedKeysOverlapWithLocalVar]
+from enum import Enum
+x = 1
+class Foo(Enum):
+    x = 2
+    def method(self) -> None:
+        x = 3
+x = 4
+[builtins fixtures/bool.pyi]
+
+[case testEnumImplicitlyFinalForSubclassing]
+from enum import Enum, IntEnum, Flag, IntFlag
+
+class NonEmptyEnum(Enum):
+    x = 1
+class NonEmptyIntEnum(IntEnum):
+    x = 1
+class NonEmptyFlag(Flag):
+    x = 1
+class NonEmptyIntFlag(IntFlag):
+    x = 1
+
+class ErrorEnumWithValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")
+class ErrorIntEnumWithValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntEnum")
+class ErrorFlagWithValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyFlag")
+class ErrorIntFlagWithValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "NonEmptyIntFlag")
+
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testSubclassingNonFinalEnums]
+from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
+
+def decorator(func):
+    return func
+
+class EmptyEnum(Enum):
+    pass
+class EmptyIntEnum(IntEnum):
+    pass
+class EmptyFlag(Flag):
+    pass
+class EmptyIntFlag(IntFlag):
+    pass
+class EmptyEnumMeta(EnumMeta):
+    pass
+
+class NonEmptyEnumSub(EmptyEnum):
+    x = 1
+class NonEmptyIntEnumSub(EmptyIntEnum):
+    x = 1
+class NonEmptyFlagSub(EmptyFlag):
+    x = 1
+class NonEmptyIntFlagSub(EmptyIntFlag):
+    x = 1
+class NonEmptyEnumMetaSub(EmptyEnumMeta):
+    x = 1
+
+class EmptyEnumSub(EmptyEnum):
+    def method(self) -> None: pass
+    @decorator
+    def other(self) -> None: pass
+class EmptyIntEnumSub(EmptyIntEnum):
+    def method(self) -> None: pass
+class EmptyFlagSub(EmptyFlag):
+    def method(self) -> None: pass
+class EmptyIntFlagSub(EmptyIntFlag):
+    def method(self) -> None: pass
+class EmptyEnumMetaSub(EmptyEnumMeta):
+    def method(self) -> None: pass
+
+class NestedEmptyEnumSub(EmptyEnumSub):
+    x = 1
+class NestedEmptyIntEnumSub(EmptyIntEnumSub):
+    x = 1
+class NestedEmptyFlagSub(EmptyFlagSub):
+    x = 1
+class NestedEmptyIntFlagSub(EmptyIntFlagSub):
+    x = 1
+class NestedEmptyEnumMetaSub(EmptyEnumMetaSub):
+    x = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumExplicitlyAndImplicitlyFinal]
+from typing import final
+from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
+
+@final
+class EmptyEnum(Enum):
+    pass
+@final
+class EmptyIntEnum(IntEnum):
+    pass
+@final
+class EmptyFlag(Flag):
+    pass
+@final
+class EmptyIntFlag(IntFlag):
+    pass
+@final
+class EmptyEnumMeta(EnumMeta):
+    pass
+
+class EmptyEnumSub(EmptyEnum):  # E: Cannot inherit from final class "EmptyEnum"
+    pass
+class EmptyIntEnumSub(EmptyIntEnum):  # E: Cannot inherit from final class "EmptyIntEnum"
+    pass
+class EmptyFlagSub(EmptyFlag):  # E: Cannot inherit from final class "EmptyFlag"
+    pass
+class EmptyIntFlagSub(EmptyIntFlag):  # E: Cannot inherit from final class "EmptyIntFlag"
+    pass
+class EmptyEnumMetaSub(EmptyEnumMeta):  # E: Cannot inherit from final class "EmptyEnumMeta"
+    pass
+
+@final
+class NonEmptyEnum(Enum):
+    x = 1
+@final
+class NonEmptyIntEnum(IntEnum):
+    x = 1
+@final
+class NonEmptyFlag(Flag):
+    x = 1
+@final
+class NonEmptyIntFlag(IntFlag):
+    x = 1
+@final
+class NonEmptyEnumMeta(EnumMeta):
+    x = 1
+
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot inherit from final class "NonEmptyEnum" \
+                                            # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot inherit from final class "NonEmptyIntEnum" \
+                                                  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot inherit from final class "NonEmptyFlag" \
+                                            # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot inherit from final class "NonEmptyIntFlag" \
+                                                  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    pass
+class ErrorEnumMetaWithoutValue(NonEmptyEnumMeta):  # E: Cannot inherit from final class "NonEmptyEnumMeta"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testEnumFinalSubtypingEnumMetaSpecialCase]
+from enum import EnumMeta
+# `EnumMeta` types are not `Enum`s
+class SubMeta(EnumMeta):
+    x = 1
+class SubSubMeta(SubMeta):
+    x = 2
+[builtins fixtures/bool.pyi]
+
+[case testEnumFinalSubtypingOverloadedSpecialCase]
+from typing import overload
+from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
+
+class EmptyEnum(Enum):
+    @overload
+    def method(self, arg: int) -> int:
+        pass
+    @overload
+    def method(self, arg: str) -> str:
+        pass
+    def method(self, arg):
+        pass
+class EmptyIntEnum(IntEnum):
+    @overload
+    def method(self, arg: int) -> int:
+        pass
+    @overload
+    def method(self, arg: str) -> str:
+        pass
+    def method(self, arg):
+        pass
+class EmptyFlag(Flag):
+    @overload
+    def method(self, arg: int) -> int:
+        pass
+    @overload
+    def method(self, arg: str) -> str:
+        pass
+    def method(self, arg):
+        pass
+class EmptyIntFlag(IntFlag):
+    @overload
+    def method(self, arg: int) -> int:
+        pass
+    @overload
+    def method(self, arg: str) -> str:
+        pass
+    def method(self, arg):
+        pass
+class EmptyEnumMeta(EnumMeta):
+    @overload
+    def method(self, arg: int) -> int:
+        pass
+    @overload
+    def method(self, arg: str) -> str:
+        pass
+    def method(self, arg):
+        pass
+
+class NonEmptyEnumSub(EmptyEnum):
+    x = 1
+class NonEmptyIntEnumSub(EmptyIntEnum):
+    x = 1
+class NonEmptyFlagSub(EmptyFlag):
+    x = 1
+class NonEmptyIntFlagSub(EmptyIntFlag):
+    x = 1
+class NonEmptyEnumMetaSub(EmptyEnumMeta):
+    x = 1
+[builtins fixtures/bool.pyi]
+
+[case testEnumFinalSubtypingMethodAndValueSpecialCase]
+from enum import Enum, IntEnum, Flag, IntFlag, EnumMeta
+
+def decorator(func):
+    return func
+
+class NonEmptyEnum(Enum):
+    x = 1
+    def method(self) -> None: pass
+    @decorator
+    def other(self) -> None: pass
+class NonEmptyIntEnum(IntEnum):
+    x = 1
+    def method(self) -> None: pass
+class NonEmptyFlag(Flag):
+    x = 1
+    def method(self) -> None: pass
+class NonEmptyIntFlag(IntFlag):
+    x = 1
+    def method(self) -> None: pass
+
+class ErrorEnumWithoutValue(NonEmptyEnum):  # E: Cannot extend enum with existing members: "NonEmptyEnum"
+    pass
+class ErrorIntEnumWithoutValue(NonEmptyIntEnum):  # E: Cannot extend enum with existing members: "NonEmptyIntEnum"
+    pass
+class ErrorFlagWithoutValue(NonEmptyFlag):  # E: Cannot extend enum with existing members: "NonEmptyFlag"
+    pass
+class ErrorIntFlagWithoutValue(NonEmptyIntFlag):  # E: Cannot extend enum with existing members: "NonEmptyIntFlag"
+    pass
+[builtins fixtures/bool.pyi]
+
+[case testFinalEnumWithClassDef]
+from enum import Enum
+
+class A(Enum):
+    class Inner: pass
+class B(A): pass  # E: Cannot extend enum with existing members: "A"
+[builtins fixtures/bool.pyi]
+
+[case testEnumFinalSpecialProps]
+# https://github.com/python/mypy/issues/11699
+# https://github.com/python/mypy/issues/11820
+from enum import Enum, IntEnum
+
+class BaseWithSpecials:
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
+
+class E(BaseWithSpecials, Enum):
+    name = 'a'
+    value = 'b'
+    _name_ = 'a1'
+    _value_ = 'b2'
+    _order_ = 'X Y'
+    __order__ = 'X Y'
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
+
+class EI(IntEnum):
+    name = 'a'
+    value = 1
+    _name_ = 'a1'
+    _value_ = 2
+    _order_ = 'X Y'
+    __order__ = 'X Y'
+    __slots__ = ()
+    __doc__ = 'doc'
+    __module__ = 'module'
+    __annotations__ = {'a': int}
+    __dict__ = {'a': 1}
+
+E._order_ = 'a'  # E: Cannot assign to final attribute "_order_"
+EI.value = 2     # E: Cannot assign to final attribute "value"
+[builtins fixtures/dict.pyi]
+
+[case testEnumNotFinalWithMethodsAndUninitializedValues]
+# https://github.com/python/mypy/issues/11578
+from enum import Enum
+from typing import Final
+
+class A(Enum):
+    x: int
+    def method(self) -> int: pass
+class B(A):
+    x = 1  # E: Cannot override writable attribute "x" with a final one
+
+class A1(Enum):
+    x: int = 1
+class B1(A1):  # E: Cannot extend enum with existing members: "A1"
+    pass
+
+class A2(Enum):
+    x = 2
+class B2(A2):  # E: Cannot extend enum with existing members: "A2"
+    pass
+
+# We leave this `Final` without a value,
+# because we need to test annotation only mode:
+class A3(Enum):
+    x: Final[int]  # type: ignore
+class B3(A3):
+    x = 1  # E: Cannot override final attribute "x" (previously declared in base class "A3")
+[builtins fixtures/bool.pyi]
+
+[case testEnumNotFinalWithMethodsAndUninitializedValuesStub]
+import lib
+
+[file lib.pyi]
+from enum import Enum
+class A(Enum):
+    x: int
+class B(A):  # E: Cannot extend enum with existing members: "A"
+    x = 1    # E: Cannot override writable attribute "x" with a final one
+
+class C(Enum):
+    x = 1
+class D(C):  # E: Cannot extend enum with existing members: "C"
+    x: int   # E: Cannot assign to final name "x"
+[builtins fixtures/bool.pyi]
+
+[case testEnumLiteralValues]
+from enum import Enum
+
+class A(Enum):
+    str = "foo"
+    int = 1
+    bool = False
+    tuple = (1,)
+
+reveal_type(A.str.value)  # N: Revealed type is "Literal['foo']?"
+reveal_type(A.int.value)  # N: Revealed type is "Literal[1]?"
+reveal_type(A.bool.value)  # N: Revealed type is "Literal[False]?"
+reveal_type(A.tuple.value)  # N: Revealed type is "Tuple[Literal[1]?]"
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithPrivateAssignment]
+import enum
+class Some(enum.Enum):
+    __priv = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithDunderAssignment]
+import enum
+class Some(enum.Enum):
+    __some__ = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithSunderAssignment]
+import enum
+class Some(enum.Enum):
+    _some_ = 1
+
+class Other(Some):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testFinalWithMethodAssignment]
+import enum
+from typing import overload
+class Some(enum.Enum):
+    def lor(self, other) -> bool:
+        pass
+
+    ror = lor
+
+class Other(Some):  # Should pass
+    pass
+
+
+class WithOverload(enum.IntEnum):
+    @overload
+    def meth(self, arg: int) -> int: pass
+    @overload
+    def meth(self, arg: str) -> str: pass
+    def meth(self, arg): pass
+
+    alias = meth
+
+class SubWithOverload(WithOverload):  # Should pass
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testEnumBaseClassesOrder]
+import enum
+
+# Base types:
+
+class First:
+    def __new__(cls, val):
+        pass
+
+class Second:
+    def __new__(cls, val):
+        pass
+
+class Third:
+    def __new__(cls, val):
+        pass
+
+class Mixin:
+    pass
+
+# Correct Enums:
+
+class Correct0(enum.Enum):
+    pass
+
+class Correct1(Mixin, First, enum.Enum):
+    pass
+
+class Correct2(First, enum.Enum):
+    pass
+
+class Correct3(Mixin, enum.Enum):
+    pass
+
+class RegularClass(Mixin, First, Second):
+    pass
+
+# Correct inheritance:
+
+class _InheritingDataAndMixin(Correct1):
+    pass
+
+class _CorrectWithData(First, Correct0):
+    pass
+
+class _CorrectWithDataAndMixin(Mixin, First, Correct0):
+    pass
+
+class _CorrectWithMixin(Mixin, Correct2):
+    pass
+
+# Wrong Enums:
+
+class TwoDataTypesViaInheritance(Second, Correct2):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2"
+    pass
+
+class TwoDataTypesViaInheritanceAndMixin(Second, Correct2, Mixin):  # E: No base classes are allowed after "__main__.Correct2" \
+                                                                    # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2"
+    pass
+
+class MixinAfterEnum1(enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum"
+    pass
+
+class MixinAfterEnum2(First, enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum"
+    pass
+
+class TwoDataTypes(First, Second, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class TwoDataTypesAndIntEnumMixin(First, Second, enum.IntEnum, Mixin):  # E: No base classes are allowed after "enum.IntEnum" \
+                                                                        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class ThreeDataTypes(First, Second, Third, enum.Enum):  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                        # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
+    pass
+
+class ThreeDataTypesAndMixin(First, Second, Third, enum.Enum, Mixin):  # E: No base classes are allowed after "enum.Enum" \
+                                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second" \
+                                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Third"
+    pass
+
+class FromEnumAndOther1(Correct2, Second, enum.Enum):  # E: No base classes are allowed after "__main__.Correct2" \
+                                                       # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+
+class FromEnumAndOther2(Correct2, Second):  # E: No base classes are allowed after "__main__.Correct2" \
+                                            # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Second"
+    pass
+[builtins fixtures/tuple.pyi]
+
+[case testRegression12258]
+from enum import Enum
+
+class MyEnum(Enum): ...
+
+class BytesEnum(bytes, MyEnum): ...  # Should be ok
+[builtins fixtures/tuple.pyi]
+
+[case testEnumWithNewHierarchy]
+import enum
+
+class A:
+    def __new__(cls, val): ...
+class B(A):
+    def __new__(cls, val): ...
+class C:
+    def __new__(cls, val): ...
+
+class E1(A, enum.Enum): ...
+class E2(B, enum.Enum): ...
+
+# Errors:
+
+class W1(C, E1): ...  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.E1"
+class W2(C, E2): ...  # E: Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.E2"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumValueUnionSimplification]
+from enum import IntEnum
+from typing import Any
+
+class C(IntEnum):
+    X = 0
+    Y = 1
+    Z = 2
+
+def f1(c: C) -> None:
+    x = {'x': c.value}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
+
+def f2(c: C, a: Any) -> None:
+    x = {'x': c.value, 'y': a}
+    reveal_type(x)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+    y = {'y': a, 'x': c.value}
+    reveal_type(y)  # N: Revealed type is "builtins.dict[builtins.str, Any]"
+[builtins fixtures/dict.pyi]
+
+[case testEnumIgnoreIsDeleted]
+from enum import Enum
+
+class C(Enum):
+    _ignore_ = 'X'
+
+C._ignore_ # E: "Type[C]" has no attribute "_ignore_"
+[typing fixtures/typing-medium.pyi]
+
+[case testCanOverrideDunderAttributes]
+import typing
+from enum import Enum, Flag
+
+class BaseEnum(Enum):
+    __dunder__ = 1
+    __labels__: typing.Dict[int, str]
+
+class Override(BaseEnum):
+    __dunder__ = 2
+    __labels__ = {1: "1"}
+
+Override.__dunder__ = 3
+BaseEnum.__dunder__ = 3
+Override.__labels__ = {2: "2"}
+
+class FlagBase(Flag):
+    __dunder__ = 1
+    __labels__: typing.Dict[int, str]
+
+class FlagOverride(FlagBase):
+    __dunder__ = 2
+    __labels = {1: "1"}
+
+FlagOverride.__dunder__ = 3
+FlagBase.__dunder__ = 3
+FlagOverride.__labels__ = {2: "2"}
+[builtins fixtures/dict.pyi]
+
+[case testCanNotInitialize__members__]
+import typing
+from enum import Enum
+
+class WritingMembers(Enum):
+    __members__: typing.Dict[Enum, Enum] = {}  # E: Assigned "__members__" will be overridden by "Enum" internally
+
+class OnlyAnnotatedMembers(Enum):
+    __members__: typing.Dict[Enum, Enum]
+[builtins fixtures/dict.pyi]
+
+[case testCanOverrideDunderOnNonFirstBaseEnum]
+import typing
+from enum import Enum
+
+class Some:
+    __labels__: typing.Dict[int, str]
+
+class A(Some, Enum):
+    __labels__ = {1: "1"}
 [builtins fixtures/dict.pyi]

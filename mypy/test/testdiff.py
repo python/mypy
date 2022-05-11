@@ -16,7 +16,9 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
 
 
 class ASTDiffSuite(DataSuite):
-    files = ['diff.test']
+    files = [
+        'diff.test',
+    ]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         first_src = '\n'.join(testcase.input)
@@ -45,8 +47,7 @@ class ASTDiffSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self, source: str,
               options: Options) -> Tuple[List[str], Optional[Dict[str, MypyFile]]]:

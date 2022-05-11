@@ -49,6 +49,38 @@ for full details, see :ref:`running-mypy`.
     Asks mypy to type check the provided string as a program.
 
 
+.. option:: --exclude
+
+    A regular expression that matches file names, directory names and paths
+    which mypy should ignore while recursively discovering files to check.
+    Use forward slashes on all platforms.
+
+    For instance, to avoid discovering any files named `setup.py` you could
+    pass ``--exclude '/setup\.py$'``. Similarly, you can ignore discovering
+    directories with a given name by e.g. ``--exclude /build/`` or
+    those matching a subpath with ``--exclude /project/vendor/``. To ignore
+    multiple files / directories / paths, you can provide the --exclude
+    flag more than once, e.g ``--exclude '/setup\.py$' --exclude '/build/'``.
+
+    Note that this flag only affects recursive directory tree discovery, that
+    is, when mypy is discovering files within a directory tree or submodules of
+    a package to check. If you pass a file or module explicitly it will still be
+    checked. For instance, ``mypy --exclude '/setup.py$'
+    but_still_check/setup.py``.
+
+    In particular, ``--exclude`` does not affect mypy's :ref:`import following
+    <follow-imports>`. You can use a per-module :confval:`follow_imports` config
+    option to additionally avoid mypy from following imports and checking code
+    you do not wish to be checked.
+
+    Note that mypy will never recursively discover files and directories named
+    "site-packages", "node_modules" or "__pycache__", or those whose name starts
+    with a period, exactly as ``--exclude
+    '/(site-packages|node_modules|__pycache__|\..*)/$'`` would. Mypy will also
+    never recursively discover files with extensions other than ``.py`` or
+    ``.pyi``.
+
+
 Optional arguments
 ******************
 
@@ -73,7 +105,7 @@ Config file
 
     This flag makes mypy read configuration settings from the given file.
 
-    By default settings are read from ``mypy.ini``, ``.mypy.ini``, or ``setup.cfg``
+    By default settings are read from ``mypy.ini``, ``.mypy.ini``, ``pyproject.toml``, or ``setup.cfg``
     in the current directory. Settings override mypy's built-in defaults and
     command line flags can override settings.
 
@@ -110,10 +142,18 @@ imports.
     passed on the command line, the ``MYPYPATH`` environment variable,
     and the :confval:`mypy_path` config option.
 
-    Note that this only affects import discovery -- for modules and
-    packages explicitly passed on the command line, mypy still
-    searches for ``__init__.py[i]`` files in order to determine the
-    fully-qualified module/package name.
+    This flag affects how mypy finds modules and packages explicitly passed on
+    the command line. It also affects how mypy determines fully qualified module
+    names for files passed on the command line. See :ref:`Mapping file paths to
+    modules <mapping-paths-to-modules>` for details.
+
+.. option:: --explicit-package-bases
+
+    This flag tells mypy that top-level packages will be based in either the
+    current directory, or a member of the ``MYPYPATH`` environment variable or
+    :confval:`mypy_path` config option. This option is only useful in
+    conjunction with :option:`--namespace-packages`. See :ref:`Mapping file
+    paths to modules <mapping-paths-to-modules>` for details.
 
 .. option:: --ignore-missing-imports
 
@@ -200,6 +240,11 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 
     Equivalent to running :option:`--python-version 2.7 <--python-version>`.
 
+    .. note::
+
+        To check Python 2 code with mypy, you'll need to install mypy with
+        ``pip install 'mypy[python2]'``.
+
 .. option:: --platform PLATFORM
 
     This flag will make mypy type check your code as if it were
@@ -229,7 +274,7 @@ For more information on how to use these flags, see :ref:`version_and_platform_c
 Disallow dynamic typing
 ***********************
 
-The ``Any`` type is used represent a value that has a :ref:`dynamic type <dynamic-typing>`.
+The ``Any`` type is used to represent a value that has a :ref:`dynamic type <dynamic-typing>`.
 The ``--disallow-any`` family of flags will disallow various uses of the ``Any`` type in
 a module -- this lets us strategically disallow the use of dynamic typing in a controlled way.
 
@@ -267,9 +312,8 @@ The following options are available:
 .. option:: --disallow-any-generics
 
     This flag disallows usage of generic types that do not specify explicit
-    type parameters. Moreover, built-in collections (such as :py:class:`list` and
-    :py:class:`dict`) become disallowed as you should use their aliases from the :py:mod:`typing`
-    module (such as :py:class:`List[int] <typing.List>` and :py:class:`Dict[str, str] <typing.Dict>`).
+    type parameters. For example, you can't use a bare ``x: list``. Instead, you
+    must always write something like ``x: list[int]``.
 
 .. option:: --disallow-subclassing-any
 
@@ -374,7 +418,7 @@ For more details, see :ref:`no_strict_optional`.
 Configuring warnings
 ********************
 
-The follow flags enable warnings for code that is sound but is
+The following flags enable warnings for code that is sound but is
 potentially problematic or redundant in some way.
 
 .. option:: --warn-redundant-casts
@@ -427,7 +471,7 @@ potentially problematic or redundant in some way.
     .. code-block:: python
 
         def process(x: int) -> None:
-            # Error: Right operand of 'or' is never evaluated
+            # Error: Right operand of "or" is never evaluated
             if isinstance(x, int) or x > 7:
                 # Error: Unsupported operand types for + ("int" and "str")
                 print(x + "bad")
@@ -476,11 +520,20 @@ of the above sections.
 
     .. code-block:: python
 
-       def process(items: List[str]) -> None:
-           # 'items' has type List[str]
+       def process(items: list[str]) -> None:
+           # 'items' has type list[str]
            items = [item.split() for item in items]
-           # 'items' now has type List[List[str]]
-           ...
+           # 'items' now has type list[list[str]]
+
+    The variable must be used before it can be redefined:
+
+    .. code-block:: python
+
+        def process(items: list[str]) -> None:
+           items = "mypy"  # invalid redefinition to str because the variable hasn't been used yet
+           print(items)
+           items = "100"  # valid, items now has type str
+           items = int(items)  # valid, items now has type int
 
 .. option:: --local-partial-types
 
@@ -495,11 +548,11 @@ of the above sections.
         from typing import Optional
 
         a = None  # Need type annotation here if using --local-partial-types
-        b = None  # type: Optional[int]
+        b: Optional[int] = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz = None  # type: Optional[int]
+            baz: Optional[int] = None
 
             def __init__(self) -> None:
                 self.bar = 1
@@ -520,8 +573,13 @@ of the above sections.
 
        # This won't re-export the value
        from foo import bar
+
+       # Neither will this
+       from foo import bar as bang
+
        # This will re-export it as bar and allow other modules to import it
        from foo import bar as bar
+
        # This will also re-export bar
        from foo import bar
        __all__ = ['bar']
@@ -535,9 +593,9 @@ of the above sections.
 
     .. code-block:: python
 
-       from typing import List, Text
+       from typing import Text
 
-       items: List[int]
+       items: list[int]
        if 'some string' in items:  # Error: non-overlapping container check!
            ...
 
@@ -558,6 +616,7 @@ of the above sections.
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
     .. code-block:: python
 
@@ -565,20 +624,21 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
 .. option:: --enable-error-code
 
     This flag allows enabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
-    Note: This flag will override disabled error codes from the --disable-error-code
-    flag
+    Note: This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     .. code-block:: python
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
@@ -649,6 +709,14 @@ in error messages.
 .. option:: --show-absolute-path
 
     Show absolute paths to files.
+
+.. option:: --soft-error-limit N
+
+    This flag will adjust the limit after which mypy will (sometimes)
+    disable reporting most additional errors. The limit only applies
+    if it seems likely that most of the remaining errors will not be
+    useful or they may be overly noisy. If ``N`` is negative, there is
+    no limit. The default limit is 200.
 
 
 .. _incremental:
@@ -735,11 +803,13 @@ in developing or debugging mypy internals.
 
 .. option:: --custom-typeshed-dir DIR
 
-    This flag specifies the directory where mypy looks for typeshed
+    This flag specifies the directory where mypy looks for standard library typeshed
     stubs, instead of the typeshed that ships with mypy.  This is
     primarily intended to make it easier to test typeshed changes before
     submitting them upstream, but also allows you to use a forked version of
     typeshed.
+
+    Note that this doesn't affect third-party library stubs.
 
 .. _warn-incomplete-stub:
 
@@ -794,13 +864,17 @@ format into the specified directory.
 
     Causes mypy to generate a Cobertura XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --html-report / --xslt-html-report DIR
 
     Causes mypy to generate an HTML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --linecount-report DIR
 
@@ -822,16 +896,57 @@ format into the specified directory.
 
     Causes mypy to generate a text file type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 .. option:: --xml-report DIR
 
     Causes mypy to generate an XML type checking coverage report.
 
-    You must install the `lxml`_ library to generate this report.
+    To generate this report, you must either manually install the `lxml`_
+    library or specify mypy installation with the setuptools extra
+    ``mypy[reports]``.
 
 Miscellaneous
 *************
+
+.. option:: --install-types
+
+    This flag causes mypy to install known missing stub packages for
+    third-party libraries using pip.  It will display the pip command
+    that will be run, and expects a confirmation before installing
+    anything. For security reasons, these stubs are limited to only a
+    small subset of manually selected packages that have been
+    verified by the typeshed team. These packages include only stub
+    files and no executable code.
+
+    If you use this option without providing any files or modules to
+    type check, mypy will install stub packages suggested during the
+    previous mypy run. If there are files or modules to type check,
+    mypy first type checks those, and proposes to install missing
+    stubs at the end of the run, but only if any missing modules were
+    detected.
+
+    .. note::
+
+        This is new in mypy 0.900. Previous mypy versions included a
+        selection of third-party package stubs, instead of having
+        them installed separately.
+
+.. option:: --non-interactive
+
+   When used together with :option:`--install-types <mypy
+   --install-types>`, this causes mypy to install all suggested stub
+   packages using pip without asking for confirmation, and then
+   continues to perform type checking using the installed stubs, if
+   some files or modules are provided to type check.
+
+   This is implemented as up to two mypy runs internally. The first run
+   is used to find missing stub packages, and output is shown from
+   this run only if no missing stub packages were found. If missing
+   stub packages were found, they are installed and then another run
+   is performed.
 
 .. option:: --junit-xml JUNIT_XML
 

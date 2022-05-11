@@ -32,7 +32,7 @@ def insert_uninit_checks(ir: FuncIR) -> None:
 
 def split_blocks_at_uninits(blocks: List[BasicBlock],
                             pre_must_defined: 'AnalysisDict[Value]') -> List[BasicBlock]:
-    new_blocks = []  # type: List[BasicBlock]
+    new_blocks: List[BasicBlock] = []
 
     init_registers = []
     init_registers_set = set()
@@ -72,7 +72,7 @@ def split_blocks_at_uninits(blocks: List[BasicBlock],
                                                 line=op.line))
                     raise_std = RaiseStandardError(
                         RaiseStandardError.UNBOUND_LOCAL_ERROR,
-                        "local variable '{}' referenced before assignment".format(src.name),
+                        f'local variable "{src.name}" referenced before assignment',
                         op.line)
                     error_block.ops.append(raise_std)
                     error_block.ops.append(Unreachable())
@@ -80,7 +80,7 @@ def split_blocks_at_uninits(blocks: List[BasicBlock],
             cur_block.ops.append(op)
 
     if init_registers:
-        new_ops = []  # type: List[Op]
+        new_ops: List[Op] = []
         for reg in init_registers:
             err = LoadErrorValue(reg.type, undefines=True)
             new_ops.append(err)

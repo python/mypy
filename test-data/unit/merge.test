@@ -665,21 +665,22 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
     __annotations__<7> (builtins.object<1>)
     __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)))
+    __match_args__<10> (Tuple[Literal['x']])
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.object<1>)
+    _field_types<14> (builtins.object<1>)
+    _fields<15> (Tuple[builtins.str<9>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<9>)
+    x<19> (target.A<0>)))
 ==>
 TypeInfo<0>(
   Name(target.A)
@@ -688,22 +689,23 @@ TypeInfo<0>(
   Names())
 TypeInfo<2>(
   Name(target.N)
-  Bases(builtins.tuple[target.A<0>]<3>)
+  Bases(builtins.tuple[target.A<0>, ...]<3>)
   Mro(target.N<2>, builtins.tuple<3>, typing.Sequence<4>, typing.Iterable<5>, builtins.object<1>)
   Names(
     _NT<6>
     __annotations__<7> (builtins.object<1>)
     __doc__<8> (builtins.str<9>)
-    __new__<10>
-    _asdict<11>
-    _field_defaults<12> (builtins.object<1>)
-    _field_types<13> (builtins.object<1>)
-    _fields<14> (Tuple[builtins.str<9>, builtins.str<9>])
-    _make<15>
-    _replace<16>
-    _source<17> (builtins.str<9>)
-    x<18> (target.A<0>)
-    y<19> (target.A<0>)))
+    __match_args__<10> (Tuple[Literal['x'], Literal['y']])
+    __new__<11>
+    _asdict<12>
+    _field_defaults<13> (builtins.object<1>)
+    _field_types<14> (builtins.object<1>)
+    _fields<15> (Tuple[builtins.str<9>, builtins.str<9>])
+    _make<16>
+    _replace<17>
+    _source<18> (builtins.str<9>)
+    x<19> (target.A<0>)
+    y<20> (target.A<0>)))
 
 [case testUnionType_types]
 import target
@@ -779,7 +781,7 @@ foo: int
 x: foo[A]
 [out]
 tmp/target.py:4: error: Variable "target.foo" is not valid as a type
-tmp/target.py:4: note: See https://mypy.readthedocs.io/en/latest/common_issues.html#variables-vs-type-aliases
+tmp/target.py:4: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 ## target
 NameExpr:3: builtins.int<0>
 NameExpr:4: foo?[target.A<1>]
@@ -1435,7 +1437,7 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>))
+    X<3> (Literal[0]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 ==>
 TypeInfo<0>(
@@ -1443,8 +1445,8 @@ TypeInfo<0>(
   Bases(enum.Enum<1>)
   Mro(target.A<0>, enum.Enum<1>, builtins.object<2>)
   Names(
-    X<3> (builtins.int<4>)
-    Y<6> (builtins.int<4>))
+    X<3> (Literal[0]?<4>)
+    Y<6> (Literal[1]?<4>))
   MetaclassType(enum.EnumMeta<5>))
 
 [case testLiteralMerge]

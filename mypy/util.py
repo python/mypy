@@ -8,6 +8,7 @@ import sys
 import hashlib
 import io
 import shutil
+import time
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -23,25 +24,48 @@ except ImportError:
 
 T = TypeVar('T')
 
-ENCODING_RE = \
-    re.compile(br'([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)')  # type: Final
+ENCODING_RE: Final = re.compile(br"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
-DEFAULT_SOURCE_OFFSET = 4  # type: Final
-DEFAULT_COLUMNS = 80  # type: Final
+DEFAULT_SOURCE_OFFSET: Final = 4
+DEFAULT_COLUMNS: Final = 80
 
 # At least this number of columns will be shown on each side of
 # error location when printing source code snippet.
-MINIMUM_WIDTH = 20
+MINIMUM_WIDTH: Final = 20
 
 # VT100 color code processing was added in Windows 10, but only the second major update,
 # Threshold 2. Fortunately, everyone (even on LTSB, Long Term Support Branch) should
 # have a version of Windows 10 newer than this. Note that Windows 8 and below are not
 # supported, but are either going out of support, or make up only a few % of the market.
-MINIMUM_WINDOWS_MAJOR_VT100 = 10
-MINIMUM_WINDOWS_BUILD_VT100 = 10586
+MINIMUM_WINDOWS_MAJOR_VT100: Final = 10
+MINIMUM_WINDOWS_BUILD_VT100: Final = 10586
 
-default_python2_interpreter = \
-    ['python2', 'python', '/usr/bin/python', 'C:\\Python27\\python.exe']  # type: Final
+default_python2_interpreter: Final = [
+    "python2",
+    "python",
+    "/usr/bin/python",
+    "C:\\Python27\\python.exe",
+]
+
+SPECIAL_DUNDERS: Final = frozenset((
+    "__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__",
+))
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
+    """Returns whether name is a dunder name.
+
+    Args:
+        exclude_special: Whether to return False for a couple special dunder methods.
+
+    """
+    if exclude_special and name in SPECIAL_DUNDERS:
+        return False
+    return name.startswith("__") and name.endswith("__")
+
+
+def is_sunder(name: str) -> bool:
+    return not is_dunder(name) and name.startswith('_') and name.endswith('_')
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -65,7 +89,7 @@ def module_prefix(modules: Iterable[str], target: str) -> Optional[str]:
 
 
 def split_target(modules: Iterable[str], target: str) -> Optional[Tuple[str, str]]:
-    remaining = []  # type: List[str]
+    remaining: List[str] = []
     while True:
         if target in modules:
             return target, '.'.join(remaining)
@@ -100,6 +124,20 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
         return default_encoding, -1
+
+
+def bytes_to_human_readable_repr(b: bytes) -> str:
+    """Converts bytes into some human-readable representation. Unprintable
+    bytes such as the nul byte are escaped. For example:
+
+        >>> b = bytes([102, 111, 111, 10, 0])
+        >>> s = bytes_to_human_readable_repr(b)
+        >>> print(s)
+        foo\n\x00
+        >>> print(repr(s))
+        'foo\\n\\x00'
+    """
+    return repr(b)[2:-1]
 
 
 class DecodeError(Exception):
@@ -193,7 +231,7 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
     return results
 
 
-_python2_interpreter = None  # type: Optional[str]
+_python2_interpreter: Optional[str] = None
 
 
 def try_find_python2_interpreter() -> Optional[str]:
@@ -214,28 +252,28 @@ def try_find_python2_interpreter() -> Optional[str]:
     return None
 
 
-PASS_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-FAIL_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+FAIL_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="0" failures="1" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <failure message="mypy produced messages">{text}</failure>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
-ERROR_TEMPLATE = """<?xml version="1.0" encoding="utf-8"?>
+ERROR_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>
 <testsuite errors="1" failures="0" name="mypy" skips="0" tests="1" time="{time:.3f}">
   <testcase classname="mypy" file="mypy" line="1" name="mypy-py{ver}-{platform}" time="{time:.3f}">
     <error message="mypy produced errors">{text}</error>
   </testcase>
 </testsuite>
-"""  # type: Final
+"""
 
 
 def write_junit_xml(dt: float, serious: bool, messages: List[str], path: str,
@@ -269,7 +307,7 @@ class IdMapper:
     """
 
     def __init__(self) -> None:
-        self.id_map = {}  # type: Dict[object, int]
+        self.id_map: Dict[object, int] = {}
         self.next_id = 0
 
     def id(self, o: object) -> int:
@@ -282,6 +320,17 @@ class IdMapper:
 def get_prefix(fullname: str) -> str:
     """Drop the final component of a qualified name (e.g. ('x.y' -> 'x')."""
     return fullname.rsplit('.', 1)[0]
+
+
+def get_top_two_prefixes(fullname: str) -> Tuple[str, str]:
+    """Return one and two component prefixes of a fully qualified name.
+
+    Given 'a.b.c.d', return ('a', 'a.b').
+
+    If fullname has only one component, return (fullname, fullname).
+    """
+    components = fullname.split('.', 3)
+    return components[0], '.'.join(components[:2])
 
 
 def correct_relative_import(cur_mod_id: str,
@@ -300,7 +349,7 @@ def correct_relative_import(cur_mod_id: str,
     return cur_mod_id + (("." + target) if target else ""), ok
 
 
-fields_cache = {}  # type: Final[Dict[Type[object], List[str]]]
+fields_cache: Final[Dict[Type[object], List[str]]] = {}
 
 
 def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
@@ -382,26 +431,23 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 5):
-        sys.exit("Running {name} with Python 3.4 or lower is not supported; "
-                 "please upgrade to 3.5 or newer".format(name=program))
-    # this can be deleted once we drop support for 3.5
-    if sys.version_info[:3] == (3, 5, 0):
-        sys.exit("Running {name} with Python 3.5.0 is not supported; "
-                 "please upgrade to 3.5.1 or newer".format(name=program))
+    if sys.version_info[:2] < (3, 6):
+        sys.exit("Running {name} with Python 3.5 or lower is not supported; "
+                 "please upgrade to 3.6 or newer".format(name=program))
 
 
-def count_stats(errors: List[str]) -> Tuple[int, int]:
-    """Count total number of errors and files in error list."""
-    errors = [e for e in errors if ': error:' in e]
-    files = {e.split(':')[0] for e in errors}
-    return len(errors), len(files)
+def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+    """Count total number of errors, notes and error_files in message list."""
+    errors = [e for e in messages if ': error:' in e]
+    error_files = {e.split(':')[0] for e in errors}
+    notes = [e for e in messages if ': note:' in e]
+    return len(errors), len(notes), len(error_files)
 
 
 def split_words(msg: str) -> List[str]:
     """Split line of text into words (but not within quoted groups)."""
     next_word = ''
-    res = []  # type: List[str]
+    res: List[str] = []
     allow_break = True
     for c in msg:
         if c == ' ' and allow_break:
@@ -444,7 +490,7 @@ def soft_wrap(msg: str, max_len: int, first_offset: int,
     """
     words = split_words(msg)
     next_line = words.pop(0)
-    lines = []  # type: List[str]
+    lines: List[str] = []
     while words:
         next_word = words.pop(0)
         max_line_len = max_len - num_indent if lines else max_len - first_offset
@@ -473,6 +519,8 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
+    if sys.platform == "win32":
+        assert False, "curses is not available on Windows"
     set_color = ''.join([cup[:-1].decode(), 'm'])
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
@@ -536,7 +584,7 @@ class FancyFormatter:
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if not CURSES_ENABLED:
+        if sys.platform == "win32" or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
@@ -556,11 +604,12 @@ class FancyFormatter:
         under = curses.tigetstr('smul')
         set_color = curses.tigetstr('setaf')
         set_eseq = curses.tigetstr('cup')
+        normal = curses.tigetstr('sgr0')
 
-        if not (bold and under and set_color and set_eseq):
+        if not (bold and under and set_color and set_eseq and normal):
             return False
 
-        self.NORMAL = curses.tigetstr('sgr0').decode()
+        self.NORMAL = normal.decode()
         self.BOLD = bold.decode()
         self.UNDER = under.decode()
         self.DIM = parse_gray_color(set_eseq)
@@ -628,7 +677,8 @@ class FancyFormatter:
                     self.highlight_quote_groups(msg) + self.style(code, 'yellow'))
         elif ': note:' in error:
             loc, msg = error.split('note:', maxsplit=1)
-            return loc + self.style('note:', 'blue') + self.underline_link(msg)
+            formatted = self.highlight_quote_groups(self.underline_link(msg))
+            return loc + self.style('note:', 'blue') + formatted
         elif error.startswith(' ' * DEFAULT_SOURCE_OFFSET):
             # TODO: detecting source code highlights through an indent can be surprising.
             if '^' not in error:
@@ -693,7 +743,7 @@ class FancyFormatter:
         if blockers:
             msg += ' (errors prevented further checking)'
         else:
-            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
+            msg += f" (checked {n_sources} source file{'s' if n_sources != 1 else ''})"
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
@@ -702,3 +752,24 @@ class FancyFormatter:
 def is_typeshed_file(file: str) -> bool:
     # gross, but no other clear way to tell
     return 'typeshed' in os.path.abspath(file).split(os.sep)
+
+
+def is_stub_package_file(file: str) -> bool:
+    # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
+    if not file.endswith('.pyi'):
+        return False
+    return any(component.endswith('-stubs')
+               for component in os.path.abspath(file).split(os.sep))
+
+
+def unnamed_function(name: Optional[str]) -> bool:
+    return name is not None and name == "_"
+
+
+# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
+# (or when mypy properly handles alternate definitions based on python version check
+time_ref = time.perf_counter
+
+
+def time_spent_us(t0: float) -> int:
+    return int((time.perf_counter() - t0) * 1e6)

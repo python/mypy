@@ -10,7 +10,8 @@ from abc import abstractmethod, ABCMeta
 
 class GenericMeta(type): pass
 
-cast = 0
+def cast(t, o): ...
+def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0
@@ -40,6 +41,11 @@ S = TypeVar('S')
 
 # Note: definitions below are different from typeshed, variances are declared
 # to silence the protocol variance checks. Maybe it is better to use type: ignore?
+
+@runtime_checkable
+class Hashable(Protocol, metaclass=ABCMeta):
+    @abstractmethod
+    def __hash__(self) -> int: pass
 
 @runtime_checkable
 class Container(Protocol[T_co]):
@@ -123,6 +129,10 @@ class AsyncIterator(AsyncIterable[T], Protocol):
 class Sequence(Iterable[T_co], Container[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
+
+class MutableSequence(Sequence[T]):
+    @abstractmethod
+    def __setitem__(self, n: Any, o: T) -> None: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass

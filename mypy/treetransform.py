@@ -6,7 +6,7 @@ Subclass TransformVisitor to perform non-trivial transformations.
 from typing import List, Dict, cast, Optional, Iterable
 
 from mypy.nodes import (
-    MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
+    AssertTypeExpr, MypyFile, Import, Node, ImportAll, ImportFrom, FuncItem, FuncDef,
     OverloadedFuncDef, ClassDef, Decorator, Block, Var,
     OperatorAssignmentStmt, ExpressionStmt, AssignmentStmt, ReturnStmt,
     RaiseStmt, AssertStmt, DelStmt, BreakStmt, ContinueStmt,
@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF, TypeVarTupleExpr
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -55,12 +55,12 @@ class TransformVisitor(NodeVisitor[Node]):
         self.test_only = False
         # There may be multiple references to a Var node. Keep track of
         # Var translations using a dictionary.
-        self.var_map = {}  # type: Dict[Var, Var]
+        self.var_map: Dict[Var, Var] = {}
         # These are uninitialized placeholder nodes used temporarily for nested
         # functions while we are transforming a top-level function. This maps an
         # untransformed node to a placeholder (which will later become the
         # transformed node).
-        self.func_placeholder_map = {}  # type: Dict[FuncDef, FuncDef]
+        self.func_placeholder_map: Dict[FuncDef, FuncDef] = {}
 
     def visit_mypy_file(self, node: MypyFile) -> MypyFile:
         assert self.test_only, "This visitor should not be used for whole files."
@@ -407,6 +407,9 @@ class TransformVisitor(NodeVisitor[Node]):
         return CastExpr(self.expr(node.expr),
                         self.type(node.type))
 
+    def visit_assert_type_expr(self, node: AssertTypeExpr) -> AssertTypeExpr:
+        return AssertTypeExpr(self.expr(node.expr), self.type(node.type))
+
     def visit_reveal_expr(self, node: RevealExpr) -> RevealExpr:
         if node.kind == REVEAL_TYPE:
             assert node.expr is not None
@@ -512,6 +515,11 @@ class TransformVisitor(NodeVisitor[Node]):
             node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
         )
 
+    def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
+        return TypeVarTupleExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
+
     def visit_type_alias_expr(self, node: TypeAliasExpr) -> TypeAliasExpr:
         return TypeAliasExpr(node.node)
 
@@ -596,7 +604,7 @@ class TransformVisitor(NodeVisitor[Node]):
         return [self.duplicate_name(name) for name in names]
 
     def optional_names(self, names: Iterable[Optional[NameExpr]]) -> List[Optional[NameExpr]]:
-        result = []  # type: List[Optional[NameExpr]]
+        result: List[Optional[NameExpr]] = []
         for name in names:
             if name:
                 result.append(self.duplicate_name(name))

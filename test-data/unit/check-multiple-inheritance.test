@@ -238,8 +238,8 @@ class C:
 def dec(f: Callable[..., T]) -> Callable[..., T]:
     return f
 [out]
-main:3: error: Cannot determine type of 'f' in base class 'B'
-main:3: error: Cannot determine type of 'f' in base class 'C'
+main:3: error: Cannot determine type of "f" in base class "B"
+main:3: error: Cannot determine type of "f" in base class "C"
 
 [case testMultipleInheritance_NestedClassesWithSameName]
 class Mixin1:
@@ -502,7 +502,7 @@ class A(Base1, Base2):
 [out]
 main:10: error: Incompatible types in assignment (expression has type "GenericBase[Base2]", base class "Base1" defined the type as "GenericBase[Base1]")
 
-[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType]
+[case testMultipleInheritance_NestedVariableOverriddenWithCompatibleType2]
 from typing import TypeVar, Generic
 T = TypeVar('T', covariant=True)
 class GenericBase(Generic[T]):

@@ -1,6 +1,6 @@
-from typing import TypeVar, Any, Mapping, Iterator, NoReturn, Dict, Type
+from typing import TypeVar, Any, Mapping, Iterator, NoReturn as NoReturn, Dict, Type
 from typing import TYPE_CHECKING as TYPE_CHECKING
-from typing import NewType as NewType
+from typing import NewType as NewType, overload as overload
 
 import sys
 
@@ -24,6 +24,14 @@ Annotated: _SpecialForm = ...
 ParamSpec: _SpecialForm
 Concatenate: _SpecialForm
 
+TypeAlias: _SpecialForm
+
+TypeGuard: _SpecialForm
+Never: _SpecialForm
+
+TypeVarTuple: _SpecialForm
+Unpack: _SpecialForm
+
 # Fallback type for all typed dicts (does not exist at runtime).
 class _TypedDict(Mapping[str, object]):
     # Needed to make this class non-abstract. It is explicitly declared abstract in
@@ -40,3 +48,5 @@ class _TypedDict(Mapping[str, object]):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 def TypedDict(typename: str, fields: Dict[str, Type[_T]], *, total: Any = ...) -> Type[dict]: ...
+
+def reveal_type(__obj: T) -> T: pass

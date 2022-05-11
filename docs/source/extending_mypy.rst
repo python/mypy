@@ -9,10 +9,10 @@ Integrating mypy into another Python application
 ************************************************
 
 It is possible to integrate mypy into another Python 3 application by
-importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``List[str]``, containing
+importing ``mypy.api`` and calling the ``run`` function with a parameter of type ``list[str]``, containing
 what normally would have been the command line arguments to mypy.
 
-Function ``run`` returns a ``Tuple[str, str, int]``, namely
+Function ``run`` returns a ``tuple[str, str, int]``, namely
 ``(<normal_report>, <error_report>, <exit_status>)``, in which ``<normal_report>``
 is what mypy normally writes to :py:data:`sys.stdout`, ``<error_report>`` is what mypy
 normally writes to :py:data:`sys.stderr` and ``exit_status`` is the exit status mypy normally
@@ -173,6 +173,8 @@ For example:
        ...
        yield timer()
 
+**get_function_signature_hook** is used to adjust the signature of a function.
+
 **get_method_hook()** is the same as ``get_function_hook()`` but for methods
 instead of module level functions.
 
@@ -196,20 +198,23 @@ fields which already exist on the class. *Exception:* if :py:meth:`__getattr__ <
 :py:meth:`__getattribute__ <object.__getattribute__>` is a method on the class, the hook is called for all
 fields which do not refer to methods.
 
+**get_class_attribute_hook()** is similar to above, but for attributes on classes rather than instances.
+Unlike above, this does not have special casing for :py:meth:`__getattr__ <object.__getattr__>` or
+:py:meth:`__getattribute__ <object.__getattribute__>`.
+
 **get_class_decorator_hook()** can be used to update class definition for
 given class decorators. For example, you can add some attributes to the class
 to match runtime behaviour:
 
 .. code-block:: python
 
-   from lib import customize
+   from dataclasses import dataclass
 
-   @customize
-   class UserDefined:
-       pass
+   @dataclass  # built-in plugin adds `__init__` method here
+   class User:
+       name: str
 
-   var = UserDefined
-   var.customized  # mypy can understand this using a plugin
+   user = User(name='example')  # mypy can understand this using a plugin
 
 **get_metaclass_hook()** is similar to above, but for metaclasses.
 
@@ -245,7 +250,7 @@ when the configuration for a module changes, we want to invalidate
 mypy's cache for that module so that it can be rechecked. This hook
 should be used to report to mypy any relevant configuration data,
 so that mypy knows to recheck the module if the configuration changes.
-The hooks hould return data encodable as JSON.
+The hooks should return data encodable as JSON.
 
 Notes about the semantic analyzer
 *********************************

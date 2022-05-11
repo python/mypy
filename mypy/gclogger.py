@@ -8,7 +8,7 @@ class GcLogger:
     """Context manager to log GC stats and overall time."""
 
     def __enter__(self) -> 'GcLogger':
-        self.gc_start_time = None  # type: Optional[float]
+        self.gc_start_time: Optional[float] = None
         self.gc_time = 0.0
         self.gc_calls = 0
         self.gc_collected = 0
@@ -29,7 +29,7 @@ class GcLogger:
             self.gc_collected += info['collected']
             self.gc_uncollectable += info['uncollectable']
         else:
-            assert False, "Unrecognized gc phase (%r)" % (phase,)
+            assert False, f"Unrecognized gc phase ({phase!r})"
 
     def __exit__(self, *args: object) -> None:
         while self.gc_callback in gc.callbacks:

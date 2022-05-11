@@ -1,10 +1,11 @@
-from typing import Optional, Container, Callable
+from typing import Optional, Container, Callable, List, Dict, cast
 
 from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType
+    get_proper_type, get_proper_types, TypeAliasType, ParamSpecType, Parameters, UnpackType,
+    TypeVarTupleType
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -41,8 +42,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> ProperType:
-        # Should not get here.
-        raise RuntimeError()
+        return t
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # Should not get here.
@@ -55,6 +55,18 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        raise RuntimeError("Parameters should have been bound to a class")
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
@@ -87,7 +99,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
 
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
-        from mypy.typeops import make_simplified_union  # asdf
+        from mypy.typeops import make_simplified_union
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
@@ -125,6 +137,11 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type alias target can't contain bound type variables, so
         # it is safe to just erase the arguments.
@@ -154,3 +171,34 @@ class LastKnownValueEraser(TypeTranslator):
         # Type aliases can't contain literal values, because they are
         # always constructed as explicit types.
         return t
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        new = cast(UnionType, super().visit_union_type(t))
+        # Erasure can result in many duplicate items; merge them.
+        # Call make_simplified_union only on lists of instance types
+        # that all have the same fullname, to avoid simplifying too
+        # much.
+        instances = [item for item in new.items
+                     if isinstance(get_proper_type(item), Instance)]
+        # Avoid merge in simple cases such as optional types.
+        if len(instances) > 1:
+            instances_by_name: Dict[str, List[Instance]] = {}
+            new_items = get_proper_types(new.items)
+            for item in new_items:
+                if isinstance(item, Instance) and not item.args:
+                    instances_by_name.setdefault(item.type.fullname, []).append(item)
+            merged: List[Type] = []
+            for item in new_items:
+                if isinstance(item, Instance) and not item.args:
+                    types = instances_by_name.get(item.type.fullname)
+                    if types is not None:
+                        if len(types) == 1:
+                            merged.append(item)
+                        else:
+                            from mypy.typeops import make_simplified_union
+                            merged.append(make_simplified_union(types))
+                            del instances_by_name[item.type.fullname]
+                else:
+                    merged.append(item)
+            return UnionType.make_union(merged)
+        return new

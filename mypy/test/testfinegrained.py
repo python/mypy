@@ -26,8 +26,8 @@ from mypy.test.data import (
     DataDrivenTestCase, DataSuite, UpdateFile, DeleteFile
 )
 from mypy.test.helpers import (
-    assert_string_arrays_equal, parse_options, copy_and_fudge_mtime, assert_module_equivalence,
-    assert_target_equivalence
+    assert_string_arrays_equal, parse_options, assert_module_equivalence,
+    assert_target_equivalence, perform_file_operations,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -49,6 +49,7 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-modules.test',
         'fine-grained-follow-imports.test',
         'fine-grained-suggest.test',
+        'fine-grained-attr.test',
     ]
 
     # Whether to use the fine-grained cache in the testing. This is overridden
@@ -129,15 +130,13 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
         if testcase.triggered:
             assert_string_arrays_equal(
                 testcase.triggered,
                 self.format_triggered(all_triggered),
-                'Invalid active triggers ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+                f'Invalid active triggers ({testcase.file}, line {testcase.line})')
 
     def get_options(self,
                     source: str,
@@ -158,7 +157,7 @@ class FineGrainedSuite(DataSuite):
             options.follow_imports = 'error'
 
         for name, _ in testcase.files:
-            if 'mypy.ini' in name:
+            if 'mypy.ini' in name or 'pyproject.toml' in name:
                 parse_config_file(options, lambda: None, name)
                 break
 
@@ -210,13 +209,7 @@ class FineGrainedSuite(DataSuite):
 
         Return (mypy output, triggered targets).
         """
-        for op in operations:
-            if isinstance(op, UpdateFile):
-                # Modify/create file
-                copy_and_fudge_mtime(op.source_path, op.target_path)
-            else:
-                # Delete file
-                os.remove(op.path)
+        perform_file_operations(operations)
         sources = self.parse_sources(main_src, step, options)
 
         if step <= num_regular_incremental_steps:
@@ -224,9 +217,9 @@ class FineGrainedSuite(DataSuite):
         else:
             new_messages = self.run_check(server, sources)
 
-        updated = []  # type: List[str]
-        changed = []  # type: List[str]
-        targets = []  # type: List[str]
+        updated: List[str] = []
+        changed: List[str] = []
+        targets: List[str] = []
         triggered = []
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -283,7 +276,7 @@ class FineGrainedSuite(DataSuite):
 
         """
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        regex = f'# cmd{incremental_step}: mypy ([a-zA-Z0-9_./ ]+)$'
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
         if alt_m is not None:
             # Optionally return a different command if in a later step
@@ -303,7 +296,7 @@ class FineGrainedSuite(DataSuite):
                                                allow_empty_dir=True)
 
     def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
-        output = []  # type: List[str]
+        output: List[str] = []
         targets = self.get_suggest(src, step)
         for flags, target in targets:
             json = '--json' in flags
@@ -333,7 +326,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
+        regex = f'# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

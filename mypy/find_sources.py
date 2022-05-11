@@ -6,11 +6,11 @@ import os
 from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path
+from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude
 from mypy.fscache import FileSystemCache
 from mypy.options import Options
 
-PY_EXTENSIONS = tuple(PYTHON_EXTENSIONS)  # type: Final
+PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)
 
 
 class InvalidSourceList(Exception):
@@ -38,7 +38,7 @@ def create_source_list(paths: Sequence[str], options: Options,
             sub_sources = finder.find_sources_in_dir(path)
             if not sub_sources and not allow_empty_dir:
                 raise InvalidSourceList(
-                    "There are no .py[i] files in directory '{}'".format(path)
+                    f"There are no .py[i] files in directory '{path}'"
                 )
             sources.extend(sub_sources)
         else:
@@ -91,6 +91,8 @@ class SourceFinder:
         self.fscache = fscache
         self.explicit_package_bases = get_explicit_package_bases(options)
         self.namespace_packages = options.namespace_packages
+        self.exclude = options.exclude
+        self.verbosity = options.verbosity
 
     def is_explicit_package_base(self, path: str) -> bool:
         assert self.explicit_package_bases
@@ -99,13 +101,18 @@ class SourceFinder:
     def find_sources_in_dir(self, path: str) -> List[BuildSource]:
         sources = []
 
-        seen = set()  # type: Set[str]
+        seen: Set[str] = set()
         names = sorted(self.fscache.listdir(path), key=keyfunc)
         for name in names:
             # Skip certain names altogether
-            if name == '__pycache__' or name.startswith('.') or name.endswith('~'):
+            if name in ("__pycache__", "site-packages", "node_modules") or name.startswith("."):
                 continue
             subpath = os.path.join(path, name)
+
+            if matches_exclude(
+                subpath, self.exclude, self.fscache, self.verbosity >= 2
+            ):
+                continue
 
             if self.fscache.isdir(subpath):
                 sub_sources = self.find_sources_in_dir(subpath)
@@ -153,7 +160,7 @@ class SourceFinder:
     def crawl_up_dir(self, dir: str) -> Tuple[str, str]:
         return self._crawl_up_helper(dir) or ("", dir)
 
-    @functools.lru_cache()
+    @functools.lru_cache()  # noqa: B019
     def _crawl_up_helper(self, dir: str) -> Optional[Tuple[str, str]]:
         """Given a directory, maybe returns module and base directory.
 
@@ -178,7 +185,7 @@ class SourceFinder:
             if not name.isidentifier():
                 # in most cases the directory name is invalid, we'll just stop crawling upwards
                 # but if there's an __init__.py in the directory, something is messed up
-                raise InvalidSourceList("{} is not a valid Python package name".format(name))
+                raise InvalidSourceList(f"{name} is not a valid Python package name")
             # we're definitely a package, so we always return a non-None value
             mod_prefix, base_dir = self.crawl_up_dir(parent)
             return module_join(mod_prefix, name), base_dir

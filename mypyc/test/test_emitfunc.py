@@ -1,18 +1,18 @@
 import unittest
 
-from typing import List
+from typing import List, Optional
 
-from mypy.ordered_dict import OrderedDict
+from mypy.backports import OrderedDict
 
 from mypy.test.helpers import assert_string_arrays_equal
 
 from mypyc.ir.ops import (
-    BasicBlock, Goto, Return, Integer, Assign, IncRef, DecRef, Branch,
+    BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
-    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, RType, int_rprimitive, bool_rprimitive, list_rprimitive,
+    RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
     dict_rprimitive, object_rprimitive, c_int_rprimitive, short_int_rprimitive, int32_rprimitive,
     int64_rprimitive, RStruct, pointer_rprimitive
 )
@@ -24,9 +24,7 @@ from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
 from mypyc.primitives.registry import binary_ops
 from mypyc.primitives.misc_ops import none_object_op
-from mypyc.primitives.list_ops import (
-    list_get_item_op, list_set_item_op, list_append_op
-)
+from mypyc.primitives.list_ops import list_get_item_op, list_set_item_op, list_append_op
 from mypyc.primitives.dict_ops import (
     dict_new_op, dict_update_op, dict_get_item_op, dict_set_item_op
 )
@@ -36,8 +34,10 @@ from mypyc.namegen import NameGenerator
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
+    """Test generation of fragments of C from individual IR ops."""
+
     def setUp(self) -> None:
-        self.registers = []  # type: List[Register]
+        self.registers: List[Register] = []
 
         def add_local(name: str, rtype: RType) -> Register:
             reg = Register(rtype, name)
@@ -74,6 +74,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_goto(self) -> None:
         self.assert_emit(Goto(BasicBlock(2)),
                          "goto CPyL2;")
+
+    def test_goto_next_block(self) -> None:
+        next_block = BasicBlock(2)
+        self.assert_emit(Goto(next_block), "", next_block=next_block)
 
     def test_return(self) -> None:
         self.assert_emit(Return(self.m),
@@ -128,6 +132,84 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                 goto CPyL9;
                          """)
 
+    def test_branch_no_else(self) -> None:
+        next_block = BasicBlock(9)
+        b = Branch(self.b, BasicBlock(8), next_block, Branch.BOOL)
+        self.assert_emit(b,
+                         """if (cpy_r_b) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(9)
+        b = Branch(self.b, BasicBlock(8), next_block, Branch.BOOL)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (!cpy_r_b) goto CPyL8;""",
+                         next_block=next_block)
+
+    def test_branch_no_else_negated(self) -> None:
+        next_block = BasicBlock(1)
+        b = Branch(self.b, next_block, BasicBlock(2), Branch.BOOL)
+        self.assert_emit(b,
+                         """if (!cpy_r_b) goto CPyL2;""",
+                         next_block=next_block)
+        next_block = BasicBlock(1)
+        b = Branch(self.b, next_block, BasicBlock(2), Branch.BOOL)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b) goto CPyL2;""",
+                         next_block=next_block)
+
+    def test_branch_is_error(self) -> None:
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        self.assert_emit(b,
+                         """if (cpy_r_b == 2) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        b = Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b != 2) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+
+    def test_branch_is_error_next_block(self) -> None:
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.IS_ERROR)
+        self.assert_emit(b,
+                         """if (cpy_r_b != 2) goto CPyL9;""",
+                         next_block=next_block)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.IS_ERROR)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (cpy_r_b == 2) goto CPyL9;""",
+                         next_block=next_block)
+
+    def test_branch_rare(self) -> None:
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        next_block = BasicBlock(9)
+        self.assert_emit(Branch(self.b, BasicBlock(8), next_block, Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        self.assert_emit(b,
+                         """if (likely(!cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (likely(cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+
     def test_call(self) -> None:
         decl = FuncDecl('myfn', None, 'mod',
                         FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))
@@ -143,18 +225,26 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          "cpy_r_r0 = CPyDef_myfn(cpy_r_m, cpy_r_k);")
 
     def test_inc_ref(self) -> None:
-        self.assert_emit(IncRef(self.m),
-                         "CPyTagged_IncRef(cpy_r_m);")
+        self.assert_emit(IncRef(self.o), "CPy_INCREF(cpy_r_o);")
+        self.assert_emit(IncRef(self.o), "CPy_INCREF(cpy_r_o);", rare=True)
 
     def test_dec_ref(self) -> None:
-        self.assert_emit(DecRef(self.m),
-                         "CPyTagged_DecRef(cpy_r_m);")
+        self.assert_emit(DecRef(self.o), "CPy_DECREF(cpy_r_o);")
+        self.assert_emit(DecRef(self.o), "CPy_DecRef(cpy_r_o);", rare=True)
+
+    def test_inc_ref_int(self) -> None:
+        self.assert_emit(IncRef(self.m), "CPyTagged_INCREF(cpy_r_m);")
+        self.assert_emit(IncRef(self.m), "CPyTagged_IncRef(cpy_r_m);", rare=True)
+
+    def test_dec_ref_int(self) -> None:
+        self.assert_emit(DecRef(self.m), "CPyTagged_DECREF(cpy_r_m);")
+        self.assert_emit(DecRef(self.m), "CPyTagged_DecRef(cpy_r_m);", rare=True)
 
     def test_dec_ref_tuple(self) -> None:
-        self.assert_emit(DecRef(self.t), 'CPyTagged_DecRef(cpy_r_t.f0);')
+        self.assert_emit(DecRef(self.t), 'CPyTagged_DECREF(cpy_r_t.f0);')
 
     def test_dec_ref_tuple_nested(self) -> None:
-        self.assert_emit(DecRef(self.tt), 'CPyTagged_DecRef(cpy_r_tt.f0.f0);')
+        self.assert_emit(DecRef(self.tt), 'CPyTagged_DECREF(cpy_r_tt.f0.f0);')
 
     def test_list_get_item(self) -> None:
         self.assert_emit(CallC(list_get_item_op.c_function_name, [self.m, self.k],
@@ -177,8 +267,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
                             else {
-                                CPy_TypeError("int", cpy_r_m);
-                                cpy_r_r0 = CPY_INT_TAG;
+                                CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
                             }
                          """)
 
@@ -192,18 +281,44 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
-               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+               if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
-                   CPyTagged_IncRef(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_INCREF(cpy_r_r0);
                }
             """)
+
+    def test_get_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, 'x', 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_x;
+               if (unlikely(cpy_r_r0 == 2)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'x' of 'A' undefined");
+               }
+            """)
+
+    def test_get_attr_merged(self) -> None:
+        op = GetAttr(self.r, 'y', 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            CPyTagged_INCREF(cpy_r_r0);
+            goto CPyL9;
+            """,
+            next_branch=branch)
 
     def test_set_attr(self) -> None:
         self.assert_emit(
             SetAttr(self.r, 'y', self.m, 1),
             """if (((mod___AObject *)cpy_r_r)->_y != CPY_INT_TAG) {
-                   CPyTagged_DecRef(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_DECREF(((mod___AObject *)cpy_r_r)->_y);
                }
                ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
                cpy_r_r0 = 1;
@@ -283,13 +398,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """cpy_r_r0 = cpy_r_o != cpy_r_o2;""")
 
     def test_load_mem(self) -> None:
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, None),
-                         """cpy_r_r0 = *(char *)cpy_r_ptr;""")
-        self.assert_emit(LoadMem(bool_rprimitive, self.ptr, self.s1),
+        self.assert_emit(LoadMem(bool_rprimitive, self.ptr),
                          """cpy_r_r0 = *(char *)cpy_r_ptr;""")
 
     def test_set_mem(self) -> None:
-        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b, None),
+        self.assert_emit(SetMem(bool_rprimitive, self.ptr, self.b),
                          """*(char *)cpy_r_ptr = cpy_r_b;""")
 
     def test_get_element_ptr(self) -> None:
@@ -306,7 +419,34 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(LoadAddress(object_rprimitive, "PyDict_Type"),
                          """cpy_r_r0 = (PyObject *)&PyDict_Type;""")
 
-    def assert_emit(self, op: Op, expected: str) -> None:
+    def test_assign_multi(self) -> None:
+        t = RArray(object_rprimitive, 2)
+        a = Register(t, 'a')
+        self.registers.append(a)
+        self.assert_emit(AssignMulti(a, [self.o, self.o2]),
+                         """PyObject *cpy_r_a[2] = {cpy_r_o, cpy_r_o2};""")
+
+    def test_long_unsigned(self) -> None:
+        a = Register(int64_rprimitive, 'a')
+        self.assert_emit(Assign(a, Integer(1 << 31, int64_rprimitive)),
+                         """cpy_r_a = 2147483648ULL;""")
+        self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
+                         """cpy_r_a = 2147483647;""")
+
+    def test_long_signed(self) -> None:
+        a = Register(int64_rprimitive, 'a')
+        self.assert_emit(Assign(a, Integer(-(1 << 31) + 1, int64_rprimitive)),
+                         """cpy_r_a = -2147483647;""")
+        self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
+                         """cpy_r_a = -2147483648LL;""")
+
+    def assert_emit(self,
+                    op: Op,
+                    expected: str,
+                    next_block: Optional[BasicBlock] = None,
+                    *,
+                    rare: bool = False,
+                    next_branch: Optional[Branch] = None) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -316,13 +456,23 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         declarations.fragments = []
 
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
+        visitor.next_block = next_block
+        visitor.rare = rare
+        if next_branch:
+            visitor.ops = [op, next_branch]
+        else:
+            visitor.ops = [op]
+        visitor.op_index = 0
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
         actual_lines = [line.strip(' ') for line in frags]
         assert all(line.endswith('\n') for line in actual_lines)
         actual_lines = [line.rstrip('\n') for line in actual_lines]
-        expected_lines = expected.rstrip().split('\n')
+        if not expected.strip():
+            expected_lines = []
+        else:
+            expected_lines = expected.rstrip().split('\n')
         expected_lines = [line.strip(' ') for line in expected_lines]
         assert_string_arrays_equal(expected_lines, actual_lines,
                                    msg='Generated code unexpected')
@@ -377,6 +527,7 @@ class TestGenerateFunction(unittest.TestCase):
         reg = Register(int_rprimitive)
         op = Assign(reg, Integer(5))
         self.block.ops.append(op)
+        self.block.ops.append(Unreachable())
         fn = FuncIR(FuncDecl('myfunc', None, 'mod', FuncSignature([self.arg], list_rprimitive)),
                     [self.reg],
                     [self.block])
@@ -390,6 +541,7 @@ class TestGenerateFunction(unittest.TestCase):
                 '    CPyTagged cpy_r_r0;\n',
                 'CPyL0: ;\n',
                 '    cpy_r_r0 = 10;\n',
+                '    CPy_Unreachable();\n',
                 '}\n',
             ],
             result, msg='Generated code invalid')

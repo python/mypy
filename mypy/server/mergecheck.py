@@ -7,7 +7,7 @@ from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
 from mypy.server.objgraph import get_reachable_graph, get_path
 
 # If True, print more verbose output on failure.
-DUMP_MISMATCH_NODES = False  # type: Final
+DUMP_MISMATCH_NODES: Final = False
 
 
 def check_consistency(o: object) -> None:
@@ -19,7 +19,7 @@ def check_consistency(o: object) -> None:
     reachable = list(seen.values())
     syms = [x for x in reachable if isinstance(x, SymbolNode)]
 
-    m = {}  # type: Dict[str, SymbolNode]
+    m: Dict[str, SymbolNode] = {}
     for sym in syms:
         if isinstance(sym, FakeInfo):
             continue
@@ -50,7 +50,8 @@ def check_consistency(o: object) -> None:
         path2 = get_path(sym2, seen, parents)
 
         if fn in m:
-            print('\nDuplicate %r nodes with fullname %r found:' % (type(sym).__name__, fn))
+            print('\nDuplicate {!r} nodes with fullname {!r} found:'.format(
+                type(sym).__name__, fn))
             print('[1] %d: %s' % (id(sym1), path_to_str(path1)))
             print('[2] %d: %s' % (id(sym2), path_to_str(path2)))
 
@@ -69,14 +70,14 @@ def path_to_str(path: List[Tuple[object, object]]) -> str:
     for attr, obj in path:
         t = type(obj).__name__
         if t in ('dict', 'tuple', 'SymbolTable', 'list'):
-            result += '[%s]' % repr(attr)
+            result += f'[{repr(attr)}]'
         else:
             if isinstance(obj, Var):
-                result += '.%s(%s:%s)' % (attr, t, obj.name)
+                result += f'.{attr}({t}:{obj.name})'
             elif t in ('BuildManager', 'FineGrainedBuildManager'):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.
-                result += '.%s' % attr
+                result += f'.{attr}'
             else:
-                result += '.%s(%s)' % (attr, t)
+                result += f'.{attr}({t})'
     return result

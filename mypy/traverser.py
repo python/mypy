@@ -1,14 +1,19 @@
 """Generic node traverser visitor"""
 
-from typing import List
+from typing import List, Tuple
+from mypy_extensions import mypyc_attr
 
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern
+)
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
-    Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
+    AssertTypeExpr, Block, MypyFile, FuncBase, FuncItem, CallExpr, ClassDef, Decorator, FuncDef,
     ExpressionStmt, AssignmentStmt, OperatorAssignmentStmt, WhileStmt,
     ForStmt, ReturnStmt, AssertStmt, DelStmt, IfStmt, RaiseStmt,
-    TryStmt, WithStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr, RevealExpr,
-    UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
+    TryStmt, WithStmt, MatchStmt, NameExpr, MemberExpr, OpExpr, SliceExpr, CastExpr,
+    RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr, IndexExpr, AssignmentExpr,
     GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
@@ -16,6 +21,7 @@ from mypy.nodes import (
 )
 
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class TraverserVisitor(NodeVisitor[None]):
     """A parse tree visitor that traverses the parse tree during visiting.
 
@@ -154,6 +160,15 @@ class TraverserVisitor(NodeVisitor[None]):
                 targ.accept(self)
         o.body.accept(self)
 
+    def visit_match_stmt(self, o: MatchStmt) -> None:
+        o.subject.accept(self)
+        for i in range(len(o.patterns)):
+            o.patterns[i].accept(self)
+            guard = o.guards[i]
+            if guard is not None:
+                guard.accept(self)
+            o.bodies[i].accept(self)
+
     def visit_member_expr(self, o: MemberExpr) -> None:
         o.expr.accept(self)
 
@@ -188,6 +203,9 @@ class TraverserVisitor(NodeVisitor[None]):
             o.stride.accept(self)
 
     def visit_cast_expr(self, o: CastExpr) -> None:
+        o.expr.accept(self)
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
         o.expr.accept(self)
 
     def visit_reveal_expr(self, o: RevealExpr) -> None:
@@ -277,6 +295,42 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_super_expr(self, o: SuperExpr) -> None:
         o.call.accept(self)
 
+    def visit_as_pattern(self, o: AsPattern) -> None:
+        if o.pattern is not None:
+            o.pattern.accept(self)
+        if o.name is not None:
+            o.name.accept(self)
+
+    def visit_or_pattern(self, o: OrPattern) -> None:
+        for p in o.patterns:
+            p.accept(self)
+
+    def visit_value_pattern(self, o: ValuePattern) -> None:
+        o.expr.accept(self)
+
+    def visit_sequence_pattern(self, o: SequencePattern) -> None:
+        for p in o.patterns:
+            p.accept(self)
+
+    def visit_starred_patten(self, o: StarredPattern) -> None:
+        if o.capture is not None:
+            o.capture.accept(self)
+
+    def visit_mapping_pattern(self, o: MappingPattern) -> None:
+        for key in o.keys:
+            key.accept(self)
+        for value in o.values:
+            value.accept(self)
+        if o.rest is not None:
+            o.rest.accept(self)
+
+    def visit_class_pattern(self, o: ClassPattern) -> None:
+        o.class_ref.accept(self)
+        for p in o.positionals:
+            p.accept(self)
+        for v in o.keyword_values:
+            v.accept(self)
+
     def visit_import(self, o: Import) -> None:
         for a in o.assignments:
             a.accept(self)
@@ -317,9 +371,8 @@ def has_return_statement(fdef: FuncBase) -> bool:
     return seeker.found
 
 
-class ReturnCollector(TraverserVisitor):
+class FuncCollectorBase(TraverserVisitor):
     def __init__(self) -> None:
-        self.return_statements = []  # type: List[ReturnStmt]
         self.inside_func = False
 
     def visit_func_def(self, defn: FuncDef) -> None:
@@ -327,6 +380,27 @@ class ReturnCollector(TraverserVisitor):
             self.inside_func = True
             super().visit_func_def(defn)
             self.inside_func = False
+
+
+class YieldSeeker(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.found = False
+
+    def visit_yield_expr(self, o: YieldExpr) -> None:
+        self.found = True
+
+
+def has_yield_expression(fdef: FuncBase) -> bool:
+    seeker = YieldSeeker()
+    fdef.accept(seeker)
+    return seeker.found
+
+
+class ReturnCollector(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.return_statements: List[ReturnStmt] = []
 
     def visit_return_stmt(self, stmt: ReturnStmt) -> None:
         self.return_statements.append(stmt)
@@ -336,3 +410,24 @@ def all_return_statements(node: Node) -> List[ReturnStmt]:
     v = ReturnCollector()
     node.accept(v)
     return v.return_statements
+
+
+class YieldCollector(FuncCollectorBase):
+    def __init__(self) -> None:
+        super().__init__()
+        self.in_assignment = False
+        self.yield_expressions: List[Tuple[YieldExpr, bool]] = []
+
+    def visit_assignment_stmt(self, stmt: AssignmentStmt) -> None:
+        self.in_assignment = True
+        super().visit_assignment_stmt(stmt)
+        self.in_assignment = False
+
+    def visit_yield_expr(self, expr: YieldExpr) -> None:
+        self.yield_expressions.append((expr, self.in_assignment))
+
+
+def all_yield_expressions(node: Node) -> List[Tuple[YieldExpr, bool]]:
+    v = YieldCollector()
+    node.accept(v)
+    return v.yield_expressions

@@ -35,15 +35,12 @@ class GetDependenciesSuite(DataSuite):
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
         dump_all = '# __dump_all__' in src
-        if testcase.name.endswith('python2'):
-            python_version = defaults.PYTHON2_VERSION
-        else:
-            python_version = defaults.PYTHON3_VERSION
         options = parse_options(src, testcase, incremental_step=1)
+        if testcase.name.endswith('python2'):
+            options.python_version = defaults.PYTHON2_VERSION
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull
-        options.python_version = python_version
         options.export_types = True
         options.preserve_asts = True
         messages, files, type_map = self.build(src, options)
@@ -52,14 +49,15 @@ class GetDependenciesSuite(DataSuite):
             if not a:
                 a = ['Unknown compile error (likely syntax error in test case or fixture)']
         else:
-            deps = defaultdict(set)  # type: DefaultDict[str, Set[str]]
+            deps: DefaultDict[str, Set[str]] = defaultdict(set)
             for module in files:
                 if module in dumped_modules or dump_all and module not in ('abc',
                                                                            'typing',
                                                                            'mypy_extensions',
                                                                            'typing_extensions',
                                                                            'enum'):
-                    new_deps = get_dependencies(files[module], type_map, python_version, options)
+                    new_deps = get_dependencies(files[module], type_map, options.python_version,
+                                                options)
                     for source in new_deps:
                         deps[source].update(new_deps[source])
 
@@ -69,15 +67,14 @@ class GetDependenciesSuite(DataSuite):
                 if source.startswith(('<enum', '<typing', '<mypy')):
                     # Remove noise.
                     continue
-                line = '%s -> %s' % (source, ', '.join(sorted(targets)))
+                line = f"{source} -> {', '.join(sorted(targets))}"
                 # Clean up output a bit
                 line = line.replace('__main__', 'm')
                 a.append(line)
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self,
               source: str,

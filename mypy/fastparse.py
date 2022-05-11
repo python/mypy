@@ -1,11 +1,14 @@
+from mypy.util import unnamed_function
+import copy
 import re
 import sys
 import warnings
 
 import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
-    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List, overload
+    Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
+
 from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
@@ -17,17 +20,21 @@ from mypy.nodes import (
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, MatchStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, TempNode, Expression, Statement,
-    ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
+    AwaitExpr, TempNode, RefExpr, Expression, Statement,
+    ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
+)
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern, SingletonPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -37,18 +44,19 @@ from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
-from mypy.reachability import mark_block_unreachable
+from mypy.reachability import infer_reachability_of_if_statement, mark_block_unreachable
+from mypy.util import bytes_to_human_readable_repr
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
     # the default argument warning
-    PY_MINOR_VERSION = sys.version_info[1]  # type: Final
+    PY_MINOR_VERSION: Final = sys.version_info[1]
 
     # Check if we can use the stdlib ast module instead of typed_ast.
     if sys.version_info >= (3, 8):
         import ast as ast3
         assert 'kind' in ast3.Constant._fields, \
-               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+               f"This 3.8.0 alpha ({sys.version.split()[0]}) is too old; 3.8.0a3 required"
         # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
         # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (
@@ -104,6 +112,29 @@ try:
         # These don't exist before 3.8
         NamedExpr = Any
         Constant = Any
+
+    if sys.version_info >= (3, 10):
+        Match = ast3.Match
+        MatchValue = ast3.MatchValue
+        MatchSingleton = ast3.MatchSingleton
+        MatchSequence = ast3.MatchSequence
+        MatchStar = ast3.MatchStar
+        MatchMapping = ast3.MatchMapping
+        MatchClass = ast3.MatchClass
+        MatchAs = ast3.MatchAs
+        MatchOr = ast3.MatchOr
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
+    else:
+        Match = Any
+        MatchValue = Any
+        MatchSingleton = Any
+        MatchSequence = Any
+        MatchStar = Any
+        MatchMapping = Any
+        MatchClass = Any
+        MatchAs = Any
+        MatchOr = Any
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -122,14 +153,14 @@ N = TypeVar('N', bound=Node)
 
 # There is no way to create reasonable fallbacks at this stage,
 # they must be patched later.
-MISSING_FALLBACK = FakeInfo("fallback can't be filled out until semanal")  # type: Final
-_dummy_fallback = Instance(MISSING_FALLBACK, [], -1)  # type: Final
+MISSING_FALLBACK: Final = FakeInfo("fallback can't be filled out until semanal")
+_dummy_fallback: Final = Instance(MISSING_FALLBACK, [], -1)
 
-TYPE_COMMENT_SYNTAX_ERROR = 'syntax error in type comment'  # type: Final
+TYPE_COMMENT_SYNTAX_ERROR: Final = "syntax error in type comment"
 
-INVALID_TYPE_IGNORE = 'Invalid "type: ignore" comment'  # type: Final
+INVALID_TYPE_IGNORE: Final = 'Invalid "type: ignore" comment'
 
-TYPE_IGNORE_PATTERN = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
+TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
 
 
 def parse(source: Union[str, bytes],
@@ -219,7 +250,7 @@ def parse_type_comment(type_comment: str,
     except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
-            err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
             errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
             return None, None
         else:
@@ -228,8 +259,8 @@ def parse_type_comment(type_comment: str,
         extra_ignore = TYPE_IGNORE_PATTERN.match(type_comment)
         if extra_ignore:
             # Typeshed has a non-optional return type for group!
-            tag = cast(Any, extra_ignore).group(1)  # type: Optional[str]
-            ignored = parse_type_ignore_tag(tag)  # type: Optional[List[str]]
+            tag: Optional[str] = cast(Any, extra_ignore).group(1)
+            ignored: Optional[List[str]] = parse_type_ignore_tag(tag)
             if ignored is None:
                 if errors is not None:
                     errors.report(line, column, INVALID_TYPE_IGNORE, code=codes.SYNTAX)
@@ -294,17 +325,17 @@ class ASTConverter:
                  is_stub: bool,
                  errors: Errors) -> None:
         # 'C' for class, 'F' for function
-        self.class_and_function_stack = []  # type: List[Literal['C', 'F']]
-        self.imports = []  # type: List[ImportBase]
+        self.class_and_function_stack: List[Literal["C", "F"]] = []
+        self.imports: List[ImportBase] = []
 
         self.options = options
         self.is_stub = is_stub
         self.errors = errors
 
-        self.type_ignores = {}  # type: Dict[int, List[str]]
+        self.type_ignores: Dict[int, List[str]] = {}
 
         # Cache of visit_X methods keyed by type of visited object
-        self.visitor_cache = {}  # type: Dict[type, Callable[[Optional[AST]], Any]]
+        self.visitor_cache: Dict[type, Callable[[Optional[AST]], Any]] = {}
 
     def note(self, msg: str, line: int, column: int) -> None:
         self.errors.report(line, column, msg, severity='note', code=codes.SYNTAX)
@@ -313,9 +344,19 @@ class ASTConverter:
              msg: str,
              line: int,
              column: int,
-             blocker: bool = True) -> None:
+             blocker: bool = True,
+             code: codes.ErrorCode = codes.SYNTAX) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
+            self.errors.report(line, column, msg, blocker=blocker, code=code)
+
+    def fail_merge_overload(self, node: IfStmt) -> None:
+        self.fail(
+            "Condition can't be inferred, unable to merge overloads",
+            line=node.line,
+            column=node.column,
+            blocker=False,
+            code=codes.MISC,
+        )
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -328,14 +369,14 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
+    def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
         return node
 
     def translate_opt_expr_list(self, l: Sequence[Optional[AST]]) -> List[Optional[Expression]]:
-        res = []  # type: List[Optional[Expression]]
+        res: List[Optional[Expression]] = []
         for e in l:
             exp = self.visit(e)
             res.append(exp)
@@ -357,12 +398,13 @@ class ASTConverter:
         # ignores the whole module:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
-            self.errors.used_ignored_lines[self.errors.file].add(min(self.type_ignores))
+            self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
+                codes.FILE.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
 
-        res = []  # type: List[Statement]
+        res: List[Statement] = []
         for stmt in stmts:
             node = self.visit(stmt)
             res.append(node)
@@ -384,7 +426,7 @@ class ASTConverter:
                 self.type_ignores[lineno] = extra_ignore
             return typ
 
-    op_map = {
+    op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Add: '+',
         ast3.Sub: '-',
         ast3.Mult: '*',
@@ -398,7 +440,7 @@ class ASTConverter:
         ast3.BitXor: '^',
         ast3.BitAnd: '&',
         ast3.FloorDiv: '//'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }
 
     def from_operator(self, op: ast3.operator) -> str:
         op_name = ASTConverter.op_map.get(type(op))
@@ -407,7 +449,7 @@ class ASTConverter:
         else:
             return op_name
 
-    comp_op_map = {
+    comp_op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Gt: '>',
         ast3.Lt: '<',
         ast3.Eq: '==',
@@ -418,7 +460,7 @@ class ASTConverter:
         ast3.IsNot: 'is not',
         ast3.In: 'in',
         ast3.NotIn: 'not in'
-    }  # type: Final[Dict[typing.Type[AST], str]]
+    }
 
     def from_comp_operator(self, op: ast3.cmpop) -> str:
         op_name = ASTConverter.comp_op_map.get(type(op))
@@ -441,33 +483,259 @@ class ASTConverter:
         return b
 
     def fix_function_overloads(self, stmts: List[Statement]) -> List[Statement]:
-        ret = []  # type: List[Statement]
-        current_overload = []  # type: List[OverloadPart]
-        current_overload_name = None  # type: Optional[str]
+        ret: List[Statement] = []
+        current_overload: List[OverloadPart] = []
+        current_overload_name: Optional[str] = None
+        seen_unconditional_func_def = False
+        last_if_stmt: Optional[IfStmt] = None
+        last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
+        last_if_stmt_overload_name: Optional[str] = None
+        last_if_unknown_truth_value: Optional[IfStmt] = None
+        skipped_if_stmts: List[IfStmt] = []
         for stmt in stmts:
+            if_overload_name: Optional[str] = None
+            if_block_with_overload: Optional[Block] = None
+            if_unknown_truth_value: Optional[IfStmt] = None
+            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
+                # Check IfStmt block to determine if function overloads can be merged
+                if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
+                if if_overload_name is not None:
+                    if_block_with_overload, if_unknown_truth_value = \
+                        self._get_executable_if_block_with_overloads(stmt)
+
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name == current_overload_name):
+                if last_if_stmt is not None:
+                    skipped_if_stmts.append(last_if_stmt)
+                if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
+                if last_if_unknown_truth_value:
+                    self.fail_merge_overload(last_if_unknown_truth_value)
+                    last_if_unknown_truth_value = None
                 current_overload.append(stmt)
+                if isinstance(stmt, FuncDef):
+                    seen_unconditional_func_def = True
+            elif (
+                current_overload_name is not None
+                and isinstance(stmt, IfStmt)
+                and if_overload_name == current_overload_name
+            ):
+                # IfStmt only contains stmts relevant to current_overload.
+                # Check if stmts are reachable and add them to current_overload,
+                # otherwise skip IfStmt to allow subsequent overload
+                # or function definitions.
+                skipped_if_stmts.append(stmt)
+                if if_block_with_overload is None:
+                    if if_unknown_truth_value is not None:
+                        self.fail_merge_overload(if_unknown_truth_value)
+                    continue
+                if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
+                if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
+                    skipped_if_stmts.extend(
+                        cast(List[IfStmt], if_block_with_overload.body[:-1])
+                    )
+                    current_overload.extend(if_block_with_overload.body[-1].items)
+                else:
+                    current_overload.append(
+                        cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
+                    )
             else:
+                if last_if_stmt is not None:
+                    ret.append(last_if_stmt)
+                    last_if_stmt_overload_name = current_overload_name
+                    last_if_stmt, last_if_overload = None, None
+                    last_if_unknown_truth_value = None
+
+                if current_overload and current_overload_name == last_if_stmt_overload_name:
+                    # Remove last stmt (IfStmt) from ret if the overload names matched
+                    # Only happens if no executable block had been found in IfStmt
+                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                if current_overload and skipped_if_stmts:
+                    # Add bare IfStmt (without overloads) to ret
+                    # Required for mypy to be able to still check conditions
+                    for if_stmt in skipped_if_stmts:
+                        self._strip_contents_from_if_stmt(if_stmt)
+                        ret.append(if_stmt)
+                    skipped_if_stmts = []
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
                     ret.append(OverloadedFuncDef(current_overload))
 
-                if isinstance(stmt, Decorator):
+                # If we have multiple decorated functions named "_" next to each, we want to treat
+                # them as a series of regular FuncDefs instead of one OverloadedFuncDef because
+                # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
+                # related, but multiple underscore functions next to each other aren't necessarily
+                # related
+                seen_unconditional_func_def = False
+                if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
+                elif (
+                    isinstance(stmt, IfStmt)
+                    and if_overload_name is not None
+                ):
+                    current_overload = []
+                    current_overload_name = if_overload_name
+                    last_if_stmt = stmt
+                    last_if_stmt_overload_name = None
+                    if if_block_with_overload is not None:
+                        skipped_if_stmts.extend(
+                            cast(List[IfStmt], if_block_with_overload.body[:-1])
+                        )
+                        last_if_overload = cast(
+                            Union[Decorator, FuncDef, OverloadedFuncDef],
+                            if_block_with_overload.body[-1]
+                        )
+                    last_if_unknown_truth_value = if_unknown_truth_value
                 else:
                     current_overload = []
                     current_overload_name = None
                     ret.append(stmt)
 
+        if current_overload and skipped_if_stmts:
+            # Add bare IfStmt (without overloads) to ret
+            # Required for mypy to be able to still check conditions
+            for if_stmt in skipped_if_stmts:
+                self._strip_contents_from_if_stmt(if_stmt)
+                ret.append(if_stmt)
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
             ret.append(OverloadedFuncDef(current_overload))
+        elif last_if_overload is not None:
+            ret.append(last_if_overload)
+        elif last_if_stmt is not None:
+            ret.append(last_if_stmt)
         return ret
+
+    def _check_ifstmt_for_overloads(
+        self, stmt: IfStmt, current_overload_name: Optional[str] = None
+    ) -> Optional[str]:
+        """Check if IfStmt contains only overloads with the same name.
+        Return overload_name if found, None otherwise.
+        """
+        # Check that block only contains a single Decorator, FuncDef, or OverloadedFuncDef.
+        # Multiple overloads have already been merged as OverloadedFuncDef.
+        if not (
+            len(stmt.body[0].body) == 1
+            and (
+                isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                or current_overload_name is not None
+                and isinstance(stmt.body[0].body[0], FuncDef)
+            )
+            or len(stmt.body[0].body) > 1
+            and isinstance(stmt.body[0].body[-1], OverloadedFuncDef)
+            and all(
+                self._is_stripped_if_stmt(if_stmt)
+                for if_stmt in stmt.body[0].body[:-1]
+            )
+        ):
+            return None
+
+        overload_name = cast(
+            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]).name
+        if stmt.else_body is None:
+            return overload_name
+
+        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+            # For elif: else_body contains an IfStmt itself -> do a recursive check.
+            if (
+                isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
+                and stmt.else_body.body[0].name == overload_name
+            ):
+                return overload_name
+            if (
+                isinstance(stmt.else_body.body[0], IfStmt)
+                and self._check_ifstmt_for_overloads(
+                    stmt.else_body.body[0], current_overload_name
+                ) == overload_name
+            ):
+                return overload_name
+
+        return None
+
+    def _get_executable_if_block_with_overloads(
+        self, stmt: IfStmt
+    ) -> Tuple[Optional[Block], Optional[IfStmt]]:
+        """Return block from IfStmt that will get executed.
+
+        Return
+            0 -> A block if sure that alternative blocks are unreachable.
+            1 -> An IfStmt if the reachability of it can't be inferred,
+                 i.e. the truth value is unknown.
+        """
+        infer_reachability_of_if_statement(stmt, self.options)
+        if (
+            stmt.else_body is None
+            and stmt.body[0].is_unreachable is True
+        ):
+            # always False condition with no else
+            return None, None
+        if (
+            stmt.else_body is None
+            or stmt.body[0].is_unreachable is False
+            and stmt.else_body.is_unreachable is False
+        ):
+            # The truth value is unknown, thus not conclusive
+            return None, stmt
+        if stmt.else_body.is_unreachable is True:
+            # else_body will be set unreachable if condition is always True
+            return stmt.body[0], None
+        if stmt.body[0].is_unreachable is True:
+            # body will be set unreachable if condition is always False
+            # else_body can contain an IfStmt itself (for elif) -> do a recursive check
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
+            return stmt.else_body, None
+        return None, stmt
+
+    def _strip_contents_from_if_stmt(self, stmt: IfStmt) -> None:
+        """Remove contents from IfStmt.
+
+        Needed to still be able to check the conditions after the contents
+        have been merged with the surrounding function overloads.
+        """
+        if len(stmt.body) == 1:
+            stmt.body[0].body = []
+        if stmt.else_body and len(stmt.else_body.body) == 1:
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                self._strip_contents_from_if_stmt(stmt.else_body.body[0])
+            else:
+                stmt.else_body.body = []
+
+    def _is_stripped_if_stmt(self, stmt: Statement) -> bool:
+        """Check stmt to make sure it is a stripped IfStmt.
+
+        See also: _strip_contents_from_if_stmt
+        """
+        if not isinstance(stmt, IfStmt):
+            return False
+
+        if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
+            # Body not empty
+            return False
+
+        if not stmt.else_body or len(stmt.else_body.body) == 0:
+            # No or empty else_body
+            return True
+
+        # For elif, IfStmt are stored recursively in else_body
+        return self._is_stripped_if_stmt(stmt.else_body.body[0])
 
     def in_method_scope(self) -> bool:
         return self.class_and_function_stack[-2:] == ['C', 'F']
@@ -522,15 +790,14 @@ class ASTConverter:
 
         lineno = n.lineno
         args = self.transform_args(n.args, lineno, no_type_check=no_type_check)
-
-        posonlyargs = [arg.arg for arg in getattr(n.args, "posonlyargs", [])]
-        arg_kinds = [arg.kind for arg in args]
-        arg_names = [arg.variable.name for arg in args]  # type: List[Optional[str]]
-        arg_names = [None if argument_elide_name(name) or name in posonlyargs else name
-                     for name in arg_names]
         if special_function_elide_names(n.name):
-            arg_names = [None] * len(arg_names)
-        arg_types = []  # type: List[Optional[Type]]
+            for arg in args:
+                arg.pos_only = True
+
+        arg_kinds = [arg.kind for arg in args]
+        arg_names = [None if arg.pos_only else arg.variable.name for arg in args]
+
+        arg_types: List[Optional[Type]] = []
         if no_type_check:
             arg_types = [None] * len(args)
             return_type = None
@@ -566,7 +833,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
-                err_msg = "{} '{}'".format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
                 self.fail(err_msg, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
@@ -602,10 +869,11 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
-        func_def = FuncDef(n.name,
-                       args,
-                       self.as_required_block(n.body, lineno),
-                       func_type)
+        func_def = FuncDef(
+            n.name,
+            args,
+            self.as_required_block(n.body, lineno),
+            func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
             func_def.unanalyzed_type = func_def.type.copy_modified()
@@ -620,7 +888,7 @@ class ASTConverter:
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
                 lineno += len(n.decorator_list)
-                end_lineno = None  # type: Optional[int]
+                end_lineno: Optional[int] = None
             else:
                 # Set end_lineno to the old pre-3.8 lineno, in order to keep
                 # existing "# type: ignore" comments working:
@@ -637,7 +905,7 @@ class ASTConverter:
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
             deco.set_line(first.lineno, first.col_offset)
-            retval = deco  # type: Union[FuncDef, Decorator]
+            retval: Union[FuncDef, Decorator] = deco
         else:
             # FuncDef overrides set_line -- can't use self.set_line
             func_def.set_line(lineno, n.col_offset)
@@ -659,18 +927,21 @@ class ASTConverter:
                        no_type_check: bool = False,
                        ) -> List[Argument]:
         new_args = []
-        names = []  # type: List[ast3.arg]
-        args_args = getattr(args, "posonlyargs", []) + args.args
+        names: List[ast3.arg] = []
+        posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
+        args_args = posonlyargs + args.args
         args_defaults = args.defaults
         num_no_defaults = len(args_args) - len(args_defaults)
         # positional arguments without defaults
-        for a in args_args[:num_no_defaults]:
-            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check))
+        for i, a in enumerate(args_args[:num_no_defaults]):
+            pos_only = i < len(posonlyargs)
+            new_args.append(self.make_argument(a, None, ARG_POS, no_type_check, pos_only))
             names.append(a)
 
         # positional arguments with defaults
-        for a, d in zip(args_args[num_no_defaults:], args_defaults):
-            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check))
+        for i, (a, d) in enumerate(zip(args_args[num_no_defaults:], args_defaults)):
+            pos_only = num_no_defaults + i < len(posonlyargs)
+            new_args.append(self.make_argument(a, d, ARG_OPT, no_type_check, pos_only))
             names.append(a)
 
         # *arg
@@ -696,8 +967,8 @@ class ASTConverter:
 
         return new_args
 
-    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: int,
-                      no_type_check: bool) -> Argument:
+    def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
+                      no_type_check: bool, pos_only: bool = False) -> Argument:
         if no_type_check:
             arg_type = None
         else:
@@ -710,7 +981,10 @@ class ASTConverter:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
             else:
                 arg_type = self.translate_type_comment(arg, type_comment)
-        return Argument(Var(arg.arg), arg_type, self.visit(default), kind)
+        if argument_elide_name(arg.arg):
+            pos_only = True
+
+        return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
     def fail_arg(self, msg: str, arg: ast3.arg) -> None:
         self.fail(msg, arg.lineno, arg.col_offset)
@@ -771,7 +1045,7 @@ class ASTConverter:
     def visit_AnnAssign(self, n: ast3.AnnAssign) -> AssignmentStmt:
         line = n.lineno
         if n.value is None:  # always allow 'x: int'
-            rvalue = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)  # type: Expression
+            rvalue: Expression = TempNode(AnyType(TypeOfAny.special_form), no_rhs=True)
             rvalue.line = line
             rvalue.column = n.col_offset
         else:
@@ -872,7 +1146,7 @@ class ASTConverter:
 
     # Import(alias* names)
     def visit_Import(self, n: ast3.Import) -> Import:
-        names = []  # type: List[Tuple[str, Optional[str]]]
+        names: List[Tuple[str, Optional[str]]] = []
         for alias in n.names:
             name = self.translate_module_id(alias.name)
             asname = alias.asname
@@ -891,7 +1165,7 @@ class ASTConverter:
         assert n.level is not None
         if len(n.names) == 1 and n.names[0].name == '*':
             mod = n.module if n.module is not None else ''
-            i = ImportAll(mod, n.level)  # type: ImportBase
+            i: ImportBase = ImportAll(mod, n.level)
         else:
             i = ImportFrom(self.translate_module_id(n.module) if n.module is not None else '',
                            n.level,
@@ -1095,7 +1369,7 @@ class ASTConverter:
     # Constant(object value) -- a constant, in Python 3.8.
     def visit_Constant(self, n: Constant) -> Any:
         val = n.value
-        e = None  # type: Any
+        e: Any = None
         if val is None:
             e = NameExpr('None')
         elif isinstance(val, str):
@@ -1122,9 +1396,9 @@ class ASTConverter:
         # a parent of int and float, and this causes isinstance below
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
-        val = n.n  # type: object
+        val: object = n.n
         if isinstance(val, int):
-            e = IntExpr(val)  # type: Union[IntExpr, FloatExpr, ComplexExpr]
+            e: Union[IntExpr, FloatExpr, ComplexExpr] = IntExpr(val)
         elif isinstance(val, float):
             e = FloatExpr(val)
         elif isinstance(val, complex):
@@ -1206,7 +1480,7 @@ class ASTConverter:
         if (isinstance(obj, CallExpr) and
                 isinstance(obj.callee, NameExpr) and
                 obj.callee.name == 'super'):
-            e = SuperExpr(member_expr.name, obj)  # type: Union[MemberExpr, SuperExpr]
+            e: Union[MemberExpr, SuperExpr] = SuperExpr(member_expr.name, obj)
         else:
             e = member_expr
         return self.set_line(e, n)
@@ -1241,10 +1515,10 @@ class ASTConverter:
 
     # List(expr* elts, expr_context ctx)
     def visit_List(self, n: ast3.List) -> Union[ListExpr, TupleExpr]:
-        expr_list = [self.visit(e) for e in n.elts]  # type: List[Expression]
+        expr_list: List[Expression] = [self.visit(e) for e in n.elts]
         if isinstance(n.ctx, ast3.Store):
             # [x, y] = z and (x, y) = z means exactly the same thing
-            e = TupleExpr(expr_list)  # type: Union[ListExpr, TupleExpr]
+            e: Union[ListExpr, TupleExpr] = TupleExpr(expr_list)
         else:
             e = ListExpr(expr_list)
         return self.set_line(e, n)
@@ -1272,6 +1546,75 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
+    # Match(expr subject, match_case* cases) # python 3.10 and later
+    def visit_Match(self, n: Match) -> MatchStmt:
+        node = MatchStmt(self.visit(n.subject),
+                         [self.visit(c.pattern) for c in n.cases],
+                         [self.visit(c.guard) for c in n.cases],
+                         [self.as_required_block(c.body, n.lineno) for c in n.cases])
+        return self.set_line(node, n)
+
+    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+        node = ValuePattern(self.visit(n.value))
+        return self.set_line(node, n)
+
+    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+        node = SingletonPattern(n.value)
+        return self.set_line(node, n)
+
+    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+        patterns = [self.visit(p) for p in n.patterns]
+        stars = [p for p in patterns if isinstance(p, StarredPattern)]
+        assert len(stars) < 2
+
+        node = SequencePattern(patterns)
+        return self.set_line(node, n)
+
+    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+        if n.name is None:
+            node = StarredPattern(None)
+        else:
+            node = StarredPattern(NameExpr(n.name))
+
+        return self.set_line(node, n)
+
+    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+        keys = [self.visit(k) for k in n.keys]
+        values = [self.visit(v) for v in n.patterns]
+
+        if n.rest is None:
+            rest = None
+        else:
+            rest = NameExpr(n.rest)
+
+        node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
+
+    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+        class_ref = self.visit(n.cls)
+        assert isinstance(class_ref, RefExpr)
+        positionals = [self.visit(p) for p in n.patterns]
+        keyword_keys = n.kwd_attrs
+        keyword_values = [self.visit(p) for p in n.kwd_patterns]
+
+        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
+        return self.set_line(node, n)
+
+    # MatchAs(expr pattern, identifier name)
+    def visit_MatchAs(self, n: MatchAs) -> AsPattern:
+        if n.name is None:
+            name = None
+        else:
+            name = NameExpr(n.name)
+            name = self.set_line(name, n)
+        node = AsPattern(self.visit(n.pattern), name)
+        return self.set_line(node, n)
+
+    # MatchOr(expr* pattern)
+    def visit_MatchOr(self, n: MatchOr) -> OrPattern:
+        node = OrPattern([self.visit(pattern) for pattern in n.patterns])
+        return self.set_line(node, n)
+
 
 class TypeConverter:
     def __init__(self,
@@ -1284,7 +1627,7 @@ class TypeConverter:
         self.errors = errors
         self.line = line
         self.override_column = override_column
-        self.node_stack = []  # type: List[AST]
+        self.node_stack: List[AST] = []
         self.assume_str_is_unicode = assume_str_is_unicode
         self.is_evaluated = is_evaluated
 
@@ -1357,7 +1700,7 @@ class TypeConverter:
 
     def visit_raw_str(self, s: str) -> Type:
         # An escape hatch that allows the AST walker in fastparse2 to
-        # directly hook into the Python 3.5 type converter in some cases
+        # directly hook into the Python 3 type converter in some cases
         # without needing to create an intermediary `Str` object.
         _, typ = parse_type_comment(s.strip(),
                                     self.line,
@@ -1379,9 +1722,9 @@ class TypeConverter:
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
 
-        name = None  # type: Optional[str]
+        name: Optional[str] = None
         default_type = AnyType(TypeOfAny.special_form)
-        typ = default_type  # type: Type
+        typ: Type = default_type
         for i, arg in enumerate(e.args):
             if i == 0:
                 converted = self.visit(arg)
@@ -1408,7 +1751,7 @@ class TypeConverter:
                 typ = converted
             else:
                 self.fail(
-                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    f'Unexpected argument "{k.arg}" for argument constructor',
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
@@ -1490,14 +1833,14 @@ class TypeConverter:
         # to think that the complex branch is always picked. Avoid
         # this by throwing away the type.
         if isinstance(value, int):
-            numeric_value = value  # type: Optional[int]
+            numeric_value: Optional[int] = value
             type_name = 'builtins.int'
         else:
             # Other kinds of numbers (floats, complex) are not valid parameters for
             # RawExpressionType so we just pass in 'None' for now. We'll report the
             # appropriate error at a later stage.
             numeric_value = None
-            type_name = 'builtins.{}'.format(type(value).__name__)
+            type_name = f'builtins.{type(value).__name__}'
         return RawExpressionType(
             numeric_value,
             type_name,
@@ -1525,7 +1868,7 @@ class TypeConverter:
         # this method doesn't actually ever run.) We can't just do
         # an attribute access with a `# type: ignore` because it would be
         # unused on < 3.8.
-        kind = getattr(n, 'kind')  # type: str  # noqa
+        kind: str = getattr(n, "kind")  # noqa
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
@@ -1539,22 +1882,38 @@ class TypeConverter:
         contents = bytes_to_human_readable_repr(n.s)
         return RawExpressionType(contents, 'builtins.bytes', self.line, column=n.col_offset)
 
+    def visit_Index(self, n: ast3.Index) -> Type:
+        # cast for mypyc's benefit on Python 3.9
+        return self.visit(cast(Any, n).value)
+
+    def visit_Slice(self, n: ast3.Slice) -> Type:
+        return self.invalid_type(
+            n, note="did you mean to use ',' instead of ':' ?"
+        )
+
     # Subscript(expr value, slice slice, expr_context ctx)  # Python 3.8 and before
     # Subscript(expr value, expr slice, expr_context ctx)  # Python 3.9 and later
     def visit_Subscript(self, n: ast3.Subscript) -> Type:
         if sys.version_info >= (3, 9):  # Really 3.9a5 or later
-            sliceval = n.slice  # type: Any
-            if (isinstance(sliceval, ast3.Slice) or
-                (isinstance(sliceval, ast3.Tuple) and
-                 any(isinstance(x, ast3.Slice) for x in sliceval.elts))):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
+            sliceval: Any = n.slice
+        # Python 3.8 or earlier use a different AST structure for subscripts
+        elif isinstance(n.slice, ast3.Index):
+            sliceval: Any = n.slice.value
+        elif isinstance(n.slice, ast3.Slice):
+            sliceval = copy.deepcopy(n.slice)  # so we don't mutate passed AST
+            if getattr(sliceval, "col_offset", None) is None:
+                # Fix column information so that we get Python 3.9+ message order
+                sliceval.col_offset = sliceval.lower.col_offset
         else:
-            # Python 3.8 or earlier use a different AST structure for subscripts
-            if not isinstance(n.slice, Index):
-                self.fail(TYPE_COMMENT_SYNTAX_ERROR, self.line, getattr(n, 'col_offset', -1))
-                return AnyType(TypeOfAny.from_error)
-            sliceval = n.slice.value
+            assert isinstance(n.slice, ast3.ExtSlice)
+            dims = copy.deepcopy(n.slice.dims)
+            for s in dims:
+                if getattr(s, "col_offset", None) is None:
+                    if isinstance(s, ast3.Index):
+                        s.col_offset = s.value.col_offset  # type: ignore
+                    elif isinstance(s, ast3.Slice):
+                        s.col_offset = s.lower.col_offset  # type: ignore
+            sliceval = ast3.Tuple(dims, n.ctx)
 
         empty_tuple_index = False
         if isinstance(sliceval, ast3.Tuple):
@@ -1580,7 +1939,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
         else:
             return self.invalid_type(n)
 
@@ -1600,19 +1959,5 @@ def stringify_name(n: AST) -> Optional[str]:
     elif isinstance(n, Attribute):
         sv = stringify_name(n.value)
         if sv is not None:
-            return "{}.{}".format(sv, n.attr)
+            return f"{sv}.{n.attr}"
     return None  # Can't do it.
-
-
-def bytes_to_human_readable_repr(b: bytes) -> str:
-    """Converts bytes into some human-readable representation. Unprintable
-    bytes such as the nul byte are escaped. For example:
-
-        >>> b = bytes([102, 111, 111, 10, 0])
-        >>> s = bytes_to_human_readable_repr(b)
-        >>> print(s)
-        foo\n\x00
-        >>> print(repr(s))
-        'foo\\n\\x00'
-    """
-    return repr(b)[2:-1]

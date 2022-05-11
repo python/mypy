@@ -11,12 +11,12 @@ from mypy.build import Graph
 from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
 from mypy.test.config import test_temp_dir, test_data_prefix
 from mypy.test.data import (
-    DataDrivenTestCase, DataSuite, FileOperation, UpdateFile, module_from_path
+    DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
-    retry_on_error, update_testcase_output, parse_options,
-    copy_and_fudge_mtime, assert_target_equivalence, check_test_output_files
+    update_testcase_output, parse_options,
+    assert_target_equivalence, check_test_output_files, perform_file_operations,
 )
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
@@ -91,7 +91,13 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-typevar-tuple.test',
     'check-generic-alias.test',
+    'check-typeguard.test',
+    'check-functools.test',
+    'check-singledispatch.test',
+    'check-slots.test',
+    'check-formatting.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
@@ -99,10 +105,12 @@ if sys.version_info >= (3, 8):
     typecheck_files.append('check-python38.test')
 if sys.version_info >= (3, 9):
     typecheck_files.append('check-python39.test')
+if sys.version_info >= (3, 10):
+    typecheck_files.append('check-python310.test')
 
 # Special tests for platforms with case-insensitive filesystems.
 if sys.platform in ('darwin', 'win32'):
-    typecheck_files.append('check-modules-case.test')
+    typecheck_files.extend(['check-modules-case.test'])
 
 
 class TypeCheckSuite(DataSuite):
@@ -152,19 +160,12 @@ class TypeCheckSuite(DataSuite):
                     break
         elif incremental_step > 1:
             # In runs 2+, copy *.[num] files to * files.
-            for op in operations:
-                if isinstance(op, UpdateFile):
-                    # Modify/create file
-                    copy_and_fudge_mtime(op.source_path, op.target_path)
-                else:
-                    # Delete file
-                    # Use retries to work around potential flakiness on Windows (AppVeyor).
-                    path = op.path
-                    retry_on_error(lambda: os.remove(path))
+            perform_file_operations(operations)
 
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -327,7 +328,7 @@ class TypeCheckSuite(DataSuite):
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if incremental_step > 1:
-            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_regex = f'# cmd{incremental_step}: mypy -m ([a-zA-Z0-9_. ]+)$'
             alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
             if alt_m is not None:
                 # Optionally return a different command if in a later step
@@ -345,7 +346,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
+                assert isinstance(path, str), f"Can't find ad hoc case file: {module_name}"
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

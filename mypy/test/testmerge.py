@@ -49,7 +49,7 @@ class ASTMergeSuite(DataSuite):
         super().setup()
         self.str_conv = StrConv(show_ids=True)
         assert self.str_conv.id_mapper is not None
-        self.id_mapper = self.str_conv.id_mapper  # type: IdMapper
+        self.id_mapper: IdMapper = self.str_conv.id_mapper
         self.type_str_conv = TypeStrVisitor(self.id_mapper)
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -98,8 +98,7 @@ class ASTMergeSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self, source: str, testcase: DataDrivenTestCase) -> Optional[BuildResult]:
         options = parse_options(source, testcase, incremental_step=1)
@@ -124,6 +123,7 @@ class ASTMergeSuite(DataSuite):
     def build_increment(self, manager: FineGrainedBuildManager,
                         module_id: str, path: str) -> Tuple[MypyFile,
                                                             Dict[Expression, Type]]:
+        manager.flush_cache()
         manager.update([(module_id, path)], [])
         module = manager.manager.modules[module_id]
         type_map = manager.graph[module_id].type_map()
@@ -141,7 +141,7 @@ class ASTMergeSuite(DataSuite):
             return self.dump_symbol_tables(modules)
         elif kind == TYPES:
             return self.dump_types(manager)
-        assert False, 'Invalid kind %s' % kind
+        assert False, f'Invalid kind {kind}'
 
     def dump_asts(self, modules: Dict[str, MypyFile]) -> List[str]:
         a = []
@@ -163,11 +163,11 @@ class ASTMergeSuite(DataSuite):
         return a
 
     def dump_symbol_table(self, module_id: str, symtable: SymbolTable) -> List[str]:
-        a = ['{}:'.format(module_id)]
+        a = [f'{module_id}:']
         for name in sorted(symtable):
             if name.startswith('__'):
                 continue
-            a.append('    {}: {}'.format(name, self.format_symbol_table_node(symtable[name])))
+            a.append(f'    {name}: {self.format_symbol_table_node(symtable[name])}')
         return a
 
     def format_symbol_table_node(self, node: SymbolTableNode) -> str:
@@ -176,14 +176,13 @@ class ASTMergeSuite(DataSuite):
                 return 'UNBOUND_IMPORTED'
             return 'None'
         if isinstance(node.node, Node):
-            s = '{}<{}>'.format(str(type(node.node).__name__),
-                                self.id_mapper.id(node.node))
+            s = f'{str(type(node.node).__name__)}<{self.id_mapper.id(node.node)}>'
         else:
-            s = '? ({})'.format(type(node.node))
+            s = f'? ({type(node.node)})'
         if (isinstance(node.node, Var) and node.node.type and
                 not node.node.fullname.startswith('typing.')):
             typestr = self.format_type(node.node.type)
-            s += '({})'.format(typestr)
+            s += f'({typestr})'
         return s
 
     def dump_typeinfos(self, modules: Dict[str, MypyFile]) -> List[str]:
@@ -225,13 +224,11 @@ class ASTMergeSuite(DataSuite):
                         for node in get_subexpressions(tree)
                         if node in all_types}
             if type_map:
-                a.append('## {}'.format(module_id))
+                a.append(f'## {module_id}')
                 for expr in sorted(type_map, key=lambda n: (n.line, short_type(n),
                                                             str(n) + str(type_map[n]))):
                     typ = type_map[expr]
-                    a.append('{}:{}: {}'.format(short_type(expr),
-                                                expr.line,
-                                                self.format_type(typ)))
+                    a.append(f'{short_type(expr)}:{expr.line}: {self.format_type(typ)}')
         return a
 
     def format_type(self, typ: Type) -> str:

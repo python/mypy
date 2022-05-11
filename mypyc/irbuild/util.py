@@ -4,9 +4,16 @@ from typing import Dict, Any, Union, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
-    IntExpr, FloatExpr, Var, TupleExpr, UnaryExpr, BytesExpr, ARG_NAMED, ARG_NAMED_OPT, ARG_POS,
-    ARG_OPT, GDEF
+    IntExpr, FloatExpr, Var, NameExpr, TupleExpr, UnaryExpr, BytesExpr,
+    ArgKind, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_OPT, GDEF,
 )
+
+
+DATACLASS_DECORATORS = {
+    'dataclasses.dataclass',
+    'attr.s',
+    'attr.attrs',
+}
 
 
 def is_trait_decorator(d: Expression) -> bool:
@@ -17,19 +24,38 @@ def is_trait(cdef: ClassDef) -> bool:
     return any(is_trait_decorator(d) for d in cdef.decorators) or cdef.info.is_protocol
 
 
-def is_dataclass_decorator(d: Expression) -> bool:
-    return (
-        (isinstance(d, RefExpr) and d.fullname == 'dataclasses.dataclass')
-        or (
-            isinstance(d, CallExpr)
+def dataclass_decorator_type(d: Expression) -> Optional[str]:
+    if isinstance(d, RefExpr) and d.fullname in DATACLASS_DECORATORS:
+        return d.fullname.split('.')[0]
+    elif (isinstance(d, CallExpr)
             and isinstance(d.callee, RefExpr)
-            and d.callee.fullname == 'dataclasses.dataclass'
-        )
-    )
+            and d.callee.fullname in DATACLASS_DECORATORS):
+        name = d.callee.fullname.split('.')[0]
+        if name == 'attr' and 'auto_attribs' in d.arg_names:
+            # Note: the mypy attrs plugin checks that the value of auto_attribs is
+            # not computed at runtime, so we don't need to perform that check here
+            auto = d.args[d.arg_names.index('auto_attribs')]
+            if isinstance(auto, NameExpr) and auto.name == 'True':
+                return 'attr-auto'
+        return name
+    else:
+        return None
+
+
+def is_dataclass_decorator(d: Expression) -> bool:
+    return dataclass_decorator_type(d) is not None
 
 
 def is_dataclass(cdef: ClassDef) -> bool:
     return any(is_dataclass_decorator(d) for d in cdef.decorators)
+
+
+def dataclass_type(cdef: ClassDef) -> Optional[str]:
+    for d in cdef.decorators:
+        typ = dataclass_decorator_type(d)
+        if typ is not None:
+            return typ
+    return None
 
 
 def get_mypyc_attr_literal(e: Expression) -> Any:
@@ -60,7 +86,7 @@ def get_mypyc_attr_call(d: Expression) -> Optional[CallExpr]:
 
 def get_mypyc_attrs(stmt: Union[ClassDef, Decorator]) -> Dict[str, Any]:
     """Collect all the mypyc_attr attributes on a class definition or a function."""
-    attrs = {}  # type: Dict[str, Any]
+    attrs: Dict[str, Any] = {}
     for dec in stmt.decorators:
         d = get_mypyc_attr_call(dec)
         if d:
@@ -82,7 +108,11 @@ def is_extension_class(cdef: ClassDef) -> bool:
         for d in cdef.decorators
     ):
         return False
-    elif (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
+    if cdef.info.typeddict_type:
+        return False
+    if cdef.info.is_named_tuple:
+        return False
+    if (cdef.info.metaclass_type and cdef.info.metaclass_type.type.fullname not in (
             'abc.ABCMeta', 'typing.TypingMeta', 'typing.GenericMeta')):
         return False
     return True
@@ -97,7 +127,7 @@ def get_func_def(op: Union[FuncDef, Decorator, OverloadedFuncDef]) -> FuncDef:
     return op
 
 
-def concrete_arg_kind(kind: int) -> int:
+def concrete_arg_kind(kind: ArgKind) -> ArgKind:
     """Find the concrete version of an arg kind that is being passed."""
     if kind == ARG_OPT:
         return ARG_POS

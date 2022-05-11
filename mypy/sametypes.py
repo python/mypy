@@ -1,15 +1,18 @@
-from typing import Sequence
+from typing import Sequence, Tuple, Set, List
 
 from mypy.types import (
     Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
     UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
     Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType)
-from mypy.typeops import tuple_fallback, make_simplified_union
+    ProperType, get_proper_type, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
+)
+from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_literal
 
 
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
+
     left = get_proper_type(left)
     right = get_proper_type(right)
 
@@ -45,6 +48,22 @@ def is_same_types(a1: Sequence[Type], a2: Sequence[Type]) -> bool:
         if not is_same_type(a1[i], a2[i]):
             return False
     return True
+
+
+def _extract_literals(u: UnionType) -> Tuple[Set[Type], List[Type]]:
+    """Given a UnionType, separate out its items into a set of simple literals and a remainder list
+    This is a useful helper to avoid O(n**2) behavior when comparing large unions, which can often
+    result from large enums in contexts where type narrowing removes a small subset of entries.
+    """
+    lit: Set[Type] = set()
+    rem: List[Type] = []
+    for i in u.relevant_items():
+        i = get_proper_type(i)
+        if is_simple_literal(i):
+            lit.add(i)
+        else:
+            rem.append(i)
+    return lit, rem
 
 
 class SameTypeVisitor(TypeVisitor[bool]):
@@ -95,6 +114,25 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return (isinstance(self.right, TypeVarType) and
                 left.id == self.right.id)
 
+    def visit_param_spec(self, left: ParamSpecType) -> bool:
+        # Ignore upper bound since it's derived from flavor.
+        return (isinstance(self.right, ParamSpecType) and
+                left.id == self.right.id and left.flavor == self.right.flavor)
+
+    def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
+        return (isinstance(self.right, TypeVarTupleType) and
+                left.id == self.right.id)
+
+    def visit_unpack_type(self, left: UnpackType) -> bool:
+        return (isinstance(self.right, UnpackType) and
+                is_same_type(left.type, self.right.type))
+
+    def visit_parameters(self, left: Parameters) -> bool:
+        return (isinstance(self.right, Parameters) and
+                left.arg_names == self.right.arg_names and
+                is_same_types(left.arg_types, self.right.arg_types) and
+                left.arg_kinds == self.right.arg_kinds)
+
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
         if isinstance(self.right, CallableType):
@@ -136,14 +174,20 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_union_type(self, left: UnionType) -> bool:
         if isinstance(self.right, UnionType):
+            left_lit, left_rem = _extract_literals(left)
+            right_lit, right_rem = _extract_literals(self.right)
+
+            if left_lit != right_lit:
+                return False
+
             # Check that everything in left is in right
-            for left_item in left.items:
-                if not any(is_same_type(left_item, right_item) for right_item in self.right.items):
+            for left_item in left_rem:
+                if not any(is_same_type(left_item, right_item) for right_item in right_rem):
                     return False
 
             # Check that everything in right is in left
-            for right_item in self.right.items:
-                if not any(is_same_type(right_item, left_item) for left_item in left.items):
+            for right_item in right_rem:
+                if not any(is_same_type(right_item, left_item) for left_item in left_rem):
                     return False
 
             return True
@@ -152,7 +196,7 @@ class SameTypeVisitor(TypeVisitor[bool]):
 
     def visit_overloaded(self, left: Overloaded) -> bool:
         if isinstance(self.right, Overloaded):
-            return is_same_types(left.items(), self.right.items())
+            return is_same_types(left.items, self.right.items)
         else:
             return False
 
