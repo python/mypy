@@ -1192,3 +1192,30 @@ def foo(): pass
 
 def test_decorator_name():
     assert foo.__name__ == "foo"
+
+[case testXXX]
+from lib import sub
+
+def str_repr(s: str) -> str:
+    return sub(lambda m: m.group(0), s)
+
+str_repr('4')
+
+[file lib.py]
+from typing import overload, Callable, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Match(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def group(self, n: int) -> T:
+        return self.x
+
+@overload
+def sub(repl: Callable[[Match[str]], str], s: str) -> str: ...
+@overload
+def sub(repl: Callable[[Match[bytes]], bytes], s: bytes) -> bytes: ...
+def sub(repl, *s):
+    return repl(Match('x'))
