@@ -279,17 +279,25 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
     match_args = _get_decorator_bool_argument(ctx, 'match_args', True)
 
+    early_fail = False
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
             ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
-            return True
+            early_fail = True
         if not info.defn.base_type_exprs:
             # Note: This will not catch subclassing old-style classes.
             ctx.api.fail("attrs only works with new-style classes", info.defn)
-            return True
+            early_fail = True
         if kw_only:
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
-            return True
+            early_fail = True
+    if early_fail:
+        # Add empty metadata to mark that we've finished processing this class.
+        ctx.cls.info.metadata['attrs'] = {
+            'attributes': [],
+            'frozen': False,
+        }
+        return True
 
     for super_info in ctx.cls.info.mro[1:-1]:
         if 'attrs_tag' in super_info.metadata and 'attrs' not in super_info.metadata:

@@ -1041,6 +1041,9 @@ class Good(object):
 @attr.s
 class Bad:  # E: attrs only works with new-style classes
     pass
+@attr.s
+class SubclassOfBad(Bad):
+    pass
 [builtins_py2 fixtures/bool.pyi]
 
 [case testAttrsAutoAttribsPy2]
