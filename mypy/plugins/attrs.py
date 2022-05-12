@@ -180,9 +180,6 @@ class Attribute:
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
-        if not isinstance(self.init_type, TypeVarType):
-            return
-
         self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
 
 

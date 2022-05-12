@@ -544,6 +544,37 @@ reveal_type(sub.three)  # N: Revealed type is "builtins.float"
 [builtins fixtures/bool.pyi]
 
 
+[case testAttrsGenericInheritance3]
+import attr
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True)
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@attr.s(auto_attribs=True)
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@attr.s(auto_attribs=True)
+class Parent2(Generic[T]):
+    a: List[T]
+
+@attr.s(auto_attribs=True)
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
 [case testAttrsMultiGenericInheritance]
 from typing import Generic, TypeVar
 import attr
