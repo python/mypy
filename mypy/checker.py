@@ -162,7 +162,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Utility for generating messages
     msg: MessageBuilder
     # Types of type checked nodes
-    type_map: Dict[Expression, Type]
+    _type_map: Dict[Expression, Type]
+    # If not None, store types here instead of type_map (to be merged later to type_map)
+    temp_type_map: Optional[Dict[Expression, Type]]
 
     # Helper for managing conditional types
     binder: ConditionalTypeBinder
@@ -246,7 +248,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self.partial_reported = set()
         self.var_decl_frames = {}
         self.deferred_nodes = []
-        self.type_map = {}
+        self._type_map = {}
+        self.temp_type_map = None
         self.module_refs = set()
         self.pass_num = 0
         self.current_node_deferred = False
@@ -5335,7 +5338,43 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def store_type(self, node: Expression, typ: Type) -> None:
         """Store the type of a node in the type map."""
-        self.type_map[node] = typ
+        if self.temp_type_map is None:
+            self._type_map[node] = typ
+        else:
+            self.temp_type_map[node] = typ
+
+    def has_type(self, node: Expression) -> bool:
+        if self.temp_type_map is not None and node in self.temp_type_map:
+            return True
+        return node in self._type_map
+
+    def lookup_type_or_none(self, node: Expression) -> Optional[Type]:
+        if self.temp_type_map is not None and node in self.temp_type_map:
+            return self.temp_type_map[node]
+        return self._type_map.get(node)
+
+    def lookup_type(self, node: Expression) -> Type:
+        if self.temp_type_map is not None and node in self.temp_type_map:
+            return self.temp_type_map[node]
+        return self._type_map[node]
+
+    def store_types(self, d: Dict[Expression, Type]) -> None:
+        if self.temp_type_map is None:
+            self._type_map.update(d)
+        else:
+            self.temp_type_map.update(d)
+
+    @contextmanager
+    def with_temp_type_map(self) -> Iterator[Dict[Expression, Type]]:
+        """Store inferred types into a temporary type map (returned).
+
+        This can be used to do type checking "experiments" without
+        affecting stored state.
+        """
+        old = self.temp_type_map
+        self.temp_type_map = {}
+        yield self.temp_type_map
+        self.temp_type_map = old
 
     def in_checked_function(self) -> bool:
         """Should we type-check the current function?
