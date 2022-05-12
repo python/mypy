@@ -1778,3 +1778,74 @@ class C:
 c = C(x=[C.D()])
 reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
 [builtins fixtures/list.pyi]
+
+[case testAttrsWrappedDecorators]
+# flags: --config-file tmp/mypy-fake-plugin-conf.ini
+import attr
+from typing import Any
+
+# Test that no errors are raised when the custom decorators are added to the maker lists.
+def my_attr_dataclass(cls) -> Any:
+    return attr.dataclass()(cls)
+
+def my_attr_s(cls) -> Any:
+    return attr.s()(cls)
+
+def my_attr_ib() -> Any:
+    return attr.ib()
+
+@my_attr_dataclass
+class A:
+    num: int = my_attr_ib()
+
+@my_attr_s
+class B:
+    string: str = my_attr_ib()
+
+a = A(42)
+b = B("Forty two")
+[builtins fixtures/attr.pyi]
+
+[file mypy-fake-plugin-conf.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fake_attrs_plugin.py
+
+
+[case testAttrsWrappedDecoratorsWithDifferentDefaults]
+# flags: --config-file tmp/mypy-fake-plugin-conf.ini
+import attr
+from typing import Any
+
+# Test that the attrs plugin detects the custom default values, and no false positives are raised.
+def my_attr_dataclass(cls, auto_attribs: bool = True) -> Any:
+    return attr.dataclass(auto_attribs=auto_attribs)(cls)
+
+def my_attr_s(cls, kw_only: bool = True) -> Any:
+    return attr.s(kw_only=kw_only)(cls)
+
+def my_attr_ib(**kwargs) -> Any:
+    return attr.ib(**kwargs)
+
+@my_attr_dataclass
+class A:
+    num: int = 42
+
+@my_attr_s
+class B:
+    optional: str = my_attr_ib(default="This attrib is not required now.")
+
+@my_attr_s
+class C(B):
+    # It is ok to have a required "after" an optional attrib, since kw_only is True.
+    required: str = my_attr_ib()
+
+a = A(num=42)
+b = B()
+b.optional
+c = C(required="Forty Two")
+[builtins fixtures/attr.pyi]
+[builtins fixtures/dict.pyi]
+
+[file mypy-fake-plugin-conf.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/fake_attrs_plugin.py

@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 from mypy.nodes import (
     ARG_POS, MDEF, Argument, Block, CallExpr, ClassDef, Expression, SYMBOL_FUNCBASE_TYPES,
-    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict,
+    FuncDef, PassStmt, RefExpr, SymbolTableNode, Var, JsonDict, NameExpr,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import set_callable_name, ALLOW_INCOMPATIBLE_OVERRIDE
@@ -24,25 +24,36 @@ def _get_decorator_bool_argument(
 
     This handles both @decorator(...) and @decorator.
     """
-    if isinstance(ctx.reason, CallExpr):
+    if isinstance(ctx.reason, CallExpr):  # @decorator(...)
         return _get_bool_argument(ctx, ctx.reason, name, default)
-    else:
-        return default
+    # @decorator - no call. Try to get default value from decorator definition.
+    if isinstance(ctx.reason, NameExpr) and isinstance(ctx.reason.node, FuncDef):
+        default_value = _get_default_bool_value(ctx.reason.node, name, default)
+        if default_value is not None:
+            return default_value
+        # If we are here, no value was passed in call, default was found in def and it is None.
+        # Should we ctx.api.fail here?
+    return default
 
 
 def _get_bool_argument(ctx: ClassDefContext, expr: CallExpr,
                        name: str, default: bool) -> bool:
-    """Return the boolean value for an argument to a call or the
-    default if it's not found.
+    """Return the boolean value for an argument to a call.
+
+    If the argument was not passed, try to find out the default value of the argument and return
+    that. If a default value cannot be automatically determined, return the value of the `default`
+    argument of this function.
     """
     attr_value = _get_argument(expr, name)
     if attr_value:
         ret = ctx.api.parse_bool(attr_value)
-        if ret is None:
-            ctx.api.fail(f'"{name}" argument must be True or False.', expr)
-            return default
-        return ret
-    return default
+    else:
+        # This argument was not passed in the call. Try to extract default from function def.
+        ret = _get_default_bool_value(expr, name, default)
+    if ret is None:
+        ctx.api.fail(f'"{name}" argument must be True or False.', expr)
+        return default
+    return ret
 
 
 def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
@@ -80,6 +91,36 @@ def _get_argument(call: CallExpr, name: str) -> Optional[Expression]:
         if attr_name == argument.name:
             return attr_value
     return None
+
+
+def _get_default_bool_value(
+    expr: Union[CallExpr, FuncDef, Expression], name: str, default: Optional[bool] = None
+) -> Optional[bool]:
+    """Return the default value for the argument with this name from an expression.
+
+    Try to extract the default optional bool value from the definition. If cannot extract
+    default value from the code, return the analyzer-defined default instead.
+    """
+    if isinstance(expr, CallExpr):  # We have a @decorator(...) situation.
+        if isinstance(expr.callee, RefExpr):
+            callee_node = expr.callee.node
+            if isinstance(callee_node, FuncDef):
+                expr = callee_node  # Will enter next if clause.
+    if isinstance(expr, FuncDef):
+        try:
+            initializer = expr.arguments[expr.arg_names.index(name)].initializer
+        except ValueError:  # name not in func_def.arg_names
+            return default
+        if initializer is None or not isinstance(initializer, NameExpr):
+            # No default was defined in the code or it is a complex expression.
+            return default  # Return analyzer-defined default.
+        if initializer.fullname == 'builtins.True':
+            return True
+        if initializer.fullname == 'builtins.False':
+            return False
+        if initializer.fullname == 'builtins.None':
+            return None
+    return default  # Cannot extract default from code, return analyzer-defined default.
 
 
 def add_method(

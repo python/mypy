@@ -17,7 +17,7 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method,
-    deserialize_and_fixup_type, add_attribute_to_class,
+    deserialize_and_fixup_type, add_attribute_to_class, _get_default_bool_value,
 )
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
@@ -205,6 +205,9 @@ def _get_decorator_optional_bool_argument(
 ) -> Optional[bool]:
     """Return the Optional[bool] argument for the decorator.
 
+    If the argument was not passed, try to find out the default value of the argument and return
+    that. If a default value cannot be automatically determined, return the value of the `default`
+    argument of this function.
     This handles both @decorator(...) and @decorator.
     """
     if isinstance(ctx.reason, CallExpr):
@@ -219,9 +222,7 @@ def _get_decorator_optional_bool_argument(
                     return None
             ctx.api.fail(f'"{name}" argument must be True or False.', ctx.reason)
             return default
-        return default
-    else:
-        return default
+    return _get_default_bool_value(ctx.reason, name, default)
 
 
 def attr_tag_callback(ctx: 'mypy.plugin.ClassDefContext') -> None:
