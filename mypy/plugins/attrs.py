@@ -180,7 +180,10 @@ class Attribute:
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
-        self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
+        if self.init_type:
+            self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
+        else:
+            self.init_type = None
 
 
 def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
