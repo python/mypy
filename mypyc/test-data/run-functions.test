@@ -1193,7 +1193,7 @@ def foo(): pass
 def test_decorator_name():
     assert foo.__name__ == "foo"
 
-[case testXXX]
+[case testLambdaArgToOverloaded]
 from lib import sub
 
 def test_str_overload() -> None:
