@@ -95,9 +95,19 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
         from mypy.plugins import dataclasses
+        from mypy.plugins import attrs
 
+        # These dataclass and attrs hooks run in the main semantic analysis pass
+        # and only tag known dataclasses/attrs classes, so that the second
+        # hooks (in get_class_decorator_hook_2) can detect dataclasses/attrs classes
+        # in the MRO.
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_tag_callback
+        if (fullname in attrs.attr_class_makers
+                or fullname in attrs.attr_dataclass_makers
+                or fullname in attrs.attr_frozen_makers
+                or fullname in attrs.attr_define_makers):
+            return attrs.attr_tag_callback
 
         return None
 

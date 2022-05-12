@@ -1667,3 +1667,51 @@ class D:
 tmp/b.py:8: error: Value of type "int" is not indexable
 tmp/a.py:7: error: Name "Lst" is not defined
 tmp/a.py:10: error: Value of type "int" is not indexable
+
+[case testAttrsGenericInheritanceSpecialCase1]
+import attr
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@attr.define
+class Parent(Generic[T]):
+    x: List[T]
+
+@attr.define
+class Child1(Parent["Child2"]): ...
+
+@attr.define
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/list.pyi]
+
+[case testAttrsGenericInheritanceSpecialCase2]
+import attr
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@attr.define
+class Child1(Parent["Child2"]):
+    x: int
+
+@attr.define
+class Child2(Parent["Child1"]):
+    y: int
+
+@attr.define
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/list.pyi]

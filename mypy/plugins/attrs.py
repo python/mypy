@@ -238,6 +238,16 @@ def _get_decorator_optional_bool_argument(
         return default
 
 
+def attr_tag_callback(ctx: 'mypy.plugin.ClassDefContext') -> None:
+    """Record that we have an attrs class in the main semantic analysis pass.
+
+    The later pass implemented by attr_class_maker_callback will use this
+    to detect attrs lasses in base classes.
+    """
+    # The value is ignored, only the existence matters.
+    ctx.cls.info.metadata['attrs_tag'] = {}
+
+
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: Optional[bool] = False,
                               frozen_default: bool = False) -> bool:
@@ -251,6 +261,9 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     into properties.
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
+
+    If this returns False, some required metadata was not ready yet and we need another
+    pass.
     """
     info = ctx.cls.info
 
@@ -274,6 +287,11 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         if kw_only:
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
             return True
+
+    for super_info in ctx.cls.info.mro[1:-1]:
+        if 'attrs_tag' in super_info.metadata and 'attrs' not in super_info.metadata:
+            # Super class is not ready yet. Request another pass.
+            return False
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
