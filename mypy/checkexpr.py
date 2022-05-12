@@ -369,9 +369,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #   be invoked for these.
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
-                    and e.callee.expr in self.chk.type_map):
+                    and self.chk.has_type(e.callee.expr)):
                 member = e.callee.name
-                object_type = self.chk.type_map[e.callee.expr]
+                object_type = self.chk.lookup_type(e.callee.expr)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname,
                                                          object_type, member)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
@@ -401,7 +401,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         format_value = None
         if isinstance(e.callee.expr, (StrExpr, UnicodeExpr)):
             format_value = e.callee.expr.value
-        elif e.callee.expr in self.chk.type_map:
+        elif self.chk.has_type(e.callee.expr):
             base_typ = try_getting_literal(self.chk.lookup_type(e.callee.expr))
             if isinstance(base_typ, LiteralType) and isinstance(base_typ.value, str):
                 format_value = base_typ.value

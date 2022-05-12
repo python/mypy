@@ -1182,6 +1182,22 @@ IntExpr(2) : Literal[1]?
 OpExpr(2) : builtins.str
 StrExpr(2) : Literal['%d']?
 
+[case testExportOverloadArgType]
+## LambdaExpr|NameExpr
+from typing import List, overload, Callable
+@overload
+def f(x: int, f: Callable[[int], int]) -> None: ...
+@overload
+def f(x: str, f: Callable[[str], str]) -> None: ...
+def f(x): ...
+f(
+    1, lambda x: x)
+[builtins fixtures/list.pyi]
+[out]
+NameExpr(8) : Overload(def (x: builtins.int, f: def (builtins.int) -> builtins.int), def (x: builtins.str, f: def (builtins.str) -> builtins.str))
+LambdaExpr(9) : def (builtins.int) -> builtins.int
+NameExpr(9) : builtins.int
+
 -- TODO
 --
 -- test expressions

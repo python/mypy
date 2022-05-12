@@ -2217,7 +2217,10 @@ class State:
         return self._type_checker
 
     def type_map(self) -> Dict[Expression, Type]:
-        return self.type_checker().type_map
+        # We can access _type_map directly since at this point no temporary type maps
+        # can be active.
+        assert self.type_checker().temp_type_map is None
+        return self.type_checker()._type_map
 
     def type_check_second_pass(self) -> bool:
         if self.options.semantic_analysis_only:
