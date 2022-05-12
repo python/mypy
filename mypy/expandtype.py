@@ -15,8 +15,6 @@ def expand_type(typ: Type, env: Mapping[TypeVarId, Type]) -> Type:
     environment.
     """
     # TODO: use an overloaded signature? (ProperType stays proper after expansion.)
-    print(typ)
-    print(env)
     return typ.accept(ExpandTypeVisitor(env))
 
 
