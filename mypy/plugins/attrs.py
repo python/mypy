@@ -292,11 +292,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
             early_fail = True
     if early_fail:
-        # Add empty metadata to mark that we've finished processing this class.
-        ctx.cls.info.metadata['attrs'] = {
-            'attributes': [],
-            'frozen': False,
-        }
+        _add_empty_metadata(info)
         return True
 
     for super_info in ctx.cls.info.mro[1:-1]:
@@ -312,6 +308,7 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         if node is None:
             # This name is likely blocked by some semantic analysis error that
             # should have been reported already.
+            _add_empty_metadata(info)
             return True
 
     _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
@@ -429,6 +426,14 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         last_default |= attribute.has_default
 
     return attributes
+
+
+def _add_empty_metadata(info: TypeInfo) -> None:
+    """Add empty metadata to mark that we've finished processing this class."""
+    info.metadata['attrs'] = {
+        'attributes': [],
+        'frozen': False,
+    }
 
 
 def _detect_auto_attribs(ctx: 'mypy.plugin.ClassDefContext') -> bool:
