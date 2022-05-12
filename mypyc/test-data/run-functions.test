@@ -1196,10 +1196,11 @@ def test_decorator_name():
 [case testXXX]
 from lib import sub
 
-def str_repr(s: str) -> str:
-    return sub(lambda m: m.group(0), s)
+def test_str_overload() -> None:
+    assert sub('x', lambda m: m) == 'x'
 
-str_repr('4')
+def test_bytes_overload() -> None:
+    assert sub(b'x', lambda m: m) == b'x'
 
 [file lib.py]
 from typing import overload, Callable, TypeVar, Generic
@@ -1214,8 +1215,8 @@ class Match(Generic[T]):
         return self.x
 
 @overload
-def sub(repl: Callable[[Match[str]], str], s: str) -> str: ...
+def sub(s: str, f: Callable[[str], str]) -> str: ...
 @overload
-def sub(repl: Callable[[Match[bytes]], bytes], s: bytes) -> bytes: ...
-def sub(repl, *s):
-    return repl(Match('x'))
+def sub(s: bytes, f: Callable[[bytes], bytes]) -> bytes: ...
+def sub(s, f):
+    return f(s)
