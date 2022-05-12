@@ -22,7 +22,7 @@ from mypy.plugins.common import (
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
     Overloaded, UnionType, FunctionLike, Instance, get_proper_type,
-    LiteralType
+    LiteralType,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
