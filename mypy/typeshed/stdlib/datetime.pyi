@@ -4,7 +4,9 @@ from time import struct_time
 from typing import ClassVar, NamedTuple, NoReturn, SupportsAbs, TypeVar, overload
 from typing_extensions import Literal, TypeAlias, final
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 11):
+    __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR", "UTC")
+elif sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
 
 _D = TypeVar("_D", bound=date)
@@ -28,6 +30,9 @@ class timezone(tzinfo):
     max: ClassVar[timezone]
     def __init__(self, offset: timedelta, name: str = ...) -> None: ...
     def __hash__(self) -> int: ...
+
+if sys.version_info >= (3, 11):
+    UTC: timezone
 
 if sys.version_info >= (3, 9):
     class _IsoCalendarDate(NamedTuple):

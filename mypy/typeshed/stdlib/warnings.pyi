@@ -1,3 +1,4 @@
+import sys
 from _warnings import warn as warn, warn_explicit as warn_explicit
 from collections.abc import Sequence
 from types import ModuleType, TracebackType
@@ -56,12 +57,48 @@ class WarningMessage:
     ) -> None: ...
 
 class catch_warnings:
-    @overload
-    def __new__(cls, *, record: Literal[False] = ..., module: ModuleType | None = ...) -> _catch_warnings_without_records: ...
-    @overload
-    def __new__(cls, *, record: Literal[True], module: ModuleType | None = ...) -> _catch_warnings_with_records: ...
-    @overload
-    def __new__(cls, *, record: bool, module: ModuleType | None = ...) -> catch_warnings: ...
+    if sys.version_info >= (3, 11):
+        @overload
+        def __new__(
+            cls,
+            *,
+            record: Literal[False] = ...,
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> _catch_warnings_without_records: ...
+        @overload
+        def __new__(
+            cls,
+            *,
+            record: Literal[True],
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> _catch_warnings_with_records: ...
+        @overload
+        def __new__(
+            cls,
+            *,
+            record: bool,
+            module: ModuleType | None = ...,
+            action: _ActionKind | None = ...,
+            category: type[Warning] = ...,
+            lineno: int = ...,
+            append: bool = ...,
+        ) -> catch_warnings: ...
+    else:
+        @overload
+        def __new__(cls, *, record: Literal[False] = ..., module: ModuleType | None = ...) -> _catch_warnings_without_records: ...
+        @overload
+        def __new__(cls, *, record: Literal[True], module: ModuleType | None = ...) -> _catch_warnings_with_records: ...
+        @overload
+        def __new__(cls, *, record: bool, module: ModuleType | None = ...) -> catch_warnings: ...
+
     def __enter__(self) -> list[WarningMessage] | None: ...
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
