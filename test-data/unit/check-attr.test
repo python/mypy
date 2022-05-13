@@ -1718,3 +1718,19 @@ class Parent(Generic[T]):
 Child1(x=1, key='')
 Child2(y=1, key='')
 [builtins fixtures/list.pyi]
+
+[case testAttrsUnsupportedConverterWithDisallowUntypedDefs]
+# flags: --disallow-untyped-defs
+import attr
+from typing import Mapping, Any, Union
+
+def default_if_none(factory: Any) -> Any: pass
+
+@attr.s(slots=True, frozen=True)
+class C:
+    name: Union[str, None] = attr.ib(default=None)
+    options: Mapping[str, Mapping[str, Any]] = attr.ib(
+        default=None, converter=default_if_none(factory=dict) \
+        # E: Unsupported converter, only named functions and types are currently supported
+    )
+[builtins fixtures/dict.pyi]

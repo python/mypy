@@ -61,9 +61,11 @@ class Converter:
 
     def __init__(self,
                  type: Optional[Type] = None,
-                 is_attr_converters_optional: bool = False) -> None:
+                 is_attr_converters_optional: bool = False,
+                 is_invalid_converter: bool = False) -> None:
         self.type = type
         self.is_attr_converters_optional = is_attr_converters_optional
+        self.is_invalid_converter = is_invalid_converter
 
 
 class Attribute:
@@ -88,7 +90,7 @@ class Attribute:
 
         init_type = self.init_type or self.info[self.name].type
 
-        if self.converter.type:
+        if self.converter.type and not self.converter.is_invalid_converter:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
             converter_type = self.converter.type
@@ -115,10 +117,12 @@ class Attribute:
                 # the allowed init_type.
                 init_type = UnionType.make_union([init_type, NoneType()])
 
-            if not init_type and not (isinstance(converter_type, AnyType) and
-                                      converter_type.type_of_any == TypeOfAny.from_error):
+            if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
+        elif self.converter.is_invalid_converter:
+            # This means we had a converter but it's not of a type we can infer.
+            init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
             if ctx.api.options.disallow_untyped_defs:
@@ -152,6 +156,7 @@ class Attribute:
             'kw_only': self.kw_only,
             'converter_type': self.converter.type.serialize() if self.converter.type else None,
             'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
+            'converter_is_invalid_converter': self.converter.is_invalid_converter,
             'context_line': self.context.line,
             'context_column': self.context.column,
             'init_type': self.init_type.serialize() if self.init_type else None,
@@ -173,7 +178,8 @@ class Attribute:
             data['has_default'],
             data['init'],
             data['kw_only'],
-            Converter(converter_type, data['converter_is_attr_converters_optional']),
+            Converter(converter_type, data['converter_is_attr_converters_optional'],
+                      data['converter_is_invalid_converter']),
             Context(line=data['context_line'], column=data['context_column']),
             init_type)
 
@@ -639,7 +645,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             "Unsupported converter, only named functions and types are currently supported",
             converter
         )
-        return Converter(AnyType(TypeOfAny.from_error))
+        return Converter(None, is_invalid_converter=True)
     return Converter(None)
 
 
