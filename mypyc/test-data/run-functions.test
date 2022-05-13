@@ -1192,3 +1192,31 @@ def foo(): pass
 
 def test_decorator_name():
     assert foo.__name__ == "foo"
+
+[case testLambdaArgToOverloaded]
+from lib import sub
+
+def test_str_overload() -> None:
+    assert sub('x', lambda m: m) == 'x'
+
+def test_bytes_overload() -> None:
+    assert sub(b'x', lambda m: m) == b'x'
+
+[file lib.py]
+from typing import overload, Callable, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Match(Generic[T]):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+    def group(self, n: int) -> T:
+        return self.x
+
+@overload
+def sub(s: str, f: Callable[[str], str]) -> str: ...
+@overload
+def sub(s: bytes, f: Callable[[bytes], bytes]) -> bytes: ...
+def sub(s, f):
+    return f(s)

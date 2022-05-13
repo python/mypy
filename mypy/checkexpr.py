@@ -369,9 +369,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             #   be invoked for these.
             if (fullname is None
                     and isinstance(e.callee, MemberExpr)
-                    and e.callee.expr in self.chk.type_map):
+                    and self.chk.has_type(e.callee.expr)):
                 member = e.callee.name
-                object_type = self.chk.type_map[e.callee.expr]
+                object_type = self.chk.lookup_type(e.callee.expr)
         ret_type = self.check_call_expr_with_callee_type(callee_type, e, fullname,
                                                          object_type, member)
         if isinstance(e.callee, RefExpr) and len(e.args) == 2:
@@ -401,8 +401,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         format_value = None
         if isinstance(e.callee.expr, (StrExpr, UnicodeExpr)):
             format_value = e.callee.expr.value
-        elif e.callee.expr in self.chk.type_map:
-            base_typ = try_getting_literal(self.chk.type_map[e.callee.expr])
+        elif self.chk.has_type(e.callee.expr):
+            base_typ = try_getting_literal(self.chk.lookup_type(e.callee.expr))
             if isinstance(base_typ, LiteralType) and isinstance(base_typ.value, str):
                 format_value = base_typ.value
         if format_value is not None:
@@ -442,7 +442,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if self.defn_returns_none(node.node):
                 return True
         if isinstance(node, MemberExpr) and node.node is None:  # instance or class attribute
-            typ = get_proper_type(self.chk.type_map.get(node.expr))
+            typ = get_proper_type(self.chk.lookup_type(node.expr))
             if isinstance(typ, Instance):
                 info = typ.type
             elif isinstance(typ, CallableType) and typ.is_type_obj():
@@ -478,7 +478,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_runtime_protocol_test(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
-            tp = get_proper_type(self.chk.type_map[expr])
+            tp = get_proper_type(self.chk.lookup_type(expr))
             if (isinstance(tp, CallableType) and tp.is_type_obj() and
                     tp.type_object().is_protocol and
                     not tp.type_object().runtime_protocol):
@@ -486,7 +486,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def check_protocol_issubclass(self, e: CallExpr) -> None:
         for expr in mypy.checker.flatten(e.args[1]):
-            tp = get_proper_type(self.chk.type_map[expr])
+            tp = get_proper_type(self.chk.lookup_type(expr))
             if (isinstance(tp, CallableType) and tp.is_type_obj() and
                     tp.type_object().is_protocol):
                 attr_members = non_method_protocol_members(tp.type_object())
@@ -1740,18 +1740,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return_types: List[Type] = []
         inferred_types: List[Type] = []
         args_contain_any = any(map(has_any_type, arg_types))
+        type_maps: List[Dict[Expression, Type]] = []
 
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
             with self.msg.filter_errors() as w:
-                ret_type, infer_type = self.check_call(
-                    callee=typ,
-                    args=args,
-                    arg_kinds=arg_kinds,
-                    arg_names=arg_names,
-                    context=context,
-                    callable_name=callable_name,
-                    object_type=object_type)
+                with self.chk.local_type_map() as m:
+                    ret_type, infer_type = self.check_call(
+                        callee=typ,
+                        args=args,
+                        arg_kinds=arg_kinds,
+                        arg_names=arg_names,
+                        context=context,
+                        callable_name=callable_name,
+                        object_type=object_type)
             is_match = not w.has_new_errors()
             if is_match:
                 # Return early if possible; otherwise record info so we can
@@ -1761,6 +1763,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 matches.append(typ)
                 return_types.append(ret_type)
                 inferred_types.append(infer_type)
+                type_maps.append(m)
 
         if len(matches) == 0:
             # No match was found
@@ -1769,8 +1772,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # An argument of type or containing the type 'Any' caused ambiguity.
             # We try returning a precise type if we can. If not, we give up and just return 'Any'.
             if all_same_types(return_types):
+                self.chk.store_types(type_maps[0])
                 return return_types[0], inferred_types[0]
             elif all_same_types([erase_type(typ) for typ in return_types]):
+                self.chk.store_types(type_maps[0])
                 return erase_type(return_types[0]), erase_type(inferred_types[0])
             else:
                 return self.check_call(callee=AnyType(TypeOfAny.special_form),
@@ -1782,6 +1787,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                        object_type=object_type)
         else:
             # Success! No ambiguity; return the first match.
+            self.chk.store_types(type_maps[0])
             return return_types[0], inferred_types[0]
 
     def overload_erased_call_targets(self,
@@ -3546,10 +3552,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Type context available.
             self.chk.return_types.append(inferred_type.ret_type)
             self.chk.check_func_item(e, type_override=type_override)
-            if e.expr() not in self.chk.type_map:
+            if not self.chk.has_type(e.expr()):
                 # TODO: return expression must be accepted before exiting function scope.
                 self.accept(e.expr(), allow_none_return=True)
-            ret_type = self.chk.type_map[e.expr()]
+            ret_type = self.chk.lookup_type(e.expr())
             self.chk.return_types.pop()
             return replace_callable_return_type(inferred_type, ret_type)
 
