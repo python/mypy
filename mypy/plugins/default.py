@@ -94,10 +94,34 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
-        from mypy.plugins import attrs
         from mypy.plugins import dataclasses
+        from mypy.plugins import attrs
 
-        if fullname in attrs.attr_class_makers:
+        # These dataclass and attrs hooks run in the main semantic analysis pass
+        # and only tag known dataclasses/attrs classes, so that the second
+        # hooks (in get_class_decorator_hook_2) can detect dataclasses/attrs classes
+        # in the MRO.
+        if fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_tag_callback
+        if (fullname in attrs.attr_class_makers
+                or fullname in attrs.attr_dataclass_makers
+                or fullname in attrs.attr_frozen_makers
+                or fullname in attrs.attr_define_makers):
+            return attrs.attr_tag_callback
+
+        return None
+
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
+        from mypy.plugins import dataclasses
+        from mypy.plugins import functools
+        from mypy.plugins import attrs
+
+        if fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_class_maker_callback
+        elif fullname in functools.functools_total_ordering_makers:
+            return functools.functools_total_ordering_maker_callback
+        elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
             return partial(
@@ -115,20 +139,6 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback,
                 auto_attribs_default=None,
             )
-        elif fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_tag_callback
-
-        return None
-
-    def get_class_decorator_hook_2(self, fullname: str
-                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
-        from mypy.plugins import dataclasses
-        from mypy.plugins import functools
-
-        if fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
 
         return None
 

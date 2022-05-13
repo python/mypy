@@ -544,6 +544,37 @@ reveal_type(sub.three)  # N: Revealed type is "builtins.float"
 [builtins fixtures/bool.pyi]
 
 
+[case testAttrsGenericInheritance3]
+import attr
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@attr.s(auto_attribs=True)
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@attr.s(auto_attribs=True)
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@attr.s(auto_attribs=True)
+class Parent2(Generic[T]):
+    a: List[T]
+
+@attr.s(auto_attribs=True)
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/list.pyi]
+
 [case testAttrsMultiGenericInheritance]
 from typing import Generic, TypeVar
 import attr
@@ -1009,6 +1040,9 @@ class Good(object):
     pass
 @attr.s
 class Bad:  # E: attrs only works with new-style classes
+    pass
+@attr.s
+class SubclassOfBad(Bad):
     pass
 [builtins_py2 fixtures/bool.pyi]
 
@@ -1591,3 +1625,112 @@ class B:
 class AB(A, B):
     pass
 [builtins fixtures/attr.pyi]
+
+[case testAttrsForwardReferenceInTypeVarBound]
+from typing import TypeVar, Generic
+import attr
+
+T = TypeVar("T", bound="C")
+
+@attr.define
+class D(Generic[T]):
+    x: int
+
+class C:
+    pass
+[builtins fixtures/attr.pyi]
+
+[case testComplexTypeInAttrIb]
+import a
+
+[file a.py]
+import attr
+import b
+from typing import Callable
+
+@attr.s
+class C:
+    a = attr.ib(type=Lst[int])
+    # Note that for this test, the 'Value of type "int" is not indexable' errors are silly,
+    # and a consequence of Callable etc. being set to an int in the test stub.
+    b = attr.ib(type=Callable[[], C])
+[builtins fixtures/bool.pyi]
+
+[file b.py]
+import attr
+import a
+from typing import List as Lst, Optional
+
+@attr.s
+class D:
+    a = attr.ib(type=Lst[int])
+    b = attr.ib(type=Optional[int])
+[builtins fixtures/list.pyi]
+[out]
+tmp/b.py:8: error: Value of type "int" is not indexable
+tmp/a.py:7: error: Name "Lst" is not defined
+tmp/a.py:10: error: Value of type "int" is not indexable
+
+[case testAttrsGenericInheritanceSpecialCase1]
+import attr
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@attr.define
+class Parent(Generic[T]):
+    x: List[T]
+
+@attr.define
+class Child1(Parent["Child2"]): ...
+
+@attr.define
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/list.pyi]
+
+[case testAttrsGenericInheritanceSpecialCase2]
+import attr
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@attr.define
+class Child1(Parent["Child2"]):
+    x: int
+
+@attr.define
+class Child2(Parent["Child1"]):
+    y: int
+
+@attr.define
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/list.pyi]
+
+[case testAttrsUnsupportedConverterWithDisallowUntypedDefs]
+# flags: --disallow-untyped-defs
+import attr
+from typing import Mapping, Any, Union
+
+def default_if_none(factory: Any) -> Any: pass
+
+@attr.s(slots=True, frozen=True)
+class C:
+    name: Union[str, None] = attr.ib(default=None)
+    options: Mapping[str, Mapping[str, Any]] = attr.ib(
+        default=None, converter=default_if_none(factory=dict) \
+        # E: Unsupported converter, only named functions and types are currently supported
+    )
+[builtins fixtures/dict.pyi]

@@ -34,7 +34,7 @@ class dict(Mapping[KT, VT]):
 class int: # for convenience
     def __add__(self, x: Union[int, complex]) -> int: pass
     def __sub__(self, x: Union[int, complex]) -> int: pass
-    def __neg__(self): pass
+    def __neg__(self) -> int: pass
     real: int
     imag: int
 
