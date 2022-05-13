@@ -1234,42 +1234,43 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
         """Apply a plugin hook that may infer a more precise definition for a class."""
-        def get_fullname(expr: Expression) -> Optional[str]:
-            if isinstance(expr, CallExpr):
-                return get_fullname(expr.callee)
-            elif isinstance(expr, IndexExpr):
-                return get_fullname(expr.base)
-            elif isinstance(expr, RefExpr):
-                if expr.fullname:
-                    return expr.fullname
-                # If we don't have a fullname look it up. This happens because base classes are
-                # analyzed in a different manner (see exprtotype.py) and therefore those AST
-                # nodes will not have full names.
-                sym = self.lookup_type_node(expr)
-                if sym:
-                    return sym.fullname
-            return None
 
         for decorator in defn.decorators:
-            decorator_name = get_fullname(decorator)
+            decorator_name = self.get_fullname_for_hook(decorator)
             if decorator_name:
                 hook = self.plugin.get_class_decorator_hook(decorator_name)
                 if hook:
                     hook(ClassDefContext(defn, decorator, self))
 
         if defn.metaclass:
-            metaclass_name = get_fullname(defn.metaclass)
+            metaclass_name = self.get_fullname_for_hook(defn.metaclass)
             if metaclass_name:
                 hook = self.plugin.get_metaclass_hook(metaclass_name)
                 if hook:
                     hook(ClassDefContext(defn, defn.metaclass, self))
 
         for base_expr in defn.base_type_exprs:
-            base_name = get_fullname(base_expr)
+            base_name = self.get_fullname_for_hook(base_expr)
             if base_name:
                 hook = self.plugin.get_base_class_hook(base_name)
                 if hook:
                     hook(ClassDefContext(defn, base_expr, self))
+
+    def get_fullname_for_hook(self, expr: Expression) -> Optional[str]:
+        if isinstance(expr, CallExpr):
+            return self.get_fullname_for_hook(expr.callee)
+        elif isinstance(expr, IndexExpr):
+            return self.get_fullname_for_hook(expr.base)
+        elif isinstance(expr, RefExpr):
+            if expr.fullname:
+                return expr.fullname
+            # If we don't have a fullname look it up. This happens because base classes are
+            # analyzed in a different manner (see exprtotype.py) and therefore those AST
+            # nodes will not have full names.
+            sym = self.lookup_type_node(expr)
+            if sym:
+                return sym.fullname
+        return None
 
     def analyze_class_keywords(self, defn: ClassDef) -> None:
         for value in defn.keywords.values():
