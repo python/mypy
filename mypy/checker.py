@@ -5357,19 +5357,20 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def lookup_type(self, node: Expression) -> Type:
         for m in reversed(self._type_maps):
-            if node in m:
-                return m[node]
+            t = m.get(node)
+            if t is not None:
+                return t
         raise KeyError(node)
 
     def store_types(self, d: Dict[Expression, Type]) -> None:
         self._type_maps[-1].update(d)
 
     @contextmanager
-    def with_temp_type_map(self) -> Iterator[Dict[Expression, Type]]:
+    def local_type_map(self) -> Iterator[Dict[Expression, Type]]:
         """Store inferred types into a temporary type map (returned).
 
-        This can be used to do type checking "experiments" without
-        affecting stored state.
+        This can be used to perform type checking "experiments" without
+        affecting exported types (which are used by mypyc).
         """
         temp_type_map: Dict[Expression, Type] = {}
         self._type_maps.append(temp_type_map)

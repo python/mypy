@@ -1745,7 +1745,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for typ in plausible_targets:
             assert self.msg is self.chk.msg
             with self.msg.filter_errors() as w:
-                with self.chk.with_temp_type_map() as m:
+                with self.chk.local_type_map() as m:
                     ret_type, infer_type = self.check_call(
                         callee=typ,
                         args=args,
