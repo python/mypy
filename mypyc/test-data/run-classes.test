@@ -2141,3 +2141,68 @@ def test_subclass() -> None:
     assert d.x == [2]
     d = D(False)
     assert d.x == [2]
+
+[case testSerializableClass]
+from mypy_extensions import mypyc_attr
+from typing import Any
+import copy
+from testutil import assertRaises
+
+@mypyc_attr(serializable=True)
+class Base:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+class Derived(Base):
+    def __init__(self, s: str, n: int) -> None:
+        super().__init__(s)
+        self.n = n
+
+def test_copy_base() -> None:
+    o = Base('xyz')
+    o2 = copy.copy(o)
+    assert isinstance(o2, Base)
+    assert o2 is not o
+    assert o2.s == 'xyz'
+
+def test_copy_derived() -> None:
+    d = Derived('xyz', 5)
+    d2 = copy.copy(d)
+    assert isinstance(d2, Derived)
+    assert d2 is not d
+    assert d2.s == 'xyz'
+    assert d2.n == 5
+
+class NonSerializable:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@mypyc_attr(serializable=True)
+class SerializableSub(NonSerializable):
+    def __init__(self, s: str, n: int) -> None:
+        super().__init__(s)
+        self.n = n
+
+def test_serializable_sub_class() -> None:
+    n = NonSerializable('xyz')
+    assert n.s == 'xyz'
+
+    with assertRaises(TypeError):
+        copy.copy(n)
+
+    s = SerializableSub('foo', 6)
+    s2 = copy.copy(s)
+    assert s2 is not s
+    assert s2.s == 'foo'
+    assert s2.n == 6
+
+def test_serializable_sub_class_call_new() -> None:
+    t: Any = SerializableSub
+    sub: SerializableSub = t.__new__(t)
+    with assertRaises(AttributeError):
+        sub.s
+    with assertRaises(AttributeError):
+        sub.n
+    base: NonSerializable = sub
+    with assertRaises(AttributeError):
+        base.s

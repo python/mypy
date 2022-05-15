@@ -638,9 +638,16 @@ def generate_new_for_class(cl: ClassIR,
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
-    if not init_fn or cl.allow_interpreted_subclasses or cl.builtin_base:
+    if (not init_fn
+            or cl.allow_interpreted_subclasses
+            or cl.builtin_base
+            or cl.is_serializable()):
+        # Match Python semantics -- __new__ doesn't call __init__.
         emitter.emit_line(f'return {setup_name}(type);')
     else:
+        # __new__ of a native class implicitly calls __init__ so that we
+        # can enforce that instances are always properly initialized. This
+        # is needed to support always defined attributes.
         emitter.emit_line(f'PyObject *self = {setup_name}(type);')
         emitter.emit_lines('if (self == NULL)',
                            '    return NULL;')

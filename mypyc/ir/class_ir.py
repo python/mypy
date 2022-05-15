@@ -106,6 +106,19 @@ class ClassIR:
         # Does this class need getseters to be generated for its attributes? (getseters are also
         # added if is_generated is False)
         self.needs_getseters = False
+        # Is this class declared as serializable (supports copy.copy
+        # and pickle) using @mypyc_attr(serializable=True)?
+        #
+        # Additionally, any class with this attribute False but with
+        # an __init__ that can be called without any arguments is
+        # *implicitly serializable*. In this case __init__ will be
+        # called during deserialization without arguments. If this is
+        # True, we match Python semantics and __init__ won't be called
+        # during deserialization.
+        #
+        # This impacts also all subclasses. Use is_serializable() to
+        # also consider base classes.
+        self._serializable = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -297,6 +310,9 @@ class ClassIR:
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 
+    def is_serializable(self) -> bool:
+        return any(ci._serializable for ci in self.mro)
+
     def serialize(self) -> JsonDict:
         return {
             'name': self.name,
@@ -310,6 +326,7 @@ class ClassIR:
             'has_dict': self.has_dict,
             'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
             'needs_getseters': self.needs_getseters,
+            '_serializable': self._serializable,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -366,6 +383,7 @@ class ClassIR:
         ir.has_dict = data['has_dict']
         ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
         ir.needs_getseters = data['needs_getseters']
+        ir._serializable = data['_serializable']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(

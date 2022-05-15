@@ -114,8 +114,9 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
             or cl.inherits_python
             or cl.allow_interpreted_subclasses
             or cl.builtin_base is not None
-            or cl.children is None):
-        # Give up
+            or cl.children is None
+            or cl.is_serializable()):
+        # Give up -- we can't enforce that attributes are always defined.
         return
 
     # First analyze all base classes. Track seen classes to avoid duplicate work.
