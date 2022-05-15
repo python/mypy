@@ -87,6 +87,9 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
     Also tag attribute initialization ops to not decref the previous
     value (as this would read a NULL pointer and segfault).
 
+    Update the _always_initialized_attrs, _sometimes_initialized_attrs
+    and init_unknown_code attributes in ClassIR instances.
+
     This is the main entry point.
     """
     seen: Set[ClassIR] = set()
@@ -180,12 +183,13 @@ def find_always_defined_attributes(blocks: List[BasicBlock],
                 if op.attr in maybe_undefined.before[block, i]:
                     attrs.discard(op.attr)
             # If an attribute we *set* may be sometimes undefined and
-            # sometimes defined, don't consider it always defined.
+            # sometimes defined, don't consider it always defined. Unlike
+            # the get case, it's fine for the attribute to be undefined.
+            # The set operation will then be treated as initialization.
             if isinstance(op, SetAttr) and op.obj is self_reg:
-                attr = op.attr
-                if (attr in maybe_undefined.before[block, i]
-                        and attr in maybe_defined.before[block, i]):
-                    attrs.discard(attr)
+                if (op.attr in maybe_undefined.before[block, i]
+                        and op.attr in maybe_defined.before[block, i]):
+                    attrs.discard(op.attr)
             # Treat an op that might run arbitrary code as an "exit"
             # in terms of the analysis -- we can't do any inference
             # afterwards reliably.
