@@ -1,11 +1,11 @@
 """Plugin that provides support for dataclasses."""
 
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Set, Tuple, Optional, Union
 from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
-    Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
+    Argument, AssignmentStmt, CallExpr,  TypeAlias,  Context, Expression, JsonDict,
     NameExpr, RefExpr, SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr,
     PlaceholderNode
 )
@@ -16,7 +16,7 @@ from mypy.plugins.common import (
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
     Type, Instance, NoneType, TypeVarType, CallableType, TupleType, LiteralType,
-    get_proper_type, AnyType, TypeOfAny,
+    get_proper_type, AnyType, TypeOfAny, TypeType,
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
@@ -333,6 +333,38 @@ class DataclassTransformer:
 
             node = sym.node
             assert not isinstance(node, PlaceholderNode)
+
+            if isinstance(node, TypeAlias):
+                ctx.api.fail(
+                    (
+                        'Type aliases inside dataclass definitions '
+                        'are not supported at runtime.'
+                    ),
+                    Context(line=node.line, column=node.column)
+                )
+                # Now do our best to simulate the runtime,
+                # which treates a TypeAlias definition in a dataclass class
+                # as an instance field with a default value.
+                #
+                # Replace the `TypeAlias` node with a `Var` node, so that we do the same.
+                target, fullname = node.target, node.fullname
+                proper_target = get_proper_type(target)
+                var_type: Union[TypeType, AnyType]
+                if isinstance(proper_target, Instance):
+                    var_type = TypeType(proper_target, line=node.line, column=node.column)
+                # Something else -- fallback to Any
+                else:
+                    var_type = AnyType(TypeOfAny.from_error)
+                var = Var(name=fullname, type=var_type)
+                var.info = cls.info
+                var._fullname = fullname
+                cls.info.names[fullname] = SymbolTableNode(
+                    kind=MDEF,
+                    node=var,
+                    plugin_generated=True,
+                )
+                sym.node = node = var
+
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.
