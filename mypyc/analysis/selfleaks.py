@@ -58,7 +58,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
             self_type = op.fn.sig.args[0].type
             assert isinstance(self_type, RInstance)
             cl = self_type.class_ir
-            if not cl.init_unknown_code:
+            if not cl.init_self_leak:
                 return CLEAN
         return self.check_register_op(op)
 

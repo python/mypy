@@ -162,8 +162,8 @@ class ClassIR:
         # Attributes that are sometimes initialized in __init__
         self._sometimes_initialized_attrs: Set[str] = set()
 
-        # If True, __init__ can run unpredictable/arbitrary code.
-        self.init_unknown_code = False
+        # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code.
+        self.init_self_leak = False
 
     def __repr__(self) -> str:
         return (
@@ -347,7 +347,7 @@ class ClassIR:
             'attrs_with_defaults': sorted(self.attrs_with_defaults),
             '_always_initialized_attrs': sorted(self._always_initialized_attrs),
             '_sometimes_initialized_attrs': sorted(self._sometimes_initialized_attrs),
-            'init_unknown_code': self.init_unknown_code,
+            'init_self_leak': self.init_self_leak,
         }
 
     @classmethod
@@ -400,7 +400,7 @@ class ClassIR:
         ir.attrs_with_defaults = set(data['attrs_with_defaults'])
         ir._always_initialized_attrs = set(data['_always_initialized_attrs'])
         ir._sometimes_initialized_attrs = set(data['_sometimes_initialized_attrs'])
-        ir.init_unknown_code = data['init_unknown_code']
+        ir.init_self_leak = data['init_self_leak']
 
         return ir
 

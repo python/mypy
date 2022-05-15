@@ -88,7 +88,7 @@ def analyze_always_defined_attrs(class_irs: List[ClassIR]) -> None:
     value (as this would read a NULL pointer and segfault).
 
     Update the _always_initialized_attrs, _sometimes_initialized_attrs
-    and init_unknown_code attributes in ClassIR instances.
+    and init_self_leak attributes in ClassIR instances.
 
     This is the main entry point.
     """
@@ -160,7 +160,7 @@ def analyze_always_defined_attrs_in_class(cl: ClassIR, seen: Set[ClassIR]) -> No
             if dirty.after[b, i] and not isinstance(op, Return):
                 any_dirty = True
                 break
-    cl.init_unknown_code = any_dirty
+    cl.init_self_leak = any_dirty
 
 
 def find_always_defined_attributes(blocks: List[BasicBlock],
