@@ -3,7 +3,8 @@ from typing import Any, cast
 from mypy.types import (
     ProperType, UnboundType, AnyType, NoneType, UninhabitedType, ErasedType, DeletedType,
     Instance, TypeVarType, ParamSpecType, PartialType, CallableType, TupleType, TypedDictType,
-    LiteralType, UnionType, Overloaded, TypeType, TypeAliasType, UnpackType, Parameters
+    LiteralType, UnionType, Overloaded, TypeType, TypeAliasType, UnpackType, Parameters,
+    TypeVarTupleType
 )
 from mypy.type_visitor import TypeVisitor
 
@@ -64,6 +65,10 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
         dup = Parameters(t.arg_types, t.arg_kinds, t.arg_names,
                          variables=t.variables,
                          is_ellipsis_args=t.is_ellipsis_args)
+        return self.copy_common(t, dup)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        dup = TypeVarTupleType(t.name, t.fullname, t.id, t.upper_bound)
         return self.copy_common(t, dup)
 
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
