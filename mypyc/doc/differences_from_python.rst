@@ -192,7 +192,8 @@ and enable pickling through the ``serializable`` flag::
         def __init__(self, n: int) -> None:
             self.n = n
 
-    pickle.dumps(Cls(5))  # OK
+    data = pickle.dumps(Cls(5))
+    obj = pickle.loads(data)  # OK
 
 Additional notes:
 
