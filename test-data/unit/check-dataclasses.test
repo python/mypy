@@ -495,6 +495,19 @@ reveal_type(A.foo("foo"))  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testClassmethodShadowingFieldDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+# This used to crash -- see #6217
+@dataclass
+class Foo:
+    bar: str
+    @classmethod  # E: Name "bar" already defined on line 7
+    def bar(cls) -> "Foo":
+        return cls('asdf')
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesClassVars]
 # flags: --python-version 3.7
 from dataclasses import dataclass
