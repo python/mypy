@@ -1,7 +1,8 @@
 import socket
 from _typeshed import Self
+from collections.abc import Callable, Sequence
 from types import TracebackType
-from typing import Any, Callable, Match, Pattern, Sequence
+from typing import Any, Match, Pattern
 
 __all__ = ["Telnet"]
 

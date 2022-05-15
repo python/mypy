@@ -821,7 +821,7 @@ class LowLevelIRBuilder:
                             line: int = -1,
                             error_msg: Optional[str] = None) -> Value:
         if error_msg is None:
-            error_msg = 'name "{}" is not defined'.format(identifier)
+            error_msg = f'name "{identifier}" is not defined'
         ok_block, error_block = BasicBlock(), BasicBlock()
         value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
@@ -838,7 +838,7 @@ class LowLevelIRBuilder:
 
     def get_native_type(self, cls: ClassIR) -> Value:
         """Load native type object."""
-        fullname = '%s.%s' % (cls.module_name, cls.name)
+        fullname = f'{cls.module_name}.{cls.name}'
         return self.load_native_type_object(fullname)
 
     def load_native_type_object(self, fullname: str) -> Value:
@@ -1332,7 +1332,7 @@ class LowLevelIRBuilder:
             if all(is_subtype(actual.type, formal)
                    for actual, formal in zip(args, desc.arg_types)):
                 if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
+                    assert matching.priority != desc.priority, 'Ambiguous:\n1) {}\n2) {}'.format(
                         matching, desc)
                     if desc.priority > matching.priority:
                         matching = desc

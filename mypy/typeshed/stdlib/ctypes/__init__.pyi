@@ -1,7 +1,9 @@
 import sys
 from _typeshed import ReadableBuffer, Self, WriteableBuffer
 from abc import abstractmethod
-from typing import Any, Callable, ClassVar, Generic, Iterable, Iterator, Mapping, Sequence, TypeVar, Union as _UnionT, overload
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from typing import Any, ClassVar, Generic, TypeVar, Union as _UnionT, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -84,8 +86,8 @@ class _CData(metaclass=_CDataMeta):
 class _CanCastTo(_CData): ...
 class _PointerLike(_CanCastTo): ...
 
-_ECT = Callable[[type[_CData] | None, _FuncPointer, tuple[_CData, ...]], _CData]
-_PF = _UnionT[tuple[int], tuple[int, str], tuple[int, str, Any]]
+_ECT: TypeAlias = Callable[[type[_CData] | None, _FuncPointer, tuple[_CData, ...]], _CData]
+_PF: TypeAlias = _UnionT[tuple[int], tuple[int, str], tuple[int, str, Any]]
 
 class _FuncPointer(_PointerLike, _CData):
     restype: type[_CData] | Callable[[int], Any] | None
@@ -121,12 +123,12 @@ class _CArgObject: ...
 
 # Any type that can be implicitly converted to c_void_p when passed as a C function argument.
 # (bytes is not included here, see below.)
-_CVoidPLike = _PointerLike | Array[Any] | _CArgObject | int
+_CVoidPLike: TypeAlias = _PointerLike | Array[Any] | _CArgObject | int
 # Same as above, but including types known to be read-only (i. e. bytes).
 # This distinction is not strictly necessary (ctypes doesn't differentiate between const
 # and non-const pointers), but it catches errors like memmove(b'foo', buf, 4)
 # when memmove(buf, b'foo', 4) was intended.
-_CVoidConstPLike = _CVoidPLike | bytes
+_CVoidConstPLike: TypeAlias = _CVoidPLike | bytes
 
 def addressof(obj: _CData) -> int: ...
 def alignment(obj_or_type: _CData | type[_CData]) -> int: ...

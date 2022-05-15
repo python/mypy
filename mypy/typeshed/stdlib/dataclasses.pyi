@@ -2,7 +2,8 @@ import enum
 import sys
 import types
 from builtins import type as Type  # alias to avoid name clashes with fields named "type"
-from typing import Any, Callable, Generic, Iterable, Mapping, Protocol, TypeVar, overload
+from collections.abc import Callable, Iterable, Mapping
+from typing import Any, Generic, Protocol, TypeVar, overload
 from typing_extensions import Literal
 
 if sys.version_info >= (3, 9):
@@ -78,7 +79,23 @@ else:
     @overload
     def dataclass(_cls: None) -> Callable[[type[_T]], type[_T]]: ...
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 11):
+    @overload
+    def dataclass(
+        *,
+        init: bool = ...,
+        repr: bool = ...,
+        eq: bool = ...,
+        order: bool = ...,
+        unsafe_hash: bool = ...,
+        frozen: bool = ...,
+        match_args: bool = ...,
+        kw_only: bool = ...,
+        slots: bool = ...,
+        weakref_slot: bool = ...,
+    ) -> Callable[[type[_T]], type[_T]]: ...
+
+elif sys.version_info >= (3, 10):
     @overload
     def dataclass(
         *,
@@ -226,7 +243,7 @@ class InitVar(Generic[_T]):
 if sys.version_info >= (3, 10):
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Field[Any]]],
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
         *,
         bases: tuple[type, ...] = ...,
         namespace: dict[str, Any] | None = ...,
@@ -244,7 +261,7 @@ if sys.version_info >= (3, 10):
 else:
     def make_dataclass(
         cls_name: str,
-        fields: Iterable[str | tuple[str, type] | tuple[str, type, Field[Any]]],
+        fields: Iterable[str | tuple[str, type] | tuple[str, type, Any]],
         *,
         bases: tuple[type, ...] = ...,
         namespace: dict[str, Any] | None = ...,

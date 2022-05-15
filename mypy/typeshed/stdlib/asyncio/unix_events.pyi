@@ -2,8 +2,9 @@ import sys
 import types
 from _typeshed import Self
 from abc import ABCMeta, abstractmethod
+from collections.abc import Callable
 from socket import socket
-from typing import Any, Callable
+from typing import Any
 from typing_extensions import Literal
 
 from .base_events import Server

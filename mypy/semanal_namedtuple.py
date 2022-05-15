@@ -266,7 +266,7 @@ class NamedTupleAnalyzer:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail('Too few arguments for "{}()"'.format(type_name), call)
+            self.fail(f'Too few arguments for "{type_name}()"', call)
             return None
         defaults: List[Expression] = []
         if len(args) > 2:
@@ -289,11 +289,11 @@ class NamedTupleAnalyzer:
                         )
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
+            self.fail(f'Unexpected arguments to "{type_name}()"', call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                '"{}()" expects a string literal as the first argument'.format(type_name), call)
+                f'"{type_name}()" expects a string literal as the first argument', call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         types: List[Type] = []
@@ -333,10 +333,10 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
+            self.fail(f'"{type_name}()" field names cannot start with an underscore: '
                       + ', '.join(underscore), call)
         if len(defaults) > len(items):
-            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
+            self.fail(f'Too many defaults given in call to "{type_name}()"', call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
@@ -420,7 +420,7 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname, var.name)
+            var._fullname = f'{info.fullname}.{var.name}'
             info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]
@@ -528,7 +528,7 @@ class NamedTupleAnalyzer:
                     continue
                 ctx = named_tuple_info.names[prohibited].node
                 assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
+                self.fail(f'Cannot overwrite NamedTuple attribute "{prohibited}"',
                           ctx)
 
         # Restore the names in the original symbol table. This ensures that the symbol

@@ -9,14 +9,14 @@ from multiprocessing.pool import Pool as _Pool
 from multiprocessing.process import BaseProcess
 from multiprocessing.sharedctypes import SynchronizedArray, SynchronizedBase
 from typing import Any, ClassVar, TypeVar, overload
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 8):
     __all__ = ()
 else:
     __all__: list[str] = []
 
-_LockLike = synchronize.Lock | synchronize.RLock
+_LockLike: TypeAlias = synchronize.Lock | synchronize.RLock
 _CT = TypeVar("_CT", bound=_CData)
 
 class ProcessError(Exception): ...

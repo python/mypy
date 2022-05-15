@@ -2,9 +2,10 @@ import ssl
 import sys
 from _typeshed import FileDescriptorLike, Self
 from abc import ABCMeta, abstractmethod
+from collections.abc import Awaitable, Callable, Coroutine, Generator, Sequence
 from socket import AddressFamily, SocketKind, _Address, _RetAddress, socket
-from typing import IO, Any, Awaitable, Callable, Coroutine, Generator, Sequence, TypeVar, overload
-from typing_extensions import Literal
+from typing import IO, Any, TypeVar, overload
+from typing_extensions import Literal, TypeAlias
 
 from .base_events import Server
 from .futures import Future
@@ -75,10 +76,10 @@ else:
 
 _T = TypeVar("_T")
 _ProtocolT = TypeVar("_ProtocolT", bound=BaseProtocol)
-_Context = dict[str, Any]
-_ExceptionHandler = Callable[[AbstractEventLoop, _Context], Any]
-_ProtocolFactory = Callable[[], BaseProtocol]
-_SSLContext = bool | None | ssl.SSLContext
+_Context: TypeAlias = dict[str, Any]
+_ExceptionHandler: TypeAlias = Callable[[AbstractEventLoop, _Context], Any]
+_ProtocolFactory: TypeAlias = Callable[[], BaseProtocol]
+_SSLContext: TypeAlias = bool | None | ssl.SSLContext
 
 class Handle:
     _cancelled: bool

@@ -1,5 +1,6 @@
 import sys
-from typing import Any, ClassVar, Mapping
+from collections.abc import Mapping
+from typing import Any, ClassVar
 
 if sys.version_info >= (3, 9):
     __all__ = ["Dialog"]

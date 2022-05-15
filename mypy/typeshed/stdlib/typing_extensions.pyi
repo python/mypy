@@ -1,7 +1,7 @@
 import abc
 import sys
 from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
-from typing import (  # noqa: Y022,Y027
+from typing import (  # noqa: Y022,Y027,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     AsyncContextManager as AsyncContextManager,
@@ -22,6 +22,7 @@ from typing import (  # noqa: Y022,Y027
     Mapping,
     NewType as NewType,
     NoReturn as NoReturn,
+    Sequence,
     Text as Text,
     Type as Type,
     TypeVar,
@@ -29,6 +30,59 @@ from typing import (  # noqa: Y022,Y027
     _Alias,
     overload as overload,
 )
+
+__all__ = [
+    "ClassVar",
+    "Concatenate",
+    "Final",
+    "LiteralString",
+    "ParamSpec",
+    "Self",
+    "Type",
+    "TypeVarTuple",
+    "Unpack",
+    "Awaitable",
+    "AsyncIterator",
+    "AsyncIterable",
+    "Coroutine",
+    "AsyncGenerator",
+    "AsyncContextManager",
+    "ChainMap",
+    "ContextManager",
+    "Counter",
+    "Deque",
+    "DefaultDict",
+    "OrderedDict",
+    "TypedDict",
+    "SupportsIndex",
+    "Annotated",
+    "assert_never",
+    "assert_type",
+    "dataclass_transform",
+    "final",
+    "IntVar",
+    "is_typeddict",
+    "Literal",
+    "NewType",
+    "overload",
+    "Protocol",
+    "reveal_type",
+    "runtime",
+    "runtime_checkable",
+    "Text",
+    "TypeAlias",
+    "TypeGuard",
+    "TYPE_CHECKING",
+    "Never",
+    "NoReturn",
+    "Required",
+    "NotRequired",
+    "clear_overloads",
+    "get_args",
+    "get_origin",
+    "get_overloads",
+    "get_type_hints",
+]
 
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
@@ -82,15 +136,14 @@ TypedDict: object
 
 OrderedDict = _Alias()
 
-if sys.version_info >= (3, 7):
-    def get_type_hints(
-        obj: Callable[..., Any],
-        globalns: dict[str, Any] | None = ...,
-        localns: dict[str, Any] | None = ...,
-        include_extras: bool = ...,
-    ) -> dict[str, Any]: ...
-    def get_args(tp: Any) -> tuple[Any, ...]: ...
-    def get_origin(tp: Any) -> Any | None: ...
+def get_type_hints(
+    obj: Callable[..., Any],
+    globalns: dict[str, Any] | None = ...,
+    localns: dict[str, Any] | None = ...,
+    include_extras: bool = ...,
+) -> dict[str, Any]: ...
+def get_args(tp: Any) -> tuple[Any, ...]: ...
+def get_origin(tp: Any) -> Any | None: ...
 
 Annotated: _SpecialForm
 _AnnotatedAlias: Any  # undocumented
@@ -137,29 +190,46 @@ else:
 
 # New things in 3.11
 if sys.version_info >= (3, 11):
-    from typing import Never as Never, Self as Self, assert_never as assert_never, reveal_type as reveal_type
+    from typing import (
+        LiteralString as LiteralString,
+        Never as Never,
+        NotRequired as NotRequired,
+        Required as Required,
+        Self as Self,
+        TypeVarTuple as TypeVarTuple,
+        Unpack as Unpack,
+        assert_never as assert_never,
+        assert_type as assert_type,
+        clear_overloads as clear_overloads,
+        dataclass_transform as dataclass_transform,
+        get_overloads as get_overloads,
+        reveal_type as reveal_type,
+    )
 else:
     Self: _SpecialForm
     Never: _SpecialForm
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: NoReturn) -> NoReturn: ...
+    def assert_type(__val: _T, __typ: Any) -> _T: ...
+    def clear_overloads() -> None: ...
+    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
 
-# Experimental (hopefully these will be in 3.11)
-Required: _SpecialForm
-NotRequired: _SpecialForm
-LiteralString: _SpecialForm
-Unpack: _SpecialForm
+    Required: _SpecialForm
+    NotRequired: _SpecialForm
+    LiteralString: _SpecialForm
+    Unpack: _SpecialForm
 
-@final
-class TypeVarTuple:
-    __name__: str
-    def __init__(self, name: str) -> None: ...
-    def __iter__(self) -> Any: ...  # Unpack[Self]
+    @final
+    class TypeVarTuple:
+        __name__: str
+        def __init__(self, name: str) -> None: ...
+        def __iter__(self) -> Any: ...  # Unpack[Self]
 
-def dataclass_transform(
-    *,
-    eq_default: bool = ...,
-    order_default: bool = ...,
-    kw_only_default: bool = ...,
-    field_descriptors: tuple[type[Any] | Callable[..., Any], ...] = ...,
-) -> Callable[[_T], _T]: ...
+    def dataclass_transform(
+        *,
+        eq_default: bool = ...,
+        order_default: bool = ...,
+        kw_only_default: bool = ...,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        **kwargs: object,
+    ) -> Callable[[_T], _T]: ...

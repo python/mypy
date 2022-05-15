@@ -1,5 +1,6 @@
 import sys
-from typing import Iterable, NamedTuple
+from collections.abc import Iterable
+from typing import NamedTuple
 
 __all__ = ["RobotFileParser"]
 

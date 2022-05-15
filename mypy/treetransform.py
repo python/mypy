@@ -20,7 +20,7 @@ from mypy.nodes import (
     YieldFromExpr, NamedTupleExpr, TypedDictExpr, NonlocalDecl, SetComprehension,
     DictionaryComprehension, ComplexExpr, TypeAliasExpr, EllipsisExpr,
     YieldExpr, ExecStmt, Argument, BackquoteExpr, AwaitExpr, AssignmentExpr,
-    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF
+    OverloadPart, EnumCallExpr, REVEAL_TYPE, GDEF, TypeVarTupleExpr
 )
 from mypy.types import Type, FunctionLike, ProperType
 from mypy.traverser import TraverserVisitor
@@ -512,6 +512,11 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_paramspec_expr(self, node: ParamSpecExpr) -> ParamSpecExpr:
         return ParamSpecExpr(
+            node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
+        )
+
+    def visit_type_var_tuple_expr(self, node: TypeVarTupleExpr) -> TypeVarTupleExpr:
+        return TypeVarTupleExpr(
             node.name, node.fullname, self.type(node.upper_bound), variance=node.variance
         )
 

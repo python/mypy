@@ -2,7 +2,7 @@ import _tkinter
 import sys
 import tkinter
 from typing import Any, overload
-from typing_extensions import Literal, TypedDict
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
     __all__ = ["NORMAL", "ROMAN", "BOLD", "ITALIC", "nametofont", "Font", "families", "names"]
@@ -12,7 +12,7 @@ ROMAN: Literal["roman"]
 BOLD: Literal["bold"]
 ITALIC: Literal["italic"]
 
-_FontDescription = (
+_FontDescription: TypeAlias = (
     str  # "Helvetica 12"
     | Font  # A font object constructed in Python
     | list[Any]  # ("Helvetica", 12, BOLD)

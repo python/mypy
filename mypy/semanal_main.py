@@ -45,6 +45,8 @@ from mypy.semanal_infer import infer_decorator_signature_if_simple
 from mypy.checker import FineGrainedDeferredNode
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
+from mypy.options import Options
+from mypy.plugin import ClassDefContext
 import mypy.build
 
 if TYPE_CHECKING:
@@ -82,6 +84,8 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     apply_semantic_analyzer_patches(patches)
     # This pass might need fallbacks calculated above.
     check_type_arguments(graph, scc, errors)
+    # Run class decorator hooks (they requite complete MROs and no placeholders).
+    apply_class_plugin_hooks(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
     check_blockers(graph, scc)
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
@@ -132,6 +136,7 @@ def semantic_analysis_for_targets(
 
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
+    apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
 
 
 def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
@@ -382,14 +387,62 @@ def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], stat
                     target.node.accept(analyzer)
 
 
+def apply_class_plugin_hooks(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    """Apply class plugin hooks within a SCC.
+
+    We run these after to the main semantic analysis so that the hooks
+    don't need to deal with incomplete definitions such as placeholder
+    types.
+
+    Note that some hooks incorrectly run during the main semantic
+    analysis pass, for historical reasons.
+    """
+    num_passes = 0
+    incomplete = True
+    # If we encounter a base class that has not been processed, we'll run another
+    # pass. This should eventually reach a fixed point.
+    while incomplete:
+        assert num_passes < 10, "Internal error: too many class plugin hook passes"
+        num_passes += 1
+        incomplete = False
+        for module in scc:
+            state = graph[module]
+            tree = state.tree
+            assert tree
+            for _, node, _ in tree.local_definitions():
+                if isinstance(node.node, TypeInfo):
+                    if not apply_hooks_to_class(state.manager.semantic_analyzer,
+                                                module, node.node, state.options, tree, errors):
+                        incomplete = True
+
+
+def apply_hooks_to_class(self: SemanticAnalyzer,
+                         module: str,
+                         info: TypeInfo,
+                         options: Options,
+                         file_node: MypyFile,
+                         errors: Errors) -> bool:
+    # TODO: Move more class-related hooks here?
+    defn = info.defn
+    ok = True
+    for decorator in defn.decorators:
+        with self.file_context(file_node, options, info):
+            decorator_name = self.get_fullname_for_hook(decorator)
+            if decorator_name:
+                hook = self.plugin.get_class_decorator_hook_2(decorator_name)
+                if hook:
+                    ok = ok and hook(ClassDefContext(defn, decorator, self))
+    return ok
+
+
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
     for module in scc:
-        tree = graph[module].tree
+        state = graph[module]
+        tree = state.tree
         assert tree
         for _, node, _ in tree.local_definitions():
             if isinstance(node.node, TypeInfo):
-                saved = (module, node.node, None)  # module, class, function
-                with errors.scope.saved_scope(saved) if errors.scope else nullcontext():
+                with state.manager.semantic_analyzer.file_context(tree, state.options, node.node):
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)

@@ -2466,8 +2466,53 @@ def f(x: int, y: int) -> int: ...
 @overload
 def f(x: Tuple[int, int]) -> int: ...
 
+[case testOverload_fromTypingExtensionsImport]
+from typing import Tuple, Union
+from typing_extensions import overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int:
+        ...
+
+    @overload
+    def f(self, x: Tuple[int, int]) -> int:
+        ...
+
+    def f(self, *args: Union[int, Tuple[int, int]]) -> int:
+        pass
+
+@overload
+def f(x: int, y: int) -> int:
+    ...
+
+@overload
+def f(x: Tuple[int, int]) -> int:
+    ...
+
+def f(*args: Union[int, Tuple[int, int]]) -> int:
+    pass
+
+
+[out]
+from typing import Tuple
+from typing_extensions import overload
+
+class A:
+    @overload
+    def f(self, x: int, y: int) -> int: ...
+    @overload
+    def f(self, x: Tuple[int, int]) -> int: ...
+
+
+@overload
+def f(x: int, y: int) -> int: ...
+@overload
+def f(x: Tuple[int, int]) -> int: ...
+
 [case testOverload_importTyping]
 import typing
+import typing_extensions
 
 class A:
     @typing.overload
@@ -2506,9 +2551,21 @@ def f(x: typing.Tuple[int, int]) -> int:
 def f(*args: typing.Union[int, typing.Tuple[int, int]]) -> int:
     pass
 
+@typing_extensions.overload
+def g(x: int, y: int) -> int:
+    ...
+
+@typing_extensions.overload
+def g(x: typing.Tuple[int, int]) -> int:
+    ...
+
+def g(*args: typing.Union[int, typing.Tuple[int, int]]) -> int:
+    pass
+
 
 [out]
 import typing
+import typing_extensions
 
 class A:
     @typing.overload
@@ -2527,10 +2584,14 @@ class A:
 def f(x: int, y: int) -> int: ...
 @typing.overload
 def f(x: typing.Tuple[int, int]) -> int: ...
-
+@typing_extensions.overload
+def g(x: int, y: int) -> int: ...
+@typing_extensions.overload
+def g(x: typing.Tuple[int, int]) -> int: ...
 
 [case testOverload_importTypingAs]
 import typing as t
+import typing_extensions as te
 
 class A:
     @t.overload
@@ -2570,8 +2631,20 @@ def f(*args: t.Union[int, t.Tuple[int, int]]) -> int:
     pass
 
 
+@te.overload
+def g(x: int, y: int) -> int:
+    ...
+
+@te.overload
+def g(x: t.Tuple[int, int]) -> int:
+    ...
+
+def g(*args: t.Union[int, t.Tuple[int, int]]) -> int:
+    pass
+
 [out]
 import typing as t
+import typing_extensions as te
 
 class A:
     @t.overload
@@ -2590,6 +2663,10 @@ class A:
 def f(x: int, y: int) -> int: ...
 @t.overload
 def f(x: t.Tuple[int, int]) -> int: ...
+@te.overload
+def g(x: int, y: int) -> int: ...
+@te.overload
+def g(x: t.Tuple[int, int]) -> int: ...
 
 [case testProtocol_semanal]
 from typing import Protocol, TypeVar

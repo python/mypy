@@ -1,8 +1,9 @@
 import sys
 from _typeshed import Self
+from collections.abc import Mapping, MutableMapping
 from datetime import datetime
 from enum import Enum
-from typing import IO, Any, Mapping, MutableMapping
+from typing import IO, Any
 
 if sys.version_info >= (3, 9):
     __all__ = ["InvalidFileException", "FMT_XML", "FMT_BINARY", "load", "dump", "loads", "dumps", "UID"]

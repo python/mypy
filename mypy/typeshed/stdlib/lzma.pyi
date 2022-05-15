@@ -1,7 +1,8 @@
 import io
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath
-from typing import IO, Any, Mapping, Sequence, TextIO, overload
-from typing_extensions import Literal, final
+from collections.abc import Mapping, Sequence
+from typing import IO, Any, TextIO, overload
+from typing_extensions import Literal, TypeAlias, final
 
 __all__ = [
     "CHECK_NONE",
@@ -42,12 +43,12 @@ __all__ = [
     "is_check_supported",
 ]
 
-_OpenBinaryWritingMode = Literal["w", "wb", "x", "xb", "a", "ab"]
-_OpenTextWritingMode = Literal["wt", "xt", "at"]
+_OpenBinaryWritingMode: TypeAlias = Literal["w", "wb", "x", "xb", "a", "ab"]
+_OpenTextWritingMode: TypeAlias = Literal["wt", "xt", "at"]
 
-_PathOrFile = StrOrBytesPath | IO[bytes]
+_PathOrFile: TypeAlias = StrOrBytesPath | IO[bytes]
 
-_FilterChain = Sequence[Mapping[str, Any]]
+_FilterChain: TypeAlias = Sequence[Mapping[str, Any]]
 
 FORMAT_AUTO: Literal[0]
 FORMAT_XZ: Literal[1]

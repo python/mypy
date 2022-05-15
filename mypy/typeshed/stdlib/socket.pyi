@@ -366,6 +366,8 @@ if sys.platform == "linux" and sys.version_info >= (3, 9):
     )
 if sys.platform == "linux" and sys.version_info >= (3, 10):
     from _socket import IPPROTO_MPTCP as IPPROTO_MPTCP
+if sys.platform == "linux" and sys.version_info >= (3, 11):
+    from _socket import SO_INCOMING_CPU as SO_INCOMING_CPU
 if sys.platform == "win32":
     from _socket import (
         RCVALL_IPLEVEL as RCVALL_IPLEVEL,
@@ -605,11 +607,22 @@ class SocketIO(RawIOBase):
     def mode(self) -> Literal["rb", "wb", "rwb"]: ...
 
 def getfqdn(name: str = ...) -> str: ...
-def create_connection(
-    address: tuple[str | None, int],
-    timeout: float | None = ...,  # noqa: F811
-    source_address: tuple[bytearray | bytes | str, int] | None = ...,
-) -> socket: ...
+
+if sys.version_info >= (3, 11):
+    def create_connection(
+        address: tuple[str | None, int],
+        timeout: float | None = ...,  # noqa: F811
+        source_address: tuple[bytearray | bytes | str, int] | None = ...,
+        *,
+        all_errors: bool = ...,
+    ) -> socket: ...
+
+else:
+    def create_connection(
+        address: tuple[str | None, int],
+        timeout: float | None = ...,  # noqa: F811
+        source_address: tuple[bytearray | bytes | str, int] | None = ...,
+    ) -> socket: ...
 
 if sys.version_info >= (3, 8):
     def has_dualstack_ipv6() -> bool: ...

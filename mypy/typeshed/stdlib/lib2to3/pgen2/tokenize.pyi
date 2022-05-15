@@ -1,6 +1,7 @@
 import sys
+from collections.abc import Callable, Iterable, Iterator
 from lib2to3.pgen2.token import *
-from typing import Callable, Iterable, Iterator
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 8):
     __all__ = [
@@ -146,9 +147,9 @@ else:
         "untokenize",
     ]
 
-_Coord = tuple[int, int]
-_TokenEater = Callable[[int, str, _Coord, _Coord, str], None]
-_TokenInfo = tuple[int, str, _Coord, _Coord, str]
+_Coord: TypeAlias = tuple[int, int]
+_TokenEater: TypeAlias = Callable[[int, str, _Coord, _Coord, str], None]
+_TokenInfo: TypeAlias = tuple[int, str, _Coord, _Coord, str]
 
 class TokenError(Exception): ...
 class StopTokenizing(Exception): ...

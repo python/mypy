@@ -1,6 +1,6 @@
 import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
 import sys
-from _typeshed import Self as TypeshedSelf, SupportsKeysAndGetItem
+from _typeshed import ReadableBuffer, Self as TypeshedSelf, SupportsKeysAndGetItem
 from abc import ABCMeta, abstractmethod
 from types import BuiltinFunctionType, CodeType, FrameType, FunctionType, MethodType, ModuleType, TracebackType
 from typing_extensions import Literal as _Literal, ParamSpec as _ParamSpec, final as _final
@@ -22,9 +22,12 @@ if sys.version_info >= (3, 11):
         "ForwardRef",
         "Generic",
         "Literal",
+        "LiteralString",
+        "NotRequired",
         "Optional",
         "ParamSpec",
         "Protocol",
+        "Required",
         "Tuple",
         "Type",
         "TypeVar",
@@ -84,9 +87,12 @@ if sys.version_info >= (3, 11):
         "assert_never",
         "assert_type",
         "cast",
+        "clear_overloads",
+        "dataclass_transform",
         "final",
         "get_args",
         "get_origin",
+        "get_overloads",
         "get_type_hints",
         "is_typeddict",
         "Never",
@@ -528,6 +534,9 @@ if sys.version_info >= (3, 11):
     Self: _SpecialForm
     Never: _SpecialForm = ...
     Unpack: _SpecialForm
+    Required: _SpecialForm
+    NotRequired: _SpecialForm
+    LiteralString: _SpecialForm
 
     class TypeVarTuple:
         __name__: str
@@ -1071,7 +1080,10 @@ class Match(Generic[AnyStr]):
     # this match instance.
     @property
     def re(self) -> Pattern[AnyStr]: ...
-    def expand(self, template: AnyStr) -> AnyStr: ...
+    @overload
+    def expand(self: Match[str], template: str) -> str: ...
+    @overload
+    def expand(self: Match[bytes], template: ReadableBuffer) -> bytes: ...
     # group() returns "AnyStr" or "AnyStr | None", depending on the pattern.
     @overload
     def group(self, __group: _Literal[0] = ...) -> AnyStr: ...
@@ -1116,20 +1128,49 @@ class Pattern(Generic[AnyStr]):
     def groups(self) -> int: ...
     @property
     def pattern(self) -> AnyStr: ...
-    def search(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr] | None: ...
-    def match(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr] | None: ...
-    def fullmatch(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Match[AnyStr] | None: ...
-    def split(self, string: AnyStr, maxsplit: int = ...) -> list[AnyStr | Any]: ...
-    def findall(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> list[Any]: ...
-    def finditer(self, string: AnyStr, pos: int = ..., endpos: int = ...) -> Iterator[Match[AnyStr]]: ...
     @overload
-    def sub(self, repl: AnyStr, string: AnyStr, count: int = ...) -> AnyStr: ...
+    def search(self: Pattern[str], string: str, pos: int = ..., endpos: int = ...) -> Match[str] | None: ...
     @overload
-    def sub(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ...) -> AnyStr: ...
+    def search(self: Pattern[bytes], string: ReadableBuffer, pos: int = ..., endpos: int = ...) -> Match[bytes] | None: ...
     @overload
-    def subn(self, repl: AnyStr, string: AnyStr, count: int = ...) -> tuple[AnyStr, int]: ...
+    def match(self: Pattern[str], string: str, pos: int = ..., endpos: int = ...) -> Match[str] | None: ...
     @overload
-    def subn(self, repl: Callable[[Match[AnyStr]], AnyStr], string: AnyStr, count: int = ...) -> tuple[AnyStr, int]: ...
+    def match(self: Pattern[bytes], string: ReadableBuffer, pos: int = ..., endpos: int = ...) -> Match[bytes] | None: ...
+    @overload
+    def fullmatch(self: Pattern[str], string: str, pos: int = ..., endpos: int = ...) -> Match[str] | None: ...
+    @overload
+    def fullmatch(self: Pattern[bytes], string: ReadableBuffer, pos: int = ..., endpos: int = ...) -> Match[bytes] | None: ...
+    @overload
+    def split(self: Pattern[str], string: str, maxsplit: int = ...) -> list[str | Any]: ...
+    @overload
+    def split(self: Pattern[bytes], string: ReadableBuffer, maxsplit: int = ...) -> list[bytes | Any]: ...
+    # return type depends on the number of groups in the pattern
+    @overload
+    def findall(self: Pattern[str], string: str, pos: int = ..., endpos: int = ...) -> list[Any]: ...
+    @overload
+    def findall(self: Pattern[bytes], string: ReadableBuffer, pos: int = ..., endpos: int = ...) -> list[Any]: ...
+    @overload
+    def finditer(self: Pattern[str], string: str, pos: int = ..., endpos: int = ...) -> Iterator[Match[str]]: ...
+    @overload
+    def finditer(self: Pattern[bytes], string: ReadableBuffer, pos: int = ..., endpos: int = ...) -> Iterator[Match[bytes]]: ...
+    @overload
+    def sub(self: Pattern[str], repl: str | Callable[[Match[str]], str], string: str, count: int = ...) -> str: ...
+    @overload
+    def sub(
+        self: Pattern[bytes],
+        repl: ReadableBuffer | Callable[[Match[bytes]], ReadableBuffer],
+        string: ReadableBuffer,
+        count: int = ...,
+    ) -> bytes: ...
+    @overload
+    def subn(self: Pattern[str], repl: str | Callable[[Match[str]], str], string: str, count: int = ...) -> tuple[str, int]: ...
+    @overload
+    def subn(
+        self: Pattern[bytes],
+        repl: ReadableBuffer | Callable[[Match[bytes]], ReadableBuffer],
+        string: ReadableBuffer,
+        count: int = ...,
+    ) -> tuple[bytes, int]: ...
     def __copy__(self) -> Pattern[AnyStr]: ...
     def __deepcopy__(self, __memo: Any) -> Pattern[AnyStr]: ...
     if sys.version_info >= (3, 9):
@@ -1138,7 +1179,7 @@ class Pattern(Generic[AnyStr]):
 # Functions
 
 if sys.version_info >= (3, 7):
-    _get_type_hints_obj_allowed_types = (
+    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
         object
         | Callable[..., Any]
         | FunctionType
@@ -1150,7 +1191,9 @@ if sys.version_info >= (3, 7):
         | MethodDescriptorType
     )
 else:
-    _get_type_hints_obj_allowed_types = object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
+    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
+        object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
+    )
 
 if sys.version_info >= (3, 9):
     def get_type_hints(
@@ -1180,6 +1223,16 @@ if sys.version_info >= (3, 11):
     def reveal_type(__obj: _T) -> _T: ...
     def assert_never(__arg: Never) -> Never: ...
     def assert_type(__val: _T, __typ: Any) -> _T: ...
+    def clear_overloads() -> None: ...
+    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
+    def dataclass_transform(
+        *,
+        eq_default: bool = ...,
+        order_default: bool = ...,
+        kw_only_default: bool = ...,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        **kwargs: Any,
+    ) -> Callable[[_T], _T]: ...
 
 # Type constructors
 

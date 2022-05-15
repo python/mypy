@@ -893,11 +893,14 @@ from typing import Generic, TypeVar, Tuple
 T = TypeVar('T')
 S = TypeVar('S')
 U = TypeVar('U')
+V = TypeVar('V')
 
 class C(Generic[T]):
     def magic(self: C[Tuple[S, U]]) -> Tuple[T, S, U]: ...
 
-reveal_type(C[Tuple[int, str]]().magic())  # N: Revealed type is "Tuple[Tuple[builtins.int, builtins.str], builtins.int, builtins.str]"
+class D(Generic[V]):
+    def f(self) -> None:
+        reveal_type(C[Tuple[V, str]]().magic())  # N: Revealed type is "Tuple[Tuple[V`1, builtins.str], V`1, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfTypeOnUnion]
@@ -1167,3 +1170,71 @@ def build_wrapper_non_gen(descriptor: Descriptor[int]) -> BaseWrapper[str]:
 def build_sub_wrapper_non_gen(descriptor: Descriptor[int]) -> SubWrapper[str]:
     return SubWrapper.create_wrapper(descriptor)  # E: Argument 1 to "create_wrapper" of "BaseWrapper" has incompatible type "Descriptor[int]"; expected "Descriptor[str]"
 [builtins fixtures/classmethod.pyi]
+
+[case testSelfTypeInGenericClassUsedFromAnotherGenericClass1]
+from typing import TypeVar, Generic, Iterator, List, Tuple
+
+_T_co = TypeVar("_T_co", covariant=True)
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+S = TypeVar("S")
+
+class Z(Iterator[_T_co]):
+    def __new__(cls,
+                __iter1: List[_T1],
+                __iter2: List[_T2]) -> Z[Tuple[_T1, _T2]]: ...
+    def __iter__(self: S) -> S: ...
+    def __next__(self) -> _T_co: ...
+
+T = TypeVar('T')
+
+class C(Generic[T]):
+    a: List[T]
+    b: List[str]
+
+    def f(self) -> None:
+        for x, y in Z(self.a, self.b):
+            reveal_type((x, y))  # N: Revealed type is "Tuple[T`1, builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testEnumerateReturningSelfFromIter]
+from typing import Generic, Iterable, Iterator, TypeVar, Tuple
+
+T = TypeVar("T")
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+Self = TypeVar("Self")
+
+class enumerate(Iterator[Tuple[int, T]], Generic[T]):
+    def __init__(self, iterable: Iterable[T]) -> None: ...
+    def __iter__(self: Self) -> Self: ...
+    def __next__(self) -> Tuple[int, T]: ...
+
+class Dict(Generic[KT, VT]):
+    def update(self, __m: Iterable[Tuple[KT, VT]]) -> None: ...
+
+class ThingCollection(Generic[T]):
+    collection: Iterable[Tuple[float, T]]
+    index: Dict[int, T]
+
+    def do_thing(self) -> None:
+        self.index.update((idx, c) for idx, (k, c) in enumerate(self.collection))
+[builtins fixtures/tuple.pyi]
+
+[case testDequeReturningSelfFromCopy]
+# Tests a bug with generic self types identified in issue #12641
+from typing import Generic, Sequence, TypeVar
+
+T = TypeVar("T")
+Self = TypeVar("Self")
+
+class deque(Sequence[T]):
+    def copy(self: Self) -> Self: ...
+
+class List(Sequence[T]): ...
+
+class Test(Generic[T]):
+    def test(self) -> None:
+        a: deque[List[T]]
+        # previously this failed with 'Incompatible types in assignment (expression has type "deque[List[List[T]]]", variable has type "deque[List[T]]")'
+        b: deque[List[T]] = a.copy()

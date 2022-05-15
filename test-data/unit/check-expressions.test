@@ -1049,6 +1049,20 @@ assert_type(a, Any)  # E: Expression is of type "int", not "Any"
 assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
 [builtins fixtures/tuple.pyi]
 
+[case testAssertTypeGeneric]
+from typing import assert_type, TypeVar, Generic
+from typing_extensions import Literal
+T = TypeVar("T")
+def f(x: T) -> T: return x
+assert_type(f(1), int)
+class Gen(Generic[T]):
+    def __new__(cls, obj: T) -> Gen[T]: ...
+assert_type(Gen(1), Gen[int])
+# With type context, it infers Gen[Literal[1]] instead.
+y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
+
+[builtins fixtures/tuple.pyi]
+
 -- None return type
 -- ----------------
 

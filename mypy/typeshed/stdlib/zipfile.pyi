@@ -1,10 +1,11 @@
 import io
 import sys
 from _typeshed import Self, StrOrBytesPath, StrPath
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from os import PathLike
 from types import TracebackType
-from typing import IO, Any, Callable, Iterable, Iterator, Protocol, Sequence, overload
-from typing_extensions import Literal
+from typing import IO, Any, Protocol, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 8):
     __all__ = [
@@ -38,10 +39,10 @@ else:
         "LargeZipFile",
     ]
 
-_DateTuple = tuple[int, int, int, int, int, int]
-_ReadWriteMode = Literal["r", "w"]
-_ReadWriteBinaryMode = Literal["r", "w", "rb", "wb"]
-_ZipFileMode = Literal["r", "w", "x", "a"]
+_DateTuple: TypeAlias = tuple[int, int, int, int, int, int]
+_ReadWriteMode: TypeAlias = Literal["r", "w"]
+_ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]
+_ZipFileMode: TypeAlias = Literal["r", "w", "x", "a"]
 
 class BadZipFile(Exception): ...
 
@@ -221,6 +222,8 @@ class ZipFile:
         ) -> None: ...
     else:
         def writestr(self, zinfo_or_arcname: str | ZipInfo, data: bytes | str, compress_type: int | None = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        def mkdir(self, zinfo_or_directory: str | ZipInfo, mode: int = ...) -> None: ...
 
 class PyZipFile(ZipFile):
     def __init__(

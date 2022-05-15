@@ -1,7 +1,8 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
+from collections.abc import Callable, Iterable, Iterator
 from types import TracebackType
-from typing import IO, Any, AnyStr, Callable, Generic, Iterable, Iterator
+from typing import IO, Any, AnyStr, Generic
 
 __all__ = [
     "input",

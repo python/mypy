@@ -1,9 +1,10 @@
 import sys
 from _typeshed import Self, StrOrBytesPath
+from collections.abc import Iterable
 from cProfile import Profile as _cProfile
 from profile import Profile
-from typing import IO, Any, Iterable, overload
-from typing_extensions import Literal
+from typing import IO, Any, overload
+from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 9):
     __all__ = ["Stats", "SortKey", "FunctionProfile", "StatsProfile"]
@@ -12,7 +13,7 @@ elif sys.version_info >= (3, 7):
 else:
     __all__ = ["Stats"]
 
-_Selector = str | float | int
+_Selector: TypeAlias = str | float | int
 
 if sys.version_info >= (3, 7):
     from enum import Enum
@@ -45,7 +46,7 @@ if sys.version_info >= (3, 9):
         total_tt: float
         func_profiles: dict[str, FunctionProfile]
 
-_SortArgDict = dict[str, tuple[tuple[tuple[int, int], ...], str]]
+_SortArgDict: TypeAlias = dict[str, tuple[tuple[tuple[int, int], ...], str]]
 
 class Stats:
     sort_arg_dict_default: _SortArgDict

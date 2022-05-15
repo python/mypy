@@ -103,14 +103,14 @@ def run_stubtest(
             f.write(stubtest_builtins_stub)
         with open("typing.pyi", "w") as f:
             f.write(stubtest_typing_stub)
-        with open("{}.pyi".format(TEST_MODULE_NAME), "w") as f:
+        with open(f"{TEST_MODULE_NAME}.pyi", "w") as f:
             f.write(stub)
-        with open("{}.py".format(TEST_MODULE_NAME), "w") as f:
+        with open(f"{TEST_MODULE_NAME}.py", "w") as f:
             f.write(runtime)
         if config_file:
-            with open("{}_config.ini".format(TEST_MODULE_NAME), "w") as f:
+            with open(f"{TEST_MODULE_NAME}_config.ini", "w") as f:
                 f.write(config_file)
-            options = options + ["--mypy-config-file", "{}_config.ini".format(TEST_MODULE_NAME)]
+            options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(
@@ -712,6 +712,18 @@ class StubtestUnit(unittest.TestCase):
             runtime="A = (int, str)",
             error="A",
         )
+        # Error if an alias isn't present at runtime...
+        yield Case(
+            stub="B = str",
+            runtime="",
+            error="B"
+        )
+        # ... but only if the alias isn't private
+        yield Case(
+            stub="_C = int",
+            runtime="",
+            error=None
+        )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
@@ -817,17 +829,16 @@ class StubtestUnit(unittest.TestCase):
             runtime="class B:\n  def __call__(self, c, dx): pass",
             error="B.__call__",
         )
-        if sys.version_info >= (3, 6):
-            yield Case(
-                stub=(
-                    "class C:\n"
-                    "  def __init_subclass__(\n"
-                    "    cls, e: int = ..., **kwargs: int\n"
-                    "  ) -> None: ...\n"
-                ),
-                runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
-                error=None,
-            )
+        yield Case(
+            stub=(
+                "class C:\n"
+                "  def __init_subclass__(\n"
+                "    cls, e: int = ..., **kwargs: int\n"
+                "  ) -> None: ...\n"
+            ),
+            runtime="class C:\n  def __init_subclass__(cls, e=1, **kwargs): pass",
+            error=None,
+        )
         if sys.version_info >= (3, 9):
             yield Case(
                 stub="class D:\n  def __class_getitem__(cls, type: type) -> type: ...",
@@ -1060,7 +1071,7 @@ class StubtestMiscUnit(unittest.TestCase):
         allowlist = tempfile.NamedTemporaryFile(mode="w+", delete=False)
         try:
             with allowlist:
-                allowlist.write("{}.bad  # comment\n# comment".format(TEST_MODULE_NAME))
+                allowlist.write(f"{TEST_MODULE_NAME}.bad  # comment\n# comment")
 
             output = run_stubtest(
                 stub="def bad(number: int, text: str) -> None: ...",
@@ -1071,7 +1082,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
             # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
-            assert output == "note: unused allowlist entry {}.bad\n".format(TEST_MODULE_NAME)
+            assert output == f"note: unused allowlist entry {TEST_MODULE_NAME}.bad\n"
 
             output = run_stubtest(
                 stub="",
@@ -1082,7 +1093,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
             # test regex matching
             with open(allowlist.name, mode="w+") as f:
-                f.write("{}.b.*\n".format(TEST_MODULE_NAME))
+                f.write(f"{TEST_MODULE_NAME}.b.*\n")
                 f.write("(unused_missing)?\n")
                 f.write("unused.*\n")
 
@@ -1156,13 +1167,12 @@ class StubtestMiscUnit(unittest.TestCase):
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
         config_file = (
-            "[mypy]\n"
-            "plugins={}/test-data/unit/plugins/decimal_to_int.py\n".format(root_dir)
+            f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             "error: test_module.temp variable differs from runtime type Literal[5]\n"
-            "Stub: at line 2\ndecimal.Decimal\nRuntime:\n5\n\n"
+            "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""

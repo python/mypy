@@ -1,11 +1,13 @@
 import sys
 from _typeshed import ReadableBuffer
+from collections.abc import Callable
 from types import ModuleType
-from typing import Any, AnyStr, Callable, overload
+from typing import Any, AnyStr, overload
+from typing_extensions import TypeAlias
 
 # TODO more precise type for object of hashlib
-_Hash = Any
-_DigestMod = str | Callable[[], _Hash] | ModuleType
+_Hash: TypeAlias = Any
+_DigestMod: TypeAlias = str | Callable[[], _Hash] | ModuleType
 
 trans_5C: bytes
 trans_36: bytes

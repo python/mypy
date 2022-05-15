@@ -166,6 +166,10 @@ class ExpressionVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_type_var_tuple_expr(self, o: 'mypy.nodes.TypeVarTupleExpr') -> T:
+        pass
+
+    @abstractmethod
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:
         pass
 
@@ -588,6 +592,9 @@ class NodeVisitor(Generic[T], ExpressionVisitor[T], StatementVisitor[T], Pattern
         pass
 
     def visit_paramspec_expr(self, o: 'mypy.nodes.ParamSpecExpr') -> T:
+        pass
+
+    def visit_type_var_tuple_expr(self, o: 'mypy.nodes.TypeVarTupleExpr') -> T:
         pass
 
     def visit_type_alias_expr(self, o: 'mypy.nodes.TypeAliasExpr') -> T:

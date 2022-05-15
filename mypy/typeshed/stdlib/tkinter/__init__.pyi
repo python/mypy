@@ -1,12 +1,13 @@
 import _tkinter
 import sys
 from _typeshed import StrOrBytesPath
+from collections.abc import Callable, Mapping, Sequence
 from enum import Enum
 from tkinter.constants import *
 from tkinter.font import _FontDescription
 from types import TracebackType
-from typing import Any, Callable, Generic, Mapping, Protocol, Sequence, TypeVar, Union, overload
-from typing_extensions import Literal, TypedDict
+from typing import Any, Generic, NamedTuple, Protocol, TypeVar, Union, overload
+from typing_extensions import Literal, TypeAlias, TypedDict
 
 if sys.version_info >= (3, 9):
     __all__ = [
@@ -171,29 +172,39 @@ EXCEPTION = _tkinter.EXCEPTION
 
 # Some widgets have an option named -compound that accepts different values
 # than the _Compound defined here. Many other options have similar things.
-_Anchor = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
-_Bitmap = str  # manual page: Tk_GetBitmap
-_ButtonCommand = str | Callable[[], Any]  # accepts string of tcl code, return value is returned from Button.invoke()
-_CanvasItemId = int
-_Color = str  # typically '#rrggbb', '#rgb' or color names.
-_Compound = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
-_Cursor = Union[str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]  # manual page: Tk_GetCursor
-_EntryValidateCommand = (
+_Anchor: TypeAlias = Literal["nw", "n", "ne", "w", "center", "e", "sw", "s", "se"]  # manual page: Tk_GetAnchor
+_Bitmap: TypeAlias = str  # manual page: Tk_GetBitmap
+_ButtonCommand: TypeAlias = str | Callable[[], Any]  # accepts string of tcl code, return value is returned from Button.invoke()
+_CanvasItemId: TypeAlias = int
+_Color: TypeAlias = str  # typically '#rrggbb', '#rgb' or color names.
+_Compound: TypeAlias = Literal["top", "left", "center", "right", "bottom", "none"]  # -compound in manual page named 'options'
+_Cursor: TypeAlias = Union[
+    str, tuple[str], tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]
+]  # manual page: Tk_GetCursor
+_EntryValidateCommand: TypeAlias = (
     str | list[str] | tuple[str, ...] | Callable[[], bool]
 )  # example when it's sequence:  entry['invalidcommand'] = [entry.register(print), '%P']
-_GridIndex = int | str | Literal["all"]
-_ImageSpec = _Image | str  # str can be from e.g. tkinter.image_names()
-_Padding = Union[
+_GridIndex: TypeAlias = int | str | Literal["all"]
+_ImageSpec: TypeAlias = _Image | str  # str can be from e.g. tkinter.image_names()
+_Padding: TypeAlias = Union[
     _ScreenUnits,
     tuple[_ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits, _ScreenUnits],
     tuple[_ScreenUnits, _ScreenUnits, _ScreenUnits, _ScreenUnits],
 ]
-_Relief = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
-_ScreenUnits = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
-_XYScrollCommand = str | Callable[[float, float], Any]  # -xscrollcommand and -yscrollcommand in 'options' manual page
-_TakeFocusValue = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
+_Relief: TypeAlias = Literal["raised", "sunken", "flat", "ridge", "solid", "groove"]  # manual page: Tk_GetRelief
+_ScreenUnits: TypeAlias = str | float  # Often the right type instead of int. Manual page: Tk_GetPixels
+_XYScrollCommand: TypeAlias = str | Callable[[float, float], Any]  # -xscrollcommand and -yscrollcommand in 'options' manual page
+_TakeFocusValue: TypeAlias = Union[int, Literal[""], Callable[[str], bool | None]]  # -takefocus in manual page named 'options'
+
+if sys.version_info >= (3, 11):
+    class _VersionInfoType(NamedTuple):
+        major: int
+        minor: int
+        micro: int
+        releaselevel: str
+        serial: int
 
 class EventType(str, Enum):
     Activate: str
@@ -263,7 +274,7 @@ class Event(Generic[_W_co]):
 
 def NoDefaultRoot() -> None: ...
 
-_TraceMode = Literal["array", "read", "write", "unset"]
+_TraceMode: TypeAlias = Literal["array", "read", "write", "unset"]
 
 class Variable:
     def __init__(self, master: Misc | None = ..., value: Any | None = ..., name: str | None = ...) -> None: ...
@@ -374,6 +385,9 @@ class Misc:
     def lower(self, belowThis: Any | None = ...) -> None: ...
     def tkraise(self, aboveThis: Any | None = ...) -> None: ...
     lift = tkraise
+    if sys.version_info >= (3, 11):
+        def info_patchlevel(self) -> _VersionInfoType: ...
+
     def winfo_atom(self, name: str, displayof: Literal[0] | Misc | None = ...) -> int: ...
     def winfo_atomname(self, id: int, displayof: Literal[0] | Misc | None = ...) -> str: ...
     def winfo_cells(self) -> int: ...
@@ -472,6 +486,8 @@ class Misc:
     def unbind_class(self, className: str, sequence: str) -> None: ...
     def mainloop(self, n: int = ...) -> None: ...
     def quit(self) -> None: ...
+    @property
+    def _windowingsystem(self) -> Literal["win32", "aqua", "x11"]: ...
     def nametowidget(self, name: str | Misc | _tkinter.Tcl_Obj) -> Any: ...
     def register(
         self, func: Callable[..., Any], subst: Callable[..., Sequence[Any]] | None = ..., needcleanup: int = ...
@@ -1218,8 +1234,9 @@ class Canvas(Widget, XView, YView):
     def coords(self, __tagOrId: str | _CanvasItemId, __args: list[int] | list[float] | tuple[float, ...]) -> None: ...
     @overload
     def coords(self, __tagOrId: str | _CanvasItemId, __x1: float, __y1: float, *args: float) -> None: ...
-    # create_foo() methods accept coords as a list, a tuple, or as separate arguments.
-    # Keyword arguments should be the same in each pair of overloads.
+    # create_foo() methods accept coords as a list or tuple, or as separate arguments.
+    # Lists and tuples can be flat as in [1, 2, 3, 4], or nested as in [(1, 2), (3, 4)].
+    # Keyword arguments should be the same in all overloads of each method.
     def create_arc(self, *args, **kw) -> _CanvasItemId: ...
     def create_bitmap(self, *args, **kw) -> _CanvasItemId: ...
     def create_image(self, *args, **kw) -> _CanvasItemId: ...
@@ -1257,7 +1274,43 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_line(
         self,
-        __coords: tuple[float, float, float, float] | list[int] | list[float],
+        __xy_pair_0: tuple[float, float],
+        __xy_pair_1: tuple[float, float],
+        *,
+        activedash: str | list[int] | tuple[int, ...] = ...,
+        activefill: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        arrow: Literal["first", "last", "both"] = ...,
+        arrowshape: tuple[float, float, float] = ...,
+        capstyle: Literal["round", "projecting", "butt"] = ...,
+        dash: str | list[int] | tuple[int, ...] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: str | list[int] | tuple[int, ...] = ...,
+        disabledfill: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        joinstyle: Literal["round", "bevel", "miter"] = ...,
+        offset: _ScreenUnits = ...,
+        smooth: bool = ...,
+        splinesteps: float = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: str | list[str] | tuple[str, ...] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    @overload
+    def create_line(
+        self,
+        __coords: (
+            tuple[float, float, float, float]
+            | tuple[tuple[float, float], tuple[float, float]]
+            | list[int]
+            | list[float]
+            | list[tuple[int, int]]
+            | list[tuple[float, float]]
+        ),
         *,
         activedash: str | list[int] | tuple[int, ...] = ...,
         activefill: _Color = ...,
@@ -1317,7 +1370,44 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_oval(
         self,
-        __coords: tuple[float, float, float, float] | list[int] | list[float],
+        __xy_pair_0: tuple[float, float],
+        __xy_pair_1: tuple[float, float],
+        *,
+        activedash: str | list[int] | tuple[int, ...] = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: str | list[int] | tuple[int, ...] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: str | list[int] | tuple[int, ...] = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: str | list[str] | tuple[str, ...] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    @overload
+    def create_oval(
+        self,
+        __coords: (
+            tuple[float, float, float, float]
+            | tuple[tuple[float, float], tuple[float, float]]
+            | list[int]
+            | list[float]
+            | list[tuple[int, int]]
+            | list[tuple[float, float]]
+        ),
         *,
         activedash: str | list[int] | tuple[int, ...] = ...,
         activefill: _Color = ...,
@@ -1381,7 +1471,47 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_polygon(
         self,
-        __coords: tuple[float, ...] | list[int] | list[float],
+        __xy_pair_0: tuple[float, float],
+        __xy_pair_1: tuple[float, float],
+        *xy_pairs: tuple[float, float],
+        activedash: str | list[int] | tuple[int, ...] = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: str | list[int] | tuple[int, ...] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: str | list[int] | tuple[int, ...] = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        joinstyle: Literal["round", "bevel", "miter"] = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        smooth: bool = ...,
+        splinesteps: float = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: str | list[str] | tuple[str, ...] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    @overload
+    def create_polygon(
+        self,
+        __coords: (
+            tuple[float, ...]
+            | tuple[tuple[float, float], ...]
+            | list[int]
+            | list[float]
+            | list[tuple[int, int]]
+            | list[tuple[float, float]]
+        ),
         *,
         activedash: str | list[int] | tuple[int, ...] = ...,
         activefill: _Color = ...,
@@ -1445,7 +1575,44 @@ class Canvas(Widget, XView, YView):
     @overload
     def create_rectangle(
         self,
-        __coords: tuple[float, float, float, float] | list[int] | list[float],
+        __xy_pair_0: tuple[float, float],
+        __xy_pair_1: tuple[float, float],
+        *,
+        activedash: str | list[int] | tuple[int, ...] = ...,
+        activefill: _Color = ...,
+        activeoutline: _Color = ...,
+        activeoutlinestipple: _Color = ...,
+        activestipple: str = ...,
+        activewidth: _ScreenUnits = ...,
+        dash: str | list[int] | tuple[int, ...] = ...,
+        dashoffset: _ScreenUnits = ...,
+        disableddash: str | list[int] | tuple[int, ...] = ...,
+        disabledfill: _Color = ...,
+        disabledoutline: _Color = ...,
+        disabledoutlinestipple: _Color = ...,
+        disabledstipple: _Bitmap = ...,
+        disabledwidth: _ScreenUnits = ...,
+        fill: _Color = ...,
+        offset: _ScreenUnits = ...,
+        outline: _Color = ...,
+        outlineoffset: _ScreenUnits = ...,
+        outlinestipple: _Bitmap = ...,
+        state: Literal["normal", "active", "disabled"] = ...,
+        stipple: _Bitmap = ...,
+        tags: str | list[str] | tuple[str, ...] = ...,
+        width: _ScreenUnits = ...,
+    ) -> _CanvasItemId: ...
+    @overload
+    def create_rectangle(
+        self,
+        __coords: (
+            tuple[float, float, float, float]
+            | tuple[tuple[float, float], tuple[float, float]]
+            | list[int]
+            | list[float]
+            | list[tuple[int, int]]
+            | list[tuple[float, float]]
+        ),
         *,
         activedash: str | list[int] | tuple[int, ...] = ...,
         activefill: _Color = ...,
@@ -1696,7 +1863,7 @@ class Checkbutton(Widget):
     def select(self) -> None: ...
     def toggle(self) -> None: ...
 
-_EntryIndex = str | int  # "INDICES" in manual page
+_EntryIndex: TypeAlias = str | int  # "INDICES" in manual page
 
 class Entry(Widget, XView):
     def __init__(
@@ -2054,7 +2221,7 @@ class Listbox(Widget, XView, YView):
     def itemconfigure(self, index, cnf: Any | None = ..., **kw): ...
     itemconfig: Any
 
-_MenuIndex = str | int
+_MenuIndex: TypeAlias = str | int
 
 class Menu(Widget):
     def __init__(
@@ -2740,7 +2907,7 @@ class Scrollbar(Widget):
     def get(self) -> tuple[float, float, float, float] | tuple[float, float]: ...
     def set(self, first: float, last: float) -> None: ...
 
-_TextIndex = _tkinter.Tcl_Obj | str | float | Misc
+_TextIndex: TypeAlias = _tkinter.Tcl_Obj | str | float | Misc
 
 class Text(Widget, XView, YView):
     def __init__(

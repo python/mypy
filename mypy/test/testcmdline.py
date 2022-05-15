@@ -46,7 +46,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     program_path = os.path.join(test_temp_dir, program)
     with open(program_path, 'w', encoding='utf8') as file:
         for s in testcase.input:
-            file.write('{}\n'.format(s))
+            file.write(f'{s}\n')
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append('--show-traceback')
@@ -94,7 +94,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
             out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
-            out.append('== Return code: {}'.format(result))
+            out.append(f'== Return code: {result}')
         expected_out = testcase.output if step == 1 else testcase.output2[step]
         # Strip "tmp/" out of the test so that # E: works...
         expected_out = [s.replace("tmp" + os.sep, "") for s in expected_out]

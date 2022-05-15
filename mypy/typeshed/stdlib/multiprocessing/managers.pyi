@@ -2,19 +2,20 @@ import queue
 import sys
 import threading
 from _typeshed import Self
+from builtins import dict as _dict, list as _list  # Conflicts with method names
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from types import TracebackType
-from typing import Any, AnyStr, Callable, Generic, Iterable, Mapping, Sequence, TypeVar
+from typing import Any, AnyStr, Generic, TypeVar
+from typing_extensions import TypeAlias
 
 from .connection import Connection
 from .context import BaseContext
 
 if sys.version_info >= (3, 8):
-    from .shared_memory import _SLT, ShareableList, SharedMemory
+    from .shared_memory import _SLT, ShareableList as _ShareableList, SharedMemory as _SharedMemory
 
     __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token", "SharedMemoryManager"]
 
-    _SharedMemory = SharedMemory
-    _ShareableList = ShareableList
 else:
     __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token"]
 
@@ -30,7 +31,7 @@ class Namespace:
     def __getattr__(self, __name: str) -> Any: ...
     def __setattr__(self, __name: str, __value: Any) -> None: ...
 
-_Namespace = Namespace
+_Namespace: TypeAlias = Namespace
 
 class Token:
     typeid: str | bytes | None
@@ -75,9 +76,21 @@ class Server:
     def accept_connection(self, c: Connection, name: str) -> None: ...
 
 class BaseManager:
-    def __init__(
-        self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
-    ) -> None: ...
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            address: Any | None = ...,
+            authkey: bytes | None = ...,
+            serializer: str = ...,
+            ctx: BaseContext | None = ...,
+            *,
+            shutdown_timeout: float = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
+        ) -> None: ...
+
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
     def start(self, initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
@@ -99,10 +112,6 @@ class BaseManager:
     def __exit__(
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
-
-# Conflicts with method names
-_dict = dict
-_list = list
 
 class SyncManager(BaseManager):
     def BoundedSemaphore(self, value: Any = ...) -> threading.BoundedSemaphore: ...

@@ -5633,3 +5633,28 @@ main:5: error: Cannot override final attribute "x" (previously declared in base 
 main:3: error: Cannot override writable attribute "x" with a final one
 main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
+
+[case testSlotsSerialization]
+import a
+[file a.py]
+from b import C
+
+class D(C):
+    pass
+[file b.py]
+class C:
+    __slots__ = ('x',)
+[file a.py.2]
+from b import C
+
+class D(C):
+    __slots__ = ('y',)
+
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 2
+        self.z = 3
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"

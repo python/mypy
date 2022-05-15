@@ -25,10 +25,6 @@ and we use it in most examples.
    # This is how you declare the type of a variable type in Python 3.6
    age: int = 1
 
-   # In Python 3.5 and earlier you can use a type comment instead
-   # (equivalent to the previous definition)
-   age = 1  # type: int
-
    # You don't need to initialize a variable to annotate it
    a: int  # Ok (no value at runtime until assigned)
 
@@ -45,7 +41,7 @@ Built-in types
 
 .. code-block:: python
 
-   
+
    from typing import List, Set, Dict, Tuple, Optional
 
    # For simple built-in types, just use the name of the type
@@ -64,9 +60,6 @@ Built-in types
    # capitalized, and the type is imported from the 'typing' module
    x: List[int] = [1]
    x: Set[int] = {6, 7}
-
-   # Same as above, but with type comment syntax (Python 3.5 and earlier)
-   x = [1]  # type: List[int]
 
    # For mappings, we need the types of both keys and values
    x: dict[str, float] = {"field": 2.0}  # Python 3.9+
