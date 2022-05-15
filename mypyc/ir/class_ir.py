@@ -157,12 +157,13 @@ class ClassIR:
         self.attrs_with_defaults: Set[str] = set()
 
         # Attributes that are always initialized in __init__ or class body
+        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis)
         self._always_initialized_attrs: Set[str] = set()
 
         # Attributes that are sometimes initialized in __init__
         self._sometimes_initialized_attrs: Set[str] = set()
 
-        # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code.
+        # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code
         self.init_self_leak = False
 
     def __repr__(self) -> str:
