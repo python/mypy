@@ -1566,6 +1566,20 @@ A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassInFunctionDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+def foo():
+    @dataclass
+    class Foo:
+        foo: int
+        # This used to crash (see #8703)
+        # The return type of __call__ here needs to be something undefined
+        # In order to trigger the crash that existed prior to #12762
+        def __call__(self) -> asdf: ...  # E: Name "asdf" is not defined
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesMultipleInheritanceWithNonDataclass]
 # flags: --python-version 3.10
 from dataclasses import dataclass
