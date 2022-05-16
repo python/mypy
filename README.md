@@ -20,7 +20,7 @@ We are always happy to answer questions! Here are some good places to ask them:
 - for general questions about Python typing, try [typing discussions](https://github.com/python/typing/discussions)
 
 If you're just getting started,
-[the documentation](https://mypy.readthedocs.io/en/stable/introduction.html)
+[the documentation](https://mypy.readthedocs.io/en/stable/index.html)
 and [type hints cheat sheet](https://mypy.readthedocs.io/en/stable/cheat_sheet_py3.html)
 can also help answer questions.
 
