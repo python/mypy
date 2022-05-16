@@ -1745,3 +1745,11 @@ def foo(value):
 class Bar:
     field = attr.ib(default=None, converter=foo)
 [builtins fixtures/tuple.pyi]
+
+[case testAttrsLambdaConverter]
+import attr
+
+@attr.s
+class Bar:
+    name: str = attr.ib(converter=lambda s: s.lower())
+[builtins fixtures/tuple.pyi]

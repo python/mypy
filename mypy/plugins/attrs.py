@@ -12,7 +12,7 @@ from mypy.nodes import (
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
     is_class_var, TempNode, Decorator, MemberExpr, Expression,
     SymbolTableNode, MDEF, JsonDict, OverloadedFuncDef, ARG_NAMED_OPT, ARG_NAMED,
-    TypeVarExpr, PlaceholderNode
+    TypeVarExpr, PlaceholderNode, LambdaExpr
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
@@ -613,7 +613,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         if isinstance(converter_expr.node, FuncDef):
             if converter_expr.node.type and isinstance(converter_expr.node.type, FunctionLike):
                 converter_type = converter_expr.node.type
-            else: # The converter is an unannotated function.
+            else:  # The converter is an unannotated function.
                 converter_info.init_type = AnyType(TypeOfAny.unannotated)
                 return converter_info
         elif (isinstance(converter_expr.node, OverloadedFuncDef)
@@ -622,11 +622,16 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
         elif isinstance(converter_expr.node, TypeInfo):
             from mypy.checkmember import type_object_type  # To avoid import cycle.
             converter_type = type_object_type(converter_expr.node, ctx.api.named_type)
+    if isinstance(converter_expr, LambdaExpr):
+        # TODO: should we send a fail if converter_expr.min_args > 1?
+        converter_info.init_type = AnyType(TypeOfAny.unannotated)
+        return converter_info
 
     if not converter_type:
         # Signal that we have an unsupported converter.
         ctx.api.fail(
-            "Unsupported converter, only named functions and types are currently supported",
+            "Unsupported converter, only named functions, types and lambdas are currently "
+            "supported",
             converter_expr
         )
         converter_info.init_type = AnyType(TypeOfAny.from_error)
