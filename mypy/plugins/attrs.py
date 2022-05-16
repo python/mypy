@@ -610,10 +610,12 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
 
     converter_type: Optional[Type] = None
     if isinstance(converter_expr, RefExpr) and converter_expr.node:
-        if (isinstance(converter_expr.node, FuncDef)
-            and converter_expr.node.type
-            and isinstance(converter_expr.node.type, FunctionLike)):
-            converter_type = converter_expr.node.type
+        if isinstance(converter_expr.node, FuncDef):
+            if converter_expr.node.type and isinstance(converter_expr.node.type, FunctionLike):
+                converter_type = converter_expr.node.type
+            else: # The converter is an unannotated function.
+                converter_info.init_type = AnyType(TypeOfAny.unannotated)
+                return converter_info
         elif (isinstance(converter_expr.node, OverloadedFuncDef)
               and is_valid_overloaded_converter(converter_expr.node)):
             converter_type = converter_expr.node.type
