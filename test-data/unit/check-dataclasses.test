@@ -1724,3 +1724,23 @@ T = TypeVar("T", bound="NotDefined")  # E: Name "NotDefined" is not defined
 class C(Generic[T]):
     x: float
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInitVarCannotBeSet]
+# flags: --python-version 3.7
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class C:
+    x: InitVar[int] = 0
+    y: InitVar[str] = ''
+
+    def f(self) -> None:
+        # This works at runtime, but it seems like an abuse of the InitVar
+        # feature and thus we don't support it
+        self.x = 1  # E: "C" has no attribute "x"
+        self.y: str = 'x'  # E: "C" has no attribute "y"
+
+c = C()
+c2 = C(x=1)
+c.x  # E: "C" has no attribute "x"
+[builtins fixtures/dataclasses.pyi]
