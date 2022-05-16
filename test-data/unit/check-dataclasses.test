@@ -1712,3 +1712,15 @@ c: C[C]
 d: C[str]  # E: Type argument "str" of "C" must be a subtype of "C[Any]"
 C(x=2)
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericBoundToInvalidTypeVarDoesNotCrash]
+# flags: --python-version 3.7
+import dataclasses
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="NotDefined")  # E: Name "NotDefined" is not defined
+
+@dataclasses.dataclass
+class C(Generic[T]):
+    x: float
+[builtins fixtures/dataclasses.pyi]
