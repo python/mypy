@@ -96,7 +96,7 @@ class NullTranslations:
 class GNUTranslations(NullTranslations):
     LE_MAGIC: Final[int]
     BE_MAGIC: Final[int]
-    CONTEXT: Final[str]
+    CONTEXT: str
     VERSIONS: Sequence[int]
 
 @overload  # ignores incompatible overloads
