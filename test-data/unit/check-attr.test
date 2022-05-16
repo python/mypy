@@ -1734,3 +1734,14 @@ class C:
         # E: Unsupported converter, only named functions and types are currently supported
     )
 [builtins fixtures/dict.pyi]
+
+[case testAttrsUnannotatedConverter]
+import attr
+
+def foo(value):
+    return value.split()
+
+@attr.s
+class Bar:
+    field = attr.ib(default=None, converter=foo)
+[builtins fixtures/tuple.pyi]
