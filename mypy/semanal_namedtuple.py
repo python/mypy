@@ -186,6 +186,8 @@ class NamedTupleAnalyzer:
             # Error. Construct dummy return value.
             if var_name:
                 name = var_name
+                if is_func_scope:
+                    name += '@' + str(call.line)
             else:
                 name = 'namedtuple@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
