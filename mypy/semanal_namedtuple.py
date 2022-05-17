@@ -53,7 +53,8 @@ class NamedTupleAnalyzer:
         self.options = options
         self.api = api
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
+    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool,
+                                    is_func_scope: bool
                                     ) -> Tuple[bool, Optional[TypeInfo]]:
         """Analyze if given class definition can be a named tuple definition.
 
@@ -70,6 +71,8 @@ class NamedTupleAnalyzer:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items = result
+                    if is_func_scope and '@' not in defn.name:
+                        defn.name += '@' + str(defn.line)
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line)
                     defn.info = info

@@ -5658,3 +5658,56 @@ class D(C):
 [out]
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
+
+[case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
+# flags: --python-version 3.7
+
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+from typing import NamedTuple, NewType
+from typing_extensions import TypedDict, TypeAlias
+from enum import Enum
+from dataclasses import dataclass
+
+class C:
+    def f(self) -> None:
+        class C:
+            c: int
+        class NT1(NamedTuple):
+            c: int
+        NT2 = NamedTuple("NT2", [("c", int)])
+        class NT3(NT1):
+            pass
+        class TD(TypedDict):
+            c: int
+        TD2 = TypedDict("TD2", {"c": int})
+        class E(Enum):
+            X = 1
+        @dataclass
+        class DC:
+            c: int
+        Alias: TypeAlias = NT1
+        N = NewType("N", NT1)
+
+        c: C = C()
+        nt1: NT1 = NT1(c=1)
+        nt2: NT2 = NT2(c=1)
+        nt3: NT3 = NT3(c=1)
+        td: TD = TD(c=1)
+        td2: TD2 = TD2(c=1)
+        e: E = E.X
+        dc: DC = DC(c=1)
+        al: Alias = Alias(c=1)
+        n: N = N(NT1(c=1))
+
+[builtins fixtures/dict.pyi]
+[out2]
+tmp/a.py:2: error: "object" has no attribute "xyz"
