@@ -5535,7 +5535,6 @@ def g() -> None:
 
 [builtins fixtures/tuple.pyi]
 
-
 [case testIncrementalNestedTypeAlias]
 import a
 
@@ -5673,8 +5672,8 @@ import b
 b.xyz
 
 [file b.py]
-from typing_extensions import TypedDict
 from typing import NamedTuple
+from typing_extensions import TypedDict, TypeAlias
 from enum import Enum
 from dataclasses import dataclass
 
@@ -5693,6 +5692,7 @@ class C:
         @dataclass
         class DC:
             c: int
+        Alias: TypeAlias = NT1
         c: C = C()
         nt1: NT1 = NT1(c=1)
         nt2: NT2 = NT2(c=1)
@@ -5700,6 +5700,7 @@ class C:
         td2: TD2 = TD2(c=1)
         e: E = E.X
         dc: DC = DC(c=1)
+        al: Alias = Alias(c=1)
 
 [builtins fixtures/dict.pyi]
 [out2]
