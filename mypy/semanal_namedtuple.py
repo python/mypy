@@ -169,7 +169,6 @@ class NamedTupleAnalyzer:
         """
         if not isinstance(node, CallExpr):
             return None, None
-        print('[old-style namedtuple]')
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
@@ -181,6 +180,7 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None, None
+        print('[old-style namedtuple]')
         result = self.parse_namedtuple_args(call, fullname)
         if result:
             items, types, defaults, typename, ok = result
@@ -250,6 +250,7 @@ class NamedTupleAnalyzer:
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
+        print('[store_namedtuple_info]', name)
         self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
@@ -449,6 +450,7 @@ class NamedTupleAnalyzer:
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
         add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
 
+        print('_NT', info.fullname)
         tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
         selftype = tvd

@@ -5535,6 +5535,7 @@ def g() -> None:
 
 [builtins fixtures/tuple.pyi]
 
+
 [case testIncrementalNestedTypeAlias]
 import a
 
@@ -5677,6 +5678,7 @@ class C:
     def f(self) -> None:
         class NT(NamedTuple):
             c: int
+        nt: NT = NT(c=1)
 
 [builtins fixtures/tuple.pyi]
 
@@ -5696,6 +5698,7 @@ class C:
     def f(self) -> None:
         class NT:
             c: int
+        nt: NT = NT()
 
 [builtins fixtures/tuple.pyi]
 
@@ -5750,5 +5753,11 @@ class C:
         @dataclass
         class DC:
             c: int
+        c: C = C()
+        nt: NT = NT(c=1)
+        td: TD = TD(c=1)
+        td2: TD2 = TD2(c=1)
+        e: E = E.X
+        dc: DC = DC(c=1)
 
 [builtins fixtures/dict.pyi]

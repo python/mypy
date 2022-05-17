@@ -1462,7 +1462,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 info._fullname = self.qualified_name(defn.name)
             else:
                 info._fullname = info.name
-        self.add_symbol(defn.name, defn.info, defn)
+        n = defn.name
+        if '@' in n:
+            n = n[:n.index('@')]
+        self.add_symbol(n, defn.info, defn)
         if self.is_nested_within_func_scope():
             # We need to preserve local classes, let's store them
             # in globals under mangled unique names
@@ -1484,6 +1487,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             print('here2', defn.info._fullname, local_name)
             defn.fullname = defn.info._fullname
             if defn.info.is_named_tuple:
+                print('[add_symbol_skip_local]', local_name)
                 self.add_symbol_skip_local(local_name, defn.info)
             else:
                 self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
