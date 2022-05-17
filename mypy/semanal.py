@@ -1475,7 +1475,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
                 global_name = defn.info.name + '@' + str(defn.line)
-                defn.info._fullname = self.cur_mod_id + '.' + local_name
+                defn.info._fullname = self.cur_mod_id + '.' + global_name
             else:
                 # Preserve name from previous fine-grained incremental run.
                 global_name = defn.info.name
