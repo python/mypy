@@ -5744,7 +5744,9 @@ class C:
     def f(self) -> None:
         class C:
             c: int
-        NT = NamedTuple("NT", [("c", int)])
+        class NT1(NamedTuple):
+            c: int
+        NT2 = NamedTuple("NT2", [("c", int)])
         class TD(TypedDict):
             c: int
         TD2 = TypedDict("TD2", {"c": int})
@@ -5754,10 +5756,13 @@ class C:
         class DC:
             c: int
         c: C = C()
-        nt: NT = NT(c=1)
+        nt1: NT1 = NT1(c=1)
+        nt2: NT2 = NT2(c=1)
         td: TD = TD(c=1)
         td2: TD2 = TD2(c=1)
         e: E = E.X
         dc: DC = DC(c=1)
 
 [builtins fixtures/dict.pyi]
+[out2]
+tmp/a.py:2: error: "object" has no attribute "xyz"
