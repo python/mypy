@@ -5660,68 +5660,6 @@ class D(C):
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
 
-[case testXXX]
-# IncrementalNamedTupleClassNestedInMethod]
-import a
-
-[file a.py]
-import b
-
-[file a.py.2]
-import b
-b.xyz
-
-[file b.py]
-from typing import NamedTuple
-
-class C:
-    def f(self) -> None:
-        class NT(NamedTuple):
-            c: int
-        nt: NT = NT(c=1)
-
-[builtins fixtures/tuple.pyi]
-
-[case testYYY]
-# IncrementalNamedTupleClassNestedInMethod]
-import a
-
-[file a.py]
-import b
-
-[file a.py.2]
-import b
-b.xyz
-
-[file b.py]
-class C:
-    def f(self) -> None:
-        class NT:
-            c: int
-        nt: NT = NT()
-
-[builtins fixtures/tuple.pyi]
-
-[case testZZZ]
-# IncrementalNamedTupleClassNestedInMethod]
-import a
-
-[file a.py]
-import b
-
-[file a.py.2]
-import b
-b.xyz
-
-[file b.py]
-from typing import NamedTuple
-
-class C:
-    def f(self) -> None:
-        NT = NamedTuple('NT', [('c', int)])
-
-[builtins fixtures/tuple.pyi]
-
 [case testIncrementalWithDifferentKindsOfNestedTypes]
 # flags: --python-version 3.7
 
