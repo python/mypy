@@ -799,6 +799,69 @@ import native
 
 [rechecked native, other_a]
 
+[case testSeparateCompilationWithUndefinedAttribute]
+from other_a import A
+
+def f() -> None:
+    a = A()
+    if a.x == 5:
+        print(a.y)
+        print(a.m())
+    else:
+        assert a.x == 6
+        try:
+            print(a.y)
+        except AttributeError:
+            print('y undefined')
+        else:
+            assert False
+
+        try:
+            print(a.m())
+        except AttributeError:
+            print('y undefined')
+        else:
+            assert False
+
+[file other_a.py]
+from other_b import B
+
+class A(B):
+    def __init__(self) -> None:
+        self.y = 9
+
+[file other_a.py.2]
+from other_b import B
+
+class A(B):
+    x = 6
+
+    def __init__(self) -> None:
+        pass
+
+[file other_b.py]
+class B:
+    x = 5
+
+    def __init__(self) -> None:
+        self.y = 7
+
+    def m(self) -> int:
+        return self.y
+
+[file driver.py]
+from native import f
+f()
+
+[rechecked native, other_a]
+
+[out]
+9
+9
+[out2]
+y undefined
+y undefined
+
 [case testIncrementalCompilationWithDeletable]
 import other_a
 [file other_a.py]

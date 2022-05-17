@@ -12,19 +12,20 @@ import sys
 
 
 class ModuleProperties:
+    # Note that all __init__ args must have default values
     def __init__(self,
-                 name: str,
-                 file: Optional[str],
-                 path: Optional[List[str]],
-                 all: Optional[List[str]],
-                 is_c_module: bool,
-                 subpackages: List[str]) -> None:
+                 name: str = "",
+                 file: Optional[str] = None,
+                 path: Optional[List[str]] = None,
+                 all: Optional[List[str]] = None,
+                 is_c_module: bool = False,
+                 subpackages: Optional[List[str]] = None) -> None:
         self.name = name  # __name__ attribute
         self.file = file  # __file__ attribute
         self.path = path  # __path__ attribute
         self.all = all  # __all__ attribute
         self.is_c_module = is_c_module
-        self.subpackages = subpackages
+        self.subpackages = subpackages or []
 
 
 def is_c_module(module: ModuleType) -> bool:

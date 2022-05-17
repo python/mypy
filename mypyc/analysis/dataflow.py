@@ -128,100 +128,100 @@ class AnalysisResult(Generic[T]):
         return f'before: {self.before}\nafter: {self.after}\n'
 
 
-GenAndKill = Tuple[Set[Value], Set[Value]]
+GenAndKill = Tuple[Set[T], Set[T]]
 
 
-class BaseAnalysisVisitor(OpVisitor[GenAndKill]):
-    def visit_goto(self, op: Goto) -> GenAndKill:
+class BaseAnalysisVisitor(OpVisitor[GenAndKill[T]]):
+    def visit_goto(self, op: Goto) -> GenAndKill[T]:
         return set(), set()
 
     @abstractmethod
-    def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+    def visit_register_op(self, op: RegisterOp) -> GenAndKill[T]:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_assign(self, op: Assign) -> GenAndKill:
+    def visit_assign(self, op: Assign) -> GenAndKill[T]:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[T]:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+    def visit_set_mem(self, op: SetMem) -> GenAndKill[T]:
         raise NotImplementedError
 
-    def visit_call(self, op: Call) -> GenAndKill:
+    def visit_call(self, op: Call) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_method_call(self, op: MethodCall) -> GenAndKill:
+    def visit_method_call(self, op: MethodCall) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill:
+    def visit_load_error_value(self, op: LoadErrorValue) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_literal(self, op: LoadLiteral) -> GenAndKill:
+    def visit_load_literal(self, op: LoadLiteral) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_get_attr(self, op: GetAttr) -> GenAndKill:
+    def visit_get_attr(self, op: GetAttr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_set_attr(self, op: SetAttr) -> GenAndKill:
+    def visit_set_attr(self, op: SetAttr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_static(self, op: LoadStatic) -> GenAndKill:
+    def visit_load_static(self, op: LoadStatic) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_init_static(self, op: InitStatic) -> GenAndKill:
+    def visit_init_static(self, op: InitStatic) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_tuple_get(self, op: TupleGet) -> GenAndKill:
+    def visit_tuple_get(self, op: TupleGet) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_tuple_set(self, op: TupleSet) -> GenAndKill:
+    def visit_tuple_set(self, op: TupleSet) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_box(self, op: Box) -> GenAndKill:
+    def visit_box(self, op: Box) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_unbox(self, op: Unbox) -> GenAndKill:
+    def visit_unbox(self, op: Unbox) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_cast(self, op: Cast) -> GenAndKill:
+    def visit_cast(self, op: Cast) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_raise_standard_error(self, op: RaiseStandardError) -> GenAndKill:
+    def visit_raise_standard_error(self, op: RaiseStandardError) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_call_c(self, op: CallC) -> GenAndKill:
+    def visit_call_c(self, op: CallC) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_truncate(self, op: Truncate) -> GenAndKill:
+    def visit_truncate(self, op: Truncate) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
+    def visit_load_global(self, op: LoadGlobal) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_int_op(self, op: IntOp) -> GenAndKill:
+    def visit_int_op(self, op: IntOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill:
+    def visit_comparison_op(self, op: ComparisonOp) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_mem(self, op: LoadMem) -> GenAndKill:
+    def visit_load_mem(self, op: LoadMem) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill:
+    def visit_get_element_ptr(self, op: GetElementPtr) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_load_address(self, op: LoadAddress) -> GenAndKill:
+    def visit_load_address(self, op: LoadAddress) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
-    def visit_keep_alive(self, op: KeepAlive) -> GenAndKill:
+    def visit_keep_alive(self, op: KeepAlive) -> GenAndKill[T]:
         return self.visit_register_op(op)
 
 
-class DefinedVisitor(BaseAnalysisVisitor):
+class DefinedVisitor(BaseAnalysisVisitor[Value]):
     """Visitor for finding defined registers.
 
     Note that this only deals with registers and not temporaries, on
@@ -240,19 +240,19 @@ class DefinedVisitor(BaseAnalysisVisitor):
     def __init__(self, strict_errors: bool = False) -> None:
         self.strict_errors = strict_errors
 
-    def visit_branch(self, op: Branch) -> GenAndKill:
+    def visit_branch(self, op: Branch) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_return(self, op: Return) -> GenAndKill:
+    def visit_return(self, op: Return) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+    def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_assign(self, op: Assign) -> GenAndKill:
+    def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         # Loading an error value may undefine the register.
         if (isinstance(op.src, LoadErrorValue)
                 and (op.src.undefines or self.strict_errors)):
@@ -260,11 +260,11 @@ class DefinedVisitor(BaseAnalysisVisitor):
         else:
             return {op.dest}, set()
 
-    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         # Array registers are special and we don't track the definedness of them.
         return set(), set()
 
-    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+    def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return set(), set()
 
 
@@ -307,31 +307,31 @@ def analyze_must_defined_regs(
                         universe=set(regs))
 
 
-class BorrowedArgumentsVisitor(BaseAnalysisVisitor):
+class BorrowedArgumentsVisitor(BaseAnalysisVisitor[Value]):
     def __init__(self, args: Set[Value]) -> None:
         self.args = args
 
-    def visit_branch(self, op: Branch) -> GenAndKill:
+    def visit_branch(self, op: Branch) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_return(self, op: Return) -> GenAndKill:
+    def visit_return(self, op: Return) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+    def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_assign(self, op: Assign) -> GenAndKill:
+    def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         if op.dest in self.args:
             return set(), {op.dest}
         return set(), set()
 
-    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+    def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return set(), set()
 
 
@@ -352,26 +352,26 @@ def analyze_borrowed_arguments(
                         universe=borrowed)
 
 
-class UndefinedVisitor(BaseAnalysisVisitor):
-    def visit_branch(self, op: Branch) -> GenAndKill:
+class UndefinedVisitor(BaseAnalysisVisitor[Value]):
+    def visit_branch(self, op: Branch) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_return(self, op: Return) -> GenAndKill:
+    def visit_return(self, op: Return) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+    def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         return set(), {op} if not op.is_void else set()
 
-    def visit_assign(self, op: Assign) -> GenAndKill:
+    def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         return set(), {op.dest}
 
-    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         return set(), {op.dest}
 
-    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+    def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return set(), set()
 
 
@@ -402,33 +402,33 @@ def non_trivial_sources(op: Op) -> Set[Value]:
     return result
 
 
-class LivenessVisitor(BaseAnalysisVisitor):
-    def visit_branch(self, op: Branch) -> GenAndKill:
+class LivenessVisitor(BaseAnalysisVisitor[Value]):
+    def visit_branch(self, op: Branch) -> GenAndKill[Value]:
         return non_trivial_sources(op), set()
 
-    def visit_return(self, op: Return) -> GenAndKill:
+    def visit_return(self, op: Return) -> GenAndKill[Value]:
         if not isinstance(op.value, Integer):
             return {op.value}, set()
         else:
             return set(), set()
 
-    def visit_unreachable(self, op: Unreachable) -> GenAndKill:
+    def visit_unreachable(self, op: Unreachable) -> GenAndKill[Value]:
         return set(), set()
 
-    def visit_register_op(self, op: RegisterOp) -> GenAndKill:
+    def visit_register_op(self, op: RegisterOp) -> GenAndKill[Value]:
         gen = non_trivial_sources(op)
         if not op.is_void:
             return gen, {op}
         else:
             return gen, set()
 
-    def visit_assign(self, op: Assign) -> GenAndKill:
+    def visit_assign(self, op: Assign) -> GenAndKill[Value]:
         return non_trivial_sources(op), {op.dest}
 
-    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill:
+    def visit_assign_multi(self, op: AssignMulti) -> GenAndKill[Value]:
         return non_trivial_sources(op), {op.dest}
 
-    def visit_set_mem(self, op: SetMem) -> GenAndKill:
+    def visit_set_mem(self, op: SetMem) -> GenAndKill[Value]:
         return non_trivial_sources(op), set()
 
 
@@ -452,12 +452,9 @@ MUST_ANALYSIS = 0
 MAYBE_ANALYSIS = 1
 
 
-# TODO the return type of this function is too complicated. Abstract it into its
-# own class.
-
 def run_analysis(blocks: List[BasicBlock],
                  cfg: CFG,
-                 gen_and_kill: OpVisitor[Tuple[Set[T], Set[T]]],
+                 gen_and_kill: OpVisitor[GenAndKill[T]],
                  initial: Set[T],
                  kind: int,
                  backward: bool,

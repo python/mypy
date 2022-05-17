@@ -12,7 +12,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -131,6 +131,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def visit_branch(self, op: Branch) -> None:
         true, false = op.true, op.false
+        if op.op == Branch.IS_ERROR and isinstance(op.value, GetAttr) and not op.negated:
+            op2 = op.value
+            if op2.class_type.class_ir.is_always_defined(op2.attr):
+                # Getting an always defined attribute never fails, so the branch can be omitted.
+                if false is not self.next_block:
+                    self.emit_line('goto {};'.format(self.label(false)))
+                return
         negated = op.negated
         negated_rare = False
         if true is self.next_block and op.traceback_entry is None:
@@ -302,37 +309,39 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             # Otherwise, use direct or offset struct access.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
             self.emitter.emit_line(f'{dest} = {attr_expr};')
-            self.emitter.emit_undefined_attr_check(
-                attr_rtype, dest, '==', unlikely=True
-            )
-            exc_class = 'PyExc_AttributeError'
+            always_defined = cl.is_always_defined(op.attr)
             merged_branch = None
-            branch = self.next_branch()
-            if branch is not None:
-                if (branch.value is op
-                        and branch.op == Branch.IS_ERROR
-                        and branch.traceback_entry is not None
-                        and not branch.negated):
-                    # Generate code for the following branch here to avoid
-                    # redundant branches in the generate code.
-                    self.emit_attribute_error(branch, cl.name, op.attr)
-                    self.emit_line('goto %s;' % self.label(branch.true))
-                    merged_branch = branch
-                    self.emitter.emit_line('}')
-            if not merged_branch:
-                self.emitter.emit_line(
-                    'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
-                        exc_class, repr(op.attr), repr(cl.name)))
+            if not always_defined:
+                self.emitter.emit_undefined_attr_check(
+                    attr_rtype, dest, '==', unlikely=True
+                )
+                branch = self.next_branch()
+                if branch is not None:
+                    if (branch.value is op
+                            and branch.op == Branch.IS_ERROR
+                            and branch.traceback_entry is not None
+                            and not branch.negated):
+                        # Generate code for the following branch here to avoid
+                        # redundant branches in the generate code.
+                        self.emit_attribute_error(branch, cl.name, op.attr)
+                        self.emit_line('goto %s;' % self.label(branch.true))
+                        merged_branch = branch
+                        self.emitter.emit_line('}')
+                if not merged_branch:
+                    exc_class = 'PyExc_AttributeError'
+                    self.emitter.emit_line(
+                        'PyErr_SetString({}, "attribute {} of {} undefined");'.format(
+                            exc_class, repr(op.attr), repr(cl.name)))
 
             if attr_rtype.is_refcounted:
-                if not merged_branch:
+                if not merged_branch and not always_defined:
                     self.emitter.emit_line('} else {')
                 self.emitter.emit_inc_ref(dest, attr_rtype)
             if merged_branch:
                 if merged_branch.false is not self.next_block:
                     self.emit_line('goto %s;' % self.label(merged_branch.false))
                 self.op_index += 1
-            else:
+            elif not always_defined:
                 self.emitter.emit_line('}')
 
     def next_branch(self) -> Optional[Branch]:
@@ -343,7 +352,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         return None
 
     def visit_set_attr(self, op: SetAttr) -> None:
-        dest = self.reg(op)
+        if op.error_kind == ERR_FALSE:
+            dest = self.reg(op)
         obj = self.reg(op.obj)
         src = self.reg(op.src)
         rtype = op.class_type
@@ -351,6 +361,8 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         attr_rtype, decl_cl = cl.attr_details(op.attr)
         if cl.get_method(op.attr):
             # Again, use vtable access for properties...
+            assert not op.is_init and op.error_kind == ERR_FALSE, '%s %d %d %s' % (
+                op.attr, op.is_init, op.error_kind, rtype)
             version = '_TRAIT' if cl.is_trait else ''
             self.emit_line('%s = CPY_SET_ATTR%s(%s, %s, %d, %s, %s, %s); /* %s */' % (
                 dest,
@@ -365,15 +377,18 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            if attr_rtype.is_refcounted:
-                self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
-                self.emitter.emit_dec_ref(attr_expr, attr_rtype)
-                self.emitter.emit_line('}')
-            # This steal the reference to src, so we don't need to increment the arg
-            self.emitter.emit_lines(
-                f'{attr_expr} = {src};',
-                f'{dest} = 1;',
-            )
+            if not op.is_init:
+                always_defined = cl.is_always_defined(op.attr)
+                if not always_defined:
+                    self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
+                if attr_rtype.is_refcounted:
+                    self.emitter.emit_dec_ref(attr_expr, attr_rtype)
+                if not always_defined:
+                    self.emitter.emit_line('}')
+            # This steals the reference to src, so we don't need to increment the arg
+            self.emitter.emit_line(f'{attr_expr} = {src};')
+            if op.error_kind == ERR_FALSE:
+                self.emitter.emit_line(f'{dest} = 1;')
 
     PREFIX_MAP: Final = {
         NAMESPACE_STATIC: STATIC_PREFIX,

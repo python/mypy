@@ -11,7 +11,7 @@ instance of the callable class.
 """
 
 from typing import (
-    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict,
+    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 )
 
 from mypy.nodes import (

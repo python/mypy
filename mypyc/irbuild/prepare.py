@@ -177,6 +177,9 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     attrs = get_mypyc_attrs(cdef)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
+    if attrs.get("serializable") is True:
+        # Supports copy.copy and pickle (including subclasses)
+        ir._serializable = True
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
