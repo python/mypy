@@ -66,7 +66,6 @@ class NamedTupleAnalyzer:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
-                    print([1], is_func_scope)
                     result = self.check_namedtuple_classdef(defn, is_stub_file)
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
@@ -180,7 +179,6 @@ class NamedTupleAnalyzer:
             is_typed = True
         else:
             return None, None
-        print('[old-style namedtuple]')
         result = self.parse_namedtuple_args(call, fullname)
         if result:
             items, types, defaults, typename, ok = result
@@ -243,14 +241,12 @@ class NamedTupleAnalyzer:
         #     there is no var_name (but it still needs to be serialized
         #     since it is in MRO of some class).
         if name != var_name or is_func_scope:
-            print('here', name, var_name, is_func_scope)
             # NOTE: we skip local namespaces since they are not serialized.
             self.api.add_symbol_skip_local(name, info)
         return typename, info
 
     def store_namedtuple_info(self, info: TypeInfo, name: str,
                               call: CallExpr, is_typed: bool) -> None:
-        print('[store_namedtuple_info]', name)
         self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
         call.analyzed.set_line(call.line, call.column)
@@ -391,7 +387,6 @@ class NamedTupleAnalyzer:
                                   types: List[Type],
                                   default_items: Mapping[str, Expression],
                                   line: int) -> TypeInfo:
-        print('[build]', name)
         strtype = self.api.named_type('builtins.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('builtins.tuple', [implicit_any])
@@ -410,7 +405,6 @@ class NamedTupleAnalyzer:
         match_args_type = TupleType(literals, basetuple_type)
 
         info = self.api.basic_new_typeinfo(name, fallback, line)
-        print([2], info.fullname)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base
@@ -450,7 +444,6 @@ class NamedTupleAnalyzer:
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
         add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
 
-        print('_NT', info.fullname)
         tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
         selftype = tvd

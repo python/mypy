@@ -1484,10 +1484,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             else:
                 # Preserve name from previous fine-grained incremental run.
                 local_name = defn.info.name
-            print('here2', defn.info._fullname, local_name)
             defn.fullname = defn.info._fullname
             if defn.info.is_named_tuple:
-                print('[add_symbol_skip_local]', local_name)
                 self.add_symbol_skip_local(local_name, defn.info)
             else:
                 self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
