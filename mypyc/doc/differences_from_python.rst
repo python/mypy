@@ -203,6 +203,9 @@ Additional notes:
 * Enabling serialization may slow down attribute access, since compiled
   code has to be always prepared to raise ``AttributeError`` in case an
   attribute is not defined at runtime.
+* If you try to pickle an object without setting the ``serializable``
+  flag, you'll get a ``TypeError`` about missing arguments to
+  ``__init__``.
 
 
 Monkey patching
