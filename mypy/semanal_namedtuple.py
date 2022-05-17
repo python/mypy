@@ -53,7 +53,8 @@ class NamedTupleAnalyzer:
         self.options = options
         self.api = api
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
+    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool,
+                                    is_func_scope: bool
                                     ) -> Tuple[bool, Optional[TypeInfo]]:
         """Analyze if given class definition can be a named tuple definition.
 
@@ -65,11 +66,14 @@ class NamedTupleAnalyzer:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
+                    print([1], is_func_scope)
                     result = self.check_namedtuple_classdef(defn, is_stub_file)
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items = result
+                    if is_func_scope and '@' not in defn.name:
+                        defn.name += '@' + str(defn.line)
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line)
                     defn.info = info
@@ -165,6 +169,7 @@ class NamedTupleAnalyzer:
         """
         if not isinstance(node, CallExpr):
             return None, None
+        print('[old-style namedtuple]')
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
@@ -238,6 +243,7 @@ class NamedTupleAnalyzer:
         #     there is no var_name (but it still needs to be serialized
         #     since it is in MRO of some class).
         if name != var_name or is_func_scope:
+            print('here', name, var_name, is_func_scope)
             # NOTE: we skip local namespaces since they are not serialized.
             self.api.add_symbol_skip_local(name, info)
         return typename, info
@@ -384,6 +390,7 @@ class NamedTupleAnalyzer:
                                   types: List[Type],
                                   default_items: Mapping[str, Expression],
                                   line: int) -> TypeInfo:
+        print('[build]', name)
         strtype = self.api.named_type('builtins.str')
         implicit_any = AnyType(TypeOfAny.special_form)
         basetuple_type = self.api.named_type('builtins.tuple', [implicit_any])
@@ -402,6 +409,7 @@ class NamedTupleAnalyzer:
         match_args_type = TupleType(literals, basetuple_type)
 
         info = self.api.basic_new_typeinfo(name, fallback, line)
+        print([2], info.fullname)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
         info.tuple_type = tuple_base

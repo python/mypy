@@ -1220,7 +1220,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
         else:
             is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
-                defn, self.is_stub_file)
+                defn, self.is_stub_file, self.is_func_scope())
         if is_named_tuple:
             if info is None:
                 self.mark_incomplete(defn.name, defn)
@@ -1472,16 +1472,21 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
                 local_name = defn.info.name + '@' + str(defn.line)
-                if defn.info.is_named_tuple:
-                    # Module is already correctly set in _fullname for named tuples.
-                    defn.info._fullname += '@' + str(defn.line)
-                else:
-                    defn.info._fullname = self.cur_mod_id + '.' + local_name
+                #defn.name = local_name
+                #if defn.info.is_named_tuple and False:
+                #    # Module is already correctly set in _fullname for named tuples.
+                #    defn.info._fullname += '@' + str(defn.line)
+                #else:
+                defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
                 local_name = defn.info.name
+            print('here2', defn.info._fullname, local_name)
             defn.fullname = defn.info._fullname
-            self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
+            if defn.info.is_named_tuple:
+                self.add_symbol_skip_local(local_name, defn.info)
+            else:
+                self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
         if (self.is_module_scope()

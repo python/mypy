@@ -5658,3 +5658,97 @@ class D(C):
 [out]
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
+
+[case testXXX]
+# IncrementalNamedTupleClassNestedInMethod]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+from typing import NamedTuple
+
+class C:
+    def f(self) -> None:
+        class NT(NamedTuple):
+            c: int
+
+[builtins fixtures/tuple.pyi]
+
+[case testYYY]
+# IncrementalNamedTupleClassNestedInMethod]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+class C:
+    def f(self) -> None:
+        class NT:
+            c: int
+
+[builtins fixtures/tuple.pyi]
+
+[case testZZZ]
+# IncrementalNamedTupleClassNestedInMethod]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+from typing import NamedTuple
+
+class C:
+    def f(self) -> None:
+        NT = NamedTuple('NT', [('c', int)])
+
+[builtins fixtures/tuple.pyi]
+
+[case testIncrementalWithDifferentKindsOfNestedTypes]
+# flags: --python-version 3.7
+
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+from typing_extensions import TypedDict
+from typing import NamedTuple
+from enum import Enum
+from dataclasses import dataclass
+
+class C:
+    def f(self) -> None:
+        class C:
+            c: int
+        NT = NamedTuple("NT", [("c", int)])
+        class TD(TypedDict):
+            c: int
+        TD2 = TypedDict("TD2", {"c": int})
+        class E(Enum):
+            X = 1
+        @dataclass
+        class DC:
+            c: int
+
+[builtins fixtures/dict.pyi]
