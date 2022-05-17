@@ -1475,11 +1475,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
                 local_name = defn.info.name + '@' + str(defn.line)
-                #defn.name = local_name
-                #if defn.info.is_named_tuple and False:
-                #    # Module is already correctly set in _fullname for named tuples.
-                #    defn.info._fullname += '@' + str(defn.line)
-                #else:
+                # defn.name = local_name
+                # if defn.info.is_named_tuple and False:
+                #     # Module is already correctly set in _fullname for named tuples.
+                #     defn.info._fullname += '@' + str(defn.line)
+                # else:
                 defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
