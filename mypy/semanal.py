@@ -1481,6 +1481,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 global_name = defn.info.name
             defn.fullname = defn.info._fullname
             if defn.info.is_named_tuple:
+                # Named tuple nested within a class is stored in the class symbol table.
                 self.add_symbol_skip_local(global_name, defn.info)
             else:
                 self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
