@@ -5684,6 +5684,8 @@ class C:
         class NT1(NamedTuple):
             c: int
         NT2 = NamedTuple("NT2", [("c", int)])
+        class NT3(NT1):
+            pass
         class TD(TypedDict):
             c: int
         TD2 = TypedDict("TD2", {"c": int})
@@ -5698,6 +5700,7 @@ class C:
         c: C = C()
         nt1: NT1 = NT1(c=1)
         nt2: NT2 = NT2(c=1)
+        nt3: NT3 = NT3(c=1)
         td: TD = TD(c=1)
         td2: TD2 = TD2(c=1)
         e: E = E.X
