@@ -1462,10 +1462,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                 info._fullname = self.qualified_name(defn.name)
             else:
                 info._fullname = info.name
-        n = defn.name
-        if '@' in n:
-            n = n[:n.index('@')]
-        self.add_symbol(n, defn.info, defn)
+        local_name = defn.name
+        if '@' in local_name:
+            local_name = local_name.split('@')[0]
+        self.add_symbol(local_name, defn.info, defn)
         if self.is_nested_within_func_scope():
             # We need to preserve local classes, let's store them
             # in globals under mangled unique names
@@ -1474,21 +1474,16 @@ class SemanticAnalyzer(NodeVisitor[None],
             #       incremental mode and we should avoid it. In general, this logic is too
             #       ad-hoc and needs to be removed/refactored.
             if '@' not in defn.info._fullname:
-                local_name = defn.info.name + '@' + str(defn.line)
-                # defn.name = local_name
-                # if defn.info.is_named_tuple and False:
-                #     # Module is already correctly set in _fullname for named tuples.
-                #     defn.info._fullname += '@' + str(defn.line)
-                # else:
+                global_name = defn.info.name + '@' + str(defn.line)
                 defn.info._fullname = self.cur_mod_id + '.' + local_name
             else:
                 # Preserve name from previous fine-grained incremental run.
-                local_name = defn.info.name
+                global_name = defn.info.name
             defn.fullname = defn.info._fullname
             if defn.info.is_named_tuple:
-                self.add_symbol_skip_local(local_name, defn.info)
+                self.add_symbol_skip_local(global_name, defn.info)
             else:
-                self.globals[local_name] = SymbolTableNode(GDEF, defn.info)
+                self.globals[global_name] = SymbolTableNode(GDEF, defn.info)
 
     def make_empty_type_info(self, defn: ClassDef) -> TypeInfo:
         if (self.is_module_scope()
