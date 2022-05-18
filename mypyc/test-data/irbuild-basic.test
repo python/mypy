@@ -2212,11 +2212,11 @@ L3:
 def PropertyHolder.__init__(self, left, right, is_add):
     self :: __main__.PropertyHolder
     left, right :: int
-    is_add, r0, r1, r2 :: bool
+    is_add :: bool
 L0:
-    self.left = left; r0 = is_error
-    self.right = right; r1 = is_error
-    self.is_add = is_add; r2 = is_error
+    self.left = left
+    self.right = right
+    self.is_add = is_add
     return 1
 def PropertyHolder.twice_value(self):
     self :: __main__.PropertyHolder
@@ -2299,9 +2299,8 @@ L0:
 def BaseProperty.__init__(self, value):
     self :: __main__.BaseProperty
     value :: int
-    r0 :: bool
 L0:
-    self._incrementer = value; r0 = is_error
+    self._incrementer = value
     return 1
 def DerivedProperty.value(self):
     self :: __main__.DerivedProperty
@@ -2351,10 +2350,9 @@ def DerivedProperty.__init__(self, incr_func, value):
     incr_func :: object
     value :: int
     r0 :: None
-    r1 :: bool
 L0:
     r0 = BaseProperty.__init__(self, value)
-    self._incr_func = incr_func; r1 = is_error
+    self._incr_func = incr_func
     return 1
 def AgainProperty.next(self):
     self :: __main__.AgainProperty
@@ -3444,10 +3442,9 @@ def f(a: bool) -> int:
 [out]
 def C.__mypyc_defaults_setup(__mypyc_self__):
     __mypyc_self__ :: __main__.C
-    r0, r1 :: bool
 L0:
-    __mypyc_self__.x = 2; r0 = is_error
-    __mypyc_self__.y = 4; r1 = is_error
+    __mypyc_self__.x = 2
+    __mypyc_self__.y = 4
     return 1
 def f(a):
     a :: bool

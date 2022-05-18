@@ -284,7 +284,8 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         emitter.emit_line(native_function_header(cl.ctor, emitter) + ';')
 
         emit_line()
-        generate_new_for_class(cl, new_name, vtable_name, setup_name, emitter)
+        init_fn = cl.get_method('__init__')
+        generate_new_for_class(cl, new_name, vtable_name, setup_name, init_fn, emitter)
         emit_line()
         generate_traverse_for_class(cl, traverse_name, emitter)
         emit_line()
@@ -539,7 +540,7 @@ def generate_setup_for_class(cl: ClassIR,
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line('self->{} = {};'.format(
+            emitter.emit_line(r'self->{} = {};'.format(
                 emitter.attr(attr), emitter.c_undefined_value(rtype)))
 
     # Initialize attributes to default values, if necessary
@@ -608,8 +609,11 @@ def generate_init_for_class(cl: ClassIR,
     emitter.emit_line(
         f'{func_name}(PyObject *self, PyObject *args, PyObject *kwds)')
     emitter.emit_line('{')
-    emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
-        PREFIX, init_fn.cname(emitter.names)))
+    if cl.allow_interpreted_subclasses or cl.builtin_base:
+        emitter.emit_line('return {}{}(self, args, kwds) != NULL ? 0 : -1;'.format(
+            PREFIX, init_fn.cname(emitter.names)))
+    else:
+        emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
     return func_name
@@ -619,6 +623,7 @@ def generate_new_for_class(cl: ClassIR,
                            func_name: str,
                            vtable_name: str,
                            setup_name: str,
+                           init_fn: Optional[FuncIR],
                            emitter: Emitter) -> None:
     emitter.emit_line('static PyObject *')
     emitter.emit_line(
@@ -633,7 +638,24 @@ def generate_new_for_class(cl: ClassIR,
         emitter.emit_line('return NULL;')
         emitter.emit_line('}')
 
-    emitter.emit_line(f'return {setup_name}(type);')
+    if (not init_fn
+            or cl.allow_interpreted_subclasses
+            or cl.builtin_base
+            or cl.is_serializable()):
+        # Match Python semantics -- __new__ doesn't call __init__.
+        emitter.emit_line(f'return {setup_name}(type);')
+    else:
+        # __new__ of a native class implicitly calls __init__ so that we
+        # can enforce that instances are always properly initialized. This
+        # is needed to support always defined attributes.
+        emitter.emit_line(f'PyObject *self = {setup_name}(type);')
+        emitter.emit_lines('if (self == NULL)',
+                           '    return NULL;')
+        emitter.emit_line(
+            f'PyObject *ret = {PREFIX}{init_fn.cname(emitter.names)}(self, args, kwds);')
+        emitter.emit_lines('if (ret == NULL)',
+                           '    return NULL;')
+        emitter.emit_line('return self;')
     emitter.emit_line('}')
 
 
@@ -846,12 +868,19 @@ def generate_getter(cl: ClassIR,
                                                            cl.struct_name(emitter.names)))
     emitter.emit_line('{')
     attr_expr = f'self->{attr_field}'
-    emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
-    emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
-    emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
-                                                                    repr(cl.name)))
-    emitter.emit_line('return NULL;')
-    emitter.emit_line('}')
+
+    # HACK: Don't consider refcounted values as always defined, since it's possible to
+    #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
+    #       values is benign.
+    always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
+
+    if not always_defined:
+        emitter.emit_undefined_attr_check(rtype, attr_expr, '==', unlikely=True)
+        emitter.emit_line('PyErr_SetString(PyExc_AttributeError,')
+        emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr),
+                                                                        repr(cl.name)))
+        emitter.emit_line('return NULL;')
+        emitter.emit_line('}')
     emitter.emit_inc_ref(f'self->{attr_field}', rtype)
     emitter.emit_box(f'self->{attr_field}', 'retval', rtype, declare_dest=True)
     emitter.emit_line('return retval;')
@@ -878,14 +907,22 @@ def generate_setter(cl: ClassIR,
         emitter.emit_line('return -1;')
         emitter.emit_line('}')
 
+    # HACK: Don't consider refcounted values as always defined, since it's possible to
+    #       access uninitialized values via 'gc.get_objects()'. Accessing non-refcounted
+    #       values is benign.
+    always_defined = cl.is_always_defined(attr) and not rtype.is_refcounted
+
     if rtype.is_refcounted:
         attr_expr = f'self->{attr_field}'
-        emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
-        emitter.emit_dec_ref(f'self->{attr_field}', rtype)
-        emitter.emit_line('}')
+        if not always_defined:
+            emitter.emit_undefined_attr_check(rtype, attr_expr, '!=')
+        emitter.emit_dec_ref('self->{}'.format(attr_field), rtype)
+        if not always_defined:
+            emitter.emit_line('}')
 
     if deletable:
         emitter.emit_line('if (value != NULL) {')
+
     if rtype.is_unboxed:
         emitter.emit_unbox('value', 'tmp', rtype, error=ReturnHandler('-1'), declare_dest=True)
     elif is_same_type(rtype, object_rprimitive):

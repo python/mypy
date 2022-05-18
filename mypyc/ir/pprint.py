@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
     GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
-    AssignMulti, KeepAlive, Op
+    AssignMulti, KeepAlive, Op, ERR_NEVER
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -80,7 +80,12 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = %r.%s', op, op.obj, op.attr)
 
     def visit_set_attr(self, op: SetAttr) -> str:
-        return self.format('%r.%s = %r; %r = is_error', op.obj, op.attr, op.src, op)
+        if op.is_init:
+            assert op.error_kind == ERR_NEVER
+            # Initialization and direct struct access can never fail
+            return self.format('%r.%s = %r', op.obj, op.attr, op.src)
+        else:
+            return self.format('%r.%s = %r; %r = is_error', op.obj, op.attr, op.src, op)
 
     def visit_load_static(self, op: LoadStatic) -> str:
         ann = f'  ({repr(op.ann)})' if op.ann else ''

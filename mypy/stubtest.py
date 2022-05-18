@@ -895,7 +895,6 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
 
     Returns None if we can't figure out what that would be. For convenience, this function also
     accepts FuncItems.
-
     """
     if isinstance(dec, nodes.FuncItem):
         return dec
@@ -917,6 +916,7 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return func
         if decorator.fullname == "builtins.classmethod":
             assert func.arguments[0].variable.name in ("cls", "metacls")
+            # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
             # Remove the cls argument, since it's not present in inspect.signature of classmethods
             ret.arguments = ret.arguments[1:]

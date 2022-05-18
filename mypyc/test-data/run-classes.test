@@ -710,8 +710,7 @@ class B(A):
 
 class C(B):
     def __init__(self, x: int, y: int) -> None:
-        init = super(C, self).__init__
-        init(x, y+1)
+        super(C, self).__init__(x, y + 1)
 
     def foo(self, x: int) -> int:
         # should go to A, not B
@@ -1329,16 +1328,18 @@ assert Nothing2.X == 10
 assert Nothing3.X == 10
 
 [case testPickling]
-from mypy_extensions import trait
+from mypy_extensions import trait, mypyc_attr
 from typing import Any, TypeVar, Generic
 
 def dec(x: Any) -> Any:
     return x
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class A:
     x: int
     y: str
 
+@mypyc_attr(allow_interpreted_subclasses=True)
 class B(A):
     z: bool
 
@@ -1865,10 +1866,28 @@ class F(D):
 # #   def y(self, val : object) -> None:
 # #       self._y = val
 
+# No inheritance, just plain setter/getter
+class G:
+    def __init__(self, x: int) -> None:
+        self._x = x
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, x: int) -> None:
+        self._x = x
+
+class H:
+    def __init__(self, g: G) -> None:
+        self.g = g
+        self.g.x = 5  # Should not be treated as initialization
+
 [file other.py]
 # Run in both interpreted and compiled mode
 
-from native import A, B, C, D, E, F
+from native import A, B, C, D, E, F, G
 
 a = A()
 assert a.x == 0
@@ -1898,6 +1917,9 @@ f = F()
 assert f.x == 20
 f.x = 30
 assert f.x == 50
+g = G(4)
+g.x = 20
+assert g.x == 20
 
 [file driver.py]
 # Run the tests in both interpreted and compiled mode
@@ -1924,3 +1946,263 @@ from native import A, B, C
 a = A()
 b = B()
 c = C()
+
+[case testCopyAlwaysDefinedAttributes]
+import copy
+from typing import Union
+
+class A: pass
+
+class C:
+    def __init__(self, n: int = 0) -> None:
+        self.n = n
+        self.s = ""
+        self.t = ("", 0)
+        self.u: Union[str, bytes] = ''
+        self.a = A()
+
+def test_copy() -> None:
+    c1 = C()
+    c1.n = 1
+    c1.s = "x"
+    c2 = copy.copy(c1)
+    assert c2.n == 1
+    assert c2.s == "x"
+    assert c2.t == ("", 0)
+    assert c2.u == ''
+    assert c2.a is c1.a
+
+[case testNonNativeCallsToDunderNewAndInit]
+from typing import Any
+from testutil import assertRaises
+
+count_c = 0
+
+class C:
+    def __init__(self) -> None:
+        self.x = 'a'  # Always defined attribute
+        global count_c
+        count_c += 1
+
+    def get(self) -> str:
+        return self.x
+
+def test_no_init_args() -> None:
+    global count_c
+    count_c = 0
+
+    # Use Any to get non-native semantics
+    cls: Any = C
+    # __new__ implicitly calls __init__ for native classes
+    obj = cls.__new__(cls)
+    assert obj.get() == 'a'
+    assert count_c == 1
+    # Make sure we don't call __init__ twice
+    obj2 = cls()
+    assert obj2.get() == 'a'
+    assert count_c == 2
+
+count_d = 0
+
+class D:
+    def __init__(self, x: str) -> None:
+        self.x = x  # Always defined attribute
+        global count_d
+        count_d += 1
+
+    def get(self) -> str:
+        return self.x
+
+def test_init_arg() -> None:
+    global count_d
+    count_d = 0
+
+    # Use Any to get non-native semantics
+    cls: Any = D
+    # __new__ implicitly calls __init__ for native classes
+    obj = cls.__new__(cls, 'abc')
+    assert obj.get() == 'abc'
+    assert count_d == 1
+    # Make sure we don't call __init__ twice
+    obj2 = cls('x')
+    assert obj2.get() == 'x'
+    assert count_d == 2
+    # Keyword args should work
+    obj = cls.__new__(cls, x='abc')
+    assert obj.get() == 'abc'
+    assert count_d == 3
+
+def test_invalid_init_args() -> None:
+    # Use Any to get non-native semantics
+    cls: Any = D
+    with assertRaises(TypeError):
+        cls()
+    with assertRaises(TypeError):
+        cls(y='x')
+    with assertRaises(TypeError):
+        cls(1)
+
+[case testTryDeletingAlwaysDefinedAttribute]
+from typing import Any
+from testutil import assertRaises
+
+class C:
+    def __init__(self) -> None:
+        self.x = 0
+
+class D(C):
+    pass
+
+def test_try_deleting_always_defined_attr() -> None:
+    c: Any = C()
+    with assertRaises(AttributeError):
+        del c.x
+    d: Any = D()
+    with assertRaises(AttributeError):
+        del d.x
+
+[case testAlwaysDefinedAttributeAndAllowInterpretedSubclasses]
+from mypy_extensions import mypyc_attr
+
+from m import define_interpreted_subclass
+
+@mypyc_attr(allow_interpreted_subclasses=True)
+class Base:
+    x = 5
+    y: int
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+class DerivedNative(Base):
+    def __init__(self) -> None:
+        super().__init__('x')
+        self.z = 3
+
+def test_native_subclass() -> None:
+    o = DerivedNative()
+    assert o.x == 5
+    assert o.s == 'x'
+    assert o.z == 3
+
+def test_interpreted_subclass() -> None:
+    define_interpreted_subclass(Base)
+
+[file m.py]
+from testutil import assertRaises
+
+def define_interpreted_subclass(b):
+    class DerivedInterpreted1(b):
+        def __init__(self):
+            # Don't call base class __init__
+            pass
+    d1 = DerivedInterpreted1()
+    assert d1.x == 5
+    with assertRaises(AttributeError):
+        d1.y
+    with assertRaises(AttributeError):
+        d1.s
+    with assertRaises(AttributeError):
+        del d1.x
+
+    class DerivedInterpreted1(b):
+        def __init__(self):
+            super().__init__('y')
+    d2 = DerivedInterpreted1()
+    assert d2.x == 5
+    assert d2.s == 'y'
+    with assertRaises(AttributeError):
+        d2.y
+    with assertRaises(AttributeError):
+        del d2.x
+
+[case testBaseClassSometimesDefinesAttribute]
+class C:
+    def __init__(self, b: bool) -> None:
+        if b:
+            self.x = [1]
+
+class D(C):
+    def __init__(self, b: bool) -> None:
+        super().__init__(b)
+        self.x = [2]
+
+def test_base_class() -> None:
+    c = C(True)
+    assert c.x == [1]
+    c = C(False)
+    try:
+        c.x
+    except AttributeError:
+        return
+    assert False
+
+def test_subclass() -> None:
+    d = D(True)
+    assert d.x == [2]
+    d = D(False)
+    assert d.x == [2]
+
+[case testSerializableClass]
+from mypy_extensions import mypyc_attr
+from typing import Any
+import copy
+from testutil import assertRaises
+
+@mypyc_attr(serializable=True)
+class Base:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+class Derived(Base):
+    def __init__(self, s: str, n: int) -> None:
+        super().__init__(s)
+        self.n = n
+
+def test_copy_base() -> None:
+    o = Base('xyz')
+    o2 = copy.copy(o)
+    assert isinstance(o2, Base)
+    assert o2 is not o
+    assert o2.s == 'xyz'
+
+def test_copy_derived() -> None:
+    d = Derived('xyz', 5)
+    d2 = copy.copy(d)
+    assert isinstance(d2, Derived)
+    assert d2 is not d
+    assert d2.s == 'xyz'
+    assert d2.n == 5
+
+class NonSerializable:
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+@mypyc_attr(serializable=True)
+class SerializableSub(NonSerializable):
+    def __init__(self, s: str, n: int) -> None:
+        super().__init__(s)
+        self.n = n
+
+def test_serializable_sub_class() -> None:
+    n = NonSerializable('xyz')
+    assert n.s == 'xyz'
+
+    with assertRaises(TypeError):
+        copy.copy(n)
+
+    s = SerializableSub('foo', 6)
+    s2 = copy.copy(s)
+    assert s2 is not s
+    assert s2.s == 'foo'
+    assert s2.n == 6
+
+def test_serializable_sub_class_call_new() -> None:
+    t: Any = SerializableSub
+    sub: SerializableSub = t.__new__(t)
+    with assertRaises(AttributeError):
+        sub.s
+    with assertRaises(AttributeError):
+        sub.n
+    base: NonSerializable = sub
+    with assertRaises(AttributeError):
+        base.s

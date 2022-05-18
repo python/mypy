@@ -1,6 +1,5 @@
 """Classes for representing mypy types."""
 
-import copy
 import sys
 from abc import abstractmethod
 
@@ -2891,16 +2890,6 @@ def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
 
     t = get_proper_type(t)
     return isinstance(t, Instance) and t.type.fullname in fullnames
-
-
-TP = TypeVar('TP', bound=Type)
-
-
-def copy_type(t: TP) -> TP:
-    """
-    Build a copy of the type; used to mutate the copy with truthiness information
-    """
-    return copy.copy(t)
 
 
 class InstantiateAliasVisitor(TypeTranslator):
