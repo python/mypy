@@ -435,8 +435,8 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
         irs = builder.flatten_classes(expr.args[1])
         if irs is not None:
             can_borrow = all(ir.is_ext_class
-                                 and not ir.inherits_python
-                                 and not ir.allow_interpreted_subclasses
+                             and not ir.inherits_python
+                             and not ir.allow_interpreted_subclasses
                              for ir in irs)
             obj = builder.accept(expr.args[0], can_borrow=can_borrow)
             return builder.builder.isinstance_helper(obj, irs, expr.line)

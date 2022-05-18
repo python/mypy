@@ -21,7 +21,7 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, RInstance, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
     is_list_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
