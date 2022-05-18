@@ -338,9 +338,9 @@ class DataclassTransformer:
                 ctx.api.fail(
                     (
                         'Type aliases inside dataclass definitions '
-                        'are not supported at runtime.'
+                        'are not supported at runtime'
                     ),
-                    Context(line=node.line, column=node.column)
+                    node
                 )
                 # Now do our best to simulate the runtime,
                 # which treates a TypeAlias definition in a dataclass class
@@ -355,14 +355,9 @@ class DataclassTransformer:
                 # Something else -- fallback to Any
                 else:
                     var_type = AnyType(TypeOfAny.from_error)
-                var = Var(name=fullname, type=var_type)
+                var = Var(name=node.name, type=var_type)
                 var.info = cls.info
                 var._fullname = fullname
-                cls.info.names[fullname] = SymbolTableNode(
-                    kind=MDEF,
-                    node=var,
-                    plugin_generated=True,
-                )
                 sym.node = node = var
 
             assert isinstance(node, Var)

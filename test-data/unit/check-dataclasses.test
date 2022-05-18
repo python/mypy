@@ -525,7 +525,7 @@ class Foo:
 
 @dataclass
 class One:
-    S: TypeAlias = Foo  # E: Type aliases inside dataclass definitions are not supported at runtime.
+    S: TypeAlias = Foo  # E: Type aliases inside dataclass definitions are not supported at runtime
 
 a = One()
 b = One(Foo)
@@ -537,7 +537,7 @@ reveal_type(b.S(98))  # N: Revealed type is "__main__.Foo"
 
 @dataclass
 class Two:
-    S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime.
+    S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
 
 c = Two()
 reveal_type(c.S)  # N: Revealed type is "Any"
