@@ -1,6 +1,6 @@
 """Plugin that provides support for dataclasses."""
 
-from typing import Dict, List, Set, Tuple, Optional, Union
+from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
@@ -16,7 +16,7 @@ from mypy.plugins.common import (
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
     Type, Instance, NoneType, TypeVarType, CallableType, TupleType, LiteralType,
-    get_proper_type, AnyType, TypeOfAny, TypeType,
+    get_proper_type, AnyType, TypeOfAny,
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
@@ -342,23 +342,10 @@ class DataclassTransformer:
                     ),
                     node
                 )
-                # Now do our best to simulate the runtime,
-                # which treates a TypeAlias definition in a dataclass class
-                # as an instance field with a default value.
-                #
-                # Replace the `TypeAlias` node with a `Var` node, so that we do the same.
-                target, fullname = node.target, node.fullname
-                proper_target = get_proper_type(target)
-                var_type: Union[TypeType, AnyType]
-                if isinstance(proper_target, Instance):
-                    var_type = TypeType(proper_target, line=node.line, column=node.column)
-                # Something else -- fallback to Any
-                else:
-                    var_type = AnyType(TypeOfAny.from_error)
-                var = Var(name=node.name, type=var_type)
-                var.info = cls.info
-                var._fullname = fullname
-                sym.node = node = var
+                # Skip processing this node. This doesn't match the runtime behaviour,
+                # but the only alternative would be to modify the SymbolTable,
+                # and it's a little hairy to do that in a plugin.
+                continue
 
             assert isinstance(node, Var)
 
