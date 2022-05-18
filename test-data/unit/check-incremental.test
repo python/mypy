@@ -5711,3 +5711,32 @@ class C:
 [builtins fixtures/dict.pyi]
 [out2]
 tmp/a.py:2: error: "object" has no attribute "xyz"
+
+[case testIncrementalInvalidNamedTupleInUnannotatedFunction]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # f
+
+[file b.py]
+from typing import NamedTuple
+
+def toplevel(fields):
+    TupleType = NamedTuple("TupleType", fields)
+    class InheritFromTuple(TupleType):
+        pass
+    NT2 = NamedTuple("bad", [('x', int)])
+    nt2: NT2 = NT2(x=1)
+
+class C:
+    def method(self, fields):
+        TupleType = NamedTuple("TupleType", fields)
+        class InheritFromTuple(TupleType):
+            pass
+        NT2 = NamedTuple("bad", [('x', int)])
+        nt2: NT2 = NT2(x=1)
+
+[builtins fixtures/tuple.pyi]
