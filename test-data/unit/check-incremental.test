@@ -5724,11 +5724,19 @@ import b # f
 [file b.py]
 from typing import NamedTuple
 
-def crash(fields):
+def toplevel(fields):
     TupleType = NamedTuple("TupleType", fields)
     class InheritFromTuple(TupleType):
         pass
     NT2 = NamedTuple("bad", [('x', int)])
     nt2: NT2 = NT2(x=1)
+
+class C:
+    def method(self, fields):
+        TupleType = NamedTuple("TupleType", fields)
+        class InheritFromTuple(TupleType):
+            pass
+        NT2 = NamedTuple("bad", [('x', int)])
+        nt2: NT2 = NT2(x=1)
 
 [builtins fixtures/tuple.pyi]
