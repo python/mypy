@@ -917,3 +917,36 @@ L0:
     r5 = unbox(int, r4)
     dec_ref r4
     return r5
+
+[case testBorrowAttribute]
+def g() -> int:
+    d = D()
+    return d.c.x
+
+def f(d: D) -> int:
+    return d.c.x
+
+class C:
+    x: int
+class D:
+    c: C
+[out]
+def g():
+    r0, d :: __main__.D
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = D()
+    d = r0
+    r1 = borrow d.c
+    r2 = r1.x
+    dec_ref d
+    return r2
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    return r1

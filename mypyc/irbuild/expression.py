@@ -21,7 +21,7 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, RInstance, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -130,8 +130,19 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    obj = builder.accept(expr.expr)
+    obj_rtype = builder.node_type(expr.expr)
+    if (isinstance(obj_rtype, RInstance)
+            and obj_rtype.class_ir.is_ext_class
+            and obj_rtype.class_ir.has_attr(expr.name)
+            and not obj_rtype.class_ir.get_method(expr.name)):
+        # Direct attribute access -> can borrow object
+        can_borrow = True
+    else:
+        can_borrow = False
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
+
     rtype = builder.node_type(expr)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -142,7 +153,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
+    borrow = can_borrow and builder.can_borrow
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
 
 
 def check_instance_attribute_access_through_class(builder: IRBuilder,

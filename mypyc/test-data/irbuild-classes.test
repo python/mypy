@@ -1240,3 +1240,51 @@ L0:
     r0 = ''
     __mypyc_self__.s = r0
     return 1
+
+[case testBorrowAttribute]
+def f(d: D) -> int:
+    return d.c.x
+
+class C:
+    x: int
+class D:
+    c: C
+[out]
+def f(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    keep_alive d
+    return r1
+
+[case testNoBorrowOverPropertyAccess]
+class C:
+    d: D
+class D:
+    @property
+    def e(self) -> E:
+        return E()
+class E:
+    x: int
+def f(c: C) -> int:
+    return c.d.e.x
+[out]
+def D.e(self):
+    self :: __main__.D
+    r0 :: __main__.E
+L0:
+    r0 = E()
+    return r0
+def f(c):
+    c :: __main__.C
+    r0 :: __main__.D
+    r1 :: __main__.E
+    r2 :: int
+L0:
+    r0 = c.d
+    r1 = r0.e
+    r2 = r1.x
+    return r2

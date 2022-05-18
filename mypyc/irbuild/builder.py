@@ -141,6 +141,8 @@ class IRBuilder:
         # can also do quick lookups.
         self.imports: OrderedDict[str, None] = OrderedDict()
 
+        self.can_borrow = False
+
     # High-level control
 
     def set_module(self, module_name: str, module_path: str) -> None:
@@ -152,15 +154,23 @@ class IRBuilder:
         self.module_path = module_path
 
     @overload
-    def accept(self, node: Expression) -> Value: ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
     def accept(self, node: Statement) -> None: ...
 
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        """Transform an expression or a statement."""
+    def accept(self, node: Union[Statement, Expression], *,
+               can_borrow: bool = False) -> Optional[Value]:
+        """Transform an expression or a statement.
+
+        If can_borrow is true, prefer to generate a borrowed reference.
+        Borrowed references are faster since they don't require reference count
+        manipulation, but they are only safe to use in specific contexts.
+        """
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
+                old_can_borrow = self.can_borrow
+                self.can_borrow = can_borrow
                 try:
                     res = node.accept(self.visitor)
                     res = self.coerce(res, self.node_type(node), node.line)
@@ -170,6 +180,9 @@ class IRBuilder:
                 # from causing more downstream trouble.
                 except UnsupportedException:
                     res = Register(self.node_type(node))
+                self.can_borrow = old_can_borrow
+                if not can_borrow:
+                    self.builder.flush_keep_alives()
                 return res
             else:
                 try:

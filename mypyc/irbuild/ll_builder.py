@@ -105,6 +105,9 @@ class LowLevelIRBuilder:
         self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
         self.error_handlers: List[Optional[BasicBlock]] = [None]
+        # Values that we need to keep alive as long as we have borrowed
+        # temporaries. Use flush_keep_alives() to mark the end of the live range.
+        self.keep_alives: List[Value] = []
 
     # Basic operations
 
@@ -144,6 +147,11 @@ class LowLevelIRBuilder:
         This only works in a method.
         """
         return self.args[0]
+
+    def flush_keep_alives(self) -> None:
+        if self.keep_alives:
+            self.add(KeepAlive(self.keep_alives[:]))
+            self.keep_alives = []
 
     # Type conversions
 
@@ -219,11 +227,14 @@ class LowLevelIRBuilder:
 
     # Attribute access
 
-    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int, *,
+                 borrow: bool = False) -> Value:
         """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
-            return self.add(GetAttr(obj, attr, line))
+            if borrow:
+                self.keep_alives.append(obj)
+            return self.add(GetAttr(obj, attr, line, borrow=borrow))
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:

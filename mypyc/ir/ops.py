@@ -599,13 +599,14 @@ class GetAttr(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, obj: Value, attr: str, line: int) -> None:
+    def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = obj.type.attr_type(attr)
+        self.is_borrowed = borrow
 
     def sources(self) -> List[Value]:
         return [self.obj]
