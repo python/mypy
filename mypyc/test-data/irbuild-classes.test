@@ -124,6 +124,7 @@ L0:
     r0 = borrow self.next
     r1 = load_address _Py_NoneStruct
     r2 = r0 != r1
+    keep_alive self
     if r2 goto L1 else goto L2 :: bool
 L1:
     r3 = self.next
