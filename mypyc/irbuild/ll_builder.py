@@ -105,7 +105,7 @@ class LowLevelIRBuilder:
         self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
         self.error_handlers: List[Optional[BasicBlock]] = [None]
-        # Values that we need to keet alive as long as we have borrowed
+        # Values that we need to keep alive as long as we have borrowed
         # temporaries. Use flush_keep_alives() to mark the end of the live range.
         self.keep_alives: List[Value] = []
 
