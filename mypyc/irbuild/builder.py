@@ -12,9 +12,7 @@ functions are transformed in mypyc.irbuild.function.
 """
 from contextlib import contextmanager
 
-from typing import (
-    TYPE_CHECKING, Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
-)
+from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
 from typing_extensions import overload
 from mypy.backports import OrderedDict
 
@@ -67,8 +65,7 @@ from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
 
-if TYPE_CHECKING:
-    from mypyc.irbuild.singledispatch import RegisterImplInfo
+from mypyc.irbuild.util import RegisterImplInfo
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -92,7 +89,7 @@ class IRBuilder:
                  pbv: PreBuildVisitor,
                  visitor: IRVisitor,
                  options: CompilerOptions,
-                 singledispatch_impls: Dict[FuncDef, List["RegisterImplInfo"]]) -> None:
+                 singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]) -> None:
         self.builder = LowLevelIRBuilder(current_module, mapper, options)
         self.builders = [self.builder]
         self.symtables: List[OrderedDict[SymbolNode, SymbolTarget]] = [OrderedDict()]

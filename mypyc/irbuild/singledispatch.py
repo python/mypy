@@ -48,6 +48,7 @@ from mypyc.irbuild.callable_class import (
 from mypyc.irbuild.context import FuncInfo
 # avoid importing the functions themselves to avoid a circular import
 from mypyc.irbuild import function
+from mypyc.irbuild.util import RegisterImplInfo, SingledispatchInfo
 from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_method_with_none
 from mypyc.primitives.misc_ops import register_function
 from mypyc.primitives.generic_ops import py_setattr_op
@@ -308,14 +309,6 @@ def load_func(builder: IRBuilder, func_name: str, fullname: Optional[str], line:
     else:
         func = builder.load_global_str(func_name, line)
     return func
-
-
-RegisterImplInfo = Tuple[TypeInfo, FuncDef]
-
-
-class SingledispatchInfo(NamedTuple):
-    singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]
-    decorators_to_remove: Dict[FuncDef, List[int]]
 
 
 def find_singledispatch_register_impls(
