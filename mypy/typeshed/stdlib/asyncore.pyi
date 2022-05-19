@@ -2,10 +2,11 @@ import sys
 from _typeshed import FileDescriptorLike
 from socket import socket
 from typing import Any, overload
+from typing_extensions import TypeAlias
 
 # cyclic dependence with asynchat
-_maptype = dict[int, Any]
-_socket = socket
+_maptype: TypeAlias = dict[int, Any]
+_socket: TypeAlias = socket
 
 socket_map: _maptype  # undocumented
 
@@ -85,6 +86,7 @@ if sys.platform != "win32":
         def write(self, data: bytes, flags: int = ...) -> int: ...
         def close(self) -> None: ...
         def fileno(self) -> int: ...
+
     class file_dispatcher(dispatcher):
         def __init__(self, fd: FileDescriptorLike, map: _maptype | None = ...) -> None: ...
         def set_file(self, fd: int) -> None: ...

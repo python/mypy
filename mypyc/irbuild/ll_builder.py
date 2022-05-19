@@ -105,6 +105,9 @@ class LowLevelIRBuilder:
         self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
         self.error_handlers: List[Optional[BasicBlock]] = [None]
+        # Values that we need to keep alive as long as we have borrowed
+        # temporaries. Use flush_keep_alives() to mark the end of the live range.
+        self.keep_alives: List[Value] = []
 
     # Basic operations
 
@@ -145,10 +148,17 @@ class LowLevelIRBuilder:
         """
         return self.args[0]
 
+    def flush_keep_alives(self) -> None:
+        if self.keep_alives:
+            self.add(KeepAlive(self.keep_alives[:]))
+            self.keep_alives = []
+
     # Type conversions
 
     def box(self, src: Value) -> Value:
         if src.type.is_unboxed:
+            if isinstance(src, Integer) and is_tagged(src.type):
+                return self.add(LoadLiteral(src.value >> 1, rtype=object_rprimitive))
             return self.add(Box(src))
         else:
             return src
@@ -217,11 +227,14 @@ class LowLevelIRBuilder:
 
     # Attribute access
 
-    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int, *,
+                 borrow: bool = False) -> Value:
         """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
-            return self.add(GetAttr(obj, attr, line))
+            if borrow:
+                self.keep_alives.append(obj)
+            return self.add(GetAttr(obj, attr, line, borrow=borrow))
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:
@@ -819,7 +832,7 @@ class LowLevelIRBuilder:
                             line: int = -1,
                             error_msg: Optional[str] = None) -> Value:
         if error_msg is None:
-            error_msg = 'name "{}" is not defined'.format(identifier)
+            error_msg = f'name "{identifier}" is not defined'
         ok_block, error_block = BasicBlock(), BasicBlock()
         value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
@@ -836,7 +849,7 @@ class LowLevelIRBuilder:
 
     def get_native_type(self, cls: ClassIR) -> Value:
         """Load native type object."""
-        fullname = '%s.%s' % (cls.module_name, cls.name)
+        fullname = f'{cls.module_name}.{cls.name}'
         return self.load_native_type_object(fullname)
 
     def load_native_type_object(self, fullname: str) -> Value:
@@ -1330,7 +1343,7 @@ class LowLevelIRBuilder:
             if all(is_subtype(actual.type, formal)
                    for actual, formal in zip(args, desc.arg_types)):
                 if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
+                    assert matching.priority != desc.priority, 'Ambiguous:\n1) {}\n2) {}'.format(
                         matching, desc)
                     if desc.priority > matching.priority:
                         matching = desc

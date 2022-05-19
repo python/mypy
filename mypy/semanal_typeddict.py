@@ -86,7 +86,7 @@ class TypedDictAnalyzer:
                         typeddict_bases.append(expr)
                     else:
                         assert isinstance(expr.node, TypeInfo)
-                        self.fail('Duplicate base class "%s"' % expr.node.name, defn)
+                        self.fail(f'Duplicate base class "{expr.node.name}"', defn)
                 else:
                     self.fail("All bases of a new TypedDict must be TypedDict types", defn)
 
@@ -156,7 +156,7 @@ class TypedDictAnalyzer:
                     self.fail('Overwriting TypedDict field "{}" while extending'
                               .format(name), stmt)
                 if name in fields:
-                    self.fail('Duplicate TypedDict key "{}"'.format(name), stmt)
+                    self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
                 # Append name and type in this case...
                 fields.append(name)
@@ -282,7 +282,7 @@ class TypedDictAnalyzer:
             return self.fail_typeddict_arg("Unexpected arguments to TypedDict()", call)
         if len(args) == 3 and call.arg_names[2] != 'total':
             return self.fail_typeddict_arg(
-                'Unexpected keyword argument "{}" for "TypedDict"'.format(call.arg_names[2]), call)
+                f'Unexpected keyword argument "{call.arg_names[2]}" for "TypedDict"', call)
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call)
@@ -328,7 +328,7 @@ class TypedDictAnalyzer:
                 key = field_name_expr.value
                 items.append(key)
                 if key in seen_keys:
-                    self.fail('Duplicate TypedDict key "{}"'.format(key), field_name_expr)
+                    self.fail(f'Duplicate TypedDict key "{key}"', field_name_expr)
                 seen_keys.add(key)
             else:
                 name_context = field_name_expr or field_type_expr

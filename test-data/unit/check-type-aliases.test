@@ -752,3 +752,21 @@ from typing_extensions import TypeAlias
 A: TypeAlias = str
 [builtins fixtures/bool.pyi]
 [out]
+
+
+[case testLiteralStringPep675]
+# flags: --python-version 3.11
+from typing import LiteralString as tpLS
+from typing_extensions import LiteralString as tpxLS
+
+def f(a: tpLS, b: tpxLS) -> None:
+    reveal_type(a)  # N: Revealed type is "builtins.str"
+    reveal_type(b)  # N: Revealed type is "builtins.str"
+
+# This isn't the correct behaviour, but should unblock use of LiteralString in typeshed
+f("asdf", "asdf")
+string: str
+f(string, string)
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-medium.pyi]

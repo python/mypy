@@ -11,7 +11,7 @@ def calculate_mro(info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = N
     Raise MroError if cannot determine mro.
     """
     mro = linearize_hierarchy(info, obj_type)
-    assert mro, "Could not produce a MRO at all for %s" % (info,)
+    assert mro, f"Could not produce a MRO at all for {info}"
     info.mro = mro
     # The property of falling back to Any is inherited.
     info.fallback_to_any = any(baseinfo.fallback_to_any for baseinfo in info.mro)
@@ -36,7 +36,7 @@ def linearize_hierarchy(info: TypeInfo,
         bases = [obj_type().type]
     lin_bases = []
     for base in bases:
-        assert base is not None, "Cannot linearize bases for %s %s" % (info.fullname, bases)
+        assert base is not None, f"Cannot linearize bases for {info.fullname} {bases}"
         lin_bases.append(linearize_hierarchy(base, obj_type))
     lin_bases.append(bases)
     return [info] + merge(lin_bases)

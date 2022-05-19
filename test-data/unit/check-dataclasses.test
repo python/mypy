@@ -495,6 +495,19 @@ reveal_type(A.foo("foo"))  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testClassmethodShadowingFieldDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+# This used to crash -- see #6217
+@dataclass
+class Foo:
+    bar: str
+    @classmethod  # E: Name "bar" already defined on line 7
+    def bar(cls) -> "Foo":
+        return cls('asdf')
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesClassVars]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -1207,7 +1220,7 @@ class A2:
 from dataclasses import dataclass
 
 @dataclass
-class A:  # E: Name "x" already defined (possibly by an import)
+class A:
     x: int = 0
     x: int = 0  # E: Name "x" already defined on line 7
 
@@ -1553,6 +1566,20 @@ A(a=func).a()
 A(a=func).a = func  # E: Property "a" defined in "A" is read-only
 [builtins fixtures/dataclasses.pyi]
 
+[case testDataclassInFunctionDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+def foo():
+    @dataclass
+    class Foo:
+        foo: int
+        # This used to crash (see #8703)
+        # The return type of __call__ here needs to be something undefined
+        # In order to trigger the crash that existed prior to #12762
+        def __call__(self) -> asdf: ...  # E: Name "asdf" is not defined
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesMultipleInheritanceWithNonDataclass]
 # flags: --python-version 3.10
 from dataclasses import dataclass
@@ -1567,4 +1594,153 @@ class B:
 
 class Derived(A, B):
     pass
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritance2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@dataclass
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@dataclass
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@dataclass
+class Parent2(Generic[T]):
+    a: List[T]
+
+@dataclass
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritOptionalType]
+# flags: --python-version 3.7 --strict-optional
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List, Optional
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: Optional[str]
+@dataclass
+class Child(Parent):
+    y: Optional[int]
+Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "Optional[str]"
+Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
+Child(x='', y=1)
+Child(x=None, y=None)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase1]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: List[T]
+
+@dataclass
+class Child1(Parent["Child2"]): ...
+
+@dataclass
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@dataclass
+class Child1(Parent["Child2"]):
+    x: int
+
+@dataclass
+class Child2(Parent["Child1"]):
+    y: int
+
+@dataclass
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericWithBound]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="C")
+
+@dataclass
+class C(Generic[T]):
+    x: int
+
+c: C[C]
+d: C[str]  # E: Type argument "str" of "C" must be a subtype of "C[Any]"
+C(x=2)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericBoundToInvalidTypeVarDoesNotCrash]
+# flags: --python-version 3.7
+import dataclasses
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="NotDefined")  # E: Name "NotDefined" is not defined
+
+@dataclasses.dataclass
+class C(Generic[T]):
+    x: float
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInitVarCannotBeSet]
+# flags: --python-version 3.7
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class C:
+    x: InitVar[int] = 0
+    y: InitVar[str] = ''
+
+    def f(self) -> None:
+        # This works at runtime, but it seems like an abuse of the InitVar
+        # feature and thus we don't support it
+        self.x = 1  # E: "C" has no attribute "x"
+        self.y: str = 'x'  # E: "C" has no attribute "y"
+
+c = C()
+c2 = C(x=1)
+c.x  # E: "C" has no attribute "x"
 [builtins fixtures/dataclasses.pyi]

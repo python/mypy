@@ -1,6 +1,8 @@
-from typing import Any, Callable, Optional, Union
+from collections.abc import Callable
+from typing import Any, Union
+from typing_extensions import TypeAlias
 
-_Macro = Union[tuple[str], tuple[str, Optional[str]]]
+_Macro: TypeAlias = Union[tuple[str], tuple[str, str | None]]
 
 def gen_lib_options(
     compiler: CCompiler, library_dirs: list[str], runtime_library_dirs: list[str], libraries: list[str]

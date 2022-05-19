@@ -60,6 +60,7 @@ INCOMPATIBLE_TYPES_IN_ASYNC_WITH_AEXIT: Final = (
     'Incompatible types in "async with" for "__aexit__"'
 )
 INCOMPATIBLE_TYPES_IN_ASYNC_FOR: Final = 'Incompatible types in "async for"'
+INVALID_TYPE_FOR_SLOTS: Final = 'Invalid type for "__slots__"'
 
 ASYNC_FOR_OUTSIDE_COROUTINE: Final = '"async for" outside async function'
 ASYNC_WITH_OUTSIDE_COROUTINE: Final = '"async with" outside async function'

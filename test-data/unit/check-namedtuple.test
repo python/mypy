@@ -1120,3 +1120,17 @@ def bar1(c: C1) -> None:
         reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testInvalidNamedTupleWithinFunction]
+from collections import namedtuple
+
+def f(fields) -> None:
+    TupleType = namedtuple("TupleType", fields) \
+        # E: List or tuple literal expected as the second argument to "namedtuple()"
+    class InheritFromTuple(TupleType):
+        pass
+    t: TupleType
+    it: InheritFromTuple
+    NT2 = namedtuple("bad", "x") # E: First argument to namedtuple() should be "NT2", not "bad"
+    nt2: NT2 = NT2(x=1)
+[builtins fixtures/tuple.pyi]

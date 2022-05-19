@@ -75,7 +75,7 @@ def shared_lib_name(group_name: str) -> str:
 
     (This just adds a suffix to the final component.)
     """
-    return '{}__mypyc'.format(group_name)
+    return f'{group_name}__mypyc'
 
 
 def short_name(name: str) -> str:
@@ -107,7 +107,7 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
     it handles the case where the function is named '_', in which case multiple different functions
     could have the same name."""
     if unnamed_function(name):
-        return "{}.{}".format(fullname, line)
+        return f"{fullname}.{line}"
     else:
         return fullname
 
@@ -115,7 +115,7 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
 def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
     if unnamed_function(func_name):
         assert line is not None
-        partial_name = "{}.{}".format(shortname, line)
+        partial_name = f"{shortname}.{line}"
     else:
         partial_name = shortname
     return partial_name

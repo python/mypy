@@ -1,8 +1,12 @@
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import BinaryIO, Callable, Union
+from typing import BinaryIO
+from typing_extensions import TypeAlias
 
-_Path = Union[str, Path, BinaryIO]
+__all__ = ["ZipAppError", "create_archive", "get_interpreter"]
+
+_Path: TypeAlias = str | Path | BinaryIO
 
 class ZipAppError(ValueError): ...
 

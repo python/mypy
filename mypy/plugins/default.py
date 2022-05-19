@@ -37,11 +37,11 @@ class DefaultPlugin(Plugin):
 
         if fullname == 'typing.Mapping.get':
             return typed_dict_get_signature_callback
-        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.setdefault' for n in TPDICT_FB_NAMES}:
             return typed_dict_setdefault_signature_callback
-        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.pop' for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_signature_callback
-        elif fullname in set(n + '.update' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.update' for n in TPDICT_FB_NAMES}:
             return typed_dict_update_signature_callback
         elif fullname == 'ctypes.Array.__setitem__':
             return ctypes.array_setitem_callback
@@ -61,11 +61,11 @@ class DefaultPlugin(Plugin):
             return int_neg_callback
         elif fullname in ('builtins.tuple.__mul__', 'builtins.tuple.__rmul__'):
             return tuple_mul_callback
-        elif fullname in set(n + '.setdefault' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.setdefault' for n in TPDICT_FB_NAMES}:
             return typed_dict_setdefault_callback
-        elif fullname in set(n + '.pop' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.pop' for n in TPDICT_FB_NAMES}:
             return typed_dict_pop_callback
-        elif fullname in set(n + '.__delitem__' for n in TPDICT_FB_NAMES):
+        elif fullname in {n + '.__delitem__' for n in TPDICT_FB_NAMES}:
             return typed_dict_delitem_callback
         elif fullname == 'ctypes.Array.__getitem__':
             return ctypes.array_getitem_callback
@@ -94,11 +94,34 @@ class DefaultPlugin(Plugin):
 
     def get_class_decorator_hook(self, fullname: str
                                  ) -> Optional[Callable[[ClassDefContext], None]]:
+        from mypy.plugins import dataclasses
         from mypy.plugins import attrs
+
+        # These dataclass and attrs hooks run in the main semantic analysis pass
+        # and only tag known dataclasses/attrs classes, so that the second
+        # hooks (in get_class_decorator_hook_2) can detect dataclasses/attrs classes
+        # in the MRO.
+        if fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_tag_callback
+        if (fullname in attrs.attr_class_makers
+                or fullname in attrs.attr_dataclass_makers
+                or fullname in attrs.attr_frozen_makers
+                or fullname in attrs.attr_define_makers):
+            return attrs.attr_tag_callback
+
+        return None
+
+    def get_class_decorator_hook_2(self, fullname: str
+                                   ) -> Optional[Callable[[ClassDefContext], bool]]:
         from mypy.plugins import dataclasses
         from mypy.plugins import functools
+        from mypy.plugins import attrs
 
-        if fullname in attrs.attr_class_makers:
+        if fullname in dataclasses.dataclass_makers:
+            return dataclasses.dataclass_class_maker_callback
+        elif fullname in functools.functools_total_ordering_makers:
+            return functools.functools_total_ordering_maker_callback
+        elif fullname in attrs.attr_class_makers:
             return attrs.attr_class_maker_callback
         elif fullname in attrs.attr_dataclass_makers:
             return partial(
@@ -116,10 +139,6 @@ class DefaultPlugin(Plugin):
                 attrs.attr_class_maker_callback,
                 auto_attribs_default=None,
             )
-        elif fullname in dataclasses.dataclass_makers:
-            return dataclasses.dataclass_class_maker_callback
-        elif fullname in functools.functools_total_ordering_makers:
-            return functools.functools_total_ordering_maker_callback
 
         return None
 

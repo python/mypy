@@ -11,7 +11,7 @@ from mypy.types import (
     CallableType, Instance, Overloaded, TupleType, TypedDictType,
     TypeVarType, UnboundType, UnionType, TypeVisitor, LiteralType,
     TypeType, NOT_READY, TypeAliasType, AnyType, TypeOfAny, ParamSpecType,
-    UnpackType,
+    Parameters, UnpackType, TypeVarTupleType
 )
 from mypy.visitor import NodeVisitor
 from mypy.lookup import lookup_fully_qualified
@@ -81,7 +81,7 @@ class NodeFixer(NodeVisitor[None]):
                         assert stnode.node is not None, (table_fullname + "." + key, cross_ref)
                         value.node = stnode.node
                     elif not self.allow_missing:
-                        assert False, "Could not find cross-ref %s" % (cross_ref,)
+                        assert False, f"Could not find cross-ref {cross_ref}"
                     else:
                         # We have a missing crossref in allow missing mode, need to put something
                         value.node = missing_info(self.modules)
@@ -92,7 +92,7 @@ class NodeFixer(NodeVisitor[None]):
                 elif value.node is not None:
                     value.node.accept(self)
                 else:
-                    assert False, 'Unexpected empty node %r: %s' % (key, value)
+                    assert False, f'Unexpected empty node {key!r}: {value}'
 
     def visit_func_def(self, func: FuncDef) -> None:
         if self.current_info is not None:
@@ -188,11 +188,7 @@ class TypeFixer(TypeVisitor[None]):
         if ct.ret_type is not None:
             ct.ret_type.accept(self)
         for v in ct.variables:
-            if isinstance(v, TypeVarType):
-                if v.values:
-                    for val in v.values:
-                        val.accept(self)
-                v.upper_bound.accept(self)
+            v.accept(self)
         for arg in ct.bound_args:
             if arg:
                 arg.accept(self)
@@ -252,8 +248,18 @@ class TypeFixer(TypeVisitor[None]):
     def visit_param_spec(self, p: ParamSpecType) -> None:
         p.upper_bound.accept(self)
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> None:
+        t.upper_bound.accept(self)
+
     def visit_unpack_type(self, u: UnpackType) -> None:
         u.type.accept(self)
+
+    def visit_parameters(self, p: Parameters) -> None:
+        for argt in p.arg_types:
+            if argt is not None:
+                argt.accept(self)
+        for var in p.variables:
+            var.accept(self)
 
     def visit_unbound_type(self, o: UnboundType) -> None:
         for a in o.args:

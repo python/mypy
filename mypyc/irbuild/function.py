@@ -129,7 +129,7 @@ def transform_lambda_expr(builder: IRBuilder, expr: LambdaExpr) -> Value:
 
     fsig = FuncSignature(runtime_args, ret_type)
 
-    fname = '{}{}'.format(LAMBDA_NAME, builder.lambda_counter)
+    fname = f'{LAMBDA_NAME}{builder.lambda_counter}'
     builder.lambda_counter += 1
     func_ir, func_reg = gen_func_item(builder, expr, fname, fsig)
     assert func_reg is not None

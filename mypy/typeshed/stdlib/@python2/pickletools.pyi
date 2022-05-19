@@ -1,4 +1,4 @@
-from typing import IO, Any, Callable, Iterator, List, MutableMapping, Text, Tuple, Type
+from typing import IO, Any, Callable, Iterator, MutableMapping, Text
 
 _Reader = Callable[[IO[bytes]], Any]
 
@@ -77,9 +77,9 @@ long4: ArgumentDescriptor
 
 class StackObject(object):
     name: str
-    obtype: Type[Any] | Tuple[Type[Any], ...]
+    obtype: type[Any] | tuple[type[Any], ...]
     doc: str
-    def __init__(self, name: str, obtype: Type[Any] | Tuple[Type[Any], ...], doc: str) -> None: ...
+    def __init__(self, name: str, obtype: type[Any] | tuple[type[Any], ...], doc: str) -> None: ...
 
 pyint: StackObject
 pylong: StackObject
@@ -100,8 +100,8 @@ class OpcodeInfo(object):
     name: str
     code: str
     arg: ArgumentDescriptor | None
-    stack_before: List[StackObject]
-    stack_after: List[StackObject]
+    stack_before: list[StackObject]
+    stack_after: list[StackObject]
     proto: int
     doc: str
     def __init__(
@@ -109,15 +109,15 @@ class OpcodeInfo(object):
         name: str,
         code: str,
         arg: ArgumentDescriptor | None,
-        stack_before: List[StackObject],
-        stack_after: List[StackObject],
+        stack_before: list[StackObject],
+        stack_after: list[StackObject],
         proto: int,
         doc: str,
     ) -> None: ...
 
-opcodes: List[OpcodeInfo]
+opcodes: list[OpcodeInfo]
 
-def genops(pickle: bytes | IO[bytes]) -> Iterator[Tuple[OpcodeInfo, Any | None, int | None]]: ...
+def genops(pickle: bytes | IO[bytes]) -> Iterator[tuple[OpcodeInfo, Any | None, int | None]]: ...
 def optimize(p: bytes | IO[bytes]) -> bytes: ...
 def dis(
     pickle: bytes | IO[bytes], out: IO[str] | None = ..., memo: MutableMapping[int, Any] | None = ..., indentlevel: int = ...

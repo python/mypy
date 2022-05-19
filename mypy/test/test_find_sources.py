@@ -26,7 +26,7 @@ class FakeFSCache(FileSystemCache):
     def listdir(self, dir: str) -> List[str]:
         if not dir.endswith(os.sep):
             dir += os.sep
-        return list(set(f[len(dir):].split(os.sep)[0] for f in self.files if f.startswith(dir)))
+        return list({f[len(dir):].split(os.sep)[0] for f in self.files if f.startswith(dir)})
 
     def init_under_package_root(self, file: str) -> bool:
         return False
@@ -278,15 +278,15 @@ class SourceFinderSuite(unittest.TestCase):
 
         # default
         for excluded_dir in ["site-packages", ".whatever", "node_modules", ".x/.z"]:
-            fscache = FakeFSCache({"/dir/a.py", "/dir/venv/{}/b.py".format(excluded_dir)})
+            fscache = FakeFSCache({"/dir/a.py", f"/dir/venv/{excluded_dir}/b.py"})
             assert find_sources(["/"], options, fscache) == [("a", "/dir")]
             with pytest.raises(InvalidSourceList):
                 find_sources(["/dir/venv/"], options, fscache)
-            assert find_sources(["/dir/venv/{}".format(excluded_dir)], options, fscache) == [
-                ("b", "/dir/venv/{}".format(excluded_dir))
+            assert find_sources([f"/dir/venv/{excluded_dir}"], options, fscache) == [
+                ("b", f"/dir/venv/{excluded_dir}")
             ]
-            assert find_sources(["/dir/venv/{}/b.py".format(excluded_dir)], options, fscache) == [
-                ("b", "/dir/venv/{}".format(excluded_dir))
+            assert find_sources([f"/dir/venv/{excluded_dir}/b.py"], options, fscache) == [
+                ("b", f"/dir/venv/{excluded_dir}")
             ]
 
         files = {

@@ -142,6 +142,8 @@ class IRBuilder:
         # can also do quick lookups.
         self.imports: OrderedDict[str, None] = OrderedDict()
 
+        self.can_borrow = False
+
     # High-level control
 
     def set_module(self, module_name: str, module_path: str) -> None:
@@ -153,15 +155,23 @@ class IRBuilder:
         self.module_path = module_path
 
     @overload
-    def accept(self, node: Expression) -> Value: ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
     def accept(self, node: Statement) -> None: ...
 
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        """Transform an expression or a statement."""
+    def accept(self, node: Union[Statement, Expression], *,
+               can_borrow: bool = False) -> Optional[Value]:
+        """Transform an expression or a statement.
+
+        If can_borrow is true, prefer to generate a borrowed reference.
+        Borrowed references are faster since they don't require reference count
+        manipulation, but they are only safe to use in specific contexts.
+        """
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
+                old_can_borrow = self.can_borrow
+                self.can_borrow = can_borrow
                 try:
                     res = node.accept(self.visitor)
                     res = self.coerce(res, self.node_type(node), node.line)
@@ -171,6 +181,9 @@ class IRBuilder:
                 # from causing more downstream trouble.
                 except UnsupportedException:
                     res = Register(self.node_type(node))
+                self.can_borrow = old_can_borrow
+                if not can_borrow:
+                    self.builder.flush_keep_alives()
                 return res
             else:
                 try:
@@ -420,7 +433,7 @@ class IRBuilder:
             if class_name is None:
                 name = lvalue.name
             else:
-                name = '{}.{}'.format(class_name, lvalue.name)
+                name = f'{class_name}.{lvalue.name}'
             assert name is not None, "Full name not set for variable"
             coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
             self.final_names.append((name, coerced.type))
@@ -433,7 +446,7 @@ class IRBuilder:
         module, name = split_name
         return self.builder.load_static_checked(
             typ, name, module, line=line,
-            error_msg='value for final name "{}" was not set'.format(error_name))
+            error_msg=f'value for final name "{error_name}" was not set')
 
     def load_final_literal_value(self, val: Union[int, str, bytes, float, bool],
                                  line: int) -> Value:
@@ -686,7 +699,7 @@ class IRBuilder:
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
-        name = '{}{}'.format(TEMP_ATTR_NAME, self.temp_counter)
+        name = f'{TEMP_ATTR_NAME}{self.temp_counter}'
         self.temp_counter += 1
         target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
         # Shouldn't be able to fail, so -1 for line
@@ -818,7 +831,7 @@ class IRBuilder:
                 is_final = sym.node.is_final or expr_fullname == 'enum.Enum'
                 if is_final:
                     final_var = sym.node
-                    fullname = '{}.{}'.format(sym.node.info.fullname, final_var.name)
+                    fullname = f'{sym.node.info.fullname}.{final_var.name}'
                     native = self.is_native_module(expr.expr.node.module_name)
         elif self.is_module_member_expr(expr):
             # a module attribute
