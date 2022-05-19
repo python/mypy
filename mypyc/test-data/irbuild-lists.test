@@ -42,6 +42,7 @@ L0:
     r1 = borrow cast(list, r0)
     r2 = CPyList_GetItemShort(r1, 2)
     r3 = unbox(int, r2)
+    keep_alive x, r0
     return r3
 
 [case testListSet]
