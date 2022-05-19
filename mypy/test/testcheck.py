@@ -21,6 +21,12 @@ from mypy.test.helpers import (
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
 
+try:
+    import lxml  # type: ignore
+except ImportError:
+    lxml = None
+
+import pytest
 
 # List of files that contain test case descriptions.
 typecheck_files = [
@@ -117,6 +123,8 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if lxml is None and os.path.basename(testcase.file) == 'check-reports.test':
+            pytest.skip("Cannot import lxml. Is it installed?")
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)

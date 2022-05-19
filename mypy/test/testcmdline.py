@@ -18,6 +18,13 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, check_test_output_files
 )
 
+try:
+    import lxml  # type: ignore
+except ImportError:
+    lxml = None
+
+import pytest
+
 # Path to Python 3 interpreter
 python3_path = sys.executable
 
@@ -35,6 +42,8 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if lxml is None and os.path.basename(testcase.file) == 'reports.test':
+            pytest.skip("Cannot import lxml. Is it installed?")
         for step in [1] + sorted(testcase.output2):
             test_python_cmdline(testcase, step)
 
