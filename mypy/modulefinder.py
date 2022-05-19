@@ -12,6 +12,8 @@ import subprocess
 import sys
 from enum import Enum, unique
 
+from mypy.errors import CompileError
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -649,9 +651,15 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        site_packages = ast.literal_eval(
-            subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
-            stderr=subprocess.PIPE).decode())
+        try:
+            site_packages = ast.literal_eval(
+                subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
+                stderr=subprocess.PIPE).decode())
+        except OSError as err:
+            reason = os.strerror(err.errno)
+            raise CompileError(
+                [f"mypy: Invalid python executable '{python_executable}': {reason}"]
+            ) from err
     return expand_site_packages(site_packages)
 
 
