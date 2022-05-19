@@ -77,11 +77,12 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return self.format('%r = %s%s', op, prefix, repr(op.value))
 
     def visit_get_attr(self, op: GetAttr) -> str:
+        return self.format('%r = %s%r.%s', op, self.borrow_prefix(op), op.obj, op.attr)
+
+    def borrow_prefix(self, op: Op) -> str:
         if op.is_borrowed:
-            borrow = 'borrow '
-        else:
-            borrow = ''
-        return self.format('%r = %s%r.%s', op, borrow, op.obj, op.attr)
+            return 'borrow '
+        return ''
 
     def visit_set_attr(self, op: SetAttr) -> str:
         if op.is_init:
@@ -142,7 +143,7 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
         return s
 
     def visit_cast(self, op: Cast) -> str:
-        return self.format('%r = cast(%s, %r)', op, op.type, op.src)
+        return self.format('%r = %scast(%s, %r)', op, self.borrow_prefix(op), op.type, op.src)
 
     def visit_box(self, op: Box) -> str:
         return self.format('%r = box(%s, %r)', op, op.src.type, op.src)

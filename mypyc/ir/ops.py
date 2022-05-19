@@ -775,15 +775,18 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int) -> None:
+    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
+        self.is_borrowed = borrow
 
     def sources(self) -> List[Value]:
         return [self.src]
 
     def stolen(self) -> List[Value]:
+        if self.is_borrowed:
+            return []
         return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:

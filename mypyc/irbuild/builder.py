@@ -182,7 +182,7 @@ class IRBuilder:
                     res = Register(self.node_type(node))
                 self.can_borrow = old_can_borrow
                 if not can_borrow:
-                    self.builder.flush_keep_alives()
+                    self.flush_keep_alives()
                 return res
             else:
                 try:
@@ -190,6 +190,9 @@ class IRBuilder:
                 except UnsupportedException:
                     pass
                 return None
+
+    def flush_keep_alives(self) -> None:
+        self.builder.flush_keep_alives()
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -234,7 +237,7 @@ class IRBuilder:
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
-        return self.builder.coerce(src, target_type, line, force)
+        return self.builder.coerce(src, target_type, line, force, can_borrow=self.can_borrow)
 
     def none_object(self) -> Value:
         return self.builder.none_object()
@@ -510,7 +513,8 @@ class IRBuilder:
             return AssignmentTargetIndex(base, index)
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
-            obj = self.accept(lvalue.expr)
+            can_borrow = self.is_native_attr_ref(lvalue)
+            obj = self.accept(lvalue.expr, can_borrow=can_borrow)
             return AssignmentTargetAttr(obj, lvalue.name)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
@@ -1175,6 +1179,14 @@ class IRBuilder:
         module, _, name = fullname.rpartition('.')
         left = self.load_module(module)
         return self.py_get_attr(left, name, line)
+
+    def is_native_attr_ref(self, expr: MemberExpr) -> bool:
+        """Is expr a direct reference to a native (struct) attribute of an instance?"""
+        obj_rtype = self.node_type(expr.expr)
+        return (isinstance(obj_rtype, RInstance)
+                and obj_rtype.class_ir.is_ext_class
+                and obj_rtype.class_ir.has_attr(expr.name)
+                and not obj_rtype.class_ir.get_method(expr.name))
 
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:

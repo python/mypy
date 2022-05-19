@@ -116,22 +116,22 @@ def Node.length(self):
     self :: __main__.Node
     r0 :: union[__main__.Node, None]
     r1 :: object
-    r2, r3 :: bit
-    r4 :: union[__main__.Node, None]
-    r5 :: __main__.Node
-    r6, r7 :: int
+    r2 :: bit
+    r3 :: union[__main__.Node, None]
+    r4 :: __main__.Node
+    r5, r6 :: int
 L0:
-    r0 = self.next
-    r1 = box(None, 1)
-    r2 = r0 == r1
-    r3 = r2 ^ 1
-    if r3 goto L1 else goto L2 :: bool
+    r0 = borrow self.next
+    r1 = load_address _Py_NoneStruct
+    r2 = r0 != r1
+    keep_alive self
+    if r2 goto L1 else goto L2 :: bool
 L1:
-    r4 = self.next
-    r5 = cast(__main__.Node, r4)
-    r6 = r5.length()
-    r7 = CPyTagged_Add(2, r6)
-    return r7
+    r3 = self.next
+    r4 = cast(__main__.Node, r3)
+    r5 = r4.length()
+    r6 = CPyTagged_Add(2, r5)
+    return r6
 L2:
     return 2
 

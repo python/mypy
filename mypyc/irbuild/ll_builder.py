@@ -163,13 +163,17 @@ class LowLevelIRBuilder:
         else:
             return src
 
-    def unbox_or_cast(self, src: Value, target_type: RType, line: int) -> Value:
+    def unbox_or_cast(self, src: Value, target_type: RType, line: int, *,
+                      can_borrow: bool = False) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
-            return self.add(Cast(src, target_type, line))
+            if can_borrow:
+                self.keep_alives.append(src)
+            return self.add(Cast(src, target_type, line, borrow=can_borrow))
 
-    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
+    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False, *,
+               can_borrow: bool = False) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).
 
         For example, int -> object boxes the source int; int -> int emits nothing;
@@ -190,7 +194,7 @@ class LowLevelIRBuilder:
             return self.unbox_or_cast(tmp, target_type, line)
         if ((not src.type.is_unboxed and target_type.is_unboxed)
                 or not is_subtype(src.type, target_type)):
-            return self.unbox_or_cast(src, target_type, line)
+            return self.unbox_or_cast(src, target_type, line, can_borrow=can_borrow)
         elif force:
             tmp = Register(target_type)
             self.add(Assign(tmp, src))
