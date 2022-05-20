@@ -2394,7 +2394,7 @@ if bool():
 
 [case testLocalPartialTypesWithGlobalInitializedToNone]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x"
+x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 def f() -> None:
     global x
@@ -2405,7 +2405,7 @@ reveal_type(x) # N: Revealed type is "None"
 
 [case testLocalPartialTypesWithGlobalInitializedToNone2]
 # flags: --local-partial-types
-x = None # E: Need type annotation for "x"
+x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
 def f():
     global x
@@ -2454,7 +2454,7 @@ reveal_type(a)  # N: Revealed type is "builtins.str"
 [case testLocalPartialTypesWithClassAttributeInitializedToNone]
 # flags: --local-partial-types
 class A:
-    x = None # E: Need type annotation for "x"
+    x = None # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
     def f(self) -> None:
         self.x = 1
@@ -2637,7 +2637,7 @@ from typing import List
 def f(x): pass
 
 class A:
-    x = None  # E: Need type annotation for "x"
+    x = None  # E: Need type annotation for "x" (hint: "x: Optional[<type>] = ...")
 
     def f(self, p: List[str]) -> None:
         self.x = f(p)
@@ -2647,7 +2647,7 @@ class A:
 [case testLocalPartialTypesAccessPartialNoneAttribute]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a"
+    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
 
     def f(self, x) -> None:
         C.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
@@ -2655,7 +2655,7 @@ class C:
 [case testLocalPartialTypesAccessPartialNoneAttribute2]
 # flags: --local-partial-types
 class C:
-    a = None  # E: Need type annotation for "a"
+    a = None  # E: Need type annotation for "a" (hint: "a: Optional[<type>] = ...")
 
     def f(self, x) -> None:
         self.a.y  # E: Item "None" of "Optional[Any]" has no attribute "y"
