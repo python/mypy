@@ -7,7 +7,7 @@ from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
-    SelfType, ENUM_REMOVED_PROPS
+    SelfType, ENUM_REMOVED_PROPS,
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -342,7 +342,7 @@ def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> T
         return _analyze_member_access(name, mx.named_type('builtins.object'), mx)
 
 
-def analyze_member_var_access(name: str,  # what here?
+def analyze_member_var_access(name: str,
                               itype: Instance,
                               info: TypeInfo,
                               mx: MemberContext) -> Type:
@@ -470,7 +470,7 @@ def analyze_descriptor_access(descriptor_type: Type,
 
     if isinstance(descriptor_type, UnionType):
         for idx, item in enumerate(descriptor_type.items):
-            if isinstance(item, SelfType):
+            if isinstance(get_proper_type(item), SelfType):
                 descriptor_type.items[idx] = instance_type
         # Map the access over union types
         return make_simplified_union([

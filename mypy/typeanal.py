@@ -17,7 +17,7 @@ from mypy.types import (
     Parameters, TypeQuery, union_items, TypeOfAny, LiteralType, RawExpressionType,
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
     TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType, TypeVarTupleType,
-    callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
+    callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, SELF_TYPE_NAMES,
     LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES, SelfType,
 )
 
@@ -428,11 +428,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("NotRequired[] must have exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             return RequiredType(self.anal_type(t.args[0]), required=False)
-        elif fullname in ('typing_extensions.Self', 'typing.Self'):
+        elif fullname in SELF_TYPE_NAMES:
             from mypy.semanal import SemanticAnalyzer  # circular import
 
             if not isinstance(self.api, SemanticAnalyzer):
-                return self.fail("Self is unbound", t)
+                self.fail("Self is unbound", t)
+                return AnyType(TypeOfAny.from_error)
+            if not isinstance(self.api.type, TypeInfo):
+                self.fail("Self is not enclosed in a class", t)
+                return AnyType(TypeOfAny.from_error)
             bound = self.named_type(self.api.type.fullname)
             return SelfType(bound, fullname, line=t.line, column=t.column)
         elif self.anal_type_guard_arg(t, fullname) is not None:
@@ -1141,7 +1145,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 var_node = self.lookup_qualified(var.name, defn)
                 assert var_node, "Binding for function type variable not found within function"
                 var_expr = var_node.node
-                assert isinstance(var_expr, TypeVarLikeExpr), f"got {var.__class__} {var_expr.__class__}"
+                assert isinstance(var_expr, TypeVarLikeExpr)
                 self.tvar_scope.bind_new(var.name, var_expr)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)

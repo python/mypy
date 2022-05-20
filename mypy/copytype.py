@@ -4,7 +4,7 @@ from mypy.types import (
     ProperType, UnboundType, AnyType, NoneType, UninhabitedType, ErasedType, DeletedType,
     Instance, TypeVarType, ParamSpecType, PartialType, CallableType, TupleType, TypedDictType,
     LiteralType, UnionType, Overloaded, TypeType, TypeAliasType, UnpackType, Parameters,
-    TypeVarTupleType
+    TypeVarTupleType, SelfType
 )
 from mypy.type_visitor import TypeVisitor
 
@@ -74,6 +74,9 @@ class TypeShallowCopier(TypeVisitor[ProperType]):
     def visit_unpack_type(self, t: UnpackType) -> ProperType:
         dup = UnpackType(t.type)
         return self.copy_common(t, dup)
+
+    def visit_self_type(self, t: SelfType) -> ProperType:
+        return self.copy_common(t, SelfType(t.instance, t.fullname, t.line, t.column))
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         return self.copy_common(t, PartialType(t.type, t.var, t.value_type))

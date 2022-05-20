@@ -104,6 +104,12 @@ FINAL_DECORATOR_NAMES: Final = (
     'typing_extensions.final',
 )
 
+# Supported Self type names.
+SELF_TYPE_NAMES: Final = (
+    'typing.Self',
+    'typing_extensions.Self',
+)
+
 # Supported Literal type names.
 LITERAL_TYPE_NAMES: Final = (
     'typing.Literal',
@@ -554,12 +560,11 @@ class SelfType(ProperType):
 
     __slots__ = ('fullname', 'instance')
 
-    def __init__(self, instance: 'Instance', fullname: str, line: int = -1, column: int = -1) -> None:
+    def __init__(self, instance: 'Instance', fullname: str,
+                 line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
         self.fullname = fullname
         self.instance = instance
-        self.line = line
-        self.column = column
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return visitor.visit_self_type(self)
@@ -574,9 +579,8 @@ class SelfType(ProperType):
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'SelfType':
         assert data['.class'] == 'SelfType'
-        instance = deserialize_type(data['instance'])
-        assert isinstance(instance, Instance)
-        return cls(instance, data['fullname'])
+        assert isinstance(data['instance'], str)
+        return SelfType(Instance.deserialize(data['instance']), data['fullname'])
 
 
 class ParamSpecFlavor:
@@ -1486,6 +1490,8 @@ class CallableType(FunctionLike):
                  'definition',  # For error messages.  May be None.
                  'variables',  # Type variables for a generic function
                  'is_ellipsis_args',  # Is this Callable[..., t] (with literal '...')?
+                 'is_classmethod_class',  # Is this callable constructed for the benefit
+                                          # of a classmethod's 'cls' argument?
                  'implicit',  # Was this type implicitly generated instead of explicitly
                               # specified by the user?
                  'special_sig',  # Non-None for signatures that require special handling

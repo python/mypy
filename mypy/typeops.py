@@ -259,7 +259,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
                              variables=variables,
                              ret_type=ret_type,
                              bound_args=[original_type])
-    res.accept(SelfTypeVisitor(original_type))
+    if original_type:
+        res.accept(SelfTypeVisitor(original_type))
     return cast(F, res)
 
 

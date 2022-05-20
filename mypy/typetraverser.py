@@ -56,7 +56,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
         self.traverse_types(t.args)
 
     def visit_self_type(self, t: SelfType) -> None:
-        return self.visit_instance(t.instance)
+        self.visit_instance(t.instance)
 
     def visit_callable_type(self, t: CallableType) -> None:
         # FIX generics
