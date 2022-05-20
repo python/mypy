@@ -1,0 +1,14 @@
+-- PEP 673 --
+[case testSelfTypeMethodReturn]
+from typing import Self
+class C:
+    def m(self) -> Self:
+        return self
+
+reveal_type(C().m())
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
+[out]
+main:6: note: Revealed type is "__main__.C"
+
+
