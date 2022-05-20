@@ -3255,3 +3255,7 @@ reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
+
+[case testSuggestPep604AnnotationForPartialNone]
+# flags: --local-partial-types --python-version 3.10
+x = None # E: Need type annotation for "x" (hint: "x: <type> | None = ...")

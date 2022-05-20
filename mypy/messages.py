@@ -1193,6 +1193,7 @@ class MessageBuilder:
                                 python_version: Optional[Tuple[int, int]] = None) -> None:
         hint = ''
         has_variable_annotations = not python_version or python_version >= (3, 6)
+        pep604_supported = python_version and python_version >= (3, 10)
         # type to recommend the user adds
         recommended_type = None
         # Only gives hint if it's a variable declaration and the partial type is a builtin type
@@ -1200,7 +1201,10 @@ class MessageBuilder:
             type_dec = '<type>'
             if not node.type.type:
                 # partial None
-                recommended_type = f'Optional[{type_dec}]'
+                if pep604_supported:
+                    recommended_type = f'{type_dec} | None'
+                else:
+                    recommended_type = f'Optional[{type_dec}]'
             elif node.type.type.fullname in reverse_builtin_aliases:
                 # partial types other than partial None
                 alias = reverse_builtin_aliases[node.type.type.fullname]
