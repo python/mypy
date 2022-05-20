@@ -293,6 +293,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self._type_maps[1:] = []
         self._type_maps[0].clear()
         self.temp_type_map = None
+        self.expr_checker.reset()
 
         assert self.inferred_attribute_types is None
         assert self.partial_types == []
