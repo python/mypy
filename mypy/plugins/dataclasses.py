@@ -5,7 +5,7 @@ from typing_extensions import Final
 
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
-    Argument, AssignmentStmt, CallExpr,    Context, Expression, JsonDict,
+    Argument, AssignmentStmt, CallExpr,  TypeAlias,  Context, Expression, JsonDict,
     NameExpr, RefExpr, SymbolTableNode, TempNode, TypeInfo, Var, TypeVarExpr,
     PlaceholderNode
 )
@@ -333,6 +333,20 @@ class DataclassTransformer:
 
             node = sym.node
             assert not isinstance(node, PlaceholderNode)
+
+            if isinstance(node, TypeAlias):
+                ctx.api.fail(
+                    (
+                        'Type aliases inside dataclass definitions '
+                        'are not supported at runtime'
+                    ),
+                    node
+                )
+                # Skip processing this node. This doesn't match the runtime behaviour,
+                # but the only alternative would be to modify the SymbolTable,
+                # and it's a little hairy to do that in a plugin.
+                continue
+
             assert isinstance(node, Var)
 
             # x: ClassVar[int] is ignored by dataclasses.
