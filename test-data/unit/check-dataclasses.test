@@ -526,6 +526,34 @@ Application.COUNTER = 1
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testTypeAliasInDataclassDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+from typing_extensions import TypeAlias
+
+@dataclass
+class Foo:
+    x: int
+
+@dataclass
+class One:
+    S: TypeAlias = Foo  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+a = One()
+reveal_type(a.S)  # N: Revealed type is "def (x: builtins.int) -> __main__.Foo"
+a.S()  # E: Missing positional argument "x" in call to "Foo"
+reveal_type(a.S(5))  # N: Revealed type is "__main__.Foo"
+
+@dataclass
+class Two:
+    S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+c = Two()
+x = c.S  # E: Member "S" is not assignable
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassOrdering]
 # flags: --python-version 3.7
 from dataclasses import dataclass
