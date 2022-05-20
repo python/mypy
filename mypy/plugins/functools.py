@@ -20,29 +20,31 @@ _ORDERING_METHODS: Final = {
 }
 
 
-_MethodInfo = NamedTuple('_MethodInfo', [('is_static', bool), ('type', CallableType)])
+class _MethodInfo(NamedTuple):
+    is_static: bool
+    type: CallableType
 
 
 def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
-                                            auto_attribs_default: bool = False) -> None:
+                                            auto_attribs_default: bool = False) -> bool:
     """Add dunder methods to classes decorated with functools.total_ordering."""
     if ctx.api.options.python_version < (3,):
         # This plugin is not supported in Python 2 mode (it's a no-op).
-        return
+        return True
 
     comparison_methods = _analyze_class(ctx)
     if not comparison_methods:
         ctx.api.fail(
             'No ordering operation defined when using "functools.total_ordering": < > <= >=',
             ctx.reason)
-        return
+        return True
 
     # prefer __lt__ to __le__ to __gt__ to __ge__
     root = max(comparison_methods, key=lambda k: (comparison_methods[k] is None, k))
     root_method = comparison_methods[root]
     if not root_method:
         # None of the defined comparison methods can be analysed
-        return
+        return True
 
     other_type = _find_other_type(root_method)
     bool_type = ctx.api.named_type('builtins.bool')
@@ -58,6 +60,8 @@ def functools_total_ordering_maker_callback(ctx: mypy.plugin.ClassDefContext,
         if not comparison_methods.get(additional_op):
             args = [Argument(Var('other', other_type), other_type, None, ARG_POS)]
             add_method_to_class(ctx.api, ctx.cls, additional_op, args, ret_type)
+
+    return True
 
 
 def _find_other_type(method: _MethodInfo) -> Type:

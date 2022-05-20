@@ -58,8 +58,10 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions.
+    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
+    # call builder.accept here.
     stmt.expr.accept(builder.visitor)
+    builder.flush_keep_alives()
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -107,6 +109,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
+        builder.flush_keep_alives()
 
 
 def is_simple_lvalue(expr: Expression) -> bool:
@@ -666,7 +669,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                builder.error('"{}" cannot be deleted'.format(target.attr), line)
+                builder.error(f'"{target.attr}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = ' +
                     '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)

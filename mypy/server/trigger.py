@@ -9,7 +9,7 @@ WILDCARD_TAG: Final = "[wildcard]"
 
 
 def make_trigger(name: str) -> str:
-    return '<%s>' % name
+    return f'<{name}>'
 
 
 def make_wildcard_trigger(module: str) -> str:
@@ -21,4 +21,4 @@ def make_wildcard_trigger(module: str) -> str:
 
     This is used for "from m import *" dependencies.
     """
-    return '<%s%s>' % (module, WILDCARD_TAG)
+    return f'<{module}{WILDCARD_TAG}>'

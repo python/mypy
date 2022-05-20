@@ -1,8 +1,8 @@
 import queue
 import sys
-from collections.abc import Iterable, Mapping, Set as AbstractSet
+from collections.abc import Callable, Iterable, Mapping, Set as AbstractSet
 from threading import Lock, Semaphore, Thread
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Generic, TypeVar
 from weakref import ref
 
 from ._base import Executor, Future
@@ -41,6 +41,7 @@ else:
 
 if sys.version_info >= (3, 7):
     from ._base import BrokenExecutor
+
     class BrokenThreadPool(BrokenExecutor): ...
 
 class ThreadPoolExecutor(Executor):
@@ -67,6 +68,7 @@ class ThreadPoolExecutor(Executor):
         ) -> None: ...
     else:
         def __init__(self, max_workers: int | None = ..., thread_name_prefix: str = ...) -> None: ...
+
     def _adjust_thread_count(self) -> None: ...
     if sys.version_info >= (3, 7):
         def _initializer_failed(self) -> None: ...

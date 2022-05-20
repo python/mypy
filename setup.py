@@ -58,7 +58,7 @@ class CustomPythonBuild(build_py):
         path = os.path.join(self.build_lib, 'mypy')
         self.mkpath(path)
         with open(os.path.join(path, 'version.py'), 'w') as stream:
-            stream.write('__version__ = "{}"\n'.format(version))
+            stream.write(f'__version__ = "{version}"\n')
 
     def run(self):
         self.execute(self.pin_version, ())
@@ -198,7 +198,7 @@ setup(name='mypy',
       install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
                         'typing_extensions>=3.10',
                         'mypy_extensions >= 0.4.3',
-                        'tomli>=1.1.0',
+                        "tomli>=1.1.0; python_version<'3.11'",
                         ],
       # Same here.
       extras_require={
@@ -210,7 +210,7 @@ setup(name='mypy',
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
-          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/index.html',
           'Repository': 'https://github.com/python/mypy',
       },
       )

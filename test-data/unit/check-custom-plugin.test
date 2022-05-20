@@ -345,8 +345,8 @@ class C:
 
 c = C()
 reveal_type(c.x)  # N: Revealed type is "Union[builtins.int, None]"
-reveal_type(c.y)  # N: Revealed type is "builtins.int*"
-reveal_type(c.z)  # N: Revealed type is "Union[builtins.int*, None]"
+reveal_type(c.y)  # N: Revealed type is "builtins.int"
+reveal_type(c.z)  # N: Revealed type is "Union[builtins.int, None]"
 
 [file mod.py]
 from typing import Generic, TypeVar, Type
@@ -558,7 +558,7 @@ reveal_type(foo[3]) # N: Revealed type is "builtins.int"
 reveal_type(foo(4, 5, 6)) # N: Revealed type is "builtins.int"
 foo[4] = 5
 for x in foo:
-    reveal_type(x) # N: Revealed type is "builtins.int*"
+    reveal_type(x) # N: Revealed type is "builtins.int"
 
 [file mypy.ini]
 \[mypy]
@@ -649,7 +649,7 @@ from mod import declarative_base
 
 Base1 = Base2 = declarative_base()
 
-class C1(Base1): ...  
+class C1(Base1): ...
 class C2(Base2): ...
 [file mod.py]
 def declarative_base(): ...
@@ -762,9 +762,9 @@ T = TypeVar("T")
 class Class(Generic[T]):
     def __init__(self, one: T): ...
     def __call__(self, two: T) -> int: ...
-reveal_type(Class("hi")("there"))  # N: Revealed type is "builtins.str*"
+reveal_type(Class("hi")("there"))  # N: Revealed type is "builtins.str"
 instance = Class(3.14)
-reveal_type(instance(2))  # N: Revealed type is "builtins.float*"
+reveal_type(instance(2))  # N: Revealed type is "builtins.float"
 
 [file mypy.ini]
 \[mypy]
@@ -902,3 +902,92 @@ reveal_type(f())  # N: Revealed type is "builtins.str"
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/method_in_decorator.py
+
+[case testClassAttrPluginClassVar]
+# flags: --config-file tmp/mypy.ini
+
+from typing import Type
+
+class Cls:
+    attr = 'test'
+    unchanged = 'test'
+
+reveal_type(Cls().attr)  # N: Revealed type is "builtins.str"
+reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+reveal_type(Cls.unchanged)  # N: Revealed type is "builtins.str"
+x: Type[Cls]
+reveal_type(x.attr)  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginMethod]
+# flags: --config-file tmp/mypy.ini
+
+class Cls:
+    def attr(self) -> None:
+        pass
+
+reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginEnum]
+# flags: --config-file tmp/mypy.ini
+
+import enum
+
+class Cls(enum.Enum):
+    attr = 'test'
+
+reveal_type(Cls.attr)  # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginMetaclassAnyBase]
+# flags: --config-file tmp/mypy.ini
+
+from typing import Any, Type
+class M(type):
+    attr = 'test'
+
+B: Any
+class Cls(B, metaclass=M):
+    pass
+
+reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginMetaclassRegularBase]
+# flags: --config-file tmp/mypy.ini
+
+from typing import Any, Type
+class M(type):
+    attr = 'test'
+
+class B:
+    attr = None
+
+class Cls(B, metaclass=M):
+    pass
+
+reveal_type(Cls.attr) # N: Revealed type is "builtins.int"
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testClassAttrPluginPartialType]
+# flags: --config-file tmp/mypy.ini
+
+class Cls:
+    attr = None
+    def f(self) -> int:
+        return Cls.attr + 1
+
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py

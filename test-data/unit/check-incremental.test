@@ -1980,14 +1980,14 @@ class D:
 reveal_type(D().a)
 [out1]
 tmp/crash.py:8: note: Revealed type is "crash.A@5"
-tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int]"
 main:2: note: Revealed type is "crash.A@5"
-main:3: note: Revealed type is "crash.B@13[builtins.int*]"
+main:3: note: Revealed type is "crash.B@13[builtins.int]"
 [out2]
 tmp/crash.py:8: note: Revealed type is "crash.A@5"
-tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int*]"
+tmp/crash.py:17: note: Revealed type is "crash.B@13[builtins.int]"
 main:2: note: Revealed type is "crash.A@5"
-main:3: note: Revealed type is "crash.B@13[builtins.int*]"
+main:3: note: Revealed type is "crash.B@13[builtins.int]"
 
 [case testGenericMethodRestoreMetaLevel]
 from typing import Dict
@@ -5633,3 +5633,110 @@ main:5: error: Cannot override final attribute "x" (previously declared in base 
 main:3: error: Cannot override writable attribute "x" with a final one
 main:4: error: Cannot extend enum with existing members: "FinalEnum"
 main:5: error: Cannot override final attribute "x" (previously declared in base class "FinalEnum")
+
+[case testSlotsSerialization]
+import a
+[file a.py]
+from b import C
+
+class D(C):
+    pass
+[file b.py]
+class C:
+    __slots__ = ('x',)
+[file a.py.2]
+from b import C
+
+class D(C):
+    __slots__ = ('y',)
+
+    def __init__(self) -> None:
+        self.x = 1
+        self.y = 2
+        self.z = 3
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
+
+[case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
+# flags: --python-version 3.7
+
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b
+b.xyz
+
+[file b.py]
+from typing import NamedTuple, NewType
+from typing_extensions import TypedDict, TypeAlias
+from enum import Enum
+from dataclasses import dataclass
+
+class C:
+    def f(self) -> None:
+        class C:
+            c: int
+        class NT1(NamedTuple):
+            c: int
+        NT2 = NamedTuple("NT2", [("c", int)])
+        class NT3(NT1):
+            pass
+        class TD(TypedDict):
+            c: int
+        TD2 = TypedDict("TD2", {"c": int})
+        class E(Enum):
+            X = 1
+        @dataclass
+        class DC:
+            c: int
+        Alias: TypeAlias = NT1
+        N = NewType("N", NT1)
+
+        c: C = C()
+        nt1: NT1 = NT1(c=1)
+        nt2: NT2 = NT2(c=1)
+        nt3: NT3 = NT3(c=1)
+        td: TD = TD(c=1)
+        td2: TD2 = TD2(c=1)
+        e: E = E.X
+        dc: DC = DC(c=1)
+        al: Alias = Alias(c=1)
+        n: N = N(NT1(c=1))
+
+[builtins fixtures/dict.pyi]
+[out2]
+tmp/a.py:2: error: "object" has no attribute "xyz"
+
+[case testIncrementalInvalidNamedTupleInUnannotatedFunction]
+import a
+
+[file a.py]
+import b
+
+[file a.py.2]
+import b # f
+
+[file b.py]
+from typing import NamedTuple
+
+def toplevel(fields):
+    TupleType = NamedTuple("TupleType", fields)
+    class InheritFromTuple(TupleType):
+        pass
+    NT2 = NamedTuple("bad", [('x', int)])
+    nt2: NT2 = NT2(x=1)
+
+class C:
+    def method(self, fields):
+        TupleType = NamedTuple("TupleType", fields)
+        class InheritFromTuple(TupleType):
+            pass
+        NT2 = NamedTuple("bad", [('x', int)])
+        nt2: NT2 = NT2(x=1)
+
+[builtins fixtures/tuple.pyi]

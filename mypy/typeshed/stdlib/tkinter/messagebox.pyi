@@ -1,5 +1,18 @@
+import sys
 from tkinter.commondialog import Dialog
 from typing import Any, ClassVar
+
+if sys.version_info >= (3, 9):
+    __all__ = [
+        "showinfo",
+        "showwarning",
+        "showerror",
+        "askquestion",
+        "askokcancel",
+        "askyesno",
+        "askyesnocancel",
+        "askretrycancel",
+    ]
 
 ERROR: str
 INFO: str
