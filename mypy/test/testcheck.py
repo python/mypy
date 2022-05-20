@@ -40,6 +40,7 @@ typecheck_files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
+    'check-modules-fast.test',
     'check-typevar-values.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
