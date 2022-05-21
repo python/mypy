@@ -770,3 +770,59 @@ f(string, string)
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-medium.pyi]
+
+[case testShowTypeAliasInErrorMessage]
+from typing import Tuple
+
+Point = Tuple[float, ...]
+
+def dist(q: Point) -> None:
+    pass
+
+dist('abc') # E: Argument 1 to "dist" has incompatible type "str"; expected "Point"
+
+[builtins fixtures/tuple.pyi]
+
+# See https://github.com/python/mypy/issues/2968#issuecomment-1133768276
+# We need to disable the no_args optimization to get this to work
+[case testSimpleAliasesShownInErrorMessages-xfail]
+Alias = int
+
+a: Alias = 'a' # E: Incompatible types in assignment (expression has type "str", variable has type "Alias")
+
+def g(a: Alias) -> None:
+    pass
+
+g('b') # E: Argument 1 to "g" has incompatible type "str"; expected "Alias"
+[case testOverlappingTypeAliasNamesDistinguishedInErrorMessage]
+from other_file import f
+from typing import List
+Alias = List[str]
+
+a: Alias
+f(a) # E: Argument 1 to "f" has incompatible type "__main__.Alias"; expected "other_file.Alias"
+
+[file other_file.py]
+from typing import Union
+Alias = Union[int, str]
+
+def f(x: Alias) -> None:
+    pass
+
+[builtins fixtures/tuple.pyi]
+
+[case testGenericAliasesShownInErrorMessages]
+from typing import TypeVar, List
+
+T = TypeVar('T')
+
+Alias = List[T]
+
+def f(x: Alias[int]) -> None:
+    pass
+
+a: List[str]
+f(a) # E: Argument 1 to "f" has incompatible type "List[str]"; expected "Alias[int]"
+
+b: Alias[str]
+f(b) # E: Argument 1 to "f" has incompatible type "Alias[str]"; expected "Alias[int]"
