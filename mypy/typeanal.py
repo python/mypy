@@ -944,9 +944,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 )
                 if maybe_ret is None:
                     # Callable[?, RET] (where ? is something invalid)
-                    # TODO(PEP612): change error to mention paramspec, once we actually have some
-                    # support for it
-                    self.fail('The first argument to Callable must be a list of types or "..."', t)
+                    self.fail(
+                        'The first argument to Callable must be a '
+                        'list of types, parameter specification, or "..."', t)
                     return AnyType(TypeOfAny.from_error)
                 ret = maybe_ret
         else:
