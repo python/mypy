@@ -453,9 +453,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             if (likely(PyDict_Check(cpy_r_r)))
                 cpy_r_r0 = cpy_r_r;
             else {
-                CPy_TypeError("dict", cpy_r_r);
-                cpy_r_r0 = NULL;
-                CPy_AddTraceback("prog.py", "foobar", 123, CPyStatic_prog___globals);
+                CPy_TypeErrorTraceback("prog.py", "foobar", 123, CPyStatic_prog___globals, "dict", cpy_r_r);
                 goto CPyL8;
             }
             """,

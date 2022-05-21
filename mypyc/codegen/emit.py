@@ -599,6 +599,14 @@ class Emitter:
                                 typ: RType,
                                 raise_exception: bool) -> None:
         if raise_exception:
+            if isinstance(error, TracebackAndGotoHandler):
+                # Merge raising and emitting traceback entry into a single call.
+                self.emit_type_error_traceback(
+                    error.source_path, error.module_name, error.traceback_entry,
+                    typ=typ,
+                    src=src)
+                self.emit_line('goto %s;' % error.label)
+                return
             self.emit_line('CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src))
         if isinstance(error, AssignHandler):
             self.emit_line('%s = NULL;' % dest)
@@ -922,11 +930,39 @@ class Emitter:
                        source_path: str,
                        module_name: str,
                        traceback_entry: Tuple[str, int]) -> None:
+        return self._emit_traceback('CPy_AddTraceback', source_path, module_name, traceback_entry)
+
+    def emit_type_error_traceback(
+            self,
+            source_path: str,
+            module_name: str,
+            traceback_entry: Tuple[str, int],
+            *,
+            typ: RType,
+            src: str) -> None:
+        func = 'CPy_TypeErrorTraceback'
+        type_str = f'"{self.pretty_name(typ)}"'
+        return self._emit_traceback(
+            func, source_path, module_name, traceback_entry, type_str=type_str, src=src)
+
+    def _emit_traceback(self,
+                        func: str,
+                        source_path: str,
+                        module_name: str,
+                        traceback_entry: Tuple[str, int],
+                        type_str: str = '',
+                        src: str = '') -> None:
         globals_static = self.static_name('globals', module_name)
-        self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
+        line = '%s("%s", "%s", %d, %s' % (
+            func,
             source_path.replace("\\", "\\\\"),
             traceback_entry[0],
             traceback_entry[1],
-            globals_static))
+            globals_static)
+        if type_str:
+            assert src
+            line += f', {type_str}, {src}'
+        line += ');'
+        self.emit_line(line)
         if DEBUG_ERRORS:
             self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
