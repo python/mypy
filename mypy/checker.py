@@ -3301,6 +3301,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
         else:
+            orig_lvalue_type = lvalue_type
             lvalue_type = get_proper_type(lvalue_type)
             always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
@@ -3310,8 +3311,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
-            elif lvalue_type:
-                self.check_subtype(rvalue_type, lvalue_type, context, msg,
+            elif orig_lvalue_type:
+                self.check_subtype(rvalue_type, orig_lvalue_type, context, msg,
                                    f'{rvalue_name} has type',
                                    f'{lvalue_name} has type', code=code)
             return rvalue_type
@@ -5243,6 +5244,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             msg_text = msg
         subtype = get_proper_type(subtype)
+        orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg_text,
                                        subtype_label, supertype_label, code=code):
@@ -5253,13 +5255,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         note_msg = ''
         notes: List[str] = []
         if subtype_label is not None or supertype_label is not None:
-            subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
+            subtype_str, supertype_str = format_type_distinctly(subtype, orig_supertype)
             if subtype_label is not None:
                 extra_info.append(subtype_label + ' ' + subtype_str)
             if supertype_label is not None:
                 extra_info.append(supertype_label + ' ' + supertype_str)
             note_msg = make_inferred_type_note(outer_context or context, subtype,
-                                               supertype, supertype_str)
+                                               orig_supertype, supertype_str)
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
@@ -5282,7 +5284,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
-                self.msg.note_call(supertype, call, context, code=code)
+                self.msg.note_call(orig_supertype, call, context, code=code)
         return False
 
     def contains_none(self, t: Type) -> bool:

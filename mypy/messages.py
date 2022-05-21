@@ -405,7 +405,6 @@ class MessageBuilder:
         Return the error code that used for the argument (multiple error
         codes are possible).
         """
-        arg_type = get_proper_type(arg_type)
 
         target = ''
         callee_name = callable_name(callee)
@@ -469,6 +468,7 @@ class MessageBuilder:
         elif callee_name == '<dict>':
             name = callee_name[1:-1]
             n -= 1
+            arg_type = get_proper_type(arg_type)
             key_type, value_type = cast(TupleType, arg_type).items
             expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
 
@@ -534,6 +534,7 @@ class MessageBuilder:
                 arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = f'"{arg_name}"'
+            arg_type = get_proper_type(arg_type)
             if (arg_kind == ARG_STAR2
                     and isinstance(arg_type, TypedDictType)
                     and m <= len(callee.arg_names)

@@ -1539,7 +1539,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                   outer_context: Context) -> None:
         """Check the type of a single argument in a call."""
         caller_type = get_proper_type(caller_type)
-        original_caller_type = get_proper_type(original_caller_type)
         callee_type = get_proper_type(callee_type)
 
         if isinstance(caller_type, DeletedType):
@@ -1562,6 +1561,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   object_type=object_type,
                                                   context=context,
                                                   outer_context=outer_context)
+            original_caller_type = get_proper_type(original_caller_type)
             self.msg.incompatible_argument_note(original_caller_type, callee_type, context,
                                                 code=code)
 
