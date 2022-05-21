@@ -1185,8 +1185,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if analyzed.prefix.arg_types:
                 self.fail('Invalid location for Concatenate', t)
                 self.note(
-                    'You can use Concatenate as the first argument to Callable, e.g., '
-                    "'Callable[{}, int]'".format(analyzed.name),
+                    'You can use Concatenate as the first argument to Callable',
                     t
                 )
             else:
