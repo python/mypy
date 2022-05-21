@@ -947,6 +947,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.fail(
                         'The first argument to Callable must be a '
                         'list of types, parameter specification, or "..."', t)
+                    self.note(
+                        'See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas',  # noqa: E501
+                        t
+                    )
                     return AnyType(TypeOfAny.from_error)
                 ret = maybe_ret
         else:
@@ -1180,6 +1184,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 and analyzed.flavor == ParamSpecFlavor.BARE):
             if analyzed.prefix.arg_types:
                 self.fail('Invalid location for Concatenate', t)
+                self.note(
+                    'You can use Concatenate as the first argument to Callable, e.g., '
+                    "'Callable[{}, int]'".format(analyzed.name),
+                    t
+                )
             else:
                 self.fail(f'Invalid location for ParamSpec "{analyzed.name}"', t)
                 self.note(
