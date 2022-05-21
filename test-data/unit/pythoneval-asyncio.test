@@ -17,8 +17,7 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def greet_every_two_seconds() -> 'Generator[Any, None, None]':
+async def greet_every_two_seconds() -> 'Generator[Any, None, None]':
     n = 0
     while n < 5:
         print('Prev', n)
@@ -48,14 +47,12 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def compute(x: int, y: int) -> 'Generator[Any, None, int]':
+async def compute(x: int, y: int) -> 'Generator[Any, None, int]':
     print("Compute %s + %s ..." % (x, y))
     yield from asyncio.sleep(0.1)
     return x + y   # Here the int is wrapped in Future[int]
 
-@asyncio.coroutine
-def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
+async def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
     result = yield from compute(x, y)  # The type of result will be int (is extracted from Future[int]
     print("%s + %s = %s" % (x, y, result))
 
@@ -71,8 +68,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(0.1)
     future.set_result('Future is done!')
 
@@ -91,8 +87,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result('Callback works!')
 
@@ -116,8 +111,7 @@ import typing
 from typing import Generator, Any
 import asyncio
 from asyncio import Task, Future
-@asyncio.coroutine
-def factorial(name, number) -> 'Generator[Any, None, None]':
+async def factorial(name, number) -> 'Generator[Any, None, None]':
     f = 1
     for i in range(2, number+1):
         print("Task %s: Compute factorial(%s)..." % (name, i))
@@ -150,25 +144,21 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, int]':
+async def h4() -> 'Generator[Any, None, int]':
     x = yield from future
     return x
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, int]':
+async def h3() -> 'Generator[Any, None, int]':
     x = yield from h4()
     print("h3: %s" % x)
     return x
 
-@asyncio.coroutine
-def h2() -> 'Generator[Any, None, int]':
+async def h2() -> 'Generator[Any, None, int]':
     x = yield from h3()
     print("h2: %s" % x)
     return x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     x = yield from h2()
     print("h: %s" % x)
 
@@ -190,22 +180,19 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
+async def h4() -> 'Generator[Any, None, Future[int]]':
     yield from asyncio.sleep(0.1)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[Future[int]]]':
+async def h3() -> 'Generator[Any, None, Future[Future[int]]]':
     x = yield from h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     print("Before")
     x = yield from h3()
     y = yield from x
@@ -238,8 +225,7 @@ class A:
     def __init__(self, x: int) -> None:
         self.x = x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     x = yield from future
     print("h: %s" % x.x)
 
@@ -261,13 +247,11 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def greet() -> 'Generator[Any, None, None]':
+async def greet() -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(0.2)
     print('Hello World')
 
-@asyncio.coroutine
-def test() -> 'Generator[Any, None, None]':
+async def test() -> 'Generator[Any, None, None]':
     yield from greet()
     x = yield from greet()  # Error
 
@@ -284,14 +268,12 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def compute(x: int, y: int) -> 'Generator[Any, None, int]':
+async def compute(x: int, y: int) -> 'Generator[Any, None, int]':
     print("Compute %s + %s ..." % (x, y))
     yield from asyncio.sleep(0.1)
     return str(x + y)   # Error
 
-@asyncio.coroutine
-def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
+async def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
     result = yield from compute(x, y)
     print("%s + %s = %s" % (x, y, result))
 
@@ -307,8 +289,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result(42)  # Error
 
@@ -327,8 +308,7 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result(42)
 
@@ -346,8 +326,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result('42')  #Try to set an str as result to a Future[int]
 
@@ -367,8 +346,7 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
+async def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
     yield from asyncio.sleep(1)
     future.set_result('Future is done!')
 
@@ -394,22 +372,19 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
+async def h4() -> 'Generator[Any, None, Future[int]]':
     yield from asyncio.sleep(1)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[Future[Future[int]]]]':
+async def h3() -> 'Generator[Any, None, Future[Future[Future[int]]]]':
     x = yield from h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     print("Before")
     x = yield from h3()
     y = yield from x
@@ -430,22 +405,19 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
+async def h4() -> 'Generator[Any, None, Future[int]]':
     yield from asyncio.sleep(1)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[int]]':
+async def h3() -> 'Generator[Any, None, Future[int]]':
     x = yield from h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     print("Before")
     x = yield from h3()
     y = yield from x
@@ -472,8 +444,7 @@ class B:
     def __init__(self, x: int) -> None:
         self.x = x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> 'Generator[Any, None, None]':
     x = yield from future # type: B # Error
     print("h: %s" % x.x)
 
@@ -496,8 +467,7 @@ def test() -> None:
     reveal_type(bad)
     bad(0)
 
-@asyncio.coroutine
-def bad(arg: P) -> T:
+async def bad(arg: P) -> T:
     pass
 [out]
 _program.py:8: note: Revealed type is "def [T] (arg: P?) -> T`-1"
