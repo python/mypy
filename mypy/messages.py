@@ -26,7 +26,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    ParamSpecType, Parameters, get_proper_types
+    ParamSpecType, Parameters, get_proper_types, TypeAliasType
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -1696,7 +1696,11 @@ def format_type_inner(typ: Type,
         else:
             return typ.value_repr()
 
-    # TODO: show type alias names in errors.
+    if isinstance(typ, TypeAliasType):
+        # typ.alias should only ever be None during creation
+        assert typ.alias is not None
+        return typ.alias.name
+    # get_proper_type doesn't do anything here but we need it to make mypy happy
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):
