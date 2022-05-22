@@ -79,7 +79,7 @@ def is_borrow_friendly_expr(self: IRBuilder, expr: Expression) -> bool:
     Borrowing means keeping a reference without incrementing the reference count.
     """
     if isinstance(expr, (IntExpr, FloatExpr, StrExpr, BytesExpr)):
-        # Literals are immportal and can always be borrowed
+        # Literals are immortal and can always be borrowed
         return True
     if (isinstance(expr, (UnaryExpr, OpExpr, NameExpr, MemberExpr)) and
             constant_fold_expr(self, expr) is not None):
