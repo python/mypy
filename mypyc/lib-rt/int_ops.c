@@ -517,10 +517,12 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
 int64_t CPyLong_AsInt64(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
-        int size = lobj->ob_base.ob_size;
-        if (size == 1) {
+        Py_ssize_t size = Py_SIZE(lobj);
+        if (likely(size == 1)) {
             // Fast path
             return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
         }
     }
     // Slow path
@@ -574,10 +576,12 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
 int32_t CPyLong_AsInt32(PyObject *o) {
     if (likely(PyLong_Check(o))) {
         PyLongObject *lobj = (PyLongObject *)o;
-        int size = lobj->ob_base.ob_size;
-        if (size == 1) {
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
             // Fast path
             return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
         }
     }
     // Slow path
