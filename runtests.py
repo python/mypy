@@ -58,11 +58,15 @@ cmds = {
     'pytest-slow': ['pytest', '-q', '-k', ' or '.join(
         [SAMPLES,
          TYPESHED,
-         PEP561,
          DAEMON,
          MYPYC_EXTERNAL,
          MYPYC_COMMAND_LINE,
          ERROR_STREAM])],
+
+    # Test cases that might take minutes to run
+    'pytest-slower': ['pytest', '-q', '-k', ' or '.join(
+        [PEP561])],
+
     # Test cases to run in typeshed CI
     'typeshed-ci': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
                                                        EVALUATION,

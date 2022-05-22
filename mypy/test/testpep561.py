@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+import filelock
 import os
 import pytest
 import re
@@ -9,7 +10,7 @@ import tempfile
 from typing import Tuple, List, Generator
 
 import mypy.api
-from mypy.test.config import package_path
+from mypy.test.config import package_path, pip_lock, pip_timeout
 from mypy.util import try_find_python2_interpreter
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
@@ -77,11 +78,15 @@ def install_package(pkg: str,
         env = {'PIP_BUILD': dir}
         # Inherit environment for Windows
         env.update(os.environ)
-        proc = subprocess.run(install_cmd,
-                              cwd=working_dir,
-                              stdout=PIPE,
-                              stderr=PIPE,
-                              env=env)
+        try:
+            with filelock.FileLock(pip_lock, timeout=pip_timeout):
+                proc = subprocess.run(install_cmd,
+                                      cwd=working_dir,
+                                      stdout=PIPE,
+                                      stderr=PIPE,
+                                      env=env)
+        except filelock.Timeout as err:
+            raise Exception("Failed to acquire {}".format(pip_lock)) from err
     if proc.returncode != 0:
         raise Exception(proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8'))
 
