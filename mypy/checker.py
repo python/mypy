@@ -30,7 +30,10 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
+from mypy.typeanal import (
+    has_any_from_unimported_type, check_for_explicit_any, make_optional_type,
+    maybe_expand_unimported_type_becomes_any,
+)
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
@@ -892,11 +895,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
                             if has_any_from_unimported_type(ret_type):
-                                self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
+                                maybe_expand_unimported_type_becomes_any(
+                                    "Return type", ret_type, fdef, self.msg
+                                )
                             for idx, arg_type in enumerate(fdef.type.arg_types):
                                 if has_any_from_unimported_type(arg_type):
                                     prefix = f'Argument {idx + 1} to "{fdef.name}"'
-                                    self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
+                                    maybe_expand_unimported_type_becomes_any(
+                                        prefix, arg_type, fdef, self.msg
+                                    )
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
 
@@ -2227,10 +2234,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
                 # give a generic error message.
-                self.msg.unimported_type_becomes_any("A type on this line",
-                                                     AnyType(TypeOfAny.special_form), s)
+                maybe_expand_unimported_type_becomes_any("A type on this line",
+                                                     AnyType(TypeOfAny.special_form), s, self.msg)
             else:
-                self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
+                maybe_expand_unimported_type_becomes_any("Type of variable", s.type, s, self.msg)
         check_for_explicit_any(s.type, self.options, self.is_typeshed_stub, self.msg, context=s)
 
         if len(s.lvalues) > 1:

@@ -1187,6 +1187,10 @@ class MessageBuilder:
                   code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
+        """Print an error about an unfollowed import turning a type into Any
+
+        Using typeanal.maybe_expand_unimported_type_becomes_any is preferred because
+        it will expand type aliases to make errors clearer."""
         self.fail(f"{prefix} becomes {format_type(typ)} due to an unfollowed import",
                   ctx, code=codes.NO_ANY_UNIMPORTED)
 

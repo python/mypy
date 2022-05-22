@@ -106,7 +106,8 @@ from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
     TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any, type_constructors, fix_instance_types
+    check_for_explicit_any, type_constructors, fix_instance_types,
+    maybe_expand_unimported_type_becomes_any,
 )
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
@@ -1593,7 +1594,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     prefix = f"Base type {base_expr.name}"
                 else:
                     prefix = "Base type"
-                self.msg.unimported_type_becomes_any(prefix, base, base_expr)
+                maybe_expand_unimported_type_becomes_any(prefix, base, base_expr, self.msg)
             check_for_explicit_any(base, self.options, self.is_typeshed_stub_file, self.msg,
                                    context=base_expr)
 
@@ -3133,11 +3134,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             for idx, constraint in enumerate(values, start=1):
                 if has_any_from_unimported_type(constraint):
                     prefix = f"Constraint {idx}"
-                    self.msg.unimported_type_becomes_any(prefix, constraint, s)
+                    maybe_expand_unimported_type_becomes_any(prefix, constraint, s, self.msg)
 
             if has_any_from_unimported_type(upper_bound):
                 prefix = "Upper bound of type variable"
-                self.msg.unimported_type_becomes_any(prefix, upper_bound, s)
+                maybe_expand_unimported_type_becomes_any(prefix, upper_bound, s, self.msg)
 
         for t in values + [upper_bound]:
             check_for_explicit_any(t, self.options, self.is_typeshed_stub_file, self.msg,

@@ -11,7 +11,7 @@ from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
 from mypy.errors import report_internal_error, ErrorWatcher
 from mypy.typeanal import (
     has_any_from_unimported_type, check_for_explicit_any, set_any_tvars, expand_type_alias,
-    make_optional_type,
+    make_optional_type, maybe_expand_unimported_type_becomes_any,
 )
 from mypy.semanal_enum import ENUM_BASES
 from mypy.types import (
@@ -3110,7 +3110,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 and is_same_type(source_type, target_type)):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
-            self.msg.unimported_type_becomes_any("Target type of cast", target_type, expr)
+            maybe_expand_unimported_type_becomes_any(
+                "Target type of cast", target_type, expr, self.msg
+            )
         check_for_explicit_any(target_type, self.chk.options, self.chk.is_typeshed_stub, self.msg,
                                context=expr)
         return target_type
@@ -4167,7 +4169,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if tuple_type:
             if (self.chk.options.disallow_any_unimported and
                     has_any_from_unimported_type(tuple_type)):
-                self.msg.unimported_type_becomes_any("NamedTuple type", tuple_type, e)
+                maybe_expand_unimported_type_becomes_any(
+                    "NamedTuple type", tuple_type, e, self.msg
+                )
             check_for_explicit_any(tuple_type, self.chk.options, self.chk.is_typeshed_stub,
                                    self.msg, context=e)
         return AnyType(TypeOfAny.special_form)

@@ -15,7 +15,9 @@ from mypy.nodes import (
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.options import Options
-from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
+from mypy.typeanal import (
+    check_for_explicit_any, has_any_from_unimported_type, maybe_expand_unimported_type_becomes_any,
+)
 from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
@@ -308,7 +310,9 @@ class TypedDictAnalyzer:
         if self.options.disallow_any_unimported:
             for t in types:
                 if has_any_from_unimported_type(t):
-                    self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
+                    maybe_expand_unimported_type_becomes_any(
+                        "Type of a TypedDict key", t, dictexpr, self.msg
+                    )
         assert total is not None
         return args[0].value, items, types, total, ok
 
