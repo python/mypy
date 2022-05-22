@@ -4,7 +4,7 @@
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
 --
--- This test file check Asyncio and await interaction
+-- This test file checks Asyncio and await interaction
 
 [case testImportAsyncio]
 import asyncio
