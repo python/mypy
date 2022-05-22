@@ -43,6 +43,7 @@ class _SpecialForm:
 
 Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
+Protocol: _SpecialForm = ...
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -1018,6 +1019,27 @@ class StubtestUnit(unittest.TestCase):
             opt3 = 0
             """,
             error="opt3",
+        )
+
+    @collect_cases
+    def test_protocol(self) -> Iterator[Case]:
+        if sys.version_info < (3, 7):
+            return
+        yield Case(
+            stub="""
+            from typing_extensions import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            runtime="""
+            from typing_extensions import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            # TODO: this should not be an error, #12820
+            error="X.__init__"
         )
 
 
