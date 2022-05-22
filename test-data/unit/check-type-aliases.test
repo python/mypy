@@ -826,3 +826,15 @@ f(a) # E: Argument 1 to "f" has incompatible type "List[str]"; expected "Alias[i
 
 b: Alias[str]
 f(b) # E: Argument 1 to "f" has incompatible type "Alias[str]"; expected "Alias[int]"
+
+[case testGenericAliasWithArgumentConvertedToAny]
+# flags: --ignore-missing-imports --disallow-any-unimported
+from missing import Unchecked
+from typing import List, TypeVar
+
+T = TypeVar('T')
+
+X = List[T]
+
+def f(x: X[Unchecked]) -> None:  # E: Argument 1 to "f" becomes "X[Any]" due to an unfollowed import
+    pass
