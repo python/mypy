@@ -269,7 +269,7 @@ accepts_str_1(b_hint)
 accepts_str_1(c_hint)   # E: Argument 1 to "accepts_str_1" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
 accepts_str_1(a_alias)
 accepts_str_1(b_alias)
-accepts_str_1(c_alias)  # E: Argument 1 to "accepts_str_1" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_1(c_alias)  # E: Argument 1 to "accepts_str_1" has incompatible type "CAlias"; expected "Literal['foo']"
 
 accepts_str_2(a_ann)
 accepts_str_2(b_ann)
@@ -279,7 +279,7 @@ accepts_str_2(b_hint)
 accepts_str_2(c_hint)   # E: Argument 1 to "accepts_str_2" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
 accepts_str_2(a_alias)
 accepts_str_2(b_alias)
-accepts_str_2(c_alias)  # E: Argument 1 to "accepts_str_2" has incompatible type "Literal[b'foo']"; expected "Literal['foo']"
+accepts_str_2(c_alias)  # E: Argument 1 to "accepts_str_2" has incompatible type "CAlias"; expected "Literal['foo']"
 
 accepts_bytes(a_ann)    # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
 accepts_bytes(b_ann)    # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
@@ -287,8 +287,8 @@ accepts_bytes(c_ann)
 accepts_bytes(a_hint)   # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
 accepts_bytes(b_hint)   # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
 accepts_bytes(c_hint)
-accepts_bytes(a_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
-accepts_bytes(b_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "Literal['foo']"; expected "Literal[b'foo']"
+accepts_bytes(a_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "AAlias"; expected "Literal[b'foo']"
+accepts_bytes(b_alias)  # E: Argument 1 to "accepts_bytes" has incompatible type "BAlias"; expected "Literal[b'foo']"
 accepts_bytes(c_alias)
 [builtins fixtures/tuple.pyi]
 [out]
@@ -329,20 +329,20 @@ accepts_unicode(a_hint)
 accepts_unicode(b_hint)   # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
 accepts_unicode(c_hint)   # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
 accepts_unicode(a_alias)
-accepts_unicode(b_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
-accepts_unicode(c_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode(b_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "BAlias"; expected "Literal[u'foo']"
+accepts_unicode(c_alias)  # E: Argument 1 to "accepts_unicode" has incompatible type "CAlias"; expected "Literal[u'foo']"
 
 accepts_bytes_1(a_hint)   # E: Argument 1 to "accepts_bytes_1" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
 accepts_bytes_1(b_hint)
 accepts_bytes_1(c_hint)
-accepts_bytes_1(a_alias)  # E: Argument 1 to "accepts_bytes_1" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_1(a_alias)  # E: Argument 1 to "accepts_bytes_1" has incompatible type "AAlias"; expected "Literal['foo']"
 accepts_bytes_1(b_alias)
 accepts_bytes_1(c_alias)
 
 accepts_bytes_2(a_hint)   # E: Argument 1 to "accepts_bytes_2" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
 accepts_bytes_2(b_hint)
 accepts_bytes_2(c_hint)
-accepts_bytes_2(a_alias)  # E: Argument 1 to "accepts_bytes_2" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes_2(a_alias)  # E: Argument 1 to "accepts_bytes_2" has incompatible type "AAlias"; expected "Literal['foo']"
 accepts_bytes_2(b_alias)
 accepts_bytes_2(c_alias)
 [builtins fixtures/primitives.pyi]
@@ -386,20 +386,20 @@ accepts_unicode_1(b_hint)
 accepts_unicode_1(c_hint)   # E: Argument 1 to "accepts_unicode_1" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
 accepts_unicode_1(a_alias)
 accepts_unicode_1(b_alias)
-accepts_unicode_1(c_alias)  # E: Argument 1 to "accepts_unicode_1" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode_1(c_alias)  # E: Argument 1 to "accepts_unicode_1" has incompatible type "CAlias"; expected "Literal[u'foo']"
 
 accepts_unicode_2(a_hint)
 accepts_unicode_2(b_hint)
 accepts_unicode_2(c_hint)   # E: Argument 1 to "accepts_unicode_2" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
 accepts_unicode_2(a_alias)
 accepts_unicode_2(b_alias)
-accepts_unicode_2(c_alias)  # E: Argument 1 to "accepts_unicode_2" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+accepts_unicode_2(c_alias)  # E: Argument 1 to "accepts_unicode_2" has incompatible type "CAlias"; expected "Literal[u'foo']"
 
 accepts_bytes(a_hint)       # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
 accepts_bytes(b_hint)       # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
 accepts_bytes(c_hint)
-accepts_bytes(a_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
-accepts_bytes(b_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+accepts_bytes(a_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "AAlias"; expected "Literal['foo']"
+accepts_bytes(b_alias)      # E: Argument 1 to "accepts_bytes" has incompatible type "BAlias"; expected "Literal['foo']"
 accepts_bytes(c_alias)
 [builtins fixtures/primitives.pyi]
 [out]
@@ -579,11 +579,11 @@ from_b = "foo"        # type: b.Alias
 
 u.func(u.var)
 u.func(from_u)
-u.func(b.var)         # E: Argument 1 to "func" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
-u.func(from_b)        # E: Argument 1 to "func" has incompatible type "Literal['foo']"; expected "Literal[u'foo']"
+u.func(b.var)         # E: Argument 1 to "func" has incompatible type "Alias"; expected "Literal[u'foo']"
+u.func(from_b)        # E: Argument 1 to "func" has incompatible type "Alias"; expected "Literal[u'foo']"
 
-b.func(u.var)         # E: Argument 1 to "func" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
-b.func(from_u)        # E: Argument 1 to "func" has incompatible type "Literal[u'foo']"; expected "Literal['foo']"
+b.func(u.var)         # E: Argument 1 to "func" has incompatible type "Alias"; expected "Literal['foo']"
+b.func(from_u)        # E: Argument 1 to "func" has incompatible type "Alias"; expected "Literal['foo']"
 b.func(b.var)
 b.func(from_b)
 
@@ -1293,7 +1293,7 @@ def func(x: Foo[15]) -> None: pass
 a: Bar1
 b: Bar2
 func(a)
-func(b)  # E: Argument 1 to "func" has incompatible type "Literal[14]"; expected "Literal[15]"
+func(b)  # E: Argument 1 to "func" has incompatible type "Bar2"; expected "Literal[15]"
 func(c)
 
 [file other_module.py]

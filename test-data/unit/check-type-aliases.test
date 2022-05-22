@@ -12,7 +12,7 @@ U = Union[int, str]
 def f(x: U) -> None: pass
 f(1)
 f('')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "U"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -21,7 +21,7 @@ from typing import Tuple
 T = Tuple[int, str]
 def f(x: T) -> None: pass
 f((1, 'x'))
-f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "Tuple[int, str]"
+f(1) # E: Argument 1 to "f" has incompatible type "int"; expected "T"
 [targets __main__, __main__.f]
 [builtins fixtures/tuple.pyi]
 
@@ -57,14 +57,14 @@ Never = NoReturn
 a: Never  # Used to be an error here
 
 def f(a: Never): ...
-f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "NoReturn"
+f(5)  # E: Argument 1 to "f" has incompatible type "int"; expected "Never"
 [case testImportUnionAlias]
 import typing
 from _m import U
 def f(x: U) -> None: pass
 f(1)
 f('x')
-f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "Union[int, str]"
+f(()) # E: Argument 1 to "f" has incompatible type "Tuple[]"; expected "U"
 [file _m.py]
 from typing import Union
 U = Union[int, str]
@@ -131,18 +131,18 @@ class X(Generic[T]):
     a: X[T]
     b: A = a
     c: A[T] = a
-    d: A[int] = a # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+    d: A[int] = a # E: Incompatible types in assignment (expression has type "X[T]", variable has type "A[int]")
 
     def g(self) -> None:
         a: X[T]
         b: X.A = a
         c: X.A[T] = a
-        d: X.A[int] = a  # E: Incompatible types in assignment (expression has type "X[T]", variable has type "X[int]")
+        d: X.A[int] = a  # E: Incompatible types in assignment (expression has type "X[T]", variable has type "A[int]")
 
 def g(arg: X[int]) -> None:
     p: X[int] = arg.f()
     q: X.A = arg.f()
-    r: X.A[str] = arg.f() # E: Incompatible types in assignment (expression has type "X[int]", variable has type "X[str]")
+    r: X.A[str] = arg.f() # E: Incompatible types in assignment (expression has type "X[int]", variable has type "A[str]")
 [out]
 
 [case testProhibitBoundTypeVariableReuseForAliases]

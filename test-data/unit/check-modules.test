@@ -518,7 +518,7 @@ Both = Union[int, str]
 def foo(x: int, y: int = ...) -> int: ...
 @overload
 def foo(x: str, y: str = ...) -> str: ...
-def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "Union[int, str]")
+def foo(x: Both, y: Both = ...) -> Both:  # E: Incompatible default for argument "y" (default has type "ellipsis", argument has type "Both")
     return x
 
 @overload
