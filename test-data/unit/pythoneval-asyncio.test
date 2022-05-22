@@ -180,12 +180,12 @@ from typing import Generator, Any
 import asyncio
 from asyncio import Future
 
-async def h4() -> Future[int]:
+async def h4() -> "Future[int]":
     await asyncio.sleep(0.01)
     f = asyncio.Future() #type: Future[int]
     return f
 
-async def h3() -> Future[Future[int]]:
+async def h3() -> "Future[Future[int]]":
     x = await h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
