@@ -242,7 +242,8 @@ Outside 42
 
 -- Errors
 
-[case testErrorAssigningCoroutineThatDontReturn]
+[case testErrorAssigningCoroutineThatDontReturn-xfail]
+# https://github.com/python/mypy/issues/12837
 from typing import Generator, Any
 import asyncio
 from asyncio import Future
