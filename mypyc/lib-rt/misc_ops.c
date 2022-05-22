@@ -45,7 +45,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
 {
     _Py_IDENTIFIER(close);
     _Py_IDENTIFIER(throw);
-    PyObject *exc_type = CPy_ExcState()->exc_type;
+    PyObject *exc_type = (PyObject *)Py_TYPE(CPy_ExcState()->exc_value);
     PyObject *type, *value, *traceback;
     PyObject *_m;
     PyObject *res;

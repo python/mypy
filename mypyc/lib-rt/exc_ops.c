@@ -75,7 +75,7 @@ void CPy_RestoreExcInfo(tuple_T3OOO info) {
 }
 
 bool CPy_ExceptionMatches(PyObject *type) {
-    return PyErr_GivenExceptionMatches(CPy_ExcState()->exc_type, type);
+    return PyErr_GivenExceptionMatches((PyObject *)Py_TYPE(CPy_ExcState()->exc_value), type);
 }
 
 PyObject *CPy_GetExcValue(void) {
@@ -188,6 +188,13 @@ void CPy_TypeError(const char *expected, PyObject *value) {
                      expected);
     }
 }
+
+// The PyFrameObject type definition (struct _frame) has been moved
+// to the internal C API: to the pycore_frame.h header file.
+// https://github.com/python/cpython/pull/31530
+#if PY_VERSION_HEX >= 0x030b00a6
+#include "internal/pycore_frame.h"
+#endif
 
 // This function is basically exactly the same with _PyTraceback_Add
 // which is available in all the versions we support.
