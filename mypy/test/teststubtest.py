@@ -1023,23 +1023,24 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_protocol(self) -> Iterator[Case]:
-        if sys.version_info >= (3, 7):
-            yield Case(
-                stub="""
-                from typing_extensions import Protocol
+        if sys.version_info < (3, 7):
+            return
+        yield Case(
+            stub="""
+            from typing_extensions import Protocol
 
-                class X(Protocol):
-                    def foo(self, x: int, y: bytes = ...) -> str: ...
-                """,
-                runtime="""
-                from typing_extensions import Protocol
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            runtime="""
+            from typing_extensions import Protocol
 
-                class X(Protocol):
-                    def foo(self, x: int, y: bytes = ...) -> str: ...
-                """,
-                # TODO: this should not be an error, #12820
-                error="X.__init__"
-            )
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            # TODO: this should not be an error, #12820
+            error="X.__init__"
+        )
 
 
 def remove_color_code(s: str) -> str:
