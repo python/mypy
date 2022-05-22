@@ -43,7 +43,7 @@ Prev 4
 After 4
 
 [case testCoroutineCallingOtherCoroutine]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -64,7 +64,7 @@ Compute 1 + 2 ...
 1 + 2 = 3
 
 [case testCoroutineChangingFuture]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -83,7 +83,7 @@ Future is done!
 
 [case testFunctionAssignedAsCallback]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
@@ -108,7 +108,7 @@ Callback works!
 
 [case testMultipleTasks]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Task, Future
 async def factorial(name, number) -> None:
@@ -140,7 +140,7 @@ Task C: factorial(4) = 24
 
 [case testConcatenatedCoroutines]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -176,7 +176,7 @@ Outside 42
 
 [case testConcatenatedCoroutinesReturningFutures]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -217,7 +217,7 @@ Future<result=Future<result=42>>
 
 [case testCoroutineWithOwnClass]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -244,7 +244,7 @@ Outside 42
 
 [case testErrorAssigningCoroutineThatDontReturn-xfail]
 # https://github.com/python/mypy/issues/12837
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -286,7 +286,7 @@ loop.close()
 _program.py:8: error: Incompatible return value type (got "str", expected "int")
 
 [case testErrorSetFutureDifferentInternalType]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -305,7 +305,7 @@ _program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible ty
 
 
 [case testErrorUsingDifferentFutureType]
-from typing import Any, Generator
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -323,7 +323,7 @@ loop.close()
 _program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
 [case testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -343,7 +343,7 @@ _program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Fut
 
 [case testErrorSettingCallbackWithDifferentFutureType]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
@@ -433,7 +433,7 @@ _program.py:16: error: Incompatible return value type (got "Future[Future[int]]"
 
 [case testErrorAssignmentDifferentType]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
