@@ -43,6 +43,7 @@ class _SpecialForm:
 
 Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
+Protocol: _SpecialForm = ...
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -1019,6 +1020,26 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="opt3",
         )
+
+    @collect_cases
+    def test_protocol(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from typing import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            runtime="""
+            from typing import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            # TODO: this should not be an error, #12820
+            error="X.__init__"
+        )
+
 
 
 def remove_color_code(s: str) -> str:

@@ -419,6 +419,8 @@ def _verify_arg_default_value(
                 and stub_type is not None
                 # Avoid false positives for marker objects
                 and type(runtime_arg.default) != object
+                # And ellipsis
+                and runtime_arg.default is not ...
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
