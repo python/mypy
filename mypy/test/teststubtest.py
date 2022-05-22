@@ -1025,13 +1025,13 @@ class StubtestUnit(unittest.TestCase):
     def test_protocol(self) -> Iterator[Case]:
         yield Case(
             stub="""
-            from typing import Protocol
+            from typing_extensions import Protocol
 
             class X(Protocol):
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
             runtime="""
-            from typing import Protocol
+            from typing_extensions import Protocol
 
             class X(Protocol):
                 def foo(self, x: int, y: bytes = ...) -> str: ...
