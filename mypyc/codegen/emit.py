@@ -2,6 +2,8 @@
 
 from mypy.backports import OrderedDict
 from typing import List, Set, Dict, Optional, Callable, Union, Tuple
+from typing_extensions import Final
+
 import sys
 
 from mypyc.common import (
@@ -22,6 +24,10 @@ from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
 from mypyc.codegen.literals import Literals
+
+# Whether to insert debug asserts for all error handling, to quickly
+# catch errors propagating without exceptions set.
+DEBUG_ERRORS: Final = False
 
 
 class HeaderDeclaration:
@@ -102,6 +108,20 @@ class GotoHandler(ErrorHandler):
 
     def __init__(self, label: str) -> None:
         self.label = label
+
+
+class TracebackAndGotoHandler(ErrorHandler):
+    """Add traceback item and goto label on error."""
+
+    def __init__(self,
+                 label: str,
+                 source_path: str,
+                 module_name: str,
+                 traceback_entry: Tuple[str, int]) -> None:
+        self.label = label
+        self.source_path = source_path
+        self.module_name = module_name
+        self.traceback_entry = traceback_entry
 
 
 class ReturnHandler(ErrorHandler):
@@ -439,18 +459,6 @@ class Emitter:
             likely: If the cast is likely to succeed (can be False for unions)
         """
         error = error or AssignHandler()
-        if isinstance(error, AssignHandler):
-            handle_error = '%s = NULL;' % dest
-        elif isinstance(error, GotoHandler):
-            handle_error = 'goto %s;' % error.label
-        else:
-            assert isinstance(error, ReturnHandler)
-            handle_error = 'return %s;' % error.value
-        if raise_exception:
-            raise_exc = f'CPy_TypeError("{self.pretty_name(typ)}", {src}); '
-            err = raise_exc + handle_error
-        else:
-            err = handle_error
 
         # Special case casting *from* optional
         if src_type and is_optional_type(src_type) and not is_object_rprimitive(typ):
@@ -465,9 +473,9 @@ class Emitter:
                 self.emit_arg_check(src, dest, typ, check.format(src), optional)
                 self.emit_lines(
                     f'    {dest} = {src};',
-                    'else {',
-                    err,
-                    '}')
+                    'else {')
+                self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+                self.emit_line('}')
                 return
 
         # TODO: Verify refcount handling.
@@ -500,9 +508,9 @@ class Emitter:
             self.emit_arg_check(src, dest, typ, check.format(prefix, src), optional)
             self.emit_lines(
                 f'    {dest} = {src};',
-                'else {',
-                err,
-                '}')
+                'else {')
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line('}')
         elif is_bytes_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f'PyObject *{dest};')
@@ -512,9 +520,9 @@ class Emitter:
             self.emit_arg_check(src, dest, typ, check.format(src, src), optional)
             self.emit_lines(
                 f'    {dest} = {src};',
-                'else {',
-                err,
-                '}')
+                'else {')
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line('}')
         elif is_tuple_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f'{self.ctype(typ)} {dest};')
@@ -525,9 +533,9 @@ class Emitter:
                                 check.format(src), optional)
             self.emit_lines(
                 f'    {dest} = {src};',
-                'else {',
-                err,
-                '}')
+                'else {')
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line('}')
         elif isinstance(typ, RInstance):
             if declare_dest:
                 self.emit_line(f'PyObject *{dest};')
@@ -551,10 +559,10 @@ class Emitter:
                 check = f'(likely{check})'
             self.emit_arg_check(src, dest, typ, check, optional)
             self.emit_lines(
-                f'    {dest} = {src};',
-                'else {',
-                err,
-                '}')
+                f'    {dest} = {src};'.format(dest, src),
+                'else {')
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line('}')
         elif is_none_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f'PyObject *{dest};')
@@ -565,9 +573,9 @@ class Emitter:
                                 check.format(src), optional)
             self.emit_lines(
                 f'    {dest} = {src};',
-                'else {',
-                err,
-                '}')
+                'else {')
+            self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
+            self.emit_line('}')
         elif is_object_rprimitive(typ):
             if declare_dest:
                 self.emit_line(f'PyObject *{dest};')
@@ -576,21 +584,51 @@ class Emitter:
             if optional:
                 self.emit_line('}')
         elif isinstance(typ, RUnion):
-            self.emit_union_cast(src, dest, typ, declare_dest, err, optional, src_type)
+            self.emit_union_cast(src, dest, typ, declare_dest, error, optional, src_type,
+                                 raise_exception)
         elif isinstance(typ, RTuple):
             assert not optional
-            self.emit_tuple_cast(src, dest, typ, declare_dest, err, src_type)
+            self.emit_tuple_cast(src, dest, typ, declare_dest, error, src_type)
         else:
             assert False, 'Cast not implemented: %s' % typ
+
+    def emit_cast_error_handler(self,
+                                error: ErrorHandler,
+                                src: str,
+                                dest: str,
+                                typ: RType,
+                                raise_exception: bool) -> None:
+        if raise_exception:
+            if isinstance(error, TracebackAndGotoHandler):
+                # Merge raising and emitting traceback entry into a single call.
+                self.emit_type_error_traceback(
+                    error.source_path, error.module_name, error.traceback_entry,
+                    typ=typ,
+                    src=src)
+                self.emit_line('goto %s;' % error.label)
+                return
+            self.emit_line('CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src))
+        if isinstance(error, AssignHandler):
+            self.emit_line('%s = NULL;' % dest)
+        elif isinstance(error, GotoHandler):
+            self.emit_line('goto %s;' % error.label)
+        elif isinstance(error, TracebackAndGotoHandler):
+            self.emit_line('%s = NULL;' % dest)
+            self.emit_traceback(error.source_path, error.module_name, error.traceback_entry)
+            self.emit_line('goto %s;' % error.label)
+        else:
+            assert isinstance(error, ReturnHandler)
+            self.emit_line('return %s;' % error.value)
 
     def emit_union_cast(self,
                         src: str,
                         dest: str,
                         typ: RUnion,
                         declare_dest: bool,
-                        err: str,
+                        error: ErrorHandler,
                         optional: bool,
-                        src_type: Optional[RType]) -> None:
+                        src_type: Optional[RType],
+                        raise_exception: bool) -> None:
         """Emit cast to a union type.
 
         The arguments are similar to emit_cast.
@@ -613,11 +651,11 @@ class Emitter:
                            likely=False)
             self.emit_line(f'if ({dest} != NULL) goto {good_label};')
         # Handle cast failure.
-        self.emit_line(err)
+        self.emit_cast_error_handler(error, src, dest, typ, raise_exception)
         self.emit_label(good_label)
 
     def emit_tuple_cast(self, src: str, dest: str, typ: RTuple, declare_dest: bool,
-                        err: str, src_type: Optional[RType]) -> None:
+                        error: ErrorHandler, src_type: Optional[RType]) -> None:
         """Emit cast to a tuple type.
 
         The arguments are similar to emit_cast.
@@ -740,7 +778,8 @@ class Emitter:
                 self.emit_line('} else {')
 
             cast_temp = self.temp_name()
-            self.emit_tuple_cast(src, cast_temp, typ, declare_dest=True, err='', src_type=None)
+            self.emit_tuple_cast(src, cast_temp, typ, declare_dest=True, error=error,
+                                 src_type=None)
             self.emit_line(f'if (unlikely({cast_temp} == NULL)) {{')
 
             # self.emit_arg_check(src, dest, typ,
@@ -886,3 +925,44 @@ class Emitter:
             self.emit_line(f'Py_CLEAR({target});')
         else:
             assert False, 'emit_gc_clear() not implemented for %s' % repr(rtype)
+
+    def emit_traceback(self,
+                       source_path: str,
+                       module_name: str,
+                       traceback_entry: Tuple[str, int]) -> None:
+        return self._emit_traceback('CPy_AddTraceback', source_path, module_name, traceback_entry)
+
+    def emit_type_error_traceback(
+            self,
+            source_path: str,
+            module_name: str,
+            traceback_entry: Tuple[str, int],
+            *,
+            typ: RType,
+            src: str) -> None:
+        func = 'CPy_TypeErrorTraceback'
+        type_str = f'"{self.pretty_name(typ)}"'
+        return self._emit_traceback(
+            func, source_path, module_name, traceback_entry, type_str=type_str, src=src)
+
+    def _emit_traceback(self,
+                        func: str,
+                        source_path: str,
+                        module_name: str,
+                        traceback_entry: Tuple[str, int],
+                        type_str: str = '',
+                        src: str = '') -> None:
+        globals_static = self.static_name('globals', module_name)
+        line = '%s("%s", "%s", %d, %s' % (
+            func,
+            source_path.replace("\\", "\\\\"),
+            traceback_entry[0],
+            traceback_entry[1],
+            globals_static)
+        if type_str:
+            assert src
+            line += f', {type_str}, {src}'
+        line += ');'
+        self.emit_line(line)
+        if DEBUG_ERRORS:
+            self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')

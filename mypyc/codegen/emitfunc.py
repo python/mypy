@@ -6,7 +6,7 @@ from typing_extensions import Final
 from mypyc.common import (
     REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
 )
-from mypyc.codegen.emit import Emitter
+from mypyc.codegen.emit import Emitter, TracebackAndGotoHandler, DEBUG_ERRORS
 from mypyc.ir.ops import (
     Op, OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
@@ -22,10 +22,6 @@ from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETH
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-
-# Whether to insert debug asserts for all error handling, to quickly
-# catch errors propagating without exceptions set.
-DEBUG_ERRORS = False
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
@@ -322,7 +318,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                             and branch.traceback_entry is not None
                             and not branch.negated):
                         # Generate code for the following branch here to avoid
-                        # redundant branches in the generate code.
+                        # redundant branches in the generated code.
                         self.emit_attribute_error(branch, cl.name, op.attr)
                         self.emit_line('goto %s;' % self.label(branch.true))
                         merged_branch = branch
@@ -485,8 +481,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        branch = self.next_branch()
+        handler = None
+        if branch is not None:
+            if (branch.value is op
+                    and branch.op == Branch.IS_ERROR
+                    and branch.traceback_entry is not None
+                    and not branch.negated
+                    and branch.false is self.next_block):
+                # Generate code also for the following branch here to avoid
+                # redundant branches in the generated code.
+                handler = TracebackAndGotoHandler(self.label(branch.true),
+                                                  self.source_path,
+                                                  self.module_name,
+                                                  branch.traceback_entry)
+                self.op_index += 1
+
         self.emitter.emit_cast(self.reg(op.src), self.reg(op), op.type,
-                               src_type=op.src.type)
+                               src_type=op.src.type, error=handler)
 
     def visit_unbox(self, op: Unbox) -> None:
         self.emitter.emit_unbox(self.reg(op.src), self.reg(op), op.type)
@@ -647,14 +659,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def emit_traceback(self, op: Branch) -> None:
         if op.traceback_entry is not None:
-            globals_static = self.emitter.static_name('globals', self.module_name)
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                op.traceback_entry[1],
-                globals_static))
-            if DEBUG_ERRORS:
-                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+            self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
     def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
         assert op.traceback_entry is not None

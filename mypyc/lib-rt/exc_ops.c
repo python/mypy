@@ -233,6 +233,13 @@ error:
     _PyErr_ChainExceptions(exc, val, tb);
 }
 
+CPy_NOINLINE
+void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line,
+                            PyObject *globals, const char *expected, PyObject *value) {
+    CPy_TypeError(expected, value);
+    CPy_AddTraceback(filename, funcname, line, globals);
+}
+
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
                         const char *attrname, int line, PyObject *globals) {
     char buf[500];

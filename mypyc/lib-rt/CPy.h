@@ -500,6 +500,8 @@ void _CPy_GetExcInfo(PyObject **p_type, PyObject **p_value, PyObject **p_traceba
 void CPyError_OutOfMemory(void);
 void CPy_TypeError(const char *expected, PyObject *value);
 void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyObject *globals);
+void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line,
+                            PyObject *globals, const char *expected, PyObject *value);
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,
                         const char *attrname, int line, PyObject *globals);
 
