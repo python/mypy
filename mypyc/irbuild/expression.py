@@ -40,12 +40,13 @@ from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper
 )
 from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 
 
 # Name and attribute references
@@ -404,6 +405,15 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if folded:
         return folded
 
+    # Special case some int ops to allow borrowing operands.
+    if (is_int_rprimitive(builder.node_type(expr.left))
+            and is_int_rprimitive(builder.node_type(expr.right))):
+        if expr.op in int_borrow_friendly_op:
+            borrow_left = is_borrow_friendly_expr(builder, expr.right)
+            left = builder.accept(expr.left, can_borrow=borrow_left)
+            right = builder.accept(expr.right, can_borrow=True)
+            return builder.binary_op(left, right, expr.op, expr.line)
+
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
     )
@@ -428,26 +438,6 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
     index_reg = builder.accept(expr.index, can_borrow=is_list)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
-
-
-def is_borrow_friendly_expr(builder: IRBuilder, expr: Expression) -> bool:
-    """Can the result of the expression borrowed temporarily?
-
-    Borrowing means keeping a reference without incrementing the reference count.
-    """
-    if isinstance(expr, (IntExpr, FloatExpr, StrExpr, BytesExpr)):
-        # Literals are immportal and can always be borrowed
-        return True
-    if isinstance(expr, (UnaryExpr, OpExpr)) and constant_fold_expr(builder, expr) is not None:
-        # Literal expressions are similar to literals
-        return True
-    if isinstance(expr, NameExpr):
-        if isinstance(expr.node, Var) and expr.kind == LDEF:
-            # Local variable reference can be borrowed
-            return True
-    if isinstance(expr, MemberExpr) and builder.is_native_attr_ref(expr):
-        return True
-    return False
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
@@ -504,7 +494,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
     if_body, else_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    builder.process_conditional(expr.cond, if_body, else_body)
+    process_conditional(builder, expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
     # Having actual Phi nodes would be really nice here!
     target = Register(expr_type)
@@ -577,11 +567,22 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             else:
                 return builder.true()
 
-    if first_op in ('is', 'is not') and len(e.operators) == 1:
-        right = e.operands[1]
-        if isinstance(right, NameExpr) and right.fullname == 'builtins.None':
-            # Special case 'is None' / 'is not None'.
-            return translate_is_none(builder, e.operands[0], negated=first_op != 'is')
+    if len(e.operators) == 1:
+        # Special some common simple cases
+        if first_op in ('is', 'is not'):
+            right_expr = e.operands[1]
+            if isinstance(right_expr, NameExpr) and right_expr.fullname == 'builtins.None':
+                # Special case 'is None' / 'is not None'.
+                return translate_is_none(builder, e.operands[0], negated=first_op != 'is')
+        left_expr = e.operands[0]
+        if is_int_rprimitive(builder.node_type(left_expr)):
+            right_expr = e.operands[1]
+            if is_int_rprimitive(builder.node_type(right_expr)):
+                if first_op in int_borrow_friendly_op:
+                    borrow_left = is_borrow_friendly_expr(builder, right_expr)
+                    left = builder.accept(left_expr, can_borrow=borrow_left)
+                    right = builder.accept(right_expr, can_borrow=True)
+                    return builder.compare_tagged(left, right, first_op, e.line)
 
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals

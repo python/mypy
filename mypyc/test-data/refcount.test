@@ -1153,14 +1153,20 @@ L0:
 [case testBorrowListGetItem2]
 from typing import List
 
-def attr_index(x: C) -> str:
+def attr_before_index(x: C) -> str:
     return x.a[x.n]
+
+def attr_after_index(a: List[C], i: int) -> int:
+    return a[i].n
+
+def attr_after_index_literal(a: List[C]) -> int:
+    return a[0].n
 
 class C:
     a: List[str]
     n: int
 [out]
-def attr_index(x):
+def attr_before_index(x):
     x :: __main__.C
     r0 :: list
     r1 :: int
@@ -1172,6 +1178,27 @@ L0:
     r2 = CPyList_GetItem(r0, r1)
     r3 = cast(str, r2)
     return r3
+def attr_after_index(a, i):
+    a :: list
+    i :: int
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItemBorrow(a, i)
+    r1 = borrow cast(__main__.C, r0)
+    r2 = r1.n
+    return r2
+def attr_after_index_literal(a):
+    a :: list
+    r0 :: object
+    r1 :: __main__.C
+    r2 :: int
+L0:
+    r0 = CPyList_GetItemShortBorrow(a, 0)
+    r1 = borrow cast(__main__.C, r0)
+    r2 = r1.n
+    return r2
 
 [case testCannotBorrowListGetItem]
 from typing import List
@@ -1201,6 +1228,37 @@ L0:
 def f():
 L0:
     return 0
+
+[case testBorrowListGetItemKeepAlive]
+from typing import List
+
+def f() -> str:
+    a = [C()]
+    return a[0].s
+
+class C:
+    s: str
+[out]
+def f():
+    r0 :: __main__.C
+    r1 :: list
+    r2, r3 :: ptr
+    a :: list
+    r4 :: object
+    r5 :: __main__.C
+    r6 :: str
+L0:
+    r0 = C()
+    r1 = PyList_New(1)
+    r2 = get_element_ptr r1 ob_item :: PyListObject
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
+    a = r1
+    r4 = CPyList_GetItemShortBorrow(a, 0)
+    r5 = borrow cast(__main__.C, r4)
+    r6 = r5.s
+    dec_ref a
+    return r6
 
 [case testBorrowSetAttrObject]
 from typing import Optional
@@ -1240,4 +1298,195 @@ def g(x):
 L0:
     r0 = borrow x.c
     r0.b = 0; r1 = is_error
+    return 1
+
+[case testBorrowIntEquality]
+def add(c: C) -> bool:
+    return c.x == c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c):
+    c :: __main__.C
+    r0, r1 :: int
+    r2 :: native_int
+    r3, r4 :: bit
+    r5 :: bool
+    r6 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = r0 & 1
+    r3 = r2 == 0
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = r0 == r1
+    r5 = r4
+    goto L3
+L2:
+    r6 = CPyTagged_IsEq_(r0, r1)
+    r5 = r6
+L3:
+    return r5
+
+[case testBorrowIntLessThan]
+def add(c: C) -> bool:
+    return c.x < c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c):
+    c :: __main__.C
+    r0, r1 :: int
+    r2 :: native_int
+    r3 :: bit
+    r4 :: native_int
+    r5, r6, r7 :: bit
+    r8 :: bool
+    r9 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = r0 & 1
+    r3 = r2 == 0
+    r4 = r1 & 1
+    r5 = r4 == 0
+    r6 = r3 & r5
+    if r6 goto L1 else goto L2 :: bool
+L1:
+    r7 = r0 < r1 :: signed
+    r8 = r7
+    goto L3
+L2:
+    r9 = CPyTagged_IsLt_(r0, r1)
+    r8 = r9
+L3:
+    return r8
+
+[case testBorrowIntCompareFinal]
+from typing_extensions import Final
+
+X: Final = 10
+
+def add(c: C) -> bool:
+    return c.x == X
+
+class C:
+    x: int
+[out]
+def add(c):
+    c :: __main__.C
+    r0 :: int
+    r1 :: native_int
+    r2, r3 :: bit
+    r4 :: bool
+    r5 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = r0 & 1
+    r2 = r1 == 0
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    r3 = r0 == 20
+    r4 = r3
+    goto L3
+L2:
+    r5 = CPyTagged_IsEq_(r0, 20)
+    r4 = r5
+L3:
+    return r4
+
+[case testBorrowIntArithmetic]
+def add(c: C) -> int:
+    return c.x + c.y
+
+def sub(c: C) -> int:
+    return c.x - c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c):
+    c :: __main__.C
+    r0, r1, r2 :: int
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = CPyTagged_Add(r0, r1)
+    return r2
+def sub(c):
+    c :: __main__.C
+    r0, r1, r2 :: int
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = CPyTagged_Subtract(r0, r1)
+    return r2
+
+[case testBorrowIntComparisonInIf]
+def add(c: C, n: int) -> bool:
+    if c.x == c.y:
+        return True
+    return False
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c, n):
+    c :: __main__.C
+    n, r0, r1 :: int
+    r2 :: native_int
+    r3, r4, r5 :: bit
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = r0 & 1
+    r3 = r2 != 0
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = CPyTagged_IsEq_(r0, r1)
+    if r4 goto L3 else goto L4 :: bool
+L2:
+    r5 = r0 == r1
+    if r5 goto L3 else goto L4 :: bool
+L3:
+    return 1
+L4:
+    return 0
+
+[case testBorrowIntInPlaceOp]
+def add(c: C, n: int) -> None:
+    c.x += n
+
+def sub(c: C, n: int) -> None:
+    c.x -= c.y
+
+class C:
+    x: int
+    y: int
+[out]
+def add(c, n):
+    c :: __main__.C
+    n, r0, r1 :: int
+    r2 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = CPyTagged_Add(r0, n)
+    c.x = r1; r2 = is_error
+    return 1
+def sub(c, n):
+    c :: __main__.C
+    n, r0, r1, r2 :: int
+    r3 :: bool
+L0:
+    r0 = borrow c.x
+    r1 = borrow c.y
+    r2 = CPyTagged_Subtract(r0, r1)
+    c.x = r2; r3 = is_error
     return 1

@@ -340,6 +340,8 @@ PyObject *CPyList_Build(Py_ssize_t len, ...);
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);

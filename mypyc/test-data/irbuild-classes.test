@@ -59,8 +59,9 @@ L0:
     r5 = CPyList_GetItemShort(a, 0)
     r6 = cast(__main__.C, r5)
     d = r6
-    r7 = d.x
+    r7 = borrow d.x
     r8 = CPyTagged_Add(r7, 2)
+    keep_alive d
     return r8
 
 [case testMethodCall]
@@ -175,7 +176,7 @@ def increment(o):
     r0, r1 :: int
     r2 :: bool
 L0:
-    r0 = o.x
+    r0 = borrow o.x
     r1 = CPyTagged_Add(r0, 2)
     o.x = r1; r2 = is_error
     return o
@@ -1288,3 +1289,47 @@ L0:
     r1 = r0.e
     r2 = r1.x
     return r2
+
+[case testBorrowResultOfCustomGetItemInIfStatement]
+from typing import List
+
+class C:
+    def __getitem__(self, x: int) -> List[int]:
+        return []
+
+def f(x: C) -> None:
+    # In this case the keep_alive must come before the branch, as otherwise
+    # reference count transform will get confused.
+    if x[1][0] == 2:
+        y = 1
+    else:
+        y = 2
+[out]
+def C.__getitem__(self, x):
+    self :: __main__.C
+    x :: int
+    r0 :: list
+L0:
+    r0 = PyList_New(0)
+    return r0
+def f(x):
+    x :: __main__.C
+    r0 :: list
+    r1 :: object
+    r2 :: int
+    r3 :: bit
+    y :: int
+L0:
+    r0 = x.__getitem__(2)
+    r1 = CPyList_GetItemShortBorrow(r0, 0)
+    r2 = unbox(int, r1)
+    r3 = r2 == 4
+    keep_alive r0
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    y = 2
+    goto L3
+L2:
+    y = 4
+L3:
+    return 1
