@@ -98,6 +98,7 @@ def staticmethod(f: T) -> T: ...
 
 def run_stubtest(
     stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
+    summary: bool = False
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -112,6 +113,8 @@ def run_stubtest(
             with open(f"{TEST_MODULE_NAME}_config.ini", "w") as f:
                 f.write(config_file)
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
+        if not summary:
+            options += ["--no-error-summary"]
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(
@@ -1161,6 +1164,16 @@ class StubtestMiscUnit(unittest.TestCase):
             test_stubs(parse_options(["not_a_module"]))
         assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
 
+    def test_missing_stubs2(self) -> None:
+        with use_tmp_dir(TEST_MODULE_NAME):
+            with open(f"{TEST_MODULE_NAME}.py", "w") as f:
+                f.write("a = 1")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                test_stubs(parse_options([TEST_MODULE_NAME]))
+            assert f"error: {TEST_MODULE_NAME} failed to find stubs" in remove_color_code(
+                output.getvalue())
+
     def test_get_typeshed_stdlib_modules(self) -> None:
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
         assert "builtins" in stdlib
@@ -1198,3 +1211,47 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
         assert output == ""
+
+    def test_summary(self) -> None:
+        output = run_stubtest(stub="a: int", runtime="a = 5", options=[], summary=True)
+        assert remove_color_code(output) == "Success: no issues found in 1 module\n"
+
+        output = run_stubtest(stub="a: str", runtime="a = 5", options=[], summary=True)
+        assert remove_color_code(output) == (
+            "error: test_module.a variable differs from runtime type Literal[5]\n"
+            "Stub: at line 1\nbuiltins.str\nRuntime:\n5\n\n"
+            "Found 1 error in 1 module (checked 1 module)\n"
+        )
+
+    def test_module_outputs_and_raises(self) -> None:
+        output = run_stubtest(
+            stub="",
+            runtime="import sys\nprint('a')\nprint('e', file=sys.stderr)\nraise SystemExit('tst')",
+            options=[],
+            summary=True
+        )
+        assert remove_color_code(output) == (
+            "error: test_module failed to import: SystemExit tst\n"
+            "Stub: at line 1\ntest_module.pyi\nRuntime:\nMissing due to failed import\n\n"
+            "Found output while loading 'test_module'\n"
+            "======= standard output ============\n"
+            "a\n"
+            "======= standard error =============\n"
+            "e\n"
+            "====================================\n"
+            "Found 1 error in 1 module (checked 1 module)\n"
+        )
+
+    def test_no_modules(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            test_stubs(parse_options([]))
+        assert remove_color_code(output.getvalue()) == "No modules to check\n"
+
+    def test_module_and_typeshed(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            test_stubs(parse_options(["--check-typeshed", "a"]))
+        assert remove_color_code(output.getvalue()) == (
+            "Cannot pass both --check-typeshed and a list of modules\n"
+        )
