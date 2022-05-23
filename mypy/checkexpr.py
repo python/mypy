@@ -4109,7 +4109,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(actual_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=actual_type)
         ret = self.check_awaitable_expr(actual_type, e,
-                                         message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
+                                        message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
         if not allow_none_return and isinstance(get_proper_type(ret), NoneType):
             self.chk.msg.does_not_return_value(None, e)
         return ret
