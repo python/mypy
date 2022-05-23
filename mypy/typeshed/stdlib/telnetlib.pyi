@@ -1,6 +1,10 @@
 import socket
 from _typeshed import Self
-from typing import Any, Callable, Match, Pattern, Sequence
+from collections.abc import Callable, Sequence
+from types import TracebackType
+from typing import Any, Match, Pattern
+
+__all__ = ["Telnet"]
 
 DEBUGLEVEL: int
 TELNET_PORT: int
@@ -111,4 +115,6 @@ class Telnet:
         self, list: Sequence[Pattern[bytes] | bytes], timeout: float | None = ...
     ) -> tuple[int, Match[bytes] | None, bytes]: ...
     def __enter__(self: Self) -> Self: ...
-    def __exit__(self, type: Any, value: Any, traceback: Any) -> None: ...
+    def __exit__(
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
+    ) -> None: ...

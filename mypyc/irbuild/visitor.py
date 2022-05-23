@@ -6,7 +6,7 @@ mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 from typing_extensions import NoReturn
 
 from mypy.nodes import (
-    MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
+    AssertTypeExpr, MypyFile, FuncDef, ReturnStmt, AssignmentStmt, OpExpr,
     IntExpr, NameExpr, Var, IfStmt, UnaryExpr, ComparisonExpr, WhileStmt, CallExpr,
     IndexExpr, Block, ListExpr, ExpressionStmt, MemberExpr, ForStmt,
     BreakStmt, ContinueStmt, ConditionalExpr, OperatorAssignmentStmt, TupleExpr, ClassDef,
@@ -16,7 +16,8 @@ from mypy.nodes import (
     FloatExpr, GeneratorExpr, GlobalDecl, LambdaExpr, ListComprehension, SetComprehension,
     NamedTupleExpr, NewTypeExpr, NonlocalDecl, OverloadedFuncDef, PrintStmt, RaiseStmt,
     RevealExpr, SetExpr, SliceExpr, StarExpr, SuperExpr, TryStmt, TypeAliasExpr, TypeApplication,
-    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr
+    TypeVarExpr, TypedDictExpr, UnicodeExpr, WithStmt, YieldFromExpr, YieldExpr, ParamSpecExpr,
+    MatchStmt, TypeVarTupleExpr
 )
 
 from mypyc.ir.ops import Value
@@ -179,6 +180,9 @@ class IRBuilderVisitor(IRVisitor):
         # Pure declaration -- no runtime effect
         pass
 
+    def visit_match_stmt(self, stmt: MatchStmt) -> None:
+        self.bail("Match statements are not yet supported", stmt.line)
+
     # Expressions
 
     def visit_name_expr(self, expr: NameExpr) -> Value:
@@ -311,6 +315,9 @@ class IRBuilderVisitor(IRVisitor):
     def visit_paramspec_expr(self, o: ParamSpecExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
+    def visit_type_var_tuple_expr(self, o: TypeVarTupleExpr) -> Value:
+        assert False, "can't compile analysis-only expressions"
+
     def visit_typeddict_expr(self, o: TypedDictExpr) -> Value:
         assert False, "can't compile analysis-only expressions"
 
@@ -322,6 +329,9 @@ class IRBuilderVisitor(IRVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> Value:
         assert False, "CastExpr should have been handled in CallExpr"
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> Value:
+        assert False, "AssertTypeExpr should have been handled in CallExpr"
 
     def visit_star_expr(self, o: StarExpr) -> Value:
         assert False, "should have been handled in Tuple/List/Set/DictExpr or CallExpr"

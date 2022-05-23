@@ -200,7 +200,7 @@ mypy generates an error if it thinks that an expression is redundant.
 
 .. code-block:: python
 
-    # mypy: enable-error-code redundant-expr
+    # Use "mypy --enable-error-code redundant-expr ..."
 
     def example(x: int) -> None:
         # Error: Left operand of "and" is always true  [redundant-expr]
@@ -222,7 +222,7 @@ since unless implemented by a sub-type, the expression will always evaluate to t
 
 .. code-block:: python
 
-    # mypy: enable-error-code truthy-bool
+    # Use "mypy --enable-error-code truthy-bool ..."
 
     class Foo:
       pass
@@ -237,7 +237,8 @@ This check might falsely imply an error. For example, ``Iterable`` does not impl
 
 .. code-block:: python
 
-    # mypy: enable-error-code truthy-bool
+    # Use "mypy -enable-error-code truthy-bool ..."
+
     from typing import Iterable
 
     def transform(items: Iterable[int]) -> Iterable[int]:
@@ -255,3 +256,65 @@ no error in practice. In such case, it might be prudent to annotate ``items: Seq
 This is similar in concept to ensuring that an expression's type implements an expected interface (e.g. ``Sized``),
 except that attempting to invoke an undefined method (e.g. ``__len__``) results in an error,
 while attempting to evaluate an object in boolean context without a concrete implementation results in a truthy value.
+
+
+.. _ignore-without-code:
+
+Check that ``# type: ignore`` include an error code [ignore-without-code]
+-------------------------------------------------------------------------
+
+Warn when a ``# type: ignore`` comment does not specify any error codes.
+This clarifies the intent of the ignore and ensures that only the
+expected errors are silenced.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code ignore-without-code ..."
+
+    class Foo:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    f = Foo('foo')
+
+    # This line has a typo that mypy can't help with as both:
+    # - the expected error 'assignment', and
+    # - the unexpected error 'attr-defined'
+    # are silenced.
+    # Error: "type: ignore" comment without error code (consider "type: ignore[attr-defined]" instead)
+    f.nme = 42  # type: ignore
+
+    # This line warns correctly about the typo in the attribute name
+    # Error: "Foo" has no attribute "nme"; maybe "name"?
+    f.nme = 42  # type: ignore[assignment]
+
+Check that awaitable return value is used [unused-awaitable]
+------------------------------------------------------------
+
+If you use :option:`--enable-error-code unused-awaitable <mypy --enable-error-code>`,
+mypy generates an error if you don't use a returned value that defines ``__await__``.
+
+Example:
+
+.. code-block:: python
+
+    # Use "mypy --enable-error-code unused-awaitable ..."
+
+    import asyncio
+
+    async def f() -> int: ...
+
+    async def g() -> None:
+        # Error: Value of type "Task[int]" must be used
+        #        Are you missing an await?
+        asyncio.create_task(f())
+
+You can assign the value to a temporary, otherwise unused to variable to
+silence the error:
+
+.. code-block:: python
+
+    async def g() -> None:
+        _ = asyncio.create_task(f())  # No error

@@ -1,6 +1,7 @@
 """Semantic analyzer test cases"""
 
 import os.path
+import sys
 
 from typing import Dict, List
 
@@ -38,12 +39,17 @@ semanal_files = [
 ]
 
 
+if sys.version_info >= (3, 10):
+    semanal_files.append('semanal-python310.test')
+
+
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
     options = parse_options(program_text, testcase, 1)
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True
     options.show_traceback = True
     options.python_version = PYTHON3_VERSION
+    options.enable_incomplete_features = True
     return options
 
 
@@ -96,14 +102,15 @@ def test_semanal(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
-                                                                testcase.line))
+        f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 # Semantic analyzer error test cases
 
 class SemAnalErrorSuite(DataSuite):
     files = ['semanal-errors.test']
+    if sys.version_info >= (3, 10):
+        semanal_files.append('semanal-errors-python310.test')
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_semanal_error(testcase)
@@ -118,7 +125,7 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
                           options=get_semanal_options(src, testcase),
                           alt_lib_path=test_temp_dir)
         a = res.errors
-        assert a, 'No errors reported in {}, line {}'.format(testcase.file, testcase.line)
+        assert a, f'No errors reported in {testcase.file}, line {testcase.line}'
     except CompileError as e:
         # Verify that there was a compile error and that the error messages
         # are equivalent.
@@ -127,7 +134,7 @@ def test_semanal_error(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid compiler output ({}, line {})'.format(testcase.file, testcase.line))
+        f'Invalid compiler output ({testcase.file}, line {testcase.line})')
 
 
 # SymbolNode table export test cases
@@ -150,15 +157,14 @@ class SemAnalSymtableSuite(DataSuite):
                 raise CompileError(a)
             for f in sorted(result.files.keys()):
                 if f not in ('builtins', 'typing', 'abc'):
-                    a.append('{}:'.format(f))
+                    a.append(f'{f}:')
                     for s in str(result.files[f].names).split('\n'):
                         a.append('  ' + s)
         except CompileError as e:
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 # Type info export test cases
@@ -192,8 +198,7 @@ class SemAnalTypeInfoSuite(DataSuite):
             a = e.messages
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid semantic analyzer output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 
 
 class TypeInfoMap(Dict[str, TypeInfo]):
@@ -204,6 +209,6 @@ class TypeInfoMap(Dict[str, TypeInfo]):
                                        not x.startswith('typing.') and
                                        not x.startswith('abc.')):
                 ti = ('\n' + '  ').join(str(y).split('\n'))
-                a.append('  {} : {}'.format(x, ti))
+                a.append(f'  {x} : {ti}')
         a[-1] += ')'
         return '\n'.join(a)

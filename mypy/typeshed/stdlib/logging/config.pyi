@@ -1,9 +1,10 @@
 import sys
 from _typeshed import StrOrBytesPath, StrPath
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from configparser import RawConfigParser
 from threading import Thread
-from typing import IO, Any, Pattern, Sequence
+from typing import IO, Any, Pattern
+from typing_extensions import TypeAlias
 
 from . import _Level
 
@@ -13,9 +14,9 @@ else:
     from typing_extensions import Literal, TypedDict
 
 if sys.version_info >= (3, 7):
-    _Path = StrOrBytesPath
+    _Path: TypeAlias = StrOrBytesPath
 else:
-    _Path = StrPath
+    _Path: TypeAlias = StrPath
 
 DEFAULT_LOGGING_CONFIG_PORT: int
 RESET_ERROR: int  # undocumented
@@ -43,7 +44,12 @@ class _OptionalDictConfigArgs(TypedDict, total=False):
 class _DictConfigArgs(_OptionalDictConfigArgs, TypedDict):
     version: Literal[1]
 
-def dictConfig(config: _DictConfigArgs) -> None: ...
+# Accept dict[str, Any] to avoid false positives if called with a dict
+# type, since dict types are not compatible with TypedDicts.
+#
+# Also accept a TypedDict type, to allow callers to use TypedDict
+# types, and for somewhat stricter type checking of dict literals.
+def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 
 if sys.version_info >= (3, 10):
     def fileConfig(

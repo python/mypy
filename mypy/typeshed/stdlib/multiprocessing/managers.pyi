@@ -1,18 +1,23 @@
-# NOTE: These are incomplete!
-
 import queue
 import sys
 import threading
-from typing import Any, AnyStr, Callable, ContextManager, Generic, Iterable, Mapping, Sequence, Tuple, TypeVar
+from _typeshed import Self
+from builtins import dict as _dict, list as _list  # Conflicts with method names
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from types import TracebackType
+from typing import Any, AnyStr, Generic, TypeVar
+from typing_extensions import TypeAlias
 
 from .connection import Connection
 from .context import BaseContext
 
 if sys.version_info >= (3, 8):
-    from .shared_memory import _SLT, ShareableList, SharedMemory
+    from .shared_memory import _SLT, ShareableList as _ShareableList, SharedMemory as _SharedMemory
 
-    _SharedMemory = SharedMemory
-    _ShareableList = ShareableList
+    __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token", "SharedMemoryManager"]
+
+else:
+    __all__ = ["BaseManager", "SyncManager", "BaseProxy", "Token"]
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -26,18 +31,17 @@ class Namespace:
     def __getattr__(self, __name: str) -> Any: ...
     def __setattr__(self, __name: str, __value: Any) -> None: ...
 
-_Namespace = Namespace
+_Namespace: TypeAlias = Namespace
 
-class Token(object):
+class Token:
     typeid: str | bytes | None
     address: tuple[str | bytes, int]
     id: str | bytes | int | None
     def __init__(self, typeid: bytes | str | None, address: tuple[str | bytes, int], id: str | bytes | int | None) -> None: ...
-    def __repr__(self) -> str: ...
     def __getstate__(self) -> tuple[str | bytes | None, tuple[str | bytes, int], str | bytes | int | None]: ...
     def __setstate__(self, state: tuple[str | bytes | None, tuple[str | bytes, int], str | bytes | int | None]) -> None: ...
 
-class BaseProxy(object):
+class BaseProxy:
     _address_to_local: dict[Any, Any]
     _mutex: Any
     def __init__(
@@ -51,7 +55,7 @@ class BaseProxy(object):
         manager_owned: bool = ...,
     ) -> None: ...
     def __deepcopy__(self, memo: Any | None) -> Any: ...
-    def _callmethod(self, methodname: str, args: Tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
+    def _callmethod(self, methodname: str, args: tuple[Any, ...] = ..., kwds: dict[Any, Any] = ...) -> None: ...
     def _getvalue(self) -> Any: ...
     def __reduce__(self) -> tuple[Any, tuple[Any, Any, str, dict[Any, Any]]]: ...
 
@@ -71,10 +75,22 @@ class Server:
     def serve_forever(self) -> None: ...
     def accept_connection(self, c: Connection, name: str) -> None: ...
 
-class BaseManager(ContextManager[BaseManager]):
-    def __init__(
-        self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
-    ) -> None: ...
+class BaseManager:
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            address: Any | None = ...,
+            authkey: bytes | None = ...,
+            serializer: str = ...,
+            ctx: BaseContext | None = ...,
+            *,
+            shutdown_timeout: float = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, address: Any | None = ..., authkey: bytes | None = ..., serializer: str = ..., ctx: BaseContext | None = ...
+        ) -> None: ...
+
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
     def start(self, initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
@@ -92,12 +108,12 @@ class BaseManager(ContextManager[BaseManager]):
         method_to_typeid: Mapping[str, str] | None = ...,
         create_method: bool = ...,
     ) -> None: ...
+    def __enter__(self: Self) -> Self: ...
+    def __exit__(
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+    ) -> None: ...
 
-# Conflicts with method names
-_dict = dict
-_list = list
-
-class SyncManager(BaseManager, ContextManager[SyncManager]):
+class SyncManager(BaseManager):
     def BoundedSemaphore(self, value: Any = ...) -> threading.BoundedSemaphore: ...
     def Condition(self, lock: Any = ...) -> threading.Condition: ...
     def Event(self) -> threading.Event: ...
@@ -115,6 +131,7 @@ class RemoteError(Exception): ...
 
 if sys.version_info >= (3, 8):
     class SharedMemoryServer(Server): ...
+
     class SharedMemoryManager(BaseManager):
         def get_server(self) -> SharedMemoryServer: ...
         def SharedMemory(self, size: int) -> _SharedMemory: ...

@@ -30,7 +30,6 @@ advantage of the benefits.
 
 import os
 import stat
-import sys
 from typing import Dict, List, Set
 from mypy.util import hash_digest
 from mypy_extensions import mypyc_attr
@@ -144,16 +143,13 @@ class FileSystemCache:
         assert not os.path.exists(path), path  # Not cached!
         dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
-        # Get stat result as a sequence so we can modify it.
-        # (Alas, typeshed's os.stat_result is not a sequence yet.)
-        tpl = tuple(st)  # type: ignore[arg-type, var-annotated]
-        seq: List[float] = list(tpl)
+        # Get stat result as a list so we can modify it.
+        seq: List[float] = list(st)
         seq[stat.ST_MODE] = stat.S_IFREG | 0o444
         seq[stat.ST_INO] = 1
         seq[stat.ST_NLINK] = 1
         seq[stat.ST_SIZE] = 0
-        tpl = tuple(seq)
-        st = os.stat_result(tpl)
+        st = os.stat_result(seq)
         self.stat_cache[path] = st
         # Make listdir() and read() also pretend this file exists.
         self.fake_package_cache.add(dirname)
@@ -202,9 +198,6 @@ class FileSystemCache:
 
         The caller must ensure that prefix is a valid file system prefix of path.
         """
-        if sys.platform == "linux":
-            # Assume that the file system on Linux is case sensitive
-            return self.isfile(path)
         if not self.isfile(path):
             # Fast path
             return False

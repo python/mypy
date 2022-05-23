@@ -26,6 +26,15 @@ CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value) {
     }
 }
 
+CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
+    if ((uintptr_t)ptr > PY_SSIZE_T_MAX) {
+        PyObject *object = PyLong_FromVoidPtr(ptr);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return CPyTagged_FromSsize_t((Py_ssize_t)ptr);
+    }
+}
+
 CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
@@ -241,8 +250,11 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(right)) {
         return false;
     } else {
-        int result = PyObject_RichCompareBool(CPyTagged_LongAsObject(left),
-                                              CPyTagged_LongAsObject(right), Py_EQ);
+        PyObject *left_obj = CPyTagged_AsObject(left);
+        PyObject *right_obj = CPyTagged_AsObject(right);
+        int result = PyObject_RichCompareBool(left_obj, right_obj, Py_EQ);
+        Py_DECREF(left_obj);
+        Py_DECREF(right_obj);
         if (result == -1) {
             CPyError_OutOfMemory();
         }

@@ -77,7 +77,7 @@ def main() -> None:
     if not args.typeshed_dir:
         # Clone typeshed repo if no directory given.
         with tempfile.TemporaryDirectory() as tempdir:
-            print('Cloning typeshed in {}...'.format(tempdir))
+            print(f'Cloning typeshed in {tempdir}...')
             subprocess.run(['git', 'clone', 'https://github.com/python/typeshed.git'],
                            check=True, cwd=tempdir)
             repo = os.path.join(tempdir, 'typeshed')

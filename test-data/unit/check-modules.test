@@ -1,7 +1,7 @@
 -- Type checker test cases dealing with modules and imports.
 -- Towards the end there are tests for PEP 420 (namespace packages, i.e. __init__.py-less packages).
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions0]
 import m
 import typing
 m.f()           # E: Missing positional argument "a" in call to "f"
@@ -14,7 +14,7 @@ class A: pass
 def f(a: A) -> None: pass
 x = A()
 
-[case testAccessImportedDefinitions]
+[case testAccessImportedDefinitions1]
 import m
 import typing
 m.f(object()) # E: Argument 1 to "f" has incompatible type "object"; expected "A"
@@ -131,9 +131,10 @@ def f() -> None: pass
 [case testImportWithinClassBody2]
 import typing
 class C:
-    from m import f
+    from m import f  # E: Unsupported class scoped import
     f()
-    f(C) # E: Too many arguments for "f"
+    # ideally, the following should error:
+    f(C)
 [file m.py]
 def f() -> None: pass
 [out]
@@ -1444,7 +1445,7 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-tmp/a.py:6: note: Revealed type is "def (builtins.str*) -> builtins.int"
+tmp/a.py:6: note: Revealed type is "def (builtins.str) -> builtins.int"
 
 [case testDeferredClassContext]
 class A:
@@ -1548,9 +1549,9 @@ second = XT[str]()
 last = XT[G]()
 
 reveal_type(notes) # N: Revealed type is "y.G[y.G[builtins.int]]"
-reveal_type(another) # N: Revealed type is "y.G[y.G*[builtins.int]]"
-reveal_type(second) # N: Revealed type is "y.G[builtins.str*]"
-reveal_type(last) # N: Revealed type is "y.G[y.G*[Any]]"
+reveal_type(another) # N: Revealed type is "y.G[y.G[builtins.int]]"
+reveal_type(second) # N: Revealed type is "y.G[builtins.str]"
+reveal_type(last) # N: Revealed type is "y.G[y.G[Any]]"
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -1910,6 +1911,24 @@ class C:
 
 [builtins fixtures/module.pyi]
 
+[case testReExportChildStubs3]
+from util import mod
+reveal_type(mod)  # N: Revealed type is "def () -> package.mod.mod"
+
+from util import internal_detail  # E: Module "util" has no attribute "internal_detail"
+
+[file package/__init__.pyi]
+from .mod import mod as mod
+
+[file package/mod.pyi]
+class mod: ...
+
+[file util.pyi]
+from package import mod as mod
+# stubs require explicit re-export
+from package import mod as internal_detail
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
@@ -1943,7 +1962,7 @@ x = 42
 [case testModuleAliasToQualifiedImport]
 import package.module
 alias = package.module
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 [file package/__init__.py]
 
 [file package/module.py]
@@ -1956,7 +1975,7 @@ def whatever(x: T) -> T: pass
 import mod
 import othermod
 alias = mod.submod
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 if int():
     alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]
@@ -3132,3 +3151,42 @@ main:2: error: Cannot find implementation or library stub for module named "blea
 import bleach.xyz
 from bleach.abc import fgh
 [file bleach/__init__.pyi]
+
+[case testCyclicUndefinedImportWithName]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import no_such_export  # E: Module "a" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar1]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from a import *
+[out]
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar2]
+import a
+[file a.py]
+from b import no_such_export
+[file b.py]
+from c import *
+[file c.py]
+from a import *
+[out]
+tmp/c.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/b.py:1: error: Cannot resolve name "no_such_export" (possible cyclic definition)
+tmp/a.py:1: error: Module "b" has no attribute "no_such_export"
+
+[case testCyclicUndefinedImportWithStar3]
+import test1
+[file test1.py]
+from dir1 import *
+[file dir1/__init__.py]
+from .test2 import *
+[file dir1/test2.py]
+from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"

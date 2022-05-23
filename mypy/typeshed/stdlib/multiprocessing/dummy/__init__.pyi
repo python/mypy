@@ -1,8 +1,31 @@
 import array
 import threading
 import weakref
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from queue import Queue as Queue
-from typing import Any, Callable, Iterable, Mapping, Sequence
+from typing import Any
+from typing_extensions import Literal
+
+from .connection import Pipe as Pipe
+
+__all__ = [
+    "Process",
+    "current_process",
+    "active_children",
+    "freeze_support",
+    "Lock",
+    "RLock",
+    "Semaphore",
+    "BoundedSemaphore",
+    "Condition",
+    "Event",
+    "Barrier",
+    "Queue",
+    "Manager",
+    "Pipe",
+    "Pool",
+    "JoinableQueue",
+]
 
 JoinableQueue = Queue
 Barrier = threading.Barrier
@@ -18,7 +41,8 @@ class DummyProcess(threading.Thread):
     _parent: threading.Thread
     _pid: None
     _start_called: int
-    exitcode: int | None
+    @property
+    def exitcode(self) -> Literal[0] | None: ...
     def __init__(
         self,
         group: Any = ...,

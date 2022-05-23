@@ -52,11 +52,10 @@ class ArgSig:
         return False
 
 
-FunctionSig = NamedTuple('FunctionSig', [
-    ('name', str),
-    ('args', List[ArgSig]),
-    ('ret_type', str)
-])
+class FunctionSig(NamedTuple):
+    name: str
+    args: List[ArgSig]
+    ret_type: str
 
 
 # States of the docstring parser.
@@ -237,7 +236,7 @@ def infer_sig_from_docstring(docstr: Optional[str], name: str) -> Optional[List[
 
     def is_unique_args(sig: FunctionSig) -> bool:
         """return true if function argument names are unique"""
-        return len(sig.args) == len(set((arg.name for arg in sig.args)))
+        return len(sig.args) == len({arg.name for arg in sig.args})
 
     # Return only signatures that have unique argument names. Mypy fails on non-unique arg names.
     return [sig for sig in sigs if is_unique_args(sig)]
@@ -312,8 +311,8 @@ def build_signature(positional: Sequence[str],
         if arg.startswith('*'):
             args.append(arg)
         else:
-            args.append('%s=...' % arg)
-    sig = '(%s)' % ', '.join(args)
+            args.append(f'{arg}=...')
+    sig = f"({', '.join(args)})"
     # Ad-hoc fixes.
     sig = sig.replace('(self)', '')
     return sig

@@ -77,7 +77,7 @@ operations:
         o.foo()       # Error!
         o + 2         # Error!
         open(o)       # Error!
-        n = 1  # type: int
+        n: int = 1
         n = o         # Error!
 
 You can use different :ref:`type narrowing <type-narrowing>`

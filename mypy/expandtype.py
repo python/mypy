@@ -1,11 +1,12 @@
-from typing import Dict, Iterable, List, TypeVar, Mapping, cast
+from typing import Dict, Iterable, List, TypeVar, Mapping, cast, Union, Optional
 
 from mypy.types import (
     Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
     NoneType, Overloaded, TupleType, TypedDictType, UnionType,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType
+    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor,
+    UnpackType, TypeVarTupleType
 )
 
 
@@ -44,6 +45,8 @@ def freshen_function_type_vars(callee: F) -> F:
             # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
                 tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
+            elif isinstance(v, TypeVarTupleType):
+                tv = TypeVarTupleType.new_unification_variable(v)
             else:
                 assert isinstance(v, ParamSpecType)
                 tv = ParamSpecType.new_unification_variable(v)
@@ -93,9 +96,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
             inst = repl
-            # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         else:
             return repl
 
@@ -104,12 +105,71 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         if isinstance(repl, Instance):
             inst = repl
             # Return copy of instance with type erasure flag on.
-            return Instance(inst.type, inst.args, line=inst.line,
-                            column=inst.column, erased=True)
+            # TODO: what does prefix mean in this case?
+            # TODO: why does this case even happen? Instances aren't plural.
+            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
-            return repl.with_flavor(t.flavor)
+            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix.copy_modified(
+                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+            ))
+        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
+            # if the paramspec is *P.args or **P.kwargs:
+            if t.flavor != ParamSpecFlavor.BARE:
+                assert isinstance(repl, CallableType), "Should not be able to get here."
+                # Is this always the right thing to do?
+                param_spec = repl.param_spec()
+                if param_spec:
+                    return param_spec.with_flavor(t.flavor)
+                else:
+                    return repl
+            else:
+                return Parameters(t.prefix.arg_types + repl.arg_types,
+                                  t.prefix.arg_kinds + repl.arg_kinds,
+                                  t.prefix.arg_names + repl.arg_names,
+                                  variables=[*t.prefix.variables, *repl.variables])
         else:
+            # TODO: should this branch be removed? better not to fail silently
             return repl
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        raise NotImplementedError
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        # It is impossible to reasonally implement visit_unpack_type, because
+        # unpacking inherently expands to something more like a list of types.
+        #
+        # Relevant sections that can call unpack should call expand_unpack()
+        # instead.
+        assert False, "Mypy bug: unpacking must happen at a higher level"
+
+    def expand_unpack(self, t: UnpackType) -> Optional[Union[List[Type], Instance, AnyType]]:
+        """May return either a list of types to unpack to, any, or a single
+        variable length tuple. The latter may not be valid in all contexts.
+        """
+        proper_typ = get_proper_type(t.type)
+        if isinstance(proper_typ, TypeVarTupleType):
+            repl = get_proper_type(self.variables.get(proper_typ.id, t))
+            if isinstance(repl, TupleType):
+                return repl.items
+            elif isinstance(repl, Instance) and repl.type.fullname == "builtins.tuple":
+                return repl
+            elif isinstance(repl, AnyType):
+                # tuple[Any, ...] would be better, but we don't have
+                # the type info to construct that type here.
+                return repl
+            elif isinstance(repl, TypeVarTupleType):
+                return [UnpackType(typ=repl)]
+            elif isinstance(repl, UninhabitedType):
+                return None
+            else:
+                raise NotImplementedError(f"Invalid type to expand: {repl}")
+        else:
+            raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> Type:
+        return t.copy_modified(arg_types=self.expand_types(t.arg_types))
 
     def visit_callable_type(self, t: CallableType) -> Type:
         param_spec = t.param_spec()
@@ -122,13 +182,18 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, CallableType):
+            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
                 # Substitute *args: P.args, **kwargs: P.kwargs
-                t = t.expand_param_spec(repl)
-                # TODO: Substitute remaining arg types
-                return t.copy_modified(ret_type=t.ret_type.accept(self),
-                                       type_guard=(t.type_guard.accept(self)
-                                                   if t.type_guard is not None else None))
+                prefix = param_spec.prefix
+                # we need to expand the types in the prefix, so might as well
+                # not get them in the first place
+                t = t.expand_param_spec(repl, no_prefix=True)
+                return t.copy_modified(
+                    arg_types=self.expand_types(prefix.arg_types) + t.arg_types,
+                    arg_kinds=prefix.arg_kinds + t.arg_kinds,
+                    arg_names=prefix.arg_names + t.arg_names,
+                    ret_type=t.ret_type.accept(self),
+                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None))
 
         return t.copy_modified(arg_types=self.expand_types(t.arg_types),
                                ret_type=t.ret_type.accept(self),
@@ -145,7 +210,27 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         return Overloaded(items)
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return t.copy_modified(items=self.expand_types(t.items))
+        items = []
+        for item in t.items:
+            proper_item = get_proper_type(item)
+            if isinstance(proper_item, UnpackType):
+                unpacked_items = self.expand_unpack(proper_item)
+                if unpacked_items is None:
+                    # TODO: better error, something like tuple of unknown?
+                    return UninhabitedType()
+                elif isinstance(unpacked_items, Instance):
+                    if len(t.items) == 1:
+                        return unpacked_items
+                    else:
+                        assert False, "Invalid unpack of variable length tuple"
+                elif isinstance(unpacked_items, AnyType):
+                    return unpacked_items
+                else:
+                    items.extend(unpacked_items)
+            else:
+                items.append(proper_item.accept(self))
+
+        return t.copy_modified(items=items)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
         return t.copy_modified(item_types=self.expand_types(t.items.values()))

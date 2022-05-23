@@ -6,13 +6,13 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
-    ParamSpecType
+    ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
-from mypy import state
+from mypy.state import state
 from mypy import join
 
 # TODO Describe this module.
@@ -64,6 +64,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
                                       for x in declared.relevant_items()])
+    if is_enum_overlapping_union(declared, narrowed):
+        return narrowed
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
@@ -137,6 +139,22 @@ def get_possible_variants(typ: Type) -> List[Type]:
         return [typ]
 
 
+def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is an Enum, and y is an Union with at least one Literal from x"""
+    return (
+        isinstance(x, Instance) and x.type.is_enum and
+        isinstance(y, UnionType) and
+        any(isinstance(p, LiteralType) and x.type == p.fallback.type
+            for p in (get_proper_type(z) for z in y.relevant_items()))
+    )
+
+
+def is_literal_in_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is a Literal and y is an Union that includes x"""
+    return (isinstance(x, LiteralType) and isinstance(y, UnionType) and
+            any(x == get_proper_type(z) for z in y.items))
+
+
 def is_overlapping_types(left: Type,
                          right: Type,
                          ignore_promotions: bool = False,
@@ -197,6 +215,18 @@ def is_overlapping_types(left: Type,
     # *partial* overlap between types.
     #
     # These checks will also handle the NoneType and UninhabitedType cases for us.
+
+    # enums are sometimes expanded into an Union of Literals
+    # when that happens we want to make sure we treat the two as overlapping
+    # and crucially, we want to do that *fast* in case the enum is large
+    # so we do it before expanding variants below to avoid O(n**2) behavior
+    if (
+        is_enum_overlapping_union(left, right)
+        or is_enum_overlapping_union(right, left)
+        or is_literal_in_union(left, right)
+        or is_literal_in_union(right, left)
+    ):
+        return True
 
     if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
             or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
@@ -414,8 +444,8 @@ def are_tuples_overlapping(left: Type, right: Type, *,
     left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
-    assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
-    assert isinstance(right, TupleType), 'Type {} is not a tuple'.format(right)
+    assert isinstance(left, TupleType), f'Type {left} is not a tuple'
+    assert isinstance(right, TupleType), f'Type {right} is not a tuple'
     if len(left.items) != len(right.items):
         return False
     return all(is_overlapping_types(l, r,
@@ -506,17 +536,36 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        if self.s == t:
+            return self.s
+        else:
+            return self.default(self.s)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
+        raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        # TODO: is this the right variance?
+        if isinstance(self.s, Parameters) or isinstance(self.s, CallableType):
+            if len(t.arg_types) != len(self.s.arg_types):
+                return self.default(self.s)
+            return t.copy_modified(
+                arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+            )
+        else:
+            return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
-            si = self.s
-            if t.type == si.type:
+            if t.type == self.s.type:
                 if is_subtype(t, self.s) or is_subtype(self.s, t):
                     # Combine type arguments. We could have used join below
                     # equivalently.
                     args: List[Type] = []
                     # N.B: We use zip instead of indexing because the lengths might have
                     # mismatches during daemon reprocessing.
-                    for ta, sia in zip(t.args, si.args):
+                    for ta, sia in zip(t.args, self.s.args):
                         args.append(self.meet(ta, sia))
                     return Instance(t.type, args)
                 else:
@@ -629,8 +678,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     assert t_item_type is not None
                     item_list.append((item_name, t_item_type))
             items = OrderedDict(item_list)
-            mapping_value_type = join.join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)
         elif isinstance(self.s, Instance) and is_subtype(t, self.s):
@@ -664,7 +712,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)

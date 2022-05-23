@@ -322,7 +322,7 @@ this error, try:
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
-on your system in a unconventional way.
+on your system in an unconventional way.
 
 In this case, follow the steps above on how to handle
 :ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
@@ -491,7 +491,7 @@ This is computed from the following items:
 
 .. note::
 
-    You cannot point to a :pep:`561` package via the ``MYPYPATH``, it must be
+    You cannot point to a stub-only package (:pep:`561`) via the ``MYPYPATH``, it must be
     installed (see :ref:`PEP 561 support <installed-packages>`)
 
 Second, mypy searches for stub files in addition to regular Python files
@@ -515,6 +515,7 @@ In particular, if a Python file and a stub file are both present in the
 same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
+
 
 Other advice and best practices
 *******************************

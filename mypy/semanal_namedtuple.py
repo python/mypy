@@ -9,7 +9,7 @@ from typing_extensions import Final
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
-    UnboundType,
+    UnboundType, LiteralType,
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -53,7 +53,8 @@ class NamedTupleAnalyzer:
         self.options = options
         self.api = api
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
+    def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool,
+                                    is_func_scope: bool
                                     ) -> Tuple[bool, Optional[TypeInfo]]:
         """Analyze if given class definition can be a named tuple definition.
 
@@ -70,6 +71,8 @@ class NamedTupleAnalyzer:
                         # This is a valid named tuple, but some types are incomplete.
                         return True, None
                     items, types, default_items = result
+                    if is_func_scope and '@' not in defn.name:
+                        defn.name += '@' + str(defn.line)
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line)
                     defn.info = info
@@ -183,11 +186,16 @@ class NamedTupleAnalyzer:
             # Error. Construct dummy return value.
             if var_name:
                 name = var_name
+                if is_func_scope:
+                    name += '@' + str(call.line)
             else:
-                name = 'namedtuple@' + str(call.line)
+                name = var_name = 'namedtuple@' + str(call.line)
             info = self.build_namedtuple_typeinfo(name, [], [], {}, node.line)
-            self.store_namedtuple_info(info, name, call, is_typed)
-            return name, info
+            self.store_namedtuple_info(info, var_name, call, is_typed)
+            if name != var_name or is_func_scope:
+                # NOTE: we skip local namespaces since they are not serialized.
+                self.api.add_symbol_skip_local(name, info)
+            return var_name, info
         if not ok:
             # This is a valid named tuple but some types are not ready.
             return typename, None
@@ -266,7 +274,7 @@ class NamedTupleAnalyzer:
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
-            self.fail('Too few arguments for "{}()"'.format(type_name), call)
+            self.fail(f'Too few arguments for "{type_name}()"', call)
             return None
         defaults: List[Expression] = []
         if len(args) > 2:
@@ -289,11 +297,11 @@ class NamedTupleAnalyzer:
                         )
                     break
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
-            self.fail('Unexpected arguments to "{}()"'.format(type_name), call)
+            self.fail(f'Unexpected arguments to "{type_name}()"', call)
             return None
         if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
             self.fail(
-                '"{}()" expects a string literal as the first argument'.format(type_name), call)
+                f'"{type_name}()" expects a string literal as the first argument', call)
             return None
         typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
         types: List[Type] = []
@@ -333,10 +341,10 @@ class NamedTupleAnalyzer:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith('_')]
         if underscore:
-            self.fail('"{}()" field names cannot start with an underscore: '.format(type_name)
+            self.fail(f'"{type_name}()" field names cannot start with an underscore: '
                       + ', '.join(underscore), call)
         if len(defaults) > len(items):
-            self.fail('Too many defaults given in call to "{}()"'.format(type_name), call)
+            self.fail(f'Too many defaults given in call to "{type_name}()"', call)
             defaults = defaults[:len(items)]
         return items, types, defaults, typename, True
 
@@ -398,6 +406,9 @@ class NamedTupleAnalyzer:
         iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
         function_type = self.api.named_type('builtins.function')
 
+        literals: List[Type] = [LiteralType(item, strtype) for item in items]
+        match_args_type = TupleType(literals, basetuple_type)
+
         info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
@@ -417,7 +428,7 @@ class NamedTupleAnalyzer:
             var.info = info
             var.is_initialized_in_class = is_initialized_in_class
             var.is_property = is_property
-            var._fullname = '%s.%s' % (info.fullname, var.name)
+            var._fullname = f'{info.fullname}.{var.name}'
             info.names[var.name] = SymbolTableNode(MDEF, var)
 
         fields = [Var(item, typ) for item, typ in zip(items, types)]
@@ -436,6 +447,7 @@ class NamedTupleAnalyzer:
         add_field(Var('_source', strtype), is_initialized_in_class=True)
         add_field(Var('__annotations__', ordereddictype), is_initialized_in_class=True)
         add_field(Var('__doc__', strtype), is_initialized_in_class=True)
+        add_field(Var('__match_args__', match_args_type), is_initialized_in_class=True)
 
         tvd = TypeVarType(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                          -1, [], info.tuple_type)
@@ -524,7 +536,7 @@ class NamedTupleAnalyzer:
                     continue
                 ctx = named_tuple_info.names[prohibited].node
                 assert ctx is not None
-                self.fail('Cannot overwrite NamedTuple attribute "{}"'.format(prohibited),
+                self.fail(f'Cannot overwrite NamedTuple attribute "{prohibited}"',
                           ctx)
 
         # Restore the names in the original symbol table. This ensures that the symbol

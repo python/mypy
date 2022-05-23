@@ -142,7 +142,7 @@ def prepare_method_def(ir: ClassIR, module_name: str, cdef: ClassDef, mapper: Ma
             ir.method_decls[PROPSET_PREFIX + node.name] = decl
 
         if node.func.is_property:
-            assert node.func.type
+            assert node.func.type, f"Expected return type annotation for property '{node.name}'"
             decl.is_prop_getter = True
             ir.property_types[node.name] = decl.sig.ret_type
 
@@ -177,6 +177,9 @@ def prepare_class_def(path: str, module_name: str, cdef: ClassDef,
     attrs = get_mypyc_attrs(cdef)
     if attrs.get("allow_interpreted_subclasses") is True:
         ir.allow_interpreted_subclasses = True
+    if attrs.get("serializable") is True:
+        # Supports copy.copy and pickle (including subclasses)
+        ir._serializable = True
 
     # We sort the table for determinism here on Python 3.5
     for name, node in sorted(info.names.items()):
