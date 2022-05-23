@@ -332,8 +332,8 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing import TypeVar
-            T = TypeVar("T", bound=str)
-            def f6(text: T = ...) -> None: ...
+            _T = TypeVar("_T", bound=str)
+            def f6(text: _T = ...) -> None: ...
             """,
             runtime="def f6(text = None): pass",
             error="f6",
