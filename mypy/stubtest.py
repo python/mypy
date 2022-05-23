@@ -23,6 +23,7 @@ import mypy.build
 import mypy.modulefinder
 import mypy.state
 import mypy.types
+import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
@@ -1470,6 +1471,9 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     )
     parser.add_argument(
         "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
+    )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
     )
 
     return parser.parse_args(args)
