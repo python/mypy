@@ -1901,7 +1901,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             or fullname not in self.modules
             # but given `from somewhere import random_unrelated_module` we should hide
             # random_unrelated_module
-            or not fullname.startswith(self.cur_mod_id)
+            or not fullname.startswith(self.cur_mod_id + ".")
         )
 
         if isinstance(node.node, PlaceholderNode):
