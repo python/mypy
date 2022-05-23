@@ -330,6 +330,7 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
+            # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
         if is_legacy_bundled_package(components[0], self.python_major_ver):
