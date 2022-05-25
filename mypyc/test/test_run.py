@@ -3,7 +3,6 @@
 import ast
 import glob
 import os.path
-import platform
 import re
 import subprocess
 import contextlib
@@ -272,19 +271,20 @@ class TestRun(MypycDataSuite):
         env = os.environ.copy()
         env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
 
-        # XXX: This is an ugly hack.
-        if 'MYPYC_RUN_GDB' in os.environ:
-            if platform.system() == 'Darwin':
+        debugger = testcase.config.getoption('debugger')
+        if debugger:
+            if debugger == 'lldb':
                 subprocess.check_call(['lldb', '--', sys.executable, driver_path], env=env)
-                assert False, ("Test can't pass in lldb mode. (And remember to pass -s to "
-                               "pytest)")
-            elif platform.system() == 'Linux':
+            elif debugger == 'gdb':
                 subprocess.check_call(['gdb', '--args', sys.executable, driver_path], env=env)
-                assert False, ("Test can't pass in gdb mode. (And remember to pass -s to "
-                               "pytest)")
             else:
-                assert False, 'Unsupported OS'
-
+                assert False, 'Unsupported debugger'
+            # TODO: find a way to automatically disable capturing
+            # stdin/stdout when in debugging mode
+            assert False, (
+                "Test can't pass in debugging mode. "
+                "(Make sure to pass -s to pytest to interact with the debugger)"
+            )
         proc = subprocess.Popen([sys.executable, driver_path], stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, env=env)
         output = proc.communicate()[0].decode('utf8')
