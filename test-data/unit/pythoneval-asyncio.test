@@ -242,8 +242,7 @@ Outside 42
 
 -- Errors
 
-[case testErrorAssigningCoroutineThatDontReturn-xfail]
-# https://github.com/python/mypy/issues/12837
+[case testErrorAssigningCoroutineThatDontReturn]
 from typing import Any
 import asyncio
 from asyncio import Future
@@ -262,7 +261,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:13: error: Function does not return a value
+_program.py:11: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
 from typing import Any

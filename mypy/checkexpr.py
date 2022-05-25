@@ -3987,6 +3987,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, ConditionalExpr):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, AwaitExpr):
+                typ = self.visit_await_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -4099,15 +4101,18 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    'actual type', 'expected type')
         return self.chk.get_generator_receive_type(return_type, False)
 
-    def visit_await_expr(self, e: AwaitExpr) -> Type:
+    def visit_await_expr(self, e: AwaitExpr, allow_none_return: bool = False) -> Type:
         expected_type = self.type_context[-1]
         if expected_type is not None:
             expected_type = self.chk.named_generic_type('typing.Awaitable', [expected_type])
         actual_type = get_proper_type(self.accept(e.expr, expected_type))
         if isinstance(actual_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=actual_type)
-        return self.check_awaitable_expr(actual_type, e,
-                                         message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
+        ret = self.check_awaitable_expr(actual_type, e,
+                                        message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
+        if not allow_none_return and isinstance(get_proper_type(ret), NoneType):
+            self.chk.msg.does_not_return_value(None, e)
+        return ret
 
     def check_awaitable_expr(self, t: Type, ctx: Context, msg: Union[str, ErrorMessage]) -> Type:
         """Check the argument to `await` and extract the type of value.
