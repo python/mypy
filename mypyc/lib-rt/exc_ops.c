@@ -7,7 +7,7 @@
 
 void CPy_Raise(PyObject *exc) {
     if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
-        PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
+        PyObject *obj = PyObject_CallNoArgs(exc);
         if (!obj)
             return;
         PyErr_SetObject(exc, obj);
