@@ -1,18 +1,21 @@
 import socket
 import ssl
-from typing import Any, BinaryIO, List, Pattern, Tuple, overload
+from builtins import list as _list  # conflicts with a method named "list"
+from typing import Any, BinaryIO, NoReturn, Pattern, overload
+from typing_extensions import Literal, TypeAlias
 
-_LongResp = Tuple[bytes, List[bytes], int]
+__all__ = ["POP3", "error_proto", "POP3_SSL"]
+
+_LongResp: TypeAlias = tuple[bytes, list[bytes], int]
 
 class error_proto(Exception): ...
 
-POP3_PORT: int
-POP3_SSL_PORT: int
-CR: bytes
-LF: bytes
-CRLF: bytes
-
-_list = list  # conflicts with a method named "list"
+POP3_PORT: Literal[110]
+POP3_SSL_PORT: Literal[995]
+CR: Literal[b"\r"]
+LF: Literal[b"\n"]
+CRLF: Literal[b"\r\n"]
+HAVE_SSL: bool
 
 class POP3:
     encoding: str
@@ -57,4 +60,4 @@ class POP3_SSL(POP3):
         context: ssl.SSLContext | None = ...,
     ) -> None: ...
     # "context" is actually the last argument, but that breaks LSP and it doesn't really matter because all the arguments are ignored
-    def stls(self, context: Any = ..., keyfile: Any = ..., certfile: Any = ...) -> bytes: ...
+    def stls(self, context: Any = ..., keyfile: Any = ..., certfile: Any = ...) -> NoReturn: ...

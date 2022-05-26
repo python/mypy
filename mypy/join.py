@@ -7,16 +7,17 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
-    is_subtype, is_equivalent, is_subtype_ignoring_tvars, is_proper_subtype,
+    is_subtype, is_equivalent, is_proper_subtype,
     is_protocol_implementation, find_member
 )
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
-from mypy import state
+from mypy.state import state
 
 
 class InstanceJoiner:
@@ -29,7 +30,7 @@ class InstanceJoiner:
 
         self.seen_instances.append((t, s))
 
-        """Calculate the join of two instance types."""
+        # Calculate the join of two instance types
         if t.type == s.type:
             # Simplest case: join two types with the same base type (but
             # potentially different arguments).
@@ -46,27 +47,33 @@ class InstanceJoiner:
                     new_type = AnyType(TypeOfAny.from_another_any, ta_proper)
                 elif isinstance(sa_proper, AnyType):
                     new_type = AnyType(TypeOfAny.from_another_any, sa_proper)
-                elif type_var.variance == COVARIANT:
-                    new_type = join_types(ta, sa, self)
-                    if len(type_var.values) != 0 and new_type not in type_var.values:
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    if not is_subtype(new_type, type_var.upper_bound):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                # TODO: contravariant case should use meet but pass seen instances as
-                # an argument to keep track of recursive checks.
-                elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                elif isinstance(type_var, TypeVarType):
+                    if type_var.variance == COVARIANT:
+                        new_type = join_types(ta, sa, self)
+                        if len(type_var.values) != 0 and new_type not in type_var.values:
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        if not is_subtype(new_type, type_var.upper_bound):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                    # TODO: contravariant case should use meet but pass seen instances as
+                    # an argument to keep track of recursive checks.
+                    elif type_var.variance in (INVARIANT, CONTRAVARIANT):
+                        if not is_equivalent(ta, sa):
+                            self.seen_instances.pop()
+                            return object_from_instance(t)
+                        # If the types are different but equivalent, then an Any is involved
+                        # so using a join in the contravariant case is also OK.
+                        new_type = join_types(ta, sa, self)
+                else:
+                    # ParamSpec type variables behave the same, independent of variance
                     if not is_equivalent(ta, sa):
-                        self.seen_instances.pop()
-                        return object_from_instance(t)
-                    # If the types are different but equivalent, then an Any is involved
-                    # so using a join in the contravariant case is also OK.
+                        return get_proper_type(type_var.upper_bound)
                     new_type = join_types(ta, sa, self)
                 assert new_type is not None
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
-        elif t.type.bases and is_subtype_ignoring_tvars(t, s):
+        elif t.type.bases and is_subtype(t, s, ignore_type_params=True):
             result = self.join_instances_via_supertype(t, s)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
@@ -169,14 +176,14 @@ def join_types(s: Type, t: Type, instance_joiner: Optional[InstanceJoiner] = Non
         s = mypy.typeops.true_or_false(s)
         t = mypy.typeops.true_or_false(t)
 
+    if isinstance(s, UnionType) and not isinstance(t, UnionType):
+        s, t = t, s
+
     if isinstance(s, AnyType):
         return s
 
     if isinstance(s, ErasedType):
         return t
-
-    if isinstance(s, UnionType) and not isinstance(t, UnionType):
-        s, t = t, s
 
     if isinstance(s, NoneType) and not isinstance(t, NoneType):
         s, t = t, s
@@ -242,6 +249,25 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_var(self, t: TypeVarType) -> ProperType:
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
+        else:
+            return self.default(self.s)
+
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
+    def visit_unpack_type(self, t: UnpackType) -> UnpackType:
+        raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        if self.s == t:
+            return t
         else:
             return self.default(self.s)
 
@@ -391,8 +417,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 if (is_equivalent(s_item_type, t_item_type) and
                     (item_name in t.required_keys) == (item_name in self.s.required_keys))
             ])
-            mapping_value_type = join_type_list(list(items.values()))
-            fallback = self.s.create_anonymous_fallback(value_type=mapping_value_type)
+            fallback = self.s.create_anonymous_fallback()
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
             required_keys = set(items.keys()) & t.required_keys & self.s.required_keys
@@ -426,7 +451,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)
@@ -444,6 +469,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         elif isinstance(typ, FunctionLike):
             return self.default(typ.fallback)
         elif isinstance(typ, TypeVarType):
+            return self.default(typ.upper_bound)
+        elif isinstance(typ, ParamSpecType):
             return self.default(typ.upper_bound)
         else:
             return AnyType(TypeOfAny.special_form)

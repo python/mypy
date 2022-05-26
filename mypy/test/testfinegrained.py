@@ -49,6 +49,7 @@ class FineGrainedSuite(DataSuite):
         'fine-grained-modules.test',
         'fine-grained-follow-imports.test',
         'fine-grained-suggest.test',
+        'fine-grained-attr.test',
     ]
 
     # Whether to use the fine-grained cache in the testing. This is overridden
@@ -129,15 +130,13 @@ class FineGrainedSuite(DataSuite):
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(
-                testcase.file, testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
         if testcase.triggered:
             assert_string_arrays_equal(
                 testcase.triggered,
                 self.format_triggered(all_triggered),
-                'Invalid active triggers ({}, line {})'.format(testcase.file,
-                                                               testcase.line))
+                f'Invalid active triggers ({testcase.file}, line {testcase.line})')
 
     def get_options(self,
                     source: str,
@@ -277,7 +276,7 @@ class FineGrainedSuite(DataSuite):
 
         """
         m = re.search('# cmd: mypy ([a-zA-Z0-9_./ ]+)$', program_text, flags=re.MULTILINE)
-        regex = '# cmd{}: mypy ([a-zA-Z0-9_./ ]+)$'.format(incremental_step)
+        regex = f'# cmd{incremental_step}: mypy ([a-zA-Z0-9_./ ]+)$'
         alt_m = re.search(regex, program_text, flags=re.MULTILINE)
         if alt_m is not None:
             # Optionally return a different command if in a later step
@@ -327,7 +326,7 @@ class FineGrainedSuite(DataSuite):
     def get_suggest(self, program_text: str,
                     incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = '1?' if incremental_step == 1 else str(incremental_step)
-        regex = '# suggest{}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'.format(step_bit)
+        regex = f'# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$'
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 

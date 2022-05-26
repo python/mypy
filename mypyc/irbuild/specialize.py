@@ -25,7 +25,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, str_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive
+    bool_rprimitive, c_int_rprimitive, is_dict_rprimitive, is_list_rprimitive
 )
 from mypyc.irbuild.format_str_tokenizer import (
     tokenizer_format_call, join_formatted_strings, convert_format_expr_to_str, FormatOp
@@ -57,6 +57,34 @@ Specializer = Callable[['IRBuilder', CallExpr, RefExpr], Optional[Value]]
 specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
+def _apply_specialization(builder: 'IRBuilder', expr: CallExpr, callee: RefExpr,
+                          name: Optional[str], typ: Optional[RType] = None) -> Optional[Value]:
+    # TODO: Allow special cases to have default args or named args. Currently they don't since
+    #       they check that everything in arg_kinds is ARG_POS.
+
+    # If there is a specializer for this function, try calling it.
+    # Return the first successful one.
+    if name and (name, typ) in specializers:
+        for specializer in specializers[name, typ]:
+            val = specializer(builder, expr, callee)
+            if val is not None:
+                return val
+    return None
+
+
+def apply_function_specialization(builder: 'IRBuilder', expr: CallExpr,
+                                  callee: RefExpr) -> Optional[Value]:
+    """Invoke the Specializer callback for a function if one has been registered"""
+    return _apply_specialization(builder, expr, callee, callee.fullname)
+
+
+def apply_method_specialization(builder: 'IRBuilder', expr: CallExpr, callee: MemberExpr,
+                                typ: Optional[RType] = None) -> Optional[Value]:
+    """Invoke the Specializer callback for a method if one has been registered"""
+    name = callee.fullname if typ is None else callee.name
+    return _apply_specialization(builder, expr, callee, name, typ)
+
+
 def specialize_function(
         name: str, typ: Optional[RType] = None) -> Callable[[Specializer], Specializer]:
     """Decorator to register a function as being a specializer.
@@ -85,14 +113,19 @@ def translate_len(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
     if (len(expr.args) == 1
             and expr.arg_kinds == [ARG_POS]):
-        expr_rtype = builder.node_type(expr.args[0])
+        arg = expr.args[0]
+        expr_rtype = builder.node_type(arg)
         if isinstance(expr_rtype, RTuple):
             # len() of fixed-length tuple can be trivially determined
             # statically, though we still need to evaluate it.
-            builder.accept(expr.args[0])
+            builder.accept(arg)
             return Integer(len(expr_rtype.types))
         else:
-            obj = builder.accept(expr.args[0])
+            if is_list_rprimitive(builder.node_type(arg)):
+                borrow = True
+            else:
+                borrow = False
+            obj = builder.accept(arg, can_borrow=borrow)
             return builder.builtin_len(obj, expr.line)
     return None
 
@@ -329,10 +362,12 @@ def translate_sum_call(builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> O
 
 
 @specialize_function('dataclasses.field')
+@specialize_function('attr.ib')
+@specialize_function('attr.attrib')
 @specialize_function('attr.Factory')
 def translate_dataclasses_field_call(
         builder: IRBuilder, expr: CallExpr, callee: RefExpr) -> Optional[Value]:
-    """Special case for 'dataclasses.field' and 'attr.Factory'
+    """Special case for 'dataclasses.field', 'attr.attrib', and 'attr.Factory'
     function calls because the results of such calls are type-checked
     by mypy using the types of the arguments to their respective
     functions, resulting in attempted coercions by mypyc that throw a
@@ -399,7 +434,12 @@ def translate_isinstance(builder: IRBuilder, expr: CallExpr, callee: RefExpr) ->
 
         irs = builder.flatten_classes(expr.args[1])
         if irs is not None:
-            return builder.builder.isinstance_helper(builder.accept(expr.args[0]), irs, expr.line)
+            can_borrow = all(ir.is_ext_class
+                             and not ir.inherits_python
+                             and not ir.allow_interpreted_subclasses
+                             for ir in irs)
+            obj = builder.accept(expr.args[0], can_borrow=can_borrow)
+            return builder.builder.isinstance_helper(obj, irs, expr.line)
     return None
 
 

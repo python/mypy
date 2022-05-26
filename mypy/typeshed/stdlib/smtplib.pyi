@@ -1,14 +1,51 @@
+import sys
 from _typeshed import Self
+from collections.abc import Sequence
 from email.message import Message as _Message
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Dict, Pattern, Protocol, Sequence, Tuple, Type, Union, overload
+from typing import Any, Pattern, Protocol, overload
+from typing_extensions import TypeAlias
 
-_Reply = Tuple[int, bytes]
-_SendErrs = Dict[str, _Reply]
+if sys.version_info >= (3, 7):
+    __all__ = [
+        "SMTPException",
+        "SMTPNotSupportedError",
+        "SMTPServerDisconnected",
+        "SMTPResponseException",
+        "SMTPSenderRefused",
+        "SMTPRecipientsRefused",
+        "SMTPDataError",
+        "SMTPConnectError",
+        "SMTPHeloError",
+        "SMTPAuthenticationError",
+        "quoteaddr",
+        "quotedata",
+        "SMTP",
+        "SMTP_SSL",
+    ]
+else:
+    __all__ = [
+        "SMTPException",
+        "SMTPServerDisconnected",
+        "SMTPResponseException",
+        "SMTPSenderRefused",
+        "SMTPRecipientsRefused",
+        "SMTPDataError",
+        "SMTPConnectError",
+        "SMTPHeloError",
+        "SMTPAuthenticationError",
+        "quoteaddr",
+        "quotedata",
+        "SMTP",
+        "SMTP_SSL",
+    ]
+
+_Reply: TypeAlias = tuple[int, bytes]
+_SendErrs: TypeAlias = dict[str, _Reply]
 # Should match source_address for socket.create_connection
-_SourceAddress = Tuple[Union[bytearray, bytes, str], int]
+_SourceAddress: TypeAlias = tuple[bytearray | bytes | str, int]
 
 SMTP_PORT: int
 SMTP_SSL_PORT: int
@@ -78,7 +115,7 @@ class SMTP:
     ) -> None: ...
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_value: BaseException | None, tb: TracebackType | None
     ) -> None: ...
     def set_debuglevel(self, debuglevel: int) -> None: ...
     def connect(self, host: str = ..., port: int = ..., source_address: _SourceAddress | None = ...) -> _Reply: ...
@@ -149,6 +186,16 @@ class SMTP_SSL(SMTP):
 LMTP_PORT: int
 
 class LMTP(SMTP):
-    def __init__(
-        self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
-    ) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            port: int = ...,
+            local_hostname: str | None = ...,
+            source_address: _SourceAddress | None = ...,
+            timeout: float = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self, host: str = ..., port: int = ..., local_hostname: str | None = ..., source_address: _SourceAddress | None = ...
+        ) -> None: ...

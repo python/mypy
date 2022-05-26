@@ -29,6 +29,7 @@ class WatchedFileHandler(FileHandler):
         ) -> None: ...
     else:
         def __init__(self, filename: StrPath, mode: str = ..., encoding: str | None = ..., delay: bool = ...) -> None: ...
+
     def _statstream(self) -> None: ...  # undocumented
     def reopenIfNeeded(self) -> None: ...
 
@@ -41,6 +42,7 @@ class BaseRotatingHandler(FileHandler):
         ) -> None: ...
     else:
         def __init__(self, filename: StrPath, mode: str, encoding: str | None = ..., delay: bool = ...) -> None: ...
+
     def rotation_filename(self, default_name: str) -> str: ...
     def rotate(self, source: str, dest: str) -> None: ...
 
@@ -68,6 +70,7 @@ class RotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
         ) -> None: ...
+
     def doRollover(self) -> None: ...
     def shouldRollover(self, record: LogRecord) -> int: ...  # undocumented
 
@@ -75,7 +78,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
     when: str  # undocumented
     backupCount: int  # undocumented
     utc: bool  # undocumented
-    atTime: datetime.datetime | None  # undocumented
+    atTime: datetime.time | None  # undocumented
     interval: int  # undocumented
     suffix: str  # undocumented
     dayOfWeek: int  # undocumented
@@ -91,7 +94,7 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
             errors: str | None = ...,
         ) -> None: ...
     else:
@@ -104,8 +107,9 @@ class TimedRotatingFileHandler(BaseRotatingHandler):
             encoding: str | None = ...,
             delay: bool = ...,
             utc: bool = ...,
-            atTime: datetime.datetime | None = ...,
+            atTime: datetime.time | None = ...,
         ) -> None: ...
+
     def doRollover(self) -> None: ...
     def shouldRollover(self, record: LogRecord) -> int: ...  # undocumented
     def computeRollover(self, currentTime: int) -> int: ...  # undocumented
@@ -128,7 +132,7 @@ class SocketHandler(Handler):
     def createSocket(self) -> None: ...
 
 class DatagramHandler(SocketHandler):
-    def makeSocket(self) -> socket: ...  # type: ignore
+    def makeSocket(self) -> socket: ...  # type: ignore[override]
 
 class SysLogHandler(Handler):
     LOG_EMERG: int
@@ -250,11 +254,12 @@ class QueueHandler(Handler):
     else:
         queue: Queue[Any]  # undocumented
         def __init__(self, queue: Queue[Any]) -> None: ...
+
     def prepare(self, record: LogRecord) -> Any: ...
     def enqueue(self, record: LogRecord) -> None: ...
 
 class QueueListener:
-    handlers: tuple[Handler]  # undocumented
+    handlers: tuple[Handler, ...]  # undocumented
     respect_handler_level: bool  # undocumented
     if sys.version_info >= (3, 7):
         queue: SimpleQueue[Any] | Queue[Any]  # undocumented
@@ -264,6 +269,7 @@ class QueueListener:
     else:
         queue: Queue[Any]  # undocumented
         def __init__(self, queue: Queue[Any], *handlers: Handler, respect_handler_level: bool = ...) -> None: ...
+
     def dequeue(self, block: bool) -> LogRecord: ...
     def prepare(self, record: LogRecord) -> Any: ...
     def start(self) -> None: ...

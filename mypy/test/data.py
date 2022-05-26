@@ -10,20 +10,31 @@ from abc import abstractmethod
 import sys
 
 import pytest
-from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union
+from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union, Pattern
+from typing_extensions import Final
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
 root_dir = os.path.normpath(PREFIX)
 
+# Debuggers that we support for debugging mypyc run tests
+# implementation of using each of these debuggers is in test_run.py
+# TODO: support more debuggers
+SUPPORTED_DEBUGGERS: Final = ["gdb", "lldb"]
+
+
 # File modify/create operation: copy module contents from source_path.
-UpdateFile = NamedTuple('UpdateFile', [('module', str),
-                                       ('content', str),
-                                       ('target_path', str)])
+class UpdateFile(NamedTuple):
+    module: str
+    content: str
+    target_path: str
+
 
 # File delete operation: delete module file.
-DeleteFile = NamedTuple('DeleteFile', [('module', str),
-                                       ('path', str)])
+class DeleteFile(NamedTuple):
+    module: str
+    path: str
+
 
 FileOperation = Union[UpdateFile, DeleteFile]
 
@@ -44,7 +55,7 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     normalize_output = True
 
     files: List[Tuple[str, str]] = []  # path and contents
-    output_files: List[Tuple[str, str]] = []  # path and contents for output files
+    output_files: List[Tuple[str, Union[str, Pattern[str]]]] = []  # output path and contents
     output: List[str] = []  # Regular output errors
     output2: Dict[int, List[str]] = {}  # Output errors for incremental, runs 2+
     deleted_paths: Dict[int, Set[str]] = {}  # from run number of paths
@@ -57,13 +68,15 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
     # optionally followed by lines of text.
     item = first_item = test_items[0]
     for item in test_items[1:]:
-        if item.id == 'file' or item.id == 'outfile':
+        if item.id in {'file', 'outfile', 'outfile-re'}:
             # Record an extra file needed for the test case.
             assert item.arg is not None
             contents = expand_variables('\n'.join(item.data))
             file_entry = (join(base_path, item.arg), contents)
             if item.id == 'file':
                 files.append(file_entry)
+            elif item.id == 'outfile-re':
+                output_files.append((file_entry[0], re.compile(file_entry[1].rstrip(), re.S)))
             else:
                 output_files.append(file_entry)
         elif item.id in ('builtins', 'builtins_py2'):
@@ -98,9 +111,9 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             # File/directory to delete during a multi-step test case
             assert item.arg is not None
             m = re.match(r'(.*)\.([0-9]+)$', item.arg)
-            assert m, 'Invalid delete section: {}'.format(item.arg)
+            assert m, f'Invalid delete section: {item.arg}'
             num = int(m.group(2))
-            assert num >= 2, "Can't delete during step {}".format(num)
+            assert num >= 2, f"Can't delete during step {num}"
             full = join(base_path, m.group(1))
             deleted_paths.setdefault(num, set()).add(full)
         elif re.match(r'out[0-9]*$', item.id):
@@ -114,9 +127,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                 if arg == 'skip-path-normalization':
                     normalize_output = False
                 if arg.startswith("version"):
-                    if arg[7:9] != ">=":
+                    compare_op = arg[7:9]
+                    if compare_op not in {">=", "=="}:
                         raise ValueError(
-                            "{}, line {}: Only >= version checks are currently supported".format(
+                            "{}, line {}: Only >= and == version checks are currently supported"
+                            .format(
                                 case.file, item.line
                             )
                         )
@@ -127,9 +142,17 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
                         raise ValueError(
                             '{}, line {}: "{}" is not a valid python version'.format(
                                 case.file, item.line, version_str))
-                    if not sys.version_info >= version:
-                        version_check = False
-
+                    if compare_op == ">=":
+                        version_check = sys.version_info >= version
+                    elif compare_op == "==":
+                        if not 1 < len(version) < 4:
+                            raise ValueError(
+                                '{}, line {}: Only minor or patch version checks '
+                                'are currently supported with "==": "{}"'.format(
+                                    case.file, item.line, version_str
+                                )
+                            )
+                        version_check = sys.version_info[:len(version)] == version
             if version_check:
                 tmp_output = [expand_variables(line) for line in item.data]
                 if os.path.sep == '\\' and normalize_output:
@@ -145,13 +168,11 @@ def parse_test_case(case: 'DataDrivenTestCase') -> None:
             triggered = item.data
         else:
             raise ValueError(
-                'Invalid section header {} in {} at line {}'.format(
-                    item.id, case.file, item.line))
+                f'Invalid section header {item.id} in {case.file} at line {item.line}')
 
     if out_section_missing:
         raise ValueError(
-            '{}, line {}: Required output section not found'.format(
-                case.file, first_item.line))
+            f'{case.file}, line {first_item.line}: Required output section not found')
 
     for passnum in stale_modules.keys():
         if passnum not in rechecked_modules:
@@ -210,7 +231,7 @@ class DataDrivenTestCase(pytest.Item):
 
     # Extra attributes used by some tests.
     last_line: int
-    output_files: List[Tuple[str, str]]  # Path and contents for output files
+    output_files: List[Tuple[str, Union[str, Pattern[str]]]]  # Path and contents for output files
     deleted_paths: Dict[int, Set[str]]  # Mapping run number -> paths
     triggered: List[str]  # Active triggers (one line per incremental step)
 
@@ -247,7 +268,9 @@ class DataDrivenTestCase(pytest.Item):
         # TODO: add a better error message for when someone uses skip and xfail at the same time
         elif self.xfail:
             self.add_marker(pytest.mark.xfail)
-        suite = self.parent.obj()
+        parent = self.getparent(DataSuiteCollector)
+        assert parent is not None, 'Should not happen'
+        suite = parent.obj()
         suite.setup()
         try:
             suite.run_case(self)
@@ -257,7 +280,7 @@ class DataDrivenTestCase(pytest.Item):
             if save_dir:
                 assert self.tmpdir is not None
                 target_dir = os.path.join(save_dir, os.path.basename(self.tmpdir.name))
-                print("Copying data from test {} to {}".format(self.name, target_dir))
+                print(f"Copying data from test {self.name} to {target_dir}")
                 if not os.path.isabs(target_dir):
                     assert self.old_cwd
                     target_dir = os.path.join(self.old_cwd, target_dir)
@@ -325,7 +348,7 @@ class DataDrivenTestCase(pytest.Item):
             self.parent._prunetraceback(excinfo)
             excrepr = excinfo.getrepr(style='short')
 
-        return "data: {}:{}:\n{}".format(self.file, self.line, excrepr)
+        return f"data: {self.file}:{self.line}:\n{excrepr}"
 
     def find_steps(self) -> List[List[FileOperation]]:
         """Return a list of descriptions of file operations for each incremental step.
@@ -479,10 +502,9 @@ def expand_errors(input: List[str], output: List[str], fnam: str) -> None:
                 message = message.replace('\\#', '#')  # adds back escaped # character
                 if col is None:
                     output.append(
-                        '{}:{}: {}: {}'.format(fnam, i + 1, severity, message))
+                        f'{fnam}:{i + 1}: {severity}: {message}')
                 else:
-                    output.append('{}:{}:{}: {}: {}'.format(
-                        fnam, i + 1, col, severity, message))
+                    output.append(f'{fnam}:{i + 1}:{col}: {severity}: {message}')
 
 
 def fix_win_path(line: str) -> str:
@@ -533,6 +555,13 @@ def pytest_addoption(parser: Any) -> None:
                     help='Set the verbose flag when creating mypy Options')
     group.addoption('--mypyc-showc', action='store_true', default=False,
                     help='Display C code on mypyc test failures')
+    group.addoption(
+        "--mypyc-debug",
+        default=None,
+        dest="debugger",
+        choices=SUPPORTED_DEBUGGERS,
+        help="Run the first mypyc run test with the specified debugger",
+    )
 
 
 # This function name is special to pytest.  See
@@ -550,12 +579,12 @@ def pytest_pycollect_makeitem(collector: Any, name: str,
             # The collect method of the returned DataSuiteCollector instance will be called later,
             # with self.obj being obj.
             return DataSuiteCollector.from_parent(  # type: ignore[no-untyped-call]
-                parent=collector, name=name
+                parent=collector, name=name,
             )
     return None
 
 
-def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
+def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                      file: str) -> Iterator['DataDrivenTestCase']:
     """Iterate over raw test cases in file, at collection time, ignoring sub items.
 
@@ -576,8 +605,13 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
                      data,
                      flags=re.DOTALL | re.MULTILINE)
     line_no = cases[0].count('\n') + 1
+    test_names = set()
     for i in range(1, len(cases), NUM_GROUPS):
         name, writescache, only_when, platform_flag, skip, xfail, data = cases[i:i + NUM_GROUPS]
+        if name in test_names:
+            raise RuntimeError('Found a duplicate test name "{}" in {} on line {}'.format(
+                name, parent.name, line_no,
+            ))
         platform = platform_flag[1:] if platform_flag else None
         yield DataDrivenTestCase.from_parent(
             parent=parent,
@@ -594,19 +628,46 @@ def split_test_cases(parent: 'DataSuiteCollector', suite: 'DataSuite',
         )
         line_no += data.count('\n') + 1
 
+        # Record existing tests to prevent duplicates:
+        test_names.update({name})
+
 
 class DataSuiteCollector(pytest.Class):
-    def collect(self) -> Iterator[pytest.Item]:
+    def collect(self) -> Iterator['DataFileCollector']:
         """Called by pytest on each of the object returned from pytest_pycollect_makeitem"""
 
         # obj is the object for which pytest_pycollect_makeitem returned self.
         suite: DataSuite = self.obj
 
         assert os.path.isdir(suite.data_prefix), \
-            'Test data prefix ({}) not set correctly'.format(suite.data_prefix)
+            f'Test data prefix ({suite.data_prefix}) not set correctly'
 
-        for f in suite.files:
-            yield from split_test_cases(self, suite, os.path.join(suite.data_prefix, f))
+        for data_file in suite.files:
+            yield DataFileCollector.from_parent(parent=self, name=data_file)
+
+
+class DataFileCollector(pytest.Collector):
+    """Represents a single `.test` data driven test file.
+
+    More context: https://github.com/python/mypy/issues/11662
+    """
+    parent: DataSuiteCollector
+
+    @classmethod  # We have to fight with pytest here:
+    def from_parent(  # type: ignore[override]
+        cls,
+        parent: DataSuiteCollector,
+        *,
+        name: str,
+    ) -> 'DataFileCollector':
+        return super().from_parent(parent, name=name)
+
+    def collect(self) -> Iterator['DataDrivenTestCase']:
+        yield from split_test_cases(
+            parent=self,
+            suite=self.parent.obj,
+            file=os.path.join(self.parent.obj.data_prefix, self.name),
+        )
 
 
 def add_test_name_suffix(name: str, suffix: str) -> str:

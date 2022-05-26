@@ -1,8 +1,8 @@
 import queue
 import sys
-from collections.abc import Iterable, Mapping, Set
+from collections.abc import Callable, Iterable, Mapping, Set as AbstractSet
 from threading import Lock, Semaphore, Thread
-from typing import Any, Callable, Generic, Tuple, TypeVar
+from typing import Any, Generic, TypeVar
 from weakref import ref
 
 from ._base import Executor, Future
@@ -33,7 +33,7 @@ if sys.version_info >= (3, 7):
         executor_reference: ref[Any],
         work_queue: queue.SimpleQueue[Any],
         initializer: Callable[..., None],
-        initargs: Tuple[Any, ...],
+        initargs: tuple[Any, ...],
     ) -> None: ...
 
 else:
@@ -41,18 +41,19 @@ else:
 
 if sys.version_info >= (3, 7):
     from ._base import BrokenExecutor
+
     class BrokenThreadPool(BrokenExecutor): ...
 
 class ThreadPoolExecutor(Executor):
     _max_workers: int
     _idle_semaphore: Semaphore
-    _threads: Set[Thread]
+    _threads: AbstractSet[Thread]
     _broken: bool
     _shutdown: bool
     _shutdown_lock: Lock
     _thread_name_prefix: str | None = ...
     _initializer: Callable[..., None] | None = ...
-    _initargs: Tuple[Any, ...] = ...
+    _initargs: tuple[Any, ...] = ...
     if sys.version_info >= (3, 7):
         _work_queue: queue.SimpleQueue[_WorkItem[Any]]
     else:
@@ -63,10 +64,11 @@ class ThreadPoolExecutor(Executor):
             max_workers: int | None = ...,
             thread_name_prefix: str = ...,
             initializer: Callable[..., None] | None = ...,
-            initargs: Tuple[Any, ...] = ...,
+            initargs: tuple[Any, ...] = ...,
         ) -> None: ...
     else:
         def __init__(self, max_workers: int | None = ..., thread_name_prefix: str = ...) -> None: ...
+
     def _adjust_thread_count(self) -> None: ...
     if sys.version_info >= (3, 7):
         def _initializer_failed(self) -> None: ...

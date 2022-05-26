@@ -347,24 +347,13 @@ This also works for attributes defined within methods:
         def __init__(self) -> None:
             self.count: Optional[int] = None
 
-As a special case, you can use a non-optional type when initializing an
-attribute to ``None`` inside a class body *and* using a type comment,
-since when using a type comment, an initializer is syntactically required,
-and ``None`` is used as a dummy, placeholder initializer:
+This is not a problem when using variable annotations, since no initial
+value is needed:
 
 .. code-block:: python
 
    class Container:
-       items = None  # type: list[str]  # OK (only with type comment)
-
-This is not a problem when using variable annotations, since no initializer
-is needed:
-
-.. code-block:: python
-
-
-   class Container:
-       items: list[str]  # No initializer
+       items: list[str]  # No initial value
 
 Mypy generally uses the first assignment to a variable to
 infer the type of the variable. However, if you assign both a ``None``
@@ -392,8 +381,9 @@ case you should add an explicit ``Optional[...]`` annotation (or type comment).
 
    The Python interpreter internally uses the name ``NoneType`` for
    the type of ``None``, but ``None`` is always used in type
-   annotations. The latter is shorter and reads better. (Besides,
-   ``NoneType`` is not even defined in the standard library.)
+   annotations. The latter is shorter and reads better. (``NoneType``
+   is available as :py:data:`types.NoneType` on Python 3.10+, but is
+   not exposed at all on earlier versions of Python.)
 
 .. note::
 
@@ -420,9 +410,6 @@ the runtime with some limitations (see :ref:`runtime_troubles`).
     t1: int | str  # equivalent to Union[int, str]
 
     t2: int | None  # equivalent to Optional[int]
-
-    # Usable in type comments
-    t3 = 42  # type: int | str
 
 .. _no_strict_optional:
 
@@ -522,6 +509,25 @@ assigning the type to a variable:
     another type -- it's equivalent to the target type except for
     :ref:`generic aliases <generic-type-aliases>`.
 
+Since Mypy 0.930 you can also use *explicit type aliases*, which were
+introduced in :pep:`613`.
+
+There can be confusion about exactly when an assignment defines an implicit type alias --
+for example, when the alias contains forward references, invalid types, or violates some other
+restrictions on type alias declarations.  Because the
+distinction between an unannotated variable and a type alias is implicit,
+ambiguous or incorrect type alias declarations default to defining
+a normal variable instead of a type alias.
+
+Explicit type aliases are unambiguous and can also improve readability by
+making the intent clear:
+
+.. code-block:: python
+
+   from typing import TypeAlias  # "from typing_extensions" in Python 3.9 and earlier
+
+   AliasType: TypeAlias = Union[list[dict[tuple[int, str], set[int]]], tuple[str, list[str]]]
+
 .. _named-tuples:
 
 Named tuples
@@ -564,8 +570,8 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
 
 .. note::
 
-  You can use raw ``NamedTuple`` pseudo-class to annotate type
-  where any ``NamedTuple`` is expected.
+  You can use the raw ``NamedTuple`` "pseudo-class" in type annotations
+  if any ``NamedTuple`` object is valid.
 
   For example, it can be useful for deserialization:
 
@@ -580,10 +586,12 @@ Python 3.6 introduced an alternative, class-based syntax for named tuples with t
     deserialize_named_tuple(Point(x=1, y=2))  # ok
     deserialize_named_tuple(Person(name='Nikita', age=18))  # ok
 
-    deserialize_named_tuple((1, 2))  # Argument 1 to "deserialize_named_tuple" has incompatible type "Tuple[int, int]"; expected "NamedTuple"
+    # Error: Argument 1 to "deserialize_named_tuple" has incompatible type
+    # "Tuple[int, int]"; expected "NamedTuple"
+    deserialize_named_tuple((1, 2))
 
-  Note, that behavior is highly experimental, non-standard,
-  and can be not supported by other type checkers.
+  Note that this behavior is highly experimental, non-standard,
+  and may not be supported by other type checkers and IDEs.
 
 .. _type-of-class:
 
@@ -594,10 +602,11 @@ The type of class objects
 <484#the-type-of-class-objects>`.)
 
 Sometimes you want to talk about class objects that inherit from a
-given class.  This can be spelled as :py:class:`Type[C] <typing.Type>` where ``C`` is a
+given class.  This can be spelled as ``type[C]`` (or, on Python 3.8 and lower,
+:py:class:`typing.Type[C] <typing.Type>`) where ``C`` is a
 class.  In other words, when ``C`` is the name of a class, using ``C``
 to annotate an argument declares that the argument is an instance of
-``C`` (or of a subclass of ``C``), but using :py:class:`Type[C] <typing.Type>` as an
+``C`` (or of a subclass of ``C``), but using ``type[C]`` as an
 argument annotation declares that the argument is a class object
 deriving from ``C`` (or ``C`` itself).
 
@@ -628,7 +637,7 @@ you pass it the right class object:
        # (Here we could write the user object to a database)
        return user
 
-How would we annotate this function?  Without :py:class:`~typing.Type` the best we
+How would we annotate this function?  Without the ability to parameterize ``type``, the best we
 could do would be:
 
 .. code-block:: python
@@ -644,14 +653,14 @@ doesn't see that the ``buyer`` variable has type ``ProUser``:
    buyer = new_user(ProUser)
    buyer.pay()  # Rejected, not a method on User
 
-However, using :py:class:`~typing.Type` and a type variable with an upper bound (see
+However, using the ``type[C]`` syntax and a type variable with an upper bound (see
 :ref:`type-variable-upper-bound`) we can do better:
 
 .. code-block:: python
 
    U = TypeVar('U', bound=User)
 
-   def new_user(user_class: Type[U]) -> U:
+   def new_user(user_class: type[U]) -> U:
        # Same  implementation as before
 
 Now mypy will infer the correct type of the result when we call
@@ -664,12 +673,12 @@ Now mypy will infer the correct type of the result when we call
 
 .. note::
 
-   The value corresponding to :py:class:`Type[C] <typing.Type>` must be an actual class
+   The value corresponding to ``type[C]`` must be an actual class
    object that's a subtype of ``C``.  Its constructor must be
    compatible with the constructor of ``C``.  If ``C`` is a type
    variable, its upper bound must be a class object.
 
-For more details about ``Type[]`` see :pep:`PEP 484: The type of
+For more details about ``type[]`` and :py:class:`typing.Type[] <typing.Type>`, see :pep:`PEP 484: The type of
 class objects <484#the-type-of-class-objects>`.
 
 .. _text-and-anystr:
@@ -721,7 +730,7 @@ For more details, see :ref:`type-variable-value-restriction`.
 Generators
 **********
 
-A basic generator that only yields values can be annotated as having a return
+A basic generator that only yields values can be succinctly annotated as having a return
 type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`Iterable[YieldType] <typing.Iterable>`. For example:
 
 .. code-block:: python
@@ -730,9 +739,20 @@ type of either :py:class:`Iterator[YieldType] <typing.Iterator>` or :py:class:`I
        for i in range(n):
            yield i * i
 
+A good rule of thumb is to annotate functions with the most specific return
+type possible. However, you should also take care to avoid leaking implementation
+details into a function's public API. In keeping with these two principles, prefer
+:py:class:`Iterator[YieldType] <typing.Iterator>` over
+:py:class:`Iterable[YieldType] <typing.Iterable>` as the return-type annotation for a
+generator function, as it lets mypy know that users are able to call :py:func:`next` on
+the object returned by the function. Nonetheless, bear in mind that ``Iterable`` may
+sometimes be the better option, if you consider it an implementation detail that
+``next()`` can be called on the object returned by your function.
+
 If you want your generator to accept values via the :py:meth:`~generator.send` method or return
-a value, you should use the
-:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead. For example:
+a value, on the other hand, you should use the
+:py:class:`Generator[YieldType, SendType, ReturnType] <typing.Generator>` generic type instead of
+either ``Iterator`` or ``Iterable``. For example:
 
 .. code-block:: python
 
@@ -755,7 +775,7 @@ annotated the first example as the following:
        for i in range(n):
            yield i * i
 
-This is slightly different from using ``Iterable[int]`` or ``Iterator[int]``,
+This is slightly different from using ``Iterator[int]`` or ``Iterable[int]``,
 since generators have :py:meth:`~generator.close`, :py:meth:`~generator.send`, and :py:meth:`~generator.throw` methods that
-generic iterables don't. If you will call these methods on the returned
-generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterable` or :py:class:`~typing.Iterator`.
+generic iterators and iterables don't. If you plan to call these methods on the returned
+generator, use the :py:class:`~typing.Generator` type instead of :py:class:`~typing.Iterator` or :py:class:`~typing.Iterable`.

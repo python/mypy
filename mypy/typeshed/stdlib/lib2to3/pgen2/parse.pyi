@@ -1,8 +1,10 @@
+from collections.abc import Sequence
 from lib2to3.pgen2.grammar import _DFAS, Grammar
 from lib2to3.pytree import _NL, _Convert, _RawNode
-from typing import Any, Sequence, Set
+from typing import Any
+from typing_extensions import TypeAlias
 
-_Context = Sequence[Any]
+_Context: TypeAlias = Sequence[Any]
 
 class ParseError(Exception):
     msg: str
@@ -16,7 +18,7 @@ class Parser:
     convert: _Convert
     stack: list[tuple[_DFAS, int, _RawNode]]
     rootnode: _NL | None
-    used_names: Set[str]
+    used_names: set[str]
     def __init__(self, grammar: Grammar, convert: _Convert | None = ...) -> None: ...
     def setup(self, start: int | None = ...) -> None: ...
     def addtoken(self, type: int, value: str | None, context: _Context) -> bool: ...

@@ -8,7 +8,8 @@ from typing import List, Optional, Tuple
 from mypy.semanal_shared import set_callable_name
 from mypy.types import (
     Type, AnyType, NoneType, Instance, CallableType, TypeVarType, TypeType,
-    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType
+    UninhabitedType, TypeOfAny, TypeAliasType, UnionType, LiteralType,
+    TypeVarLikeType
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, FuncDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
@@ -64,6 +65,7 @@ class TypeFixture:
                                               variances=[COVARIANT])   # class tuple
         self.type_typei = self.make_type_info('builtins.type')         # class type
         self.bool_type_info = self.make_type_info('builtins.bool')
+        self.str_type_info = self.make_type_info('builtins.str')
         self.functioni = self.make_type_info('builtins.function')  # function TODO
         self.ai = self.make_type_info('A', mro=[self.oi])              # class A
         self.bi = self.make_type_info('B', mro=[self.ai, self.oi])     # class B(A)
@@ -108,6 +110,7 @@ class TypeFixture:
         self.std_tuple = Instance(self.std_tuplei, [self.anyt])        # tuple
         self.type_type = Instance(self.type_typei, [])        # type
         self.function = Instance(self.functioni, [])  # function TODO
+        self.str_type = Instance(self.str_type_info, [])
         self.a = Instance(self.ai, [])          # A
         self.b = Instance(self.bi, [])          # B
         self.c = Instance(self.ci, [])          # C
@@ -156,9 +159,18 @@ class TypeFixture:
         self.lit1 = LiteralType(1, self.a)
         self.lit2 = LiteralType(2, self.a)
         self.lit3 = LiteralType("foo", self.d)
+        self.lit4 = LiteralType(4, self.a)
         self.lit1_inst = Instance(self.ai, [], last_known_value=self.lit1)
         self.lit2_inst = Instance(self.ai, [], last_known_value=self.lit2)
         self.lit3_inst = Instance(self.di, [], last_known_value=self.lit3)
+        self.lit4_inst = Instance(self.ai, [], last_known_value=self.lit4)
+
+        self.lit_str1 = LiteralType("x", self.str_type)
+        self.lit_str2 = LiteralType("y", self.str_type)
+        self.lit_str3 = LiteralType("z", self.str_type)
+        self.lit_str1_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str1)
+        self.lit_str2_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str2)
+        self.lit_str3_inst = Instance(self.str_type_info, [], last_known_value=self.lit_str3)
 
         self.type_a = TypeType.make_normalized(self.a)
         self.type_b = TypeType.make_normalized(self.b)
@@ -234,7 +246,7 @@ class TypeFixture:
                 module_name = '__main__'
 
         if typevars:
-            v: List[TypeVarType] = []
+            v: List[TypeVarLikeType] = []
             for id, n in enumerate(typevars, 1):
                 if variances:
                     variance = variances[id - 1]

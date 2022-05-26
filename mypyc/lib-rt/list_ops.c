@@ -52,6 +52,24 @@ PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index) {
     return result;
 }
 
+PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index) {
+    Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+    Py_ssize_t size = PyList_GET_SIZE(list);
+    if (n >= 0) {
+        if (n >= size) {
+            PyErr_SetString(PyExc_IndexError, "list index out of range");
+            return NULL;
+        }
+    } else {
+        n += size;
+        if (n < 0) {
+            PyErr_SetString(PyExc_IndexError, "list index out of range");
+            return NULL;
+        }
+    }
+    return PyList_GET_ITEM(list, n);
+}
+
 PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
@@ -71,6 +89,29 @@ PyObject *CPyList_GetItem(PyObject *list, CPyTagged index) {
         PyObject *result = PyList_GET_ITEM(list, n);
         Py_INCREF(result);
         return result;
+    } else {
+        PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
+        return NULL;
+    }
+}
+
+PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index) {
+    if (CPyTagged_CheckShort(index)) {
+        Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
+        Py_ssize_t size = PyList_GET_SIZE(list);
+        if (n >= 0) {
+            if (n >= size) {
+                PyErr_SetString(PyExc_IndexError, "list index out of range");
+                return NULL;
+            }
+        } else {
+            n += size;
+            if (n < 0) {
+                PyErr_SetString(PyExc_IndexError, "list index out of range");
+                return NULL;
+            }
+        }
+        return PyList_GET_ITEM(list, n);
     } else {
         PyErr_SetString(PyExc_OverflowError, CPYTHON_LARGE_INT_ERRMSG);
         return NULL;

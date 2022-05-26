@@ -16,13 +16,13 @@ def f():
     r9 :: bit
 L0:
     r0 = PySet_New(0)
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = PySet_Add(r0, r1)
     r3 = r2 >= 0 :: signed
-    r4 = box(short_int, 4)
+    r4 = object 2
     r5 = PySet_Add(r0, r4)
     r6 = r5 >= 0 :: signed
-    r7 = box(short_int, 6)
+    r7 = object 3
     r8 = PySet_Add(r0, r7)
     r9 = r8 >= 0 :: signed
     return r0
@@ -96,9 +96,9 @@ def test1():
     a :: set
 L0:
     r0 = PyList_New(3)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 6)
-    r3 = box(short_int, 10)
+    r1 = object 1
+    r2 = object 3
+    r3 = object 5
     r4 = get_element_ptr r0 ob_item :: PyListObject
     r5 = load_mem r4 :: ptr*
     set_mem r5, r1 :: builtins.object*
@@ -186,9 +186,9 @@ L0:
     r0 = '1'
     r1 = '3'
     r2 = '5'
-    r3 = box(short_int, 2)
-    r4 = box(short_int, 6)
-    r5 = box(short_int, 10)
+    r3 = object 1
+    r4 = object 3
+    r5 = object 5
     r6 = CPyDict_Build(3, r3, r0, r4, r1, r5, r2)
     tmp_dict = r6
     r7 = PySet_New(0)
@@ -347,11 +347,11 @@ def test():
     a :: set
 L0:
     r0 = PyList_New(5)
-    r1 = box(short_int, 2)
-    r2 = box(short_int, 4)
-    r3 = box(short_int, 6)
-    r4 = box(short_int, 8)
-    r5 = box(short_int, 10)
+    r1 = object 1
+    r2 = object 2
+    r3 = object 3
+    r4 = object 4
+    r5 = object 5
     r6 = get_element_ptr r0 ob_item :: PyListObject
     r7 = load_mem r6 :: ptr*
     set_mem r7, r1 :: builtins.object*
@@ -465,13 +465,13 @@ def f():
     r12 :: short_int
 L0:
     r0 = PySet_New(0)
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = PySet_Add(r0, r1)
     r3 = r2 >= 0 :: signed
-    r4 = box(short_int, 4)
+    r4 = object 2
     r5 = PySet_Add(r0, r4)
     r6 = r5 >= 0 :: signed
-    r7 = box(short_int, 6)
+    r7 = object 3
     r8 = PySet_Add(r0, r7)
     r9 = r8 >= 0 :: signed
     r10 = get_element_ptr r0 used :: PySetObject
@@ -501,14 +501,14 @@ def f():
     r10 :: bool
 L0:
     r0 = PySet_New(0)
-    r1 = box(short_int, 6)
+    r1 = object 3
     r2 = PySet_Add(r0, r1)
     r3 = r2 >= 0 :: signed
-    r4 = box(short_int, 8)
+    r4 = object 4
     r5 = PySet_Add(r0, r4)
     r6 = r5 >= 0 :: signed
     x = r0
-    r7 = box(short_int, 10)
+    r7 = object 5
     r8 = PySet_Contains(x, r7)
     r9 = r8 >= 0 :: signed
     r10 = truncate r8: int32 to builtins.bool
@@ -528,7 +528,7 @@ def f():
 L0:
     r0 = PySet_New(0)
     x = r0
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = CPySet_Remove(x, r1)
     return x
 
@@ -547,7 +547,7 @@ def f():
 L0:
     r0 = PySet_New(0)
     x = r0
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = PySet_Discard(x, r1)
     r3 = r2 >= 0 :: signed
     return x
@@ -567,7 +567,7 @@ def f():
 L0:
     r0 = PySet_New(0)
     x = r0
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = PySet_Add(x, r1)
     r3 = r2 >= 0 :: signed
     return x
@@ -641,17 +641,17 @@ def f(x, y):
     r13 :: bit
 L0:
     r0 = PySet_New(0)
-    r1 = box(short_int, 2)
+    r1 = object 1
     r2 = PySet_Add(r0, r1)
     r3 = r2 >= 0 :: signed
-    r4 = box(short_int, 4)
+    r4 = object 2
     r5 = PySet_Add(r0, r4)
     r6 = r5 >= 0 :: signed
     r7 = _PySet_Update(r0, x)
     r8 = r7 >= 0 :: signed
     r9 = _PySet_Update(r0, y)
     r10 = r9 >= 0 :: signed
-    r11 = box(short_int, 6)
+    r11 = object 3
     r12 = PySet_Add(r0, r11)
     r13 = r12 >= 0 :: signed
     return r0

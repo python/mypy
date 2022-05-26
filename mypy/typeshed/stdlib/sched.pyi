@@ -1,20 +1,37 @@
-from typing import Any, Callable, NamedTuple, Tuple
+import sys
+from collections.abc import Callable
+from typing import Any, NamedTuple
 
-class Event(NamedTuple):
-    time: float
-    priority: Any
-    action: Callable[..., Any]
-    argument: Tuple[Any, ...]
-    kwargs: dict[str, Any]
+__all__ = ["scheduler"]
+
+if sys.version_info >= (3, 10):
+    class Event(NamedTuple):
+        time: float
+        priority: Any
+        sequence: int
+        action: Callable[..., Any]
+        argument: tuple[Any, ...]
+        kwargs: dict[str, Any]
+
+else:
+    class Event(NamedTuple):
+        time: float
+        priority: Any
+        action: Callable[..., Any]
+        argument: tuple[Any, ...]
+        kwargs: dict[str, Any]
 
 class scheduler:
-    def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], None] = ...) -> None: ...
+    timefunc: Callable[[], float]
+    delayfunc: Callable[[float], object]
+
+    def __init__(self, timefunc: Callable[[], float] = ..., delayfunc: Callable[[float], object] = ...) -> None: ...
     def enterabs(
         self,
         time: float,
         priority: Any,
         action: Callable[..., Any],
-        argument: Tuple[Any, ...] = ...,
+        argument: tuple[Any, ...] = ...,
         kwargs: dict[str, Any] = ...,
     ) -> Event: ...
     def enter(
@@ -22,7 +39,7 @@ class scheduler:
         delay: float,
         priority: Any,
         action: Callable[..., Any],
-        argument: Tuple[Any, ...] = ...,
+        argument: tuple[Any, ...] = ...,
         kwargs: dict[str, Any] = ...,
     ) -> Event: ...
     def run(self, blocking: bool = ...) -> float | None: ...

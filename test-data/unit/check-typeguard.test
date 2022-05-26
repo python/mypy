@@ -121,7 +121,7 @@ def filter(f: Callable[[T], TypeGuard[R]], it: Iterable[T]) -> Iterable[R]: pass
 def is_float(a: object) -> TypeGuard[float]: pass
 a: List[object] = ["a", 0, 0.0]
 b = filter(is_float, a)
-reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float*]"
+reveal_type(b)  # N: Revealed type is "typing.Iterable[builtins.float]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardMethod]
@@ -242,8 +242,8 @@ def main1(a: object) -> None:
 
     la = [a]
     if is_float(*la):  # E: Type guard requires positional argument
-        reveal_type(la)  # N: Revealed type is "builtins.list[builtins.object*]"
-        reveal_type(a)  # N: Revealed type is "builtins.object*"
+        reveal_type(la)  # N: Revealed type is "builtins.list[builtins.object]"
+        reveal_type(a)  # N: Revealed type is "builtins.object"
 
 [builtins fixtures/tuple.pyi]
 
@@ -269,7 +269,7 @@ def main(a: List[Optional[int]]) -> None:
     reveal_type(bb)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
     # Also, if you replace 'bool' with 'Any' in the second overload, bb is Iterator[Any]
     cc = filter(is_int_typeguard, a)
-    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int*]"
+    reveal_type(cc)  # N: Revealed type is "typing.Iterator[builtins.int]"
     dd = filter(is_int_bool, a)
     reveal_type(dd)  # N: Revealed type is "typing.Iterator[Union[builtins.int, None]]"
 
@@ -525,8 +525,8 @@ class filter(Generic[_T]):
 def is_int_typeguard(a: object) -> TypeGuard[int]: pass
 def returns_bool(a: object) -> bool: pass
 
-reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int*]"
-reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object*]"
+reveal_type(filter(is_int_typeguard))  # N: Revealed type is "__main__.filter[builtins.int]"
+reveal_type(filter(returns_bool))  # N: Revealed type is "__main__.filter[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 [case testTypeGuardSubtypingVariance]
@@ -546,4 +546,54 @@ def with_typeguard_c(o: object) -> TypeGuard[C]: pass
 accepts_typeguard(with_typeguard_a)  # E: Argument 1 to "accepts_typeguard" has incompatible type "Callable[[object], TypeGuard[A]]"; expected "Callable[[object], TypeGuard[B]]"
 accepts_typeguard(with_typeguard_b)
 accepts_typeguard(with_typeguard_c)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithIdentityGeneric]
+from typing import TypeVar
+from typing_extensions import TypeGuard
+
+_T = TypeVar("_T")
+
+def identity(val: _T) -> TypeGuard[_T]:
+    pass
+
+def func1(name: _T):
+    reveal_type(name)  # N: Revealed type is "_T`-1"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "_T`-1"
+
+def func2(name: str):
+    reveal_type(name)  # N: Revealed type is "builtins.str"
+    if identity(name):
+        reveal_type(name)  # N: Revealed type is "builtins.str"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithGenericInstance]
+from typing import TypeVar, List
+from typing_extensions import TypeGuard
+
+_T = TypeVar("_T")
+
+def is_list_of_str(val: _T) -> TypeGuard[List[_T]]:
+    pass
+
+def func(name: str):
+    reveal_type(name)  # N: Revealed type is "builtins.str"
+    if is_list_of_str(name):
+        reveal_type(name)  # N: Revealed type is "builtins.list[builtins.str]"
+[builtins fixtures/tuple.pyi]
+
+[case testTypeGuardWithTupleGeneric]
+from typing import TypeVar, Tuple
+from typing_extensions import TypeGuard
+
+_T = TypeVar("_T")
+
+def is_two_element_tuple(val: Tuple[_T, ...]) -> TypeGuard[Tuple[_T, _T]]:
+    pass
+
+def func(names: Tuple[str, ...]):
+    reveal_type(names)  # N: Revealed type is "builtins.tuple[builtins.str, ...]"
+    if is_two_element_tuple(names):
+        reveal_type(names)  # N: Revealed type is "Tuple[builtins.str, builtins.str]"
 [builtins fixtures/tuple.pyi]

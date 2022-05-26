@@ -58,7 +58,7 @@ class CustomPythonBuild(build_py):
         path = os.path.join(self.build_lib, 'mypy')
         self.mkpath(path)
         with open(os.path.join(path, 'version.py'), 'w') as stream:
-            stream.write('__version__ = "{}"\n'.format(version))
+            stream.write(f'__version__ = "{version}"\n')
 
     def run(self):
         self.execute(self.pin_version, ())
@@ -107,6 +107,8 @@ if USE_MYPYC:
     )) + (
         # Don't want to grab this accidentally
         os.path.join('mypyc', 'lib-rt', 'setup.py'),
+        # Uses __file__ at top level https://github.com/mypyc/mypyc/issues/700
+        os.path.join('mypyc', '__main__.py'),
     )
 
     everything = (
@@ -144,10 +146,12 @@ if USE_MYPYC:
 
     from mypyc.build import mypycify
     opt_level = os.getenv('MYPYC_OPT_LEVEL', '3')
+    debug_level = os.getenv('MYPYC_DEBUG_LEVEL', '1')
     force_multifile = os.getenv('MYPYC_MULTI_FILE', '') == '1'
     ext_modules = mypycify(
         mypyc_targets + ['--config-file=mypy_bootstrap.ini'],
         opt_level=opt_level,
+        debug_level=debug_level,
         # Use multi-file compilation mode on windows because without it
         # our Appveyor builds run out of memory sometimes.
         multi_file=sys.platform == 'win32' or force_multifile,
@@ -166,6 +170,7 @@ classifiers = [
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Topic :: Software Development',
 ]
 
@@ -191,17 +196,21 @@ setup(name='mypy',
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
       install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
-                        'typing_extensions>=3.7.4',
-                        'mypy_extensions >= 0.4.3, < 0.5.0',
-                        'tomli>=1.1.0,<1.2.0',
+                        'typing_extensions>=3.10',
+                        'mypy_extensions >= 0.4.3',
+                        "tomli>=1.1.0; python_version<'3.11'",
                         ],
       # Same here.
-      extras_require={'dmypy': 'psutil >= 4.0', 'python2': 'typed_ast >= 1.4.0, < 2'},
+      extras_require={
+          'dmypy': 'psutil >= 4.0',
+          'python2': 'typed_ast >= 1.4.0, < 2',
+          'reports': 'lxml'
+      },
       python_requires=">=3.6",
       include_package_data=True,
       project_urls={
           'News': 'http://mypy-lang.org/news.html',
-          'Documentation': 'https://mypy.readthedocs.io/en/stable/introduction.html',
+          'Documentation': 'https://mypy.readthedocs.io/en/stable/index.html',
           'Repository': 'https://github.com/python/mypy',
       },
       )

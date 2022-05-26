@@ -9,7 +9,8 @@ from typing import List, Optional, Set
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
-    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
+    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, ParamSpecType,
+    UnpackType, TupleType, TypeVarTupleType, TypeOfAny, get_proper_type
 )
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
@@ -70,24 +71,44 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
-            if tvar.values:
-                if isinstance(arg, TypeVarType):
-                    arg_values = arg.values
-                    if not arg_values:
-                        self.fail(
-                            message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
-                                arg.name, info.name),
-                            t, code=codes.TYPE_VAR)
-                        continue
-                else:
-                    arg_values = [arg]
-                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
-            if not is_subtype(arg, tvar.upper_bound):
-                self.fail(
-                    message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
-                        format_type(arg), info.name, format_type(tvar.upper_bound)),
-                    t, code=codes.TYPE_VAR)
+            if isinstance(tvar, TypeVarType):
+                if isinstance(arg, ParamSpecType):
+                    # TODO: Better message
+                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    continue
+                if tvar.values:
+                    if isinstance(arg, TypeVarType):
+                        arg_values = arg.values
+                        if not arg_values:
+                            self.fail(
+                                message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
+                                    arg.name, info.name),
+                                t, code=codes.TYPE_VAR)
+                            continue
+                    else:
+                        arg_values = [arg]
+                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                if not is_subtype(arg, tvar.upper_bound):
+                    self.fail(
+                        message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
+                            format_type(arg), info.name, format_type(tvar.upper_bound)),
+                        t, code=codes.TYPE_VAR)
         super().visit_instance(t)
+
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        proper_type = get_proper_type(typ.type)
+        if isinstance(proper_type, TupleType):
+            return
+        if isinstance(proper_type, TypeVarTupleType):
+            return
+        if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
+            return
+        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
+            return
+
+        # TODO: Infer something when it can't be unpacked to allow rest of
+        # typechecking to work.
+        self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
 
     def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
                               valids: List[Type], arg_number: int, context: Context) -> None:
@@ -100,8 +121,8 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
                         context, code=codes.TYPE_VAR)
                 else:
-                    class_name = '"{}"'.format(type.name)
-                    actual_type_name = '"{}"'.format(actual.type.name)
+                    class_name = f'"{type.name}"'
+                    actual_type_name = f'"{actual.type.name}"'
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
                             arg_name, class_name, actual_type_name),

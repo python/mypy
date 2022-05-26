@@ -1,15 +1,20 @@
-import types
+from collections.abc import Mapping, Sequence
 from importlib.abc import Loader
-from typing import Any, Mapping, Sequence
+from types import ModuleType
 
+__all__ = ["__import__", "import_module", "invalidate_caches", "reload"]
+
+# Signature of `builtins.__import__` should be kept identical to `importlib.__import__`
 def __import__(
     name: str,
-    globals: Mapping[str, Any] | None = ...,
-    locals: Mapping[str, Any] | None = ...,
+    globals: Mapping[str, object] | None = ...,
+    locals: Mapping[str, object] | None = ...,
     fromlist: Sequence[str] = ...,
     level: int = ...,
-) -> types.ModuleType: ...
-def import_module(name: str, package: str | None = ...) -> types.ModuleType: ...
+) -> ModuleType: ...
+
+# `importlib.import_module` return type should be kept the same as `builtins.__import__`
+def import_module(name: str, package: str | None = ...) -> ModuleType: ...
 def find_loader(name: str, path: str | None = ...) -> Loader | None: ...
 def invalidate_caches() -> None: ...
-def reload(module: types.ModuleType) -> types.ModuleType: ...
+def reload(module: ModuleType) -> ModuleType: ...

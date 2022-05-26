@@ -1,5 +1,7 @@
 import sys
-from typing import Any, Callable, Generic, TypeVar, overload
+from collections.abc import Callable
+from typing import Any, Generic, TypeVar, overload
+from typing_extensions import final
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -7,9 +9,12 @@ if sys.version_info >= (3, 9):
 _C = TypeVar("_C", bound=Callable[..., Any])
 _T = TypeVar("_T")
 
+@final
 class CallableProxyType(Generic[_C]):  # "weakcallableproxy"
     def __getattr__(self, attr: str) -> Any: ...
+    __call__: _C
 
+@final
 class ProxyType(Generic[_T]):  # "weakproxy"
     def __getattr__(self, attr: str) -> Any: ...
 
@@ -24,10 +29,10 @@ class ReferenceType(Generic[_T]):
 ref = ReferenceType
 
 def getweakrefcount(__object: Any) -> int: ...
-def getweakrefs(object: Any) -> list[Any]: ...
-@overload
-def proxy(object: _C, callback: Callable[[_C], Any] | None = ...) -> CallableProxyType[_C]: ...
+def getweakrefs(__object: Any) -> list[Any]: ...
 
 # Return CallableProxyType if object is callable, ProxyType otherwise
 @overload
-def proxy(object: _T, callback: Callable[[_T], Any] | None = ...) -> Any: ...
+def proxy(__object: _C, __callback: Callable[[_C], Any] | None = ...) -> CallableProxyType[_C]: ...
+@overload
+def proxy(__object: _T, __callback: Callable[[_T], Any] | None = ...) -> Any: ...

@@ -1,15 +1,48 @@
 import io
 import sys
-from _typeshed import Self, StrPath
+from _typeshed import Self, StrOrBytesPath, StrPath
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from os import PathLike
 from types import TracebackType
-from typing import IO, Any, Callable, Iterable, Iterator, Protocol, Sequence, Tuple, Type, overload
-from typing_extensions import Literal
+from typing import IO, Any, Protocol, overload
+from typing_extensions import Literal, TypeAlias
 
-_DateTuple = Tuple[int, int, int, int, int, int]
-_ReadWriteMode = Literal["r", "w"]
-_ReadWriteBinaryMode = Literal["r", "w", "rb", "wb"]
-_ZipFileMode = Literal["r", "w", "x", "a"]
+if sys.version_info >= (3, 8):
+    __all__ = [
+        "BadZipFile",
+        "BadZipfile",
+        "error",
+        "ZIP_STORED",
+        "ZIP_DEFLATED",
+        "ZIP_BZIP2",
+        "ZIP_LZMA",
+        "is_zipfile",
+        "ZipInfo",
+        "ZipFile",
+        "PyZipFile",
+        "LargeZipFile",
+        "Path",
+    ]
+else:
+    __all__ = [
+        "BadZipFile",
+        "BadZipfile",
+        "error",
+        "ZIP_STORED",
+        "ZIP_DEFLATED",
+        "ZIP_BZIP2",
+        "ZIP_LZMA",
+        "is_zipfile",
+        "ZipInfo",
+        "ZipFile",
+        "PyZipFile",
+        "LargeZipFile",
+    ]
+
+_DateTuple: TypeAlias = tuple[int, int, int, int, int, int]
+_ReadWriteMode: TypeAlias = Literal["r", "w"]
+_ReadWriteBinaryMode: TypeAlias = Literal["r", "w", "rb", "wb"]
+_ZipFileMode: TypeAlias = Literal["r", "w", "x", "a"]
 
 class BadZipFile(Exception): ...
 
@@ -24,6 +57,12 @@ class _ZipStream(Protocol):
     # def seekable(self) -> bool: ...
     # def tell(self) -> int: ...
     # def seek(self, __n: int) -> object: ...
+
+# Stream shape as required by _EndRecData() and _EndRecData64().
+class _SupportsReadSeekTell(Protocol):
+    def read(self, __n: int = ...) -> bytes: ...
+    def seek(self, __cookie: int, __whence: int) -> object: ...
+    def tell(self) -> int: ...
 
 class _ClosableZipStream(_ZipStream, Protocol):
     def close(self) -> object: ...
@@ -96,11 +135,11 @@ class ZipExtFile(io.BufferedIOBase):
             decrypter: Callable[[Sequence[int]], bytes] | None = ...,
             close_fileobj: Literal[False] = ...,
         ) -> None: ...
+
     def read(self, n: int | None = ...) -> bytes: ...
-    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore
-    def __repr__(self) -> str: ...
+    def readline(self, limit: int = ...) -> bytes: ...  # type: ignore[override]
     def peek(self, n: int = ...) -> bytes: ...
-    def read1(self, n: int | None) -> bytes: ...  # type: ignore
+    def read1(self, n: int | None) -> bytes: ...  # type: ignore[override]
     if sys.version_info >= (3, 7):
         def seek(self, offset: int, whence: int = ...) -> int: ...
 
@@ -143,9 +182,10 @@ class ZipFile:
         def __init__(
             self, file: StrPath | IO[bytes], mode: _ZipFileMode = ..., compression: int = ..., allowZip64: bool = ...
         ) -> None: ...
+
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, type: type[BaseException] | None, value: BaseException | None, traceback: TracebackType | None
     ) -> None: ...
     def close(self) -> None: ...
     def getinfo(self, name: str) -> ZipInfo: ...
@@ -182,6 +222,8 @@ class ZipFile:
         ) -> None: ...
     else:
         def writestr(self, zinfo_or_arcname: str | ZipInfo, data: bytes | str, compress_type: int | None = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        def mkdir(self, zinfo_or_directory: str | ZipInfo, mode: int = ...) -> None: ...
 
 class PyZipFile(ZipFile):
     def __init__(
@@ -211,10 +253,13 @@ class ZipInfo:
     def __init__(self, filename: str = ..., date_time: _DateTuple = ...) -> None: ...
     if sys.version_info >= (3, 8):
         @classmethod
-        def from_file(cls, filename: StrPath, arcname: StrPath | None = ..., *, strict_timestamps: bool = ...) -> ZipInfo: ...
+        def from_file(
+            cls: type[Self], filename: StrPath, arcname: StrPath | None = ..., *, strict_timestamps: bool = ...
+        ) -> Self: ...
     else:
         @classmethod
-        def from_file(cls, filename: StrPath, arcname: StrPath | None = ...) -> ZipInfo: ...
+        def from_file(cls: type[Self], filename: StrPath, arcname: StrPath | None = ...) -> Self: ...
+
     def is_dir(self) -> bool: ...
     def FileHeader(self, zip64: bool | None = ...) -> bytes: ...
 
@@ -230,12 +275,14 @@ if sys.version_info >= (3, 8):
         if sys.version_info >= (3, 10):
             @property
             def filename(self) -> PathLike[str]: ...  # undocumented
+
         def __init__(self, root: ZipFile | StrPath | IO[bytes], at: str = ...) -> None: ...
         if sys.version_info >= (3, 9):
             def open(self, mode: _ReadWriteBinaryMode = ..., *args: Any, pwd: bytes | None = ..., **kwargs: Any) -> IO[bytes]: ...
         else:
             @property
             def open(self) -> _PathOpenProtocol: ...
+
         def iterdir(self) -> Iterator[Path]: ...
         def is_dir(self) -> bool: ...
         def is_file(self) -> bool: ...
@@ -253,9 +300,10 @@ if sys.version_info >= (3, 8):
             def joinpath(self, *other: StrPath) -> Path: ...
         else:
             def joinpath(self, add: StrPath) -> Path: ...  # undocumented
+
         def __truediv__(self, add: StrPath) -> Path: ...
 
-def is_zipfile(filename: StrPath | IO[bytes]) -> bool: ...
+def is_zipfile(filename: StrOrBytesPath | _SupportsReadSeekTell) -> bool: ...
 
 ZIP_STORED: int
 ZIP_DEFLATED: int

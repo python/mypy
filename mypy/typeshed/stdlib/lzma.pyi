@@ -1,46 +1,87 @@
 import io
 from _typeshed import ReadableBuffer, Self, StrOrBytesPath
-from typing import IO, Any, Mapping, Sequence, TextIO, Union, overload
-from typing_extensions import Literal
+from collections.abc import Mapping, Sequence
+from typing import IO, Any, TextIO, overload
+from typing_extensions import Literal, TypeAlias, final
 
-_OpenBinaryWritingMode = Literal["w", "wb", "x", "xb", "a", "ab"]
-_OpenTextWritingMode = Literal["wt", "xt", "at"]
+__all__ = [
+    "CHECK_NONE",
+    "CHECK_CRC32",
+    "CHECK_CRC64",
+    "CHECK_SHA256",
+    "CHECK_ID_MAX",
+    "CHECK_UNKNOWN",
+    "FILTER_LZMA1",
+    "FILTER_LZMA2",
+    "FILTER_DELTA",
+    "FILTER_X86",
+    "FILTER_IA64",
+    "FILTER_ARM",
+    "FILTER_ARMTHUMB",
+    "FILTER_POWERPC",
+    "FILTER_SPARC",
+    "FORMAT_AUTO",
+    "FORMAT_XZ",
+    "FORMAT_ALONE",
+    "FORMAT_RAW",
+    "MF_HC3",
+    "MF_HC4",
+    "MF_BT2",
+    "MF_BT3",
+    "MF_BT4",
+    "MODE_FAST",
+    "MODE_NORMAL",
+    "PRESET_DEFAULT",
+    "PRESET_EXTREME",
+    "LZMACompressor",
+    "LZMADecompressor",
+    "LZMAFile",
+    "LZMAError",
+    "open",
+    "compress",
+    "decompress",
+    "is_check_supported",
+]
 
-_PathOrFile = Union[StrOrBytesPath, IO[bytes]]
+_OpenBinaryWritingMode: TypeAlias = Literal["w", "wb", "x", "xb", "a", "ab"]
+_OpenTextWritingMode: TypeAlias = Literal["wt", "xt", "at"]
 
-_FilterChain = Sequence[Mapping[str, Any]]
+_PathOrFile: TypeAlias = StrOrBytesPath | IO[bytes]
 
-FORMAT_AUTO: int
-FORMAT_XZ: int
-FORMAT_ALONE: int
-FORMAT_RAW: int
-CHECK_NONE: int
-CHECK_CRC32: int
-CHECK_CRC64: int
-CHECK_SHA256: int
-CHECK_ID_MAX: int
-CHECK_UNKNOWN: int
-FILTER_LZMA1: int
-FILTER_LZMA2: int
-FILTER_DELTA: int
-FILTER_X86: int
-FILTER_IA64: int
-FILTER_ARM: int
-FILTER_ARMTHUMB: int
-FILTER_SPARC: int
-FILTER_POWERPC: int
-MF_HC3: int
-MF_HC4: int
-MF_BT2: int
-MF_BT3: int
-MF_BT4: int
-MODE_FAST: int
-MODE_NORMAL: int
-PRESET_DEFAULT: int
-PRESET_EXTREME: int
+_FilterChain: TypeAlias = Sequence[Mapping[str, Any]]
+
+FORMAT_AUTO: Literal[0]
+FORMAT_XZ: Literal[1]
+FORMAT_ALONE: Literal[2]
+FORMAT_RAW: Literal[3]
+CHECK_NONE: Literal[0]
+CHECK_CRC32: Literal[1]
+CHECK_CRC64: Literal[4]
+CHECK_SHA256: Literal[10]
+CHECK_ID_MAX: Literal[15]
+CHECK_UNKNOWN: Literal[16]
+FILTER_LZMA1: int  # v big number
+FILTER_LZMA2: Literal[33]
+FILTER_DELTA: Literal[3]
+FILTER_X86: Literal[4]
+FILTER_IA64: Literal[6]
+FILTER_ARM: Literal[7]
+FILTER_ARMTHUMB: Literal[8]
+FILTER_SPARC: Literal[9]
+FILTER_POWERPC: Literal[5]
+MF_HC3: Literal[3]
+MF_HC4: Literal[4]
+MF_BT2: Literal[18]
+MF_BT3: Literal[19]
+MF_BT4: Literal[20]
+MODE_FAST: Literal[1]
+MODE_NORMAL: Literal[2]
+PRESET_DEFAULT: Literal[6]
+PRESET_EXTREME: int  # v big number
 
 # from _lzma.c
-class LZMADecompressor(object):
+@final
+class LZMADecompressor:
     def __init__(self, format: int | None = ..., memlimit: int | None = ..., filters: _FilterChain | None = ...) -> None: ...
     def decompress(self, data: bytes, max_length: int = ...) -> bytes: ...
     @property
@@ -53,7 +94,8 @@ class LZMADecompressor(object):
     def needs_input(self) -> bool: ...
 
 # from _lzma.c
-class LZMACompressor(object):
+@final
+class LZMACompressor:
     def __init__(
         self, format: int | None = ..., check: int = ..., preset: int | None = ..., filters: _FilterChain | None = ...
     ) -> None: ...

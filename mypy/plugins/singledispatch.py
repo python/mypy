@@ -12,21 +12,22 @@ from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, 
 from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
 from typing_extensions import Final
 
-SingledispatchTypeVars = NamedTuple('SingledispatchTypeVars', [
-    ('return_type', Type),
-    ('fallback', CallableType),
-])
 
-RegisterCallableInfo = NamedTuple('RegisterCallableInfo', [
-    ('register_type', Type),
-    ('singledispatch_obj', Instance),
-])
+class SingledispatchTypeVars(NamedTuple):
+    return_type: Type
+    fallback: CallableType
+
+
+class RegisterCallableInfo(NamedTuple):
+    register_type: Type
+    singledispatch_obj: Instance
+
 
 SINGLEDISPATCH_TYPE: Final = 'functools._SingleDispatchCallable'
 
-SINGLEDISPATCH_REGISTER_METHOD: Final = '{}.register'.format(SINGLEDISPATCH_TYPE)
+SINGLEDISPATCH_REGISTER_METHOD: Final = f'{SINGLEDISPATCH_TYPE}.register'
 
-SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = '{}.__call__'.format(SINGLEDISPATCH_TYPE)
+SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f'{SINGLEDISPATCH_TYPE}.__call__'
 
 
 def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
@@ -47,15 +48,13 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
 
 REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
 
-REGISTER_CALLABLE_CALL_METHOD: Final = 'functools.{}.__call__'.format(
-    REGISTER_RETURN_CLASS
-)
+REGISTER_CALLABLE_CALL_METHOD: Final = f'functools.{REGISTER_RETURN_CLASS}.__call__'
 
 
 def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
                                       ) -> Instance:
     defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
-    defn.fullname = 'functools.{}'.format(REGISTER_RETURN_CLASS)
+    defn.fullname = f'functools.{REGISTER_RETURN_CLASS}'
     info = TypeInfo(SymbolTable(), defn, "functools")
     obj_type = api.named_generic_type('builtins.object', []).type
     info.bases = [Instance(obj_type, [])]
@@ -199,15 +198,6 @@ def call_singledispatch_function_after_register_argument(ctx: MethodContext) -> 
             # see call to register_function in the callback for register
             return func
     return ctx.default_return_type
-
-
-def rename_func(func: CallableType, new_name: CallableType) -> CallableType:
-    """Return a new CallableType that is `function` with the name of `new_name`"""
-    if new_name.name is not None:
-        signature_used = func.with_name(new_name.name)
-    else:
-        signature_used = func
-    return signature_used
 
 
 def call_singledispatch_function_callback(ctx: MethodSigContext) -> FunctionLike:

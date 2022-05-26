@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Iterable, Iterator, List, Tuple, Type, TypeVar, overload
+from typing import Any, Callable, Iterable, Iterator, TypeVar, overload
 
 _T = TypeVar("_T")
 
@@ -16,7 +16,7 @@ BooleanType = bool
 ComplexType = complex
 StringType = str
 UnicodeType = unicode
-StringTypes: Tuple[Type[StringType], Type[UnicodeType]]
+StringTypes: tuple[type[StringType], type[UnicodeType]]
 BufferType = buffer
 TupleType = tuple
 ListType = list
@@ -27,12 +27,12 @@ class _Cell:
     cell_contents: Any
 
 class FunctionType:
-    func_closure: Tuple[_Cell, ...] | None = ...
+    func_closure: tuple[_Cell, ...] | None = ...
     func_code: CodeType = ...
-    func_defaults: Tuple[Any, ...] | None = ...
-    func_dict: Dict[str, Any] = ...
+    func_defaults: tuple[Any, ...] | None = ...
+    func_dict: dict[str, Any] = ...
     func_doc: str | None = ...
-    func_globals: Dict[str, Any] = ...
+    func_globals: dict[str, Any] = ...
     func_name: str = ...
     __closure__ = func_closure
     __code__ = func_code
@@ -43,10 +43,10 @@ class FunctionType:
     def __init__(
         self,
         code: CodeType,
-        globals: Dict[str, Any],
+        globals: dict[str, Any],
         name: str | None = ...,
-        argdefs: Tuple[object, ...] | None = ...,
-        closure: Tuple[_Cell, ...] | None = ...,
+        argdefs: tuple[object, ...] | None = ...,
+        closure: tuple[_Cell, ...] | None = ...,
     ) -> None: ...
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
     def __get__(self, obj: object | None, type: type | None) -> UnboundMethodType: ...
@@ -55,19 +55,19 @@ LambdaType = FunctionType
 
 class CodeType:
     co_argcount: int
-    co_cellvars: Tuple[str, ...]
+    co_cellvars: tuple[str, ...]
     co_code: str
-    co_consts: Tuple[Any, ...]
+    co_consts: tuple[Any, ...]
     co_filename: str
     co_firstlineno: int
     co_flags: int
-    co_freevars: Tuple[str, ...]
+    co_freevars: tuple[str, ...]
     co_lnotab: str
     co_name: str
-    co_names: Tuple[str, ...]
+    co_names: tuple[str, ...]
     co_nlocals: int
     co_stacksize: int
-    co_varnames: Tuple[str, ...]
+    co_varnames: tuple[str, ...]
     def __init__(
         self,
         argcount: int,
@@ -75,15 +75,15 @@ class CodeType:
         stacksize: int,
         flags: int,
         codestring: str,
-        constants: Tuple[Any, ...],
-        names: Tuple[str, ...],
-        varnames: Tuple[str, ...],
+        constants: tuple[Any, ...],
+        names: tuple[str, ...],
+        varnames: tuple[str, ...],
         filename: str,
         name: str,
         firstlineno: int,
         lnotab: str,
-        freevars: Tuple[str, ...] = ...,
-        cellvars: Tuple[str, ...] = ...,
+        freevars: tuple[str, ...] = ...,
+        cellvars: tuple[str, ...] = ...,
     ) -> None: ...
 
 class GeneratorType:
@@ -95,7 +95,7 @@ class GeneratorType:
     def next(self) -> Any: ...
     def send(self, __arg: Any) -> Any: ...
     @overload
-    def throw(self, __typ: Type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...) -> Any: ...
+    def throw(self, __typ: type[BaseException], __val: BaseException | object = ..., __tb: TracebackType | None = ...) -> Any: ...
     @overload
     def throw(self, __typ: BaseException, __val: None = ..., __tb: TracebackType | None = ...) -> Any: ...
 
@@ -127,7 +127,7 @@ class ModuleType:
     __name__: str
     __package__: str | None
     __path__: Iterable[str] | None
-    __dict__: Dict[str, Any]
+    __dict__: dict[str, Any]
     def __init__(self, name: str, doc: str | None = ...) -> None: ...
 
 FileType = file
@@ -141,15 +141,15 @@ class TracebackType:
 
 class FrameType:
     f_back: FrameType
-    f_builtins: Dict[str, Any]
+    f_builtins: dict[str, Any]
     f_code: CodeType
     f_exc_type: None
     f_exc_value: None
     f_exc_traceback: None
-    f_globals: Dict[str, Any]
+    f_globals: dict[str, Any]
     f_lasti: int
-    f_lineno: int
-    f_locals: Dict[str, Any]
+    f_lineno: int | None
+    f_locals: dict[str, Any]
     f_restricted: bool
     f_trace: Callable[[], None]
     def clear(self) -> None: ...
@@ -161,15 +161,15 @@ class EllipsisType: ...
 class DictProxyType:
     # TODO is it possible to have non-string keys?
     # no __init__
-    def copy(self) -> Dict[Any, Any]: ...
+    def copy(self) -> dict[Any, Any]: ...
     def get(self, key: str, default: _T = ...) -> Any | _T: ...
     def has_key(self, key: str) -> bool: ...
-    def items(self) -> List[Tuple[str, Any]]: ...
-    def iteritems(self) -> Iterator[Tuple[str, Any]]: ...
+    def items(self) -> list[tuple[str, Any]]: ...
+    def iteritems(self) -> Iterator[tuple[str, Any]]: ...
     def iterkeys(self) -> Iterator[str]: ...
     def itervalues(self) -> Iterator[Any]: ...
-    def keys(self) -> List[str]: ...
-    def values(self) -> List[Any]: ...
+    def keys(self) -> list[str]: ...
+    def values(self) -> list[Any]: ...
     def __contains__(self, key: str) -> bool: ...
     def __getitem__(self, key: str) -> Any: ...
     def __iter__(self) -> Iterator[str]: ...

@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 CELL: int
 DEF_BOUND: int
 DEF_FREE: int
@@ -25,13 +23,13 @@ USE: int
 class _symtable_entry(object): ...
 
 class symtable(object):
-    children: List[_symtable_entry]
+    children: list[_symtable_entry]
     id: int
     lineno: int
     name: str
     nested: int
     optimized: int
-    symbols: Dict[str, int]
+    symbols: dict[str, int]
     type: int
-    varnames: List[str]
+    varnames: list[str]
     def __init__(self, src: str, filename: str, startstr: str) -> None: ...

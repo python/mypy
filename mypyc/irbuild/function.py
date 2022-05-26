@@ -11,7 +11,7 @@ instance of the callable class.
 """
 
 from typing import (
-    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict,
+    DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
 )
 
 from mypy.nodes import (
@@ -117,16 +117,6 @@ def transform_decorator(builder: IRBuilder, dec: Decorator) -> None:
     builder.functions.append(func_ir)
 
 
-def transform_method(builder: IRBuilder,
-                     cdef: ClassDef,
-                     non_ext: Optional[NonExtClassInfo],
-                     fdef: FuncDef) -> None:
-    if non_ext:
-        handle_non_ext_method(builder, non_ext, cdef, fdef)
-    else:
-        handle_ext_method(builder, cdef, fdef)
-
-
 def transform_lambda_expr(builder: IRBuilder, expr: LambdaExpr) -> Value:
     typ = get_proper_type(builder.types[expr])
     assert isinstance(typ, CallableType)
@@ -140,7 +130,7 @@ def transform_lambda_expr(builder: IRBuilder, expr: LambdaExpr) -> Value:
 
     fsig = FuncSignature(runtime_args, ret_type)
 
-    fname = '{}{}'.format(LAMBDA_NAME, builder.lambda_counter)
+    fname = f'{LAMBDA_NAME}{builder.lambda_counter}'
     builder.lambda_counter += 1
     func_ir, func_reg = gen_func_item(builder, expr, fname, fsig)
     assert func_reg is not None
@@ -1003,7 +993,7 @@ def load_singledispatch_registry(builder: IRBuilder, dispatch_func_obj: Value, l
 
 
 def singledispatch_main_func_name(orig_name: str) -> str:
-    return '__mypyc_singledispatch_main_function_{}__'.format(orig_name)
+    return f'__mypyc_singledispatch_main_function_{orig_name}__'
 
 
 def get_registry_identifier(fitem: FuncDef) -> str:

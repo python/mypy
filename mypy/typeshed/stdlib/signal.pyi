@@ -1,56 +1,41 @@
 import sys
+from _typeshed import structseq
+from collections.abc import Callable, Iterable
 from enum import IntEnum
 from types import FrameType
-from typing import Any, Callable, Iterable, Optional, Set, Tuple, Union
-
-if sys.platform != "win32":
-    class ItimerError(IOError): ...
-    ITIMER_PROF: int
-    ITIMER_REAL: int
-    ITIMER_VIRTUAL: int
+from typing import Any, Union
+from typing_extensions import Final, TypeAlias, final
 
 NSIG: int
 
 class Signals(IntEnum):
     SIGABRT: int
-    if sys.platform != "win32":
-        SIGALRM: int
-    if sys.platform == "win32":
-        SIGBREAK: int
-    if sys.platform != "win32":
-        SIGBUS: int
-        SIGCHLD: int
-    if sys.platform != "darwin" and sys.platform != "win32":
-        SIGCLD: int
-    if sys.platform != "win32":
-        SIGCONT: int
     SIGEMT: int
     SIGFPE: int
-    if sys.platform != "win32":
-        SIGHUP: int
     SIGILL: int
     SIGINFO: int
     SIGINT: int
-    if sys.platform != "win32":
+    SIGSEGV: int
+    SIGTERM: int
+
+    if sys.platform == "win32":
+        SIGBREAK: int
+        CTRL_C_EVENT: int
+        CTRL_BREAK_EVENT: int
+    else:
+        SIGALRM: int
+        SIGBUS: int
+        SIGCHLD: int
+        SIGCONT: int
+        SIGHUP: int
         SIGIO: int
         SIGIOT: int
         SIGKILL: int
         SIGPIPE: int
-    if sys.platform != "darwin" and sys.platform != "win32":
-        SIGPOLL: int
-        SIGPWR: int
-    if sys.platform != "win32":
         SIGPROF: int
         SIGQUIT: int
-    if sys.platform != "darwin" and sys.platform != "win32":
-        SIGRTMAX: int
-        SIGRTMIN: int
-    SIGSEGV: int
-    if sys.platform != "win32":
         SIGSTOP: int
         SIGSYS: int
-    SIGTERM: int
-    if sys.platform != "win32":
         SIGTRAP: int
         SIGTSTP: int
         SIGTTIN: int
@@ -62,65 +47,60 @@ class Signals(IntEnum):
         SIGWINCH: int
         SIGXCPU: int
         SIGXFSZ: int
+        if sys.platform != "darwin":
+            SIGCLD: int
+            SIGPOLL: int
+            SIGPWR: int
+            SIGRTMAX: int
+            SIGRTMIN: int
 
 class Handlers(IntEnum):
     SIG_DFL: int
     SIG_IGN: int
 
-SIG_DFL = Handlers.SIG_DFL
-SIG_IGN = Handlers.SIG_IGN
+SIG_DFL: Handlers
+SIG_IGN: Handlers
 
-if sys.platform != "win32":
-    class Sigmasks(IntEnum):
-        SIG_BLOCK: int
-        SIG_UNBLOCK: int
-        SIG_SETMASK: int
-    SIG_BLOCK = Sigmasks.SIG_BLOCK
-    SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
-    SIG_SETMASK = Sigmasks.SIG_SETMASK
+_SIGNUM: TypeAlias = int | Signals
+_HANDLER: TypeAlias = Union[Callable[[int, FrameType | None], Any], int, Handlers, None]
 
-_SIGNUM = Union[int, Signals]
-_HANDLER = Union[Callable[[int, Optional[FrameType]], Any], int, Handlers, None]
+def default_int_handler(__signalnum: int, __frame: FrameType | None) -> None: ...
+
+if sys.version_info >= (3, 10):  # arguments changed in 3.10.2
+    def getsignal(signalnum: _SIGNUM) -> _HANDLER: ...
+    def signal(signalnum: _SIGNUM, handler: _HANDLER) -> _HANDLER: ...
+
+else:
+    def getsignal(__signalnum: _SIGNUM) -> _HANDLER: ...
+    def signal(__signalnum: _SIGNUM, __handler: _HANDLER) -> _HANDLER: ...
 
 SIGABRT: Signals
-if sys.platform != "win32":
-    SIGALRM: Signals
-if sys.platform == "win32":
-    SIGBREAK: Signals
-if sys.platform != "win32":
-    SIGBUS: Signals
-    SIGCHLD: Signals
-if sys.platform != "darwin" and sys.platform != "win32":
-    SIGCLD: Signals
-if sys.platform != "win32":
-    SIGCONT: Signals
 SIGEMT: Signals
 SIGFPE: Signals
-if sys.platform != "win32":
-    SIGHUP: Signals
 SIGILL: Signals
 SIGINFO: Signals
 SIGINT: Signals
-if sys.platform != "win32":
+SIGSEGV: Signals
+SIGTERM: Signals
+
+if sys.platform == "win32":
+    SIGBREAK: Signals
+    CTRL_C_EVENT: Signals
+    CTRL_BREAK_EVENT: Signals
+else:
+    SIGALRM: Signals
+    SIGBUS: Signals
+    SIGCHLD: Signals
+    SIGCONT: Signals
+    SIGHUP: Signals
     SIGIO: Signals
     SIGIOT: Signals
     SIGKILL: Signals
     SIGPIPE: Signals
-if sys.platform != "darwin" and sys.platform != "win32":
-    SIGPOLL: Signals
-    SIGPWR: Signals
-if sys.platform != "win32":
     SIGPROF: Signals
     SIGQUIT: Signals
-if sys.platform != "darwin" and sys.platform != "win32":
-    SIGRTMAX: Signals
-    SIGRTMIN: Signals
-SIGSEGV: Signals
-if sys.platform != "win32":
     SIGSTOP: Signals
     SIGSYS: Signals
-SIGTERM: Signals
-if sys.platform != "win32":
     SIGTRAP: Signals
     SIGTSTP: Signals
     SIGTTIN: Signals
@@ -133,47 +113,66 @@ if sys.platform != "win32":
     SIGXCPU: Signals
     SIGXFSZ: Signals
 
-if sys.platform == "win32":
-    CTRL_C_EVENT: int
-    CTRL_BREAK_EVENT: int
+    class ItimerError(IOError): ...
+    ITIMER_PROF: int
+    ITIMER_REAL: int
+    ITIMER_VIRTUAL: int
 
-if sys.platform != "win32" and sys.platform != "darwin":
-    class struct_siginfo(Tuple[int, int, int, int, int, int, int]):
-        def __init__(self, sequence: Iterable[int]) -> None: ...
-        @property
-        def si_signo(self) -> int: ...
-        @property
-        def si_code(self) -> int: ...
-        @property
-        def si_errno(self) -> int: ...
-        @property
-        def si_pid(self) -> int: ...
-        @property
-        def si_uid(self) -> int: ...
-        @property
-        def si_status(self) -> int: ...
-        @property
-        def si_band(self) -> int: ...
-
-if sys.platform != "win32":
+    class Sigmasks(IntEnum):
+        SIG_BLOCK: int
+        SIG_UNBLOCK: int
+        SIG_SETMASK: int
+    SIG_BLOCK = Sigmasks.SIG_BLOCK
+    SIG_UNBLOCK = Sigmasks.SIG_UNBLOCK
+    SIG_SETMASK = Sigmasks.SIG_SETMASK
     def alarm(__seconds: int) -> int: ...
-
-def default_int_handler(signum: int, frame: FrameType) -> None: ...
-
-if sys.platform != "win32":
     def getitimer(__which: int) -> tuple[float, float]: ...
+    def pause() -> None: ...
+    def pthread_kill(__thread_id: int, __signalnum: int) -> None: ...
+    if sys.version_info >= (3, 10):  # arguments changed in 3.10.2
+        def pthread_sigmask(how: int, mask: Iterable[int]) -> set[_SIGNUM]: ...
+    else:
+        def pthread_sigmask(__how: int, __mask: Iterable[int]) -> set[_SIGNUM]: ...
 
-def getsignal(__signalnum: _SIGNUM) -> _HANDLER: ...
+    def setitimer(__which: int, __seconds: float, __interval: float = ...) -> tuple[float, float]: ...
+    def siginterrupt(__signalnum: int, __flag: bool) -> None: ...
+    def sigpending() -> Any: ...
+    if sys.version_info >= (3, 10):  # argument changed in 3.10.2
+        def sigwait(sigset: Iterable[int]) -> _SIGNUM: ...
+    else:
+        def sigwait(__sigset: Iterable[int]) -> _SIGNUM: ...
+    if sys.platform != "darwin":
+        SIGCLD: Signals
+        SIGPOLL: Signals
+        SIGPWR: Signals
+        SIGRTMAX: Signals
+        SIGRTMIN: Signals
+        @final
+        class struct_siginfo(structseq[int], tuple[int, int, int, int, int, int, int]):
+            if sys.version_info >= (3, 10):
+                __match_args__: Final = ("si_signo", "si_code", "si_errno", "si_pid", "si_uid", "si_status", "si_band")
+            @property
+            def si_signo(self) -> int: ...
+            @property
+            def si_code(self) -> int: ...
+            @property
+            def si_errno(self) -> int: ...
+            @property
+            def si_pid(self) -> int: ...
+            @property
+            def si_uid(self) -> int: ...
+            @property
+            def si_status(self) -> int: ...
+            @property
+            def si_band(self) -> int: ...
+
+        def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
+        def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
 
 if sys.version_info >= (3, 8):
     def strsignal(__signalnum: _SIGNUM) -> str | None: ...
-    def valid_signals() -> Set[Signals]: ...
+    def valid_signals() -> set[Signals]: ...
     def raise_signal(__signalnum: _SIGNUM) -> None: ...
-
-if sys.platform != "win32":
-    def pause() -> None: ...
-    def pthread_kill(__thread_id: int, __signalnum: int) -> None: ...
-    def pthread_sigmask(__how: int, __mask: Iterable[int]) -> Set[_SIGNUM]: ...
 
 if sys.version_info >= (3, 7):
     def set_wakeup_fd(fd: int, *, warn_on_full_buffer: bool = ...) -> int: ...
@@ -181,15 +180,6 @@ if sys.version_info >= (3, 7):
 else:
     def set_wakeup_fd(fd: int) -> int: ...
 
-if sys.platform != "win32":
-    def setitimer(__which: int, __seconds: float, __interval: float = ...) -> tuple[float, float]: ...
-    def siginterrupt(__signalnum: int, __flag: bool) -> None: ...
-
-def signal(__signalnum: _SIGNUM, __handler: _HANDLER) -> _HANDLER: ...
-
-if sys.platform != "win32":
-    def sigpending() -> Any: ...
-    def sigwait(__sigset: Iterable[int]) -> _SIGNUM: ...
-    if sys.platform != "darwin":
-        def sigtimedwait(sigset: Iterable[int], timeout: float) -> struct_siginfo | None: ...
-        def sigwaitinfo(sigset: Iterable[int]) -> struct_siginfo: ...
+if sys.version_info >= (3, 9):
+    if sys.platform == "linux":
+        def pidfd_send_signal(__pidfd: int, __sig: int, __siginfo: None = ..., __flags: int = ...) -> None: ...

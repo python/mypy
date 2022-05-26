@@ -11,6 +11,7 @@ from abc import abstractmethod, ABCMeta
 class GenericMeta(type): pass
 
 def cast(t, o): ...
+def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0
@@ -128,6 +129,10 @@ class AsyncIterator(AsyncIterable[T], Protocol):
 class Sequence(Iterable[T_co], Container[T_co]):
     @abstractmethod
     def __getitem__(self, n: Any) -> T_co: pass
+
+class MutableSequence(Sequence[T]):
+    @abstractmethod
+    def __setitem__(self, n: Any, o: T) -> None: pass
 
 class Mapping(Iterable[T], Generic[T, T_co], metaclass=ABCMeta):
     def __getitem__(self, key: T) -> T_co: pass

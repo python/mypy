@@ -5,7 +5,8 @@ import mypy.sametypes
 from mypy.expandtype import expand_type
 from mypy.types import (
     Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarLikeType, ProperType, ParamSpecType
+    TypeVarLikeType, ProperType, ParamSpecType, Parameters, get_proper_type,
+    TypeVarTupleType,
 )
 from mypy.nodes import Context
 
@@ -18,9 +19,10 @@ def get_target_type(
     context: Context,
     skip_unsatisfied: bool
 ) -> Optional[Type]:
-    # TODO(PEP612): fix for ParamSpecType
     if isinstance(tvar, ParamSpecType):
-        return None
+        return type
+    if isinstance(tvar, TypeVarTupleType):
+        return type
     assert isinstance(tvar, TypeVarType)
     values = get_proper_types(tvar.values)
     if values:
@@ -90,8 +92,22 @@ def apply_generic_arguments(
         if target_type is not None:
             id_to_type[tvar.id] = target_type
 
+    param_spec = callable.param_spec()
+    if param_spec is not None:
+        nt = id_to_type.get(param_spec.id)
+        if nt is not None:
+            nt = get_proper_type(nt)
+            if isinstance(nt, CallableType) or isinstance(nt, Parameters):
+                callable = callable.expand_param_spec(nt)
+
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
+
+    # Apply arguments to TypeGuard if any.
+    if callable.type_guard is not None:
+        type_guard = expand_type(callable.type_guard, id_to_type)
+    else:
+        type_guard = None
 
     # The callable may retain some type vars if only some were applied.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
@@ -100,4 +116,5 @@ def apply_generic_arguments(
         arg_types=arg_types,
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
+        type_guard=type_guard,
     )

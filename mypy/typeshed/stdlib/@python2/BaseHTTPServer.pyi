@@ -1,14 +1,14 @@
 import mimetools
 import SocketServer
-from typing import Any, BinaryIO, Callable, Mapping, Tuple
+from typing import Any, BinaryIO, Callable, Mapping
 
 class HTTPServer(SocketServer.TCPServer):
     server_name: str
     server_port: int
-    def __init__(self, server_address: Tuple[str, int], RequestHandlerClass: Callable[..., BaseHTTPRequestHandler]) -> None: ...
+    def __init__(self, server_address: tuple[str, int], RequestHandlerClass: Callable[..., BaseHTTPRequestHandler]) -> None: ...
 
 class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
-    client_address: Tuple[str, int]
+    client_address: tuple[str, int]
     server: SocketServer.BaseServer
     close_connection: bool
     command: str
@@ -23,8 +23,8 @@ class BaseHTTPRequestHandler(SocketServer.StreamRequestHandler):
     error_content_type: str
     protocol_version: str
     MessageClass: type
-    responses: Mapping[int, Tuple[str, str]]
-    def __init__(self, request: bytes, client_address: Tuple[str, int], server: SocketServer.BaseServer) -> None: ...
+    responses: Mapping[int, tuple[str, str]]
+    def __init__(self, request: bytes, client_address: tuple[str, int], server: SocketServer.BaseServer) -> None: ...
     def handle(self) -> None: ...
     def handle_one_request(self) -> None: ...
     def send_error(self, code: int, message: str | None = ...) -> None: ...

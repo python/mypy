@@ -51,7 +51,7 @@ from mypy.nodes import (
     MypyFile, SymbolTable, Block, AssignmentStmt, NameExpr, MemberExpr, RefExpr, TypeInfo,
     FuncDef, ClassDef, NamedTupleExpr, SymbolNode, Var, Statement, SuperExpr, NewTypeExpr,
     OverloadedFuncDef, LambdaExpr, TypedDictExpr, EnumCallExpr, FuncBase, TypeAliasExpr, CallExpr,
-    CastExpr, TypeAlias,
+    CastExpr, TypeAlias, AssertTypeExpr,
     MDEF
 )
 from mypy.traverser import TraverserVisitor
@@ -59,7 +59,8 @@ from mypy.types import (
     Type, SyntheticTypeVisitor, Instance, AnyType, NoneType, CallableType, ErasedType, DeletedType,
     TupleType, TypeType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     Overloaded, TypeVarType, TypeList, CallableArgument, EllipsisType, StarType, LiteralType,
-    RawExpressionType, PartialType, PlaceholderType, TypeAliasType
+    RawExpressionType, PartialType, PlaceholderType, TypeAliasType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 from mypy.util import get_prefix, replace_object_state
 from mypy.typestate import TypeState
@@ -173,7 +174,8 @@ class NodeReplaceVisitor(TraverserVisitor):
         node.defs.body = self.replace_statements(node.defs.body)
         info = node.info
         for tv in node.type_vars:
-            self.process_type_var_def(tv)
+            if isinstance(tv, TypeVarType):
+                self.process_type_var_def(tv)
         if info:
             if info.is_named_tuple:
                 self.process_synthetic_type_info(info)
@@ -222,6 +224,10 @@ class NodeReplaceVisitor(TraverserVisitor):
 
     def visit_cast_expr(self, node: CastExpr) -> None:
         super().visit_cast_expr(node)
+        self.fixup_type(node.type)
+
+    def visit_assert_type_expr(self, node: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(node)
         self.fixup_type(node.type)
 
     def visit_super_expr(self, node: SuperExpr) -> None:
@@ -406,6 +412,19 @@ class TypeReplaceVisitor(SyntheticTypeVisitor[None]):
         typ.upper_bound.accept(self)
         for value in typ.values:
             value.accept(self)
+
+    def visit_param_spec(self, typ: ParamSpecType) -> None:
+        pass
+
+    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> None:
+        typ.upper_bound.accept(self)
+
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        typ.type.accept(self)
+
+    def visit_parameters(self, typ: Parameters) -> None:
+        for arg in typ.arg_types:
+            arg.accept(self)
 
     def visit_typeddict_type(self, typ: TypedDictType) -> None:
         for value_type in typ.items.values():

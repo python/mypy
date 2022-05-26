@@ -223,6 +223,56 @@ else:
 
 [builtins fixtures/callable.pyi]
 
+[case testDecoratedCallMethods]
+from typing import Any, Callable, Union, TypeVar
+
+F = TypeVar('F', bound=Callable)
+
+def decorator(f: F) -> F:
+    pass
+def change(f: Callable) -> Callable[[Any], str]:
+    pass
+def untyped(f):
+    pass
+
+class Some1:
+    @decorator
+    def __call__(self) -> int:
+        pass
+class Some2:
+    @change
+    def __call__(self) -> int:
+        pass
+class Some3:
+    @untyped
+    def __call__(self) -> int:
+        pass
+class Some4:
+    __call__: Any
+
+s1: Some1
+s2: Some2
+s3: Some3
+s4: Some4
+
+if callable(s1):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'
+if callable(s2):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'
+if callable(s3):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'  # E: Unsupported operand types for + ("int" and "str")
+if callable(s4):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/callable.pyi]
+
 [case testCallableNestedUnions]
 from typing import Callable, Union
 
@@ -260,7 +310,7 @@ def f(t: T) -> None:
             # N: Revealed type is "builtins.int"  \
             # N: Revealed type is "builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is "builtins.int*"  # N: Revealed type is "builtins.str"
+        reveal_type(t)  # N: Revealed type is "builtins.int"  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/callable.pyi]
 
@@ -299,28 +349,6 @@ def f(t: T) -> A:
     else:
         return 5
 
-[builtins fixtures/callable.pyi]
-
-[case testCallableTypeVarBoundAndLambdaDefer]
-# See https://github.com/python/mypy/issues/11212
-from typing import Callable, TypeVar
-
-C = TypeVar('C', bound=Callable)
-
-def dec(val: None) -> Callable[[C], C]:
-    def wrapper(f):
-        return f
-    return wrapper
-
-lambda: foo() + 2  # error was here
-
-@dec(None)
-def foo() -> int:
-    return 2
-
-lambda: foo() + 2  # double check
-
-reveal_type(foo() + 2)  # N: Revealed type is "builtins.int"
 [builtins fixtures/callable.pyi]
 
 [case testCallableTypeUnion]
