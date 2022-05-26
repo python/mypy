@@ -48,6 +48,9 @@ Protocol: _SpecialForm = ...
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
 
+class ParamSpec:
+    def __init__(self, name: str) -> None: ...
+
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
 _K = TypeVar("_K")
@@ -329,8 +332,8 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing import TypeVar
-            T = TypeVar("T", bound=str)
-            def f6(text: T = ...) -> None: ...
+            _T = TypeVar("_T", bound=str)
+            def f6(text: _T = ...) -> None: ...
             """,
             runtime="def f6(text = None): pass",
             error="f6",
@@ -1041,6 +1044,33 @@ class StubtestUnit(unittest.TestCase):
             # TODO: this should not be an error, #12820
             error="X.__init__"
         )
+
+    @collect_cases
+    def test_type_var(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import TypeVar", runtime="from typing import TypeVar", error=None
+        )
+        yield Case(
+            stub="A = TypeVar('A')",
+            runtime="A = TypeVar('A')",
+            error=None,
+        )
+        yield Case(
+            stub="B = TypeVar('B')",
+            runtime="B = 5",
+            error="B",
+        )
+        if sys.version_info >= (3, 10):
+            yield Case(
+                stub="from typing import ParamSpec",
+                runtime="from typing import ParamSpec",
+                error=None
+            )
+            yield Case(
+                stub="C = ParamSpec('C')",
+                runtime="C = ParamSpec('C')",
+                error=None,
+            )
 
 
 def remove_color_code(s: str) -> str:
