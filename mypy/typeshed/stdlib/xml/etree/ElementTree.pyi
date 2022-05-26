@@ -1,25 +1,97 @@
 import sys
-from _typeshed import FileDescriptor, StrOrBytesPath, SupportsWrite
-from typing import (
-    IO,
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    ItemsView,
-    Iterable,
-    Iterator,
-    KeysView,
-    MutableSequence,
-    Sequence,
-    TypeVar,
-    Union,
-    overload,
-)
-from typing_extensions import Literal
+from _typeshed import FileDescriptor, StrOrBytesPath, SupportsRead, SupportsWrite
+from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, KeysView, Mapping, MutableSequence, Sequence
+from typing import Any, TypeVar, overload
+from typing_extensions import Literal, SupportsIndex, TypeAlias, TypeGuard
+
+if sys.version_info >= (3, 9):
+    __all__ = [
+        "Comment",
+        "dump",
+        "Element",
+        "ElementTree",
+        "fromstring",
+        "fromstringlist",
+        "indent",
+        "iselement",
+        "iterparse",
+        "parse",
+        "ParseError",
+        "PI",
+        "ProcessingInstruction",
+        "QName",
+        "SubElement",
+        "tostring",
+        "tostringlist",
+        "TreeBuilder",
+        "VERSION",
+        "XML",
+        "XMLID",
+        "XMLParser",
+        "XMLPullParser",
+        "register_namespace",
+        "canonicalize",
+        "C14NWriterTarget",
+    ]
+elif sys.version_info >= (3, 8):
+    __all__ = [
+        "Comment",
+        "dump",
+        "Element",
+        "ElementTree",
+        "fromstring",
+        "fromstringlist",
+        "iselement",
+        "iterparse",
+        "parse",
+        "ParseError",
+        "PI",
+        "ProcessingInstruction",
+        "QName",
+        "SubElement",
+        "tostring",
+        "tostringlist",
+        "TreeBuilder",
+        "VERSION",
+        "XML",
+        "XMLID",
+        "XMLParser",
+        "XMLPullParser",
+        "register_namespace",
+        "canonicalize",
+        "C14NWriterTarget",
+    ]
+else:
+    __all__ = [
+        "Comment",
+        "dump",
+        "Element",
+        "ElementTree",
+        "fromstring",
+        "fromstringlist",
+        "iselement",
+        "iterparse",
+        "parse",
+        "ParseError",
+        "PI",
+        "ProcessingInstruction",
+        "QName",
+        "SubElement",
+        "tostring",
+        "tostringlist",
+        "TreeBuilder",
+        "VERSION",
+        "XML",
+        "XMLID",
+        "XMLParser",
+        "XMLPullParser",
+        "register_namespace",
+    ]
 
 _T = TypeVar("_T")
-_File = Union[StrOrBytesPath, FileDescriptor, IO[Any]]
+_FileRead: TypeAlias = StrOrBytesPath | FileDescriptor | SupportsRead[bytes] | SupportsRead[str]
+_FileWriteC14N: TypeAlias = StrOrBytesPath | FileDescriptor | SupportsWrite[bytes]
+_FileWrite: TypeAlias = _FileWriteC14N | SupportsWrite[str]
 
 VERSION: str
 
@@ -27,7 +99,8 @@ class ParseError(SyntaxError):
     code: int
     position: tuple[int, int]
 
-def iselement(element: object) -> bool: ...
+# In reality it works based on `.tag` attribute duck typing.
+def iselement(element: object) -> TypeGuard[Element]: ...
 
 if sys.version_info >= (3, 8):
     @overload
@@ -35,7 +108,7 @@ if sys.version_info >= (3, 8):
         xml_data: str | bytes | None = ...,
         *,
         out: None = ...,
-        from_file: _File | None = ...,
+        from_file: _FileRead | None = ...,
         with_comments: bool = ...,
         strip_text: bool = ...,
         rewrite_prefixes: bool = ...,
@@ -49,7 +122,7 @@ if sys.version_info >= (3, 8):
         xml_data: str | bytes | None = ...,
         *,
         out: SupportsWrite[str],
-        from_file: _File | None = ...,
+        from_file: _FileRead | None = ...,
         with_comments: bool = ...,
         strip_text: bool = ...,
         rewrite_prefixes: bool = ...,
@@ -84,19 +157,22 @@ class Element(MutableSequence[Element]):
     def iterfind(self, path: str, namespaces: dict[str, str] | None = ...) -> Generator[Element, None, None]: ...
     def itertext(self) -> Generator[str, None, None]: ...
     def keys(self) -> KeysView[str]: ...
+    # makeelement returns the type of self in Python impl, but not in C impl
     def makeelement(self, __tag: str, __attrib: dict[str, str]) -> Element: ...
     def remove(self, __subelement: Element) -> None: ...
     def set(self, __key: str, __value: str) -> None: ...
-    def __delitem__(self, i: int | slice) -> None: ...
+    def __copy__(self) -> Element: ...  # returns the type of self in Python impl, but not in C impl
+    def __deepcopy__(self, __memo: Any) -> Element: ...  # Only exists in C impl
+    def __delitem__(self, __i: SupportsIndex | slice) -> None: ...
     @overload
-    def __getitem__(self, i: int) -> Element: ...
+    def __getitem__(self, __i: SupportsIndex) -> Element: ...
     @overload
-    def __getitem__(self, s: slice) -> MutableSequence[Element]: ...
+    def __getitem__(self, __s: slice) -> MutableSequence[Element]: ...
     def __len__(self) -> int: ...
     @overload
-    def __setitem__(self, i: int, o: Element) -> None: ...
+    def __setitem__(self, __i: SupportsIndex, __o: Element) -> None: ...
     @overload
-    def __setitem__(self, s: slice, o: Iterable[Element]) -> None: ...
+    def __setitem__(self, __s: slice, __o: Iterable[Element]) -> None: ...
     if sys.version_info < (3, 9):
         def getchildren(self) -> list[Element]: ...
         def getiterator(self, tag: str | None = ...) -> list[Element]: ...
@@ -110,14 +186,20 @@ PI: Callable[..., Element]
 class QName:
     text: str
     def __init__(self, text_or_uri: str, tag: str | None = ...) -> None: ...
+    def __lt__(self, other: QName | str) -> bool: ...
+    def __le__(self, other: QName | str) -> bool: ...
+    def __gt__(self, other: QName | str) -> bool: ...
+    def __ge__(self, other: QName | str) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
 
 class ElementTree:
-    def __init__(self, element: Element | None = ..., file: _File | None = ...) -> None: ...
+    def __init__(self, element: Element | None = ..., file: _FileRead | None = ...) -> None: ...
     def getroot(self) -> Element: ...
-    def parse(self, source: _File, parser: XMLParser | None = ...) -> Element: ...
+    def parse(self, source: _FileRead, parser: XMLParser | None = ...) -> Element: ...
     def iter(self, tag: str | None = ...) -> Generator[Element, None, None]: ...
     if sys.version_info < (3, 9):
         def getiterator(self, tag: str | None = ...) -> list[Element]: ...
+
     def find(self, path: str, namespaces: dict[str, str] | None = ...) -> Element | None: ...
     @overload
     def findtext(self, path: str, default: None = ..., namespaces: dict[str, str] | None = ...) -> str | None: ...
@@ -127,7 +209,7 @@ class ElementTree:
     def iterfind(self, path: str, namespaces: dict[str, str] | None = ...) -> Generator[Element, None, None]: ...
     def write(
         self,
-        file_or_filename: _File,
+        file_or_filename: _FileWrite,
         encoding: str | None = ...,
         xml_declaration: bool | None = ...,
         default_namespace: str | None = ...,
@@ -135,7 +217,7 @@ class ElementTree:
         *,
         short_empty_elements: bool = ...,
     ) -> None: ...
-    def write_c14n(self, file: _File) -> None: ...
+    def write_c14n(self, file: _FileWriteC14N) -> None: ...
 
 def register_namespace(prefix: str, uri: str) -> None: ...
 
@@ -230,12 +312,14 @@ def dump(elem: Element) -> None: ...
 if sys.version_info >= (3, 9):
     def indent(tree: Element | ElementTree, space: str = ..., level: int = ...) -> None: ...
 
-def parse(source: _File, parser: XMLParser | None = ...) -> ElementTree: ...
-def iterparse(source: _File, events: Sequence[str] | None = ..., parser: XMLParser | None = ...) -> Iterator[tuple[str, Any]]: ...
+def parse(source: _FileRead, parser: XMLParser | None = ...) -> ElementTree: ...
+def iterparse(
+    source: _FileRead, events: Sequence[str] | None = ..., parser: XMLParser | None = ...
+) -> Iterator[tuple[str, Any]]: ...
 
 class XMLPullParser:
     def __init__(self, events: Sequence[str] | None = ..., *, _parser: XMLParser | None = ...) -> None: ...
-    def feed(self, data: bytes) -> None: ...
+    def feed(self, data: str | bytes) -> None: ...
     def close(self) -> None: ...
     def read_events(self) -> Iterator[tuple[str, Element]]: ...
 
@@ -256,14 +340,33 @@ def fromstringlist(sequence: Sequence[str | bytes], parser: XMLParser | None = .
 # TreeBuilder is called by client code (they could pass strs, bytes or whatever);
 # but we don't want to use a too-broad type, or it would be too hard to write
 # elementfactories.
-_ElementFactory = Callable[[Any, Dict[Any, Any]], Element]
+_ElementFactory: TypeAlias = Callable[[Any, dict[Any, Any]], Element]
 
 class TreeBuilder:
-    def __init__(self, element_factory: _ElementFactory | None = ...) -> None: ...
+    if sys.version_info >= (3, 8):
+        # comment_factory can take None because passing None to Comment is not an error
+        def __init__(
+            self,
+            element_factory: _ElementFactory | None = ...,
+            *,
+            comment_factory: Callable[[str | None], Element] | None = ...,
+            pi_factory: Callable[[str, str | None], Element] | None = ...,
+            insert_comments: bool = ...,
+            insert_pis: bool = ...,
+        ) -> None: ...
+        insert_comments: bool
+        insert_pis: bool
+    else:
+        def __init__(self, element_factory: _ElementFactory | None = ...) -> None: ...
+
     def close(self) -> Element: ...
     def data(self, __data: str | bytes) -> None: ...
     def start(self, __tag: str | bytes, __attrs: dict[str | bytes, str | bytes]) -> Element: ...
     def end(self, __tag: str | bytes) -> Element: ...
+    if sys.version_info >= (3, 8):
+        # These two methods have pos-only parameters in the C implementation
+        def comment(self, __text: str | None) -> Element: ...
+        def pi(self, __target: str, __text: str | None = ...) -> Element: ...
 
 if sys.version_info >= (3, 8):
     class C14NWriterTarget:
@@ -279,6 +382,12 @@ if sys.version_info >= (3, 8):
             exclude_attrs: Iterable[str] | None = ...,
             exclude_tags: Iterable[str] | None = ...,
         ) -> None: ...
+        def data(self, data: str) -> None: ...
+        def start_ns(self, prefix: str, uri: str) -> None: ...
+        def start(self, tag: str, attrs: Mapping[str, str]) -> None: ...
+        def end(self, tag: str) -> None: ...
+        def comment(self, text: str) -> None: ...
+        def pi(self, target: str, data: str) -> None: ...
 
 class XMLParser:
     parser: Any
@@ -291,5 +400,6 @@ class XMLParser:
     else:
         def __init__(self, html: int = ..., target: Any = ..., encoding: str | None = ...) -> None: ...
         def doctype(self, __name: str, __pubid: str, __system: str) -> None: ...
+
     def close(self) -> Any: ...
     def feed(self, __data: str | bytes) -> None: ...

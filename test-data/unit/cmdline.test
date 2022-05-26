@@ -59,7 +59,8 @@ undef
 undef
 [out]
 dir/a.py: error: Duplicate module named "a" (also at "dir/subdir/a.py")
-dir/a.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
+dir/a.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+dir/a.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testCmdlineNonPackageSlash]
@@ -125,7 +126,8 @@ mypy: can't decode file 'a.py': unknown encoding: uft-8
 # type: ignore
 [out]
 two/mod/__init__.py: error: Duplicate module named "mod" (also at "one/mod/__init__.py")
-two/mod/__init__.py: note: Are you missing an __init__.py? Alternatively, consider using --exclude to avoid checking one of them.
+two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testFlagsFile]
@@ -413,9 +415,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: error: Import of "a" ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
+main.py:3: error: Import of "a" ignored
+main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
@@ -559,6 +561,15 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "a"
 
+[case testPythonVersionWrongFormatPyProjectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.10
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+== Return code: 0
+
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -633,10 +644,10 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**0) # N: Revealed type is "Literal[1]"
 reveal_type(a**1) # N: Revealed type is "builtins.int"
 reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "Literal[1]"
 reveal_type(a**-1) # N: Revealed type is "builtins.float"
 reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
 reveal_type(a**b) # N: Revealed type is "Any"
@@ -1144,6 +1155,7 @@ import foo.bar
 [out]
 src/foo/bar.py: error: Source file found twice under different module names: "src.foo.bar" and "foo.bar"
 src/foo/bar.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+src/foo/bar.py: note: Common resolutions include: a) adding `__init__.py` somewhere, b) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
 [case testEnableInvalidErrorCode]
@@ -1244,6 +1256,10 @@ Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 [out version>=3.10]
 pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
+[out version>=3.10.3]
+pkg/x.py:1: error: invalid syntax
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
 
@@ -1354,9 +1370,10 @@ b/bpkg.py:1: error: "int" not callable
 # cmd: mypy .
 [file mypy.ini]
 \[mypy]
-exclude =
-    abc
-    b
+exclude = (?x)(
+    ^abc/
+    |^b/
+  )
 [file abc/apkg.py]
 1()
 [file b/bpkg.py]
@@ -1365,3 +1382,20 @@ exclude =
 1()
 [out]
 c/cpkg.py:1: error: "int" not callable
+
+
+[case testCmdlineTimingStats]
+# cmd: mypy --timing-stats timing.txt .
+[file b/__init__.py]
+[file b/c.py]
+class C: pass
+[outfile-re timing.txt]
+.*
+b \d+
+b\.c \d+
+.*
+
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass

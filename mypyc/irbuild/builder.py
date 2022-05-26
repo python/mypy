@@ -14,15 +14,15 @@ from contextlib import contextmanager
 
 from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
-from typing_extensions import overload
+from typing_extensions import overload, Final
 from mypy.backports import OrderedDict
 
 from mypy.build import Graph
 from mypy.nodes import (
     MypyFile, SymbolNode, Statement, OpExpr, IntExpr, NameExpr, LDEF, Var, UnaryExpr,
     CallExpr, IndexExpr, Expression, MemberExpr, RefExpr, Lvalue, TupleExpr,
-    TypeInfo, Decorator, OverloadedFuncDef, StarExpr, ComparisonExpr, GDEF,
-    ArgKind, ARG_POS, ARG_NAMED, FuncDef,
+    TypeInfo, Decorator, OverloadedFuncDef, StarExpr,
+    GDEF, ArgKind, ARG_POS, ARG_NAMED, FuncDef,
 )
 from mypy.types import (
     Type, Instance, TupleType, UninhabitedType, get_proper_type
@@ -40,7 +40,7 @@ from mypyc.ir.ops import (
 from mypyc.ir.rtypes import (
     RType, RTuple, RInstance, c_int_rprimitive, int_rprimitive, dict_rprimitive,
     none_rprimitive, is_none_rprimitive, object_rprimitive, is_object_rprimitive,
-    str_rprimitive, is_tagged, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
+    str_rprimitive, is_list_rprimitive, is_tuple_rprimitive, c_pyssize_t_rprimitive
 )
 from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
 from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
@@ -65,6 +65,11 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
+
+
+# These int binary operations can borrow their operands safely, since the
+# primitives take this into consideration.
+int_borrow_friendly_op: Final = {'+', '-', '==', '!=', '<', '<=', '>', '>='}
 
 
 class IRVisitor(ExpressionVisitor[Value], StatementVisitor[None]):
@@ -141,6 +146,8 @@ class IRBuilder:
         # can also do quick lookups.
         self.imports: OrderedDict[str, None] = OrderedDict()
 
+        self.can_borrow = False
+
     # High-level control
 
     def set_module(self, module_name: str, module_path: str) -> None:
@@ -152,15 +159,23 @@ class IRBuilder:
         self.module_path = module_path
 
     @overload
-    def accept(self, node: Expression) -> Value: ...
+    def accept(self, node: Expression, *, can_borrow: bool = False) -> Value: ...
 
     @overload
     def accept(self, node: Statement) -> None: ...
 
-    def accept(self, node: Union[Statement, Expression]) -> Optional[Value]:
-        """Transform an expression or a statement."""
+    def accept(self, node: Union[Statement, Expression], *,
+               can_borrow: bool = False) -> Optional[Value]:
+        """Transform an expression or a statement.
+
+        If can_borrow is true, prefer to generate a borrowed reference.
+        Borrowed references are faster since they don't require reference count
+        manipulation, but they are only safe to use in specific contexts.
+        """
         with self.catch_errors(node.line):
             if isinstance(node, Expression):
+                old_can_borrow = self.can_borrow
+                self.can_borrow = can_borrow
                 try:
                     res = node.accept(self.visitor)
                     res = self.coerce(res, self.node_type(node), node.line)
@@ -170,6 +185,9 @@ class IRBuilder:
                 # from causing more downstream trouble.
                 except UnsupportedException:
                     res = Register(self.node_type(node))
+                self.can_borrow = old_can_borrow
+                if not can_borrow:
+                    self.flush_keep_alives()
                 return res
             else:
                 try:
@@ -177,6 +195,9 @@ class IRBuilder:
                 except UnsupportedException:
                     pass
                 return None
+
+    def flush_keep_alives(self) -> None:
+        self.builder.flush_keep_alives()
 
     # Pass through methods for the most common low-level builder ops, for convenience.
 
@@ -221,7 +242,7 @@ class IRBuilder:
         return self.builder.binary_op(lreg, rreg, expr_op, line)
 
     def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
-        return self.builder.coerce(src, target_type, line, force)
+        return self.builder.coerce(src, target_type, line, force, can_borrow=self.can_borrow)
 
     def none_object(self) -> Value:
         return self.builder.none_object()
@@ -271,7 +292,7 @@ class IRBuilder:
                         arg_kinds: Optional[List[ArgKind]] = None,
                         arg_names: Optional[List[Optional[str]]] = None) -> Value:
         return self.builder.gen_method_call(
-            base, name, arg_values, result_type, line, arg_kinds, arg_names
+            base, name, arg_values, result_type, line, arg_kinds, arg_names, self.can_borrow
         )
 
     def load_module(self, name: str) -> Value:
@@ -419,7 +440,7 @@ class IRBuilder:
             if class_name is None:
                 name = lvalue.name
             else:
-                name = '{}.{}'.format(class_name, lvalue.name)
+                name = f'{class_name}.{lvalue.name}'
             assert name is not None, "Full name not set for variable"
             coerced = self.coerce(rvalue_reg, type_override or self.node_type(lvalue), lvalue.line)
             self.final_names.append((name, coerced.type))
@@ -432,7 +453,7 @@ class IRBuilder:
         module, name = split_name
         return self.builder.load_static_checked(
             typ, name, module, line=line,
-            error_msg='value for final name "{}" was not set'.format(error_name))
+            error_msg=f'value for final name "{error_name}" was not set')
 
     def load_final_literal_value(self, val: Union[int, str, bytes, float, bool],
                                  line: int) -> Value:
@@ -497,8 +518,9 @@ class IRBuilder:
             return AssignmentTargetIndex(base, index)
         elif isinstance(lvalue, MemberExpr):
             # Attribute assignment x.y = e
-            obj = self.accept(lvalue.expr)
-            return AssignmentTargetAttr(obj, lvalue.name)
+            can_borrow = self.is_native_attr_ref(lvalue)
+            obj = self.accept(lvalue.expr, can_borrow=can_borrow)
+            return AssignmentTargetAttr(obj, lvalue.name, can_borrow=can_borrow)
         elif isinstance(lvalue, TupleExpr):
             # Multiple assignment a, ..., b = e
             star_idx: Optional[int] = None
@@ -518,7 +540,10 @@ class IRBuilder:
 
         assert False, 'Unsupported lvalue: %r' % lvalue
 
-    def read(self, target: Union[Value, AssignmentTarget], line: int = -1) -> Value:
+    def read(self,
+             target: Union[Value, AssignmentTarget],
+             line: int = -1,
+             can_borrow: bool = False) -> Value:
         if isinstance(target, Value):
             return target
         if isinstance(target, AssignmentTargetRegister):
@@ -531,7 +556,8 @@ class IRBuilder:
             assert False, target.base.type
         if isinstance(target, AssignmentTargetAttr):
             if isinstance(target.obj.type, RInstance) and target.obj.type.class_ir.is_ext_class:
-                return self.add(GetAttr(target.obj, target.attr, line))
+                borrow = can_borrow and target.can_borrow
+                return self.add(GetAttr(target.obj, target.attr, line, borrow=borrow))
             else:
                 return self.py_get_attr(target.obj, target.attr, line)
 
@@ -685,7 +711,7 @@ class IRBuilder:
 
     def spill(self, value: Value) -> AssignmentTarget:
         """Moves a given Value instance into the generator class' environment class."""
-        name = '{}{}'.format(TEMP_ATTR_NAME, self.temp_counter)
+        name = f'{TEMP_ATTR_NAME}{self.temp_counter}'
         self.temp_counter += 1
         target = self.add_var_to_env_class(Var(name), value.type, self.fn_info.generator_class)
         # Shouldn't be able to fail, so -1 for line
@@ -817,7 +843,7 @@ class IRBuilder:
                 is_final = sym.node.is_final or expr_fullname == 'enum.Enum'
                 if is_final:
                     final_var = sym.node
-                    fullname = '{}.{}'.format(sym.node.info.fullname, final_var.name)
+                    fullname = f'{sym.node.info.fullname}.{final_var.name}'
                     native = self.is_native_module(expr.expr.node.module_name)
         elif self.is_module_member_expr(expr):
             # a module attribute
@@ -897,61 +923,6 @@ class IRBuilder:
             lambda: self.accept(expr.right),
             expr.line
         )
-
-    # Conditional expressions
-
-    def process_conditional(self, e: Expression, true: BasicBlock, false: BasicBlock) -> None:
-        if isinstance(e, OpExpr) and e.op in ['and', 'or']:
-            if e.op == 'and':
-                # Short circuit 'and' in a conditional context.
-                new = BasicBlock()
-                self.process_conditional(e.left, new, false)
-                self.activate_block(new)
-                self.process_conditional(e.right, true, false)
-            else:
-                # Short circuit 'or' in a conditional context.
-                new = BasicBlock()
-                self.process_conditional(e.left, true, new)
-                self.activate_block(new)
-                self.process_conditional(e.right, true, false)
-        elif isinstance(e, UnaryExpr) and e.op == 'not':
-            self.process_conditional(e.expr, false, true)
-        else:
-            res = self.maybe_process_conditional_comparison(e, true, false)
-            if res:
-                return
-            # Catch-all for arbitrary expressions.
-            reg = self.accept(e)
-            self.add_bool_branch(reg, true, false)
-
-    def maybe_process_conditional_comparison(self,
-                                             e: Expression,
-                                             true: BasicBlock,
-                                             false: BasicBlock) -> bool:
-        """Transform simple tagged integer comparisons in a conditional context.
-
-        Return True if the operation is supported (and was transformed). Otherwise,
-        do nothing and return False.
-
-        Args:
-            e: Arbitrary expression
-            true: Branch target if comparison is true
-            false: Branch target if comparison is false
-        """
-        if not isinstance(e, ComparisonExpr) or len(e.operands) != 2:
-            return False
-        ltype = self.node_type(e.operands[0])
-        rtype = self.node_type(e.operands[1])
-        if not is_tagged(ltype) or not is_tagged(rtype):
-            return False
-        op = e.operators[0]
-        if op not in ('==', '!=', '<', '<=', '>', '>='):
-            return False
-        left = self.accept(e.operands[0])
-        right = self.accept(e.operands[1])
-        # "left op right" for two tagged integers
-        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
-        return True
 
     # Basic helpers
 
@@ -1162,6 +1133,14 @@ class IRBuilder:
         module, _, name = fullname.rpartition('.')
         left = self.load_module(module)
         return self.py_get_attr(left, name, line)
+
+    def is_native_attr_ref(self, expr: MemberExpr) -> bool:
+        """Is expr a direct reference to a native (struct) attribute of an instance?"""
+        obj_rtype = self.node_type(expr.expr)
+        return (isinstance(obj_rtype, RInstance)
+                and obj_rtype.class_ir.is_ext_class
+                and obj_rtype.class_ir.has_attr(expr.name)
+                and not obj_rtype.class_ir.get_method(expr.name))
 
     # Lacks a good type because there wasn't a reasonable type in 3.5 :(
     def catch_errors(self, line: int) -> Any:

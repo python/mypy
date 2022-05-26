@@ -65,7 +65,7 @@ class RType:
         return '<%s>' % self.__class__.__name__
 
     def serialize(self) -> Union[JsonDict, str]:
-        raise NotImplementedError('Cannot serialize {} instance'.format(self.__class__.__name__))
+        raise NotImplementedError(f'Cannot serialize {self.__class__.__name__} instance')
 
 
 def deserialize_type(data: Union[JsonDict, str], ctx: 'DeserMaps') -> 'RType':
@@ -86,7 +86,7 @@ def deserialize_type(data: Union[JsonDict, str], ctx: 'DeserMaps') -> 'RType':
         elif data == "void":
             return RVoid()
         else:
-            assert False, "Can't find class {}".format(data)
+            assert False, f"Can't find class {data}"
     elif data['.class'] == 'RTuple':
         return RTuple.deserialize(data, ctx)
     elif data['.class'] == 'RUnion':
@@ -445,7 +445,7 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return 'I'
         elif t._ctype == 'char':
             return 'C'
-        assert not t.is_unboxed, "{} unexpected unboxed type".format(t)
+        assert not t.is_unboxed, f"{t} unexpected unboxed type"
         return 'O'
 
     def visit_rtuple(self, t: 'RTuple') -> str:
@@ -488,8 +488,8 @@ class RTuple(RType):
         # in the same way python can just assign a Tuple[int, bool] to a Tuple[int, bool].
         self.unique_id = self.accept(TupleNameVisitor())
         # Nominally the max c length is 31 chars, but I'm not honestly worried about this.
-        self.struct_name = 'tuple_{}'.format(self.unique_id)
-        self._ctype = '{}'.format(self.struct_name)
+        self.struct_name = f'tuple_{self.unique_id}'
+        self._ctype = f'{self.struct_name}'
 
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
         return visitor.visit_rtuple(self)
@@ -548,7 +548,7 @@ def compute_rtype_alignment(typ: RType) -> int:
             items = typ.types
         else:
             assert False, "invalid rtype for computing alignment"
-        max_alignment = max([compute_rtype_alignment(item) for item in items])
+        max_alignment = max(compute_rtype_alignment(item) for item in items)
         return max_alignment
 
 
@@ -622,12 +622,14 @@ class RStruct(RType):
 
     def __str__(self) -> str:
         # if not tuple(unnamed structs)
-        return '%s{%s}' % (self.name, ', '.join(name + ":" + str(typ)
+        return '{}{{{}}}'.format(self.name, ', '.join(name + ":" + str(typ)
                                                 for name, typ in zip(self.names, self.types)))
 
     def __repr__(self) -> str:
-        return '<RStruct %s{%s}>' % (self.name, ', '.join(name + ":" + repr(typ) for name, typ
-                                                          in zip(self.names, self.types)))
+        return '<RStruct {}{{{}}}>'.format(
+            self.name, ', '.join(name + ":" + repr(typ)
+            for name, typ in zip(self.names, self.types))
+        )
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RStruct) and self.name == other.name
@@ -774,10 +776,10 @@ class RArray(RType):
         return visitor.visit_rarray(self)
 
     def __str__(self) -> str:
-        return '%s[%s]' % (self.item_type, self.length)
+        return f'{self.item_type}[{self.length}]'
 
     def __repr__(self) -> str:
-        return '<RArray %r[%s]>' % (self.item_type, self.length)
+        return f'<RArray {self.item_type!r}[{self.length}]>'
 
     def __eq__(self, other: object) -> bool:
         return (isinstance(other, RArray) and self.item_type == other.item_type

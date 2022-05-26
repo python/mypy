@@ -202,6 +202,70 @@ class C:
     pass
 [builtins fixtures/tuple.pyi]
 
+[case testDivPython2]
+# flags: --python-version 2.7
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImport]
+# flags: --python-version 2.7
+from __future__ import division
+
+class A(object):
+    def __truediv__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImportNotLeaking]
+# flags: --python-version 2.7
+import m1
+
+[file m1.py]
+import m2
+
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[file m2.py]
+from __future__ import division
+[builtins fixtures/bool.pyi]
+
+[case testDivPython2FutureImportNotLeaking2]
+# flags: --python-version 2.7
+import m1
+
+[file m1.py]
+import m2
+
+class A(object):
+    def __div__(self, other):
+        # type: (A, str) -> str
+        return 'a'
+
+a = A()
+reveal_type(a / 'b')  # N: Revealed type is "builtins.str"
+a / 1  # E: Unsupported operand types for / ("A" and "int")
+[file m2.py]
+# empty
+[builtins fixtures/bool.pyi]
+
 [case testIntDiv]
 a, b, c = None, None, None # type: (A, B, C)
 if int():
@@ -972,6 +1036,32 @@ class B: pass
 [out]
 main:3: error: "A" not callable
 
+-- assert_type()
+
+[case testAssertType]
+from typing import assert_type, Any
+from typing_extensions import Literal
+a: int = 1
+returned = assert_type(a, int)
+reveal_type(returned)  # N: Revealed type is "builtins.int"
+assert_type(a, str)  # E: Expression is of type "int", not "str"
+assert_type(a, Any)  # E: Expression is of type "int", not "Any"
+assert_type(a, Literal[1])  # E: Expression is of type "int", not "Literal[1]"
+[builtins fixtures/tuple.pyi]
+
+[case testAssertTypeGeneric]
+from typing import assert_type, TypeVar, Generic
+from typing_extensions import Literal
+T = TypeVar("T")
+def f(x: T) -> T: return x
+assert_type(f(1), int)
+class Gen(Generic[T]):
+    def __new__(cls, obj: T) -> Gen[T]: ...
+assert_type(Gen(1), Gen[int])
+# With type context, it infers Gen[Literal[1]] instead.
+y: Gen[Literal[1]] = assert_type(Gen(1), Gen[Literal[1]])
+
+[builtins fixtures/tuple.pyi]
 
 -- None return type
 -- ----------------
@@ -1688,6 +1778,22 @@ main:1: note: Revealed type is "Any"
 def reveal_type(x: int) -> None: pass
 reveal_type("foo") # E: Argument 1 to "reveal_type" has incompatible type "str"; expected "int"
 
+[case testTypingRevealType]
+from typing import reveal_type
+from typing import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[case testTypingExtensionsRevealType]
+from typing_extensions import reveal_type
+from typing_extensions import reveal_type as show_me_the_type
+
+reveal_type(1) # N: Revealed type is "Literal[1]?"
+show_me_the_type(1) # N: Revealed type is "Literal[1]?"
+
+[builtins fixtures/tuple.pyi]
+
 [case testRevealTypeVar]
 reveal_type = 1
 1 + "foo" # E: Unsupported operand types for + ("int" and "str")
@@ -2137,9 +2243,9 @@ def returns_1_or_2() -> Literal[1, 2]:
     ...
 THREE: Final = 3
 
-if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Union[Literal['a'], Literal['b']]", right operand type: "Literal['c']")
+if returns_a_or_b() == 'c':  # E: Non-overlapping equality check (left operand type: "Literal['a', 'b']", right operand type: "Literal['c']")
     ...
-if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Union[Literal[1], Literal[2]]", right operand type: "Literal[3]")
+if returns_1_or_2() is THREE:  # E: Non-overlapping identity check (left operand type: "Literal[1, 2]", right operand type: "Literal[3]")
     ...
 [builtins fixtures/bool.pyi]
 

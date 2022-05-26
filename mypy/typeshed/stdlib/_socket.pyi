@@ -1,22 +1,23 @@
 import sys
 from _typeshed import ReadableBuffer, WriteableBuffer
 from collections.abc import Iterable
-from typing import Any, SupportsInt, Tuple, Union, overload
+from typing import Any, SupportsInt, overload
+from typing_extensions import TypeAlias
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
-    _FD = SupportsIndex
+    _FD: TypeAlias = SupportsIndex
 else:
-    _FD = SupportsInt
+    _FD: TypeAlias = SupportsInt
 
-_CMSG = Tuple[int, int, bytes]
-_CMSGArg = Tuple[int, int, ReadableBuffer]
+_CMSG: TypeAlias = tuple[int, int, bytes]
+_CMSGArg: TypeAlias = tuple[int, int, ReadableBuffer]
 
 # Addresses can be either tuples of varying lengths (AF_INET, AF_INET6,
 # AF_NETLINK, AF_TIPC) or strings (AF_UNIX).
-_Address = Union[Tuple[Any, ...], str]
-_RetAddress = Any
+_Address: TypeAlias = tuple[Any, ...] | str
+_RetAddress: TypeAlias = Any
 # TODO Most methods allow bytes as address objects
 
 # ----- Constants -----
@@ -255,6 +256,8 @@ SO_SNDLOWAT: int
 SO_SNDTIMEO: int
 SO_TYPE: int
 SO_USELOOPBACK: int
+if sys.platform == "linux" and sys.version_info >= (3, 11):
+    SO_INCOMING_CPU: int
 TCP_CORK: int
 TCP_DEFER_ACCEPT: int
 TCP_FASTOPEN: int
@@ -270,6 +273,8 @@ TCP_SYNCNT: int
 TCP_WINDOW_CLAMP: int
 if sys.version_info >= (3, 7):
     TCP_NOTSENT_LOWAT: int
+if sys.version_info >= (3, 11) and sys.platform == "darwin":
+    TCP_CONNECTION_INFO: int
 
 # Specifically-documented constants
 
@@ -355,6 +360,9 @@ if sys.platform == "linux" and sys.version_info >= (3, 9):
     J1939_EE_INFO_TX_ABORT: int
 
     J1939_FILTER_MAX: int
+
+if sys.platform == "linux" and sys.version_info >= (3, 10):
+    IPPROTO_MPTCP: int
 
 if sys.platform == "linux":
     AF_PACKET: int
@@ -524,9 +532,14 @@ else:
 # ----- Classes -----
 
 class socket:
-    family: int
-    type: int
-    proto: int
+    @property
+    def family(self) -> int: ...
+    @property
+    def type(self) -> int: ...
+    @property
+    def proto(self) -> int: ...
+    @property
+    def timeout(self) -> float | None: ...
     def __init__(self, family: int = ..., type: int = ..., proto: int = ..., fileno: _FD | None = ...) -> None: ...
     def bind(self, __address: _Address | bytes) -> None: ...
     def close(self) -> None: ...
@@ -542,9 +555,11 @@ class socket:
     def getsockopt(self, __level: int, __optname: int, __buflen: int) -> bytes: ...
     if sys.version_info >= (3, 7):
         def getblocking(self) -> bool: ...
+
     def gettimeout(self) -> float | None: ...
     if sys.platform == "win32":
         def ioctl(self, __control: int, __option: int | tuple[int, int, int] | bool) -> None: ...
+
     def listen(self, __backlog: int = ...) -> None: ...
     def recv(self, __bufsize: int, __flags: int = ...) -> bytes: ...
     def recvfrom(self, __bufsize: int, __flags: int = ...) -> tuple[bytes, _RetAddress]: ...
@@ -553,6 +568,7 @@ class socket:
         def recvmsg_into(
             self, __buffers: Iterable[WriteableBuffer], __ancbufsize: int = ..., __flags: int = ...
         ) -> tuple[int, list[_CMSG], int, Any]: ...
+
     def recvfrom_into(self, buffer: WriteableBuffer, nbytes: int = ..., flags: int = ...) -> tuple[int, _RetAddress]: ...
     def recv_into(self, buffer: WriteableBuffer, nbytes: int = ..., flags: int = ...) -> int: ...
     def send(self, __data: ReadableBuffer, __flags: int = ...) -> int: ...
@@ -573,6 +589,7 @@ class socket:
         def sendmsg_afalg(
             self, msg: Iterable[ReadableBuffer] = ..., *, op: int, iv: Any = ..., assoclen: int = ..., flags: int = ...
         ) -> int: ...
+
     def setblocking(self, __flag: bool) -> None: ...
     def settimeout(self, __value: float | None) -> None: ...
     @overload
@@ -581,6 +598,7 @@ class socket:
     def setsockopt(self, __level: int, __optname: int, __value: None, __optlen: int) -> None: ...
     if sys.platform == "win32":
         def share(self, __process_id: int) -> bytes: ...
+
     def shutdown(self, __how: int) -> None: ...
 
 SocketType = socket

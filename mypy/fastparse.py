@@ -8,6 +8,7 @@ import typing  # for typing.Type, which conflicts with types.Type
 from typing import (
     Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
 )
+
 from typing_extensions import Final, Literal, overload
 
 from mypy.sharedparse import (
@@ -19,17 +20,21 @@ from mypy.nodes import (
     ClassDef, Decorator, Block, Var, OperatorAssignmentStmt,
     ExpressionStmt, AssignmentStmt, ReturnStmt, RaiseStmt, AssertStmt,
     DelStmt, BreakStmt, ContinueStmt, PassStmt, GlobalDecl,
-    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt,
+    WhileStmt, ForStmt, IfStmt, TryStmt, WithStmt, MatchStmt,
     TupleExpr, GeneratorExpr, ListComprehension, ListExpr, ConditionalExpr,
     DictExpr, SetExpr, NameExpr, IntExpr, StrExpr, BytesExpr, UnicodeExpr,
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, LambdaExpr, ComparisonExpr, AssignmentExpr,
     StarExpr, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
     SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, Argument,
-    AwaitExpr, TempNode, Expression, Statement,
+    AwaitExpr, TempNode, RefExpr, Expression, Statement,
     ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR2,
     check_arg_names,
     FakeInfo,
+)
+from mypy.patterns import (
+    AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
+    ClassPattern, SingletonPattern
 )
 from mypy.types import (
     Type, CallableType, AnyType, UnboundType, TupleType, TypeList, EllipsisType, CallableArgument,
@@ -39,7 +44,8 @@ from mypy import defaults
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.options import Options
-from mypy.reachability import mark_block_unreachable
+from mypy.reachability import infer_reachability_of_if_statement, mark_block_unreachable
+from mypy.util import bytes_to_human_readable_repr
 
 try:
     # pull this into a final variable to make mypyc be quiet about the
@@ -50,7 +56,7 @@ try:
     if sys.version_info >= (3, 8):
         import ast as ast3
         assert 'kind' in ast3.Constant._fields, \
-               "This 3.8.0 alpha (%s) is too old; 3.8.0a3 required" % sys.version.split()[0]
+               f"This 3.8.0 alpha ({sys.version.split()[0]}) is too old; 3.8.0a3 required"
         # TODO: Num, Str, Bytes, NameConstant, Ellipsis are deprecated in 3.8.
         # TODO: Index, ExtSlice are deprecated in 3.9.
         from ast import (
@@ -106,6 +112,29 @@ try:
         # These don't exist before 3.8
         NamedExpr = Any
         Constant = Any
+
+    if sys.version_info >= (3, 10):
+        Match = ast3.Match
+        MatchValue = ast3.MatchValue
+        MatchSingleton = ast3.MatchSingleton
+        MatchSequence = ast3.MatchSequence
+        MatchStar = ast3.MatchStar
+        MatchMapping = ast3.MatchMapping
+        MatchClass = ast3.MatchClass
+        MatchAs = ast3.MatchAs
+        MatchOr = ast3.MatchOr
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.pattern, ast3.ExceptHandler]
+    else:
+        Match = Any
+        MatchValue = Any
+        MatchSingleton = Any
+        MatchSequence = Any
+        MatchStar = Any
+        MatchMapping = Any
+        MatchClass = Any
+        MatchAs = Any
+        MatchOr = Any
+        AstNode = Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]
 except ImportError:
     try:
         from typed_ast import ast35  # type: ignore[attr-defined]  # noqa: F401
@@ -221,7 +250,7 @@ def parse_type_comment(type_comment: str,
     except SyntaxError:
         if errors is not None:
             stripped_type = type_comment.split("#", 2)[0].strip()
-            err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+            err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
             errors.report(line, column, err_msg, blocker=True, code=codes.SYNTAX)
             return None, None
         else:
@@ -315,9 +344,19 @@ class ASTConverter:
              msg: str,
              line: int,
              column: int,
-             blocker: bool = True) -> None:
+             blocker: bool = True,
+             code: codes.ErrorCode = codes.SYNTAX) -> None:
         if blocker or not self.options.ignore_errors:
-            self.errors.report(line, column, msg, blocker=blocker, code=codes.SYNTAX)
+            self.errors.report(line, column, msg, blocker=blocker, code=code)
+
+    def fail_merge_overload(self, node: IfStmt) -> None:
+        self.fail(
+            "Condition can't be inferred, unable to merge overloads",
+            line=node.line,
+            column=node.column,
+            blocker=False,
+            code=codes.MISC,
+        )
 
     def visit(self, node: Optional[AST]) -> Any:
         if node is None:
@@ -330,7 +369,7 @@ class ASTConverter:
             self.visitor_cache[typeobj] = visitor
         return visitor(node)
 
-    def set_line(self, node: N, n: Union[ast3.expr, ast3.stmt, ast3.ExceptHandler]) -> N:
+    def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
         node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
@@ -360,7 +399,7 @@ class ASTConverter:
         if (ismodule and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.MISC.code)
+                codes.FILE.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -447,12 +486,91 @@ class ASTConverter:
         ret: List[Statement] = []
         current_overload: List[OverloadPart] = []
         current_overload_name: Optional[str] = None
+        seen_unconditional_func_def = False
+        last_if_stmt: Optional[IfStmt] = None
+        last_if_overload: Optional[Union[Decorator, FuncDef, OverloadedFuncDef]] = None
+        last_if_stmt_overload_name: Optional[str] = None
+        last_if_unknown_truth_value: Optional[IfStmt] = None
+        skipped_if_stmts: List[IfStmt] = []
         for stmt in stmts:
+            if_overload_name: Optional[str] = None
+            if_block_with_overload: Optional[Block] = None
+            if_unknown_truth_value: Optional[IfStmt] = None
+            if isinstance(stmt, IfStmt) and seen_unconditional_func_def is False:
+                # Check IfStmt block to determine if function overloads can be merged
+                if_overload_name = self._check_ifstmt_for_overloads(stmt, current_overload_name)
+                if if_overload_name is not None:
+                    if_block_with_overload, if_unknown_truth_value = \
+                        self._get_executable_if_block_with_overloads(stmt)
+
             if (current_overload_name is not None
                     and isinstance(stmt, (Decorator, FuncDef))
                     and stmt.name == current_overload_name):
+                if last_if_stmt is not None:
+                    skipped_if_stmts.append(last_if_stmt)
+                if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
+                if last_if_unknown_truth_value:
+                    self.fail_merge_overload(last_if_unknown_truth_value)
+                    last_if_unknown_truth_value = None
                 current_overload.append(stmt)
+                if isinstance(stmt, FuncDef):
+                    seen_unconditional_func_def = True
+            elif (
+                current_overload_name is not None
+                and isinstance(stmt, IfStmt)
+                and if_overload_name == current_overload_name
+            ):
+                # IfStmt only contains stmts relevant to current_overload.
+                # Check if stmts are reachable and add them to current_overload,
+                # otherwise skip IfStmt to allow subsequent overload
+                # or function definitions.
+                skipped_if_stmts.append(stmt)
+                if if_block_with_overload is None:
+                    if if_unknown_truth_value is not None:
+                        self.fail_merge_overload(if_unknown_truth_value)
+                    continue
+                if last_if_overload is not None:
+                    # Last stmt was an IfStmt with same overload name
+                    # Add overloads to current_overload
+                    if isinstance(last_if_overload, OverloadedFuncDef):
+                        current_overload.extend(last_if_overload.items)
+                    else:
+                        current_overload.append(last_if_overload)
+                    last_if_stmt, last_if_overload = None, None
+                if isinstance(if_block_with_overload.body[-1], OverloadedFuncDef):
+                    skipped_if_stmts.extend(
+                        cast(List[IfStmt], if_block_with_overload.body[:-1])
+                    )
+                    current_overload.extend(if_block_with_overload.body[-1].items)
+                else:
+                    current_overload.append(
+                        cast(Union[Decorator, FuncDef], if_block_with_overload.body[0])
+                    )
             else:
+                if last_if_stmt is not None:
+                    ret.append(last_if_stmt)
+                    last_if_stmt_overload_name = current_overload_name
+                    last_if_stmt, last_if_overload = None, None
+                    last_if_unknown_truth_value = None
+
+                if current_overload and current_overload_name == last_if_stmt_overload_name:
+                    # Remove last stmt (IfStmt) from ret if the overload names matched
+                    # Only happens if no executable block had been found in IfStmt
+                    skipped_if_stmts.append(cast(IfStmt, ret.pop()))
+                if current_overload and skipped_if_stmts:
+                    # Add bare IfStmt (without overloads) to ret
+                    # Required for mypy to be able to still check conditions
+                    for if_stmt in skipped_if_stmts:
+                        self._strip_contents_from_if_stmt(if_stmt)
+                        ret.append(if_stmt)
+                    skipped_if_stmts = []
                 if len(current_overload) == 1:
                     ret.append(current_overload[0])
                 elif len(current_overload) > 1:
@@ -463,19 +581,161 @@ class ASTConverter:
                 # most of mypy/mypyc assumes that all the functions in an OverloadedFuncDef are
                 # related, but multiple underscore functions next to each other aren't necessarily
                 # related
+                seen_unconditional_func_def = False
                 if isinstance(stmt, Decorator) and not unnamed_function(stmt.name):
                     current_overload = [stmt]
                     current_overload_name = stmt.name
+                elif (
+                    isinstance(stmt, IfStmt)
+                    and if_overload_name is not None
+                ):
+                    current_overload = []
+                    current_overload_name = if_overload_name
+                    last_if_stmt = stmt
+                    last_if_stmt_overload_name = None
+                    if if_block_with_overload is not None:
+                        skipped_if_stmts.extend(
+                            cast(List[IfStmt], if_block_with_overload.body[:-1])
+                        )
+                        last_if_overload = cast(
+                            Union[Decorator, FuncDef, OverloadedFuncDef],
+                            if_block_with_overload.body[-1]
+                        )
+                    last_if_unknown_truth_value = if_unknown_truth_value
                 else:
                     current_overload = []
                     current_overload_name = None
                     ret.append(stmt)
 
+        if current_overload and skipped_if_stmts:
+            # Add bare IfStmt (without overloads) to ret
+            # Required for mypy to be able to still check conditions
+            for if_stmt in skipped_if_stmts:
+                self._strip_contents_from_if_stmt(if_stmt)
+                ret.append(if_stmt)
         if len(current_overload) == 1:
             ret.append(current_overload[0])
         elif len(current_overload) > 1:
             ret.append(OverloadedFuncDef(current_overload))
+        elif last_if_overload is not None:
+            ret.append(last_if_overload)
+        elif last_if_stmt is not None:
+            ret.append(last_if_stmt)
         return ret
+
+    def _check_ifstmt_for_overloads(
+        self, stmt: IfStmt, current_overload_name: Optional[str] = None
+    ) -> Optional[str]:
+        """Check if IfStmt contains only overloads with the same name.
+        Return overload_name if found, None otherwise.
+        """
+        # Check that block only contains a single Decorator, FuncDef, or OverloadedFuncDef.
+        # Multiple overloads have already been merged as OverloadedFuncDef.
+        if not (
+            len(stmt.body[0].body) == 1
+            and (
+                isinstance(stmt.body[0].body[0], (Decorator, OverloadedFuncDef))
+                or current_overload_name is not None
+                and isinstance(stmt.body[0].body[0], FuncDef)
+            )
+            or len(stmt.body[0].body) > 1
+            and isinstance(stmt.body[0].body[-1], OverloadedFuncDef)
+            and all(
+                self._is_stripped_if_stmt(if_stmt)
+                for if_stmt in stmt.body[0].body[:-1]
+            )
+        ):
+            return None
+
+        overload_name = cast(
+            Union[Decorator, FuncDef, OverloadedFuncDef], stmt.body[0].body[-1]).name
+        if stmt.else_body is None:
+            return overload_name
+
+        if isinstance(stmt.else_body, Block) and len(stmt.else_body.body) == 1:
+            # For elif: else_body contains an IfStmt itself -> do a recursive check.
+            if (
+                isinstance(stmt.else_body.body[0], (Decorator, FuncDef, OverloadedFuncDef))
+                and stmt.else_body.body[0].name == overload_name
+            ):
+                return overload_name
+            if (
+                isinstance(stmt.else_body.body[0], IfStmt)
+                and self._check_ifstmt_for_overloads(
+                    stmt.else_body.body[0], current_overload_name
+                ) == overload_name
+            ):
+                return overload_name
+
+        return None
+
+    def _get_executable_if_block_with_overloads(
+        self, stmt: IfStmt
+    ) -> Tuple[Optional[Block], Optional[IfStmt]]:
+        """Return block from IfStmt that will get executed.
+
+        Return
+            0 -> A block if sure that alternative blocks are unreachable.
+            1 -> An IfStmt if the reachability of it can't be inferred,
+                 i.e. the truth value is unknown.
+        """
+        infer_reachability_of_if_statement(stmt, self.options)
+        if (
+            stmt.else_body is None
+            and stmt.body[0].is_unreachable is True
+        ):
+            # always False condition with no else
+            return None, None
+        if (
+            stmt.else_body is None
+            or stmt.body[0].is_unreachable is False
+            and stmt.else_body.is_unreachable is False
+        ):
+            # The truth value is unknown, thus not conclusive
+            return None, stmt
+        if stmt.else_body.is_unreachable is True:
+            # else_body will be set unreachable if condition is always True
+            return stmt.body[0], None
+        if stmt.body[0].is_unreachable is True:
+            # body will be set unreachable if condition is always False
+            # else_body can contain an IfStmt itself (for elif) -> do a recursive check
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                return self._get_executable_if_block_with_overloads(stmt.else_body.body[0])
+            return stmt.else_body, None
+        return None, stmt
+
+    def _strip_contents_from_if_stmt(self, stmt: IfStmt) -> None:
+        """Remove contents from IfStmt.
+
+        Needed to still be able to check the conditions after the contents
+        have been merged with the surrounding function overloads.
+        """
+        if len(stmt.body) == 1:
+            stmt.body[0].body = []
+        if stmt.else_body and len(stmt.else_body.body) == 1:
+            if isinstance(stmt.else_body.body[0], IfStmt):
+                self._strip_contents_from_if_stmt(stmt.else_body.body[0])
+            else:
+                stmt.else_body.body = []
+
+    def _is_stripped_if_stmt(self, stmt: Statement) -> bool:
+        """Check stmt to make sure it is a stripped IfStmt.
+
+        See also: _strip_contents_from_if_stmt
+        """
+        if not isinstance(stmt, IfStmt):
+            return False
+
+        if not (len(stmt.body) == 1 and len(stmt.body[0].body) == 0):
+            # Body not empty
+            return False
+
+        if not stmt.else_body or len(stmt.else_body.body) == 0:
+            # No or empty else_body
+            return True
+
+        # For elif, IfStmt are stored recursively in else_body
+        return self._is_stripped_if_stmt(stmt.else_body.body[0])
 
     def in_method_scope(self) -> bool:
         return self.class_and_function_stack[-2:] == ['C', 'F']
@@ -573,7 +833,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = n.type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
                 self.fail(err_msg, lineno, n.col_offset)
                 if n.type_comment and n.type_comment[0] not in ["(", "#"]:
                     self.note('Suggestion: wrap argument types in parentheses',
@@ -1286,11 +1546,74 @@ class ASTConverter:
         # cast for mypyc's benefit on Python 3.9
         return self.visit(cast(Any, n).value)
 
-    def visit_Match(self, n: Any) -> Node:
-        self.fail("Match statement is not supported",
-                  line=n.lineno, column=n.col_offset, blocker=True)
-        # Just return some valid node
-        return PassStmt()
+    # Match(expr subject, match_case* cases) # python 3.10 and later
+    def visit_Match(self, n: Match) -> MatchStmt:
+        node = MatchStmt(self.visit(n.subject),
+                         [self.visit(c.pattern) for c in n.cases],
+                         [self.visit(c.guard) for c in n.cases],
+                         [self.as_required_block(c.body, n.lineno) for c in n.cases])
+        return self.set_line(node, n)
+
+    def visit_MatchValue(self, n: MatchValue) -> ValuePattern:
+        node = ValuePattern(self.visit(n.value))
+        return self.set_line(node, n)
+
+    def visit_MatchSingleton(self, n: MatchSingleton) -> SingletonPattern:
+        node = SingletonPattern(n.value)
+        return self.set_line(node, n)
+
+    def visit_MatchSequence(self, n: MatchSequence) -> SequencePattern:
+        patterns = [self.visit(p) for p in n.patterns]
+        stars = [p for p in patterns if isinstance(p, StarredPattern)]
+        assert len(stars) < 2
+
+        node = SequencePattern(patterns)
+        return self.set_line(node, n)
+
+    def visit_MatchStar(self, n: MatchStar) -> StarredPattern:
+        if n.name is None:
+            node = StarredPattern(None)
+        else:
+            node = StarredPattern(NameExpr(n.name))
+
+        return self.set_line(node, n)
+
+    def visit_MatchMapping(self, n: MatchMapping) -> MappingPattern:
+        keys = [self.visit(k) for k in n.keys]
+        values = [self.visit(v) for v in n.patterns]
+
+        if n.rest is None:
+            rest = None
+        else:
+            rest = NameExpr(n.rest)
+
+        node = MappingPattern(keys, values, rest)
+        return self.set_line(node, n)
+
+    def visit_MatchClass(self, n: MatchClass) -> ClassPattern:
+        class_ref = self.visit(n.cls)
+        assert isinstance(class_ref, RefExpr)
+        positionals = [self.visit(p) for p in n.patterns]
+        keyword_keys = n.kwd_attrs
+        keyword_values = [self.visit(p) for p in n.kwd_patterns]
+
+        node = ClassPattern(class_ref, positionals, keyword_keys, keyword_values)
+        return self.set_line(node, n)
+
+    # MatchAs(expr pattern, identifier name)
+    def visit_MatchAs(self, n: MatchAs) -> AsPattern:
+        if n.name is None:
+            name = None
+        else:
+            name = NameExpr(n.name)
+            name = self.set_line(name, n)
+        node = AsPattern(self.visit(n.pattern), name)
+        return self.set_line(node, n)
+
+    # MatchOr(expr* pattern)
+    def visit_MatchOr(self, n: MatchOr) -> OrPattern:
+        node = OrPattern([self.visit(pattern) for pattern in n.patterns])
+        return self.set_line(node, n)
 
 
 class TypeConverter:
@@ -1428,7 +1751,7 @@ class TypeConverter:
                 typ = converted
             else:
                 self.fail(
-                    'Unexpected argument "{}" for argument constructor'.format(k.arg),
+                    f'Unexpected argument "{k.arg}" for argument constructor',
                     value.lineno, value.col_offset)
         return CallableArgument(typ, name, constructor, e.lineno, e.col_offset)
 
@@ -1517,7 +1840,7 @@ class TypeConverter:
             # RawExpressionType so we just pass in 'None' for now. We'll report the
             # appropriate error at a later stage.
             numeric_value = None
-            type_name = 'builtins.{}'.format(type(value).__name__)
+            type_name = f'builtins.{type(value).__name__}'
         return RawExpressionType(
             numeric_value,
             type_name,
@@ -1616,7 +1939,7 @@ class TypeConverter:
         before_dot = self.visit(n.value)
 
         if isinstance(before_dot, UnboundType) and not before_dot.args:
-            return UnboundType("{}.{}".format(before_dot.name, n.attr), line=self.line)
+            return UnboundType(f"{before_dot.name}.{n.attr}", line=self.line)
         else:
             return self.invalid_type(n)
 
@@ -1636,19 +1959,5 @@ def stringify_name(n: AST) -> Optional[str]:
     elif isinstance(n, Attribute):
         sv = stringify_name(n.value)
         if sv is not None:
-            return "{}.{}".format(sv, n.attr)
+            return f"{sv}.{n.attr}"
     return None  # Can't do it.
-
-
-def bytes_to_human_readable_repr(b: bytes) -> str:
-    """Converts bytes into some human-readable representation. Unprintable
-    bytes such as the nul byte are escaped. For example:
-
-        >>> b = bytes([102, 111, 111, 10, 0])
-        >>> s = bytes_to_human_readable_repr(b)
-        >>> print(s)
-        foo\n\x00
-        >>> print(repr(s))
-        'foo\\n\\x00'
-    """
-    return repr(b)[2:-1]

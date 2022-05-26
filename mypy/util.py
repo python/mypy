@@ -8,6 +8,7 @@ import sys
 import hashlib
 import io
 import shutil
+import time
 
 from typing import (
     TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
@@ -45,6 +46,26 @@ default_python2_interpreter: Final = [
     "/usr/bin/python",
     "C:\\Python27\\python.exe",
 ]
+
+SPECIAL_DUNDERS: Final = frozenset((
+    "__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__",
+))
+
+
+def is_dunder(name: str, exclude_special: bool = False) -> bool:
+    """Returns whether name is a dunder name.
+
+    Args:
+        exclude_special: Whether to return False for a couple special dunder methods.
+
+    """
+    if exclude_special and name in SPECIAL_DUNDERS:
+        return False
+    return name.startswith("__") and name.endswith("__")
+
+
+def is_sunder(name: str) -> bool:
+    return not is_dunder(name) and name.startswith('_') and name.endswith('_')
 
 
 def split_module_names(mod_name: str) -> List[str]:
@@ -103,6 +124,20 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
     else:
         default_encoding = 'utf8' if pyversion[0] >= 3 else 'ascii'
         return default_encoding, -1
+
+
+def bytes_to_human_readable_repr(b: bytes) -> str:
+    """Converts bytes into some human-readable representation. Unprintable
+    bytes such as the nul byte are escaped. For example:
+
+        >>> b = bytes([102, 111, 111, 10, 0])
+        >>> s = bytes_to_human_readable_repr(b)
+        >>> print(s)
+        foo\n\x00
+        >>> print(repr(s))
+        'foo\\n\\x00'
+    """
+    return repr(b)[2:-1]
 
 
 class DecodeError(Exception):
@@ -401,11 +436,12 @@ def check_python_version(program: str) -> None:
                  "please upgrade to 3.6 or newer".format(name=program))
 
 
-def count_stats(errors: List[str]) -> Tuple[int, int]:
-    """Count total number of errors and files in error list."""
-    errors = [e for e in errors if ': error:' in e]
-    files = {e.split(':')[0] for e in errors}
-    return len(errors), len(files)
+def count_stats(messages: List[str]) -> Tuple[int, int, int]:
+    """Count total number of errors, notes and error_files in message list."""
+    errors = [e for e in messages if ': error:' in e]
+    error_files = {e.split(':')[0] for e in errors}
+    notes = [e for e in messages if ': note:' in e]
+    return len(errors), len(notes), len(error_files)
 
 
 def split_words(msg: str) -> List[str]:
@@ -483,6 +519,8 @@ def hash_digest(data: bytes) -> str:
 
 def parse_gray_color(cup: bytes) -> str:
     """Reproduce a gray color in ANSI escape sequence"""
+    if sys.platform == "win32":
+        assert False, "curses is not available on Windows"
     set_color = ''.join([cup[:-1].decode(), 'm'])
     gray = curses.tparm(set_color.encode('utf-8'), 1, 89).decode()
     return gray
@@ -546,7 +584,7 @@ class FancyFormatter:
 
     def initialize_unix_colors(self) -> bool:
         """Return True if initialization was successful and we can use colors, False otherwise"""
-        if not CURSES_ENABLED:
+        if sys.platform == "win32" or not CURSES_ENABLED:
             return False
         try:
             # setupterm wants a fd to potentially write an "initialization sequence".
@@ -705,7 +743,7 @@ class FancyFormatter:
         if blockers:
             msg += ' (errors prevented further checking)'
         else:
-            msg += ' (checked {} source file{})'.format(n_sources, 's' if n_sources != 1 else '')
+            msg += f" (checked {n_sources} source file{'s' if n_sources != 1 else ''})"
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
@@ -726,3 +764,12 @@ def is_stub_package_file(file: str) -> bool:
 
 def unnamed_function(name: Optional[str]) -> bool:
     return name is not None and name == "_"
+
+
+# TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped
+# (or when mypy properly handles alternate definitions based on python version check
+time_ref = time.perf_counter
+
+
+def time_spent_us(t0: float) -> int:
+    return int((time.perf_counter() - t0) * 1e6)

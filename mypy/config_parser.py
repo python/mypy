@@ -6,7 +6,11 @@ import os
 import re
 import sys
 
-import tomli
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 from typing import (Any, Callable, Dict, List, Mapping, MutableMapping,  Optional, Sequence,
                     TextIO, Tuple, Union)
 from typing_extensions import Final, TypeAlias as _TypeAlias
@@ -20,24 +24,30 @@ _CONFIG_VALUE_TYPES: _TypeAlias = Union[
 _INI_PARSER_CALLABLE: _TypeAlias = Callable[[Any], _CONFIG_VALUE_TYPES]
 
 
-def parse_version(v: str) -> Tuple[int, int]:
-    m = re.match(r'\A(\d)\.(\d+)\Z', v)
+def parse_version(v: Union[str, float]) -> Tuple[int, int]:
+    m = re.match(r'\A(\d)\.(\d+)\Z', str(v))
     if not m:
         raise argparse.ArgumentTypeError(
-            "Invalid python version '{}' (expected format: 'x.y')".format(v))
+            f"Invalid python version '{v}' (expected format: 'x.y')")
     major, minor = int(m.group(1)), int(m.group(2))
     if major == 2:
         if minor != 7:
             raise argparse.ArgumentTypeError(
-                "Python 2.{} is not supported (must be 2.7)".format(minor))
+                f"Python 2.{minor} is not supported (must be 2.7)")
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
-            raise argparse.ArgumentTypeError(
-                "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(minor,
-                                                                    *defaults.PYTHON3_VERSION_MIN))
+            msg = "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(
+                minor,
+                *defaults.PYTHON3_VERSION_MIN
+            )
+
+            if isinstance(v, float):
+                msg += ". You may need to put quotes around your Python version"
+
+            raise argparse.ArgumentTypeError(msg)
     else:
         raise argparse.ArgumentTypeError(
-            "Python major version '{}' out of range (must be 2 or 3)".format(major))
+            f"Python major version '{major}' out of range (must be 2 or 3)")
     return major, minor
 
 
@@ -55,6 +65,12 @@ def expand_path(path: str) -> str:
     """
 
     return os.path.expandvars(os.path.expanduser(path))
+
+
+def str_or_array_as_list(v: Union[str, Sequence[str]]) -> List[str]:
+    if isinstance(v, str):
+        return [v.strip()] if v.strip() else []
+    return [p.strip() for p in v if p.strip()]
 
 
 def split_and_match_files_list(paths: Sequence[str]) -> List[str]:
@@ -95,7 +111,7 @@ def check_follow_imports(choice: str) -> str:
         raise argparse.ArgumentTypeError(
             "invalid choice '{}' (choose from {})".format(
                 choice,
-                ', '.join("'{}'".format(x) for x in choices)))
+                ', '.join(f"'{x}'" for x in choices)))
     return choice
 
 
@@ -126,13 +142,13 @@ ini_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = {
     'cache_dir': expand_path,
     'python_executable': expand_path,
     'strict': bool,
-    'exclude': lambda s: [p.strip() for p in s.split('\n') if p.strip()],
+    'exclude': lambda s: [s.strip()],
 }
 
 # Reuse the ini_config_types and overwrite the diff
 toml_config_types: Final[Dict[str, _INI_PARSER_CALLABLE]] = ini_config_types.copy()
 toml_config_types.update({
-    'python_version': lambda s: parse_version(str(s)),
+    'python_version': parse_version,
     'strict_optional_whitelist': try_split,
     'mypy_path': lambda s: [expand_path(p) for p in try_split(s, '[,:]')],
     'files': lambda s: split_and_match_files_list(try_split(s)),
@@ -143,6 +159,7 @@ toml_config_types.update({
     'disable_error_code': try_split,
     'enable_error_code': try_split,
     'package_root': try_split,
+    'exclude': str_or_array_as_list,
 })
 
 
@@ -171,8 +188,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
             continue
         try:
             if is_toml(config_file):
-                with open(config_file, encoding="utf-8") as f:
-                    toml_data = tomli.loads(f.read())
+                with open(config_file, "rb") as f:
+                    toml_data = tomllib.load(f)
                 # Filter down to just mypy relevant toml keys
                 toml_data = toml_data.get('tool', {})
                 if 'mypy' not in toml_data:
@@ -184,8 +201,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
                 config_parser.read(config_file)
                 parser = config_parser
                 config_types = ini_config_types
-        except (tomli.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
-            print("%s: %s" % (config_file, err), file=stderr)
+        except (tomllib.TOMLDecodeError, configparser.Error, ConfigTOMLValueError) as err:
+            print(f"{config_file}: {err}", file=stderr)
         else:
             if config_file in defaults.SHARED_CONFIG_FILES and 'mypy' not in parser:
                 continue
@@ -200,10 +217,10 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
     if 'mypy' not in parser:
         if filename or file_read not in defaults.SHARED_CONFIG_FILES:
-            print("%s: No [mypy] section in config file" % file_read, file=stderr)
+            print(f"{file_read}: No [mypy] section in config file", file=stderr)
     else:
         section = parser['mypy']
-        prefix = '%s: [%s]: ' % (file_read, 'mypy')
+        prefix = f"{file_read}: [mypy]: "
         updates, report_dirs = parse_section(
             prefix, options, set_strict_flags, section, config_types, stderr)
         for k, v in updates.items():
@@ -247,7 +264,7 @@ def get_prefix(file_read: str, name: str) -> str:
     else:
         module_name_str = name
 
-    return '%s: [%s]: ' % (file_read, module_name_str)
+    return f'{file_read}: [{module_name_str}]: '
 
 
 def is_toml(filename: str) -> bool:
@@ -311,7 +328,7 @@ def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
         for module in modules:
             module_overrides = override.copy()
             del module_overrides['module']
-            old_config_name = 'mypy-%s' % module
+            old_config_name = f'mypy-{module}'
             if old_config_name not in result:
                 result[old_config_name] = module_overrides
             else:
@@ -358,7 +375,7 @@ def parse_section(prefix: str, template: Options,
                     if report_type in defaults.REPORTER_NAMES:
                         report_dirs[report_type] = str(section[key])
                     else:
-                        print("%sUnrecognized report type: %s" % (prefix, key),
+                        print(f"{prefix}Unrecognized report type: {key}",
                               file=stderr)
                     continue
                 if key.startswith('x_'):
@@ -375,7 +392,7 @@ def parse_section(prefix: str, template: Options,
                 elif key == 'strict':
                     pass  # Special handling below
                 else:
-                    print("%sUnrecognized option: %s = %s" % (prefix, key, section[key]),
+                    print(f"{prefix}Unrecognized option: {key} = {section[key]}",
                           file=stderr)
                 if invert:
                     dv = getattr(template, options_key, None)
@@ -393,19 +410,19 @@ def parse_section(prefix: str, template: Options,
                     v = not v
             elif callable(ct):
                 if invert:
-                    print("%sCan not invert non-boolean key %s" % (prefix, options_key),
+                    print(f"{prefix}Can not invert non-boolean key {options_key}",
                           file=stderr)
                     continue
                 try:
                     v = ct(section.get(key))
                 except argparse.ArgumentTypeError as err:
-                    print("%s%s: %s" % (prefix, key, err), file=stderr)
+                    print(f"{prefix}{key}: {err}", file=stderr)
                     continue
             else:
-                print("%sDon't know what type %s should have" % (prefix, key), file=stderr)
+                print(f"{prefix}Don't know what type {key} should have", file=stderr)
                 continue
         except ValueError as err:
-            print("%s%s: %s" % (prefix, key, err), file=stderr)
+            print(f"{prefix}{key}: {err}", file=stderr)
             continue
         if key == 'strict':
             if v:
@@ -436,7 +453,7 @@ def convert_to_boolean(value: Optional[Any]) -> bool:
     if not isinstance(value, str):
         value = str(value)
     if value.lower() not in configparser.RawConfigParser.BOOLEAN_STATES:
-        raise ValueError('Not a boolean: %s' % value)
+        raise ValueError(f'Not a boolean: {value}')
     return configparser.RawConfigParser.BOOLEAN_STATES[value.lower()]
 
 
@@ -482,7 +499,7 @@ def mypy_comments_to_config_map(line: str,
             name = entry
             value = None
         else:
-            name, value = [x.strip() for x in entry.split('=', 1)]
+            name, value = (x.strip() for x in entry.split('=', 1))
 
         name = name.replace('-', '_')
         if value is None:
@@ -541,7 +558,7 @@ def get_config_module_names(filename: Optional[str], modules: List[str]) -> str:
         return ''
 
     if not is_toml(filename):
-        return ", ".join("[mypy-%s]" % module for module in modules)
+        return ", ".join(f"[mypy-{module}]" for module in modules)
 
     return "module = ['%s']" % ("', '".join(sorted(modules)))
 

@@ -67,15 +67,14 @@ class GetDependenciesSuite(DataSuite):
                 if source.startswith(('<enum', '<typing', '<mypy')):
                     # Remove noise.
                     continue
-                line = '%s -> %s' % (source, ', '.join(sorted(targets)))
+                line = f"{source} -> {', '.join(sorted(targets))}"
                 # Clean up output a bit
                 line = line.replace('__main__', 'm')
                 a.append(line)
 
         assert_string_arrays_equal(
             testcase.output, a,
-            'Invalid output ({}, line {})'.format(testcase.file,
-                                                  testcase.line))
+            f'Invalid output ({testcase.file}, line {testcase.line})')
 
     def build(self,
               source: str,

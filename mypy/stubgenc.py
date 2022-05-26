@@ -47,7 +47,7 @@ def generate_stub_for_c_module(module_name: str,
     will be overwritten.
     """
     module = importlib.import_module(module_name)
-    assert is_c_module(module), '%s is not a C module' % module_name
+    assert is_c_module(module), f'{module_name} is not a C module'
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
@@ -73,7 +73,7 @@ def generate_stub_for_c_module(module_name: str,
             continue
         if name not in done and not inspect.ismodule(obj):
             type_str = strip_or_import(get_type_fullname(type(obj)), module, imports)
-            variables.append('%s: %s' % (name, type_str))
+            variables.append(f'{name}: {type_str}')
     output = []
     for line in sorted(set(imports)):
         output.append(line)
@@ -90,7 +90,7 @@ def generate_stub_for_c_module(module_name: str,
     output = add_typing_import(output)
     with open(target, 'w') as file:
         for line in output:
-            file.write('%s\n' % line)
+            file.write(f'{line}\n')
 
 
 def add_typing_import(output: List[str]) -> List[str]:
@@ -100,7 +100,7 @@ def add_typing_import(output: List[str]) -> List[str]:
         if any(re.search(r'\b%s\b' % name, line) for line in output):
             names.append(name)
     if names:
-        return ['from typing import %s' % ', '.join(names), ''] + output
+        return [f"from typing import {', '.join(names)}", ''] + output
     else:
         return output[:]
 
@@ -121,11 +121,11 @@ def is_c_classmethod(obj: object) -> bool:
 
 
 def is_c_property(obj: object) -> bool:
-    return inspect.isdatadescriptor(obj) and hasattr(obj, 'fget')
+    return inspect.isdatadescriptor(obj) or hasattr(obj, 'fget')
 
 
 def is_c_property_readonly(prop: Any) -> bool:
-    return prop.fset is None
+    return hasattr(prop, 'fset') and prop.fset is None
 
 
 def is_c_type(obj: object) -> bool:
@@ -133,7 +133,7 @@ def is_c_type(obj: object) -> bool:
 
 
 def is_pybind11_overloaded_function_docstring(docstr: str, name: str) -> bool:
-    return docstr.startswith("{}(*args, **kwargs)\n".format(name) +
+    return docstr.startswith(f"{name}(*args, **kwargs)\n" +
                              "Overloaded function.\n\n")
 
 
@@ -254,7 +254,7 @@ def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
         if arg_module == 'builtins':
             stripped_type = typ[len('builtins') + 1:]
         else:
-            imports.append('import %s' % (arg_module,))
+            imports.append(f'import {arg_module}')
     if stripped_type == 'NoneType':
         stripped_type = 'None'
     return stripped_type
@@ -287,6 +287,10 @@ def generate_c_property_stub(name: str, obj: object,
         else:
             return None
 
+    # Ignore special properties/attributes.
+    if is_skipped_attribute(name):
+        return
+
     inferred = infer_prop_type(getattr(obj, '__doc__', None))
     if not inferred:
         fget = getattr(obj, 'fget', None)
@@ -300,14 +304,14 @@ def generate_c_property_stub(name: str, obj: object,
     if is_static_property(obj):
         trailing_comment = "  # read-only" if readonly else ""
         static_properties.append(
-            '{}: ClassVar[{}] = ...{}'.format(name, inferred, trailing_comment)
+            f'{name}: ClassVar[{inferred}] = ...{trailing_comment}'
         )
     else:  # regular property
         if readonly:
             ro_properties.append('@property')
-            ro_properties.append('def {}(self) -> {}: ...'.format(name, inferred))
+            ro_properties.append(f'def {name}(self) -> {inferred}: ...')
         else:
-            rw_properties.append('{}: {}'.format(name, inferred))
+            rw_properties.append(f'{name}: {inferred}')
 
 
 def generate_c_type_stub(module: ModuleType,
@@ -366,7 +370,7 @@ def generate_c_type_stub(module: ModuleType,
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            static_properties.append('%s: ClassVar[%s] = ...' % (
+            static_properties.append('{}: ClassVar[{}] = ...'.format(
                 attr, strip_or_import(get_type_fullname(type(value)), module, imports)))
     all_bases = type.mro(obj)
     if all_bases[-1] is object:
@@ -394,26 +398,26 @@ def generate_c_type_stub(module: ModuleType,
     else:
         bases_str = ''
     if types or static_properties or rw_properties or methods or ro_properties:
-        output.append('class %s%s:' % (class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}:')
         for line in types:
             if output and output[-1] and \
                     not output[-1].startswith('class') and line.startswith('class'):
                 output.append('')
             output.append('    ' + line)
         for line in static_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in rw_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in methods:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
         for line in ro_properties:
-            output.append('    %s' % line)
+            output.append(f'    {line}')
     else:
-        output.append('class %s%s: ...' % (class_name, bases_str))
+        output.append(f'class {class_name}{bases_str}: ...')
 
 
 def get_type_fullname(typ: type) -> str:
-    return '%s.%s' % (typ.__module__, getattr(typ, '__qualname__', typ.__name__))
+    return f"{typ.__module__}.{getattr(typ, '__qualname__', typ.__name__)}"
 
 
 def method_name_sort_key(name: str) -> Tuple[int, str]:

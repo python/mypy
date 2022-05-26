@@ -7,7 +7,6 @@ from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
     Context, Argument, Var, ARG_OPT, ARG_POS, TypeInfo, AssignmentStmt,
     TupleExpr, ListExpr, NameExpr, CallExpr, RefExpr, FuncDef,
@@ -18,18 +17,19 @@ from mypy.nodes import (
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument, _get_bool_argument, _get_decorator_bool_argument, add_method,
-    deserialize_and_fixup_type
+    deserialize_and_fixup_type, add_attribute_to_class,
 )
 from mypy.types import (
     TupleType, Type, AnyType, TypeOfAny, CallableType, NoneType, TypeVarType,
-    Overloaded, UnionType, FunctionLike, get_proper_type,
+    Overloaded, UnionType, FunctionLike, Instance, get_proper_type,
+    LiteralType,
 )
 from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 from mypy.server.trigger import make_wildcard_trigger
 
-KW_ONLY_PYTHON_2_UNSUPPORTED = "kw_only is not supported in Python 2"
+KW_ONLY_PYTHON_2_UNSUPPORTED: Final = "kw_only is not supported in Python 2"
 
 # The names of the different functions that create classes or arguments.
 attr_class_makers: Final = {
@@ -40,26 +40,32 @@ attr_class_makers: Final = {
 attr_dataclass_makers: Final = {
     'attr.dataclass',
 }
-attr_frozen_makers: Final = {"attr.frozen"}
-attr_define_makers: Final = {"attr.define", "attr.mutable"}
+attr_frozen_makers: Final = {"attr.frozen", "attrs.frozen"}
+attr_define_makers: Final = {"attr.define", "attr.mutable", "attrs.define", "attrs.mutable"}
 attr_attrib_makers: Final = {
     'attr.ib',
     'attr.attrib',
     'attr.attr',
     'attr.field',
+    'attrs.field',
 }
+attr_optional_converters: Final = {'attr.converters.optional', 'attrs.converters.optional'}
 
 SELF_TVAR_NAME: Final = "_AT"
+MAGIC_ATTR_NAME: Final = "__attrs_attrs__"
+MAGIC_ATTR_CLS_NAME: Final = "_AttrsAttributes"  # The namedtuple subclass name.
 
 
 class Converter:
     """Holds information about a `converter=` argument"""
 
     def __init__(self,
-                 name: Optional[str] = None,
-                 is_attr_converters_optional: bool = False) -> None:
-        self.name = name
+                 type: Optional[Type] = None,
+                 is_attr_converters_optional: bool = False,
+                 is_invalid_converter: bool = False) -> None:
+        self.type = type
         self.is_attr_converters_optional = is_attr_converters_optional
+        self.is_invalid_converter = is_invalid_converter
 
 
 class Attribute:
@@ -84,29 +90,14 @@ class Attribute:
 
         init_type = self.init_type or self.info[self.name].type
 
-        if self.converter.name:
+        if self.converter.type and not self.converter.is_invalid_converter:
             # When a converter is set the init_type is overridden by the first argument
             # of the converter method.
-            converter = lookup_fully_qualified(self.converter.name, ctx.api.modules,
-                                               raise_on_missing=False)
-            if not converter:
-                # The converter may be a local variable. Check there too.
-                converter = ctx.api.lookup_qualified(self.converter.name, self.info, True)
-
-            # Get the type of the converter.
-            converter_type: Optional[Type] = None
-            if converter and isinstance(converter.node, TypeInfo):
-                from mypy.checkmember import type_object_type  # To avoid import cycle.
-                converter_type = type_object_type(converter.node, ctx.api.named_type)
-            elif converter and isinstance(converter.node, OverloadedFuncDef):
-                converter_type = converter.node.type
-            elif converter and converter.type:
-                converter_type = converter.type
-
+            converter_type = self.converter.type
             init_type = None
             converter_type = get_proper_type(converter_type)
             if isinstance(converter_type, CallableType) and converter_type.arg_types:
-                init_type = ctx.api.anal_type(converter_type.arg_types[0])
+                init_type = converter_type.arg_types[0]
             elif isinstance(converter_type, Overloaded):
                 types: List[Type] = []
                 for item in converter_type.items:
@@ -119,8 +110,7 @@ class Attribute:
                     types.append(item.arg_types[0])
                 # Make a union of all the valid types.
                 if types:
-                    args = make_simplified_union(types)
-                    init_type = ctx.api.anal_type(args)
+                    init_type = make_simplified_union(types)
 
             if self.converter.is_attr_converters_optional and init_type:
                 # If the converter was attr.converter.optional(type) then add None to
@@ -130,9 +120,8 @@ class Attribute:
             if not init_type:
                 ctx.api.fail("Cannot determine __init__ type from converter", self.context)
                 init_type = AnyType(TypeOfAny.from_error)
-        elif self.converter.name == '':
+        elif self.converter.is_invalid_converter:
             # This means we had a converter but it's not of a type we can infer.
-            # Error was shown in _get_converter_name
             init_type = AnyType(TypeOfAny.from_error)
 
         if init_type is None:
@@ -165,8 +154,9 @@ class Attribute:
             'has_default': self.has_default,
             'init': self.init,
             'kw_only': self.kw_only,
-            'converter_name': self.converter.name,
+            'converter_type': self.converter.type.serialize() if self.converter.type else None,
             'converter_is_attr_converters_optional': self.converter.is_attr_converters_optional,
+            'converter_is_invalid_converter': self.converter.is_invalid_converter,
             'context_line': self.context.line,
             'context_column': self.context.column,
             'init_type': self.init_type.serialize() if self.init_type else None,
@@ -180,22 +170,26 @@ class Attribute:
         raw_init_type = data['init_type']
         init_type = deserialize_and_fixup_type(raw_init_type, api) if raw_init_type else None
 
+        converter_type = None
+        if data['converter_type']:
+            converter_type = deserialize_and_fixup_type(data['converter_type'], api)
         return Attribute(data['name'],
             info,
             data['has_default'],
             data['init'],
             data['kw_only'],
-            Converter(data['converter_name'], data['converter_is_attr_converters_optional']),
+            Converter(converter_type, data['converter_is_attr_converters_optional'],
+                      data['converter_is_invalid_converter']),
             Context(line=data['context_line'], column=data['context_column']),
             init_type)
 
     def expand_typevar_from_subtype(self, sub_type: TypeInfo) -> None:
         """Expands type vars in the context of a subtype when an attribute is inherited
         from a generic super type."""
-        if not isinstance(self.init_type, TypeVarType):
-            return
-
-        self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
+        if self.init_type:
+            self.init_type = map_type_from_supertype(self.init_type, sub_type, self.info)
+        else:
+            self.init_type = None
 
 
 def _determine_eq_order(ctx: 'mypy.plugin.ClassDefContext') -> bool:
@@ -246,16 +240,26 @@ def _get_decorator_optional_bool_argument(
                     return False
                 if attr_value.fullname == 'builtins.None':
                     return None
-            ctx.api.fail('"{}" argument must be True or False.'.format(name), ctx.reason)
+            ctx.api.fail(f'"{name}" argument must be True or False.', ctx.reason)
             return default
         return default
     else:
         return default
 
 
+def attr_tag_callback(ctx: 'mypy.plugin.ClassDefContext') -> None:
+    """Record that we have an attrs class in the main semantic analysis pass.
+
+    The later pass implemented by attr_class_maker_callback will use this
+    to detect attrs lasses in base classes.
+    """
+    # The value is ignored, only the existence matters.
+    ctx.cls.info.metadata['attrs_tag'] = {}
+
+
 def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
                               auto_attribs_default: Optional[bool] = False,
-                              frozen_default: bool = False) -> None:
+                              frozen_default: bool = False) -> bool:
     """Add necessary dunder methods to classes decorated with attr.s.
 
     attrs is a package that lets you define classes without writing dull boilerplate code.
@@ -266,6 +270,9 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     into properties.
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
+
+    If this returns False, some required metadata was not ready yet and we need another
+    pass.
     """
     info = ctx.cls.info
 
@@ -276,18 +283,28 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
 
     auto_attribs = _get_decorator_optional_bool_argument(ctx, 'auto_attribs', auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, 'kw_only', False)
+    match_args = _get_decorator_bool_argument(ctx, 'match_args', True)
 
+    early_fail = False
     if ctx.api.options.python_version[0] < 3:
         if auto_attribs:
             ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
-            return
+            early_fail = True
         if not info.defn.base_type_exprs:
             # Note: This will not catch subclassing old-style classes.
             ctx.api.fail("attrs only works with new-style classes", info.defn)
-            return
+            early_fail = True
         if kw_only:
             ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
-            return
+            early_fail = True
+    if early_fail:
+        _add_empty_metadata(info)
+        return True
+
+    for super_info in ctx.cls.info.mro[1:-1]:
+        if 'attrs_tag' in super_info.metadata and 'attrs' not in super_info.metadata:
+            # Super class is not ready yet. Request another pass.
+            return False
 
     attributes = _analyze_class(ctx, auto_attribs, kw_only)
 
@@ -295,16 +312,18 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
     for attr in attributes:
         node = info.get(attr.name)
         if node is None:
-            # This name is likely blocked by a star import. We don't need to defer because
-            # defer() is already called by mark_incomplete().
-            return
-        if node.type is None and not ctx.api.final_iteration:
-            ctx.api.defer()
-            return
+            # This name is likely blocked by some semantic analysis error that
+            # should have been reported already.
+            _add_empty_metadata(info)
+            return True
 
-    _add_attrs_magic_attribute(ctx, raw_attr_types=[info[attr.name].type for attr in attributes])
+    _add_attrs_magic_attribute(ctx, [(attr.name, info[attr.name].type) for attr in attributes])
     if slots:
         _add_slots(ctx, attributes)
+    if match_args and ctx.api.options.python_version[:2] >= (3, 10):
+        # `.__match_args__` is only added for python3.10+, but the argument
+        # exists for earlier versions as well.
+        _add_match_args(ctx, attributes)
 
     # Save the attributes so that subclasses can reuse them.
     ctx.cls.info.metadata['attrs'] = {
@@ -319,6 +338,8 @@ def attr_class_maker_callback(ctx: 'mypy.plugin.ClassDefContext',
         _add_order(ctx, adder)
     if frozen:
         _make_frozen(ctx, attributes)
+
+    return True
 
 
 def _get_frozen(ctx: 'mypy.plugin.ClassDefContext', frozen_default: bool) -> bool:
@@ -411,6 +432,14 @@ def _analyze_class(ctx: 'mypy.plugin.ClassDefContext',
         last_default |= attribute.has_default
 
     return attributes
+
+
+def _add_empty_metadata(info: TypeInfo) -> None:
+    """Add empty metadata to mark that we've finished processing this class."""
+    info.metadata['attrs'] = {
+        'attributes': [],
+        'frozen': False,
+    }
 
 
 def _detect_auto_attribs(ctx: 'mypy.plugin.ClassDefContext') -> bool:
@@ -592,16 +621,17 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             if (isinstance(converter.node, FuncDef)
                     and converter.node.type
                     and isinstance(converter.node.type, FunctionLike)):
-                return Converter(converter.node.fullname)
+                return Converter(converter.node.type)
             elif (isinstance(converter.node, OverloadedFuncDef)
                     and is_valid_overloaded_converter(converter.node)):
-                return Converter(converter.node.fullname)
+                return Converter(converter.node.type)
             elif isinstance(converter.node, TypeInfo):
-                return Converter(converter.node.fullname)
+                from mypy.checkmember import type_object_type  # To avoid import cycle.
+                return Converter(type_object_type(converter.node, ctx.api.named_type))
 
         if (isinstance(converter, CallExpr)
                 and isinstance(converter.callee, RefExpr)
-                and converter.callee.fullname == "attr.converters.optional"
+                and converter.callee.fullname in attr_optional_converters
                 and converter.args
                 and converter.args[0]):
             # Special handling for attr.converters.optional(type)
@@ -615,7 +645,7 @@ def _parse_converter(ctx: 'mypy.plugin.ClassDefContext',
             "Unsupported converter, only named functions and types are currently supported",
             converter
         )
-        return Converter('')
+        return Converter(None, is_invalid_converter=True)
     return Converter(None)
 
 
@@ -673,7 +703,7 @@ def _make_frozen(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute]
             # can modify it.
             var = Var(attribute.name, ctx.cls.info[attribute.name].type)
             var.info = ctx.cls.info
-            var._fullname = '%s.%s' % (ctx.cls.info.fullname, var.name)
+            var._fullname = f'{ctx.cls.info.fullname}.{var.name}'
             ctx.cls.info.names[var.name] = SymbolTableNode(MDEF, var)
             var.is_property = True
 
@@ -710,23 +740,38 @@ def _add_init(ctx: 'mypy.plugin.ClassDefContext', attributes: List[Attribute],
 
 
 def _add_attrs_magic_attribute(ctx: 'mypy.plugin.ClassDefContext',
-                               raw_attr_types: 'List[Optional[Type]]') -> None:
-    attr_name = '__attrs_attrs__'
+                               attrs: 'List[Tuple[str, Optional[Type]]]') -> None:
     any_type = AnyType(TypeOfAny.explicit)
     attributes_types: 'List[Type]' = [
         ctx.api.named_type_or_none('attr.Attribute', [attr_type or any_type]) or any_type
-        for attr_type in raw_attr_types
+        for _, attr_type in attrs
     ]
     fallback_type = ctx.api.named_type('builtins.tuple', [
         ctx.api.named_type_or_none('attr.Attribute', [any_type]) or any_type,
     ])
-    var = Var(name=attr_name, type=TupleType(attributes_types, fallback=fallback_type))
+
+    ti = ctx.api.basic_new_typeinfo(MAGIC_ATTR_CLS_NAME, fallback_type, 0)
+    ti.is_named_tuple = True
+    for (name, _), attr_type in zip(attrs, attributes_types):
+        var = Var(name, attr_type)
+        var.is_property = True
+        proper_type = get_proper_type(attr_type)
+        if isinstance(proper_type, Instance):
+            var.info = proper_type.type
+        ti.names[name] = SymbolTableNode(MDEF, var, plugin_generated=True)
+    attributes_type = Instance(ti, [])
+
+    # TODO: refactor using `add_attribute_to_class`
+    var = Var(name=MAGIC_ATTR_NAME, type=TupleType(attributes_types, fallback=attributes_type))
     var.info = ctx.cls.info
-    var._fullname = ctx.cls.info.fullname + '.' + attr_name
-    ctx.cls.info.names[attr_name] = SymbolTableNode(
+    var.is_classvar = True
+    var._fullname = f"{ctx.cls.fullname}.{MAGIC_ATTR_CLS_NAME}"
+    var.allow_incompatible_override = True
+    ctx.cls.info.names[MAGIC_ATTR_NAME] = SymbolTableNode(
         kind=MDEF,
         node=var,
         plugin_generated=True,
+        no_serialize=True,
     )
 
 
@@ -734,6 +779,29 @@ def _add_slots(ctx: 'mypy.plugin.ClassDefContext',
                attributes: List[Attribute]) -> None:
     # Unlike `@dataclasses.dataclass`, `__slots__` is rewritten here.
     ctx.cls.info.slots = {attr.name for attr in attributes}
+
+
+def _add_match_args(ctx: 'mypy.plugin.ClassDefContext',
+                    attributes: List[Attribute]) -> None:
+    if ('__match_args__' not in ctx.cls.info.names
+            or ctx.cls.info.names['__match_args__'].plugin_generated):
+        str_type = ctx.api.named_type('builtins.str')
+        match_args = TupleType(
+            [
+                str_type.copy_modified(
+                    last_known_value=LiteralType(attr.name, fallback=str_type),
+                )
+                for attr in attributes
+                if not attr.kw_only and attr.init
+            ],
+            fallback=ctx.api.named_type('builtins.tuple'),
+        )
+        add_attribute_to_class(
+            api=ctx.api,
+            cls=ctx.cls,
+            name='__match_args__',
+            typ=match_args,
+        )
 
 
 class MethodAdder:

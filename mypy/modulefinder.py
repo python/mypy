@@ -12,22 +12,34 @@ import subprocess
 import sys
 from enum import Enum, unique
 
+from mypy.errors import CompileError
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
+
 from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.fscache import FileSystemCache
+from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.stubinfo import is_legacy_bundled_package
 from mypy import pyinfo
 
+
 # Paths to be searched in find_module().
 SearchPaths = NamedTuple(
     'SearchPaths',
-    [('python_path', Tuple[str, ...]),  # where user code is found
-     ('mypy_path', Tuple[str, ...]),  # from $MYPYPATH or config variable
-     ('package_path', Tuple[str, ...]),  # from get_site_packages_dirs()
-     ('typeshed_path', Tuple[str, ...]),  # paths in typeshed
-     ])
+    [
+        ('python_path', Tuple[str, ...]),  # where user code is found
+        ('mypy_path', Tuple[str, ...]),  # from $MYPYPATH or config variable
+        ('package_path', Tuple[str, ...]),  # from get_site_packages_dirs()
+        ('typeshed_path', Tuple[str, ...]),  # paths in typeshed
+    ]
+)
+
 
 # Package dirs are a two-tuple of path to search and whether to verify the module
 OnePackageDir = Tuple[str, bool]
@@ -108,11 +120,38 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return 'BuildSource(path=%r, module=%r, has_text=%s, base_dir=%r)' % (
+        return 'BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r})'.format(
             self.path,
             self.module,
             self.text is not None,
             self.base_dir)
+
+
+class BuildSourceSet:
+    """Helper to efficiently test a file's membership in a set of build sources."""
+
+    def __init__(self, sources: List[BuildSource]) -> None:
+        self.source_text_present = False
+        self.source_modules = {}  # type: Dict[str, str]
+        self.source_paths = set()  # type: Set[str]
+
+        for source in sources:
+            if source.text is not None:
+                self.source_text_present = True
+            if source.path:
+                self.source_paths.add(source.path)
+            if source.module:
+                self.source_modules[source.module] = source.path or ''
+
+    def is_source(self, file: MypyFile) -> bool:
+        if file.path and file.path in self.source_paths:
+            return True
+        elif file._fullname in self.source_modules:
+            return True
+        elif self.source_text_present:
+            return True
+        else:
+            return False
 
 
 class FindModuleCache:
@@ -130,8 +169,10 @@ class FindModuleCache:
                  search_paths: SearchPaths,
                  fscache: Optional[FileSystemCache],
                  options: Optional[Options],
-                 stdlib_py_versions: Optional[StdlibVersions] = None) -> None:
+                 stdlib_py_versions: Optional[StdlibVersions] = None,
+                 source_set: Optional[BuildSourceSet] = None) -> None:
         self.search_paths = search_paths
+        self.source_set = source_set
         self.fscache = fscache or FileSystemCache()
         # Cache for get_toplevel_possibilities:
         # search_paths -> (toplevel_id -> list(package_dirs))
@@ -152,6 +193,53 @@ class FindModuleCache:
         self.results.clear()
         self.initial_components.clear()
         self.ns_ancestors.clear()
+
+    def find_module_via_source_set(self, id: str) -> Optional[ModuleSearchResult]:
+        """Fast path to find modules by looking through the input sources
+
+        This is only used when --fast-module-lookup is passed on the command line."""
+        if not self.source_set:
+            return None
+
+        p = self.source_set.source_modules.get(id, None)
+        if p and self.fscache.isfile(p):
+            # We need to make sure we still have __init__.py all the way up
+            # otherwise we might have false positives compared to slow path
+            # in case of deletion of init files, which is covered by some tests.
+            # TODO: are there some combination of flags in which this check should be skipped?
+            d = os.path.dirname(p)
+            for _ in range(id.count('.')):
+                if not any(self.fscache.isfile(os.path.join(d, '__init__' + x))
+                           for x in PYTHON_EXTENSIONS):
+                    return None
+                d = os.path.dirname(d)
+            return p
+
+        idx = id.rfind('.')
+        if idx != -1:
+            # When we're looking for foo.bar.baz and can't find a matching module
+            # in the source set, look up for a foo.bar module.
+            parent = self.find_module_via_source_set(id[:idx])
+            if parent is None or not isinstance(parent, str):
+                return None
+
+            basename, ext = os.path.splitext(parent)
+            if (not any(parent.endswith('__init__' + x) for x in PYTHON_EXTENSIONS)
+                    and (ext in PYTHON_EXTENSIONS and not self.fscache.isdir(basename))):
+                # If we do find such a *module* (and crucially, we don't want a package,
+                # hence the filtering out of __init__ files, and checking for the presence
+                # of a folder with a matching name), then we can be pretty confident that
+                # 'baz' will either be a top-level variable in foo.bar, or will not exist.
+                #
+                # Either way, spelunking in other search paths for another 'foo.bar.baz'
+                # module should be avoided because:
+                #  1. in the unlikely event that one were found, it's highly likely that
+                #     it would be unrelated to the source being typechecked and therefore
+                #     more likely to lead to erroneous results
+                #  2. as described in _find_module, in some cases the search itself could
+                #  potentially waste significant amounts of time
+                return ModuleNotFoundReason.NOT_FOUND
+        return None
 
     def find_lib_path_dirs(self, id: str, lib_path: Tuple[str, ...]) -> PackageDirs:
         """Find which elements of a lib_path have the directory a module needs to exist.
@@ -218,7 +306,7 @@ class FindModuleCache:
             elif top_level in self.stdlib_py_versions:
                 use_typeshed = self._typeshed_has_version(top_level)
             self.results[id] = self._find_module(id, use_typeshed)
-            if (not fast_path
+            if (not (fast_path or (self.options is not None and self.options.fast_module_lookup))
                     and self.results[id] is ModuleNotFoundReason.NOT_FOUND
                     and self._can_find_module_in_parent_dir(id)):
                 self.results[id] = ModuleNotFoundReason.WRONG_WORKING_DIRECTORY
@@ -283,6 +371,39 @@ class FindModuleCache:
 
     def _find_module(self, id: str, use_typeshed: bool) -> ModuleSearchResult:
         fscache = self.fscache
+
+        # Fast path for any modules in the current source set.
+        # This is particularly important when there are a large number of search
+        # paths which share the first (few) component(s) due to the use of namespace
+        # packages, for instance:
+        # foo/
+        #    company/
+        #        __init__.py
+        #        foo/
+        # bar/
+        #    company/
+        #        __init__.py
+        #        bar/
+        # baz/
+        #    company/
+        #        __init__.py
+        #        baz/
+        #
+        # mypy gets [foo/company/foo, bar/company/bar, baz/company/baz, ...] as input
+        # and computes [foo, bar, baz, ...] as the module search path.
+        #
+        # This would result in O(n) search for every import of company.*, leading to
+        # O(n**2) behavior in load_graph as such imports are unsurprisingly present
+        # at least once, and usually many more times than that, in each and every file
+        # being parsed.
+        #
+        # Thankfully, such cases are efficiently handled by looking up the module path
+        # via BuildSourceSet.
+        p = (self.find_module_via_source_set(id)
+             if (self.options is not None and self.options.fast_module_lookup)
+             else None)
+        if p:
+            return p
 
         # If we're looking for a module like 'foo.bar.baz', it's likely that most of the
         # many elements of lib_path don't even have a subdirectory 'foo/bar'.  Discover
@@ -449,10 +570,8 @@ class FindModuleCache:
         """
         metadata_fnam = os.path.join(stub_dir, 'METADATA.toml')
         if os.path.isfile(metadata_fnam):
-            # Delay import for a possible minor performance win.
-            import tomli
-            with open(metadata_fnam, encoding="utf-8") as f:
-                metadata = tomli.loads(f.read())
+            with open(metadata_fnam, "rb") as f:
+                metadata = tomllib.load(f)
             if self.python_major_ver == 2:
                 return bool(metadata.get('python2', False))
             else:
@@ -523,7 +642,7 @@ def matches_exclude(subpath: str,
     for exclude in excludes:
         if re.search(exclude, subpath_str):
             if verbose:
-                print("TRACE: Excluding {} (matches pattern {})".format(subpath_str, exclude),
+                print(f"TRACE: Excluding {subpath_str} (matches pattern {exclude})",
                       file=sys.stderr)
             return True
     return False
@@ -535,7 +654,7 @@ def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> 
         path = os.path.dirname(path)
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if not any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+        if not any(fscache.isfile_case(os.path.join(path, f'__init__{extension}'),
                                        prefix)
                    for extension in PYTHON_EXTENSIONS):
             return False
@@ -549,7 +668,7 @@ def highest_init_level(fscache: FileSystemCache, id: str, path: str, prefix: str
     level = 0
     for i in range(id.count('.')):
         path = os.path.dirname(path)
-        if any(fscache.isfile_case(os.path.join(path, '__init__{}'.format(extension)),
+        if any(fscache.isfile_case(os.path.join(path, f'__init__{extension}'),
                                    prefix)
                for extension in PYTHON_EXTENSIONS):
             level = i + 1
@@ -598,7 +717,7 @@ def default_lib_path(data_dir: str,
         path.append('/usr/local/lib/mypy')
     if not path:
         print("Could not resolve typeshed subdirectories. Your mypy install is broken.\n"
-              "Python executable is located at {0}.\nMypy located at {1}".format(
+              "Python executable is located at {}.\nMypy located at {}".format(
                   sys.executable, data_dir), file=sys.stderr)
         sys.exit(1)
     return path
@@ -642,9 +761,15 @@ def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str],
     else:
         # Use subprocess to get the package directory of given Python
         # executable
-        site_packages = ast.literal_eval(
-            subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
-            stderr=subprocess.PIPE).decode())
+        try:
+            site_packages = ast.literal_eval(
+                subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
+                stderr=subprocess.PIPE).decode())
+        except OSError as err:
+            reason = os.strerror(err.errno)
+            raise CompileError(
+                [f"mypy: Invalid python executable '{python_executable}': {reason}"]
+            ) from err
     return expand_site_packages(site_packages)
 
 
@@ -669,7 +794,7 @@ def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
 
     pth_file = os.path.join(dir, pth_filename)
     try:
-        f = open(pth_file, "r")
+        f = open(pth_file)
     except OSError:
         return
     with f:
@@ -786,7 +911,7 @@ def compute_search_paths(sources: List[BuildSource],
         if (site_dir in mypypath or
                 any(p.startswith(site_dir + os.path.sep) for p in mypypath) or
                 os.path.altsep and any(p.startswith(site_dir + os.path.altsep) for p in mypypath)):
-            print("{} is in the MYPYPATH. Please remove it.".format(site_dir), file=sys.stderr)
+            print(f"{site_dir} is in the MYPYPATH. Please remove it.", file=sys.stderr)
             print("See https://mypy.readthedocs.io/en/stable/running_mypy.html"
                   "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)

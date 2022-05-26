@@ -21,6 +21,12 @@ from mypy.test.helpers import (
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
 
+try:
+    import lxml  # type: ignore
+except ImportError:
+    lxml = None
+
+import pytest
 
 # List of files that contain test case descriptions.
 typecheck_files = [
@@ -40,6 +46,7 @@ typecheck_files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
+    'check-modules-fast.test',
     'check-typevar-values.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
@@ -91,6 +98,7 @@ typecheck_files = [
     'check-errorcodes.test',
     'check-annotated.test',
     'check-parameter-specification.test',
+    'check-typevar-tuple.test',
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
@@ -116,6 +124,8 @@ class TypeCheckSuite(DataSuite):
     files = typecheck_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if lxml is None and os.path.basename(testcase.file) == 'check-reports.test':
+            pytest.skip("Cannot import lxml. Is it installed?")
         incremental = ('incremental' in testcase.name.lower()
                        or 'incremental' in testcase.file
                        or 'serialize' in testcase.file)
@@ -164,6 +174,7 @@ class TypeCheckSuite(DataSuite):
         # Parse options after moving files (in case mypy.ini is being moved).
         options = parse_options(original_program_text, testcase, incremental_step)
         options.use_builtins_fixtures = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
 
         # Enable some options automatically based on test file name.
@@ -326,7 +337,7 @@ class TypeCheckSuite(DataSuite):
         """
         m = re.search('# cmd: mypy -m ([a-zA-Z0-9_. ]+)$', program_text, flags=re.MULTILINE)
         if incremental_step > 1:
-            alt_regex = '# cmd{}: mypy -m ([a-zA-Z0-9_. ]+)$'.format(incremental_step)
+            alt_regex = f'# cmd{incremental_step}: mypy -m ([a-zA-Z0-9_. ]+)$'
             alt_m = re.search(alt_regex, program_text, flags=re.MULTILINE)
             if alt_m is not None:
                 # Optionally return a different command if in a later step
@@ -344,7 +355,7 @@ class TypeCheckSuite(DataSuite):
             cache = FindModuleCache(search_paths, fscache=None, options=None)
             for module_name in module_names.split(' '):
                 path = cache.find_module(module_name)
-                assert isinstance(path, str), "Can't find ad hoc case file: %s" % module_name
+                assert isinstance(path, str), f"Can't find ad hoc case file: {module_name}"
                 with open(path, encoding='utf8') as f:
                     program_text = f.read()
                 out.append((module_name, path, program_text))

@@ -36,7 +36,7 @@ def stat_proxy(path: str) -> os.stat_result:
     try:
         st = orig_stat(path)
     except os.error as err:
-        print("stat(%r) -> %s" % (path, err))
+        print(f"stat({path!r}) -> {err}")
         raise
     else:
         print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
@@ -113,15 +113,15 @@ def main(script_path: Optional[str],
     if messages:
         code = 2 if blockers else 1
     if options.error_summary:
-        if messages:
-            n_errors, n_files = util.count_stats(messages)
-            if n_errors:
-                summary = formatter.format_error(
-                    n_errors, n_files, len(sources), blockers=blockers,
-                    use_color=options.color_output
-                )
-                stdout.write(summary + '\n')
-        else:
+        n_errors, n_notes, n_files = util.count_stats(messages)
+        if n_errors:
+            summary = formatter.format_error(
+                n_errors, n_files, len(sources), blockers=blockers,
+                use_color=options.color_output
+            )
+            stdout.write(summary + '\n')
+        # Only notes should also output success
+        elif not messages or n_notes == len(messages):
             stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
         stdout.flush()
 
@@ -231,11 +231,11 @@ def invert_flag_name(flag: str) -> str:
     if len(split) == 2:
         prefix, rest = split
         if prefix in flag_prefix_map:
-            return '--{}-{}'.format(flag_prefix_map[prefix], rest)
+            return f'--{flag_prefix_map[prefix]}-{rest}'
         elif prefix == 'no':
-            return '--{}'.format(rest)
+            return f'--{rest}'
 
-    return '--no-{}'.format(flag[2:])
+    return f'--no-{flag[2:]}'
 
 
 class PythonExecutableInferenceError(Exception):
@@ -248,9 +248,9 @@ def python_executable_prefix(v: str) -> List[str]:
         # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
         # execute an installed Python 3.8 interpreter. See also:
         # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
-        return ['py', '-{}'.format(v)]
+        return ['py', f'-{v}']
     else:
-        return ['python{}'.format(v)]
+        return [f'python{v}']
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
@@ -460,7 +460,7 @@ def process_options(args: List[str],
             group = parser
 
         if help is not argparse.SUPPRESS:
-            help += " (inverse: {})".format(inverse)
+            help += f" (inverse: {inverse})"
 
         arg = group.add_argument(flag,
                                  action='store_false' if default else 'store_true',
@@ -492,9 +492,11 @@ def process_options(args: List[str],
     general_group.add_argument(
         '-v', '--verbose', action='count', dest='verbosity',
         help="More verbose messages")
+
+    compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
         '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__,
+        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
         stdout=stdout)
 
@@ -677,6 +679,10 @@ def process_options(args: List[str],
                              " non-overlapping types",
                         group=strictness_group)
 
+    add_invertible_flag('--strict-concatenate', default=False, strict_flag=True,
+                        help="Make arguments prepended via Concatenate be truly positional-only",
+                        group=strictness_group)
+
     strict_help = "Strict mode; enables the following flags: {}".format(
         ", ".join(strict_flag_names))
     strictness_group.add_argument(
@@ -785,9 +791,9 @@ def process_options(args: List[str],
         description='Generate a report in the specified format.')
     for report_type in sorted(defaults.REPORTER_NAMES):
         if report_type not in {'memory-xml'}:
-            report_group.add_argument('--%s-report' % report_type.replace('_', '-'),
+            report_group.add_argument(f"--{report_type.replace('_', '-')}-report",
                                       metavar='DIR',
-                                      dest='special-opts:%s_report' % report_type)
+                                      dest=f'special-opts:{report_type}_report')
 
     other_group = parser.add_argument_group(
         title='Miscellaneous')
@@ -829,6 +835,9 @@ def process_options(args: List[str],
     parser.add_argument(
         '--dump-build-stats', action='store_true',
         help=argparse.SUPPRESS)
+    # dump timing  stats for each processed file into the given output file
+    parser.add_argument(
+        '--timing-stats', dest='timing_stats', help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
@@ -860,6 +869,8 @@ def process_options(args: List[str],
     # Must be followed by another flag or by '--' (and then only file args may follow).
     parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
                         help=argparse.SUPPRESS)
+    parser.add_argument('--enable-incomplete-features', action='store_true',
+                        help=argparse.SUPPRESS)
 
     # options specifying code to check
     code_group = parser.add_argument_group(
@@ -869,6 +880,10 @@ def process_options(args: List[str],
     add_invertible_flag(
         '--explicit-package-bases', default=False,
         help="Use current directory and MYPYPATH to determine module names of files passed",
+        group=code_group)
+    add_invertible_flag(
+        '--fast-module-lookup', default=False,
+        help=argparse.SUPPRESS,
         group=code_group)
     code_group.add_argument(
         "--exclude",
@@ -907,7 +922,7 @@ def process_options(args: List[str],
     # Don't explicitly test if "config_file is not None" for this check.
     # This lets `--config-file=` (an empty string) be used to disable all config files.
     if config_file and not os.path.exists(config_file):
-        parser.error("Cannot find config file '%s'" % config_file)
+        parser.error(f"Cannot find config file '{config_file}'")
 
     options = Options()
 
@@ -978,8 +993,7 @@ def process_options(args: List[str],
 
     invalid_codes = (enabled_codes | disabled_codes) - valid_error_codes
     if invalid_codes:
-        parser.error("Invalid error code(s): %s" %
-                     ', '.join(sorted(invalid_codes)))
+        parser.error(f"Invalid error code(s): {', '.join(sorted(invalid_codes))}")
 
     options.disabled_error_codes |= {error_codes[code] for code in disabled_codes}
     options.enabled_error_codes |= {error_codes[code] for code in enabled_codes}
@@ -1039,11 +1053,11 @@ def process_options(args: List[str],
         cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
-                fail("Package name '{}' cannot have a slash in it.".format(p),
+                fail(f"Package name '{p}' cannot have a slash in it.",
                      stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
-                fail("Can't find package '{}'".format(p), stderr, options)
+                fail(f"Can't find package '{p}'", stderr, options)
             targets.extend(p_targets)
         for m in special_opts.modules:
             targets.append(BuildSource(None, m, None))
@@ -1079,17 +1093,17 @@ def process_package_roots(fscache: Optional[FileSystemCache],
     package_root = []
     for root in options.package_root:
         if os.path.isabs(root):
-            parser.error("Package root cannot be absolute: %r" % root)
+            parser.error(f"Package root cannot be absolute: {root!r}")
         drive, root = os.path.splitdrive(root)
         if drive and drive != current_drive:
-            parser.error("Package root must be on current drive: %r" % (drive + root))
+            parser.error(f"Package root must be on current drive: {drive + root!r}")
         # Empty package root is always okay.
         if root:
             root = os.path.relpath(root)  # Normalize the heck out of it.
             if not root.endswith(os.sep):
                 root = root + os.sep
             if root.startswith(dotdotslash):
-                parser.error("Package root cannot be above current directory: %r" % root)
+                parser.error(f"Package root cannot be above current directory: {root!r}")
             if root in trivial_paths:
                 root = ''
         package_root.append(root)
@@ -1108,9 +1122,9 @@ def process_cache_map(parser: argparse.ArgumentParser,
     for i in range(0, n, 3):
         source, meta_file, data_file = special_opts.cache_map[i:i + 3]
         if source in options.cache_map:
-            parser.error("Duplicate --cache-map source %s)" % source)
+            parser.error(f"Duplicate --cache-map source {source})")
         if not source.endswith('.py') and not source.endswith('.pyi'):
-            parser.error("Invalid --cache-map source %s (triple[0] must be *.py[i])" % source)
+            parser.error(f"Invalid --cache-map source {source} (triple[0] must be *.py[i])")
         if not meta_file.endswith('.meta.json'):
             parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
                          meta_file)
@@ -1122,14 +1136,14 @@ def process_cache_map(parser: argparse.ArgumentParser,
 
 def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
     if options.junit_xml:
-        py_version = '{}_{}'.format(options.python_version[0], options.python_version[1])
+        py_version = f'{options.python_version[0]}_{options.python_version[1]}'
         util.write_junit_xml(
             td, serious, messages, options.junit_xml, py_version, options.platform)
 
 
-def fail(msg: str, stderr: TextIO, options: Options) -> None:
+def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
-    stderr.write('%s\n' % msg)
+    stderr.write(f'{msg}\n')
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
 

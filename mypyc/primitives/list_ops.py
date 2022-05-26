@@ -55,7 +55,7 @@ list_get_item_op = method_op(
     c_function_name='CPyList_GetItem',
     error_kind=ERR_MAGIC)
 
-# Version with no int bounds check for when it is known to be short
+# list[index] version with no int bounds check for when it is known to be short
 method_op(
     name='__getitem__',
     arg_types=[list_rprimitive, short_int_rprimitive],
@@ -63,6 +63,26 @@ method_op(
     c_function_name='CPyList_GetItemShort',
     error_kind=ERR_MAGIC,
     priority=2)
+
+# list[index] that produces a borrowed result
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemBorrow',
+    error_kind=ERR_MAGIC,
+    is_borrowed=True,
+    priority=3)
+
+# list[index] that produces a borrowed result and index is known to be short
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, short_int_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemShortBorrow',
+    error_kind=ERR_MAGIC,
+    is_borrowed=True,
+    priority=4)
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.

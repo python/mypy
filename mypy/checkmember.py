@@ -6,7 +6,8 @@ from typing_extensions import TYPE_CHECKING
 from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
-    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType
+    DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
+    ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -163,7 +164,7 @@ def _analyze_member_access(name: str,
         return analyze_typeddict_access(name, typ, mx, override_info)
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
-    elif isinstance(typ, TypeVarType):
+    elif isinstance(typ, TypeVarLikeType):
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)
@@ -262,7 +263,7 @@ def analyze_type_callable_member_access(name: str,
         # Look up from the 'type' type.
         return _analyze_member_access(name, typ.fallback, mx)
     else:
-        assert False, 'Unexpected type {}'.format(repr(ret_type))
+        assert False, f'Unexpected type {ret_type!r}'
 
 
 def analyze_type_type_member_access(name: str,
@@ -272,13 +273,11 @@ def analyze_type_type_member_access(name: str,
     # Similar to analyze_type_callable_attribute_access.
     item = None
     fallback = mx.named_type('builtins.type')
-    ignore_messages = mx.msg.copy()
-    ignore_messages.disable_errors().__enter__()
     if isinstance(typ.item, Instance):
         item = typ.item
     elif isinstance(typ.item, AnyType):
-        mx = mx.copy_modified(messages=ignore_messages)
-        return _analyze_member_access(name, fallback, mx, override_info)
+        with mx.msg.filter_errors():
+            return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TypeVarType):
         upper_bound = get_proper_type(typ.item.upper_bound)
         if isinstance(upper_bound, Instance):
@@ -286,8 +285,8 @@ def analyze_type_type_member_access(name: str,
         elif isinstance(upper_bound, TupleType):
             item = tuple_fallback(upper_bound)
         elif isinstance(upper_bound, AnyType):
-            mx = mx.copy_modified(messages=ignore_messages)
-            return _analyze_member_access(name, fallback, mx, override_info)
+            with mx.msg.filter_errors():
+                return _analyze_member_access(name, fallback, mx, override_info)
     elif isinstance(typ.item, TupleType):
         item = tuple_fallback(typ.item)
     elif isinstance(typ.item, FunctionLike) and typ.item.is_type_obj():
@@ -296,6 +295,7 @@ def analyze_type_type_member_access(name: str,
         # Access member on metaclass object via Type[Type[C]]
         if isinstance(typ.item.item, Instance):
             item = typ.item.item.type.metaclass_type
+    ignore_messages = False
     if item and not mx.is_operator:
         # See comment above for why operators are skipped
         result = analyze_class_attribute_access(item, name, mx, override_info)
@@ -304,20 +304,21 @@ def analyze_type_type_member_access(name: str,
                 return result
             else:
                 # We don't want errors on metaclass lookup for classes with Any fallback
-                mx = mx.copy_modified(messages=ignore_messages)
+                ignore_messages = True
     if item is not None:
         fallback = item.type.metaclass_type or fallback
-    return _analyze_member_access(name, fallback, mx, override_info)
+
+    with mx.msg.filter_errors(filter_errors=ignore_messages):
+        return _analyze_member_access(name, fallback, mx, override_info)
 
 
 def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) -> Type:
-    mx.msg.disable_type_names += 1
-    results = []
-    for subtype in typ.relevant_items():
-        # Self types should be bound to every individual item of a union.
-        item_mx = mx.copy_modified(self_type=subtype)
-        results.append(_analyze_member_access(name, subtype, item_mx))
-    mx.msg.disable_type_names -= 1
+    with mx.msg.disable_type_names():
+        results = []
+        for subtype in typ.relevant_items():
+            # Self types should be bound to every individual item of a union.
+            item_mx = mx.copy_modified(self_type=subtype)
+            results.append(_analyze_member_access(name, subtype, item_mx))
     return make_simplified_union(results)
 
 
@@ -409,7 +410,7 @@ def analyze_member_var_access(name: str,
                         result = getattr_type
 
                     # Call the attribute hook before returning.
-                    fullname = '{}.{}'.format(method.info.fullname, name)
+                    fullname = f'{method.info.fullname}.{name}'
                     hook = mx.chk.plugin.get_attribute_hook(fullname)
                     if hook:
                         result = hook(AttributeContext(get_proper_type(mx.original_type),
@@ -606,7 +607,7 @@ def analyze_var(name: str,
             mx.not_ready_callback(var.name, mx.context)
         # Implicit 'Any' type.
         result = AnyType(TypeOfAny.special_form)
-    fullname = '{}.{}'.format(var.info.fullname, name)
+    fullname = f'{var.info.fullname}.{name}'
     hook = mx.chk.plugin.get_attribute_hook(fullname)
     if result and not mx.is_lvalue and not implicit:
         result = analyze_descriptor_access(result, mx)
@@ -703,10 +704,13 @@ def analyze_class_attribute_access(itype: Instance,
     if override_info:
         info = override_info
 
+    fullname = '{}.{}'.format(info.fullname, name)
+    hook = mx.chk.plugin.get_class_attribute_hook(fullname)
+
     node = info.get(name)
     if not node:
         if info.fallback_to_any:
-            return AnyType(TypeOfAny.special_form)
+            return apply_class_attr_hook(mx, hook, AnyType(TypeOfAny.special_form))
         return None
 
     is_decorated = isinstance(node.node, Decorator)
@@ -731,14 +735,16 @@ def analyze_class_attribute_access(itype: Instance,
     if info.is_enum and not (mx.is_lvalue or is_decorated or is_method):
         enum_class_attribute_type = analyze_enum_class_attribute_access(itype, name, mx)
         if enum_class_attribute_type:
-            return enum_class_attribute_type
+            return apply_class_attr_hook(mx, hook, enum_class_attribute_type)
 
     t = node.type
     if t:
         if isinstance(t, PartialType):
             symnode = node.node
             assert isinstance(symnode, Var)
-            return mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode, mx.context)
+            return apply_class_attr_hook(mx, hook,
+                                         mx.chk.handle_partial_var_type(t, mx.is_lvalue, symnode,
+                                                                        mx.context))
 
         # Find the class where method/variable was defined.
         if isinstance(node.node, Decorator):
@@ -789,7 +795,8 @@ def analyze_class_attribute_access(itype: Instance,
                                  mx.self_type, original_vars=original_vars)
         if not mx.is_lvalue:
             result = analyze_descriptor_access(result, mx)
-        return result
+
+        return apply_class_attr_hook(mx, hook, result)
     elif isinstance(node.node, Var):
         mx.not_ready_callback(name, mx.context)
         return AnyType(TypeOfAny.special_form)
@@ -813,7 +820,7 @@ def analyze_class_attribute_access(itype: Instance,
     if is_decorated:
         assert isinstance(node.node, Decorator)
         if node.node.type:
-            return node.node.type
+            return apply_class_attr_hook(mx, hook, node.node.type)
         else:
             mx.not_ready_callback(name, mx.context)
             return AnyType(TypeOfAny.from_error)
@@ -825,15 +832,25 @@ def analyze_class_attribute_access(itype: Instance,
         # unannotated implicit class methods we do this here.
         if node.node.is_class:
             typ = bind_self(typ, is_classmethod=True)
-        return typ
+        return apply_class_attr_hook(mx, hook, typ)
+
+
+def apply_class_attr_hook(mx: MemberContext,
+                          hook: Optional[Callable[[AttributeContext], Type]],
+                          result: Type,
+                          ) -> Optional[Type]:
+    if hook:
+        result = hook(AttributeContext(get_proper_type(mx.original_type),
+                                       result, mx.context, mx.chk))
+    return result
 
 
 def analyze_enum_class_attribute_access(itype: Instance,
                                         name: str,
                                         mx: MemberContext,
                                         ) -> Optional[Type]:
-    # Skip "_order_" and "__order__", since Enum will remove it
-    if name in ("_order_", "__order__"):
+    # Skip these since Enum will remove it
+    if name in ENUM_REMOVED_PROPS:
         return mx.msg.has_no_attr(
             mx.original_type, itype, name, mx.context, mx.module_symbol_table
         )
@@ -842,12 +859,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
         return None
 
     enum_literal = LiteralType(name, fallback=itype)
-    # When we analyze enums, the corresponding Instance is always considered to be erased
-    # due to how the signature of Enum.__new__ is `(cls: Type[_T], value: object) -> _T`
-    # in typeshed. However, this is really more of an implementation detail of how Enums
-    # are typed, and we really don't want to treat every single Enum value as if it were
-    # from type variable substitution. So we reset the 'erased' field here.
-    return itype.copy_modified(erased=False, last_known_value=enum_literal)
+    return itype.copy_modified(last_known_value=enum_literal)
 
 
 def analyze_typeddict_access(name: str, typ: TypedDictType,

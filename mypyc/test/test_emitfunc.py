@@ -9,7 +9,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
-    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable, Cast
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -187,6 +187,29 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                          """if (cpy_r_b == 2) goto CPyL9;""",
                          next_block=next_block)
 
+    def test_branch_rare(self) -> None:
+        self.assert_emit(Branch(self.b, BasicBlock(8), BasicBlock(9), Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) {
+                                goto CPyL8;
+                            } else
+                                goto CPyL9;
+                         """)
+        next_block = BasicBlock(9)
+        self.assert_emit(Branch(self.b, BasicBlock(8), next_block, Branch.BOOL, rare=True),
+                         """if (unlikely(cpy_r_b)) goto CPyL8;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        self.assert_emit(b,
+                         """if (likely(!cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+        next_block = BasicBlock(8)
+        b = Branch(self.b, next_block, BasicBlock(9), Branch.BOOL, rare=True)
+        b.negated = True
+        self.assert_emit(b,
+                         """if (likely(cpy_r_b)) goto CPyL9;""",
+                         next_block=next_block)
+
     def test_call(self) -> None:
         decl = FuncDecl('myfn', None, 'mod',
                         FuncSignature([RuntimeArg('m', int_rprimitive)], int_rprimitive))
@@ -258,12 +281,40 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(
             GetAttr(self.r, 'y', 1),
             """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
-               if (unlikely(((mod___AObject *)cpy_r_r)->_y == CPY_INT_TAG)) {
+               if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
                    PyErr_SetString(PyExc_AttributeError, "attribute 'y' of 'A' undefined");
                } else {
-                   CPyTagged_INCREF(((mod___AObject *)cpy_r_r)->_y);
+                   CPyTagged_INCREF(cpy_r_r0);
                }
             """)
+
+    def test_get_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            GetAttr(self.r, 'x', 1),
+            """cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_x;
+               if (unlikely(cpy_r_r0 == 2)) {
+                   PyErr_SetString(PyExc_AttributeError, "attribute 'x' of 'A' undefined");
+               }
+            """)
+
+    def test_get_attr_merged(self) -> None:
+        op = GetAttr(self.r, 'y', 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            cpy_r_r0 = ((mod___AObject *)cpy_r_r)->_y;
+            if (unlikely(cpy_r_r0 == CPY_INT_TAG)) {
+                CPy_AttributeError("prog.py", "foobar", "A", "y", 123, CPyStatic_prog___globals);
+                goto CPyL8;
+            }
+            CPyTagged_INCREF(cpy_r_r0);
+            goto CPyL9;
+            """,
+            next_branch=branch,
+            skip_next=True,
+        )
 
     def test_set_attr(self) -> None:
         self.assert_emit(
@@ -391,12 +442,110 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
                          """cpy_r_a = -2147483648LL;""")
 
+    def test_cast_and_branch_merge(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+if (likely(PyDict_Check(cpy_r_r)))
+    cpy_r_r0 = cpy_r_r;
+else {
+    CPy_TypeErrorTraceback("prog.py", "foobar", 123, CPyStatic_prog___globals, "dict", cpy_r_r);
+    goto CPyL8;
+}
+""",
+            next_block=next_block,
+            next_branch=branch,
+            skip_next=True,
+        )
+
+    def test_cast_and_branch_no_merge_1(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=BasicBlock(10),
+            next_branch=branch,
+            skip_next=False,
+        )
+
+    def test_cast_and_branch_no_merge_2(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        branch.negated = True
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
+    def test_cast_and_branch_no_merge_3(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.BOOL)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
+    def test_cast_and_branch_no_merge_4(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
     def assert_emit(self,
                     op: Op,
                     expected: str,
                     next_block: Optional[BasicBlock] = None,
                     *,
-                    rare: bool = False) -> None:
+                    rare: bool = False,
+                    next_branch: Optional[Branch] = None,
+                    skip_next: bool = False) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -408,6 +557,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         visitor = FunctionEmitterVisitor(emitter, declarations, 'prog.py', 'prog')
         visitor.next_block = next_block
         visitor.rare = rare
+        if next_branch:
+            visitor.ops = [op, next_branch]
+        else:
+            visitor.ops = [op]
+        visitor.op_index = 0
 
         op.accept(visitor)
         frags = declarations.fragments + emitter.fragments
@@ -421,6 +575,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         expected_lines = [line.strip(' ') for line in expected_lines]
         assert_string_arrays_equal(expected_lines, actual_lines,
                                    msg='Generated code unexpected')
+        if skip_next:
+            assert visitor.op_index == 1
+        else:
+            assert visitor.op_index == 0
 
     def assert_emit_binary_op(self,
                               op: str,

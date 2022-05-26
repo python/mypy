@@ -1,23 +1,25 @@
+from collections.abc import Generator, Iterator, Sequence
+from email import _ParamsType, _ParamType
 from email.charset import Charset
 from email.contentmanager import ContentManager
 from email.errors import MessageDefect
 from email.policy import Policy
-from typing import Any, Generator, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union
+from typing import Any, TypeVar
+from typing_extensions import TypeAlias
+
+__all__ = ["Message", "EmailMessage"]
 
 _T = TypeVar("_T")
 
-_PayloadType = Union[List[Message], str, bytes]
-_CharsetType = Union[Charset, str, None]
-_ParamsType = Union[str, None, Tuple[str, Optional[str], str]]
-_ParamType = Union[str, Tuple[Optional[str], Optional[str], str]]
-_HeaderType = Any
+_PayloadType: TypeAlias = list[Message] | str | bytes
+_CharsetType: TypeAlias = Charset | str | None
+_HeaderType: TypeAlias = Any
 
 class Message:
     policy: Policy  # undocumented
     preamble: str | None
     epilogue: str | None
     defects: list[MessageDefect]
-    def __str__(self) -> str: ...
     def is_multipart(self) -> bool: ...
     def set_unixfrom(self, unixfrom: str) -> None: ...
     def get_unixfrom(self) -> str | None: ...
@@ -69,6 +71,9 @@ class Message:
         replace: bool = ...,
     ) -> None: ...
     def __init__(self, policy: Policy = ...) -> None: ...
+    # The following two methods are undocumented, but a source code comment states that they are public API
+    def set_raw(self, name: str, value: str) -> None: ...
+    def raw_items(self) -> Iterator[tuple[str, str]]: ...
 
 class MIMEPart(Message):
     def __init__(self, policy: Policy | None = ...) -> None: ...

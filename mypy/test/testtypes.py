@@ -3,7 +3,7 @@
 from typing import List, Tuple
 
 from mypy.test.helpers import Suite, assert_equal, assert_type, skip
-from mypy.erasetype import erase_type
+from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
 from mypy.join import join_types, join_simple
 from mypy.meet import meet_types, narrow_declared_type
@@ -11,12 +11,13 @@ from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
 from mypy.types import (
     UnboundType, AnyType, CallableType, TupleType, TypeVarType, Type, Instance, NoneType,
-    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, get_proper_type
+    Overloaded, TypeType, UnionType, UninhabitedType, TypeVarId, TypeOfAny, ProperType,
+    LiteralType, get_proper_type
 )
 from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.typeops import true_only, false_only, make_simplified_union
 
 
@@ -409,15 +410,15 @@ class TypeOpsSuite(Suite):
         assert to.items[1] is tup_type
 
     def test_false_only_of_true_type_is_uninhabited(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(AnyType(TypeOfAny.special_form)))
             assert_type(UninhabitedType, fo)
 
     def test_false_only_tuple(self) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, NoneType())
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             fo = false_only(self.tuple(self.fx.a))
             assert_equal(fo, UninhabitedType())
 
@@ -436,7 +437,7 @@ class TypeOpsSuite(Suite):
         assert self.fx.a.can_be_true
 
     def test_false_only_of_union(self) -> None:
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             tup_type = self.tuple()
             # Union of something that is unknown, something that is always true, something
             # that is always false
@@ -464,7 +465,12 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.a, UnionType([fx.a])], fx.a)
         self.assert_simplified_union([fx.b, UnionType([fx.c, UnionType([fx.d])])],
                                      UnionType([fx.b, fx.c, fx.d]))
+
+    def test_simplified_union_with_literals(self) -> None:
+        fx = self.fx
+
         self.assert_simplified_union([fx.lit1, fx.a], fx.a)
+        self.assert_simplified_union([fx.lit1, fx.lit2, fx.a], fx.a)
         self.assert_simplified_union([fx.lit1, fx.lit1], fx.lit1)
         self.assert_simplified_union([fx.lit1, fx.lit2], UnionType([fx.lit1, fx.lit2]))
         self.assert_simplified_union([fx.lit1, fx.lit3], UnionType([fx.lit1, fx.lit3]))
@@ -479,6 +485,48 @@ class TypeOpsSuite(Suite):
         self.assert_simplified_union([fx.lit1, fx.lit1_inst], UnionType([fx.lit1, fx.lit1_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit2_inst], UnionType([fx.lit1, fx.lit2_inst]))
         self.assert_simplified_union([fx.lit1, fx.lit3_inst], UnionType([fx.lit1, fx.lit3_inst]))
+
+    def test_simplified_union_with_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.str_type], fx.str_type)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1], fx.lit_str1)
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3],
+                                     UnionType([fx.lit_str1, fx.lit_str2, fx.lit_str3]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.uninhabited],
+                                     UnionType([fx.lit_str1, fx.lit_str2]))
+
+    def test_simplify_very_large_union(self) -> None:
+        fx = self.fx
+        literals = []
+        for i in range(5000):
+            literals.append(LiteralType("v%d" % i, fx.str_type))
+        # This shouldn't be very slow, even if the union is big.
+        self.assert_simplified_union([*literals, fx.str_type], fx.str_type)
+
+    def test_simplified_union_with_str_instance_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.str_type],
+                                     fx.str_type)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str1_inst, fx.lit_str1_inst],
+                                     fx.lit_str1_inst)
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1_inst,
+                                                fx.lit_str2_inst,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1_inst, fx.lit_str2_inst, fx.uninhabited],
+                                     UnionType([fx.lit_str1_inst, fx.lit_str2_inst]))
+
+    def test_simplified_union_with_mixed_str_literals(self) -> None:
+        fx = self.fx
+
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str2, fx.lit_str3_inst],
+                                     UnionType([fx.lit_str1,
+                                                fx.lit_str2,
+                                                fx.lit_str3_inst]))
+        self.assert_simplified_union([fx.lit_str1, fx.lit_str1, fx.lit_str1_inst],
+                                     UnionType([fx.lit_str1, fx.lit_str1_inst]))
 
     def assert_simplified_union(self, original: List[Type], union: Type) -> None:
         assert_equal(make_simplified_union(original), union)
@@ -818,9 +866,9 @@ class JoinSuite(Suite):
         actual = str(result)
         expected = str(join)
         assert_equal(actual, expected,
-                     'join({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert is_subtype(s, result), '{} not subtype of {}'.format(s, result)
-        assert is_subtype(t, result), '{} not subtype of {}'.format(t, result)
+                     f'join({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(s, result), f'{s} not subtype of {result}'
+        assert is_subtype(t, result), f'{t} not subtype of {result}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -1019,9 +1067,9 @@ class MeetSuite(Suite):
     # FIX generic interfaces + ranges
 
     def assert_meet_uninhabited(self, s: Type, t: Type) -> None:
-        with strict_optional_set(False):
+        with state.strict_optional_set(False):
             self.assert_meet(s, t, self.fx.nonet)
-        with strict_optional_set(True):
+        with state.strict_optional_set(True):
             self.assert_meet(s, t, self.fx.uninhabited)
 
     def assert_meet(self, s: Type, t: Type, meet: Type) -> None:
@@ -1033,9 +1081,9 @@ class MeetSuite(Suite):
         actual = str(result)
         expected = str(meet)
         assert_equal(actual, expected,
-                     'meet({}, {}) == {{}} ({{}} expected)'.format(s, t))
-        assert is_subtype(result, s), '{} not subtype of {}'.format(result, s)
-        assert is_subtype(result, t), '{} not subtype of {}'.format(result, t)
+                     f'meet({s}, {t}) == {{}} ({{}} expected)')
+        assert is_subtype(result, s), f'{result} not subtype of {s}'
+        assert is_subtype(result, t), f'{result} not subtype of {t}'
 
     def tuple(self, *a: Type) -> TupleType:
         return TupleType(list(a), self.fx.std_tuple)
@@ -1084,11 +1132,54 @@ class SameTypeSuite(Suite):
     def assert_simple_is_same(self, s: Type, t: Type, expected: bool, strict: bool) -> None:
         actual = is_same_type(s, t)
         assert_equal(actual, expected,
-                     'is_same_type({}, {}) is {{}} ({{}} expected)'.format(s, t))
+                     f'is_same_type({s}, {t}) is {{}} ({{}} expected)')
 
         if strict:
             actual2 = (s == t)
             assert_equal(actual2, expected,
-                         '({} == {}) is {{}} ({{}} expected)'.format(s, t))
+                         f'({s} == {t}) is {{}} ({{}} expected)')
             assert_equal(hash(s) == hash(t), expected,
-                         '(hash({}) == hash({}) is {{}} ({{}} expected)'.format(s, t))
+                         f'(hash({s}) == hash({t}) is {{}} ({{}} expected)')
+
+
+class RemoveLastKnownValueSuite(Suite):
+    def setUp(self) -> None:
+        self.fx = TypeFixture()
+
+    def test_optional(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_two_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_multiple_same_instances(self) -> None:
+        t = UnionType.make_union([self.fx.a, self.fx.a])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.a, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+        t = UnionType.make_union([self.fx.a, self.fx.nonet, self.fx.a, self.fx.b])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet, self.fx.b])
+
+    def test_single_last_known_value(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.nonet])
+        self.assert_union_result(t, [self.fx.a, self.fx.nonet])
+
+    def test_last_known_values_with_merge(self) -> None:
+        t = UnionType.make_union([self.fx.lit1_inst, self.fx.lit2_inst, self.fx.lit4_inst])
+        assert remove_instance_last_known_values(t) == self.fx.a
+        t = UnionType.make_union([self.fx.lit1_inst,
+                                  self.fx.b,
+                                  self.fx.lit2_inst,
+                                  self.fx.lit4_inst])
+        self.assert_union_result(t, [self.fx.a, self.fx.b])
+
+    def test_generics(self) -> None:
+        t = UnionType.make_union([self.fx.ga, self.fx.gb])
+        self.assert_union_result(t, [self.fx.ga, self.fx.gb])
+
+    def assert_union_result(self, t: ProperType, expected: List[Type]) -> None:
+        t2 = remove_instance_last_known_values(t)
+        assert type(t2) is UnionType
+        assert t2.items == expected

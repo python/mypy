@@ -25,7 +25,7 @@ from typing import List, Dict, Callable, Any, TypeVar, cast
 
 from mypy.nodes import MypyFile, Expression, ClassDef
 from mypy.types import Type
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.build import Graph
 
 from mypyc.common import TOP_LEVEL_NAME
@@ -40,19 +40,20 @@ from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_i
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.mapper import Mapper
+from mypyc.analysis.attrdefined import analyze_always_defined_attrs
 
 
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...
 F = TypeVar('F', bound=Callable[..., Any])
-strict_optional_dec = cast(Callable[[F], F], strict_optional_set(True))
+strict_optional_dec = cast(Callable[[F], F], state.strict_optional_set(True))
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
 def build_ir(modules: List[MypyFile],
              graph: Graph,
              types: Dict[Expression, Type],
-             mapper: 'Mapper',
+             mapper: Mapper,
              options: CompilerOptions,
              errors: Errors) -> ModuleIRs:
     """Build IR for a set of modules that have been type-checked by mypy."""
@@ -89,6 +90,8 @@ def build_ir(modules: List[MypyFile],
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
+
+    analyze_always_defined_attrs(class_irs)
 
     # Compute vtables.
     for cir in class_irs:

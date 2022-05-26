@@ -1,6 +1,7 @@
 import abc
 import sys
-from typing import (
+from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
+from typing import (  # noqa: Y022,Y027,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
     AsyncContextManager as AsyncContextManager,
@@ -21,8 +22,8 @@ from typing import (
     Mapping,
     NewType as NewType,
     NoReturn as NoReturn,
+    Sequence,
     Text as Text,
-    Tuple,
     Type as Type,
     TypeVar,
     ValuesView,
@@ -30,26 +31,86 @@ from typing import (
     overload as overload,
 )
 
+__all__ = [
+    "ClassVar",
+    "Concatenate",
+    "Final",
+    "LiteralString",
+    "ParamSpec",
+    "Self",
+    "Type",
+    "TypeVarTuple",
+    "Unpack",
+    "Awaitable",
+    "AsyncIterator",
+    "AsyncIterable",
+    "Coroutine",
+    "AsyncGenerator",
+    "AsyncContextManager",
+    "ChainMap",
+    "ContextManager",
+    "Counter",
+    "Deque",
+    "DefaultDict",
+    "OrderedDict",
+    "TypedDict",
+    "SupportsIndex",
+    "Annotated",
+    "assert_never",
+    "assert_type",
+    "dataclass_transform",
+    "final",
+    "IntVar",
+    "is_typeddict",
+    "Literal",
+    "NewType",
+    "overload",
+    "Protocol",
+    "reveal_type",
+    "runtime",
+    "runtime_checkable",
+    "Text",
+    "TypeAlias",
+    "TypeGuard",
+    "TYPE_CHECKING",
+    "Never",
+    "NoReturn",
+    "Required",
+    "NotRequired",
+    "clear_overloads",
+    "get_args",
+    "get_origin",
+    "get_overloads",
+    "get_type_hints",
+]
+
 _T = TypeVar("_T")
 _F = TypeVar("_F", bound=Callable[..., Any])
 _TC = TypeVar("_TC", bound=Type[object])
 
+# unfortunately we have to duplicate this class definition from typing.pyi or we break pytype
 class _SpecialForm:
-    def __getitem__(self, typeargs: Any) -> Any: ...
+    def __getitem__(self, parameters: Any) -> object: ...
+    if sys.version_info >= (3, 10):
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
+
+# Do not import (and re-export) Protocol or runtime_checkable from
+# typing module because type checkers need to be able to distinguish
+# typing.Protocol and typing_extensions.Protocol so they can properly
+# warn users about potential runtime exceptions when using typing.Protocol
+# on older versions of Python.
+Protocol: _SpecialForm = ...
 
 def runtime_checkable(cls: _TC) -> _TC: ...
 
 # This alias for above is kept here for backwards compatibility.
 runtime = runtime_checkable
-Protocol: _SpecialForm = ...
-Final: _SpecialForm = ...
-Self: _SpecialForm = ...
-Required: _SpecialForm = ...
-NotRequired: _SpecialForm = ...
+Final: _SpecialForm
 
 def final(f: _F) -> _F: ...
 
-Literal: _SpecialForm = ...
+Literal: _SpecialForm
 
 def IntVar(name: str) -> Any: ...  # returns a new TypeVar
 
@@ -58,7 +119,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     __required_keys__: frozenset[str]
     __optional_keys__: frozenset[str]
     __total__: bool
-    def copy(self: _T) -> _T: ...
+    def copy(self: TypeshedSelf) -> TypeshedSelf: ...
     # Using NoReturn so that only calls using mypy plugin hook that specialize the signature
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
@@ -71,50 +132,104 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     def __delitem__(self, k: NoReturn) -> None: ...
 
 # TypedDict is a (non-subscriptable) special form.
-TypedDict: object = ...
+TypedDict: object
 
 OrderedDict = _Alias()
 
-if sys.version_info >= (3, 7):
-    def get_type_hints(
-        obj: Callable[..., Any],
-        globalns: dict[str, Any] | None = ...,
-        localns: dict[str, Any] | None = ...,
-        include_extras: bool = ...,
-    ) -> dict[str, Any]: ...
-    def get_args(tp: Any) -> Tuple[Any, ...]: ...
-    def get_origin(tp: Any) -> Any | None: ...
+def get_type_hints(
+    obj: Callable[..., Any],
+    globalns: dict[str, Any] | None = ...,
+    localns: dict[str, Any] | None = ...,
+    include_extras: bool = ...,
+) -> dict[str, Any]: ...
+def get_args(tp: Any) -> tuple[Any, ...]: ...
+def get_origin(tp: Any) -> Any | None: ...
 
-Annotated: _SpecialForm = ...
-_AnnotatedAlias: Any = ...  # undocumented
+Annotated: _SpecialForm
+_AnnotatedAlias: Any  # undocumented
 
 @runtime_checkable
 class SupportsIndex(Protocol, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def __index__(self) -> int: ...
 
-# PEP 612 support for Python < 3.9
+# New things in 3.10
 if sys.version_info >= (3, 10):
-    from typing import Concatenate as Concatenate, ParamSpec as ParamSpec, TypeAlias as TypeAlias, TypeGuard as TypeGuard
+    from typing import (
+        Concatenate as Concatenate,
+        ParamSpec as ParamSpec,
+        TypeAlias as TypeAlias,
+        TypeGuard as TypeGuard,
+        is_typeddict as is_typeddict,
+    )
 else:
     class ParamSpecArgs:
         __origin__: ParamSpec
         def __init__(self, origin: ParamSpec) -> None: ...
+
     class ParamSpecKwargs:
         __origin__: ParamSpec
         def __init__(self, origin: ParamSpec) -> None: ...
+
     class ParamSpec:
         __name__: str
-        __bound__: Type[Any] | None
+        __bound__: type[Any] | None
         __covariant__: bool
         __contravariant__: bool
         def __init__(
-            self, name: str, *, bound: None | Type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
+            self, name: str, *, bound: None | type[Any] | str = ..., contravariant: bool = ..., covariant: bool = ...
         ) -> None: ...
         @property
         def args(self) -> ParamSpecArgs: ...
         @property
         def kwargs(self) -> ParamSpecKwargs: ...
-    Concatenate: _SpecialForm = ...
-    TypeAlias: _SpecialForm = ...
-    TypeGuard: _SpecialForm = ...
+    Concatenate: _SpecialForm
+    TypeAlias: _SpecialForm
+    TypeGuard: _SpecialForm
+    def is_typeddict(tp: object) -> bool: ...
+
+# New things in 3.11
+if sys.version_info >= (3, 11):
+    from typing import (
+        LiteralString as LiteralString,
+        Never as Never,
+        NotRequired as NotRequired,
+        Required as Required,
+        Self as Self,
+        TypeVarTuple as TypeVarTuple,
+        Unpack as Unpack,
+        assert_never as assert_never,
+        assert_type as assert_type,
+        clear_overloads as clear_overloads,
+        dataclass_transform as dataclass_transform,
+        get_overloads as get_overloads,
+        reveal_type as reveal_type,
+    )
+else:
+    Self: _SpecialForm
+    Never: _SpecialForm
+    def reveal_type(__obj: _T) -> _T: ...
+    def assert_never(__arg: NoReturn) -> NoReturn: ...
+    def assert_type(__val: _T, __typ: Any) -> _T: ...
+    def clear_overloads() -> None: ...
+    def get_overloads(func: Callable[..., object]) -> Sequence[Callable[..., object]]: ...
+
+    Required: _SpecialForm
+    NotRequired: _SpecialForm
+    LiteralString: _SpecialForm
+    Unpack: _SpecialForm
+
+    @final
+    class TypeVarTuple:
+        __name__: str
+        def __init__(self, name: str) -> None: ...
+        def __iter__(self) -> Any: ...  # Unpack[Self]
+
+    def dataclass_transform(
+        *,
+        eq_default: bool = ...,
+        order_default: bool = ...,
+        kw_only_default: bool = ...,
+        field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
+        **kwargs: object,
+    ) -> Callable[[_T], _T]: ...

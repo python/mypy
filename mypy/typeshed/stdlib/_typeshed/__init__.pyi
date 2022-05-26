@@ -5,10 +5,13 @@
 import array
 import ctypes
 import mmap
+import pickle
 import sys
+from collections.abc import Awaitable, Container, Iterable, Set as AbstractSet
 from os import PathLike
-from typing import AbstractSet, Any, Awaitable, Container, Iterable, Protocol, TypeVar, Union
-from typing_extensions import Literal, final
+from types import TracebackType
+from typing import Any, Generic, Protocol, TypeVar, Union
+from typing_extensions import Final, Literal, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -21,7 +24,14 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 
 # Use for "self" annotations:
 #   def __enter__(self: Self) -> Self: ...
-Self = TypeVar("Self")  # noqa Y001
+Self = TypeVar("Self")  # noqa: Y001
+
+# For partially known annotations. Usually, fields where type annotations
+# haven't been added are left unannotated, but in some situations this
+# isn't possible or a type is already partially known. In cases like these,
+# use Incomplete instead of Any as a marker. For example, use
+# "Incomplete | None" instead of "Any | None".
+Incomplete: TypeAlias = Any
 
 # stable
 class IdentityFunction(Protocol):
@@ -35,41 +45,45 @@ class SupportsNext(Protocol[_T_co]):
 class SupportsAnext(Protocol[_T_co]):
     def __anext__(self) -> Awaitable[_T_co]: ...
 
-class SupportsLessThan(Protocol):
-    def __lt__(self, __other: Any) -> bool: ...
-
-SupportsLessThanT = TypeVar("SupportsLessThanT", bound=SupportsLessThan)  # noqa: Y001
-
-class SupportsGreaterThan(Protocol):
-    def __gt__(self, __other: Any) -> bool: ...
-
-SupportsGreaterThanT = TypeVar("SupportsGreaterThanT", bound=SupportsGreaterThan)  # noqa: Y001
-
 # Comparison protocols
 
 class SupportsDunderLT(Protocol):
-    def __lt__(self, __other: Any) -> Any: ...
+    def __lt__(self, __other: Any) -> bool: ...
 
 class SupportsDunderGT(Protocol):
-    def __gt__(self, __other: Any) -> Any: ...
+    def __gt__(self, __other: Any) -> bool: ...
 
 class SupportsDunderLE(Protocol):
-    def __le__(self, __other: Any) -> Any: ...
+    def __le__(self, __other: Any) -> bool: ...
 
 class SupportsDunderGE(Protocol):
-    def __ge__(self, __other: Any) -> Any: ...
+    def __ge__(self, __other: Any) -> bool: ...
 
 class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
 
-SupportsRichComparison = Union[SupportsDunderLT, SupportsDunderGT]
+SupportsRichComparison: TypeAlias = SupportsDunderLT | SupportsDunderGT
 SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
-SupportsAnyComparison = Union[SupportsDunderLE, SupportsDunderGE, SupportsDunderGT, SupportsDunderLT]
+
+# Dunder protocols
+
+class SupportsAdd(Protocol):
+    def __add__(self, __x: Any) -> Any: ...
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
 
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
     def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
+
+# This protocol is generic over the iterator type, while Iterable is
+# generic over the type that is iterated over.
+class SupportsIter(Protocol[_T_co]):
+    def __iter__(self) -> _T_co: ...
+
+# This protocol is generic over the iterator type, while AsyncIterable is
+# generic over the type that is iterated over.
+class SupportsAiter(Protocol[_T_co]):
+    def __aiter__(self) -> _T_co: ...
 
 class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
@@ -99,11 +113,11 @@ class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, 
     def __delitem__(self, __v: _KT_contra) -> None: ...
 
 # These aliases are simple strings in Python 2.
-StrPath = Union[str, PathLike[str]]  # stable
-BytesPath = Union[bytes, PathLike[bytes]]  # stable
-StrOrBytesPath = Union[str, bytes, PathLike[str], PathLike[bytes]]  # stable
+StrPath: TypeAlias = str | PathLike[str]  # stable
+BytesPath: TypeAlias = bytes | PathLike[bytes]  # stable
+StrOrBytesPath: TypeAlias = str | bytes | PathLike[str] | PathLike[bytes]  # stable
 
-OpenTextModeUpdating = Literal[
+OpenTextModeUpdating: TypeAlias = Literal[
     "r+",
     "+r",
     "rt+",
@@ -137,10 +151,10 @@ OpenTextModeUpdating = Literal[
     "t+x",
     "+tx",
 ]
-OpenTextModeWriting = Literal["w", "wt", "tw", "a", "at", "ta", "x", "xt", "tx"]
-OpenTextModeReading = Literal["r", "rt", "tr", "U", "rU", "Ur", "rtU", "rUt", "Urt", "trU", "tUr", "Utr"]
-OpenTextMode = Union[OpenTextModeUpdating, OpenTextModeWriting, OpenTextModeReading]
-OpenBinaryModeUpdating = Literal[
+OpenTextModeWriting: TypeAlias = Literal["w", "wt", "tw", "a", "at", "ta", "x", "xt", "tx"]
+OpenTextModeReading: TypeAlias = Literal["r", "rt", "tr", "U", "rU", "Ur", "rtU", "rUt", "Urt", "trU", "tUr", "Utr"]
+OpenTextMode: TypeAlias = OpenTextModeUpdating | OpenTextModeWriting | OpenTextModeReading
+OpenBinaryModeUpdating: TypeAlias = Literal[
     "rb+",
     "r+b",
     "+rb",
@@ -166,16 +180,16 @@ OpenBinaryModeUpdating = Literal[
     "b+x",
     "+bx",
 ]
-OpenBinaryModeWriting = Literal["wb", "bw", "ab", "ba", "xb", "bx"]
-OpenBinaryModeReading = Literal["rb", "br", "rbU", "rUb", "Urb", "brU", "bUr", "Ubr"]
-OpenBinaryMode = Union[OpenBinaryModeUpdating, OpenBinaryModeReading, OpenBinaryModeWriting]
+OpenBinaryModeWriting: TypeAlias = Literal["wb", "bw", "ab", "ba", "xb", "bx"]
+OpenBinaryModeReading: TypeAlias = Literal["rb", "br", "rbU", "rUb", "Urb", "brU", "bUr", "Ubr"]
+OpenBinaryMode: TypeAlias = OpenBinaryModeUpdating | OpenBinaryModeReading | OpenBinaryModeWriting
 
 # stable
 class HasFileno(Protocol):
     def fileno(self) -> int: ...
 
-FileDescriptor = int  # stable
-FileDescriptorLike = Union[int, HasFileno]  # stable
+FileDescriptor: TypeAlias = int  # stable
+FileDescriptorLike: TypeAlias = int | HasFileno  # stable
 
 # stable
 class SupportsRead(Protocol[_T_co]):
@@ -191,15 +205,23 @@ class SupportsNoArgReadline(Protocol[_T_co]):
 
 # stable
 class SupportsWrite(Protocol[_T_contra]):
-    def write(self, __s: _T_contra) -> Any: ...
+    def write(self, __s: _T_contra) -> object: ...
 
-ReadOnlyBuffer = bytes  # stable
+ReadOnlyBuffer: TypeAlias = bytes  # stable
 # Anything that implements the read-write buffer interface.
 # The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
-# for it. Instead we have to list the most common stdlib buffer classes in a Union.
-WriteableBuffer = Union[bytearray, memoryview, array.array[Any], mmap.mmap, ctypes._CData]  # stable
+# for it (until PEP 688 is implemented). Instead we have to list the most common stdlib buffer classes in a Union.
+if sys.version_info >= (3, 8):
+    WriteableBuffer: TypeAlias = (
+        bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
+    )  # stable
+else:
+    WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
-ReadableBuffer = Union[ReadOnlyBuffer, WriteableBuffer]  # stable
+ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
+
+ExcInfo: TypeAlias = tuple[type[BaseException], BaseException, TracebackType]
+OptExcInfo: TypeAlias = Union[ExcInfo, tuple[None, None, None]]
 
 # stable
 if sys.version_info >= (3, 10):
@@ -209,3 +231,20 @@ else:
     @final
     class NoneType:
         def __bool__(self) -> Literal[False]: ...
+
+# This is an internal CPython type that is like, but subtly different from, a NamedTuple
+# Subclasses of this type are found in multiple modules.
+# In typeshed, `structseq` is only ever used as a mixin in combination with a fixed-length `Tuple`
+# See discussion at #6546 & #6560
+# `structseq` classes are unsubclassable, so are all decorated with `@final`.
+class structseq(Generic[_T_co]):
+    n_fields: Final[int]
+    n_unnamed_fields: Final[int]
+    n_sequence_fields: Final[int]
+    # The first parameter will generally only take an iterable of a specific length.
+    # E.g. `os.uname_result` takes any iterable of length exactly 5.
+    #
+    # The second parameter will accept a dict of any kind without raising an exception,
+    # but only has any meaning if you supply it a dict where the keys are strings.
+    # https://github.com/python/typeshed/pull/6560#discussion_r767149830
+    def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...

@@ -27,7 +27,7 @@ from typing import (
 )
 from typing_extensions import TypedDict
 
-from mypy.state import strict_optional_set
+from mypy.state import state
 from mypy.types import (
     Type, AnyType, TypeOfAny, CallableType, UnionType, NoneType, Instance, TupleType,
     TypeVarType, FunctionLike, UninhabitedType,
@@ -62,18 +62,18 @@ import json
 import os
 
 
-PyAnnotateSignature = TypedDict('PyAnnotateSignature',
-                                {'return_type': str, 'arg_types': List[str]})
+class PyAnnotateSignature(TypedDict):
+    return_type: str
+    arg_types: List[str]
 
 
-Callsite = NamedTuple(
-    'Callsite',
-    [('path', str),
-     ('line', int),
-     ('arg_kinds', List[List[ArgKind]]),
-     ('callee_arg_names', List[Optional[str]]),
-     ('arg_names', List[List[Optional[str]]]),
-     ('arg_types', List[List[Type]])])
+class Callsite(NamedTuple):
+    path: str
+    line: int
+    arg_kinds: List[List[ArgKind]]
+    callee_arg_names: List[Optional[str]]
+    arg_names: List[List[Optional[str]]]
+    arg_types: List[List[Type]]
 
 
 class SuggestionPlugin(Plugin):
@@ -250,7 +250,7 @@ class SuggestionEngine:
             callsites, _ = self.get_callsites(node)
 
         return '\n'.join(dedup(
-            ["%s:%s: %s" % (path, line, self.format_args(arg_kinds, arg_names, arg_types))
+            [f"{path}:{line}: {self.format_args(arg_kinds, arg_names, arg_types)}"
              for path, line, arg_kinds, _, arg_names, arg_types in callsites]
         ))
 
@@ -344,9 +344,11 @@ class SuggestionEngine:
             types.append(arg_types)
         return types
 
-    def get_default_arg_types(self, state: State, fdef: FuncDef) -> List[Optional[Type]]:
-        return [self.manager.all_types[arg.initializer] if arg.initializer else None
-                for arg in fdef.arguments]
+    def get_default_arg_types(self, fdef: FuncDef) -> List[Optional[Type]]:
+        return [
+            self.manager.all_types[arg.initializer] if arg.initializer else None
+            for arg in fdef.arguments
+        ]
 
     def add_adjustments(self, typs: List[Type]) -> List[Type]:
         if not self.try_text or self.manager.options.python_version[0] != 2:
@@ -437,11 +439,11 @@ class SuggestionEngine:
 
         is_method = bool(node.info) and not node.is_static
 
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             guesses = self.get_guesses(
                 is_method,
                 self.get_starting_type(node),
-                self.get_default_arg_types(graph[mod], node),
+                self.get_default_arg_types(node),
                 callsites,
                 uses,
             )
@@ -452,7 +454,7 @@ class SuggestionEngine:
         # Now try to find the return type!
         self.try_type(node, best)
         returns = get_return_types(self.manager.all_types, node)
-        with strict_optional_set(graph[mod].options.strict_optional):
+        with state.strict_optional_set(graph[mod].options.strict_optional):
             if returns:
                 ret_types = generate_type_combinations(returns)
             else:
@@ -481,9 +483,9 @@ class SuggestionEngine:
                     arg = '**' + arg
                 elif kind.is_named():
                     if name:
-                        arg = "%s=%s" % (name, arg)
+                        arg = f"{name}={arg}"
             args.append(arg)
-        return "(%s)" % (", ".join(args))
+        return f"({', '.join(args)})"
 
     def find_node(self, key: str) -> Tuple[str, str, FuncDef]:
         """From a target name, return module/target names and the func def.
@@ -502,24 +504,24 @@ class SuggestionEngine:
                     ' package.module.Class.method or path/to/file.py:line'.format(key))
             file, line = key.split(':')
             if not line.isdigit():
-                raise SuggestionFailure('Line number must be a number. Got {}'.format(line))
+                raise SuggestionFailure(f'Line number must be a number. Got {line}')
             line_number = int(line)
             modname, node = self.find_node_by_file_and_line(file, line_number)
             tail = node.fullname[len(modname) + 1:]  # add one to account for '.'
         else:
             target = split_target(self.fgmanager.graph, key)
             if not target:
-                raise SuggestionFailure("Cannot find module for %s" % (key,))
+                raise SuggestionFailure(f"Cannot find module for {key}")
             modname, tail = target
             node = self.find_node_by_module_and_name(modname, tail)
 
         if isinstance(node, Decorator):
             node = self.extract_from_decorator(node)
             if not node:
-                raise SuggestionFailure("Object %s is a decorator we can't handle" % key)
+                raise SuggestionFailure(f"Object {key} is a decorator we can't handle")
 
         if not isinstance(node, FuncDef):
-            raise SuggestionFailure("Object %s is not a function" % key)
+            raise SuggestionFailure(f"Object {key} is not a function")
 
         return modname, tail, node
 
@@ -587,7 +589,7 @@ class SuggestionEngine:
                 closest_line = sym_line
                 node = sym.node
         if not node:
-            raise SuggestionFailure('Cannot find a function at line {}'.format(line))
+            raise SuggestionFailure(f'Cannot find a function at line {line}')
         return modname, node
 
     def extract_from_decorator(self, node: Decorator) -> Optional[FuncDef]:
@@ -632,11 +634,8 @@ class SuggestionEngine:
         finally:
             func.unanalyzed_type = old
 
-    def reload(self, state: State, check_errors: bool = False) -> List[str]:
-        """Recheck the module given by state.
-
-        If check_errors is true, raise an exception if there are errors.
-        """
+    def reload(self, state: State) -> List[str]:
+        """Recheck the module given by state."""
         assert state.path is not None
         self.fgmanager.flush_cache()
         return self.fgmanager.update([(state.id, state.path)], [])
@@ -687,10 +686,7 @@ class SuggestionEngine:
 
     def format_signature(self, sig: PyAnnotateSignature) -> str:
         """Format a callable type in a way suitable as an annotation... kind of"""
-        return "({}) -> {}".format(
-            ", ".join(sig['arg_types']),
-            sig['return_type']
-        )
+        return f"({', '.join(sig['arg_types'])}) -> {sig['return_type']}"
 
     def format_type(self, cur_module: Optional[str], typ: Type) -> str:
         if self.use_fixme and isinstance(get_proper_type(typ), AnyType):
@@ -721,7 +717,7 @@ class SuggestionEngine:
         return 0
 
     def score_callable(self, t: CallableType) -> int:
-        return (sum([self.score_type(x, arg_pos=True) for x in t.arg_types]) +
+        return (sum(self.score_type(x, arg_pos=True) for x in t.arg_types) +
                 self.score_type(t.ret_type, arg_pos=False))
 
 
@@ -804,7 +800,7 @@ class TypeFormatter(TypeStrVisitor):
         if (mod, obj) == ('builtins', 'tuple'):
             mod, obj = 'typing', 'Tuple[' + t.args[0].accept(self) + ', ...]'
         elif t.args:
-            obj += '[{}]'.format(self.list_str(t.args))
+            obj += f'[{self.list_str(t.args)}]'
 
         if mod_obj == ('builtins', 'unicode'):
             return 'Text'
@@ -820,7 +816,7 @@ class TypeFormatter(TypeStrVisitor):
             if fallback_name != 'builtins.tuple':
                 return t.partial_fallback.accept(self)
         s = self.list_str(t.items)
-        return 'Tuple[{}]'.format(s)
+        return f'Tuple[{s}]'
 
     def visit_uninhabited_type(self, t: UninhabitedType) -> str:
         return "Any"
@@ -830,7 +826,7 @@ class TypeFormatter(TypeStrVisitor):
 
     def visit_union_type(self, t: UnionType) -> str:
         if len(t.items) == 2 and is_optional(t):
-            return "Optional[{}]".format(remove_optional(t).accept(self))
+            return f"Optional[{remove_optional(t).accept(self)}]"
         else:
             return super().visit_union_type(t)
 
@@ -844,9 +840,9 @@ class TypeFormatter(TypeStrVisitor):
             # other thing, and I suspect this will produce more better
             # results than falling back to `...`
             args = [typ.accept(self) for typ in t.arg_types]
-            arg_str = "[{}]".format(", ".join(args))
+            arg_str = f"[{', '.join(args)}]"
 
-        return "Callable[{}, {}]".format(arg_str, t.ret_type.accept(self))
+        return f"Callable[{arg_str}, {t.ret_type.accept(self)}]"
 
 
 class StrToText(TypeTranslator):
@@ -989,7 +985,7 @@ def refine_union(t: UnionType, s: ProperType) -> Type:
 
     # Turn strict optional on when simplifying the union since we
     # don't want to drop Nones.
-    with strict_optional_set(True):
+    with state.strict_optional_set(True):
         return make_simplified_union(new_items)
 
 

@@ -47,10 +47,11 @@ from mypy.types import (
 from mypy import message_registry, errorcodes as codes
 from mypy.errors import Errors
 from mypy.fastparse import (
-    TypeConverter, parse_type_comment, bytes_to_human_readable_repr, parse_type_ignore_tag,
+    TypeConverter, parse_type_comment, parse_type_ignore_tag,
     TYPE_IGNORE_PATTERN, INVALID_TYPE_IGNORE
 )
 from mypy.options import Options
+from mypy.util import bytes_to_human_readable_repr
 from mypy.reachability import mark_block_unreachable
 
 try:
@@ -216,7 +217,7 @@ class ASTConverter:
         if (module and stmts and self.type_ignores
                 and min(self.type_ignores) < self.get_lineno(stmts[0])):
             self.errors.used_ignored_lines[self.errors.file][min(self.type_ignores)].append(
-                codes.MISC.code)
+                codes.FILE.code)
             block = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
             mark_block_unreachable(block)
             return [block]
@@ -407,7 +408,7 @@ class ASTConverter:
                     arg_types.insert(0, AnyType(TypeOfAny.special_form))
             except SyntaxError:
                 stripped_type = type_comment.split("#", 2)[0].strip()
-                err_msg = '{} "{}"'.format(TYPE_COMMENT_SYNTAX_ERROR, stripped_type)
+                err_msg = f'{TYPE_COMMENT_SYNTAX_ERROR} "{stripped_type}"'
                 self.fail(err_msg, lineno, n.col_offset)
                 arg_types = [AnyType(TypeOfAny.from_error)] * len(args)
                 return_type = AnyType(TypeOfAny.from_error)
@@ -544,14 +545,14 @@ class ASTConverter:
         if isinstance(arg, Name):
             v = arg.id
         elif isinstance(arg, ast27_Tuple):
-            v = '__tuple_arg_{}'.format(index + 1)
+            v = f'__tuple_arg_{index + 1}'
             rvalue = NameExpr(v)
             rvalue.set_line(line)
             assignment = AssignmentStmt([self.visit(arg)], rvalue)
             assignment.set_line(line)
             decompose_stmts.append(assignment)
         else:
-            raise RuntimeError("'{}' is not a valid argument.".format(ast27.dump(arg)))
+            raise RuntimeError(f"'{ast27.dump(arg)}' is not a valid argument.")
         return Var(v)
 
     def get_type(self,
@@ -577,7 +578,7 @@ class ASTConverter:
         if isinstance(n, Name):
             return n.id
         elif isinstance(n, Attribute):
-            return "{}.{}".format(self.stringify_name(n.value), n.attr)
+            return f"{self.stringify_name(n.value)}.{n.attr}"
         else:
             assert False, "can't stringify " + str(type(n))
 
@@ -664,19 +665,23 @@ class ASTConverter:
                         typ)
         return self.set_line(stmt, n)
 
+    # 'raise' [test [',' test [',' test]]]
     def visit_Raise(self, n: ast27.Raise) -> RaiseStmt:
+        legacy_mode = False
         if n.type is None:
             e = None
         else:
             if n.inst is None:
                 e = self.visit(n.type)
             else:
+                legacy_mode = True
                 if n.tback is None:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst)])
                 else:
                     e = TupleExpr([self.visit(n.type), self.visit(n.inst), self.visit(n.tback)])
 
         stmt = RaiseStmt(e, None)
+        stmt.legacy_mode = legacy_mode
         return self.set_line(stmt, n)
 
     # TryExcept(stmt* body, excepthandler* handlers, stmt* orelse)

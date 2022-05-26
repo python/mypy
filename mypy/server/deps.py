@@ -89,7 +89,8 @@ from mypy.nodes import (
     ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
     TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
     TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr
+    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    AssertTypeExpr,
 )
 from mypy.operators import (
     op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
@@ -99,7 +100,7 @@ from mypy.types import (
     Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
     TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
     FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType
+    TypeAliasType, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
 )
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.util import correct_relative_import
@@ -360,20 +361,20 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
-            prefix = '%s.%s' % (self.scope.current_full_target(), info.name)
+            prefix = f'{self.scope.current_full_target()}.{info.name}'
             for name, symnode in info.names.items():
                 if not name.startswith('_') and isinstance(symnode.node, Var):
                     typ = symnode.node.type
                     if typ:
                         self.add_type_dependencies(typ)
                         self.add_type_dependencies(typ, target=make_trigger(prefix))
-                        attr_target = make_trigger('%s.%s' % (prefix, name))
+                        attr_target = make_trigger(f'{prefix}.{name}')
                         self.add_type_dependencies(typ, target=attr_target)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypedDictExpr):
             # Depend on the underlying typeddict type
             info = rvalue.analyzed.info
             assert info.typeddict_type is not None
-            prefix = '%s.%s' % (self.scope.current_full_target(), info.name)
+            prefix = f'{self.scope.current_full_target()}.{info.name}'
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, EnumCallExpr):
             # Enum values are currently not checked, but for future we add the deps on them
@@ -439,7 +440,7 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = self.get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger('%s.%s' % (self.scope.current_full_target(),
+                attr_trigger = make_trigger('{}.{}'.format(self.scope.current_full_target(),
                                                        lvalue.name))
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
@@ -686,6 +687,10 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_cast_expr(e)
         self.add_type_dependencies(e.type)
 
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(e)
+        self.add_type_dependencies(e.type)
+
     def visit_type_application(self, e: TypeApplication) -> None:
         super().visit_type_application(e)
         for typ in e.types:
@@ -822,10 +827,10 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):
-            member = '%s.%s' % (typ.type.fullname, name)
+            member = f'{typ.type.fullname}.{name}'
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-            member = '%s.%s' % (typ.type_object().fullname, name)
+            member = f'{typ.type_object().fullname}.{name}'
             triggers = [make_trigger(member)]
             triggers.extend(self.attribute_triggers(typ.fallback, name))
             return triggers
@@ -961,6 +966,22 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         triggers.extend(self.get_type_triggers(typ.upper_bound))
         return triggers
 
+    def visit_type_var_tuple(self, typ: TypeVarTupleType) -> List[str]:
+        triggers = []
+        if typ.fullname:
+            triggers.append(make_trigger(typ.fullname))
+        triggers.extend(self.get_type_triggers(typ.upper_bound))
+        return triggers
+
+    def visit_unpack_type(self, typ: UnpackType) -> List[str]:
+        return typ.type.accept(self)
+
+    def visit_parameters(self, typ: Parameters) -> List[str]:
+        triggers = []
+        for arg in typ.arg_types:
+            triggers.extend(self.get_type_triggers(arg))
+        return triggers
+
     def visit_typeddict_type(self, typ: TypedDictType) -> List[str]:
         triggers = []
         for item in typ.items.values():
@@ -1019,4 +1040,4 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
         for target in sorted(targets):
-            print('    %s' % target)
+            print(f'    {target}')

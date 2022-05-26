@@ -3,14 +3,13 @@
 // These are registered in mypyc.primitives.misc_ops.
 
 #include <Python.h>
-#include "pythoncapi_compat.h"
 #include "CPy.h"
 
 PyObject *CPy_GetCoro(PyObject *obj)
 {
     // If the type has an __await__ method, call it,
     // otherwise, fallback to calling __iter__.
-    PyAsyncMethods* async_struct = obj->ob_type->tp_as_async;
+    PyAsyncMethods* async_struct = Py_TYPE(obj)->tp_as_async;
     if (async_struct != NULL && async_struct->am_await != NULL) {
         return (async_struct->am_await)(obj);
     } else {
@@ -25,7 +24,7 @@ PyObject *CPyIter_Send(PyObject *iter, PyObject *val)
     // Do a send, or a next if second arg is None.
     // (This behavior is to match the PEP 380 spec for yield from.)
     _Py_IDENTIFIER(send);
-    if (val == Py_None) {
+    if (Py_IsNone(val)) {
         return CPyIter_Next(iter);
     } else {
         return _PyObject_CallMethodIdOneArg(iter, &PyId_send, val);
@@ -46,7 +45,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
 {
     _Py_IDENTIFIER(close);
     _Py_IDENTIFIER(throw);
-    PyObject *exc_type = CPy_ExcState()->exc_type;
+    PyObject *exc_type = (PyObject *)Py_TYPE(CPy_ExcState()->exc_value);
     PyObject *type, *value, *traceback;
     PyObject *_m;
     PyObject *res;
@@ -55,7 +54,7 @@ int CPy_YieldFromErrorHandle(PyObject *iter, PyObject **outp)
     if (PyErr_GivenExceptionMatches(exc_type, PyExc_GeneratorExit)) {
         _m = _PyObject_GetAttrId(iter, &PyId_close);
         if (_m) {
-            res = PyObject_CallFunctionObjArgs(_m, NULL);
+            res = PyObject_CallNoArgs(_m);
             Py_DECREF(_m);
             if (!res)
                 return 2;
@@ -361,7 +360,7 @@ CPyDataclass_SleightOfHand(PyObject *dataclass_dec, PyObject *tp,
     }
 
     /* Run the @dataclass descriptor */
-    res = PyObject_CallFunctionObjArgs(dataclass_dec, tp, NULL);
+    res = PyObject_CallOneArg(dataclass_dec, tp);
     if (!res) {
         goto fail;
     }
@@ -438,7 +437,7 @@ fail:
 }
 
 CPyTagged CPyTagged_Id(PyObject *o) {
-    return CPyTagged_FromSsize_t((Py_ssize_t)o);
+    return CPyTagged_FromVoidPtr(o);
 }
 
 #define MAX_INT_CHARS 22
@@ -640,7 +639,7 @@ CPy_Super(PyObject *builtins, PyObject *self) {
     if (!super_type)
         return NULL;
     PyObject *result = PyObject_CallFunctionObjArgs(
-        super_type, (PyObject*)self->ob_type, self, NULL);
+        super_type, (PyObject*)Py_TYPE(self), self, NULL);
     Py_DECREF(super_type);
     return result;
 }
