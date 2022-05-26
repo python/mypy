@@ -4505,7 +4505,9 @@ class SemanticAnalyzer(NodeVisitor[None],
         """
         # TODO: Forward reference to name imported in class body is not
         #       caught.
-        assert self.statement  # we are at class scope
+        if self.statement is None:
+            # Assume it's fine -- don't have enough context to check
+            return True
         return (node is None
                 or self.is_textually_before_statement(node)
                 or not self.is_defined_in_current_module(node.fullname)
