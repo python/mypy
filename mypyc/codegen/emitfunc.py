@@ -210,6 +210,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
+            # We sometimes assign from an integer prepresentation of a pointer
+            # to a real pointer, and C compilers insist on a cast.
+            if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
+                src = f'(void *){src}'
             self.emit_line(f'{dest} = {src};')
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
@@ -550,6 +554,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        if op.op == IntOp.RIGHT_SHIFT:
+            # Signed right shift
+            lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
+            rhs = self.emit_signed_int_cast(op.rhs.type) + rhs
         self.emit_line(f'{dest} = {lhs} {op.op_str[op.op]} {rhs};')
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:

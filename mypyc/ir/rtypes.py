@@ -208,7 +208,7 @@ class RPrimitive(RType):
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
-        elif ctype == 'PyObject **':
+        elif ctype in ('PyObject **', 'void *'):
             self.c_undefined = 'NULL'
         else:
             assert False, 'Unrecognized ctype: %r' % ctype
@@ -302,8 +302,12 @@ else:
     c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
                                         ctype='int64_t', size=8)
 
-# Low level pointer, represented as integer in C backends
+# Untyped pointer, represented as integer in the C backend
 pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=False, ctype="CPyPtr")
+
+# Untyped pointer, represented as void * in the C backend
+c_pointer_rprimitive: Final = RPrimitive("c_ptr", is_unboxed=False, is_refcounted=False,
+                                         ctype="void *")
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
