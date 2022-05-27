@@ -118,6 +118,27 @@ PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index) {
     }
 }
 
+PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index) {
+    size_t size = PyList_GET_SIZE(list);
+    if (likely((uint64_t)index < size)) {
+        PyObject *result = PyList_GET_ITEM(list, index);
+        Py_INCREF(result);
+        return result;
+    }
+    if (index >= 0) {
+        PyErr_SetString(PyExc_IndexError, "list index out of range");
+        return NULL;
+    }
+    index += size;
+    if (index < 0) {
+        PyErr_SetString(PyExc_IndexError, "list index out of range");
+        return NULL;
+    }
+    PyObject *result = PyList_GET_ITEM(list, index);
+    Py_INCREF(result);
+    return result;
+}
+
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     if (CPyTagged_CheckShort(index)) {
         Py_ssize_t n = CPyTagged_ShortAsSsize_t(index);
