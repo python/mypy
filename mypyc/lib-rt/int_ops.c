@@ -538,6 +538,7 @@ int64_t CPyInt64_Divide(int64_t x, int64_t y) {
         return CPY_LL_INT_ERROR;
     }
     int64_t d = x / y;
+    // Adjust for Python semantics
     if (((x < 0) != (y < 0)) && d * y != x) {
         d--;
     }
@@ -554,6 +555,41 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
         return 0;
     }
     int64_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+int32_t CPyInt32_Divide(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == -1LL << 31) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int32_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == -1LL << 31) {
+        return 0;
+    }
+    int32_t d = x % y;
+    // Adjust for Python semantics
     if (((x < 0) != (y < 0)) && d != 0) {
         d += y;
     }

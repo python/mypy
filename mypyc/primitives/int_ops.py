@@ -12,7 +12,7 @@ from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, bit_rprimitive, int64_rprimitive, RType
+    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
@@ -176,4 +176,16 @@ int64_mod_op = custom_op(
     arg_types=[int64_rprimitive, int64_rprimitive],
     return_type=int64_rprimitive,
     c_function_name='CPyInt64_Remainder',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_divide_op = custom_op(
+    arg_types=[int32_rprimitive, int32_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name='CPyInt32_Divide',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_mod_op = custom_op(
+    arg_types=[int32_rprimitive, int32_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name='CPyInt32_Remainder',
     error_kind=ERR_MAGIC_OVERLAPPING)
