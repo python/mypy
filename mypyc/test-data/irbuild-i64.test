@@ -1028,24 +1028,56 @@ L4:
 [case testBorrowOverI64Arithmetic]
 from mypy_extensions import i64
 
-def add(c: C) -> i64:
+def add_simple(c: C) -> i64:
     return c.x + c.y
+
+def inplace_add_simple(c: C) -> None:
+    c.x += c.y
+
+def add_borrow(d: D) -> i64:
+    return d.c.x + d.c.y
+
+class D:
+    c: C
 
 class C:
     x: i64
     y: i64
 [out]
-def add(c):
+def add_simple(c):
     c :: __main__.C
     r0, r1, r2 :: int64
 L0:
-    r0 = borrow c.x
-    r1 = borrow c.y
+    r0 = c.x
+    r1 = c.y
     r2 = r0 + r1
-    keep_alive c, c
     return r2
+def inplace_add_simple(c):
+    c :: __main__.C
+    r0, r1, r2 :: int64
+    r3 :: bool
+L0:
+    r0 = c.x
+    r1 = c.y
+    r2 = r0 + r1
+    c.x = r2; r3 = is_error
+    return 1
+def add_borrow(d):
+    d :: __main__.D
+    r0 :: __main__.C
+    r1 :: int64
+    r2 :: __main__.C
+    r3, r4 :: int64
+L0:
+    r0 = borrow d.c
+    r1 = r0.x
+    r2 = borrow d.c
+    r3 = r2.y
+    r4 = r1 + r3
+    keep_alive d, d
+    return r4
 
-[case testBorrowOverI64ListGetItem]
+[case testBorrowOverI64ListGetItem1]
 from typing import List
 from mypy_extensions import i64
 
@@ -1078,3 +1110,29 @@ L0:
     r6 = r5.s
     keep_alive a, n, r4
     return r6
+
+[case testBorrowOverI64ListGetItem2]
+from typing import List
+from mypy_extensions import i64
+
+def f(a: List[i64], n: i64) -> bool:
+    if a[n] == 0:
+        return True
+    return False
+[out]
+def f(a, n):
+    a :: list
+    n :: int64
+    r0 :: object
+    r1 :: int64
+    r2 :: bit
+L0:
+    r0 = CPyList_GetItemInt64Borrow(a, n)
+    r1 = unbox(int64, r0)
+    r2 = r1 == 0
+    keep_alive a, n
+    if r2 goto L1 else goto L2 :: bool
+L1:
+    return 1
+L2:
+    return 0

@@ -383,9 +383,12 @@ class LowLevelIRBuilder:
         """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
-            if borrow:
+            op = GetAttr(obj, attr, line, borrow=borrow)
+            # For non-refcounted attribute types, the borrow might be
+            # disabled even if requested, so don't check 'borrow'.
+            if op.is_borrowed:
                 self.keep_alives.append(obj)
-            return self.add(GetAttr(obj, attr, line, borrow=borrow))
+            return self.add(op)
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:
@@ -1067,9 +1070,11 @@ class LowLevelIRBuilder:
             elif op in ComparisonOp.signed_ops:
                 if is_int_rprimitive(rtype):
                     rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
+                op_id = ComparisonOp.signed_ops[op]
                 if is_fixed_width_rtype(rreg.type):
-                    op_id = ComparisonOp.signed_ops[op]
                     return self.comparison_op(lreg, rreg, op_id, line)
+                if isinstance(rreg, Integer):
+                    return self.comparison_op(lreg, Integer(rreg.value >> 1, ltype), op_id, line)
         elif is_fixed_width_rtype(rtype):
             if (
                 (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
@@ -1088,9 +1093,12 @@ class LowLevelIRBuilder:
                         rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
                 else:
                     return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
-            elif op in ComparisonOp.signed_ops and is_int_rprimitive(ltype):
-                lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
+            elif op in ComparisonOp.signed_ops:
+                if is_int_rprimitive(ltype):
+                    lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
+                if isinstance(lreg, Integer):
+                    return self.comparison_op(Integer(lreg.value >> 1, rtype), rreg, op_id, line)
                 return self.comparison_op(lreg, rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])

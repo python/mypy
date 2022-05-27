@@ -8,8 +8,8 @@ from mypy.nodes import (
     Expression, MemberExpr, Var, IntExpr, FloatExpr, StrExpr, BytesExpr, NameExpr, OpExpr,
     UnaryExpr, ComparisonExpr, LDEF
 )
-from mypyc.ir.ops import BasicBlock
-from mypyc.ir.rtypes import is_tagged
+from mypyc.ir.ops import BasicBlock, Integer
+from mypyc.ir.rtypes import is_tagged, is_fixed_width_rtype
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
 
@@ -58,7 +58,8 @@ def maybe_process_conditional_comparison(self: IRBuilder,
         return False
     ltype = self.node_type(e.operands[0])
     rtype = self.node_type(e.operands[1])
-    if not is_tagged(ltype) or not is_tagged(rtype):
+    if not ((is_tagged(ltype) or is_fixed_width_rtype(ltype)) and
+            (is_tagged(rtype) or is_fixed_width_rtype(rtype))):
         return False
     op = e.operators[0]
     if op not in ('==', '!=', '<', '<=', '>', '>='):
@@ -68,8 +69,13 @@ def maybe_process_conditional_comparison(self: IRBuilder,
     borrow_left = is_borrow_friendly_expr(self, right_expr)
     left = self.accept(left_expr, can_borrow=borrow_left)
     right = self.accept(right_expr, can_borrow=True)
-    # "left op right" for two tagged integers
-    self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
+    if is_fixed_width_rtype(ltype) or is_fixed_width_rtype(rtype):
+        reg = self.binary_op(left, right, op, e.line)
+        self.builder.flush_keep_alives()
+        self.add_bool_branch(reg, true, false)
+    else:
+        # "left op right" for two tagged integers
+        self.builder.compare_tagged_condition(left, right, op, true, false, e.line)
     return True
 
 
