@@ -202,3 +202,10 @@ int64_to_int_op = custom_op(
     return_type=int_rprimitive,
     c_function_name='CPyTagged_FromSsize_t',
     error_kind=ERR_MAGIC)
+
+# Convert tagged int (as PyObject *) to i32
+int_to_int32_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyLong_AsInt32',
+    error_kind=ERR_MAGIC_OVERLAPPING)

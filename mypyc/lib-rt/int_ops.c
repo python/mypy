@@ -562,6 +562,33 @@ int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
     return d;
 }
 
+int32_t CPyLong_AsInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        int size = lobj->ob_base.ob_size;
+        if (size == 1) {
+            // Fast path
+            return lobj->ob_digit[0];
+        }
+    }
+    // Slow path
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7fffffffLL || result < -0x80000000LL) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
 int32_t CPyInt32_Divide(int32_t x, int32_t y) {
     if (y == 0) {
         PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
