@@ -580,9 +580,11 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                         return NoneType()
             else:
                 alt_promote = t.type.alt_promote
-                if alt_promote and (alt_promote is self.s.type or
-                                    alt_promote is self.s.type.alt_promote):
-                    return Instance(alt_promote, [])
+                if alt_promote and alt_promote is self.s.type:
+                    return t
+                alt_promote = self.s.type.alt_promote
+                if alt_promote and alt_promote is t.type:
+                    return self.s
                 if is_subtype(t, self.s):
                     return t
                 elif is_subtype(self.s, t):
