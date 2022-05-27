@@ -64,7 +64,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
 )
-from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.int_ops import int_comparison_op_mapping, int64_divide_op
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
     unicode_compare, str_check_if_true, str_ssize_t_size_op
@@ -908,8 +908,11 @@ class LowLevelIRBuilder:
             if op.endswith('='):
                 op = op[:-1]
             if is_int64_rprimitive(rtype):
-                op_id = IntOp.op_to_id[op]
-                return self.int_op(ltype, lreg, rreg, op_id, line)
+                if op != '//':
+                    op_id = IntOp.op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
             if isinstance(rreg, Integer):
                 # TODO: Check what kind of Integer
                 if op != '//':
@@ -1443,27 +1446,34 @@ class LowLevelIRBuilder:
             op: IntOp.* constant (e.g. IntOp.ADD)
         """
         if op == IntOp.DIV:
-            # Perform floor division (native division truncates)
-            res = Register(type)
-            div = self.int_op(type, lhs, rhs, op, line)
-            self.add(Assign(res, div))
-            neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
-            neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
-            diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
-            tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
-            self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
-            self.activate_block(tricky)
-            mul = self.int_op(type, res, rhs, IntOp.MUL, line)
-            mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
-            adjust = BasicBlock()
-            self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
-            self.activate_block(adjust)
-            adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
-            self.add(Assign(res, adj))
-            self.add(Goto(done))
-            self.activate_block(done)
-            return res
+            # Inline simple division by a constant, so that C
+            # compilers can optimize more
+            if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
+                return self.inline_fixed_width_divide(type, lhs, rhs, line)
+            return self.call_c(int64_divide_op, [lhs, rhs], line)
         return self.int_op(type, lhs, rhs, op, line)
+
+    def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
+        # Perform floor division (native division truncates)
+        res = Register(type)
+        div = self.int_op(type, lhs, rhs, IntOp.DIV, line)
+        self.add(Assign(res, div))
+        neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
+        neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
+        diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+        tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
+        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        mul = self.int_op(type, res, rhs, IntOp.MUL, line)
+        mul_eq = self.add(ComparisonOp(mul, lhs, ComparisonOp.EQ, line))
+        adjust = BasicBlock()
+        self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
 
     def comparison_op(self, lhs: Value, rhs: Value, op: int, line: int) -> Value:
         return self.add(ComparisonOp(lhs, rhs, op, line))

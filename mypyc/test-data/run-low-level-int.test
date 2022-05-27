@@ -68,7 +68,10 @@ def div_by_3(x: i64) -> i64:
 def div_by_neg_3(x: i64) -> i64:
     return x // -3
 
-def test_divide() -> None:
+def div(x: i64, y: i64) -> i64:
+    return x // y
+
+def test_divide_by_constant() -> None:
     for i in range(-1000, 1000):
         assert div_by_3(i) == i // 3
     for i in range(-2**63, -2**63 + 1000):
@@ -76,13 +79,29 @@ def test_divide() -> None:
     for i in range(2**63 - 1000, 2**63 - 1):
         assert div_by_3(i) == i // 3
 
-def test_divide_neg() -> None:
+def test_divide_by_negative_constant() -> None:
     for i in range(-1000, 1000):
         assert div_by_neg_3(i) == i // -3
     for i in range(-2**63, -2**63 + 1000):
         assert div_by_neg_3(i) == i // -3
     for i in range(2**63 - 1000, 2**63 - 1):
         assert div_by_neg_3(i) == i // -3
+
+def test_divide_by_variable() -> None:
+    values = (list(range(-50, 50)) +
+              list(range(-2**63, -2**63 + 10)) +
+              list(range(2**63 - 10, 2**63 - 1)))
+    for x in values:
+        for y in values:
+            if y != 0:
+                if x // y == 2**63:
+                    with assertRaises(OverflowError, "integer division overflow"):
+                        div(x, y)
+                else:
+                    assert div(x, y) == x // y
+            else:
+                with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
+                    div(x, y)
 
 def get_item(a: List[i64], n: i64) -> i64:
     return a[n]

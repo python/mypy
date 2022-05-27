@@ -243,43 +243,28 @@ class Exception(BaseException):
     def __init__(self, message: Optional[str] = None) -> None: pass
 
 class Warning(Exception): pass
-
 class UserWarning(Warning): pass
-
 class TypeError(Exception): pass
-
 class ValueError(Exception): pass
-
 class AttributeError(Exception): pass
-
 class ImportError(Exception): pass
-
 class NameError(Exception): pass
-
 class LookupError(Exception): pass
-
 class KeyError(LookupError): pass
-
 class IndexError(LookupError): pass
-
 class RuntimeError(Exception): pass
-
 class UnicodeEncodeError(RuntimeError): pass
-
 class UnicodeDecodeError(RuntimeError): pass
-
 class NotImplementedError(RuntimeError): pass
 
 class StopIteration(Exception):
     value: Any
 
 class ArithmeticError(Exception): pass
-
-class ZeroDivisionError(Exception): pass
+class ZeroDivisionError(ArithmeticError): pass
+class OverflowError(ArithmeticError): pass
 
 class GeneratorExit(BaseException): pass
-
-class OverflowError(ArithmeticError): pass
 
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass

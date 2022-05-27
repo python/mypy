@@ -322,6 +322,12 @@ from mypy_extensions import i64
 
 def constant_divisor(x: i64) -> i64:
     return x // 7
+def variable_divisor(x: i64, y: i64) -> i64:
+    return x // y
+def divide_by_neg_one(x: i64) -> i64:
+    return x // -1
+def divide_by_neg_zero(x: i64) -> i64:
+    return x // 0
 [out]
 def constant_divisor(x):
     x, r0, r1 :: int64
@@ -345,3 +351,18 @@ L2:
     r1 = r7
 L3:
     return r1
+def variable_divisor(x, y):
+    x, y, r0 :: int64
+L0:
+    r0 = CPyInt64_Divide(x, y)
+    return r0
+def divide_by_neg_one(x):
+    x, r0 :: int64
+L0:
+    r0 = CPyInt64_Divide(x, -1)
+    return r0
+def divide_by_neg_zero(x):
+    x, r0 :: int64
+L0:
+    r0 = CPyInt64_Divide(x, 0)
+    return r0
