@@ -1068,8 +1068,6 @@ class IntOp(RegisterOp):
         RIGHT_SHIFT: '>>',
     }
 
-    op_to_id = {op: op_id for op_id, op in op_str.items()}  # type: Final
-
     def __init__(self, type: RType, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
         self.type = type
@@ -1082,6 +1080,11 @@ class IntOp(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_int_op(self)
+
+
+# We can't have this in the IntOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+int_op_to_id: Final = {op: op_id for op_id, op in IntOp.op_str.items()}
 
 
 class ComparisonOp(RegisterOp):
