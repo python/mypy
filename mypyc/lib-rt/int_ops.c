@@ -517,6 +517,13 @@ int64_t CPyLong_AsInt64(PyObject *o) {
     // Slow path
     int overflow;
     int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
-    // TODO: Handle errors
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            return CPY_LL_INT_ERROR;
+        }
+    }
     return result;
 }
