@@ -258,11 +258,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                list_set_item_op.is_borrowed, list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
-    def test_box(self) -> None:
+    def test_box_int(self) -> None:
         self.assert_emit(Box(self.n),
                          """cpy_r_r0 = CPyTagged_StealAsObject(cpy_r_n);""")
 
-    def test_unbox(self) -> None:
+    def test_unbox_int(self) -> None:
         self.assert_emit(Unbox(self.m, int_rprimitive, 55),
                          """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
@@ -270,6 +270,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                 CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
                             }
                          """)
+
+    def test_box_i64(self) -> None:
+        self.assert_emit(Box(self.i64),
+                         """cpy_r_r0 = PyLong_FromLongLong(cpy_r_i64);""")
+
+    def test_unbox_i64(self) -> None:
+        self.assert_emit(Unbox(self.o, int64_rprimitive, 55),
+                         """cpy_r_r0 = CPyLong_AsInt64(cpy_r_o);""")
 
     def test_list_append(self) -> None:
         self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],

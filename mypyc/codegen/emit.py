@@ -765,6 +765,13 @@ class Emitter:
             self.emit_line(failure)
             self.emit_line('} else')
             self.emit_line(f'    {dest} = 1;')
+        elif is_int64_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            if declare_dest:
+                self.emit_line(f'int64_t {dest};')
+            self.emit_line(f'{dest} = CPyLong_AsInt64({src});')
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
