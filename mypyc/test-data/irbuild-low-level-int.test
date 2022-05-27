@@ -805,3 +805,52 @@ L3:
     r3 = r4
 L4:
     return r3
+
+[case testLowLevelIntTuple]
+from typing import Tuple
+from mypy_extensions import i64
+
+def f(x: i64, y: i64) -> Tuple[i64, i64]:
+    return x, y
+
+def g() -> Tuple[i64, i64]:
+    # TODO: Avoid boxing and unboxing
+    return 1, 2
+
+def h() -> i64:
+    x, y = g()
+    t = g()
+    return x + y + t[0]
+[out]
+def f(x, y):
+    x, y :: int64
+    r0 :: tuple[int64, int64]
+L0:
+    r0 = (x, y)
+    return r0
+def g():
+    r0 :: tuple[int, int]
+    r1 :: object
+    r2 :: tuple[int64, int64]
+L0:
+    r0 = (2, 4)
+    r1 = box(tuple[int, int], r0)
+    r2 = unbox(tuple[int64, int64], r1)
+    return r2
+def h():
+    r0 :: tuple[int64, int64]
+    r1, x, r2, y :: int64
+    r3, t :: tuple[int64, int64]
+    r4, r5, r6 :: int64
+L0:
+    r0 = g()
+    r1 = r0[0]
+    x = r1
+    r2 = r0[1]
+    y = r2
+    r3 = g()
+    t = r3
+    r4 = x + y
+    r5 = t[0]
+    r6 = r4 + r5
+    return r6
