@@ -383,7 +383,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.LEFT_SHIFT, 1),
                          """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.RIGHT_SHIFT, 1),
-                         """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
+                         """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 >> (Py_ssize_t)cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.i64, self.i64_1, IntOp.RIGHT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_i64 >> cpy_r_i64_1;""")
 
     def test_comparison_op(self) -> None:
         # signed
