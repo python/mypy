@@ -1044,3 +1044,37 @@ L0:
     r2 = r0 + r1
     keep_alive c, c
     return r2
+
+[case testBorrowOverI64ListGetItem]
+from typing import List
+from mypy_extensions import i64
+
+def f(n: i64) -> str:
+    a = [C()]
+    return a[n].s
+
+class C:
+    s: str
+[out]
+def f(n):
+    n :: int64
+    r0 :: __main__.C
+    r1 :: list
+    r2, r3 :: ptr
+    a :: list
+    r4 :: object
+    r5 :: __main__.C
+    r6 :: str
+L0:
+    r0 = C()
+    r1 = PyList_New(1)
+    r2 = get_element_ptr r1 ob_item :: PyListObject
+    r3 = load_mem r2 :: ptr*
+    set_mem r3, r0 :: builtins.object*
+    keep_alive r1
+    a = r1
+    r4 = CPyList_GetItemInt64Borrow(a, n)
+    r5 = borrow cast(__main__.C, r4)
+    r6 = r5.s
+    keep_alive a, n, r4
+    return r6
