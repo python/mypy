@@ -1,4 +1,4 @@
-[case testLowLevelIntBasics]
+[case testLowLevelIntBasicOps]
 from typing import List
 
 MYPY = False
@@ -11,8 +11,9 @@ def inc(n: i64) -> i64:
     return n + 1
 
 def test_inc() -> None:
-    n = 1
-    m = 2
+    # Use int() to avoid constant folding
+    n = 1 + int()
+    m = 2 + int()
     assert inc(n) == m
 
 def min_ll(x: i64, y: i64) -> i64:
@@ -22,9 +23,9 @@ def min_ll(x: i64, y: i64) -> i64:
         return y
 
 def test_min() -> None:
-    assert min_ll(1, 2) == 1
-    assert min_ll(2, 1) == 1
-    assert min_ll(1, 1) == 1
+    assert min_ll(1 + int(), 2) == 1
+    assert min_ll(2 + int(), 1) == 1
+    assert min_ll(1 + int(), 1) == 1
 
 def get_item(a: List[i64], n: i64) -> i64:
     return a[n]
@@ -42,3 +43,77 @@ def test_get_list_item() -> None:
     with assertRaises(IndexError, "list index out of range"):
         get_item(a, -4)
     # TODO: Very large/small values and indexes
+
+def test_simple_arithmetic_ops() -> None:
+    zero: i64 = int()
+    one: i64 = zero + 1
+    two: i64 = one + 1
+    neg_one: i64 = -one
+    assert one + one == 2
+    assert one + two == 3
+    assert one + neg_one == 0
+    assert one - one == 0
+    assert one - two == -1
+    assert one * one == 1
+    assert one * two == 2
+    assert two * two == 4
+    assert two * neg_one == -2
+    assert neg_one * one == -1
+    assert neg_one * neg_one == 1
+    assert two * 0 == 0
+    assert 0 * two == 0
+    assert -one == -1
+    assert -two == -2
+    assert -neg_one == 1
+    assert -zero == 0
+
+[case testLowLevelIntErrorValues]
+from typing import Any
+
+MYPY = False
+if MYPY:
+    from mypy_extensions import i64
+
+from testutil import assertRaises
+
+def maybe_raise(n: i64, error: bool) -> i64:
+    if error:
+        raise ValueError()
+    return n
+
+def test_error_value() -> None:
+    for i in range(-1000, 1000):
+        assert maybe_raise(i, False) == i
+    with assertRaises(ValueError):
+        maybe_raise(0, True)
+
+class C:
+    def maybe_raise(self, n: i64, error: bool) -> i64:
+        if error:
+            raise ValueError()
+        return n
+
+def test_method_error_value() -> None:
+    for i in range(-1000, 1000):
+        assert C().maybe_raise(i, False) == i
+    with assertRaises(ValueError):
+        C().maybe_raise(0, True)
+
+def test_unbox_int() -> None:
+    for i in list(range(-1000, 1000)) + [-(1 << 63), (1 << 63) - 1]:
+        o: Any = i
+        x: i64 = i
+        assert x == i
+        y: i64 = o
+        assert y == i
+
+def test_unbox_int_fails() -> None:
+    o: Any = 'x'
+    with assertRaises(TypeError, "an integer is required (got type str)"):
+        x: i64 = o
+    o2: Any = 1 << 63
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        y: i64 = o2
+    o3: Any = -(1 << 63 + 1)
+    with assertRaises(OverflowError, "int too large to convert to i64"):
+        z: i64 = o3

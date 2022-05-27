@@ -514,3 +514,33 @@ L13:
 L14:
     dec_ref r9
     goto L8
+
+[case testExceptionWithOverlappingErrorValue]
+from mypy_extensions import i64
+
+def f() -> i64:
+    return 0
+
+def g() -> i64:
+    return f()
+[out]
+def f():
+L0:
+    return 0
+def g():
+    r0 :: int64
+    r1 :: bit
+    r2 :: object
+    r3 :: int64
+L0:
+    r0 = f()
+    r1 = r0 == -113
+    if r1 goto L2 else goto L1 :: bool
+L1:
+    return r0
+L2:
+    r2 = PyErr_Occurred()
+    if not is_error(r2) goto L3 (error at g:7) else goto L1
+L3:
+    r3 = <error> :: int64
+    return r3
