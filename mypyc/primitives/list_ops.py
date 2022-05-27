@@ -127,7 +127,8 @@ method_op(
     return_type=bit_rprimitive,
     c_function_name='CPyList_SetItemInt64',
     error_kind=ERR_FALSE,
-    steals=[False, False, True])
+    steals=[False, False, True],
+    priority=2)
 
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.
