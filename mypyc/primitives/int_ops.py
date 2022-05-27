@@ -189,3 +189,9 @@ int32_mod_op = custom_op(
     return_type=int32_rprimitive,
     c_function_name='CPyInt32_Remainder',
     error_kind=ERR_MAGIC_OVERLAPPING)
+
+int_to_int64_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyLong_AsInt64',
+    error_kind=ERR_MAGIC_OVERLAPPING)
