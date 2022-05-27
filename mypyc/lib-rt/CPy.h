@@ -357,6 +357,7 @@ PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
+PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);

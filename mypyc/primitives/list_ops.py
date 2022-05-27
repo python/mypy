@@ -93,6 +93,16 @@ method_op(
     error_kind=ERR_MAGIC,
     priority=2)
 
+# Version with native int index
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, int64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemInt64Borrow',
+    is_borrowed=True,
+    error_kind=ERR_MAGIC,
+    priority=4)
+
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_op(
