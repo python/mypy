@@ -34,3 +34,18 @@ L2:
     return y
 L3:
     unreachable
+
+[case testLowLevelIntArithmetic]
+from mypy_extensions import i64
+
+def f(x: i64, y: i64) -> i64:
+    z = x + y
+    return y - z
+[out]
+def f(x, y):
+    x, y, r0, z, r1 :: int64
+L0:
+    r0 = x + y
+    z = r0
+    r1 = y - z
+    return r1
