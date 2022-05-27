@@ -111,7 +111,7 @@ class InstanceJoiner:
                 best = res
         assert best is not None
         for promote in t.type._promote:
-            promote = get_proper_type(t.type._promote)
+            promote = get_proper_type(promote)
             if isinstance(promote, Instance):
                 res = self.join_instances(promote, s)
                 if is_better(res, best):
