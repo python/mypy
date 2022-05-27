@@ -453,7 +453,6 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
                          """cpy_r_a = -2147483648LL;""")
 
-<<<<<<< HEAD
     def test_cast_and_branch_merge(self) -> None:
         op = Cast(self.r, dict_rprimitive, 1)
         next_block = BasicBlock(9)
@@ -550,8 +549,6 @@ else {
             next_branch=branch,
         )
 
-||||||| constructed merge base
-=======
     def test_extend(self) -> None:
         a = Register(int32_rprimitive, 'a')
         self.assert_emit(Extend(a, int64_rprimitive, signed=True),
@@ -570,7 +567,6 @@ else {
             self.assert_emit(Extend(a, int_rprimitive, signed=False),
                              """cpy_r_r0 = (uint32_t)cpy_r_a;""")
 
->>>>>>> Add Extend op
     def assert_emit(self,
                     op: Op,
                     expected: str,
