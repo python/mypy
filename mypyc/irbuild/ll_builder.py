@@ -35,7 +35,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
     is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype,
-    is_int32_rprimitive, is_int_rprimitive, is_pointer_rprimitive
+    is_int32_rprimitive, is_int_rprimitive, is_pointer_rprimitive, c_pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -195,13 +195,6 @@ class LowLevelIRBuilder:
         """
         src_type = src.type
         if src_type.is_unboxed and not target_type.is_unboxed:
-            if is_pointer_rprimitive(src_type):
-                # Convert an untyped pointer to a specific pointer type
-                if force:
-                    tmp = Register(target_type)
-                    self.add(Assign(tmp, src))
-                    return tmp
-                return src
             # Unboxed -> boxed
             return self.box(src)
         if ((src_type.is_unboxed and target_type.is_unboxed)
@@ -243,9 +236,12 @@ class LowLevelIRBuilder:
 
         self.activate_block(slow)
         ptr = self.int_op(
-            pointer_rprimitive, src, Integer(~1, pointer_rprimitive), IntOp.AND, line)
-        tmp = self.call_c(int_to_int64_op, [ptr], line)
+            pointer_rprimitive, src, Integer(1, pointer_rprimitive), IntOp.XOR, line)
+        ptr2 = Register(c_pointer_rprimitive)
+        self.add(Assign(ptr2, ptr))
+        tmp = self.call_c(int_to_int64_op, [ptr2], line)
         self.add(Assign(res, tmp))
+        self.add(KeepAlive([src]))
         self.goto(end)
 
         self.activate_block(end)

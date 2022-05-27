@@ -22,7 +22,7 @@ def min(x: i64, y: i64) -> i64:
     else:
         return y
 
-def all_comparisons(x: i64) -> i64:
+def all_comparisons(x: i64) -> int:
     if x == 2:
         y = 10
     elif 3 != x:
@@ -56,8 +56,6 @@ def all_comparisons(x):
     r0 :: bit
     y :: int
     r1, r2, r3, r4, r5 :: bit
-    r6 :: object
-    r7 :: int64
 L0:
     r0 = x == 2
     if r0 goto L1 else goto L2 :: bool
@@ -102,9 +100,7 @@ L15:
 L16:
 L17:
 L18:
-    r6 = box(int, y)
-    r7 = unbox(int64, r6)
-    return r7
+    return y
 
 [case testLowLevelIntArithmetic]
 from mypy_extensions import i64
@@ -753,7 +749,7 @@ L3:
 L4:
     return 1
 
-[case testLowLevelIntToFromTaggedInt_64bit]
+[case testLowLevelIntConvertIntToI64_64bit]
 from mypy_extensions import i64
 
 def int_to_i64(a: int) -> i64:
@@ -765,7 +761,8 @@ def int_to_i64(a):
     r1 :: bit
     r2, r3 :: int64
     r4 :: ptr
-    r5 :: int64
+    r5 :: c_ptr
+    r6 :: int64
 L0:
     r0 = a & 1
     r1 = r0 == 0
@@ -775,8 +772,10 @@ L1:
     r3 = r2
     goto L3
 L2:
-    r4 = a & -2
-    r5 = CPyLong_AsInt64(r4)
-    r3 = r5
+    r4 = a ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive a
 L3:
     return r3
