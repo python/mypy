@@ -1143,15 +1143,15 @@ class LowLevelIRBuilder:
         typ = value.type
         if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == 'not':
             return self.unary_not(value, line)
-        if is_int64_rprimitive(lreg.type) and expr_op == '-':
+        if is_int64_rprimitive(typ) and expr_op == '-':
             # Translate to '0 - x'
-            return self.int_op(lreg.type, Integer(0, lreg.type), lreg, IntOp.SUB, line)
-        if isinstance(lreg, Integer):
+            return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+        if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
-            value = lreg.value
-            if is_short_int_rprimitive(lreg.type):
-                value >>= 1
-            return Integer(-value, lreg.type, lreg.line)
+            num = value.value
+            if is_short_int_rprimitive(typ):
+                num >>= 1
+            return Integer(-num, typ, value.line)
         if isinstance(typ, RInstance):
             if expr_op == '-':
                 method = '__neg__'
