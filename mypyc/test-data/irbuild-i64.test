@@ -604,7 +604,7 @@ L1:
     r1 = a >= -4611686018427387904 :: signed
     if r1 goto L3 else goto L2 :: bool
 L2:
-    r2 = CPyTagged_FromSsize_t(a)
+    r2 = CPyTagged_FromInt64(a)
     r3 = r2
     goto L4
 L3:
@@ -632,7 +632,7 @@ L1:
     r1 = a >= -1073741824 :: signed
     if r1 goto L3 else goto L2 :: bool
 L2:
-    r2 = CPyTagged_FromSsize_t(a)
+    r2 = CPyTagged_FromInt64(a)
     r3 = r2
     goto L4
 L3:
@@ -796,7 +796,7 @@ L4:
     r9 = r7 >= -4611686018427387904 :: signed
     if r9 goto L6 else goto L5 :: bool
 L5:
-    r10 = CPyTagged_FromSsize_t(r7)
+    r10 = CPyTagged_FromInt64(r7)
     r11 = r10
     goto L7
 L6:

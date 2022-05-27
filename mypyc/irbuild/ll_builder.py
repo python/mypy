@@ -68,7 +68,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import (
     int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op,
-    int_to_int64_op, int64_to_int_op, int32_overflow, int_to_int32_op
+    int_to_int64_op, ssize_t_to_int_op, int32_overflow, int_to_int32_op, int64_to_int_op
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
@@ -208,6 +208,14 @@ class LowLevelIRBuilder:
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_fixed_width_rtype(src_type) and is_int_rprimitive(target_type):
                 return self.coerce_fixed_width_to_int(src, line)
+            elif (isinstance(src_type, RPrimitive)
+                  and isinstance(target_type, RPrimitive)
+                  and src_type.is_native_int
+                  and target_type.is_native_int
+                  and src_type.size == target_type.size
+                  and src_type.is_signed == target_type.is_signed):
+                # Equivalent types
+                return src
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -300,26 +308,35 @@ class LowLevelIRBuilder:
                                IntOp.LEFT_SHIFT,
                                line)
 
-        assert is_int64_rprimitive(src.type)
+        assert is_fixed_width_rtype(src.type)
+        assert isinstance(src.type, RPrimitive)
+        src_type = src.type
 
         res = Register(int_rprimitive)
 
         fast, fast2, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
 
-        c1 = self.add(ComparisonOp(src, Integer(MAX_SHORT_INT, src.type), ComparisonOp.SLE))
+        c1 = self.add(ComparisonOp(src, Integer(MAX_SHORT_INT, src_type), ComparisonOp.SLE))
         self.add(Branch(c1, fast, slow, Branch.BOOL))
 
         self.activate_block(fast)
-        c2 = self.add(ComparisonOp(src, Integer(MIN_SHORT_INT, src.type), ComparisonOp.SGE))
+        c2 = self.add(ComparisonOp(src, Integer(MIN_SHORT_INT, src_type), ComparisonOp.SGE))
         self.add(Branch(c2, fast2, slow, Branch.BOOL))
 
         self.activate_block(slow)
-        x = self.call_c(int64_to_int_op, [src], line)
+        if is_int64_rprimitive(src_type):
+            conv_op = int64_to_int_op
+        elif is_int32_rprimitive(src_type):
+            assert PLATFORM_SIZE == 4
+            conv_op = ssize_t_to_int_op
+        else:
+            assert False, src_type
+        x = self.call_c(conv_op, [src], line)
         self.add(Assign(res, x))
         self.goto(end)
 
         self.activate_block(fast2)
-        if PLATFORM_SIZE == 4:
+        if int_rprimitive.size < src_type.size:
             tmp = self.add(Truncate(src, c_pyssize_t_rprimitive))
         else:
             tmp = src
