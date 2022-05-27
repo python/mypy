@@ -21,7 +21,7 @@ from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
-    bit_rprimitive, is_bit_rprimitive
+    bit_rprimitive, is_bit_rprimitive, is_fixed_width_rtype
 )
 
 if TYPE_CHECKING:
@@ -614,7 +614,10 @@ class GetAttr(RegisterOp):
         self.attr = attr
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
-        self.type = obj.type.attr_type(attr)
+        typ = obj.type.attr_type(attr)
+        self.type = typ
+        if is_fixed_width_rtype(typ):
+            self.error_kind = ERR_NEVER
         self.is_borrowed = borrow
 
     def sources(self) -> List[Value]:
