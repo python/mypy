@@ -33,15 +33,17 @@ n32: i32 = 0
 n64: i64 = 1
 n = 2
 
-reveal_type(join(n32, n))  # N: Revealed type is "builtins.int"
-reveal_type(join(n, n32))  # N: Revealed type is "builtins.int"
-reveal_type(join(n64, n))  # N: Revealed type is "builtins.int"
-reveal_type(join(n, n64))  # N: Revealed type is "builtins.int"
-reveal_type(join(n32, n64))  # N: Revealed type is "builtins.int"
-reveal_type(join(n64, n32))  # N: Revealed type is "builtins.int"
+reveal_type(join(n32, n))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(join(n, n32))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(join(n64, n))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(join(n, n64))  # N: Revealed type is "mypy_extensions.i64"
+# i32 and i64 aren't treated as compatible
+reveal_type(join(n32, n64))  # N: Revealed type is "builtins.object"
+reveal_type(join(n64, n32))  # N: Revealed type is "builtins.object"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntMeets]
+# flags: --strict-optional
 from typing import TypeVar, Callable
 from mypy_extensions import i32, i64
 

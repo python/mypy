@@ -85,13 +85,6 @@ class InstanceJoiner:
         return result
 
     def join_instances_via_supertype(self, t: Instance, s: Instance) -> ProperType:
-        alt_promote = s.type.alt_promote
-        if alt_promote and (alt_promote is t.type or alt_promote is t.type.alt_promote):
-            return Instance(alt_promote, [])
-        alt_promote = t.type.alt_promote
-        if alt_promote and (alt_promote is s.type or alt_promote is s.type.alt_promote):
-            return Instance(alt_promote, [])
-
         # Give preference to joins via duck typing relationship, so that
         # join(int, float) == float, for example.
         for p in t.type._promote:
@@ -100,6 +93,7 @@ class InstanceJoiner:
         for p in s.type._promote:
             if is_subtype(p, t):
                 return join_types(t, p, self)
+
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
