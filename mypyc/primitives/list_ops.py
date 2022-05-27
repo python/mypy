@@ -91,7 +91,7 @@ method_op(
     return_type=object_rprimitive,
     c_function_name='CPyList_GetItemInt64',
     error_kind=ERR_MAGIC,
-    priority=2)
+    priority=5)
 
 # Version with native int index
 method_op(
@@ -101,7 +101,7 @@ method_op(
     c_function_name='CPyList_GetItemInt64Borrow',
     is_borrowed=True,
     error_kind=ERR_MAGIC,
-    priority=4)
+    priority=6)
 
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
