@@ -64,7 +64,7 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
 )
-from mypyc.primitives.int_ops import int_comparison_op_mapping, int64_divide_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping, int64_divide_op, int64_mod_op
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
     unicode_compare, str_check_if_true, str_ssize_t_size_op
@@ -924,11 +924,14 @@ class LowLevelIRBuilder:
         elif (is_int64_rprimitive(rtype)
                   and isinstance(lreg, Integer)
                   and op in FIXED_WIDTH_INT_BINARY_OPS):
+            if op != '//':
+                op_id = IntOp.op_to_id[op]
+            else:
+                op_id = IntOp.DIV
             # TODO: More ops
             if op == '+=':
                 op = '+'
             # TODO: Check what kind of Integer
-            op_id = IntOp.op_to_id[op]
             return self.fixed_width_int_op(
                 rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
 
