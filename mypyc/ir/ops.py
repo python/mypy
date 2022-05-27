@@ -90,6 +90,9 @@ ERR_MAGIC: Final = 1
 ERR_FALSE: Final = 2
 # Always fails
 ERR_ALWAYS: Final = 3
+# Like ERR_MAGIC, but the magic return overlaps with a possible return value, and
+# an extra PyErr_Occurred() check is also required
+ERR_MAGIC_OVERLAPPING: Final = 4
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -489,14 +492,17 @@ class Call(RegisterOp):
     The call target can be a module-level function or a class.
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self, fn: 'FuncDecl', args: Sequence[Value], line: int) -> None:
-        super().__init__(line)
         self.fn = fn
         self.args = list(args)
         assert len(self.args) == len(fn.sig.args)
         self.type = fn.sig.ret_type
+        ret_type = fn.sig.ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return list(self.args[:])
@@ -508,14 +514,11 @@ class Call(RegisterOp):
 class MethodCall(RegisterOp):
     """Native method call obj.method(arg, ...)"""
 
-    error_kind = ERR_MAGIC
-
     def __init__(self,
                  obj: Value,
                  method: str,
                  args: List[Value],
                  line: int = -1) -> None:
-        super().__init__(line)
         self.obj = obj
         self.method = method
         self.args = args
@@ -524,7 +527,13 @@ class MethodCall(RegisterOp):
         method_ir = self.receiver_type.class_ir.method_sig(method)
         assert method_ir is not None, "{} doesn't have method {}".format(
             self.receiver_type.name, method)
-        self.type = method_ir.ret_type
+        ret_type = method_ir.ret_type
+        self.type = ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return self.args[:] + [self.obj]
@@ -829,12 +838,14 @@ class Unbox(RegisterOp):
     representation. Only supported for types with an unboxed representation.
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self, src: Value, typ: RType, line: int) -> None:
-        super().__init__(line)
         self.src = src
         self.type = typ
+        if not typ.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return [self.src]

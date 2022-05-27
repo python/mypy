@@ -50,6 +50,10 @@ class RType:
     is_refcounted = True
     # C type; use Emitter.ctype() to access
     _ctype: str
+    # If True, error/undefined value overlaps with a valid value. To detect
+    # an exception, PyErr_Occurred() must be used in addition to checking for
+    # error value.
+    error_overlap = False
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -173,10 +177,12 @@ class RPrimitive(RType):
 
     def __init__(self,
                  name: str,
+                 *,
                  is_unboxed: bool,
                  is_refcounted: bool,
                  ctype: str = 'PyObject *',
-                 size: int = PLATFORM_SIZE) -> None:
+                 size: int = PLATFORM_SIZE,
+                 error_overlap: bool = False) -> None:
         RPrimitive.primitive_map[name] = self
 
         self.name = name
@@ -184,11 +190,16 @@ class RPrimitive(RType):
         self._ctype = ctype
         self.is_refcounted = is_refcounted
         self.size = size
-        # TODO: For low-level integers, they actually don't have undefined values
-        #       we need to figure out some way to represent here.
+        self.error_overlap = error_overlap
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('int32_t', 'int64_t', 'CPyPtr', 'uint32_t', 'uint64_t'):
+        elif ctype in ('int32_t', 'int64_t'):
+            # This is basically an arbitrary value that is pretty
+            # unlikely to overlap with a real value.
+            self.c_undefined = -113
+        elif ctype in ('CPyPtr', 'uint32_t', 'uint64_t'):
+            # TODO: For low-level integers, we need to invent an overlapping
+            #       error value, similar to int64_t above.
             self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
@@ -265,10 +276,10 @@ short_int_rprimitive: Final = RPrimitive(
 # Low level integer types (correspond to C integer types)
 
 int32_rprimitive: Final = RPrimitive(
-    "int32", is_unboxed=True, is_refcounted=False, ctype="int32_t", size=4
+    "int32", is_unboxed=True, is_refcounted=False, ctype="int32_t", size=4, error_overlap=True
 )
 int64_rprimitive: Final = RPrimitive(
-    "int64", is_unboxed=True, is_refcounted=False, ctype="int64_t", size=8
+    "int64", is_unboxed=True, is_refcounted=False, ctype="int64_t", size=8, error_overlap=True
 )
 uint32_rprimitive: Final = RPrimitive(
     "uint32", is_unboxed=True, is_refcounted=False, ctype="uint32_t", size=4
