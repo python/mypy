@@ -504,3 +504,19 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
     }
     return CPyTagged_StealFromObject(result);
 }
+
+int64_t CPyLong_AsInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        int size = lobj->ob_base.ob_size;
+        if (size == 1) {
+            // Fast path
+            return lobj->ob_digit[0];
+        }
+    }
+    // Slow path
+    int overflow;
+    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
+    // TODO: Handle errors
+    return result;
+}
