@@ -67,7 +67,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import (
     int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op,
-    int_to_int64_op
+    int_to_int64_op, int64_to_int_op
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
@@ -205,6 +205,8 @@ class LowLevelIRBuilder:
                 return Integer(src.value >> 1, int64_rprimitive)
             elif is_int_rprimitive(src_type) and is_int64_rprimitive(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
+            elif is_int64_rprimitive(src_type) and is_int_rprimitive(target_type):
+                return self.coerce_fixed_Width_to_int(src, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -242,6 +244,34 @@ class LowLevelIRBuilder:
         tmp = self.call_c(int_to_int64_op, [ptr2], line)
         self.add(Assign(res, tmp))
         self.add(KeepAlive([src]))
+        self.goto(end)
+
+        self.activate_block(end)
+        return res
+
+    def coerce_fixed_Width_to_int(self, src: Value, line: int) -> Value:
+        assert is_int64_rprimitive(src.type)
+
+        res = Register(int_rprimitive)
+
+        big, fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock(), BasicBlock()
+
+        c1 = self.add(ComparisonOp(src, Integer((1 << 62), src.type), ComparisonOp.ULT))
+        self.add(Branch(c1, fast, big, Branch.BOOL))
+
+        self.activate_block(big)
+        c2 = self.add(ComparisonOp(src, Integer(-(1 << 62), src.type), ComparisonOp.SGE))
+        self.add(Branch(c2, fast, slow, Branch.BOOL))
+
+        self.activate_block(slow)
+        x = self.call_c(int64_to_int_op, [src], line)
+        self.add(Assign(res, x))
+        self.goto(end)
+
+        self.activate_block(fast)
+        s = self.int_op(int_rprimitive, src, Integer(1, src.type), IntOp.LEFT_SHIFT,
+                        line)
+        self.add(Assign(res, s))
         self.goto(end)
 
         self.activate_block(end)

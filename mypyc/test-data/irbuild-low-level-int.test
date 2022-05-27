@@ -779,3 +779,29 @@ L2:
     keep_alive a
 L3:
     return r3
+
+[case testLowLevelIntConvertI64ToInt_64bit]
+from mypy_extensions import i64
+
+def i64_to_int(a: i64) -> int:
+    return a
+[out]
+def i64_to_int(a):
+    a :: int64
+    r0, r1 :: bit
+    r2, r3, r4 :: int
+L0:
+    r0 = a < 4611686018427387904 :: unsigned
+    if r0 goto L3 else goto L1 :: bool
+L1:
+    r1 = a >= -4611686018427387904 :: signed
+    if r1 goto L3 else goto L2 :: bool
+L2:
+    r2 = CPyTagged_FromSsize_t(a)
+    r3 = r2
+    goto L4
+L3:
+    r4 = a << 1
+    r3 = r4
+L4:
+    return r3

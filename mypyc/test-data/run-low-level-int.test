@@ -219,6 +219,16 @@ def test_bitwise_ops() -> None:
     assert ~zero == -1
     assert ~neg_one == 0
 
+def test_coerce_int_to_i64_and_back() -> None:
+    for bits in range(0, 63):
+        values = list(range(-2**bits, -2**bits + 10)) + list(range(2**bits - 10, 2**bits))
+        a: int
+        for a in values:
+            x: i64 = a
+            b: int = x
+            assert str(a) == str(x)
+            assert a == b
+
 [case testLowLevelIntErrorValues]
 from typing import Any
 
