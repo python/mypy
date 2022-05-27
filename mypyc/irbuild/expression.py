@@ -422,14 +422,13 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 
 def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+    """Replace // with a power of two with a right shift, if possible."""
     if not isinstance(expr.right, IntExpr):
         return expr
     divisor = expr.right.value
-    n = 2
-    for shift in range(1, 24):
-        if divisor == n:
-            return OpExpr('>>', expr.left, IntExpr(shift))
-        n += n
+    shift = divisor.bit_length() - 1
+    if 0 < shift < 28 and divisor == (1 << shift):
+        return OpExpr('>>', expr.left, IntExpr(shift))
     return expr
 
 
