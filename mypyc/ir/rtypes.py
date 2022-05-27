@@ -374,6 +374,10 @@ def is_int64_rprimitive(rtype: RType) -> bool:
             (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t'))
 
 
+def is_fixed_width_rtype(rtype: RType) -> bool:
+    return is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
+
+
 def is_uint32_rprimitive(rtype: RType) -> bool:
     return rtype is uint32_rprimitive
 
