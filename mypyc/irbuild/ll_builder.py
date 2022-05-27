@@ -25,7 +25,7 @@ from mypyc.ir.ops import (
     RaiseStandardError, Unreachable, LoadErrorValue,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem,
-    Extend
+    Extend, int_op_to_id
 )
 from mypyc.ir.rtypes import (
     RType, RUnion, RInstance, RArray, optional_value_type, int_rprimitive, float_rprimitive,
@@ -1067,14 +1067,14 @@ class LowLevelIRBuilder:
                     op = op[:-1]
                 if is_fixed_width_rtype(rtype) or is_tagged(rtype):
                     if op != '//':
-                        op_id = IntOp.op_to_id[op]
+                        op_id = int_op_to_id[op]
                     else:
                         op_id = IntOp.DIV
                     return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
                 if isinstance(rreg, Integer):
                     # TODO: Check what kind of Integer
                     if op != '//':
-                        op_id = IntOp.op_to_id[op]
+                        op_id = int_op_to_id[op]
                     else:
                         op_id = IntOp.DIV
                     return self.fixed_width_int_op(
@@ -1096,7 +1096,7 @@ class LowLevelIRBuilder:
                     op = op[:-1]
                 # TODO: Support comparison ops (similar to above)
                 if op != '//':
-                    op_id = IntOp.op_to_id[op]
+                    op_id = int_op_to_id[op]
                 else:
                     op_id = IntOp.DIV
                 if isinstance(lreg, Integer):
