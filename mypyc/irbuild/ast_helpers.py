@@ -8,7 +8,7 @@ from mypy.nodes import (
     Expression, MemberExpr, Var, IntExpr, FloatExpr, StrExpr, BytesExpr, NameExpr, OpExpr,
     UnaryExpr, ComparisonExpr, LDEF
 )
-from mypyc.ir.ops import BasicBlock, Integer
+from mypyc.ir.ops import BasicBlock
 from mypyc.ir.rtypes import is_tagged, is_fixed_width_rtype
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.constant_fold import constant_fold_expr
