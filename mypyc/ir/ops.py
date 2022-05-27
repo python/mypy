@@ -618,7 +618,7 @@ class GetAttr(RegisterOp):
         self.type = attr_type
         if is_fixed_width_rtype(attr_type):
             self.error_kind = ERR_NEVER
-        self.is_borrowed = borrow
+        self.is_borrowed = borrow and attr_type.is_refcounted
 
     def sources(self) -> List[Value]:
         return [self.obj]
