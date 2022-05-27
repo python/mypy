@@ -1092,14 +1092,14 @@ class ComparisonOp(RegisterOp):
         UGE: '>=',
     }
 
-    signed_ops = {
+    signed_ops: Final = {
         '==': EQ,
         '!=': NEQ,
         '<': SLT,
         '>': SGT,
         '<=': SLE,
         '>=': SGE,
-    }  # type: Final
+    }
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
