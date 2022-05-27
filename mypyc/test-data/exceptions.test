@@ -544,3 +544,41 @@ L2:
 L3:
     r3 = <error> :: int64
     return r3
+
+[case testExceptionWithLowLevelIntAttribute]
+from mypy_extensions import i32, i64
+
+class C:
+    def __init__(self, x: i32, y: i64) -> None:
+        self.x = x
+        self.y = y
+
+def f(c: C) -> None:
+    c.x
+    c.y
+[out]
+def C.__init__(self, x, y):
+    self :: __main__.C
+    x :: int32
+    y :: int64
+    r0, r1 :: bool
+    r2 :: None
+L0:
+    self.x = x; r0 = is_error
+    if not r0 goto L3 (error at __init__:5) else goto L1 :: bool
+L1:
+    self.y = y; r1 = is_error
+    if not r1 goto L3 (error at __init__:6) else goto L2 :: bool
+L2:
+    return 1
+L3:
+    r2 = <error> :: None
+    return r2
+def f(c):
+    c :: __main__.C
+    r0 :: int32
+    r1 :: int64
+L0:
+    r0 = c.x
+    r1 = c.y
+    return 1
