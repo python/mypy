@@ -1,5 +1,5 @@
 [case testI32BasicOps]
-from typing import Any
+from typing import Any, Tuple
 
 MYPY = False
 if MYPY:
@@ -26,7 +26,6 @@ def test_box_and_unbox() -> None:
 
 def div_by_7(x: i32) -> i32:
     return x // 7
-
 def div_by_neg_7(x: i32) -> i32:
     return x // -7
 
@@ -252,3 +251,14 @@ def test_coerce_to_and_from_int() -> None:
                     x: i32 = n
                     m: int = x
                     assert m == n
+
+def test_tuple_i32() -> None:
+    a: i32 = 1
+    b: i32 = 2
+    t = (a, b)
+    a, b = t
+    assert a == 1
+    assert b == 2
+    x: Any = t
+    tt: Tuple[i32, i32] = x
+    assert tt == (1, 2)
