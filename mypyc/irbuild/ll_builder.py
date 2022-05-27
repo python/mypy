@@ -897,9 +897,15 @@ class LowLevelIRBuilder:
         if is_bool_rprimitive(ltype) and is_bool_rprimitive(rtype) and op in (
                 '&', '&=', '|', '|=', '^', '^='):
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
+<<<<<<< HEAD
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
         if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-'):
+||||||| constructed merge base
+        if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-'):
+=======
+        if is_int64_rprimitive(ltype) and is_int64_rprimitive(rtype) and op in ('+', '-', '*'):
+>>>>>>> [mypyc] i64 negation
             op_id = IntOp.op_to_id[op]
             return self.int_op(ltype, lreg, rreg, op_id, line)
 
@@ -1127,6 +1133,15 @@ class LowLevelIRBuilder:
         typ = value.type
         if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == 'not':
             return self.unary_not(value, line)
+        if is_int64_rprimitive(lreg.type) and expr_op == '-':
+            # Translate to '0 - x'
+            return self.int_op(lreg.type, Integer(0, lreg.type), lreg, IntOp.SUB, line)
+        if isinstance(lreg, Integer):
+            # TODO: Overflow? Unsigned?
+            value = lreg.value
+            if is_short_int_rprimitive(lreg.type):
+                value >>= 1
+            return Integer(-value, lreg.type, lreg.line)
         if isinstance(typ, RInstance):
             if expr_op == '-':
                 method = '__neg__'

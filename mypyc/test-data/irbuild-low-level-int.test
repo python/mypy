@@ -49,3 +49,17 @@ L0:
     z = r0
     r1 = y - z
     return r1
+
+[case testLowLevelIntNegation]
+from mypy_extensions import i64
+
+def f() -> i64:
+    i: i64 = -3
+    return -i
+[out]
+def f():
+    i, r0 :: int64
+L0:
+    i = -3
+    r0 = 0 - i
+    return r0
