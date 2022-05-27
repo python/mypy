@@ -4,7 +4,8 @@ from mypyc.ir.ops import (
     OpVisitor, Register, Goto, Assign, AssignMulti, SetMem, Call, MethodCall, LoadErrorValue,
     LoadLiteral, GetAttr, SetAttr, LoadStatic, InitStatic, TupleGet, TupleSet, Box, Unbox,
     Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
-    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp, BasicBlock
+    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp, BasicBlock,
+    Extend
 )
 from mypyc.ir.rtypes import RInstance
 from mypyc.analysis.dataflow import MAYBE_ANALYSIS, run_analysis, AnalysisResult, CFG
@@ -113,6 +114,9 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return self.check_register_op(op)
 
     def visit_truncate(self, op: Truncate) -> GenAndKill:
+        return CLEAN
+
+    def visit_extend(self, op: Extend) -> GenAndKill:
         return CLEAN
 
     def visit_load_global(self, op: LoadGlobal) -> GenAndKill:
