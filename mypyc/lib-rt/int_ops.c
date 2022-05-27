@@ -527,3 +527,19 @@ int64_t CPyLong_AsInt64(PyObject *o) {
     }
     return result;
 }
+
+int64_t CPyInt64_Divide(int64_t x, int64_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == -1L << 63) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int64_t d = x / y;
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}

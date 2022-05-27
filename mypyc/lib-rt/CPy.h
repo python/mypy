@@ -150,6 +150,7 @@ PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyLong_FromFloat(PyObject *o);
 PyObject *CPyBool_Str(bool b);
+int64_t CPyInt64_Divide(int64_t x, int64_t y);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;

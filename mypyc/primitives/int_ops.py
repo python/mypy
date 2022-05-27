@@ -9,10 +9,10 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 """
 
 from typing import Dict, NamedTuple
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ComparisonOp
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, bit_rprimitive, RType
+    str_rprimitive, bit_rprimitive, int64_rprimitive, RType
 )
 from mypyc.primitives.registry import (
     load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
@@ -165,3 +165,9 @@ int_comparison_op_mapping: Dict[str, IntComparisonOpDescription] = {
     '>': IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
     '>=': IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
 }
+
+int64_divide_op = custom_op(
+    arg_types=[int64_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyInt64_Divide',
+    error_kind=ERR_MAGIC_OVERLAPPING)
