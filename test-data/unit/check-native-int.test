@@ -4,12 +4,22 @@ from mypy_extensions import i32, i64
 def f(x: int) -> i32:
     return i32(x)
 
+def g(x: i32) -> None:
+    pass
+
 reveal_type(i32(1) + i32(2))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(i64(1) + i64(2))  # N: Revealed type is "mypy_extensions.i64"
 i32(1) + i64(2)  # E: Unsupported operand types for + ("i32" and "i64")
+i64(1) + i32(2)  # E: Unsupported operand types for + ("i64" and "i32")
+g(i32(2))
+g(i64(2))  # E: Argument 1 to "g" has incompatible type "i64"; expected "i32"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntCoercions]
 from mypy_extensions import i32, i64
+
+def f1(x: int) -> None: pass
+def f2(x: i32) -> None: pass
 
 a: i32 = 1
 b: i64 = 2
@@ -19,6 +29,15 @@ e: i32 = b  # E: Incompatible types in assignment (expression has type "i64", va
 f: i32 = i32(b)
 g: int = a
 h: int = b
+
+f1(1)
+f1(a)
+f1(b)
+f2(1)
+f2(g)
+f2(h)
+f2(a)
+f2(b)  # E: Argument 1 to "f2" has incompatible type "i64"; expected "i32"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntJoins]
@@ -65,10 +84,15 @@ reveal_type(meet(f64, f32))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntCoerceInArithmetic]
-from mypy_extensions import i32
+from mypy_extensions import i32, i64
 
 reveal_type(i32(1) + 1)  # N: Revealed type is "mypy_extensions.i32"
 reveal_type(1 + i32(1))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(i64(1) + 1)  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(1 + i64(1))  # N: Revealed type is "mypy_extensions.i64"
+n = int()
+reveal_type(i32(1) + n)  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(n + i32(1))  # N: Revealed type is "mypy_extensions.i32"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntNoNarrowing]
