@@ -1,4 +1,4 @@
-[case testLowLevelIntBasics]
+[case testNativeIntBasics]
 from mypy_extensions import i32, i64
 
 def f(x: int) -> i32:
@@ -8,7 +8,7 @@ reveal_type(i32(1) + i32(2))  # N: Revealed type is "mypy_extensions.i32"
 i32(1) + i64(2)  # E: Unsupported operand types for + ("i32" and "i64")
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntCoercions]
+[case testNativeIntCoercions]
 from mypy_extensions import i32, i64
 
 a: i32 = 1
@@ -21,7 +21,7 @@ g: int = a
 h: int = b
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntJoins]
+[case testNativeIntJoins]
 from typing import TypeVar
 from mypy_extensions import i32, i64
 
@@ -41,7 +41,7 @@ reveal_type(join(n32, n64))  # N: Revealed type is "builtins.int"
 reveal_type(join(n64, n32))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntMeets]
+[case testNativeIntMeets]
 from typing import TypeVar, Callable
 from mypy_extensions import i32, i64
 
@@ -62,14 +62,14 @@ reveal_type(meet(f32, f64))  # N: Revealed type is "builtins.int"
 reveal_type(meet(f64, f32))  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntCoerceInArithmetic]
+[case testNativeIntCoerceInArithmetic]
 from mypy_extensions import i32
 
 reveal_type(i32(1) + 1)  # N: Revealed type is "mypy_extensions.i32"
 reveal_type(1 + i32(1))  # N: Revealed type is "mypy_extensions.i32"
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntNoNarrowing]
+[case testNativeIntNoNarrowing]
 from mypy_extensions import i32
 
 x: i32 = 1
@@ -85,7 +85,7 @@ if int():
 reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
-[case testLowLevelIntFloatConversion]
+[case testNativeIntFloatConversion]
 from mypy_extensions import i32
 
 x: i32 = 1.1  # E: Incompatible types in assignment (expression has type "float", variable has type "i32")
