@@ -23,7 +23,7 @@ from mypyc.ir.ops import (
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
-    is_list_rprimitive, is_int64_rprimitive
+    is_list_rprimitive, is_fixed_width_rtype
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -635,16 +635,16 @@ def transform_basic_comparison(builder: IRBuilder,
     if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
             and op in int_comparison_op_mapping.keys()):
         return builder.compare_tagged(left, right, op, line)
-    if is_int64_rprimitive(left.type) and op in int_comparison_op_mapping.keys():
-        if is_int64_rprimitive(right.type):
+    if is_fixed_width_rtype(left.type) and op in int_comparison_op_mapping.keys():
+        if right.type == left.type:
             op_id = ComparisonOp.signed_ops[op]
             return builder.builder.comparison_op(left, right, op_id, line)
         elif isinstance(right, Integer):
             op_id = ComparisonOp.signed_ops[op]
             return builder.builder.comparison_op(left, Integer(right.value >> 1, left.type),
                                                  op_id, line)
-    elif (is_int64_rprimitive(right.type) and op in int_comparison_op_mapping.keys()
-              and isinstance(left, Integer)):
+    elif (is_fixed_width_rtype(right.type) and op in int_comparison_op_mapping.keys()
+          and isinstance(left, Integer)):
         op_id = ComparisonOp.signed_ops[op]
         return builder.builder.comparison_op(Integer(left.value >> 1, right.type), right,
                                              op_id, line)

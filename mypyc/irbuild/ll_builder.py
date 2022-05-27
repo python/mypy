@@ -34,7 +34,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
-    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive
+    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -904,10 +904,10 @@ class LowLevelIRBuilder:
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
-        if is_int64_rprimitive(ltype) and op in FIXED_WIDTH_INT_BINARY_OPS:
+        if is_fixed_width_rtype(ltype) and op in FIXED_WIDTH_INT_BINARY_OPS:
             if op.endswith('='):
                 op = op[:-1]
-            if is_int64_rprimitive(rtype):
+            if is_fixed_width_rtype(rtype):
                 if op != '//':
                     op_id = IntOp.op_to_id[op]
                 else:
@@ -921,9 +921,9 @@ class LowLevelIRBuilder:
                     op_id = IntOp.DIV
                 return self.fixed_width_int_op(
                     ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
-        elif (is_int64_rprimitive(rtype)
-                  and isinstance(lreg, Integer)
-                  and op in FIXED_WIDTH_INT_BINARY_OPS):
+        elif (is_fixed_width_rtype(rtype)
+              and isinstance(lreg, Integer)
+              and op in FIXED_WIDTH_INT_BINARY_OPS):
             if op != '//':
                 op_id = IntOp.op_to_id[op]
             else:
@@ -1156,13 +1156,15 @@ class LowLevelIRBuilder:
         typ = value.type
         if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == 'not':
             return self.unary_not(value, line)
-        if is_int64_rprimitive(typ):
+        if is_fixed_width_rtype(typ):
             if expr_op == '-':
                 # Translate to '0 - x'
                 return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
-            if expr_op == '~':
+            elif expr_op == '~':
                 # Translate to 'x ^ -1'
                 return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
+            elif expr_op == '+':
+                return value
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
             num = value.value

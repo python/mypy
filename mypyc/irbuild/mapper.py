@@ -12,7 +12,8 @@ from mypy.types import (
 from mypyc.ir.rtypes import (
     RType, RUnion, RTuple, RInstance, object_rprimitive, dict_rprimitive, tuple_rprimitive,
     none_rprimitive, int_rprimitive, float_rprimitive, str_rprimitive, bool_rprimitive,
-    list_rprimitive, set_rprimitive, range_rprimitive, bytes_rprimitive, int64_rprimitive
+    list_rprimitive, set_rprimitive, range_rprimitive, bytes_rprimitive, int64_rprimitive,
+    int32_rprimitive
 )
 from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
 from mypyc.ir.class_ir import ClassIR
@@ -73,6 +74,8 @@ class Mapper:
                     return inst
             elif typ.type.fullname == 'mypy_extensions.i64':
                 return int64_rprimitive
+            elif typ.type.fullname == 'mypy_extensions.i32':
+                return int32_rprimitive
             else:
                 return object_rprimitive
         elif isinstance(typ, TupleType):

@@ -497,3 +497,83 @@ L0:
     r0 = CPyInt64_Remainder(x, y)
     x = r0
     return x
+
+[case testLowLevelIntI32BinaryOp]
+from mypy_extensions import i32
+
+def add_op(x: i32, y: i32) -> i32:
+    x = y + x
+    y = x + 5
+    y += x
+    y += 7
+    x = 5 + y
+    return x
+def compare(x: i32, y: i32) -> None:
+    a = x == y
+    b = x == -5
+    c = x < y
+    d = x < -5
+    e = -5 == x
+    f = -5 < x
+[out]
+def add_op(x, y):
+    x, y, r0, r1, r2, r3, r4 :: int32
+L0:
+    r0 = y + x
+    x = r0
+    r1 = x + 5
+    y = r1
+    r2 = y + x
+    y = r2
+    r3 = y + 7
+    y = r3
+    r4 = 5 + y
+    x = r4
+    return x
+def compare(x, y):
+    x, y :: int32
+    r0 :: bit
+    a :: bool
+    r1 :: bit
+    b :: bool
+    r2 :: bit
+    c :: bool
+    r3 :: bit
+    d :: bool
+    r4 :: bit
+    e :: bool
+    r5 :: bit
+    f :: bool
+L0:
+    r0 = x == y
+    a = r0
+    r1 = x == -5
+    b = r1
+    r2 = x < y :: signed
+    c = r2
+    r3 = x < -5 :: signed
+    d = r3
+    r4 = -5 == x
+    e = r4
+    r5 = -5 < x :: signed
+    f = r5
+    return 1
+
+[case testLowLevelIntI32UnaryOp]
+from mypy_extensions import i32
+
+def unary(x: i32) -> i32:
+    y = -x
+    x = ~y
+    y = +x
+    return y
+[out]
+def unary(x):
+    x, r0, y, r1 :: int32
+L0:
+    r0 = 0 - x
+    y = r0
+    r1 = y ^ -1
+    x = r1
+    y = x
+    return y
