@@ -222,7 +222,7 @@ class LowLevelIRBuilder:
         return src
 
     def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
-        assert is_int64_rprimitive(target_type)
+        assert is_int64_rprimitive(target_type), target_type
 
         res = Register(target_type)
 
@@ -939,7 +939,13 @@ class LowLevelIRBuilder:
         return self.add(LoadStatic(object_rprimitive, name, module, NAMESPACE_TYPE))
 
     # Other primitive operations
+
     def binary_op(self, lreg: Value, rreg: Value, op: str, line: int) -> Value:
+        """Perform a binary operation.
+
+        Generate specialized operations based on operand types, with a fallback
+        to generic operations.
+        """
         ltype = lreg.type
         rtype = rreg.type
 
@@ -987,25 +993,34 @@ class LowLevelIRBuilder:
                         op_id = IntOp.DIV
                     return self.fixed_width_int_op(
                         ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
-            elif op in ComparisonOp.signed_ops and is_fixed_width_rtype(rtype):
+            elif op in ComparisonOp.signed_ops:
+                if is_int_rprimitive(rtype):
+                    rreg = self.coerce_int_to_fixed_width(rreg, ltype, line)
+                if is_fixed_width_rtype(rreg.type):
+                    op_id = ComparisonOp.signed_ops[op]
+                    return self.comparison_op(lreg, rreg, op_id, line)
+        elif is_fixed_width_rtype(rtype):
+            if (
+                (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
+                and op in FIXED_WIDTH_INT_BINARY_OPS
+            ):
+                if op.endswith('='):
+                    op = op[:-1]
+                # TODO: Support comparison ops (similar to above)
+                if op != '//':
+                    op_id = IntOp.op_to_id[op]
+                else:
+                    op_id = IntOp.DIV
+                if isinstance(lreg, Integer):
+                    # TODO: Check what kind of Integer
+                    return self.fixed_width_int_op(
+                        rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
+                else:
+                    return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
+            elif op in ComparisonOp.signed_ops and is_int_rprimitive(ltype):
+                lreg = self.coerce_int_to_fixed_width(lreg, rtype, line)
                 op_id = ComparisonOp.signed_ops[op]
                 return self.comparison_op(lreg, rreg, op_id, line)
-        elif (is_fixed_width_rtype(rtype)
-              and (isinstance(lreg, Integer) or is_int_rprimitive(ltype))
-              and op in FIXED_WIDTH_INT_BINARY_OPS):
-            if op.endswith('='):
-                op = op[:-1]
-            # TODO: Support comparison ops (similar to above)
-            if op != '//':
-                op_id = IntOp.op_to_id[op]
-            else:
-                op_id = IntOp.DIV
-            if isinstance(lreg, Integer):
-                # TODO: Check what kind of Integer
-                return self.fixed_width_int_op(
-                    rtype, Integer(lreg.value >> 1, rtype), rreg, op_id, line)
-            else:
-                return self.fixed_width_int_op(rtype, lreg, rreg, op_id, line)
 
         call_c_ops_candidates = binary_ops.get(op, [])
         target = self.matching_call_c(call_c_ops_candidates, [lreg, rreg], line)

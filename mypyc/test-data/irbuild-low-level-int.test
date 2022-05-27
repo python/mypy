@@ -855,7 +855,7 @@ L0:
     r6 = r4 + r5
     return r6
 
-[case testLowLewIntMixWithTagged1]
+[case testLowLevelIntMixWithTagged1]
 from mypy_extensions import i64
 def f(x: i64, y: int) -> i64:
     return x + y
@@ -887,7 +887,7 @@ L3:
     r7 = x + r3
     return r7
 
-[case testLowLewIntMixWithTagged2]
+[case testLowLevelIntMixWithTagged2]
 from mypy_extensions import i64
 def f(x: int, y: i64) -> i64:
     return x + y
@@ -919,7 +919,7 @@ L3:
     r7 = r3 + y
     return r7
 
-[case testLowLewIntMixWithTaggedInPlace1]
+[case testLowLevelIntMixWithTaggedInPlace1]
 from mypy_extensions import i64
 def f(y: i64) -> int:
     x = 0
@@ -970,7 +970,7 @@ L7:
     x = r11
     return x
 
-[case testLowLewIntMixWithTaggedInPlace2]
+[case testLowLevelIntMixWithTaggedInPlace2]
 from mypy_extensions import i64
 def f(y: int) -> i64:
     x: i64 = 0
@@ -1005,3 +1005,69 @@ L3:
     r7 = x + r3
     x = r7
     return x
+
+[case testLowLevelIntMixedCompare1]
+from mypy_extensions import i64
+def f(x: int, y: i64) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x :: int
+    y :: int64
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: int64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6 :: int64
+    r7 :: bit
+L0:
+    r0 = x & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = x >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = x ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive x
+L3:
+    r7 = r3 == y
+    return r7
+
+[case testLowLevelIntMixedCompare2]
+from mypy_extensions import i64
+def f(x: i64, y: int) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x :: int64
+    y :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: int64
+    r4 :: ptr
+    r5 :: c_ptr
+    r6 :: int64
+    r7 :: bit
+L0:
+    r0 = y & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = y >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = y ^ 1
+    r5 = r4
+    r6 = CPyLong_AsInt64(r5)
+    r3 = r6
+    keep_alive y
+L3:
+    r7 = x == r3
+    return r7
