@@ -82,3 +82,20 @@ L0:
     r1 = box(int64, b)
     a = r1
     return 1
+
+[case testLowLevelIntListGetItem]
+from typing import List
+from mypy_extensions import i64
+
+def f(a: List[i64], i: i64) -> i64:
+    return a[i]
+[out]
+def f(a, i):
+    a :: list
+    i :: int64
+    r0 :: object
+    r1 :: int64
+L0:
+    r0 = CPyList_GetItemInt64(a, i)
+    r1 = unbox(int64, r0)
+    return r1
