@@ -938,22 +938,20 @@ class Truncate(RegisterOp):
 
     Truncate a value from type with more bits to type with less bits.
 
-    Both src_type and dst_type should be non-reference counted integer
-    types or bool. Note that int_rprimitive is reference counted so
-    it should never be used here.
+    dst_type should be a native integer type or bool.
+    src_type can also be a short tagged integer.
     """
 
     error_kind = ERR_NEVER
 
     def __init__(self,
                  src: Value,
-                 src_type: RType,
                  dst_type: RType,
                  line: int = -1) -> None:
         super().__init__(line)
         self.src = src
-        self.src_type = src_type
         self.type = dst_type
+        self.src_type = src.type
 
     def sources(self) -> List[Value]:
         return [self.src]
