@@ -907,26 +907,31 @@ class LowLevelIRBuilder:
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
-        if is_fixed_width_rtype(ltype) and op in FIXED_WIDTH_INT_BINARY_OPS:
-            if op.endswith('='):
-                op = op[:-1]
-            if is_fixed_width_rtype(rtype):
-                if op != '//':
-                    op_id = IntOp.op_to_id[op]
-                else:
-                    op_id = IntOp.DIV
-                return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
-            if isinstance(rreg, Integer):
-                # TODO: Check what kind of Integer
-                if op != '//':
-                    op_id = IntOp.op_to_id[op]
-                else:
-                    op_id = IntOp.DIV
-                return self.fixed_width_int_op(
-                    ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+        if is_fixed_width_rtype(ltype):
+            if op in FIXED_WIDTH_INT_BINARY_OPS:
+                if op.endswith('='):
+                    op = op[:-1]
+                if is_fixed_width_rtype(rtype):
+                    if op != '//':
+                        op_id = IntOp.op_to_id[op]
+                    else:
+                        op_id = IntOp.DIV
+                    return self.fixed_width_int_op(ltype, lreg, rreg, op_id, line)
+                if isinstance(rreg, Integer):
+                    # TODO: Check what kind of Integer
+                    if op != '//':
+                        op_id = IntOp.op_to_id[op]
+                    else:
+                        op_id = IntOp.DIV
+                    return self.fixed_width_int_op(
+                        ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
+            elif op in ComparisonOp.signed_ops and is_fixed_width_rtype(rtype):
+                op_id = ComparisonOp.signed_ops[op]
+                return self.comparison_op(lreg, rreg, op_id, line)
         elif (is_fixed_width_rtype(rtype)
               and isinstance(lreg, Integer)
               and op in FIXED_WIDTH_INT_BINARY_OPS):
+            # TODO: Support comparison ops (similar to above)
             if op != '//':
                 op_id = IntOp.op_to_id[op]
             else:
