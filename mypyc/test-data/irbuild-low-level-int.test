@@ -673,3 +673,18 @@ L5:
 L6:
     x = r8
     return x
+
+[case testLowLevelIntI32DivModByVariable]
+from mypy_extensions import i32
+
+def divmod(x: i32, y: i32) -> i32:
+    a = x // y
+    return a % y
+[out]
+def divmod(x, y):
+    x, y, r0, a, r1 :: int32
+L0:
+    r0 = CPyInt32_Divide(x, y)
+    a = r0
+    r1 = CPyInt32_Remainder(a, y)
+    return r1

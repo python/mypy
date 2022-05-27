@@ -34,7 +34,8 @@ from mypyc.ir.rtypes import (
     none_rprimitive, RTuple, is_bool_rprimitive, is_str_rprimitive, c_int_rprimitive,
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
-    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype
+    is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype,
+    is_int32_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -64,7 +65,9 @@ from mypyc.primitives.generic_ops import (
 from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
 )
-from mypyc.primitives.int_ops import int_comparison_op_mapping, int64_divide_op, int64_mod_op
+from mypyc.primitives.int_ops import (
+    int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op
+)
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
     unicode_compare, str_check_if_true, str_ssize_t_size_op
@@ -1452,13 +1455,25 @@ class LowLevelIRBuilder:
             # compilers can optimize more
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
                 return self.inline_fixed_width_divide(type, lhs, rhs, line)
-            return self.call_c(int64_divide_op, [lhs, rhs], line)
+            if is_int64_rprimitive(type):
+                op = int64_divide_op
+            elif is_int32_rprimitive(type):
+                op = int32_divide_op
+            else:
+                assert False, type
+            return self.call_c(op, [lhs, rhs], line)
         if op == IntOp.MOD:
             # Inline simple % by a constant, so that C
             # compilers can optimize more
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
                 return self.inline_fixed_width_mod(type, lhs, rhs, line)
-            return self.call_c(int64_mod_op, [lhs, rhs], line)
+            if is_int64_rprimitive(type):
+                op = int64_mod_op
+            elif is_int32_rprimitive(type):
+                op = int32_mod_op
+            else:
+                assert False, type
+            return self.call_c(op, [lhs, rhs], line)
         return self.int_op(type, lhs, rhs, op, line)
 
     def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
