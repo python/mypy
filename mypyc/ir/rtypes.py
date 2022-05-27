@@ -182,6 +182,8 @@ class RPrimitive(RType):
                  *,
                  is_unboxed: bool,
                  is_refcounted: bool,
+                 is_native_int: bool = False,
+                 is_signed: bool = False,
                  ctype: str = 'PyObject *',
                  size: int = PLATFORM_SIZE,
                  error_overlap: bool = False) -> None:
@@ -189,8 +191,10 @@ class RPrimitive(RType):
 
         self.name = name
         self.is_unboxed = is_unboxed
-        self._ctype = ctype
         self.is_refcounted = is_refcounted
+        self.is_native_int = is_native_int
+        self.is_signed = is_signed
+        self._ctype = ctype
         self.size = size
         self.error_overlap = error_overlap
         if ctype == 'CPyTagged':
@@ -278,16 +282,42 @@ short_int_rprimitive: Final = RPrimitive(
 # Low level integer types (correspond to C integer types)
 
 int32_rprimitive: Final = RPrimitive(
-    "int32", is_unboxed=True, is_refcounted=False, ctype="int32_t", size=4, error_overlap=True
+    "int32",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int32_t",
+    size=4,
+    error_overlap=True,
 )
 int64_rprimitive: Final = RPrimitive(
-    "int64", is_unboxed=True, is_refcounted=False, ctype="int64_t", size=8, error_overlap=True
+    "int64",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int64_t",
+    size=8,
+    error_overlap=True,
 )
 uint32_rprimitive: Final = RPrimitive(
-    "uint32", is_unboxed=True, is_refcounted=False, ctype="uint32_t", size=4
+    "uint32",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint32_t",
+    size=4,
 )
 uint64_rprimitive: Final = RPrimitive(
-    "uint64", is_unboxed=True, is_refcounted=False, ctype="uint64_t", size=8
+    "uint64",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint64_t",
+    size=8,
 )
 
 # The C 'int' type
@@ -295,12 +325,26 @@ c_int_rprimitive = int32_rprimitive
 
 if IS_32_BIT_PLATFORM:
     c_size_t_rprimitive = uint32_rprimitive
-    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                                        ctype='int32_t', size=4)
+    c_pyssize_t_rprimitive = RPrimitive(
+        'native_int',
+        is_unboxed=True,
+        is_refcounted=False,
+        is_native_int=True,
+        is_signed=True,
+        ctype='int32_t',
+        size=4,
+    )
 else:
     c_size_t_rprimitive = uint64_rprimitive
-    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                                        ctype='int64_t', size=8)
+    c_pyssize_t_rprimitive = RPrimitive(
+        'native_int',
+        is_unboxed=True,
+        is_refcounted=False,
+        is_native_int=True,
+        is_signed=True,
+        ctype='int64_t',
+        size=8,
+    )
 
 # Untyped pointer, represented as integer in the C backend
 pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=False, ctype="CPyPtr")
