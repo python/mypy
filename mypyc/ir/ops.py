@@ -1076,6 +1076,15 @@ class ComparisonOp(RegisterOp):
         UGE: '>=',
     }
 
+    signed_ops = {
+        '==': EQ,
+        '!=': NEQ,
+        '<': SLT,
+        '>': SGT,
+        '<=': SLE,
+        '>=': SGE,
+    }  # type: Final
+
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
         super().__init__(line)
         self.type = bit_rprimitive
