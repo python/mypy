@@ -171,3 +171,9 @@ int64_divide_op = custom_op(
     return_type=int64_rprimitive,
     c_function_name='CPyInt64_Divide',
     error_kind=ERR_MAGIC_OVERLAPPING)
+
+int64_mod_op = custom_op(
+    arg_types=[int64_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyInt64_Remainder',
+    error_kind=ERR_MAGIC_OVERLAPPING)
