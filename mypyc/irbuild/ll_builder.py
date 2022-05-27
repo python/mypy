@@ -35,7 +35,8 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
     is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype,
-    is_int32_rprimitive, is_int_rprimitive, is_pointer_rprimitive, c_pointer_rprimitive
+    is_int32_rprimitive, is_int_rprimitive, is_pointer_rprimitive, c_pointer_rprimitive,
+    RPrimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -67,7 +68,7 @@ from mypyc.primitives.misc_ops import (
 )
 from mypyc.primitives.int_ops import (
     int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op,
-    int_to_int64_op, int64_to_int_op
+    int_to_int64_op, int64_to_int_op, int32_overflow
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
@@ -206,7 +207,7 @@ class LowLevelIRBuilder:
             elif is_int_rprimitive(src_type) and is_int64_rprimitive(target_type):
                 return self.coerce_int_to_fixed_width(src, target_type, line)
             elif is_int64_rprimitive(src_type) and is_int_rprimitive(target_type):
-                return self.coerce_fixed_Width_to_int(src, line)
+                return self.coerce_fixed_width_to_int(src, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
@@ -221,8 +222,8 @@ class LowLevelIRBuilder:
             return tmp
         return src
 
-    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
-        assert is_int64_rprimitive(target_type), target_type
+    def coerce_int_to_fixed_width(self, src: Value, target_type: RPrimitive, line: int) -> Value:
+        assert is_fixed_width_rtype(target_type), target_type
 
         res = Register(target_type)
 
@@ -232,24 +233,54 @@ class LowLevelIRBuilder:
         self.add(Branch(check, fast, slow, Branch.BOOL))
 
         self.activate_block(fast)
-        tmp = self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+
+        size = target_type.size
+        if size < int_rprimitive.size:
+            # Add a range check when the target type is smaller than the source tyoe
+            fast2, slow2 = BasicBlock(), BasicBlock()
+            upper_bound = 1 << (size * 8 - 2)
+            check2 = self.add(ComparisonOp(src,
+                                           Integer(upper_bound, src.type),
+                                           ComparisonOp.SLT))
+            self.add(Branch(check2, fast2, slow2, Branch.BOOL))
+            self.activate_block(slow2)
+            check3 = self.add(ComparisonOp(src, Integer(-upper_bound, src.type), ComparisonOp.SGE))
+            self.add(Branch(check3, fast2, slow, Branch.BOOL))
+            self.activate_block(fast2)
+            tmp = self.int_op(c_pyssize_t_rprimitive,
+                              src,
+                              Integer(1, c_pyssize_t_rprimitive),
+                              IntOp.RIGHT_SHIFT,
+                              line)
+            tmp = self.add(Truncate(tmp, target_type))
+        else:
+            tmp = self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+
         self.add(Assign(res, tmp))
         self.goto(end)
 
         self.activate_block(slow)
-        ptr = self.int_op(
-            pointer_rprimitive, src, Integer(1, pointer_rprimitive), IntOp.XOR, line)
-        ptr2 = Register(c_pointer_rprimitive)
-        self.add(Assign(ptr2, ptr))
-        tmp = self.call_c(int_to_int64_op, [ptr2], line)
-        self.add(Assign(res, tmp))
-        self.add(KeepAlive([src]))
-        self.goto(end)
+        if is_int64_rprimitive(target_type):
+            # Slow path calls a library function that handles more complex logic
+            ptr = self.int_op(
+                pointer_rprimitive, src, Integer(1, pointer_rprimitive), IntOp.XOR, line)
+            ptr2 = Register(c_pointer_rprimitive)
+            self.add(Assign(ptr2, ptr))
+            tmp = self.call_c(int_to_int64_op, [ptr2], line)
+            self.add(Assign(res, tmp))
+            self.add(KeepAlive([src]))
+            self.goto(end)
+        elif is_int32_rprimitive(target_type):
+            # Slow path just always generates an OverflowError
+            self.call_c(int32_overflow, [], line)
+            self.add(Unreachable())
+        else:
+            assert False, target_type
 
         self.activate_block(end)
         return res
 
-    def coerce_fixed_Width_to_int(self, src: Value, line: int) -> Value:
+    def coerce_fixed_width_to_int(self, src: Value, line: int) -> Value:
         assert is_int64_rprimitive(src.type)
 
         res = Register(int_rprimitive)

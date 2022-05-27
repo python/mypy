@@ -1071,3 +1071,38 @@ L2:
 L3:
     r7 = x == r3
     return r7
+
+[case testLowLevelIntI32MixedCompare2]
+from mypy_extensions import i32
+def f(x: i32, y: int) -> bool:
+    return x == y
+[out]
+def f(x, y):
+    x :: int32
+    y :: int
+    r0 :: native_int
+    r1, r2, r3 :: bit
+    r4 :: native_int
+    r5, r6 :: int32
+    r7 :: bit
+L0:
+    r0 = y & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L4 :: bool
+L1:
+    r2 = y < 2147483648 :: signed
+    if r2 goto L3 else goto L2 :: bool
+L2:
+    r3 = y >= -2147483648 :: signed
+    if r3 goto L3 else goto L4 :: bool
+L3:
+    r4 = y >> 1
+    r5 = truncate r4: native_int to int32
+    r6 = r5
+    goto L5
+L4:
+    CPyInt32_Overflow()
+    unreachable
+L5:
+    r7 = x == r6
+    return r7
