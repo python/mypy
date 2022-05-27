@@ -428,3 +428,65 @@ def test_mod_by_variable() -> None:
             else:
                 with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
                     mod(x, y)
+
+def test_simple_arithmetic_ops() -> None:
+    zero: i32 = int()
+    one: i32 = zero + 1
+    two: i32 = one + 1
+    neg_one: i32 = -one
+    assert one + one == 2
+    assert one + two == 3
+    assert one + neg_one == 0
+    assert one - one == 0
+    assert one - two == -1
+    assert one * one == 1
+    assert one * two == 2
+    assert two * two == 4
+    assert two * neg_one == -2
+    assert neg_one * one == -1
+    assert neg_one * neg_one == 1
+    assert two * 0 == 0
+    assert 0 * two == 0
+    assert -one == -1
+    assert -two == -2
+    assert -neg_one == 1
+    assert -zero == 0
+
+def test_bitwise_ops() -> None:
+    x: i32 = 1920687484 + int()
+    y: i32 = 383354614 + int()
+    z: i32 = -1879040563 + int()
+    zero: i32 = int()
+    one: i32 = zero + 1
+    two: i32 = zero + 2
+    neg_one: i32 = -one
+
+    assert x & y == 307823732
+    assert x & z == 268442956
+    assert z & z == z
+    assert x & zero == 0
+
+    assert x | y == 1996218366
+    assert x | z == -226796035
+    assert z | z == z
+    assert x | 0 == x
+
+    assert x ^ y == 1688394634
+    assert x ^ z == -495238991
+    assert z ^ z == 0
+    assert z ^ 0 == z
+
+    assert x << one == -453592328
+    assert x << two == -907184656
+    assert z << two == 1073772340
+    assert z << 0 == z
+
+    assert x >> one == 960343742
+    assert x >> two == 480171871
+    assert z >> two == -469760141
+    assert z >> 0 == z
+
+    assert ~x == -1920687485
+    assert ~z == 1879040562
+    assert ~zero == -1
+    assert ~neg_one == 0
