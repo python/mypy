@@ -752,3 +752,31 @@ L3:
     goto L1
 L4:
     return 1
+
+[case testLowLevelIntToFromTaggedInt_64bit]
+from mypy_extensions import i64
+
+def int_to_i64(a: int) -> i64:
+    return a
+[out]
+def int_to_i64(a):
+    a :: int
+    r0 :: native_int
+    r1 :: bit
+    r2, r3 :: int64
+    r4 :: ptr
+    r5 :: int64
+L0:
+    r0 = a & 1
+    r1 = r0 == 0
+    if r1 goto L1 else goto L2 :: bool
+L1:
+    r2 = a >> 1
+    r3 = r2
+    goto L3
+L2:
+    r4 = a & -2
+    r5 = CPyLong_AsInt64(r4)
+    r3 = r5
+L3:
+    return r3

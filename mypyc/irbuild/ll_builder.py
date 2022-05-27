@@ -35,7 +35,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive, PyObject, PyListObject, bit_rprimitive, is_bit_rprimitive,
     object_pointer_rprimitive, c_size_t_rprimitive, dict_rprimitive, bytes_rprimitive,
     is_bytes_rprimitive, is_int64_rprimitive, int64_rprimitive, is_fixed_width_rtype,
-    is_int32_rprimitive
+    is_int32_rprimitive, is_int_rprimitive, is_pointer_rprimitive
 )
 from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -66,7 +66,8 @@ from mypyc.primitives.misc_ops import (
     none_object_op, fast_isinstance_op, bool_op
 )
 from mypyc.primitives.int_ops import (
-    int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op
+    int_comparison_op_mapping, int64_divide_op, int64_mod_op, int32_divide_op, int32_mod_op,
+    int_to_int64_op
 )
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.str_ops import (
@@ -192,28 +193,63 @@ class LowLevelIRBuilder:
 
         Returns the register with the converted value (may be same as src).
         """
-        if src.type.is_unboxed and not target_type.is_unboxed:
+        src_type = src.type
+        if src_type.is_unboxed and not target_type.is_unboxed:
+            if is_pointer_rprimitive(src_type):
+                # Convert an untyped pointer to a specific pointer type
+                if force:
+                    tmp = Register(target_type)
+                    self.add(Assign(tmp, src))
+                    return tmp
+                return src
             # Unboxed -> boxed
             return self.box(src)
-        if ((src.type.is_unboxed and target_type.is_unboxed)
-                and not is_runtime_subtype(src.type, target_type)):
-            if (isinstance(src, Integer) and is_short_int_rprimitive(src.type)
+        if ((src_type.is_unboxed and target_type.is_unboxed)
+                and not is_runtime_subtype(src_type, target_type)):
+            if (isinstance(src, Integer) and is_short_int_rprimitive(src_type)
                     and is_int64_rprimitive(target_type)):
                 # TODO: range check
                 return Integer(src.value >> 1, int64_rprimitive)
+            elif is_int_rprimitive(src_type) and is_int64_rprimitive(target_type):
+                return self.coerce_int_to_fixed_width(src, target_type, line)
             else:
                 # To go from one unboxed type to another, we go through a boxed
                 # in-between value, for simplicity.
                 tmp = self.box(src)
                 return self.unbox_or_cast(tmp, target_type, line)
-        if ((not src.type.is_unboxed and target_type.is_unboxed)
-                or not is_subtype(src.type, target_type)):
+        if ((not src_type.is_unboxed and target_type.is_unboxed)
+                or not is_subtype(src_type, target_type)):
             return self.unbox_or_cast(src, target_type, line, can_borrow=can_borrow)
         elif force:
             tmp = Register(target_type)
             self.add(Assign(tmp, src))
             return tmp
         return src
+
+    def coerce_int_to_fixed_width(self, src: Value, target_type: RType, line: int) -> Value:
+        assert is_int64_rprimitive(target_type)
+
+        res = Register(target_type)
+
+        fast, slow, end = BasicBlock(), BasicBlock(), BasicBlock()
+
+        check = self.check_tagged_short_int(src, line)
+        self.add(Branch(check, fast, slow, Branch.BOOL))
+
+        self.activate_block(fast)
+        tmp = self.int_op(target_type, src, Integer(1, target_type), IntOp.RIGHT_SHIFT, line)
+        self.add(Assign(res, tmp))
+        self.goto(end)
+
+        self.activate_block(slow)
+        ptr = self.int_op(
+            pointer_rprimitive, src, Integer(~1, pointer_rprimitive), IntOp.AND, line)
+        tmp = self.call_c(int_to_int64_op, [ptr], line)
+        self.add(Assign(res, tmp))
+        self.goto(end)
+
+        self.activate_block(end)
+        return res
 
     def coerce_nullable(self, src: Value, target_type: RType, line: int) -> Value:
         """Generate a coercion from a potentially null value."""
