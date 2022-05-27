@@ -166,6 +166,26 @@ bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value) {
     }
 }
 
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value) {
+    size_t size = PyList_GET_SIZE(list);
+    if (unlikely((uint64_t)index >= size)) {
+        if (index > 0) {
+            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+            return false;
+        }
+        index += size;
+        if (index < 0) {
+            PyErr_SetString(PyExc_IndexError, "list assignment index out of range");
+            return false;
+        }
+    }
+    // PyList_SET_ITEM doesn't decref the old element, so we do
+    Py_DECREF(PyList_GET_ITEM(list, index));
+    // N.B: Steals reference
+    PyList_SET_ITEM(list, index, value);
+    return true;
+}
+
 // This function should only be used to fill in brand new lists.
 bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value) {
     if (CPyTagged_CheckShort(index)) {

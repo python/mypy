@@ -110,6 +110,15 @@ list_set_item_op = method_op(
     error_kind=ERR_FALSE,
     steals=[False, False, True])
 
+# list[index_i64] = obj
+method_op(
+    name='__setitem__',
+    arg_types=[list_rprimitive, int64_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyList_SetItemInt64',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True])
+
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.
 new_list_set_item_op = custom_op(
