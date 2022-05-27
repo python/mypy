@@ -26,6 +26,41 @@ def test_min() -> None:
     assert min_ll(1 + int(), 2) == 1
     assert min_ll(2 + int(), 1) == 1
     assert min_ll(1 + int(), 1) == 1
+    assert min_ll(-2 + int(), 1) == -2
+    assert min_ll(1 + int(), -2) == -2
+
+def eq(x: i64, y: i64) -> bool:
+    return x == y
+
+def test_eq() -> None:
+    assert eq(int(), int())
+    assert eq(5 + int(), 5 + int())
+    assert eq(-5 + int(), -5 + int())
+    assert not eq(int(), 1 + int())
+    assert not eq(5 + int(), 6 + int())
+    assert not eq(-5 + int(), -6 + int())
+    assert not eq(-5 + int(), 5 + int())
+
+def test_comparisons() -> None:
+    one: i64 = 1 + int()
+    one2: i64 = 1 + int()
+    two: i64 = 2 + int()
+    assert one < two
+    assert not (one < one2)
+    assert not (two < one)
+    assert two > one
+    assert not (one > one2)
+    assert not (one > two)
+    assert one <= two
+    assert one <= one2
+    assert not (two <= one)
+    assert two >= one
+    assert one >= one2
+    assert not (one >= two)
+    assert one == one2
+    assert not (one == two)
+    assert one != two
+    assert not (one != one2)
 
 def get_item(a: List[i64], n: i64) -> i64:
     return a[n]

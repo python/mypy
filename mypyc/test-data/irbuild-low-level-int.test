@@ -21,6 +21,23 @@ def min(x: i64, y: i64) -> i64:
         return x
     else:
         return y
+
+def all_comparisons(x: i64) -> i64:
+    if x == 2:
+        y = 10
+    elif 3 != x:
+        y = 11
+    elif x > 4:
+        y = 12
+    elif 6 >= x:
+        y = 13
+    elif x < 5:
+        y = 14
+    elif 6 <= x:
+        y = 15
+    else:
+        y = 16
+    return y
 [out]
 def min(x, y):
     x, y :: int64
@@ -34,6 +51,60 @@ L2:
     return y
 L3:
     unreachable
+def all_comparisons(x):
+    x :: int64
+    r0 :: bit
+    y :: int
+    r1, r2, r3, r4, r5 :: bit
+    r6 :: object
+    r7 :: int64
+L0:
+    r0 = x == 2
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    y = 20
+    goto L18
+L2:
+    r1 = 3 != x
+    if r1 goto L3 else goto L4 :: bool
+L3:
+    y = 22
+    goto L17
+L4:
+    r2 = x > 4 :: signed
+    if r2 goto L5 else goto L6 :: bool
+L5:
+    y = 24
+    goto L16
+L6:
+    r3 = 6 >= x :: signed
+    if r3 goto L7 else goto L8 :: bool
+L7:
+    y = 26
+    goto L15
+L8:
+    r4 = x < 5 :: signed
+    if r4 goto L9 else goto L10 :: bool
+L9:
+    y = 28
+    goto L14
+L10:
+    r5 = 6 <= x :: signed
+    if r5 goto L11 else goto L12 :: bool
+L11:
+    y = 30
+    goto L13
+L12:
+    y = 32
+L13:
+L14:
+L15:
+L16:
+L17:
+L18:
+    r6 = box(int, y)
+    r7 = unbox(int64, r6)
+    return r7
 
 [case testLowLevelIntArithmetic]
 from mypy_extensions import i64
