@@ -287,7 +287,7 @@ static void CPy_DecRef(PyObject *p) {
     CPy_DECREF(p);
 }
 
-CPy_NOINLINE
+//CPy_NOINLINE
 static void CPy_XDecRef(PyObject *p) {
     CPy_XDECREF(p);
 }
