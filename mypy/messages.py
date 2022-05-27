@@ -1858,11 +1858,11 @@ def format_type_inner(typ: Type,
 
 
 def collect_all_names(t: Type) -> List[Tuple[str, str]]:
-    """Return all (shortname, fullname) pairs for all types that show
-    up when printing `t` in an error message.
+    """Return all (shortname, fullname) pairs for all instances and
+    type aliases that show up when printing `t` in an error message.
 
-    This is similar to collect_all_inner_types from typeanal but only
-    returns instances and will recurse into fallbacks.
+    TODO: extend this to include all name pairs that will show up in
+    the error message
     """
     visitor = CollectAllNamesQuery()
     t.accept(visitor)
