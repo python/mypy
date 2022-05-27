@@ -103,6 +103,31 @@ def test_divide_by_variable() -> None:
                 with assertRaises(ZeroDivisionError, "integer division or modulo by zero"):
                     div(x, y)
 
+def mod_by_7(x: i64) -> i64:
+    return x % 7
+
+def mod_by_neg_7(x: i64) -> i64:
+    return x // -7
+
+#def mod(x: i64, y: i64) -> i64:
+#    return x % y
+
+def test_mod_by_constant() -> None:
+    for i in range(-1000, 1000):
+        assert mod_by_7(i) == i % 7
+    for i in range(-2**63, -2**63 + 1000):
+        assert mod_by_7(i) == i % 7
+    for i in range(2**63 - 1000, 2**63 - 1):
+        assert mod_by_7(i) == i % 7
+
+def test_mod_by_negative_constant() -> None:
+    for i in range(-1000, 1000):
+        assert mod_by_neg_7(i) == i // -7
+    for i in range(-2**63, -2**63 + 1000):
+        assert mod_by_neg_7(i) == i // -7
+    for i in range(2**63 - 1000, 2**63 - 1):
+        assert mod_by_neg_7(i) == i // -7
+
 def get_item(a: List[i64], n: i64) -> i64:
     return a[n]
 

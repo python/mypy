@@ -91,8 +91,8 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
 FIXED_WIDTH_INT_BINARY_OPS: Final = {
-    '+', '-', '*', '//', '&', '|', '^', '<<', '>>',
-    '+=', '-=', '*=', '//=', '&=', '|=', '^=', '<<=', '>>=',
+    '+', '-', '*', '//', '%', '&', '|', '^', '<<', '>>',
+    '+=', '-=', '*=', '//=', '%=', '&=', '|=', '^=', '<<=', '>>=',
 }
 
 
@@ -1451,6 +1451,12 @@ class LowLevelIRBuilder:
             if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
                 return self.inline_fixed_width_divide(type, lhs, rhs, line)
             return self.call_c(int64_divide_op, [lhs, rhs], line)
+        if op == IntOp.MOD:
+            # Inline simple % by a constant, so that C
+            # compilers can optimize more
+            if isinstance(rhs, Integer) and rhs.value not in (-1, 0):
+                return self.inline_fixed_width_mod(type, lhs, rhs, line)
+            return self.call_c(int64_mod_op, [lhs, rhs], line)
         return self.int_op(type, lhs, rhs, op, line)
 
     def inline_fixed_width_divide(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
@@ -1470,6 +1476,27 @@ class LowLevelIRBuilder:
         self.add(Branch(mul_eq, done, adjust, Branch.BOOL))
         self.activate_block(adjust)
         adj = self.int_op(type, res, Integer(1, type), IntOp.SUB, line)
+        self.add(Assign(res, adj))
+        self.add(Goto(done))
+        self.activate_block(done)
+        return res
+
+    def inline_fixed_width_mod(self, type: RType, lhs: Value, rhs: Value, line: int) -> Value:
+        # Perform floor modulus
+        res = Register(type)
+        mod = self.int_op(type, lhs, rhs, IntOp.MOD, line)
+        self.add(Assign(res, mod))
+        neg1 = self.add(ComparisonOp(lhs, Integer(0, type), ComparisonOp.SLT, line))
+        neg2 = self.add(ComparisonOp(rhs, Integer(0, type), ComparisonOp.SLT, line))
+        diff_signs = self.add(ComparisonOp(neg1, neg2, ComparisonOp.EQ, line))
+        tricky, adjust, done = BasicBlock(), BasicBlock(), BasicBlock()
+        self.add(Branch(diff_signs, done, tricky, Branch.BOOL))
+        self.activate_block(tricky)
+        is_zero = self.add(ComparisonOp(res, Integer(0, type), ComparisonOp.EQ, line))
+        adjust = BasicBlock()
+        self.add(Branch(is_zero, done, adjust, Branch.BOOL))
+        self.activate_block(adjust)
+        adj = self.int_op(type, res, rhs, IntOp.ADD, line)
         self.add(Assign(res, adj))
         self.add(Goto(done))
         self.activate_block(done)

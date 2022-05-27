@@ -366,3 +366,29 @@ def divide_by_neg_zero(x):
 L0:
     r0 = CPyInt64_Divide(x, 0)
     return r0
+
+[case testLowLevelIntMod]
+from mypy_extensions import i64
+
+def constant_divisor(x: i64) -> i64:
+    return x % 7
+[out]
+def constant_divisor(x):
+    x, r0, r1 :: int64
+    r2, r3, r4, r5 :: bit
+    r6 :: int64
+L0:
+    r0 = x % 7
+    r1 = r0
+    r2 = x < 0 :: signed
+    r3 = 7 < 0 :: signed
+    r4 = r2 == r3
+    if r4 goto L3 else goto L1 :: bool
+L1:
+    r5 = r1 == 0
+    if r5 goto L3 else goto L2 :: bool
+L2:
+    r6 = r1 + 7
+    r1 = r6
+L3:
+    return r1
