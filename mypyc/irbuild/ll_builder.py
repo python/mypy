@@ -90,6 +90,10 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
+FIXED_WIDTH_INT_BINARY_OPS: Final = {
+    '+', '-', '*', '&', '|', '^', '<<', '>>', '+='
+}
+
 
 class LowLevelIRBuilder:
     def __init__(
@@ -899,7 +903,7 @@ class LowLevelIRBuilder:
             return self.bool_bitwise_op(lreg, rreg, op[0], line)
         if isinstance(rtype, RInstance) and op in ('in', 'not in'):
             return self.translate_instance_contains(rreg, lreg, op, line)
-        if is_int64_rprimitive(ltype) and op in ('+', '-', '*', '+='):
+        if is_int64_rprimitive(ltype) and op in FIXED_WIDTH_INT_BINARY_OPS:
             # TODO: More ops
             if op == '+=':
                 op = '+'
@@ -910,8 +914,9 @@ class LowLevelIRBuilder:
                 # TODO: Check what kind of Integer
                 op_id = IntOp.op_to_id[op]
                 return self.int_op(ltype, lreg, Integer(rreg.value >> 1, ltype), op_id, line)
-        elif is_int64_rprimitive(rtype) and isinstance(lreg, Integer) and op in ('+', '-', '*',
-                                                                                 '+='):
+        elif (is_int64_rprimitive(rtype)
+                  and isinstance(lreg, Integer)
+                  and op in FIXED_WIDTH_INT_BINARY_OPS):
             # TODO: More ops
             if op == '+=':
                 op = '+'
@@ -1143,9 +1148,13 @@ class LowLevelIRBuilder:
         typ = value.type
         if (is_bool_rprimitive(typ) or is_bit_rprimitive(typ)) and expr_op == 'not':
             return self.unary_not(value, line)
-        if is_int64_rprimitive(typ) and expr_op == '-':
-            # Translate to '0 - x'
-            return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+        if is_int64_rprimitive(typ):
+            if expr_op == '-':
+                # Translate to '0 - x'
+                return self.int_op(typ, Integer(0, typ), value, IntOp.SUB, line)
+            if expr_op == '~':
+                # Translate to 'x ^ -1'
+                return self.int_op(typ, value, Integer(-1, typ), IntOp.XOR, line)
         if isinstance(value, Integer):
             # TODO: Overflow? Unsigned?
             num = value.value

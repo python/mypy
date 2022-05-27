@@ -162,3 +162,59 @@ L0:
     r1 = a + b
     a = r1
     return a
+
+[case testLowLevelIntBitwiseOps]
+from mypy_extensions import i64
+
+def forward(a: i64, b: i64) -> i64:
+    b = a & 1
+    a = b | 2
+    b = a ^ 3
+    a = b << 4
+    b = a >> 5
+    return b
+
+def reverse(a: i64, b: i64) -> i64:
+    b = 1 & a
+    a = 2 | b
+    b = 3 ^ a
+    a = 4 << b
+    b = 5 >> a
+    return b
+
+def unary(a: i64) -> i64:
+    return ~a
+[out]
+def forward(a, b):
+    a, b, r0, r1, r2, r3, r4 :: int64
+L0:
+    r0 = a & 1
+    b = r0
+    r1 = b | 2
+    a = r1
+    r2 = a ^ 3
+    b = r2
+    r3 = b << 4
+    a = r3
+    r4 = a >> 5
+    b = r4
+    return b
+def reverse(a, b):
+    a, b, r0, r1, r2, r3, r4 :: int64
+L0:
+    r0 = 1 & a
+    b = r0
+    r1 = 2 | b
+    a = r1
+    r2 = 3 ^ a
+    b = r2
+    r3 = 4 << b
+    a = r3
+    r4 = 5 >> a
+    b = r4
+    return b
+def unary(a):
+    a, r0 :: int64
+L0:
+    r0 = a ^ -1
+    return r0
