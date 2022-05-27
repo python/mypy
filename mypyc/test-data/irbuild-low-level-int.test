@@ -154,14 +154,16 @@ L0:
     a = r1
     return 1
 
-[case testLowLevelIntListGetItem]
+[case testLowLevelIntListGetSetItem]
 from typing import List
 from mypy_extensions import i64
 
-def f(a: List[i64], i: i64) -> i64:
+def get(a: List[i64], i: i64) -> i64:
     return a[i]
+def set(a: List[i64], i: i64, x: i64) -> None:
+    a[i] = x
 [out]
-def f(a, i):
+def get(a, i):
     a :: list
     i :: int64
     r0 :: object
@@ -170,6 +172,15 @@ L0:
     r0 = CPyList_GetItemInt64(a, i)
     r1 = unbox(int64, r0)
     return r1
+def set(a, i, x):
+    a :: list
+    i, x :: int64
+    r0 :: object
+    r1 :: bit
+L0:
+    r0 = box(int64, x)
+    r1 = CPyList_SetItemI64(a, i, r0)
+    return 1
 
 [case testLowLevelIntMixedArithmetic]
 from mypy_extensions import i64
