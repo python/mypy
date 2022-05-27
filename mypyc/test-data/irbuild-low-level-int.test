@@ -12,3 +12,25 @@ L0:
     x = 5
     y = x
     return y
+
+[case testLowLevelIntCompare]
+from mypy_extensions import i64
+
+def min(x: i64, y: i64) -> i64:
+    if x < y:
+        return x
+    else:
+        return y
+[out]
+def min(x, y):
+    x, y :: int64
+    r0 :: bit
+L0:
+    r0 = x < y :: signed
+    if r0 goto L1 else goto L2 :: bool
+L1:
+    return x
+L2:
+    return y
+L3:
+    unreachable

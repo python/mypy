@@ -18,11 +18,12 @@ from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_typ
 
 from mypyc.common import MAX_SHORT_INT
 from mypyc.ir.ops import (
-    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
+    Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError,
+    ComparisonOp
 )
 from mypyc.ir.rtypes import (
     RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
-    is_list_rprimitive
+    is_list_rprimitive, is_int64_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -634,6 +635,10 @@ def transform_basic_comparison(builder: IRBuilder,
     if (is_int_rprimitive(left.type) and is_int_rprimitive(right.type)
             and op in int_comparison_op_mapping.keys()):
         return builder.compare_tagged(left, right, op, line)
+    if (is_int64_rprimitive(left.type) and is_int64_rprimitive(right.type)
+            and op in int_comparison_op_mapping.keys()):
+        op_id = ComparisonOp.signed_ops[op]
+        return builder.builder.comparison_op(left, right, op_id, line)
     negate = False
     if op == 'is not':
         op, negate = 'is', True
