@@ -622,3 +622,7 @@ int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
     }
     return d;
 }
+
+void CPyInt32_Overflow() {
+    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+}

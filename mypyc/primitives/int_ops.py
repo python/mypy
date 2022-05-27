@@ -9,10 +9,10 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 """
 
 from typing import Dict, NamedTuple
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ComparisonOp
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_ALWAYS, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, RType
+    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, void_rtype, RType
 )
 from mypyc.primitives.registry import (
     load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
@@ -206,6 +206,12 @@ int64_to_int_op = custom_op(
 # Convert tagged int (as PyObject *) to i32
 int_to_int32_op = custom_op(
     arg_types=[object_rprimitive],
-    return_type=int64_rprimitive,
+    return_type=int32_rprimitive,
     c_function_name='CPyLong_AsInt32',
     error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name='CPyInt32_Overflow',
+    error_kind=ERR_ALWAYS)
