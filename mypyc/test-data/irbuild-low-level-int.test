@@ -131,6 +131,22 @@ L0:
     r0 = 0 - i
     return r0
 
+[case testLowLevelIntMoreUnaryOps]
+from mypy_extensions import i64
+
+def unary(x: i64) -> i64:
+    y = ~x
+    x = +y
+    return x
+[out]
+def unary(x):
+    x, r0, y :: int64
+L0:
+    r0 = x ^ -1
+    y = r0
+    x = y
+    return x
+
 [case testLowLevelIntBoxingAndUnboxing]
 from typing import Any
 from mypy_extensions import i64
@@ -1072,7 +1088,7 @@ L3:
     r7 = x == r3
     return r7
 
-[case testLowLevelInt32MixedCompare1]
+[case testLowLevelIntI32MixedCompare1]
 from mypy_extensions import i32
 def f(x: int, y: i32) -> bool:
     return x == y
