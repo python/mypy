@@ -12,7 +12,8 @@ from typing import Dict, NamedTuple
 from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_ALWAYS, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, void_rtype, RType
+    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, void_rtype, RType,
+    c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
@@ -197,10 +198,16 @@ int_to_int64_op = custom_op(
     c_function_name='CPyLong_AsInt64',
     error_kind=ERR_MAGIC_OVERLAPPING)
 
+ssize_t_to_int_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyTagged_FromSsize_t',
+    error_kind=ERR_MAGIC)
+
 int64_to_int_op = custom_op(
     arg_types=[int64_rprimitive],
     return_type=int_rprimitive,
-    c_function_name='CPyTagged_FromSsize_t',
+    c_function_name='CPyTagged_FromInt64',
     error_kind=ERR_MAGIC)
 
 # Convert tagged int (as PyObject *) to i32

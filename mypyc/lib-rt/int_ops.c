@@ -35,6 +35,15 @@ CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
     }
 }
 
+CPyTagged CPyTagged_FromInt64(int64_t value) {
+    if (unlikely(CPyTagged_TooBig(value))) {
+        PyObject *object = PyLong_FromLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
