@@ -9,7 +9,7 @@ import copy
 import enum
 import importlib
 import inspect
-import io
+import os
 import re
 import sys
 import types
@@ -17,9 +17,9 @@ import warnings
 from contextlib import redirect_stdout, redirect_stderr
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast, Set
+from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 
-from typing_extensions import Type, Literal
+from typing_extensions import Type
 
 import mypy.build
 import mypy.modulefinder
@@ -28,9 +28,8 @@ import mypy.types
 import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
-from mypy.messages import plural_s
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, plural_s, is_dunder
 
 
 class Missing:
@@ -54,14 +53,8 @@ def _style(message: str, **kwargs: Any) -> str:
     return _formatter.style(message, **kwargs)
 
 
-def log_error(message: str) -> Literal[1]:
-    """Print a bold red message."""
-    print(_style(message, color="red", bold=True))
-    return 1
-
-
-class Failure(Exception):
-    """Used to indicate a handled failure state"""
+class StubtestFailure(Exception):
+    pass
 
 
 class Error:
@@ -164,7 +157,7 @@ class Error:
 # ====================
 
 
-def test_module(module_name: str, concise: bool = False) -> Iterator[Error]:
+def test_module(module_name: str) -> Iterator[Error]:
     """Tests a given module's stub against introspecting it at runtime.
 
     Requires the stub to have been built already, accomplished by a call to ``build_stubs``.
@@ -177,37 +170,18 @@ def test_module(module_name: str, concise: bool = False) -> Iterator[Error]:
         yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc="N/A")
         return
 
-    argv = sys.argv
-    sys.argv = []
-    output = io.StringIO()
-    outerror = io.StringIO()
     try:
-        with warnings.catch_warnings(), redirect_stdout(output), redirect_stderr(outerror):
-            warnings.simplefilter("ignore")
-            runtime = importlib.import_module(module_name)
-            # Also run the equivalent of `from module import *`
-            # This could have the additional effect of loading not-yet-loaded submodules
-            # mentioned in __all__
-            __import__(module_name, fromlist=["*"])
-    except KeyboardInterrupt:
-        raise
-    except BaseException as e:  # to catch every possible error
-        yield Error([module_name], f"failed to import: {type(e).__name__} {e}", stub, MISSING,
-                    stub_desc=stub.path, runtime_desc="Missing due to failed import")
+        with open(os.devnull, "w") as devnull:
+            with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
+                warnings.simplefilter("ignore")
+                runtime = importlib.import_module(module_name)
+                # Also run the equivalent of `from module import *`
+                # This could have the additional effect of loading not-yet-loaded submodules
+                # mentioned in __all__
+                __import__(module_name, fromlist=["*"])
+    except Exception as e:
+        yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
-    finally:
-        sys.argv = argv
-        stdout = output.getvalue()
-        stderr = outerror.getvalue()
-        if stdout or stderr and not concise:
-            print(f"Found output while loading '{module_name}'")
-            if stdout:
-                print(_style("======= standard output ============", bold=True))
-                print(stdout, end="" if stdout[-1] == "\n" else "\n")
-            if stderr:
-                print(_style("======= standard error =============", bold=True))
-                print(stderr, end="" if stderr[-1] == "\n" else "\n")
-            print(_style("====================================", bold=True))
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
@@ -494,21 +468,21 @@ class Signature(Generic[T]):
                 return arg.name
             if isinstance(arg, nodes.Argument):
                 return arg.variable.name
-            raise Failure
+            raise AssertionError
 
         def get_type(arg: Any) -> Optional[str]:
             if isinstance(arg, inspect.Parameter):
                 return None
             if isinstance(arg, nodes.Argument):
                 return str(arg.variable.type or arg.type_annotation)
-            raise Failure
+            raise AssertionError
 
         def has_default(arg: Any) -> bool:
             if isinstance(arg, inspect.Parameter):
                 return arg.default != inspect.Parameter.empty
             if isinstance(arg, nodes.Argument):
                 return arg.kind.is_optional()
-            raise Failure
+            raise AssertionError
 
         def get_desc(arg: Any) -> str:
             arg_type = get_type(arg)
@@ -543,7 +517,7 @@ class Signature(Generic[T]):
             elif stub_arg.kind == nodes.ARG_STAR2:
                 stub_sig.varkw = stub_arg
             else:
-                raise Failure
+                raise AssertionError
         return stub_sig
 
     @staticmethod
@@ -562,7 +536,7 @@ class Signature(Generic[T]):
             elif runtime_arg.kind == inspect.Parameter.VAR_KEYWORD:
                 runtime_sig.varkw = runtime_arg
             else:
-                raise Failure
+                raise AssertionError
         return runtime_sig
 
     @staticmethod
@@ -641,7 +615,7 @@ class Signature(Generic[T]):
             elif arg.kind == nodes.ARG_STAR2:
                 sig.varkw = arg
             else:
-                raise Failure
+                raise AssertionError
         return sig
 
 
@@ -952,8 +926,10 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
             return func
         if decorator.fullname == "builtins.classmethod":
             if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
-                log_error(f"Error: bad class argument name: {func.arguments[0].variable.name}")
-                raise Failure
+                raise StubtestFailure(
+                    f"unexpected class argument name {func.arguments[0].variable.name!r} "
+                    f"in {dec.fullname}"
+                )
             # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
             # Remove the cls argument, since it's not present in inspect.signature of classmethods
@@ -1191,7 +1167,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
                 elif arg.kind == inspect.Parameter.VAR_KEYWORD:
                     arg_kinds.append(nodes.ARG_STAR2)
                 else:
-                    raise Failure
+                    raise AssertionError
         else:
             arg_types = [anytype(), anytype()]
             arg_kinds = [nodes.ARG_STAR, nodes.ARG_STAR2]
@@ -1286,20 +1262,9 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
     try:
         res = mypy.build.build(sources=sources, options=options)
     except mypy.errors.CompileError as e:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to failed mypy compile:\n",
-            str(e),
-        ]
-        print("".join(output))
-        raise Failure from e
+        raise StubtestFailure(f"failed mypy compile:\n{e}") from e
     if res.errors:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to mypy build errors:\n",
-        ]
-        print("".join(output) + "\n".join(res.errors))
-        raise Failure
+        raise StubtestFailure("mypy build errors:\n" + "\n".join(res.errors))
 
     global _all_stubs
     _all_stubs = res.files
@@ -1309,10 +1274,7 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
 
 def get_stub(module: str) -> Optional[nodes.MypyFile]:
     """Returns a stub object for the given module, if we've built one."""
-    result = _all_stubs.get(module)
-    if result and result.is_stub:
-        return result
-    return None
+    return _all_stubs.get(module)
 
 
 def get_typeshed_stdlib_modules(
@@ -1367,7 +1329,7 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
                 yield entry
 
 
-class Arguments:
+class _Arguments:
     modules: List[str]
     concise: bool
     ignore_missing_stub: bool
@@ -1379,10 +1341,9 @@ class Arguments:
     custom_typeshed_dir: str
     check_typeshed: bool
     version: str
-    error_summary: bool
 
 
-def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
+def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
     # Values in the dict will store whether we used the allowlist entry or not.
@@ -1399,14 +1360,22 @@ def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
     modules = args.modules
     if args.check_typeshed:
         if args.modules:
-            return log_error("Cannot pass both --check-typeshed and a list of modules")
+            print(
+                _style("error:", color="red", bold=True),
+                "cannot pass both --check-typeshed and a list of modules",
+            )
+            return 1
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
         # typeshed added a stub for __main__, but that causes stubtest to check itself
         annoying_modules = {"antigravity", "this", "__main__"}
         modules = [m for m in modules if m not in annoying_modules]
 
     if not modules:
-        return log_error("No modules to check")
+        print(
+            _style("error:", color="red", bold=True),
+            "no modules to check",
+        )
+        return 1
 
     options = Options()
     options.incremental = False
@@ -1421,14 +1390,17 @@ def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
-    except Failure:
+    except StubtestFailure as stubtest_failure:
+        print(
+            _style("error:", color="red", bold=True),
+            f"not checking stubs due to {stubtest_failure}",
+        )
         return 1
 
     exit_code = 0
     error_count = 0
-    error_modules: Set[str] = set()
     for module in modules:
-        for error in test_module(module, args.concise):
+        for error in test_module(module):
             # Filter errors
             if args.ignore_missing_stub and error.is_missing_stub():
                 continue
@@ -1453,7 +1425,6 @@ def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
                 continue
             print(error.get_description(concise=args.concise))
             error_count += 1
-            error_modules.add(module)
 
     # Print unused allowlist entries
     if not args.ignore_unused_allowlist:
@@ -1462,6 +1433,7 @@ def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
             # This lets us allowlist errors that don't manifest at all on some systems
             if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
+                error_count += 1
                 print(f"note: unused allowlist entry {w}")
 
     # Print the generated allowlist
@@ -1469,26 +1441,27 @@ def test_stubs(args: Arguments, use_builtins_fixtures: bool = False) -> int:
         for e in sorted(generated_allowlist):
             print(e)
         exit_code = 0
-
-    if args.error_summary:
-        if not error_count:
+    elif not args.concise:
+        if error_count:
+            print(
+                _style(
+                    f"Found {error_count} error{plural_s(error_count)}"
+                    f" (checked {len(modules)} module{plural_s(modules)})",
+                    color="red", bold=True
+                )
+            )
+        else:
             print(
                 _style(
                     f"Success: no issues found in {len(modules)} module{plural_s(modules)}",
                     color="green", bold=True
                 )
             )
-        else:
-            log_error(
-                f"Found {error_count} error{plural_s(error_count)} in {len(error_modules)}"
-                f" module{plural_s(error_modules)}"
-                f" (checked {len(modules)} module{plural_s(modules)})"
-            )
 
     return exit_code
 
 
-def parse_options(args: List[str]) -> Arguments:
+def parse_options(args: List[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
@@ -1549,24 +1522,13 @@ def parse_options(args: List[str]) -> Arguments:
     parser.add_argument(
         "--version", action="version", version="%(prog)s " + mypy.version.__version__
     )
-    parser.add_argument(
-        "--no-error-summary", action="store_false", dest="error_summary",
-        help="Don't output an error summary"
-    )
 
-    return parser.parse_args(args, namespace=Arguments())
+    return parser.parse_args(args, namespace=_Arguments())
 
 
 def main() -> int:
     mypy.util.check_python_version("stubtest")
-    try:
-        return test_stubs(parse_options(sys.argv[1:]))
-    except KeyboardInterrupt:
-        return log_error("Interrupted")
-    except Failure:
-        return log_error("Stubtest has failed and exited early")
-    except Exception:
-        return log_error("Internal error encountered")
+    return test_stubs(parse_options(sys.argv[1:]))
 
 
 if __name__ == "__main__":

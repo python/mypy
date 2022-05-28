@@ -42,7 +42,7 @@ from mypy.subtypes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.typeops import separate_union_literals
-from mypy.util import unmangle, plural_s as plural_s
+from mypy.util import unmangle, plural_s
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
