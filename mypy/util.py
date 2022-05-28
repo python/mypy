@@ -11,7 +11,7 @@ import shutil
 import time
 
 from typing import (
-    TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable
+    TypeVar, List, Tuple, Optional, Dict, Sequence, Iterable, Container, IO, Callable, Union, Sized
 )
 from typing_extensions import Final, Type, Literal
 
@@ -724,8 +724,7 @@ class FancyFormatter:
         n_sources is total number of files passed directly on command line,
         i.e. excluding stubs and followed imports.
         """
-        msg = 'Success: no issues found in {}' \
-              ' source file{}'.format(n_sources, 's' if n_sources != 1 else '')
+        msg = f'Success: no issues found in {n_sources} source file{plural_s(n_sources)}'
         if not use_color:
             return msg
         return self.style(msg, 'green', bold=True)
@@ -735,15 +734,11 @@ class FancyFormatter:
         blockers: bool = False, use_color: bool = True
     ) -> str:
         """Format a short summary in case of errors."""
-
-        msg = 'Found {} error{} in {} file{}'.format(
-            n_errors, 's' if n_errors != 1 else '',
-            n_files, 's' if n_files != 1 else ''
-        )
+        msg = f'Found {n_errors} error{plural_s(n_errors)} in {n_files} file{plural_s(n_files)}'
         if blockers:
             msg += ' (errors prevented further checking)'
         else:
-            msg += f" (checked {n_sources} source file{'s' if n_sources != 1 else ''})"
+            msg += f" (checked {n_sources} source file{plural_s(n_sources)})"
         if not use_color:
             return msg
         return self.style(msg, 'red', bold=True)
@@ -773,3 +768,11 @@ time_ref = time.perf_counter
 
 def time_spent_us(t0: float) -> int:
     return int((time.perf_counter() - t0) * 1e6)
+
+
+def plural_s(s: Union[int, Sized]) -> str:
+    count = s if isinstance(s, int) else len(s)
+    if count > 1:
+        return 's'
+    else:
+        return ''
