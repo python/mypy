@@ -326,6 +326,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                cpy_r_r0 = 1;
             """)
 
+    def test_set_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            SetAttr(self.r, 'x', self.b, 1),
+            """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
+               cpy_r_r0 = 1;
+            """)
+
     def test_dict_get_item(self) -> None:
         self.assert_emit(CallC(dict_get_item_op.c_function_name, [self.d, self.o2],
                                dict_get_item_op.return_type, dict_get_item_op.steals,
