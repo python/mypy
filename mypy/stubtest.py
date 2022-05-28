@@ -1301,7 +1301,8 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
 
 def get_stub(module: str) -> Optional[nodes.MypyFile]:
     """Returns a stub object for the given module, if we've built one."""
-    return _all_stubs.get(module)
+    stub = _all_stubs.get(module)
+    return stub if stub and stub.is_stub else None
 
 
 def get_typeshed_stdlib_modules(
