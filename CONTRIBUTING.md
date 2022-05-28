@@ -51,8 +51,7 @@ like this:
 python3 runtests.py
 ```
 
-Mypy uses `pytest` as its test runner, but `tox` can also be used to run tests,
-for instance:
+You can also use `tox` to run tests (`tox` handles setting up the test environment for you):
 ```
 tox -e py
 ```
