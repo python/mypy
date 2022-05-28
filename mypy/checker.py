@@ -1030,6 +1030,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         #     typ = typ.copy_modified(arg_types = arg_types)
         #     defn.type = typ
 
+        if not defn.is_dynamic():
+            self.dynamic_funcs[-1] = False
+
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
         for item, typ in expanded:
@@ -1269,7 +1272,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                    and any(not is_unannotated_any(t)
                                            for t in fdef.type.arg_types + [fdef.type.ret_type]))
-
+        if fdef.type and fdef.is_dynamic():
+            return
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
         if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
@@ -4178,7 +4182,17 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     e.var.type = AnyType(TypeOfAny.special_form)
                     e.var.is_ready = True
                     return
-
+        # detect default_return and warn against it
+        #  This isn't perfect, as None return could come from inheritance, but who cares
+        if (
+            self.options.disallow_untyped_defs and e.var.is_property
+            and isinstance(e.func.type, CallableType)
+        ):
+            if isinstance(
+                get_proper_type(e.func.type.ret_type), NoneType
+            ) and not e.func.unanalyzed_type:
+                self.fail("Property is missing a type annotation",
+                          e.func, code=codes.NO_UNTYPED_DEF)
         if self.recurse_into_functions:
             with self.tscope.function_scope(e.func):
                 self.check_func_item(e.func, name=e.func.name)
