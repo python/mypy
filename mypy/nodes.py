@@ -714,7 +714,8 @@ class FuncItem(FuncBase):
             arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
-        return self.type is None
+        from mypy.types import CallableType
+        return self.type is None or isinstance(self.type, CallableType) and self.type.implicit
 
 
 FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [

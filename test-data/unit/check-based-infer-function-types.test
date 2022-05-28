@@ -5,9 +5,11 @@
 
 def f(): ...
 reveal_type(f)  # N: Revealed type is "def () -> Untyped"
+f()  # E: Call to untyped function "f" in typed context  [no-untyped-call]
 
 def g(i=1, b=""): ...
 reveal_type(g)  # N: Revealed type is "def (i: int =, b: str =) -> Untyped"
+g()  # E: Call to untyped function "g" in typed context  [no-untyped-call]
 
 class A1:
     def __new__(cls): ...

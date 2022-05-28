@@ -102,7 +102,7 @@ from mypy.types import (
     ASSERT_TYPE_NAMES, OVERLOAD_NAMES, TYPED_NAMEDTUPLE_NAMES, is_named_instance,
     is_unannotated_any, UntypedType,
 )
-from mypy.typeops import function_type, get_type_vars, infer_impl_from_parts
+from mypy.typeops import function_type, get_type_vars, infer_impl_from_parts, callable_type
 from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
@@ -993,11 +993,56 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if len(item.decorators) == 1:
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):
+                        none_func = callable_type(
+                            item.func, self.named_type("builtins.function"), NoneType()
+                        )
+                        none_func.implicit = False
+                        untyped_func = callable_type(
+                            item.func, self.named_type("builtins.function"),
+                            UntypedType(TypeOfAny.explicit)
+                        )
                         if node.name == 'setter':
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.is_abstract = first_item.func.is_abstract
+                            # infer types from the getter
+                            if isinstance(first_item.func.type, CallableType):
+                                if not item.func.type:
+                                    item.func.type = none_func
+                                    if len(item.func.type.arg_types) == 2:
+                                        item.func.type.arg_types[1] = first_item.func.type.ret_type
+                                elif isinstance(item.func.type, CallableType):
+                                    if (
+                                        len(item.func.type.arg_types) == 2
+                                        and is_unannotated_any(item.func.type.arg_types[1])
+                                    ):
+                                        item.func.type.arg_types[1] = first_item.func.type.ret_type
+                                    if is_unannotated_any(item.func.type.ret_type):
+                                        item.func.type.ret_type = NoneType()
+                            else:
+                                # set some boring defaults
+                                if not item.func.type:
+                                    item.func.type = untyped_func
+                                    item.func.type.arg_types[1] = UntypedType(TypeOfAny.explicit)
+                                    item.func.type.implicit = True
+                                elif isinstance(item.func.type, CallableType):
+                                    if (
+                                        len(item.func.type.arg_types) == 2
+                                        and is_unannotated_any(item.func.type.arg_types[1])
+                                    ):
+                                        item.func.type.arg_types[1] = NoneType()
+                                    if is_unannotated_any(item.func.type.ret_type):
+                                        item.func.type.ret_type = NoneType()
+                        if node.name == 'deleter':
+                            # infer types from the getter
+                            if first_item.func.type:
+                                if not item.type:
+                                    item.func.type = none_func
+                            else:
+                                if not item.func.type:
+                                    item.func.type = untyped_func
+                                    item.func.type.implicit = True
                 else:
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)
@@ -5749,7 +5794,8 @@ def infer_fdef_types_from_defaults(defn: Union[FuncDef, Decorator], self: Semant
                                      ret_type or UntypedType(),
                                      self.named_type('builtins.function'),
                                      line=defn.line,
-                                     column=defn.column)
+                                     column=defn.column,
+                                     implicit=not self.options.disallow_untyped_defs)
     elif defn.type:
         assert isinstance(defn.type, CallableType)
         if self.options.default_return and is_unannotated_any(defn.type.ret_type) and (
