@@ -35,7 +35,7 @@ source venv/bin/activate
 ```
 python3 -m pip install -r test-requirements.txt
 python3 -m pip install -e .
-hash -r  # This command isn't necessary if you're on Windows
+hash -r  # This resets shell PATH cache, not necessary on Windows
 ```
 
 ### Running tests
@@ -51,7 +51,7 @@ like this:
 python3 runtests.py
 ```
 
-Some magic incantations for running tests include:
+Some useful commands for running specific tests include:
 ```
 # Use mypy to check mypy's own code
 python3 runtests.py self
@@ -60,7 +60,7 @@ python3 runtests.py self
 pytest -n0 -k 'test_name'
 
 # Run all test cases in the "test-data/unit/check-dataclasses.test" file
-pytest -n0 mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
+pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
 # Run the linter
 flake8
