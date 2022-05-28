@@ -1165,7 +1165,11 @@ class StubtestMiscUnit(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options(["not_a_module"]))
-        assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
+        assert remove_color_code(output.getvalue()) == (
+            "error: not_a_module failed to find stubs\n"
+            "Stub:\nMISSING\nRuntime:\nN/A\n\n"
+            "Found 1 error (checked 1 module)\n"
+        )
 
     def test_get_typeshed_stdlib_modules(self) -> None:
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
@@ -1218,14 +1222,4 @@ class StubtestMiscUnit(unittest.TestCase):
             test_stubs(parse_options(["--check-typeshed", "some_module"]))
         assert remove_color_code(output.getvalue()) == (
             "error: cannot pass both --check-typeshed and a list of modules\n"
-        )
-
-    def test_no_sources(self) -> None:
-        output = io.StringIO()
-        with contextlib.redirect_stdout(output):
-            test_stubs(parse_options(["missing"]))
-        assert remove_color_code(output.getvalue()) == (
-            "error: missing failed to find stubs\n"
-            "Stub:\nMISSING\nRuntime:\nN/A\n\n"
-            "Found 1 error (checked 1 module)\n"
         )
