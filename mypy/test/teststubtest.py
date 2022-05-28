@@ -1201,17 +1201,17 @@ class StubtestMiscUnit(unittest.TestCase):
             "Found 1 error (checked 1 module)\n"
         )
 
-    def test_missing_only_stubs(self) -> None:
+    def test_only_py(self) -> None:
+        # in this case, stubtest will check the py against itself
+        # this is useful to support packages with a mix of stubs and inline types
         with use_tmp_dir(TEST_MODULE_NAME):
             with open(f"{TEST_MODULE_NAME}.py", "w") as f:
                 f.write("a = 1")
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 test_stubs(parse_options([TEST_MODULE_NAME]))
-            assert (
-                f"error: {TEST_MODULE_NAME} failed to find stubs"
-                in remove_color_code(output.getvalue())
-            )
+            output_str = remove_color_code(output.getvalue())
+            assert output_str == 'Success: no issues found in 1 module\n'
 
     def test_get_typeshed_stdlib_modules(self) -> None:
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
