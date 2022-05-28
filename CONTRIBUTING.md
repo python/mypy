@@ -51,10 +51,18 @@ like this:
 python3 runtests.py
 ```
 
+Mypy uses `pytest` as its test runner, but `tox` can also be used to run tests,
+for instance:
+```
+tox -e py
+```
+
 Some useful commands for running specific tests include:
 ```
 # Use mypy to check mypy's own code
 python3 runtests.py self
+# or equivalently:
+python3 -m mypy --config-file mypy_self_check.ini -p mypy
 
 # Run a single test from the test suite
 pytest -n0 -k 'test_name'
@@ -64,11 +72,6 @@ pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 
 # Run the linter
 flake8
-```
-
-You can also use `tox` to run tests, for instance:
-```
-tox -e py
 ```
 
 For an in-depth guide on running and writing tests,
