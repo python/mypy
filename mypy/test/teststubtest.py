@@ -1219,3 +1219,13 @@ class StubtestMiscUnit(unittest.TestCase):
         assert remove_color_code(output.getvalue()) == (
             "error: cannot pass both --check-typeshed and a list of modules\n"
         )
+
+    def test_no_sources(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            test_stubs(parse_options(["missing"]))
+        assert remove_color_code(output.getvalue()) == (
+            "error: missing failed to find stubs\n"
+            "Stub:\nMISSING\nRuntime:\nN/A\n\n"
+            "Found 1 error (checked 1 module)\n"
+        )

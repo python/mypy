@@ -1259,15 +1259,16 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
             sources.extend(found_sources)
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
 
-    try:
-        res = mypy.build.build(sources=sources, options=options)
-    except mypy.errors.CompileError as e:
-        raise StubtestFailure(f"failed mypy compile:\n{e}") from e
-    if res.errors:
-        raise StubtestFailure("mypy build errors:\n" + "\n".join(res.errors))
+    if sources:
+        try:
+            res = mypy.build.build(sources=sources, options=options)
+        except mypy.errors.CompileError as e:
+            raise StubtestFailure(f"failed mypy compile:\n{e}") from e
+        if res.errors:
+            raise StubtestFailure("mypy build errors:\n" + "\n".join(res.errors))
 
-    global _all_stubs
-    _all_stubs = res.files
+        global _all_stubs
+        _all_stubs = res.files
 
     return all_modules
 
