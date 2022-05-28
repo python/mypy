@@ -1055,8 +1055,9 @@ class StubtestMiscUnit(unittest.TestCase):
             options=[],
         )
         expected = (
-            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs from runtime '
-            'argument "num"\nStub: at line 1\ndef (number: builtins.int, text: builtins.str)\n'
+            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
+            'from runtime argument "num"\n'
+            'Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n'
             f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
             'Found 1 error (checked 1 module)\n'
         )
