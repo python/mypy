@@ -605,8 +605,9 @@ def process_options(args: List[str],
     add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
                         help="Disallow defining functions with incomplete type annotations",
                         group=untyped_group)
-    add_invertible_flag('--check-untyped-defs', default=True, strict_flag=True,
-                        help="Type check the interior of functions without type annotations",
+    add_invertible_flag('--no-check-untyped-defs', default=True, strict_flag=True,
+                        dest='check_untyped_defs',
+                        help="Don't type check the interior of functions without type annotations",
                         group=untyped_group)
     add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
                         help="Disallow decorating typed functions with untyped decorators",
