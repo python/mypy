@@ -556,11 +556,10 @@ else {
         self.assert_emit(Extend(a, int64_rprimitive, signed=False),
                          """cpy_r_r0 = (uint32_t)cpy_r_a;""")
         if PLATFORM_SIZE == 4:
-            b = Register(int_rprimitive, 'b')
-            self.assert_emit(Extend(b, int64_rprimitive, signed=True),
-                             """cpy_r_r0 = (Py_ssize_t)cpy_r_b;""")
-            self.assert_emit(Extend(b, int64_rprimitive, signed=False),
-                             """cpy_r_r0 = cpy_r_b;""")
+            self.assert_emit(Extend(self.n, int64_rprimitive, signed=True),
+                             """cpy_r_r0 = (Py_ssize_t)cpy_r_n;""")
+            self.assert_emit(Extend(self.n, int64_rprimitive, signed=False),
+                             """cpy_r_r0 = cpy_r_n;""")
         if PLATFORM_SIZE == 8:
             self.assert_emit(Extend(a, int_rprimitive, signed=True),
                              """cpy_r_r0 = cpy_r_a;""")
