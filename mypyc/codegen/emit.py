@@ -8,6 +8,7 @@ from typing_extensions import Final
 
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
+    ATTR_BITMAP_BITS,
     ATTR_PREFIX,
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     NATIVE_PREFIX,
@@ -329,21 +330,81 @@ class Emitter:
 
         return result
 
+    def bitmap_field(self, index: int) -> str:
+        """Return C field name used for attribute bitmap."""
+        n = index // ATTR_BITMAP_BITS
+        if n == 0:
+            return "bitmap"
+        return f"bitmap{n + 1}"
+
+    def attr_bitmap_expr(self, obj: str, cl: ClassIR, index: int) -> str:
+        """Return reference to the attribute definedness bitmap."""
+        cast = f"({cl.struct_name(self.names)} *)"
+        attr = self.bitmap_field(index)
+        return f"({cast}{obj})->{attr}"
+
+    def emit_attr_bitmap_set(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str
+    ) -> None:
+        """Mark an attribute as defined in the attribute bitmap.
+
+        Assumes that the attribute is tracked in the bitmap (only some attributes
+        use the bitmap). If 'value' is not equal to the error value, do nothing.
+        """
+        self._emit_attr_bitmap_update(value, obj, rtype, cl, attr, clear=False)
+
+    def emit_attr_bitmap_clear(self, obj: str, rtype: RType, cl: ClassIR, attr: str) -> None:
+        """Mark an attribute as undefined in the attribute bitmap.
+
+        Unlike emit_attr_bitmap_set, clear unconditionally.
+        """
+        self._emit_attr_bitmap_update("", obj, rtype, cl, attr, clear=True)
+
+    def _emit_attr_bitmap_update(
+        self, value: str, obj: str, rtype: RType, cl: ClassIR, attr: str, clear: bool
+    ) -> None:
+        if value:
+            self.emit_line(f"if (unlikely({value} == {self.c_undefined_value(rtype)})) {{")
+        index = cl.bitmap_attrs.index(attr)
+        mask = 1 << (index & (ATTR_BITMAP_BITS - 1))
+        bitmap = self.attr_bitmap_expr(obj, cl, index)
+        if clear:
+            self.emit_line(f"{bitmap} &= ~{mask};")
+        else:
+            self.emit_line(f"{bitmap} |= {mask};")
+        if value:
+            self.emit_line("}")
+
     def use_vectorcall(self) -> bool:
         return use_vectorcall(self.capi_version)
 
     def emit_undefined_attr_check(
-        self, rtype: RType, attr_expr: str, compare: str, unlikely: bool = False
+        self,
+        rtype: RType,
+        attr_expr: str,
+        compare: str,
+        obj: str,
+        attr: str,
+        cl: ClassIR,
+        *,
+        unlikely: bool = False,
     ) -> None:
         if isinstance(rtype, RTuple):
-            check = "({})".format(
+            check = "{}".format(
                 self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
             )
         else:
-            check = f"({attr_expr} {compare} {self.c_undefined_value(rtype)})"
+            undefined = self.c_undefined_value(rtype)
+            check = f"{attr_expr} {compare} {undefined}"
         if unlikely:
-            check = f"(unlikely{check})"
-        self.emit_line(f"if {check} {{")
+            check = f"unlikely({check})"
+        if is_fixed_width_rtype(rtype):
+            index = cl.bitmap_attrs.index(attr)
+            bit = 1 << (index & (ATTR_BITMAP_BITS - 1))
+            attr = self.bitmap_field(index)
+            obj_expr = f"({cl.struct_name(self.names)} *){obj}"
+            check = f"{check} && !(({obj_expr})->{attr} & {bit})"
+        self.emit_line(f"if ({check}) {{")
 
     def tuple_undefined_check_cond(
         self,
