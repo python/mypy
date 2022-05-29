@@ -36,8 +36,13 @@ ALL_NON_FAST = [
 ]
 
 
+# This must be enabled by explicitly including 'pytest-extra' on the command line
+PYTEST_OPT_IN = [PEP561]
+
+
 # These must be enabled by explicitly including 'mypyc-extra' on the command line.
 MYPYC_OPT_IN = [MYPYC_RUN, MYPYC_RUN_MULTI]
+
 
 # We split the pytest run into three parts to improve test
 # parallelization. Each run should have tests that each take a roughly similar
@@ -64,14 +69,14 @@ cmds = {
          ERROR_STREAM])],
 
     # Test cases that might take minutes to run
-    'pytest-slower': ['pytest', '-q', '-k', ' or '.join(
-        [PEP561])],
+    'pytest-extra': ['pytest', '-q', '-k', ' or '.join(PYTEST_OPT_IN)],
 
     # Test cases to run in typeshed CI
     'typeshed-ci': ['pytest', '-q', '-k', ' or '.join([CMDLINE,
                                                        EVALUATION,
                                                        SAMPLES,
                                                        TYPESHED])],
+
     # Mypyc tests that aren't run by default, since they are slow and rarely
     # fail for commits that don't touch mypyc
     'mypyc-extra': ['pytest', '-q', '-k', ' or '.join(MYPYC_OPT_IN)],
@@ -80,7 +85,8 @@ cmds = {
 # Stop run immediately if these commands fail
 FAST_FAIL = ['self', 'lint']
 
-DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in ('mypyc-extra', 'typeshed-ci')]
+EXTRA_COMMANDS = ('pytest-extra', 'mypyc-extra', 'typeshed-ci')
+DEFAULT_COMMANDS = [cmd for cmd in cmds if cmd not in EXTRA_COMMANDS]
 
 assert all(cmd in cmds for cmd in FAST_FAIL)
 
@@ -124,7 +130,8 @@ def main() -> None:
     if not set(args).issubset(cmds):
         print("usage:", prog, " ".join('[%s]' % k for k in cmds))
         print()
-        print('Run the given tests. If given no arguments, run everything except mypyc-extra.')
+        print('Run the given tests. If given no arguments, run everything except'
+              + ' pytest-extra and mypyc-extra.')
         exit(1)
 
     if not args:
