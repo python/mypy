@@ -19,7 +19,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
-from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.fscache import FileSystemCache
@@ -330,6 +330,9 @@ class FindModuleCache:
             elif not plausible_match and (self.fscache.isdir(dir_path)
                                           or self.fscache.isfile(dir_path + ".py")):
                 plausible_match = True
+            # If this is not a directory then we can't traverse further into it
+            if not self.fscache.isdir(dir_path):
+                break
         if is_legacy_bundled_package(components[0], self.python_major_ver):
             if (len(components) == 1
                     or (self.find_module(components[0]) is
@@ -724,97 +727,32 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
-def get_prefixes(python_executable: Optional[str]) -> Tuple[str, str]:
-    """Get the sys.base_prefix and sys.prefix for the given python.
+def get_search_dirs(python_executable: Optional[str]) -> List[str]:
+    """Find package directories for given python.
 
-    This runs a subprocess call to get the prefix paths of the given Python executable.
+    This runs a subprocess call, which generates a list of the directories in sys.path.
     To avoid repeatedly calling a subprocess (which can be slow!) we
     lru_cache the results.
     """
-    if python_executable is None:
-        return '', ''
-    elif python_executable == sys.executable:
-        # Use running Python's package dirs
-        return pyinfo.getprefixes()
-    else:
-        # Use subprocess to get the package directory of given Python
-        # executable
-        return ast.literal_eval(
-            subprocess.check_output([python_executable, pyinfo.__file__, 'getprefixes'],
-            stderr=subprocess.PIPE).decode())
-
-
-@functools.lru_cache(maxsize=None)
-def get_site_packages_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
-    """Find package directories for given python.
-
-    This runs a subprocess call, which generates a list of the egg directories, and the site
-    package directories. To avoid repeatedly calling a subprocess (which can be slow!) we
-    lru_cache the results.
-    """
 
     if python_executable is None:
-        return [], []
+        return []
     elif python_executable == sys.executable:
         # Use running Python's package dirs
-        site_packages = pyinfo.getsitepackages()
+        sys_path = pyinfo.getsearchdirs()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
         try:
-            site_packages = ast.literal_eval(
-                subprocess.check_output([python_executable, pyinfo.__file__, 'getsitepackages'],
+            sys_path = ast.literal_eval(
+                subprocess.check_output([python_executable, pyinfo.__file__, 'getsearchdirs'],
                 stderr=subprocess.PIPE).decode())
         except OSError as err:
             reason = os.strerror(err.errno)
             raise CompileError(
                 [f"mypy: Invalid python executable '{python_executable}': {reason}"]
             ) from err
-    return expand_site_packages(site_packages)
-
-
-def expand_site_packages(site_packages: List[str]) -> Tuple[List[str], List[str]]:
-    """Expands .pth imports in site-packages directories"""
-    egg_dirs: List[str] = []
-    for dir in site_packages:
-        if not os.path.isdir(dir):
-            continue
-        pth_filenames = sorted(name for name in os.listdir(dir) if name.endswith(".pth"))
-        for pth_filename in pth_filenames:
-            egg_dirs.extend(_parse_pth_file(dir, pth_filename))
-
-    return egg_dirs, site_packages
-
-
-def _parse_pth_file(dir: str, pth_filename: str) -> Iterator[str]:
-    """
-    Mimics a subset of .pth import hook from Lib/site.py
-    See https://github.com/python/cpython/blob/3.5/Lib/site.py#L146-L185
-    """
-
-    pth_file = os.path.join(dir, pth_filename)
-    try:
-        f = open(pth_file)
-    except OSError:
-        return
-    with f:
-        for line in f.readlines():
-            if line.startswith("#"):
-                # Skip comment lines
-                continue
-            if line.startswith(("import ", "import\t")):
-                # import statements in .pth files are not supported
-                continue
-
-            yield _make_abspath(line.rstrip(), dir)
-
-
-def _make_abspath(path: str, root: str) -> str:
-    """Take a path and make it absolute relative to root if not already absolute."""
-    if os.path.isabs(path):
-        return os.path.normpath(path)
-    else:
-        return os.path.join(root, os.path.normpath(path))
+    return sys_path
 
 
 def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:
@@ -903,27 +841,21 @@ def compute_search_paths(sources: List[BuildSource],
     if options.python_version[0] == 2:
         mypypath = add_py2_mypypath_entries(mypypath)
 
-    egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
-    base_prefix, prefix = get_prefixes(options.python_executable)
-    is_venv = base_prefix != prefix
-    for site_dir in site_packages:
-        assert site_dir not in lib_path
-        if (site_dir in mypypath or
-                any(p.startswith(site_dir + os.path.sep) for p in mypypath) or
-                os.path.altsep and any(p.startswith(site_dir + os.path.altsep) for p in mypypath)):
-            print(f"{site_dir} is in the MYPYPATH. Please remove it.", file=sys.stderr)
+    search_dirs = get_search_dirs(options.python_executable)
+    for search_dir in search_dirs:
+        assert search_dir not in lib_path
+        if (search_dir in mypypath or
+                any(p.startswith(search_dir + os.path.sep) for p in mypypath) or
+                (os.path.altsep
+                    and any(p.startswith(search_dir + os.path.altsep) for p in mypypath))):
+            print(f"{search_dir} is in the MYPYPATH. Please remove it.", file=sys.stderr)
             print("See https://mypy.readthedocs.io/en/stable/running_mypy.html"
                   "#how-mypy-handles-imports for more info", file=sys.stderr)
-            sys.exit(1)
-        elif site_dir in python_path and (is_venv and not site_dir.startswith(prefix)):
-            print("{} is in the PYTHONPATH. Please change directory"
-                  " so it is not.".format(site_dir),
-                  file=sys.stderr)
             sys.exit(1)
 
     return SearchPaths(python_path=tuple(reversed(python_path)),
                        mypy_path=tuple(mypypath),
-                       package_path=tuple(egg_dirs + site_packages),
+                       package_path=tuple(search_dirs),
                        typeshed_path=tuple(lib_path))
 
 
