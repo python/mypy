@@ -1772,3 +1772,21 @@ c = C()
 c2 = C(x=1)
 c.x  # E: "C" has no attribute "x"
 [builtins fixtures/dataclasses.pyi]
+
+[case testDataclassCheckTypeVarBounds]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Protocol, Dict, TypeVar, Generic
+
+class DataclassProtocol(Protocol):
+    __dataclass_fields__: Dict
+
+T = TypeVar("T", bound=DataclassProtocol)
+
+@dataclass
+class MyDataclass:
+    x: int = 1
+
+class MyGeneric(Generic[T]): ...
+class MyClass(MyGeneric[MyDataclass]): ...
+[builtins fixtures/dataclasses.pyi]
