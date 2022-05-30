@@ -216,7 +216,7 @@ imports.
 
     The default logic used to scan through search paths to resolve imports has a
     quadratic worse-case behavior in some cases, which is for instance triggered
-    by a large number of folders sharing a top-level namespace as in:
+    by a large number of folders sharing a top-level namespace as in::
 
         foo/
             company/
@@ -230,7 +230,7 @@ imports.
             company/
                 baz/
                     c.py
-       ...
+        ...
 
     If you are in this situation, you can enable an experimental fast path by
     setting the :option:`--fast-module-lookup` option.
