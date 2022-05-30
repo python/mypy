@@ -82,10 +82,10 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # We use patch callbacks to fix up things when we expect relatively few
     # callbacks to be required.
     apply_semantic_analyzer_patches(patches)
-    # This pass might need fallbacks calculated above.
-    check_type_arguments(graph, scc, errors)
     # Run class decorator hooks (they requite complete MROs and no placeholders).
     apply_class_plugin_hooks(graph, scc, errors)
+    # This pass might need fallbacks calculated above and the results of hooks.
+    check_type_arguments(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
     check_blockers(graph, scc)
     # Clean-up builtins, so that TypeVar etc. are not accessible without importing.
@@ -133,10 +133,9 @@ def semantic_analysis_for_targets(
         process_top_level_function(analyzer, state, state.id,
                                    n.node.fullname, n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
-
+    apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
     check_type_arguments_in_targets(nodes, state, state.manager.errors)
     calculate_class_properties(graph, [state.id], state.manager.errors)
-    apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
 
 
 def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
