@@ -867,7 +867,7 @@ async with C() as x: # E: "async with" outside async function
 
 [case testAwaitMissingNote]
 # flags: --python-version 3.7
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Generator, Any
 
 class C:
     x: int
@@ -878,15 +878,20 @@ def g(x: C) -> None: ...
 
 T = TypeVar("T")
 class Custom(Generic[T]):
-    def __await__(self) -> T: ...
+    def __await__(self) -> Generator[Any, Any, T]: ...
 
 class Sub(Custom[T]): ...
 
-async test() -> None:
-    foo().x
+async def test(x: Sub[D]) -> None:
+    foo().x  # E: "Coroutine[Any, Any, D]" has no attribute "x"
     (await foo()).x
-    g(foo())
+    g(foo())  # E: Argument 1 to "g" has incompatible type "Coroutine[Any, Any, D]"; expected "C"
     g(await foo())
+
+    x.x  # E: "Sub[D]" has no attribute "x"
+    (await x).x
+    a: C = x  # E: Incompatible types in assignment (expression has type "Sub[D]", variable has type "C")
+    b: C = await x
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
