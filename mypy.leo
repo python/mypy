@@ -13,7 +13,7 @@
 <v t="ekr.20220526080725.1"><vh>--- URL's</vh></v>
 <v t="ekr.20220526075331.1"><vh>Files</vh>
 <v t="ekr.20220224065603.3"><vh>@edit C:\Repos\leo-editor\.mypy.ini</vh></v>
-<v t="ekr.20220525082932.2"><vh>@path C:/Repos/mypy</vh>
+<v t="ekr.20220525082932.2"><vh>@path C:/Repos/ekr-mypy</vh>
 <v t="ekr.20220525082932.3"><vh>@clean conftest.py</vh>
 <v t="ekr.20220525082933.1"><vh>pytest_configure</vh></v>
 <v t="ekr.20220525082933.2"><vh>pytest_addoption</vh></v>
@@ -6598,7 +6598,7 @@ if 1:
     c.redraw(last)
 print('Done')</t>
 <t tx="ekr.20220525082932.2"></t>
-<t tx="ekr.20220525082932.3">@path C:/Repos/mypy/
+<t tx="ekr.20220525082932.3">@path C:/Repos/ekr-mypy/
 @language python
 @tabwidth -4
 import os.path
@@ -7145,7 +7145,7 @@ MiB: Final = 2 ** 20
                 found.add(entry)
     return found
 </t>
-<t tx="ekr.20220525082933.1018">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.1018">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Shared code between dmypy.py and dmypy_server.py.
@@ -7226,7 +7226,7 @@ DEFAULT_STATUS_FILE: Final = ".dmypy.json"
 
 
 </t>
-<t tx="ekr.20220525082933.1020">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.1020">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional, Container, Callable, List, Dict, cast
@@ -7563,7 +7563,7 @@ from mypy.nodes import ARG_STAR, ARG_STAR2
         return UnionType.make_union(merged)
     return new
 </t>
-<t tx="ekr.20220525082933.1057">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.1057">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Classification of possible errors mypy can detect.
@@ -7821,7 +7821,7 @@ MISC: Final = ErrorCode("misc", "Miscellaneous other checks", "General")
 
 
 </t>
-<t tx="ekr.20220525082933.1061">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.1061">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import os.path
@@ -8005,7 +8005,7 @@ ErrorTuple = Tuple[Optional[str],
     return should_filter
 
 </t>
-<t tx="ekr.20220525082933.107">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.107">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -8919,7 +8919,7 @@ if __name__ == '__main__':
     # We use exit code 2 to signal that this is no ordinary error.
     raise SystemExit(2)
 </t>
-<t tx="ekr.20220525082933.1112">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.1112">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Dict, Iterable, List, TypeVar, Mapping, cast, Union, Optional
@@ -8981,7 +8981,7 @@ from mypy.types import (
 
 
 </t>
-<t tx="ekr.20220525082933.115">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.115">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 from mypy.plugin import Plugin, FunctionContext
@@ -9138,7 +9138,7 @@ from typing import Optional, Callable
 <t tx="ekr.20220525082933.125">def plugin(version: str) -&gt; typing_Type[ProperTypePlugin]:
     return ProperTypePlugin
 </t>
-<t tx="ekr.20220525082933.126">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.126">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 """Sync stdlib stubs (and a few other files) from typeshed.
@@ -9250,7 +9250,7 @@ if __name__ == '__main__':
 
 
 </t>
-<t tx="ekr.20220525082933.131">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.131">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 from typing import Iterator, List
@@ -9334,7 +9334,7 @@ if __name__ == '__main__':
 
 
 </t>
-<t tx="ekr.20220525082933.140">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.140">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -9501,7 +9501,7 @@ if __name__ == '__main__':
     print()
 
 </t>
-<t tx="ekr.20220525082933.151">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.151">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -9651,7 +9651,7 @@ def tmp_twine() -&gt; Iterator[Path]:
 
 
 </t>
-<t tx="ekr.20220525082933.162">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.162">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 """Example of code generation approach to variadics.
@@ -9714,7 +9714,7 @@ main()
 
 </t>
 <t tx="ekr.20220525082933.166"></t>
-<t tx="ekr.20220525082933.167">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.167">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """This module makes it possible to use mypy as part of a Python application.
@@ -9816,7 +9816,7 @@ def f(stdout: TextIO, stderr: TextIO) -&gt; None:
         sys.stderr = old_stderr
 
 </t>
-<t tx="ekr.20220525082933.172">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.172">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Dict, Sequence, Optional, Callable
@@ -9943,7 +9943,7 @@ from mypy.nodes import Context
         type_guard=type_guard,
     )
 </t>
-<t tx="ekr.20220525082933.175">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.175">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utilities for mapping between actual and formal arguments (and their types)."""
@@ -10107,7 +10107,7 @@ if TYPE_CHECKING:
     self.context = context
 
 </t>
-<t tx="ekr.20220525082933.18">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.18">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -10201,7 +10201,7 @@ if __name__ == '__main__':
         # No translation for other kinds -- 1:1 mapping.
         return actual_type
 </t>
-<t tx="ekr.20220525082933.181">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.181">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import sys
@@ -10223,7 +10223,7 @@ if sys.version_info &lt; (3, 7):
 else:
     from contextlib import nullcontext as nullcontext  # noqa: F401
 </t>
-<t tx="ekr.20220525082933.182">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.182">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from contextlib import contextmanager
@@ -10747,7 +10747,7 @@ def top_frame_context(self) -&gt; Iterator[Frame]:
             return type
     return None
 </t>
-<t tx="ekr.20220525082933.213">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.213">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """A Bogus[T] type alias for marking when we subvert the type system
@@ -10775,7 +10775,7 @@ if MYPYC:
 else:
     Bogus = FlexibleAlias[T, T]
 </t>
-<t tx="ekr.20220525082933.214">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.214">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Facilities to analyze entire programs, including imported modules.
@@ -11323,7 +11323,7 @@ PRI_ALL: Final = 99  # include all priorities
 
 
 </t>
-<t tx="ekr.20220525082933.23">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.23">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python
@@ -13238,7 +13238,7 @@ def wrap_context(self, check_blockers: bool = True) -&gt; Iterator[None]:
         self._type_checker = None
 
 </t>
-<t tx="ekr.20220525082933.3">@path C:/Repos/mypy/
+<t tx="ekr.20220525082933.3">@path C:/Repos/ekr-mypy/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -14539,7 +14539,7 @@ if __name__ == '__main__':
     return out
 
 </t>
-<t tx="ekr.20220525082933.340">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.340">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Mypy type checker."""
@@ -16207,7 +16207,7 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
             return
 
 </t>
-<t tx="ekr.20220525082933.39">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.39">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -17526,7 +17526,7 @@ def enter_final_context(self, is_final_def: bool) -&gt; Iterator[None]:
         self._is_final_def = old_ctx
 
 </t>
-<t tx="ekr.20220525082933.43">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.43">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -21800,7 +21800,7 @@ TValue = TypeVar('TValue')
                 print("    error:", repr(e))
 
 </t>
-<t tx="ekr.20220525082933.600">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.600">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Expression type checker. This file is conceptually part of TypeChecker."""
@@ -22095,7 +22095,7 @@ OVERLAPPING_TYPES_ALLOWLIST: Final = [
     return result
 
 </t>
-<t tx="ekr.20220525082933.61">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.61">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 """Script to build compiled binary wheels that can be uploaded to PyPI.
@@ -23140,7 +23140,7 @@ container_args: ClassVar[Dict[str, Dict[str, List[str]]]] = {
     return res
 
 </t>
-<t tx="ekr.20220525082933.64">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.64">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 """Cherry-pick a commit from typeshed.
@@ -24248,7 +24248,7 @@ def type_overrides_set(self, exprs: Sequence[Expression],
     return self.infer_literal_expr_type(e.value, 'builtins.int')
 
 </t>
-<t tx="ekr.20220525082933.67">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.67">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -25065,7 +25065,7 @@ if __name__ == '__main__':
     return value
 
 </t>
-<t tx="ekr.20220525082933.69">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.69">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -26600,7 +26600,7 @@ if __name__ == "__main__":
     return e.type
 
 </t>
-<t tx="ekr.20220525082933.74">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.74">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -26892,7 +26892,7 @@ def narrow_type_from_binder(self, expr: Expression, known_type: Type,
 
 
 </t>
-<t tx="ekr.20220525082933.77">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.77">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 """Fixer for lib2to3 that inserts mypy annotations into all methods.
@@ -27211,7 +27211,7 @@ def is_typetype_like(typ: ProperType) -&gt; bool:
         return None
     return t
 </t>
-<t tx="ekr.20220525082933.783">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.783">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Type checking of attribute access"""
@@ -28420,7 +28420,7 @@ decorated = compile_pattern(DECORATED)
         return isinstance(get_proper_type(n.type), FunctionLike)
     return False
 </t>
-<t tx="ekr.20220525082933.813">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.813">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Pattern checker. This file is conceptually part of TypeChecker."""
@@ -29193,7 +29193,7 @@ return_expr = compile_pattern(RETURN_EXPR)
 <t tx="ekr.20220525082933.840">def is_uninhabited(typ: Type) -&gt; bool:
     return isinstance(get_proper_type(typ), UninhabitedType)
 </t>
-<t tx="ekr.20220525082933.841">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.841">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """
@@ -29710,7 +29710,7 @@ FLOAT_TYPES: Final = {"e", "E", "f", "F", "g", "G"}
     return TempNode(map_instance_to_supertype(kwargs_type, mapping_info).args[1])
 
 </t>
-<t tx="ekr.20220525082933.86">@path C:/Repos/mypy/misc/
+<t tx="ekr.20220525082933.86">@path C:/Repos/ekr-mypy/misc/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -30313,7 +30313,7 @@ def check_str_interpolation(self,
 
 
 </t>
-<t tx="ekr.20220525082933.880">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.880">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import argparse
@@ -30932,7 +30932,7 @@ toml_config_types.update({
 
 
 </t>
-<t tx="ekr.20220525082933.900">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.900">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Type inference constraints."""
@@ -31891,7 +31891,7 @@ SUPERTYPE_OF: Final = 1
         res = items[:]
     return res
 </t>
-<t tx="ekr.20220525082933.951">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.951">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Any, cast
@@ -32055,7 +32055,7 @@ from mypy.type_visitor import TypeVisitor
     t2.can_be_true = t.can_be_true
     return t2
 </t>
-<t tx="ekr.20220525082933.976">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.976">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import os
@@ -32105,7 +32105,7 @@ REPORTER_NAMES: Final = [
 # verbose output
 MANY_ERRORS_THRESHOLD: Final = 200
 </t>
-<t tx="ekr.20220525082933.977">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.977">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import sys
@@ -32160,7 +32160,7 @@ else:
 
 
 </t>
-<t tx="ekr.20220525082933.980">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082933.980">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Server for mypy daemon mode.
@@ -35649,7 +35649,7 @@ def visit_Starred(self, n: Starred) -&gt; StarExpr:
             if isinstance(node, TypeInfo):
                 yield from local_definitions(node.names, fullname, node)
 </t>
-<t tx="ekr.20220525082934.1257">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1257">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Information about Python operators"""
@@ -35762,7 +35762,7 @@ unary_op_methods: Final = {
     '~': '__invert__',
 }
 </t>
-<t tx="ekr.20220525082934.1258">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1258">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from mypy.backports import OrderedDict
@@ -36240,7 +36240,7 @@ def visit_List(self, n: ast3.List) -&gt; Union[ListExpr, TupleExpr]:
 <t tx="ekr.20220525082934.1270">def select_options_affecting_cache(self) -&gt; Mapping[str, object]:
     return {opt: getattr(self, opt) for opt in OPTIONS_AFFECTING_CACHE}
 </t>
-<t tx="ekr.20220525082934.1271">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1271">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Union, Optional
@@ -36282,7 +36282,7 @@ from mypy.nodes import MypyFile
                                      errors=errors,
                                      options=options)
 </t>
-<t tx="ekr.20220525082934.1273">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1273">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Classes for representing match statement patterns."""
@@ -36480,7 +36480,7 @@ def visit_Slice(self, n: ast3.Slice) -&gt; SliceExpr:
                      self.visit(n.step))
 
 </t>
-<t tx="ekr.20220525082934.1300">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1300">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Plugin system for extending mypy.
@@ -37484,7 +37484,7 @@ class Plugin(CommonPluginApi):
             return hook
     return None
 </t>
-<t tx="ekr.20220525082934.1378">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1378">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from __future__ import print_function
@@ -37550,7 +37550,7 @@ if __name__ == '__main__':
 
 
 </t>
-<t tx="ekr.20220525082934.1381">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1381">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utilities related to determining the reachability of code (in semantic analysis)."""
@@ -37953,7 +37953,7 @@ def visit_MatchAs(self, n: MatchAs) -&gt; AsPattern:
 <t tx="ekr.20220525082934.1403">def visit_import_all(self, node: ImportAll) -&gt; None:
     node.is_mypy_only = True
 </t>
-<t tx="ekr.20220525082934.1404">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1404">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from contextlib import contextmanager
@@ -38615,7 +38615,7 @@ def enter_scope(self) -&gt; Iterator[None]:
     for expr in names:
         expr.name = new_name
 </t>
-<t tx="ekr.20220525082934.1457">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1457">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Classes for producing HTML reports about imprecision."""
@@ -39677,7 +39677,7 @@ alias_reporter('xslt-txt', 'txt')
 
 
 </t>
-<t tx="ekr.20220525082934.1536">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1536">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Sequence, Tuple, Set, List
@@ -39984,7 +39984,7 @@ from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_litera
     else:
         return False
 </t>
-<t tx="ekr.20220525082934.1565">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1565">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Track current scope to easily calculate the corresponding fine-grained target.
@@ -40140,7 +40140,7 @@ def saved_scope(self, saved: SavedScope) -&gt; Iterator[None]:
                      uses_pep604_syntax=True)
 
 </t>
-<t tx="ekr.20220525082934.1580">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.1580">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """The semantic analyzer.
@@ -40517,7 +40517,7 @@ def visit_List(self, n: ast3.List) -&gt; Type:
             return f"{sv}.{n.attr}"
     return None  # Can't do it.
 </t>
-<t tx="ekr.20220525082934.175">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.175">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """
@@ -41800,7 +41800,7 @@ def visit_ExtSlice(self, n: ast27.ExtSlice) -&gt; TupleExpr:
 def visit_Index(self, n: ast27.Index) -&gt; Expression:
     return self.visit(n.value)
 </t>
-<t tx="ekr.20220525082934.256">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.256">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Routines for finding the sources that mypy will check"""
@@ -42077,7 +42077,7 @@ def _crawl_up_helper(self, dir: str) -&gt; Optional[Tuple[str, str]]:
             return arg[:-len(ext)]
     return None
 </t>
-<t tx="ekr.20220525082934.272">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.272">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Fix up various things after deserialization."""
@@ -42367,7 +42367,7 @@ def visit_symbol_table(self, symtab: SymbolTable, table_fullname: str) -&gt; Non
 
 
 </t>
-<t tx="ekr.20220525082934.30">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.30">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Translate an Expression to a Type value."""
@@ -42496,7 +42496,7 @@ from mypy.options import Options
     return TypeAlias(AnyType(TypeOfAny.special_form), suggestion,
                      line=-1, column=-1)
 </t>
-<t tx="ekr.20220525082934.314">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.314">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Generic node traverser visitor"""
@@ -42524,7 +42524,7 @@ from mypy.nodes import Block, MypyFile
     tree.accept(TreeFreer())
     tree.defs.clear()
 </t>
-<t tx="ekr.20220525082934.317">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.317">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Interface for accessing the file system with automatic caching.
@@ -43000,7 +43000,7 @@ class FileSystemCache:
         new.filename2 = e.filename2
     return new
 </t>
-<t tx="ekr.20220525082934.335">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.335">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Watch parts of the file system for changes."""
@@ -43050,7 +43050,7 @@ FileData = NamedTuple('FileData', [('st_mtime', float),
     self._file_data[path] = data
 
 </t>
-<t tx="ekr.20220525082934.34">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.34">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from mypy.util import unnamed_function
@@ -43291,7 +43291,7 @@ TYPE_IGNORE_PATTERN: Final = re.compile(r'[^#]*#\s*type:\s*ignore\s*(.*)')
     self.add_watched_paths(update)
     return self._find_changed(update)
 </t>
-<t tx="ekr.20220525082934.346">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.346">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import gc
@@ -43403,7 +43403,7 @@ from typing import Mapping, Optional
     result['build_time'] = end_time - self.start_time
     return result
 </t>
-<t tx="ekr.20220525082934.352">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.352">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Git utilities."""
@@ -43444,7 +43444,7 @@ import subprocess
     output = subprocess.check_output(["git", "status", "-uno", "--porcelain"], cwd=dir)
     return output.strip() != b""
 </t>
-<t tx="ekr.20220525082934.357">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.357">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Dict, Iterable, List, Optional, Set, Union
@@ -43691,7 +43691,7 @@ from mypy.util import split_module_names
 <t tx="ekr.20220525082934.383">def visit_type_alias_type(self, t: types.TypeAliasType) -&gt; Set[str]:
     return self._visit(types.get_proper_type(t))
 </t>
-<t tx="ekr.20220525082934.384">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.384">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utilities for type argument inference."""
@@ -43761,7 +43761,7 @@ from mypy.solve import solve_constraints
                                     SUPERTYPE_OF if is_supertype else SUBTYPE_OF)
     return solve_constraints(type_var_ids, constraints)
 </t>
-<t tx="ekr.20220525082934.388">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.388">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Cross platform abstractions for inter-process communication
@@ -44094,7 +44094,7 @@ def connection_name(self) -&gt; str:
     else:
         return self.sock.getsockname()
 </t>
-<t tx="ekr.20220525082934.405">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.405">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Calculation of the least upper bound types (joins)."""
@@ -44797,7 +44797,7 @@ from mypy.state import state
         return find_member('__call__', t, t, is_operator=True)
     return None
 </t>
-<t tx="ekr.20220525082934.447">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.447">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional, Union, Any, Tuple, Iterable
@@ -45176,7 +45176,7 @@ _hasher: Final = _Hasher()
     return res
 
 </t>
-<t tx="ekr.20220525082934.500">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.500">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """
@@ -45241,7 +45241,7 @@ from typing import Dict, Optional
             return None
         names = node.names
 </t>
-<t tx="ekr.20220525082934.502">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.502">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Mypy type checker command line tool."""
@@ -46522,7 +46522,7 @@ options = Options()
     subprocess.run(cmd)
     return True
 </t>
-<t tx="ekr.20220525082934.538">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.538">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Dict, List
@@ -46652,7 +46652,7 @@ from mypy.types import Type, TypeVarId, Instance, AnyType, TypeOfAny, ProperType
     """
     return {binder.id: arg for binder, arg in zip(instance.type.defn.type_vars, instance.args)}
 </t>
-<t tx="ekr.20220525082934.544">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.544">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from mypy.backports import OrderedDict
@@ -47758,7 +47758,7 @@ if isinstance(left, TypeType) and isinstance(right, TypeType):
         non_required = set(typed.items.keys()) - typed.required_keys
         return any(overlapping(typed.items[k], value_type) for k in non_required)
 </t>
-<t tx="ekr.20220525082934.591">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.591">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utility for dumping memory usage stats.
@@ -47887,7 +47887,7 @@ from mypy.util import get_class_descriptors
         seen.add(id(o))
 
 </t>
-<t tx="ekr.20220525082934.596">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.596">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Facilities for generating error messages during type checking.
@@ -50701,7 +50701,7 @@ def visit_Assign(self, n: ast3.Assign) -&gt; AssignmentStmt:
     return self.set_line(s, n)
 
 </t>
-<t tx="ekr.20220525082934.760">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.760">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Message constants for generating error messages during type checking.
@@ -50966,7 +50966,7 @@ CANNOT_MODIFY_MATCH_ARGS: Final = 'Cannot assign to "__match_args__"'
 
 
 </t>
-<t tx="ekr.20220525082934.762">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.762">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Interfaces for accessing metadata.
@@ -51258,7 +51258,7 @@ def visit_For(self, n: ast3.For) -&gt; ForStmt:
     return self.set_line(node, n)
 
 </t>
-<t tx="ekr.20220525082934.790">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.790">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional
@@ -51403,7 +51403,7 @@ def visit_While(self, n: ast3.While) -&gt; WhileStmt:
     if t:
         t.accept(self)
 </t>
-<t tx="ekr.20220525082934.811">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.811">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Low-level infrastructure to find modules.
@@ -52486,7 +52486,7 @@ def visit_Raise(self, n: ast3.Raise) -&gt; RaiseStmt:
             result.append(d)
     return result
 </t>
-<t tx="ekr.20220525082934.851">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.851">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Basic introspection of modules."""
@@ -52700,7 +52700,7 @@ def visit_Try(self, n: ast3.Try) -&gt; TryStmt:
 <t tx="ekr.20220525082934.865">def __exit__(self, *args: object) -&gt; None:
     self.close()
 </t>
-<t tx="ekr.20220525082934.866">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.866">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional, Callable, List
@@ -52776,7 +52776,7 @@ def visit_Assert(self, n: ast3.Assert) -&gt; AssertStmt:
             if s[0] is head:
                 del s[0]
 </t>
-<t tx="ekr.20220525082934.871">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082934.871">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Abstract syntax tree node classes (i.e. parse tree)."""
@@ -54945,7 +54945,7 @@ def visit_BoolOp(self, n: ast3.BoolOp) -&gt; OpExpr:
             )
 
 </t>
-<t tx="ekr.20220525082935.1060">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1060">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Base visitor that implements an identity AST transform.
@@ -56071,7 +56071,7 @@ from mypy.util import replace_object_state
             node.name, node.arguments, node.body, None)
     super().visit_func_def(node)
 </t>
-<t tx="ekr.20220525082935.1164">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1164">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional, Dict, Union
@@ -56251,7 +56251,7 @@ from mypy.nodes import (
         return me
     return f"{self.parent} &lt;- {me}"
 </t>
-<t tx="ekr.20220525082935.1175">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1175">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Semantic analysis of types"""
@@ -58217,7 +58217,7 @@ def combine_lists_strategy(cls, it: Iterable[List[Type]]) -&gt; List[Type]:
         fix_instance(typ, self.fail, self.note, disallow_any=False,
                      python_version=self.python_version, use_generic_error=True)
 </t>
-<t tx="ekr.20220525082935.1273">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1273">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Miscellaneous type operations and helpers for use during type checking.
@@ -59253,7 +59253,7 @@ from mypy.state import state
 
     return literal_items, union_items
 </t>
-<t tx="ekr.20220525082935.1316">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1316">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Classes for representing mypy types."""
@@ -63267,7 +63267,7 @@ deserialize_map: Final = {
                         fallback=fallback,
                         is_ellipsis_args=True)
 </t>
-<t tx="ekr.20220525082935.1655">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1655">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """
@@ -63559,7 +63559,7 @@ def add_all_protocol_deps(deps: Dict[str, Set[str]]) -&gt; None:
     expr.expr.accept(self)
 
 </t>
-<t tx="ekr.20220525082935.1670">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1670">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Iterable
@@ -63838,7 +63838,7 @@ class TypeTraverserVisitor(SyntheticTypeVisitor[None]):
     for typ in types:
         typ.accept(self)
 </t>
-<t tx="ekr.20220525082935.1703">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.1703">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Union, List
@@ -65792,7 +65792,7 @@ def enter(self,
                 and isinstance(b, PlaceholderNode))
             or is_same_var_from_getattr(a, b))
 </t>
-<t tx="ekr.20220525082935.288">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.288">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Calculate some properties of classes.
@@ -65989,7 +65989,7 @@ TYPE_PROMOTIONS_PYTHON2.update({
                 promote_target = Instance(target_info, [])
     defn.info._promote = promote_target
 </t>
-<t tx="ekr.20220525082935.293">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.293">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Semantic analysis of call-based Enum definitions.
@@ -66247,7 +66247,7 @@ def is_stub_file(self) -&gt; bool:
 <t tx="ekr.20220525082935.302">def fail(self, msg: str, ctx: Context) -&gt; None:
     self.api.fail(msg, ctx)
 </t>
-<t tx="ekr.20220525082935.303">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.303">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Simple type inference for decorated functions during semantic analysis."""
@@ -66376,7 +66376,7 @@ from mypy.semanal_shared import SemanticAnalyzerInterface
                 return ret_type
     return None
 </t>
-<t tx="ekr.20220525082935.308">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.308">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Top-level logic for the semantic analyzer.
@@ -66913,7 +66913,7 @@ core_modules: Final = ['typing', 'builtins', 'abc', 'collections']
     for module in scc:
         graph[module].check_blockers()
 </t>
-<t tx="ekr.20220525082935.325">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.325">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Semantic analysis of named tuple definitions.
@@ -67501,7 +67501,7 @@ def save_namedtuple_body(self, named_tuple_info: TypeInfo) -&gt; Iterator[None]:
 <t tx="ekr.20220525082935.337">def fail(self, msg: str, ctx: Context) -&gt; None:
     self.api.fail(msg, ctx)
 </t>
-<t tx="ekr.20220525082935.338">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.338">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Semantic analysis of NewType definitions.
@@ -67736,7 +67736,7 @@ from mypy import errorcodes as codes
 <t tx="ekr.20220525082935.347">def fail(self, msg: str, ctx: Context, *, code: Optional[ErrorCode] = None) -&gt; None:
     self.api.fail(msg, ctx, code=code)
 </t>
-<t tx="ekr.20220525082935.348">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.348">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Block/import reachability analysis."""
@@ -67924,7 +67924,7 @@ from mypy.reachability import (
     if s.else_body is not None:
         s.else_body.accept(self)
 </t>
-<t tx="ekr.20220525082935.364">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.364">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Shared definitions used by different parts of semantic analysis."""
@@ -68313,7 +68313,7 @@ def is_func_scope(self) -&gt; bool:
         prefix=prefix
     )
 </t>
-<t tx="ekr.20220525082935.398">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.398">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Verify properties of type arguments, like 'int' in C[int] being valid.
@@ -68482,7 +68482,7 @@ def is_typeshed_stub_file(self) -&gt; bool:
     self.incomplete_type_stack.pop()
 
 </t>
-<t tx="ekr.20220525082935.410">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.410">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Semantic analysis of TypedDict definitions."""
@@ -68966,7 +68966,7 @@ TPDICT_CLASS_ERROR: Final = (
 <t tx="ekr.20220525082935.423">def note(self, msg: str, ctx: Context) -&gt; None:
     self.api.note(msg, ctx)
 </t>
-<t tx="ekr.20220525082935.424">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.424">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional
@@ -69088,7 +69088,7 @@ MAGIC_METHODS_POS_ARGS_ONLY: Final = MAGIC_METHODS - MAGIC_METHODS_ALLOWING_KWAR
 <t tx="ekr.20220525082935.426">def argument_elide_name(name: Optional[str]) -&gt; bool:
     return name is not None and name.startswith("__") and not name.endswith("__")
 </t>
-<t tx="ekr.20220525082935.427">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.427">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Type inference constraint solving"""
@@ -69171,7 +69171,7 @@ from mypy.subtypes import is_subtype
 
     return res
 </t>
-<t tx="ekr.20220525082935.429">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.429">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Split namespace for argparse to allow separating options by prefix.
@@ -69220,7 +69220,7 @@ from typing import Tuple, Any
     else:
         return getattr(self._standard_namespace, name)
 </t>
-<t tx="ekr.20220525082935.435">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.435">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from contextlib import contextmanager
@@ -69257,7 +69257,7 @@ def strict_optional_set(self, value: bool) -&gt; Iterator[None]:
 
 
 </t>
-<t tx="ekr.20220525082935.439">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.439">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utilities for calculating and reporting statistics about types."""
@@ -69871,7 +69871,7 @@ def enter_scope(self, o: FuncDef) -&gt; Iterator[None]:
         t = t.source_any
     return t
 </t>
-<t tx="ekr.20220525082935.492">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.492">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Conversion of parse tree nodes to strings."""
@@ -70897,7 +70897,7 @@ def final_iteration(self) -&gt; bool:
     s = s.replace('\n', '\n' + ' ' * n)
     return s
 </t>
-<t tx="ekr.20220525082935.591">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.591">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Parsing/inferring signatures from documentation.
@@ -71386,7 +71386,7 @@ STATE_OPEN_BRACKET: Final = 7  # For generic types.
     m = re.match(test_str, docstr)
     return m.group(1) if m else None
 </t>
-<t tx="ekr.20220525082935.614">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.614">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -73595,7 +73595,7 @@ manual changes.  This directory is assumed to exist.
 
 
 </t>
-<t tx="ekr.20220525082935.725">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.725">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 #!/usr/bin/env python3
@@ -74158,7 +74158,7 @@ _DEFAULT_TYPING_IMPORTS: Final = (
                 ArgSig(name='**kwargs')]
     return [ArgSig(name=self_var or 'self')] + args
 </t>
-<t tx="ekr.20220525082935.746">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.746">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from typing import Optional
@@ -74256,7 +74256,7 @@ legacy_bundled_packages = {
 
 
 </t>
-<t tx="ekr.20220525082935.749">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.749">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Tests for stubs.
@@ -76096,7 +76096,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -&gt; int:
 
 
 </t>
-<t tx="ekr.20220525082935.807">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.807">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
@@ -76453,7 +76453,7 @@ def remove_misplaced_type_comments(source: str) -&gt; str: ...
                 break
     return cur or '.'
 </t>
-<t tx="ekr.20220525082935.823">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.823">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 from contextlib import contextmanager
@@ -78374,7 +78374,7 @@ def build_subtype_kind(*,
         return True
     return is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
 </t>
-<t tx="ekr.20220525082935.901">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.901">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Mechanisms for inferring function types based on callsites.
@@ -79696,7 +79696,7 @@ def __init__(self, module: Optional[str], graph: Graph) -&gt; None:
             new.append(x)
     return new
 </t>
-<t tx="ekr.20220525082935.981">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082935.981">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Generic node traverser visitor"""
@@ -80205,7 +80205,7 @@ def visit_erased_type(self, t: ErasedType) -&gt; T:
 <t tx="ekr.20220525082936.1011">def is_dumped_module(id: str) -&gt; bool:
     return id not in NOT_DUMPED_MODULES and (not id.startswith('_') or id == '__main__')
 </t>
-<t tx="ekr.20220525082936.1012">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1012">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import os
@@ -80549,7 +80549,7 @@ data_path = os.path.relpath(os.path.join(package_path, "modulefinder"))
         actual = self.fmc_nons.find_module(module)
         assert_equal(actual, expected, template)
 </t>
-<t tx="ekr.20220525082936.1034">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1034">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """A basic check to make sure that we are using a mypyc-compiled version when expected."""
@@ -80567,7 +80567,7 @@ import os
         if os.getenv('TEST_MYPYC', None) == '1':
             assert not mypy.__file__.endswith('.py'), "Expected to find a mypyc-compiled version"
 </t>
-<t tx="ekr.20220525082936.1036">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1036">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Tests for the mypy parser."""
@@ -80690,7 +80690,7 @@ INPUT_FILE_NAME = 'file'
             testcase.output, e.messages,
             f'Invalid compiler output ({testcase.file}, line {testcase.line})')
 </t>
-<t tx="ekr.20220525082936.1043">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1043">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 from contextlib import contextmanager
@@ -80937,7 +80937,7 @@ def virtualenv(
         finally:
             os.chdir(old_dir)
 </t>
-<t tx="ekr.20220525082936.1052">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1052">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for running mypy programs using a Python interpreter.
@@ -81063,7 +81063,7 @@ program_re = re.compile(r'\b_program.py\b')
     program = '_' + testcase.name + '.py'
     return [program_re.sub(program, line) for line in testcase.output]
 </t>
-<t tx="ekr.20220525082936.1057">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1057">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for reports generated by mypy."""
@@ -81133,7 +81133,7 @@ def test_as_xml(self) -&gt; None:
     assert_equal(expected_output,
                  etree.tostring(cobertura_package.as_xml(), pretty_print=True))
 </t>
-<t tx="ekr.20220525082936.1061">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1061">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Semantic analyzer test cases"""
@@ -81373,7 +81373,7 @@ class SemAnalTypeInfoSuite(DataSuite):
     a[-1] += ')'
     return '\n'.join(a)
 </t>
-<t tx="ekr.20220525082936.1075">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1075">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for the constraint solver used in type inference."""
@@ -81539,7 +81539,7 @@ from mypy.types import Type, TypeVarType, TypeVarId
 <t tx="ekr.20220525082936.1090">def subc(self, type_var: TypeVarType, bound: Type) -&gt; Constraint:
     return Constraint(type_var.id, SUBTYPE_OF, bound)
 </t>
-<t tx="ekr.20220525082936.1091">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1091">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import io
@@ -82877,7 +82877,7 @@ def attribute(self, value: int) -&gt; None:
             return alt_fnam
     return fnam
 </t>
-<t tx="ekr.20220525082936.1193">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1193">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import unittest
@@ -82903,7 +82903,7 @@ from mypy.stubinfo import is_legacy_bundled_package
     assert not is_legacy_bundled_package('dataclasses', 2)
     assert is_legacy_bundled_package('dataclasses', 3)
 </t>
-<t tx="ekr.20220525082936.1196">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1196">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import contextlib
@@ -84313,7 +84313,7 @@ def test_module_and_typeshed(self) -&gt; None:
         "error: cannot pass both --check-typeshed and a list of modules\n"
     )
 </t>
-<t tx="ekr.20220525082936.1241">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1241">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 from mypy.test.helpers import Suite, skip
@@ -84592,7 +84592,7 @@ def test_generic_interface_subtyping(self) -&gt; None:
     self.assert_not_subtype(s, t)
     self.assert_not_subtype(t, s)
 </t>
-<t tx="ekr.20220525082936.1272">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1272">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Identity AST transform test cases"""
@@ -84676,7 +84676,7 @@ from mypy.errors import CompileError
         testcase.output, a,
         f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')
 </t>
-<t tx="ekr.20220525082936.1276">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1276">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for the type checker: exporting inferred types"""
@@ -84755,7 +84755,7 @@ from mypy.options import Options
         testcase.output, a,
         f'Invalid type checker output ({testcase.file}, line {testcase.line})')
 </t>
-<t tx="ekr.20220525082936.1279">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1279">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for mypy types and type operations."""
@@ -86282,7 +86282,7 @@ def plural_s(s: Union[int, Sized]) -&gt; str:
     self.assert_simple_is_same(t, s, expected=True, strict=strict)
 
 </t>
-<t tx="ekr.20220525082936.142">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.142">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 import os
@@ -86367,7 +86367,7 @@ del mypy_dir
     self.assert_union_result(t, [self.fx.ga, self.fx.gb])
 
 </t>
-<t tx="ekr.20220525082936.143">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.143">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Generic abstract syntax tree node visitor"""
@@ -86393,7 +86393,7 @@ T = TypeVar('T')
     assert type(t2) is UnionType
     assert t2.items == expected
 </t>
-<t tx="ekr.20220525082936.1431">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1431">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import os
@@ -86414,7 +86414,7 @@ from mypy.util import get_terminal_width
             with mock.patch.dict(os.environ, values=mock_environ, clear=True):
                 assert get_terminal_width() == 80
 </t>
-<t tx="ekr.20220525082936.1433">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1433">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import os
@@ -86833,7 +86833,7 @@ def visit_int_expr(self, o: 'mypy.nodes.IntExpr') -&gt; T:
         fscache = FakeFSCache(files)
         assert len(find_sources(["."], options, fscache)) == len(files)
 </t>
-<t tx="ekr.20220525082936.1457">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1457">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Fixture used in type-related test cases.
@@ -87178,7 +87178,7 @@ def visit_bytes_expr(self, o: 'mypy.nodes.BytesExpr') -&gt; T:
     self.m1 = Instance(self.m1i, [])  # M1
 </t>
 <t tx="ekr.20220525082936.1472"></t>
-<t tx="ekr.20220525082936.1473">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.1473">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Visitor classes pulled out from different tests
@@ -88191,12 +88191,12 @@ def visit_raw_expression_type(self, t: RawExpressionType) -&gt; T:
 <t tx="ekr.20220525082936.322">def visit_class_pattern(self, o: 'mypy.patterns.ClassPattern') -&gt; T:
     pass
 </t>
-<t tx="ekr.20220525082936.323">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.323">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 # This page intentionally left blank
 </t>
-<t tx="ekr.20220525082936.324">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.324">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Mypy type checker command line tool."""
@@ -88237,7 +88237,7 @@ if __name__ == '__main__':
 
 </t>
 <t tx="ekr.20220525082936.327"></t>
-<t tx="ekr.20220525082936.328">@path C:/Repos/mypy/mypy/dmypy/
+<t tx="ekr.20220525082936.328">@path C:/Repos/ekr-mypy/mypy/dmypy/
 @language python
 @tabwidth -4
 """Client for mypy daemon mode.
@@ -88853,7 +88853,7 @@ def do_help(args: argparse.Namespace) -&gt; None:
 def console_entry() -&gt; None:
     main(sys.argv[1:])
 </t>
-<t tx="ekr.20220525082936.362">@path C:/Repos/mypy/mypy/dmypy/
+<t tx="ekr.20220525082936.362">@path C:/Repos/ekr-mypy/mypy/dmypy/
 @language python
 @tabwidth -4
 from mypy.dmypy.client import console_entry
@@ -88862,7 +88862,7 @@ if __name__ == '__main__':
     console_entry()
 </t>
 <t tx="ekr.20220525082936.363"></t>
-<t tx="ekr.20220525082936.364">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.364">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
@@ -89743,7 +89743,7 @@ def deserialize(cls, info: TypeInfo,
     self_type = self_type if self_type is not None else self.self_type
     add_method(self.ctx, method_name, args, ret_type, self_type, tvd)
 </t>
-<t tx="ekr.20220525082936.397">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.397">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 from typing import List, Optional, Union
@@ -89797,7 +89797,7 @@ from mypy.fixup import TypeFixer
 
 
 </t>
-<t tx="ekr.20220525082936.4">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.4">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Type visitor classes.
@@ -89996,7 +89996,7 @@ from mypy.types import (
     typ.accept(TypeFixer(api.modules, allow_missing=False))
     return typ
 </t>
-<t tx="ekr.20220525082936.405">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.405">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 """Plugin to provide accurate types for some parts of the ctypes module."""
@@ -90257,7 +90257,7 @@ from mypy.typeops import make_simplified_union
         return make_simplified_union(types)
     return ctx.default_attr_type
 </t>
-<t tx="ekr.20220525082936.418">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.418">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 """Plugin that provides support for dataclasses."""
@@ -90883,7 +90883,7 @@ def deserialize(
         return True, args
     return False, {}
 </t>
-<t tx="ekr.20220525082936.439">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.439">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 from functools import partial
@@ -91366,7 +91366,7 @@ from mypy.checkexpr import is_literal_type_like
 
     return ctx.default_return_type
 </t>
-<t tx="ekr.20220525082936.459">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.459">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 """
@@ -91637,7 +91637,7 @@ ENUM_VALUE_ACCESS: Final = {f"{prefix}.value" for prefix in ENUM_BASES} | {
     assert isinstance(underlying_literal.value, str)
     return underlying_literal.value
 </t>
-<t tx="ekr.20220525082936.467">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.467">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 """Plugin for supporting the functools standard library module."""
@@ -91760,7 +91760,7 @@ _ORDERING_METHODS: Final = {
 
     return comparison_methods
 </t>
-<t tx="ekr.20220525082936.472">@path C:/Repos/mypy/mypy/plugins/
+<t tx="ekr.20220525082936.472">@path C:/Repos/ekr-mypy/mypy/plugins/
 @language python
 @tabwidth -4
 from mypy.messages import format_type
@@ -92005,7 +92005,7 @@ REGISTER_CALLABLE_CALL_METHOD: Final = f'functools.{REGISTER_RETURN_CLASS}.__cal
 
 </t>
 <t tx="ekr.20220525082936.491"></t>
-<t tx="ekr.20220525082936.492">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.492">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Utilities for comparing two versions of a module symbol table.
@@ -92481,7 +92481,7 @@ class TypeVisitor(Generic[T]):
                 result.append(snapshot_untyped_signature(item))
         return tuple(result)
 </t>
-<t tx="ekr.20220525082936.524">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.524">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Merge a new version of a module AST and symbol table to older versions of those.
@@ -93101,7 +93101,7 @@ class TypeQuery(SyntheticTypeVisitor[T]):
                 # Handle them here just in case these aren't exposed through the AST.
                 node.node.accept(NodeReplaceVisitor(replacements))
 </t>
-<t tx="ekr.20220525082936.595">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.595">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Strip/reset AST in-place to match state after semantic analyzer pre-analysis.
@@ -93393,7 +93393,7 @@ def enter_method(self, info: TypeInfo) -&gt; Iterator[None]:
     self.type = old_type
     self.is_class_body = old_is_class_body
 </t>
-<t tx="ekr.20220525082936.619">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.619">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Generate fine-grained dependencies for AST nodes, for use in the daemon mode.
@@ -94569,7 +94569,7 @@ def visit_any(self, t: AnyType) -&gt; T:
         for target in sorted(targets):
             print(f'    {target}')
 </t>
-<t tx="ekr.20220525082936.705">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.705">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Check for duplicate AST nodes after merge."""
@@ -94659,7 +94659,7 @@ DUMP_MISMATCH_NODES: Final = False
                 result += f'.{attr}({t})'
     return result
 </t>
-<t tx="ekr.20220525082936.708">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.708">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Find all objects reachable from a root object."""
@@ -94794,7 +94794,7 @@ TYPE_BLACKLIST: Final = {
     path.reverse()
     return path
 </t>
-<t tx="ekr.20220525082936.714">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.714">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Find all subexpressions of an AST node."""
@@ -95046,7 +95046,7 @@ from mypy.traverser import TraverserVisitor
 <t tx="ekr.20220525082936.760">def add(self, e: Expression) -&gt; None:
     self.expressions.append(e)
 </t>
-<t tx="ekr.20220525082936.761">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.761">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 def trigger_to_target(s: str) -&gt; str:
@@ -95058,7 +95058,7 @@ def trigger_to_target(s: str) -&gt; str:
         s = s.split('[')[0]
     return s
 </t>
-<t tx="ekr.20220525082936.762">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.762">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """AST triggers that are used for fine-grained dependency handling."""
@@ -95089,7 +95089,7 @@ WILDCARD_TAG: Final = "[wildcard]"
     """
     return f'&lt;{module}{WILDCARD_TAG}&gt;'
 </t>
-<t tx="ekr.20220525082936.765">@path C:/Repos/mypy/mypy/server/
+<t tx="ekr.20220525082936.765">@path C:/Repos/ekr-mypy/mypy/server/
 @language python
 @tabwidth -4
 """Update build by processing changes using fine-grained dependencies.
@@ -96374,7 +96374,7 @@ def visit_none_type(self, t: NoneType) -&gt; T:
 
 </t>
 <t tx="ekr.20220525082936.802"></t>
-<t tx="ekr.20220525082936.803">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.803">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import os.path
@@ -96404,7 +96404,7 @@ test_temp_dir = 'tmp'
 pip_lock = os.path.join(package_path, '.pip_lock')
 pip_timeout = 60
 </t>
-<t tx="ekr.20220525082936.804">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.804">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Utilities for processing .test files containing test case descriptions."""
@@ -97189,7 +97189,7 @@ def from_parent(  # type: ignore[override]
 def run_case(self, testcase: DataDrivenTestCase) -&gt; None:
     raise NotImplementedError
 </t>
-<t tx="ekr.20220525082936.842">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.842">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 import os
@@ -97722,7 +97722,7 @@ def local_sys_path_set() -&gt; Iterator[None]:
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result
 </t>
-<t tx="ekr.20220525082936.867">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.867">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 from io import StringIO
@@ -97798,7 +97798,7 @@ from mypy.test.helpers import Suite
     assert isinstance(stdout, str)
     assert stdout != ''
 </t>
-<t tx="ekr.20220525082936.875">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.875">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Ensure the argparse parser and Options class are in sync.
@@ -97880,7 +97880,7 @@ from mypy.main import process_options, infer_python_executable
     assert options.python_version == sys.version_info[:2]
     assert options.python_executable == sys.executable
 </t>
-<t tx="ekr.20220525082936.879">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.879">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Type checker test cases"""
@@ -98007,7 +98007,7 @@ if sys.platform in ('darwin', 'win32'):
 
 @others
 </t>
-<t tx="ekr.20220525082936.88">@path C:/Repos/mypy/mypy/
+<t tx="ekr.20220525082936.88">@path C:/Repos/ekr-mypy/mypy/
 @language python
 @tabwidth -4
 """Utility functions with no non-trivial dependencies."""
@@ -98317,7 +98317,7 @@ SPECIAL_DUNDERS: Final = frozenset((
     else:
         return [('__main__', 'main', program_text)]
 </t>
-<t tx="ekr.20220525082936.888">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.888">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for the command line.
@@ -98486,7 +98486,7 @@ cmdline_files = [
     m = re.match('# cwd: (.*)$', line)
     return m.group(1) if m else None
 </t>
-<t tx="ekr.20220525082936.894">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.894">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """End-to-end test cases for the daemon (dmypy).
@@ -98646,7 +98646,7 @@ def visit_uninhabited_type(self, t: UninhabitedType) -&gt; T:
         with open(fullpath, 'w') as f:
             f.write('# test file')
 </t>
-<t tx="ekr.20220525082936.904">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.904">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
@@ -98746,7 +98746,7 @@ dumped_modules = ['__main__', 'pkg', 'pkg.mod']
         return e.messages, None, None
     return result.errors, result.files, result.types
 </t>
-<t tx="ekr.20220525082936.908">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.908">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for AST diff (used for fine-grained incremental checking)"""
@@ -98834,7 +98834,7 @@ from mypy.test.helpers import assert_string_arrays_equal, parse_options
         return e.messages, None
     return result.errors, result.files
 </t>
-<t tx="ekr.20220525082936.912">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.912">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Tests for mypy incremental error output."""
@@ -98889,7 +98889,7 @@ from mypy.options import Options
         logged_messages.extend(msgs)
 
 </t>
-<t tx="ekr.20220525082936.916">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.916">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for fine-grained incremental checking.
@@ -99265,7 +99265,7 @@ CHECK_CONSISTENCY = False
 
 
 </t>
-<t tx="ekr.20220525082936.930">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.930">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Tests for fine-grained incremental checking using the cache.
@@ -99286,7 +99286,7 @@ import mypy.test.testfinegrained
     files = (
         mypy.test.testfinegrained.FineGrainedSuite.files + ['fine-grained-cache-incremental.test'])
 </t>
-<t tx="ekr.20220525082936.932">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.932">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 from unittest import TestCase, main
@@ -99346,7 +99346,7 @@ if __name__ == '__main__':
 
 
 </t>
-<t tx="ekr.20220525082936.936">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.936">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Unit tests for file system cache."""
@@ -99473,7 +99473,7 @@ from mypy.fscache import FileSystemCache
 <t tx="ekr.20220525082936.945">def isfile_case(self, path: str) -&gt; bool:
     return self.fscache.isfile_case(os.path.join(self.tempdir, path), self.tempdir)
 </t>
-<t tx="ekr.20220525082936.946">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.946">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for graph processing code in build.py."""
@@ -99583,7 +99583,7 @@ from mypy.fscache import FileSystemCache
     scc = order_ascc(graph, ascc)
     assert_equal(scc, ['d', 'c', 'b', 'a'])
 </t>
-<t tx="ekr.20220525082936.953">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.953">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for type inference helper functions."""
@@ -100128,7 +100128,7 @@ from mypy.test.typefixture import TypeFixture
     self.assertEqual(group_comparison_operands([], {}, set()), [])
     self.assertEqual(group_comparison_operands([], {}, {'=='}), [])
 </t>
-<t tx="ekr.20220525082936.989">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.989">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 from unittest import TestCase, main
@@ -100232,7 +100232,7 @@ def test_connect_alot(self) -&gt; None:
 
 
 </t>
-<t tx="ekr.20220525082936.995">@path C:/Repos/mypy/mypy/test/
+<t tx="ekr.20220525082936.995">@path C:/Repos/ekr-mypy/mypy/test/
 @language python
 @tabwidth -4
 """Test cases for AST merge (used for fine-grained incremental checking)"""
