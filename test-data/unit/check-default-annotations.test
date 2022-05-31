@@ -1,0 +1,8 @@
+[case test1]
+
+x: int
+x = 5
+
+a: str
+a = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
+b: str = 5  # E: Incompatible types in assignment (expression has type "int", variable has type "str")

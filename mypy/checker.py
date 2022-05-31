@@ -1093,6 +1093,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
+
         def is_unannotated_any(t: Type) -> bool:
             if not isinstance(t, ProperType):
                 return False
@@ -1101,6 +1102,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                    and any(not is_unannotated_any(t)
                                            for t in fdef.type.arg_types + [fdef.type.ret_type]))
+                                
+        # EKR: new method.           
+        def arg_is_unannotated_and_is_not_initialized(t: Type):
+            if not is_unannotated_any(t):
+                return False  # Passes legacy test.
+            ### To do
+            return True  # Fail
 
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
@@ -1125,9 +1133,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                # --- Legacy code.
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
-
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
         bound_type = bind_self(typ, self_type, is_classmethod=True)

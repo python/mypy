@@ -30,6 +30,7 @@ import pytest
 
 # List of files that contain test case descriptions.
 typecheck_files = [
+    'check-default-annotations.test',  # EKR: issue #12352
     'check-basic.test',
     'check-union-or-syntax.test',
     'check-callable.test',
