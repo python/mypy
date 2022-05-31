@@ -41,7 +41,7 @@ f2(b)  # E: Argument 1 to "f2" has incompatible type "i64"; expected "i32"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntJoins]
-from typing import TypeVar
+from typing import TypeVar, Any
 from mypy_extensions import i32, i64
 
 T = TypeVar('T')
@@ -59,11 +59,18 @@ reveal_type(join(n, n64))  # N: Revealed type is "mypy_extensions.i64"
 # i32 and i64 aren't treated as compatible
 reveal_type(join(n32, n64))  # N: Revealed type is "builtins.object"
 reveal_type(join(n64, n32))  # N: Revealed type is "builtins.object"
+
+a: Any
+reveal_type(join(n, a))    # N: Revealed type is "Any"
+reveal_type(join(n32, a))  # N: Revealed type is "Any"
+reveal_type(join(a, n64))  # N: Revealed type is "Any"
+reveal_type(join(n64, a))  # N: Revealed type is "Any"
+reveal_type(join(a, n64))  # N: Revealed type is "Any"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntMeets]
 # flags: --strict-optional
-from typing import TypeVar, Callable
+from typing import TypeVar, Callable, Any
 from mypy_extensions import i32, i64
 
 T = TypeVar('T')
@@ -71,6 +78,7 @@ T = TypeVar('T')
 def f32(x: i32) -> None: pass
 def f64(x: i64) -> None: pass
 def f(x: int) -> None: pass
+def fa(x: Any) -> None: pass
 
 def meet(c1: Callable[[T], None], c2: Callable[[T], None]) -> T:
     pass
@@ -81,6 +89,12 @@ reveal_type(meet(f64, f))  # N: Revealed type is "mypy_extensions.i64"
 reveal_type(meet(f, f64))  # N: Revealed type is "mypy_extensions.i64"
 reveal_type(meet(f32, f64))  # N: Revealed type is "<nothing>"
 reveal_type(meet(f64, f32))  # N: Revealed type is "<nothing>"
+
+reveal_type(meet(f, fa))    # N: Revealed type is "builtins.int"
+reveal_type(meet(f32, fa))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(fa, f32))  # N: Revealed type is "mypy_extensions.i32"
+reveal_type(meet(f64, fa))  # N: Revealed type is "mypy_extensions.i64"
+reveal_type(meet(fa, f64))  # N: Revealed type is "mypy_extensions.i64"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntCoerceInArithmetic]
@@ -112,8 +126,26 @@ reveal_type(y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
 [case testNativeIntFloatConversion]
+# flags: --strict-optional
+from typing import TypeVar, Callable
 from mypy_extensions import i32
 
 x: i32 = 1.1  # E: Incompatible types in assignment (expression has type "float", variable has type "i32")
 y: float = i32(1)  # E: Incompatible types in assignment (expression has type "i32", variable has type "float")
+
+T = TypeVar('T')
+
+def join(x: T, y: T) -> T: return x
+
+reveal_type(join(x, y))  # N: Revealed type is "builtins.object"
+reveal_type(join(y, x))  # N: Revealed type is "builtins.object"
+
+def meet(c1: Callable[[T], None], c2: Callable[[T], None]) -> T:
+    pass
+
+def ff(x: float) -> None: pass
+def fi32(x: i32) -> None: pass
+
+reveal_type(meet(ff, fi32))  # N: Revealed type is "<nothing>"
+reveal_type(meet(fi32, ff))  # N: Revealed type is "<nothing>"
 [builtins fixtures/dict.pyi]
