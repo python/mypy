@@ -883,12 +883,16 @@ class Custom(Generic[T]):
 class Sub(Custom[T]): ...
 
 async def test(x: Sub[D]) -> None:
-    foo().x  # E: "Coroutine[Any, Any, D]" has no attribute "x"
+    foo().x  # E: "Coroutine[Any, Any, D]" has no attribute "x" \
+             # N: Maybe you forgot to use "await"?
+    foo().bad  # E: "Coroutine[Any, Any, D]" has no attribute "bad"
     (await foo()).x
     g(foo())  # E: Argument 1 to "g" has incompatible type "Coroutine[Any, Any, D]"; expected "C"
     g(await foo())
 
-    x.x  # E: "Sub[D]" has no attribute "x"
+    x.x  # E: "Sub[D]" has no attribute "x" \
+         # N: Maybe you forgot to use "await"?
+    x.bad  # E: "Sub[D]" has no attribute "bad"
     (await x).x
     a: C = x  # E: Incompatible types in assignment (expression has type "Sub[D]", variable has type "C")
     b: C = await x
