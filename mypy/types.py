@@ -952,31 +952,32 @@ class AnyType(ProperType):
         if not mypy.options._based:
             return 'Any'
 
-        def type_of_any(toa: int = self.type_of_any) -> Optional[str]:
-            if toa == TypeOfAny.unannotated:
+        def describe_type_of_any(type_of_any: int = self.type_of_any) -> Optional[str]:
+            if type_of_any == TypeOfAny.unannotated:
                 return "unannotated"
-            elif toa == TypeOfAny.explicit:
+            elif type_of_any == TypeOfAny.explicit:
                 return None
-            elif toa == TypeOfAny.from_unimported_type:
+            elif type_of_any == TypeOfAny.from_unimported_type:
                 return "from unimported type"
-            elif toa == TypeOfAny.from_omitted_generics:
+            elif type_of_any == TypeOfAny.from_omitted_generics:
                 return "from omitted generics"
-            elif toa == TypeOfAny.from_error:
+            elif type_of_any == TypeOfAny.from_error:
                 return "from error"
-            elif toa == TypeOfAny.special_form:
-                return "special form"
-            elif toa == TypeOfAny.from_another_any:
-                return type_of_any(self.source_any.type_of_any) if self.source_any else None
-            elif toa == TypeOfAny.implementation_artifact:
+            elif type_of_any == TypeOfAny.special_form:
+                return "unknown"
+            elif type_of_any == TypeOfAny.from_another_any:
+                return (describe_type_of_any(self.source_any.type_of_any)
+                        if self.source_any else None)
+            elif type_of_any == TypeOfAny.implementation_artifact:
                 return "from a limitation"
-            elif toa == TypeOfAny.suggestion_engine:
+            elif type_of_any == TypeOfAny.suggestion_engine:
                 return "from a suggestion"
             assert False, "unreachable"
-        s = self.__class__.__name__.split("Type")[0]
-        type_of = type_of_any()
+        description = self.__class__.__name__.split("Type")[0]
+        type_of = describe_type_of_any()
         if type_of:
-            return f'{s} ({type_of})'
-        return s
+            return f'{description} ({type_of})'
+        return description
 
 
 class UntypedType(AnyType):

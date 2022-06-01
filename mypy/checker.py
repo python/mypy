@@ -4160,8 +4160,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             if not self.current_node_deferred:
                 t = get_proper_type(s.expr.accept(self.expr_checker))
-                if isinstance(t, UntypedType):
-                    self.msg.untyped_name_usage(s.expr.name, s.expr)  # type: ignore
+                if isinstance(t, UntypedType) and isinstance(s.expr, (NameExpr, MemberExpr)):
+                    self.msg.untyped_name_usage(s.expr.name, s.expr)
             for elt in flatten(s.expr):
                 if isinstance(elt, NameExpr):
                     self.binder.assign_type(elt, DeletedType(source=elt.name),

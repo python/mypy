@@ -4323,7 +4323,7 @@ def has_any_type(
 
 
 def has_untyped_type(t: Type, ignore_in_type_obj: bool = False) -> bool:
-    """Whether t contains an untyped type"""
+    """Whether ``t`` contains an untyped type"""
     return t.accept(HasUntypedType())
 
 
