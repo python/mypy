@@ -2,12 +2,13 @@
 --- Tests of mypy issue #12352: https://github.com/python/mypy/issues/12352
 
 [case testDefaultString]
-def f1(a):
-    pass
-reveal_type(f1)  # N: Revealed type is "def (a: Any) -> Any"
+# flags: --disallow-untyped-defs
+--- def f1(a):
+---    pass
+--- reveal_type(f1)  # N: Revealed type is "def (a: Any) -> Any"
 
---- def f1_str(a="abc"):
----     pass
---- reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -> Any"
+def f1_str(a="abc") -> Any:
+    pass
+reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -> Any"
 
 [builtins fixtures/tuple.pyi]

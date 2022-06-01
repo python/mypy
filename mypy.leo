@@ -6,8 +6,12 @@
 <preferences/>
 <find_panel_settings/>
 <vnodes>
+<v t="ekr.20220601131028.1"><vh>Startup</vh>
 <v t="ekr.20220525082746.1"><vh> Recursive import script</vh></v>
-<v t="ekr.20220526080725.1"><vh>--- URL's</vh></v>
+<v t="ekr.20220601131038.1"><vh>@settings</vh>
+<v t="ekr.20220601131042.1"><vh>@data history-list</vh></v>
+</v>
+</v>
 <v t="ekr.20220526075331.1"><vh>Files</vh>
 <v t="ekr.20220224065603.3"><vh>@edit C:\Repos\leo-editor\.mypy.ini</vh></v>
 <v t="ekr.20220525082932.2"><vh>@path C:/Repos/ekr-mypy</vh>
@@ -6514,12 +6518,14 @@
 <v t="ekr.20220526075516.1"><vh>--- 1 use of matches_exclude</vh>
 <v t="ekr.20220525082934.834"></v>
 </v>
-<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
 <v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
 </v>
-<v t="ekr.20220525082933.377"></v>
+<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
+<v t="ekr.20220525082934.945"></v>
+<v t="ekr.20220525082934.935"></v>
 <v t="ekr.20220601102059.1"><vh>From check-annotations.test</vh></v>
 <v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
+<v t="ekr.20220525082933.377"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220319232947.1"></t>
@@ -6527,10 +6533,8 @@
 <t tx="ekr.20220320050857.1">@language rest
 
 https://github.com/python/mypy/issues/12352
+PR: https://github.com/python/mypy/pull/12918
 
-- Run only "relevant" tests.
-- Use legacy annotations test as the basis for new test.
-  
 @language python
 
 </t>
@@ -15700,6 +15704,17 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
 </t>
 <t tx="ekr.20220525082933.377">def check_for_missing_annotations(self, fdef: FuncItem) -&gt; None:
     # Check for functions with unspecified/not fully specified types.
+    
+    import pdb
+    import sys
+    if r'C:\Repos\leo-editor' not in sys.path:
+        sys.path.append(r'C:\Repos\leo-editor')
+    from leo.core import leoGlobals as g
+    assert g, pdb
+    # name = fdef._name
+    # print statements seem to be cached until later!
+    # g.printObj(fdef)
+    # g.trace(g.callers())
 
     def is_unannotated_any(t: Type) -&gt; bool:
         if not isinstance(t, ProperType):
@@ -15709,9 +15724,9 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
     has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                and any(not is_unannotated_any(t)
                                        for t in fdef.type.arg_types + [fdef.type.ret_type]))
-                            
+
     ### EKR: #12352: new function.           
-    def arg_is_unannotated_and_uninitialized(t: Type):
+    def arg_is_unannotated_and_uninitialized(fdef: Any, t: Type):
         if is_unannotated_any(t):
             return True  ### Fail: to do: don't fail if the initializer is a known type.
         return False
@@ -15739,7 +15754,9 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
             elif fdef.is_coroutine and isinstance(ret_type, Instance):
                 if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-            if any(arg_is_unannotated_and_uninitialized(t) for t in fdef.type.arg_types):
+            if fdef.name == 'f1_str':
+                pdb.set_trace()
+            if any(arg_is_unannotated_and_uninitialized(fdef, t) for t in fdef.type.arg_types):
                 self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 </t>
 <t tx="ekr.20220525082933.378">def check___new___signature(self, fdef: FuncDef, typ: CallableType) -&gt; None:
@@ -100320,9 +100337,6 @@ but will allow an untyped arg provided the arg has a constant initializer of kno
 </t>
 <t tx="ekr.20220526075516.1"></t>
 <t tx="ekr.20220526075541.1"></t>
-<t tx="ekr.20220526080725.1">Contributing (testing): https://github.com/python/mypy/blob/master/CONTRIBUTING.md
-
-Adding tests: https://github.com/python/mypy/blob/master/test-data/unit/README.md</t>
 <t tx="ekr.20220530121430.1">@language rest
 @nowrap
 
@@ -100399,21 +100413,30 @@ pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 --- Tests of mypy issue #12352: https://github.com/python/mypy/issues/12352
 
 [case testDefaultString]
-def f1(a):
-    pass
-reveal_type(f1)  # N: Revealed type is "def (a: Any) -&gt; Any"
+# flags: --disallow-untyped-defs
+--- def f1(a):
+---    pass
+--- reveal_type(f1)  # N: Revealed type is "def (a: Any) -&gt; Any"
 
---- def f1_str(a="abc"):
----     pass
---- reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -&gt; Any"
+def f1_str(a="abc") -&gt; Any:
+    pass
+reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -&gt; Any"
 
 [builtins fixtures/tuple.pyi]
 </t>
 <t tx="ekr.20220531174305.1">g.cls()
 import subprocess
 # Must add the test file to mypy/test/testcheck.py
-command = 'pytest mypy/test/testcheck.py::TypeCheckSuite::check-default-annotations.test'
-subprocess.Popen(command, shell=True)</t>
+test = 'mypy/test/testcheck.py::TypeCheckSuite::check-default-annotations.test'
+pdb = '--pdb'
+command = f"pytest {test} {pdb}"
+proc = subprocess.Popen(command, shell=True)
+print(proc)
+
+# Print statements don't seem to be useful: they are printed after all the tests run!
+
+# proc.communicate()
+# print('done')</t>
 <t tx="ekr.20220601070439.1">g.cls()
 import subprocess
 subprocess.Popen('pytest', shell=True)
@@ -100592,6 +100615,11 @@ from typing_extensions import Annotated
 a: Annotated[int, 1:2]
 reveal_type(a)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
+</t>
+<t tx="ekr.20220601131028.1"></t>
+<t tx="ekr.20220601131038.1"></t>
+<t tx="ekr.20220601131042.1">test-one
+test-all
 </t>
 </tnodes>
 </leo_file>
