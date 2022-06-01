@@ -855,13 +855,15 @@ def find_matching_overload_items(overloaded: Overloaded,
 
 
 def find_unpack_in_tuple(t: TupleType) -> Optional[int]:
-    unpack_index = None
+    unpack_index: Optional[int] = None
     for i, item in enumerate(t.items):
         proper_item = get_proper_type(item)
         if isinstance(proper_item, UnpackType):
             # We cannot fail here, so we must check this in an earlier
             # semanal phase.
-            assert unpack_index is None
+            # Funky code here avoids mypyc narrowing the type of unpack_index.
+            old_index = unpack_index
+            assert old_index is None
             # Don't return so that we can also sanity check there is only one.
             unpack_index = i
     return unpack_index
