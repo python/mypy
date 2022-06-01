@@ -14,7 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
+    TypeAliasType, TypeQuery, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
     ENUM_REMOVED_PROPS,
 )
 from mypy.nodes import (
