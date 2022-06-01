@@ -1421,6 +1421,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
+        if sym and isinstance(sym.node, TypeVarTupleExpr):
+            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
+                # It's bound by our type variable scope
+                return None
+            return unbound.name, sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):

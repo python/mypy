@@ -93,3 +93,73 @@ args: Tuple[bool, int, str, int, str, object]
 reveal_type(g(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.int]"
 reveal_type(h(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleGenericClassDefn]
+from typing import Generic, TypeVar, Tuple
+from typing_extensions import TypeVarTuple
+
+T = TypeVar("T")
+Ts = TypeVarTuple("Ts")
+
+class Variadic(Generic[Ts]):
+    pass
+
+class Mixed1(Generic[T, Ts]):
+    pass
+
+class Mixed2(Generic[Ts, T]):
+    pass
+
+variadic: Variadic[int, str]
+reveal_type(variadic)  # N: Revealed type is "__main__.Variadic[builtins.int, builtins.str]"
+
+variadic_single: Variadic[int]
+reveal_type(variadic_single)  # N: Revealed type is "__main__.Variadic[builtins.int]"
+
+empty: Variadic[()]
+# TODO: fix pretty printer to be better.
+reveal_type(empty)  # N: Revealed type is "__main__.Variadic"
+
+m1: Mixed1[int, str, bool]
+reveal_type(m1)  # N: Revealed type is "__main__.Mixed1[builtins.int, builtins.str, builtins.bool]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleGenericClassWithFunctions]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Variadic(Generic[T, Ts, S]):
+    pass
+
+def foo(t: Variadic[int, Unpack[Ts], object]) -> Tuple[int, Unpack[Ts]]:
+    ...
+
+v: Variadic[int, str, bool, object]
+reveal_type(foo(v))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTupleGenericClassWithMethods]
+from typing import Generic, Tuple, TypeVar
+from typing_extensions import TypeVarTuple, Unpack
+
+Ts = TypeVarTuple("Ts")
+T = TypeVar("T")
+S = TypeVar("S")
+
+class Variadic(Generic[T, Ts, S]):
+    def __init__(self, t: Tuple[Unpack[Ts]]) -> None:
+        ...
+
+    def foo(self, t: int) -> Tuple[int, Unpack[Ts]]:
+        ...
+
+v: Variadic[float, str, bool, object]
+reveal_type(v.foo(0))  # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.bool]"
+
+[builtins fixtures/tuple.pyi]

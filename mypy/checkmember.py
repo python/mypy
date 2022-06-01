@@ -7,7 +7,7 @@ from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
-    ENUM_REMOVED_PROPS
+    TypeVarTupleType, ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -693,6 +693,7 @@ def check_self_arg(functype: FunctionLike,
     new_items = []
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
@@ -701,12 +702,14 @@ def check_self_arg(functype: FunctionLike,
             # there is at least one such error.
             return functype
         else:
-            selfarg = item.arg_types[0]
+            selfarg = get_proper_type(item.arg_types[0])
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
                 # TODO: This is not always right. What's the most reasonable thing to do here?
                 new_items.append(item)
+            elif isinstance(selfarg, TypeVarTupleType):
+                raise NotImplementedError
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).
         msg.incompatible_self_argument(name, dispatched_arg_type, items[0],
