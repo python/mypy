@@ -180,8 +180,18 @@ def may_be_awaitable(
     mx: MemberContext,
     override_info: Optional[TypeInfo] = None
 ) -> bool:
+    if name == "__await__":
+        # Awoid infinite recursion.
+        return False
+    if isinstance(typ, PartialType):
+        # Partial types are special, so ignore them here.
+        return False
     with mx.msg.filter_errors() as local_errors:
-        aw_type = mx.chk.expr_checker.check_awaitable_expr(typ, mx.context, '', ignore_binder=True)
+        try:
+            aw_type = mx.chk.expr_checker.check_awaitable_expr(typ, mx.context, '', ignore_binder=True)
+        except KeyError:
+            # This is a hack to speed up tests by not including Awaitable in all typing stubs.
+            return False
         if local_errors.has_new_errors():
             return False
         _ = _analyze_member_access(name, aw_type, mx, override_info)
