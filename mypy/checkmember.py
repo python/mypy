@@ -181,10 +181,10 @@ def may_be_awaitable(
     override_info: Optional[TypeInfo] = None
 ) -> bool:
     if name == "__await__":
-        # Awoid infinite recursion.
+        # Avoid infinite recursion.
         return False
     if isinstance(typ, PartialType):
-        # Partial types are special, so ignore them here.
+        # Partial types are special, ignore them here.
         return False
     with mx.msg.filter_errors() as local_errors:
         try:
