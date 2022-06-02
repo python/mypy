@@ -383,7 +383,7 @@ class FuncCollectorBase(TraverserVisitor):
             self.inside_func = False
 
 
-class YieldSeeker(TraverserVisitor):
+class YieldSeeker(FuncCollectorBase):
     def __init__(self) -> None:
         super().__init__()
         self.found = False
@@ -398,7 +398,7 @@ def has_yield_expression(fdef: FuncBase) -> bool:
     return seeker.found
 
 
-class AwaitSeeker(FuncCollectorBase):
+class AwaitSeeker(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.found = False
