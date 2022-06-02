@@ -1387,14 +1387,7 @@ from dataclasses import dataclass, field
 
 @dataclass
 class Foo:
-    bar: float = field(**{"repr": False})
-[out]
-main:7: error: Unpacking **kwargs in "field()" is not supported
-main:7: error: No overload variant of "field" matches argument type "Dict[str, bool]"
-main:7: note: Possible overload variants:
-main:7: note:     def [_T] field(*, default: _T, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
-main:7: note:     def [_T] field(*, default_factory: Callable[[], _T], init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> _T
-main:7: note:     def field(*, init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ..., metadata: Optional[Mapping[str, Any]] = ..., kw_only: bool = ...) -> Any
+    bar: float = field(**{"repr": False})  # E: Unpacking **kwargs in "field()" is not supported
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassFieldWithPositionalArguments]
