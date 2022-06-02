@@ -14,6 +14,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.traverser import has_await_expression
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -3798,8 +3799,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         # If any of the comprehensions use async for, the expression will return an async generator
-        # object
-        if any(e.is_async):
+        # object, or if the left-side expression uses await.
+        if any(e.is_async) or has_await_expression(e.left_expr):
             typ = 'typing.AsyncGenerator'
             # received type is always None in async generator expressions
             additional_args: List[Type] = [NoneType()]
