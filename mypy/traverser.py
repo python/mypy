@@ -383,7 +383,7 @@ class FuncCollectorBase(TraverserVisitor):
             self.inside_func = False
 
 
-class YieldSeeker(FuncCollectorBase):
+class YieldSeeker(TraverserVisitor):
     def __init__(self) -> None:
         super().__init__()
         self.found = False
