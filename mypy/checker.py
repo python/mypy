@@ -1093,18 +1093,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
-        
-        import pdb
-        import sys
-        if r'C:\Repos\leo-editor' not in sys.path:
-            sys.path.append(r'C:\Repos\leo-editor')
-        from leo.core import leoGlobals as g
-        assert g, pdb
-        # name = fdef._name
-        # print statements seem to be cached until later!
-        # g.printObj(fdef)
-        # g.trace(g.callers())
-
         def is_unannotated_any(t: Type) -> bool:
             if not isinstance(t, ProperType):
                 return False
@@ -1113,12 +1101,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                    and any(not is_unannotated_any(t)
                                            for t in fdef.type.arg_types + [fdef.type.ret_type]))
-
-        ### EKR: #12352: new function.           
-        def arg_is_unannotated_and_uninitialized(fdef: Any, t: Type):
-            if is_unannotated_any(t):
-                return True  ### Fail: to do: don't fail if the initializer is a known type.
-            return False
 
         show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
         check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
@@ -1143,10 +1125,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 elif fdef.is_coroutine and isinstance(ret_type, Instance):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                if fdef.name == 'f1_str':
-                    pdb.set_trace()
-                if any(arg_is_unannotated_and_uninitialized(fdef, t) for t in fdef.type.arg_types):
+                if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:
         self_type = fill_typevars_with_any(fdef.info)
         bound_type = bind_self(typ, self_type, is_classmethod=True)

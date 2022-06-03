@@ -202,6 +202,1629 @@
 </v>
 </v>
 <v t="ekr.20220525082933.166"><vh>@path mypy</vh>
+<v t="ekr.20220603022738.1"><vh>--- dmypy</vh>
+<v t="ekr.20220525082933.977"><vh>@clean dmypy_os.py</vh>
+<v t="ekr.20220525082933.978"><vh>alive</vh></v>
+<v t="ekr.20220525082933.979"><vh>kill</vh></v>
+</v>
+<v t="ekr.20220525082933.980"><vh>@clean dmypy_server.py</vh>
+<v t="ekr.20220525082933.981"><vh>process_start_options</vh></v>
+<v t="ekr.20220525082933.982"><vh>ignore_suppressed_imports</vh></v>
+<v t="ekr.20220525082933.983"><vh>ModulePathPair = Tuple[str, str]</vh></v>
+<v t="ekr.20220525082933.984"><vh>class Server</vh>
+<v t="ekr.20220525082933.985"><vh>Server.__init__</vh></v>
+<v t="ekr.20220525082933.986"><vh>Server._response_metadata</vh></v>
+<v t="ekr.20220525082933.987"><vh>Server.serve</vh></v>
+<v t="ekr.20220525082933.988"><vh>Server.run_command</vh></v>
+<v t="ekr.20220525082933.989"><vh>Server.Command functions (run in the server via RPC).</vh></v>
+<v t="ekr.20220525082933.990"><vh>Server.cmd_status</vh></v>
+<v t="ekr.20220525082933.991"><vh>Server.cmd_stop</vh></v>
+<v t="ekr.20220525082933.992"><vh>Server.cmd_run</vh></v>
+<v t="ekr.20220525082933.993"><vh>Server.cmd_check</vh></v>
+<v t="ekr.20220525082933.994"><vh>Server.cmd_recheck</vh></v>
+<v t="ekr.20220525082933.995"><vh>Server.check</vh></v>
+<v t="ekr.20220525082933.996"><vh>Server.flush_caches</vh></v>
+<v t="ekr.20220525082933.997"><vh>Server.update_stats</vh></v>
+<v t="ekr.20220525082933.998"><vh>Server.following_imports</vh></v>
+<v t="ekr.20220525082933.999"><vh>Server.initialize_fine_grained</vh></v>
+<v t="ekr.20220525082933.1000"><vh>Server.fine_grained_increment</vh></v>
+<v t="ekr.20220525082933.1001"><vh>Server.fine_grained_increment_follow_imports</vh></v>
+<v t="ekr.20220525082933.1002"><vh>Server.find_reachable_changed_modules</vh></v>
+<v t="ekr.20220525082933.1003"><vh>Server.direct_imports</vh></v>
+<v t="ekr.20220525082933.1004"><vh>Server.find_added_suppressed</vh></v>
+<v t="ekr.20220525082933.1005"><vh>Server.increment_output</vh></v>
+<v t="ekr.20220525082933.1006"><vh>Server.pretty_messages</vh></v>
+<v t="ekr.20220525082933.1007"><vh>Server.update_sources</vh></v>
+<v t="ekr.20220525082933.1008"><vh>Server.update_changed</vh></v>
+<v t="ekr.20220525082933.1009"><vh>Server.find_changed</vh></v>
+<v t="ekr.20220525082933.1010"><vh>Server._find_changed</vh></v>
+<v t="ekr.20220525082933.1011"><vh>Server.cmd_suggest</vh></v>
+<v t="ekr.20220525082933.1012"><vh>Server.cmd_hang</vh></v>
+</v>
+<v t="ekr.20220525082933.1013"><vh>Misc utilities.</vh></v>
+<v t="ekr.20220525082933.1014"><vh>get_meminfo</vh></v>
+<v t="ekr.20220525082933.1015"><vh>find_all_sources_in_build</vh></v>
+<v t="ekr.20220525082933.1016"><vh>fix_module_deps</vh></v>
+<v t="ekr.20220525082933.1017"><vh>filter_out_missing_top_level_packages</vh></v>
+</v>
+<v t="ekr.20220525082933.1018"><vh>@clean dmypy_util.py</vh>
+<v t="ekr.20220525082933.1019"><vh>receive</vh></v>
+</v>
+</v>
+<v t="ekr.20220603023612.1"><vh>--- errors and messages</vh>
+<v t="ekr.20220525082933.1057"><vh>@clean errorcodes.py</vh>
+<v t="ekr.20220525082933.1058"><vh>class ErrorCode</vh>
+<v t="ekr.20220525082933.1059"><vh>ErrorCode.__init__</vh></v>
+<v t="ekr.20220525082933.1060"><vh>ErrorCode.__str__</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082933.1061"><vh>@clean errors.py</vh>
+<v t="ekr.20220525082933.1062"><vh>class ErrorInfo</vh>
+<v t="ekr.20220525082933.1063"><vh>ErrorInfo.__init__</vh></v>
+</v>
+<v t="ekr.20220525082933.1064"><vh>Type used internally to represent errors:</vh></v>
+<v t="ekr.20220525082933.1065"><vh>class ErrorWatcher</vh>
+<v t="ekr.20220525082933.1066"><vh>ErrorWatcher.__init__</vh></v>
+<v t="ekr.20220525082933.1067"><vh>ErrorWatcher.__enter__</vh></v>
+<v t="ekr.20220525082933.1068"><vh>ErrorWatcher.__exit__</vh></v>
+<v t="ekr.20220525082933.1069"><vh>ErrorWatcher.on_error</vh></v>
+<v t="ekr.20220525082933.1070"><vh>ErrorWatcher.has_new_errors</vh></v>
+<v t="ekr.20220525082933.1071"><vh>ErrorWatcher.filtered_errors</vh></v>
+</v>
+<v t="ekr.20220525082933.1072"><vh>class Errors</vh>
+<v t="ekr.20220525082933.1073"><vh>Errors.__init__</vh></v>
+<v t="ekr.20220525082933.1074"><vh>Errors.initialize</vh></v>
+<v t="ekr.20220525082933.1075"><vh>Errors.reset</vh></v>
+<v t="ekr.20220525082933.1076"><vh>Errors.set_ignore_prefix</vh></v>
+<v t="ekr.20220525082933.1077"><vh>Errors.simplify_path</vh></v>
+<v t="ekr.20220525082933.1078"><vh>Errors.set_file</vh></v>
+<v t="ekr.20220525082933.1079"><vh>Errors.set_file_ignored_lines</vh></v>
+<v t="ekr.20220525082933.1080"><vh>Errors.current_target</vh></v>
+<v t="ekr.20220525082933.1081"><vh>Errors.current_module</vh></v>
+<v t="ekr.20220525082933.1082"><vh>Errors.import_context</vh></v>
+<v t="ekr.20220525082933.1083"><vh>Errors.set_import_context</vh></v>
+<v t="ekr.20220525082933.1084"><vh>Errors.report</vh></v>
+<v t="ekr.20220525082933.1085"><vh>Errors._add_error_info</vh></v>
+<v t="ekr.20220525082933.1086"><vh>Errors._filter_error</vh></v>
+<v t="ekr.20220525082933.1087"><vh>Errors.add_error_info</vh></v>
+<v t="ekr.20220525082933.1088"><vh>Errors.has_many_errors</vh></v>
+<v t="ekr.20220525082933.1089"><vh>Errors.report_hidden_errors</vh></v>
+<v t="ekr.20220525082933.1090"><vh>Errors.is_ignored_error</vh></v>
+<v t="ekr.20220525082933.1091"><vh>Errors.is_error_code_enabled</vh></v>
+<v t="ekr.20220525082933.1092"><vh>Errors.clear_errors_in_targets</vh></v>
+<v t="ekr.20220525082933.1093"><vh>Errors.generate_unused_ignore_errors</vh></v>
+<v t="ekr.20220525082933.1094"><vh>Errors.generate_ignore_without_code_errors</vh></v>
+<v t="ekr.20220525082933.1095"><vh>Errors.num_messages</vh></v>
+<v t="ekr.20220525082933.1096"><vh>Errors.is_errors</vh></v>
+<v t="ekr.20220525082933.1097"><vh>Errors.is_blockers</vh></v>
+<v t="ekr.20220525082933.1098"><vh>Errors.blocker_module</vh></v>
+<v t="ekr.20220525082933.1099"><vh>Errors.is_errors_for_file</vh></v>
+<v t="ekr.20220525082933.1100"><vh>Errors.raise_error</vh></v>
+<v t="ekr.20220525082933.1101"><vh>Errors.format_messages</vh></v>
+<v t="ekr.20220525082933.1102"><vh>Errors.file_messages</vh></v>
+<v t="ekr.20220525082933.1103"><vh>Errors.new_messages</vh></v>
+<v t="ekr.20220525082933.1104"><vh>Errors.targets</vh></v>
+<v t="ekr.20220525082933.1105"><vh>Errors.render_messages</vh></v>
+<v t="ekr.20220525082933.1106"><vh>Errors.sort_messages</vh></v>
+<v t="ekr.20220525082933.1107"><vh>Errors.remove_duplicates</vh></v>
+</v>
+<v t="ekr.20220525082933.1108"><vh>class CompileError</vh>
+<v t="ekr.20220525082933.1109"><vh>CompileError.__init__</vh></v>
+</v>
+<v t="ekr.20220525082933.1110"><vh>remove_path_prefix</vh></v>
+<v t="ekr.20220525082933.1111"><vh>report_internal_error</vh></v>
+</v>
+<v t="ekr.20220525082934.346"><vh>@clean gclogger.py</vh>
+<v t="ekr.20220525082934.347"><vh>class GcLogger</vh>
+<v t="ekr.20220525082934.348"><vh>GcLogger.__enter__</vh></v>
+<v t="ekr.20220525082934.349"><vh>GcLogger.gc_callback</vh></v>
+<v t="ekr.20220525082934.350"><vh>GcLogger.__exit__</vh></v>
+<v t="ekr.20220525082934.351"><vh>GcLogger.get_stats</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.591"><vh>@clean memprofile.py</vh>
+<v t="ekr.20220525082934.592"><vh>collect_memory_stats</vh></v>
+<v t="ekr.20220525082934.593"><vh>print_memory_profile</vh></v>
+<v t="ekr.20220525082934.594"><vh>find_recursive_objects</vh>
+<v t="ekr.20220525082934.595"><vh>visit</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.760"><vh>@clean message_registry.py</vh>
+<v t="ekr.20220525082934.761"><vh>class ErrorMessage</vh></v>
+</v>
+<v t="ekr.20220525082934.596"><vh>@clean messages.py</vh>
+<v t="ekr.20220525082934.597"><vh>class MessageBuilder</vh>
+<v t="ekr.20220525082934.598"><vh>MessageBuilder.__init__</vh></v>
+<v t="ekr.20220525082934.599"><vh>MessageBuilder.Helpers</vh></v>
+<v t="ekr.20220525082934.600"><vh>MessageBuilder.filter_errors</vh></v>
+<v t="ekr.20220525082934.601"><vh>MessageBuilder.add_errors</vh></v>
+<v t="ekr.20220525082934.602"><vh>MessageBuilder.disable_type_names</vh></v>
+<v t="ekr.20220525082934.603"><vh>MessageBuilder.are_type_names_disabled</vh></v>
+<v t="ekr.20220525082934.604"><vh>MessageBuilder.report</vh></v>
+<v t="ekr.20220525082934.605"><vh>MessageBuilder.fail</vh></v>
+<v t="ekr.20220525082934.606"><vh>MessageBuilder.note</vh></v>
+<v t="ekr.20220525082934.607"><vh>MessageBuilder.note_multiline</vh></v>
+<v t="ekr.20220525082934.608"><vh>MessageBuilder.Specific operations</vh></v>
+<v t="ekr.20220525082934.609"><vh>MessageBuilder.has_no_attr</vh></v>
+<v t="ekr.20220525082934.610"><vh>MessageBuilder.unsupported_operand_types</vh></v>
+<v t="ekr.20220525082934.611"><vh>MessageBuilder.unsupported_left_operand</vh></v>
+<v t="ekr.20220525082934.612"><vh>MessageBuilder.not_callable</vh></v>
+<v t="ekr.20220525082934.613"><vh>MessageBuilder.untyped_function_call</vh></v>
+<v t="ekr.20220525082934.614"><vh>MessageBuilder.incompatible_argument</vh></v>
+<v t="ekr.20220525082934.615"><vh>MessageBuilder.incompatible_argument_note</vh></v>
+<v t="ekr.20220525082934.616"><vh>MessageBuilder.maybe_note_concatenate_pos_args</vh></v>
+<v t="ekr.20220525082934.617"><vh>MessageBuilder.invalid_index_type</vh></v>
+<v t="ekr.20220525082934.618"><vh>MessageBuilder.too_few_arguments</vh></v>
+<v t="ekr.20220525082934.619"><vh>MessageBuilder.missing_named_argument</vh></v>
+<v t="ekr.20220525082934.620"><vh>MessageBuilder.too_many_arguments</vh></v>
+<v t="ekr.20220525082934.621"><vh>MessageBuilder.too_many_arguments_from_typed_dict</vh></v>
+<v t="ekr.20220525082934.622"><vh>MessageBuilder.too_many_positional_arguments</vh></v>
+<v t="ekr.20220525082934.623"><vh>MessageBuilder.maybe_note_about_special_args</vh></v>
+<v t="ekr.20220525082934.624"><vh>MessageBuilder.unexpected_keyword_argument</vh></v>
+<v t="ekr.20220525082934.625"><vh>MessageBuilder.duplicate_argument_value</vh></v>
+<v t="ekr.20220525082934.626"><vh>MessageBuilder.does_not_return_value</vh></v>
+<v t="ekr.20220525082934.627"><vh>MessageBuilder.underscore_function_call</vh></v>
+<v t="ekr.20220525082934.628"><vh>MessageBuilder.deleted_as_rvalue</vh></v>
+<v t="ekr.20220525082934.629"><vh>MessageBuilder.deleted_as_lvalue</vh></v>
+<v t="ekr.20220525082934.630"><vh>MessageBuilder.no_variant_matches_arguments</vh></v>
+<v t="ekr.20220525082934.631"><vh>MessageBuilder.wrong_number_values_to_unpack</vh></v>
+<v t="ekr.20220525082934.632"><vh>MessageBuilder.unpacking_strings_disallowed</vh></v>
+<v t="ekr.20220525082934.633"><vh>MessageBuilder.type_not_iterable</vh></v>
+<v t="ekr.20220525082934.634"><vh>MessageBuilder.incompatible_operator_assignment</vh></v>
+<v t="ekr.20220525082934.635"><vh>MessageBuilder.overload_signature_incompatible_with_supertype</vh></v>
+<v t="ekr.20220525082934.636"><vh>MessageBuilder.signature_incompatible_with_supertype</vh></v>
+<v t="ekr.20220525082934.637"><vh>MessageBuilder.pretty_callable_or_overload</vh></v>
+<v t="ekr.20220525082934.638"><vh>MessageBuilder.argument_incompatible_with_supertype</vh></v>
+<v t="ekr.20220525082934.639"><vh>MessageBuilder.comparison_method_example_msg</vh></v>
+<v t="ekr.20220525082934.640"><vh>MessageBuilder.return_type_incompatible_with_supertype</vh></v>
+<v t="ekr.20220525082934.641"><vh>MessageBuilder.override_target</vh></v>
+<v t="ekr.20220525082934.642"><vh>MessageBuilder.incompatible_type_application</vh></v>
+<v t="ekr.20220525082934.643"><vh>MessageBuilder.could_not_infer_type_arguments</vh></v>
+<v t="ekr.20220525082934.644"><vh>MessageBuilder.invalid_var_arg</vh></v>
+<v t="ekr.20220525082934.645"><vh>MessageBuilder.invalid_keyword_var_arg</vh></v>
+<v t="ekr.20220525082934.646"><vh>MessageBuilder.undefined_in_superclass</vh></v>
+<v t="ekr.20220525082934.647"><vh>MessageBuilder.first_argument_for_super_must_be_type</vh></v>
+<v t="ekr.20220525082934.648"><vh>MessageBuilder.too_few_string_formatting_arguments</vh></v>
+<v t="ekr.20220525082934.649"><vh>MessageBuilder.too_many_string_formatting_arguments</vh></v>
+<v t="ekr.20220525082934.650"><vh>MessageBuilder.unsupported_placeholder</vh></v>
+<v t="ekr.20220525082934.651"><vh>MessageBuilder.string_interpolation_with_star_and_key</vh></v>
+<v t="ekr.20220525082934.652"><vh>MessageBuilder.requires_int_or_single_byte</vh></v>
+<v t="ekr.20220525082934.653"><vh>MessageBuilder.requires_int_or_char</vh></v>
+<v t="ekr.20220525082934.654"><vh>MessageBuilder.key_not_in_mapping</vh></v>
+<v t="ekr.20220525082934.655"><vh>MessageBuilder.string_interpolation_mixing_key_and_non_keys</vh></v>
+<v t="ekr.20220525082934.656"><vh>MessageBuilder.cannot_determine_type</vh></v>
+<v t="ekr.20220525082934.657"><vh>MessageBuilder.cannot_determine_type_in_base</vh></v>
+<v t="ekr.20220525082934.658"><vh>MessageBuilder.no_formal_self</vh></v>
+<v t="ekr.20220525082934.659"><vh>MessageBuilder.incompatible_self_argument</vh></v>
+<v t="ekr.20220525082934.660"><vh>MessageBuilder.incompatible_conditional_function_def</vh></v>
+<v t="ekr.20220525082934.661"><vh>MessageBuilder.cannot_instantiate_abstract_class</vh></v>
+<v t="ekr.20220525082934.662"><vh>MessageBuilder.base_class_definitions_incompatible</vh></v>
+<v t="ekr.20220525082934.663"><vh>MessageBuilder.cant_assign_to_method</vh></v>
+<v t="ekr.20220525082934.664"><vh>MessageBuilder.cant_assign_to_classvar</vh></v>
+<v t="ekr.20220525082934.665"><vh>MessageBuilder.final_cant_override_writable</vh></v>
+<v t="ekr.20220525082934.666"><vh>MessageBuilder.cant_override_final</vh></v>
+<v t="ekr.20220525082934.667"><vh>MessageBuilder.cant_assign_to_final</vh></v>
+<v t="ekr.20220525082934.668"><vh>MessageBuilder.protocol_members_cant_be_final</vh></v>
+<v t="ekr.20220525082934.669"><vh>MessageBuilder.final_without_value</vh></v>
+<v t="ekr.20220525082934.670"><vh>MessageBuilder.read_only_property</vh></v>
+<v t="ekr.20220525082934.671"><vh>MessageBuilder.incompatible_typevar_value</vh></v>
+<v t="ekr.20220525082934.672"><vh>MessageBuilder.dangerous_comparison</vh></v>
+<v t="ekr.20220525082934.673"><vh>MessageBuilder.overload_inconsistently_applies_decorator</vh></v>
+<v t="ekr.20220525082934.674"><vh>MessageBuilder.overloaded_signatures_overlap</vh></v>
+<v t="ekr.20220525082934.675"><vh>MessageBuilder.overloaded_signature_will_never_match</vh></v>
+<v t="ekr.20220525082934.676"><vh>MessageBuilder.overloaded_signatures_typevar_specific</vh></v>
+<v t="ekr.20220525082934.677"><vh>MessageBuilder.overloaded_signatures_arg_specific</vh></v>
+<v t="ekr.20220525082934.678"><vh>MessageBuilder.overloaded_signatures_ret_specific</vh></v>
+<v t="ekr.20220525082934.679"><vh>MessageBuilder.warn_both_operands_are_from_unions</vh></v>
+<v t="ekr.20220525082934.680"><vh>MessageBuilder.warn_operand_was_from_union</vh></v>
+<v t="ekr.20220525082934.681"><vh>MessageBuilder.operator_method_signatures_overlap</vh></v>
+<v t="ekr.20220525082934.682"><vh>MessageBuilder.forward_operator_not_callable</vh></v>
+<v t="ekr.20220525082934.683"><vh>MessageBuilder.signatures_incompatible</vh></v>
+<v t="ekr.20220525082934.684"><vh>MessageBuilder.yield_from_invalid_operand_type</vh></v>
+<v t="ekr.20220525082934.685"><vh>MessageBuilder.invalid_signature</vh></v>
+<v t="ekr.20220525082934.686"><vh>MessageBuilder.invalid_signature_for_special_method</vh></v>
+<v t="ekr.20220525082934.687"><vh>MessageBuilder.reveal_type</vh></v>
+<v t="ekr.20220525082934.688"><vh>MessageBuilder.reveal_locals</vh></v>
+<v t="ekr.20220525082934.689"><vh>MessageBuilder.unsupported_type_type</vh></v>
+<v t="ekr.20220525082934.690"><vh>MessageBuilder.redundant_cast</vh></v>
+<v t="ekr.20220525082934.691"><vh>MessageBuilder.assert_type_fail</vh></v>
+<v t="ekr.20220525082934.692"><vh>MessageBuilder.unimported_type_becomes_any</vh></v>
+<v t="ekr.20220525082934.693"><vh>MessageBuilder.need_annotation_for_var</vh></v>
+<v t="ekr.20220525082934.694"><vh>MessageBuilder.explicit_any</vh></v>
+<v t="ekr.20220525082934.695"><vh>MessageBuilder.unexpected_typeddict_keys</vh></v>
+<v t="ekr.20220525082934.696"><vh>MessageBuilder.typeddict_key_must_be_string_literal</vh></v>
+<v t="ekr.20220525082934.697"><vh>MessageBuilder.typeddict_key_not_found</vh></v>
+<v t="ekr.20220525082934.698"><vh>MessageBuilder.typeddict_context_ambiguous</vh></v>
+<v t="ekr.20220525082934.699"><vh>MessageBuilder.typeddict_key_cannot_be_deleted</vh></v>
+<v t="ekr.20220525082934.700"><vh>MessageBuilder.typeddict_setdefault_arguments_inconsistent</vh></v>
+<v t="ekr.20220525082934.701"><vh>MessageBuilder.type_arguments_not_allowed</vh></v>
+<v t="ekr.20220525082934.702"><vh>MessageBuilder.disallowed_any_type</vh></v>
+<v t="ekr.20220525082934.703"><vh>MessageBuilder.incorrectly_returning_any</vh></v>
+<v t="ekr.20220525082934.704"><vh>MessageBuilder.incorrect__exit__return</vh></v>
+<v t="ekr.20220525082934.705"><vh>MessageBuilder.untyped_decorated_function</vh></v>
+<v t="ekr.20220525082934.706"><vh>MessageBuilder.typed_function_untyped_decorator</vh></v>
+<v t="ekr.20220525082934.707"><vh>MessageBuilder.bad_proto_variance</vh></v>
+<v t="ekr.20220525082934.708"><vh>MessageBuilder.concrete_only_assign</vh></v>
+<v t="ekr.20220525082934.709"><vh>MessageBuilder.concrete_only_call</vh></v>
+<v t="ekr.20220525082934.710"><vh>MessageBuilder.cannot_use_function_with_type</vh></v>
+<v t="ekr.20220525082934.711"><vh>MessageBuilder.report_non_method_protocol</vh></v>
+<v t="ekr.20220525082934.712"><vh>MessageBuilder.note_call</vh></v>
+<v t="ekr.20220525082934.713"><vh>MessageBuilder.unreachable_statement</vh></v>
+<v t="ekr.20220525082934.714"><vh>MessageBuilder.redundant_left_operand</vh></v>
+<v t="ekr.20220525082934.715"><vh>MessageBuilder.unreachable_right_operand</vh></v>
+<v t="ekr.20220525082934.716"><vh>MessageBuilder.redundant_condition_in_comprehension</vh></v>
+<v t="ekr.20220525082934.717"><vh>MessageBuilder.redundant_condition_in_if</vh></v>
+<v t="ekr.20220525082934.718"><vh>MessageBuilder.redundant_expr</vh></v>
+<v t="ekr.20220525082934.719"><vh>MessageBuilder.impossible_intersection</vh></v>
+<v t="ekr.20220525082934.720"><vh>MessageBuilder.report_protocol_problems</vh></v>
+<v t="ekr.20220525082934.721"><vh>MessageBuilder.pretty_overload</vh></v>
+<v t="ekr.20220525082934.722"><vh>MessageBuilder.print_more</vh></v>
+<v t="ekr.20220525082934.723"><vh>MessageBuilder.try_report_long_tuple_assignment_error</vh></v>
+<v t="ekr.20220525082934.724"><vh>MessageBuilder.format_long_tuple_type</vh></v>
+<v t="ekr.20220525082934.725"><vh>MessageBuilder.generate_incompatible_tuple_error</vh></v>
+<v t="ekr.20220525082934.726"><vh>MessageBuilder.add_fixture_note</vh></v>
+</v>
+<v t="ekr.20220525082934.727"><vh>quote_type_string</vh></v>
+<v t="ekr.20220525082934.728"><vh>format_callable_args</vh></v>
+<v t="ekr.20220525082934.729"><vh>format_type_inner</vh>
+<v t="ekr.20220525082934.730"><vh>format</vh></v>
+<v t="ekr.20220525082934.731"><vh>format_list</vh></v>
+<v t="ekr.20220525082934.732"><vh>format_literal_value</vh></v>
+</v>
+<v t="ekr.20220525082934.733"><vh>collect_all_instances</vh></v>
+<v t="ekr.20220525082934.734"><vh>class CollectAllInstancesQuery</vh></v>
+<v t="ekr.20220525082934.735"><vh>find_type_overlaps</vh></v>
+<v t="ekr.20220525082934.736"><vh>format_type</vh></v>
+<v t="ekr.20220525082934.737"><vh>format_type_bare</vh></v>
+<v t="ekr.20220525082934.738"><vh>format_type_distinctly</vh></v>
+<v t="ekr.20220525082934.739"><vh>pretty_class_or_static_decorator</vh></v>
+<v t="ekr.20220525082934.740"><vh>pretty_callable</vh></v>
+<v t="ekr.20220525082934.741"><vh>variance_string</vh></v>
+<v t="ekr.20220525082934.742"><vh>get_missing_protocol_members</vh></v>
+<v t="ekr.20220525082934.743"><vh>get_conflict_protocol_types</vh></v>
+<v t="ekr.20220525082934.744"><vh>get_bad_protocol_flags</vh></v>
+<v t="ekr.20220525082934.745"><vh>capitalize</vh></v>
+<v t="ekr.20220525082934.746"><vh>extract_type</vh></v>
+<v t="ekr.20220525082934.747"><vh>strip_quotes</vh></v>
+<v t="ekr.20220525082934.748"><vh>plural_s</vh></v>
+<v t="ekr.20220525082934.749"><vh>format_string_list</vh></v>
+<v t="ekr.20220525082934.750"><vh>format_item_name_list</vh></v>
+<v t="ekr.20220525082934.751"><vh>callable_name</vh></v>
+<v t="ekr.20220525082934.752"><vh>for_function</vh></v>
+<v t="ekr.20220525082934.753"><vh>find_defining_module</vh></v>
+<v t="ekr.20220525082934.754"><vh>For hard-coding suggested missing member alternatives.</vh></v>
+<v t="ekr.20220525082934.755"><vh>best_matches</vh></v>
+<v t="ekr.20220525082934.756"><vh>pretty_seq</vh></v>
+<v t="ekr.20220525082934.757"><vh>append_invariance_notes</vh></v>
+<v t="ekr.20220525082934.758"><vh>make_inferred_type_note</vh></v>
+<v t="ekr.20220525082934.759"><vh>format_key_list</vh></v>
+</v>
+<v t="ekr.20220525082934.1457"><vh>@clean report.py</vh>
+<v t="ekr.20220525082934.1458"><vh>class Reports</vh>
+<v t="ekr.20220525082934.1459"><vh>Reports.__init__</vh></v>
+<v t="ekr.20220525082934.1460"><vh>Reports.add_report</vh></v>
+<v t="ekr.20220525082934.1461"><vh>Reports.file</vh></v>
+<v t="ekr.20220525082934.1462"><vh>Reports.finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1463"><vh>class AbstractReporter</vh>
+<v t="ekr.20220525082934.1464"><vh>AbstractReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1465"><vh>AbstractReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1466"><vh>AbstractReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1467"><vh>register_reporter</vh></v>
+<v t="ekr.20220525082934.1468"><vh>alias_reporter</vh></v>
+<v t="ekr.20220525082934.1469"><vh>should_skip_path</vh></v>
+<v t="ekr.20220525082934.1470"><vh>iterate_python_lines</vh></v>
+<v t="ekr.20220525082934.1471"><vh>class FuncCounterVisitor</vh></v>
+<v t="ekr.20220525082934.1472"><vh>class LineCountReporter</vh>
+<v t="ekr.20220525082934.1473"><vh>LineCountReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1474"><vh>LineCountReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1475"><vh>LineCountReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1476"><vh>register_reporter('linecount', LineCountReporter)</vh></v>
+<v t="ekr.20220525082934.1477"><vh>class AnyExpressionsReporter</vh>
+<v t="ekr.20220525082934.1478"><vh>AnyExpressionsReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1479"><vh>AnyExpressionsReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1480"><vh>AnyExpressionsReporter.on_finish</vh></v>
+<v t="ekr.20220525082934.1481"><vh>AnyExpressionsReporter._write_out_report</vh></v>
+<v t="ekr.20220525082934.1482"><vh>AnyExpressionsReporter._report_any_exprs</vh></v>
+<v t="ekr.20220525082934.1483"><vh>AnyExpressionsReporter._report_types_of_anys</vh></v>
+</v>
+<v t="ekr.20220525082934.1484"><vh>register_reporter('any-exprs', AnyExpressionsReporter)</vh></v>
+<v t="ekr.20220525082934.1485"><vh>class LineCoverageVisitor</vh>
+<v t="ekr.20220525082934.1486"><vh>LineCoverageVisitor.__init__</vh></v>
+<v t="ekr.20220525082934.1487"><vh>LineCoverageVisitor.The Python AST has position information for the starts of</vh></v>
+<v t="ekr.20220525082934.1488"><vh>LineCoverageVisitor.indentation_level</vh></v>
+<v t="ekr.20220525082934.1489"><vh>LineCoverageVisitor.visit_func_def</vh></v>
+</v>
+<v t="ekr.20220525082934.1490"><vh>class LineCoverageReporter</vh>
+<v t="ekr.20220525082934.1491"><vh>LineCoverageReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1492"><vh>LineCoverageReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1493"><vh>LineCoverageReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1494"><vh>register_reporter('linecoverage', LineCoverageReporter)</vh></v>
+<v t="ekr.20220525082934.1495"><vh>class FileInfo</vh>
+<v t="ekr.20220525082934.1496"><vh>FileInfo.__init__</vh></v>
+<v t="ekr.20220525082934.1497"><vh>FileInfo.total</vh></v>
+<v t="ekr.20220525082934.1498"><vh>FileInfo.attrib</vh></v>
+</v>
+<v t="ekr.20220525082934.1499"><vh>class MemoryXmlReporter</vh>
+<v t="ekr.20220525082934.1500"><vh>MemoryXmlReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1501"><vh>MemoryXmlReporter.XML doesn't like control characters, but they are sometimes</vh></v>
+<v t="ekr.20220525082934.1502"><vh>MemoryXmlReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1503"><vh>MemoryXmlReporter._get_any_info_for_line</vh></v>
+<v t="ekr.20220525082934.1504"><vh>MemoryXmlReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1505"><vh>register_reporter('memory-xml', MemoryXmlReporter, needs_lxml=True)</vh></v>
+<v t="ekr.20220525082934.1506"><vh>get_line_rate</vh></v>
+<v t="ekr.20220525082934.1507"><vh>class CoberturaPackage</vh>
+<v t="ekr.20220525082934.1508"><vh>CoberturaPackage.__init__</vh></v>
+<v t="ekr.20220525082934.1509"><vh>CoberturaPackage.as_xml</vh></v>
+<v t="ekr.20220525082934.1510"><vh>CoberturaPackage.add_packages</vh></v>
+</v>
+<v t="ekr.20220525082934.1511"><vh>class CoberturaXmlReporter</vh>
+<v t="ekr.20220525082934.1512"><vh>CoberturaXmlReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1513"><vh>CoberturaXmlReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1514"><vh>CoberturaXmlReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1515"><vh>register_reporter('cobertura-xml', CoberturaXmlReporter, needs_lxml=True)</vh></v>
+<v t="ekr.20220525082934.1516"><vh>class AbstractXmlReporter</vh>
+<v t="ekr.20220525082934.1517"><vh>AbstractXmlReporter.__init__</vh></v>
+</v>
+<v t="ekr.20220525082934.1518"><vh>class XmlReporter</vh>
+<v t="ekr.20220525082934.1519"><vh>XmlReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1520"><vh>XmlReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1521"><vh>register_reporter('xml', XmlReporter, needs_lxml=True)</vh></v>
+<v t="ekr.20220525082934.1522"><vh>class XsltHtmlReporter</vh>
+<v t="ekr.20220525082934.1523"><vh>XsltHtmlReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1524"><vh>XsltHtmlReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1525"><vh>XsltHtmlReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1526"><vh>register_reporter('xslt-html', XsltHtmlReporter, needs_lxml=True)</vh></v>
+<v t="ekr.20220525082934.1527"><vh>class XsltTxtReporter</vh>
+<v t="ekr.20220525082934.1528"><vh>XsltTxtReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1529"><vh>XsltTxtReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1530"><vh>XsltTxtReporter.on_finish</vh></v>
+</v>
+<v t="ekr.20220525082934.1531"><vh>register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)</vh></v>
+<v t="ekr.20220525082934.1532"><vh>class LinePrecisionReporter</vh>
+<v t="ekr.20220525082934.1533"><vh>LinePrecisionReporter.__init__</vh></v>
+<v t="ekr.20220525082934.1534"><vh>LinePrecisionReporter.on_file</vh></v>
+<v t="ekr.20220525082934.1535"><vh>LinePrecisionReporter.on_finish</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.492"><vh>@clean strconv.py</vh>
+<v t="ekr.20220525082935.493"><vh>class StrConv</vh>
+<v t="ekr.20220525082935.494"><vh>StrConv.__init__</vh></v>
+<v t="ekr.20220525082935.495"><vh>StrConv.get_id</vh></v>
+<v t="ekr.20220525082935.496"><vh>StrConv.format_id</vh></v>
+<v t="ekr.20220525082935.497"><vh>StrConv.dump</vh></v>
+<v t="ekr.20220525082935.498"><vh>StrConv.func_helper</vh></v>
+<v t="ekr.20220525082935.499"><vh>StrConv.Top-level structures</vh></v>
+<v t="ekr.20220525082935.500"><vh>StrConv.visit_mypy_file</vh></v>
+<v t="ekr.20220525082935.501"><vh>StrConv.visit_import</vh></v>
+<v t="ekr.20220525082935.502"><vh>StrConv.visit_import_from</vh></v>
+<v t="ekr.20220525082935.503"><vh>StrConv.visit_import_all</vh></v>
+<v t="ekr.20220525082935.504"><vh>StrConv.Definitions</vh></v>
+<v t="ekr.20220525082935.505"><vh>StrConv.visit_func_def</vh></v>
+<v t="ekr.20220525082935.506"><vh>StrConv.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.507"><vh>StrConv.visit_class_def</vh></v>
+<v t="ekr.20220525082935.508"><vh>StrConv.visit_var</vh></v>
+<v t="ekr.20220525082935.509"><vh>StrConv.visit_global_decl</vh></v>
+<v t="ekr.20220525082935.510"><vh>StrConv.visit_nonlocal_decl</vh></v>
+<v t="ekr.20220525082935.511"><vh>StrConv.visit_decorator</vh></v>
+<v t="ekr.20220525082935.512"><vh>StrConv.Statements</vh></v>
+<v t="ekr.20220525082935.513"><vh>StrConv.visit_block</vh></v>
+<v t="ekr.20220525082935.514"><vh>StrConv.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082935.515"><vh>StrConv.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.516"><vh>StrConv.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.517"><vh>StrConv.visit_while_stmt</vh></v>
+<v t="ekr.20220525082935.518"><vh>StrConv.visit_for_stmt</vh></v>
+<v t="ekr.20220525082935.519"><vh>StrConv.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.520"><vh>StrConv.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.521"><vh>StrConv.visit_break_stmt</vh></v>
+<v t="ekr.20220525082935.522"><vh>StrConv.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082935.523"><vh>StrConv.visit_pass_stmt</vh></v>
+<v t="ekr.20220525082935.524"><vh>StrConv.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082935.525"><vh>StrConv.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082935.526"><vh>StrConv.visit_await_expr</vh></v>
+<v t="ekr.20220525082935.527"><vh>StrConv.visit_del_stmt</vh></v>
+<v t="ekr.20220525082935.528"><vh>StrConv.visit_try_stmt</vh></v>
+<v t="ekr.20220525082935.529"><vh>StrConv.visit_with_stmt</vh></v>
+<v t="ekr.20220525082935.530"><vh>StrConv.visit_print_stmt</vh></v>
+<v t="ekr.20220525082935.531"><vh>StrConv.visit_exec_stmt</vh></v>
+<v t="ekr.20220525082935.532"><vh>StrConv.visit_match_stmt</vh></v>
+<v t="ekr.20220525082935.533"><vh>StrConv.Expressions</vh></v>
+<v t="ekr.20220525082935.534"><vh>StrConv.visit_int_expr</vh></v>
+<v t="ekr.20220525082935.535"><vh>StrConv.visit_str_expr</vh></v>
+<v t="ekr.20220525082935.536"><vh>StrConv.visit_bytes_expr</vh></v>
+<v t="ekr.20220525082935.537"><vh>StrConv.visit_unicode_expr</vh></v>
+<v t="ekr.20220525082935.538"><vh>StrConv.str_repr</vh></v>
+<v t="ekr.20220525082935.539"><vh>StrConv.visit_float_expr</vh></v>
+<v t="ekr.20220525082935.540"><vh>StrConv.visit_complex_expr</vh></v>
+<v t="ekr.20220525082935.541"><vh>StrConv.visit_ellipsis</vh></v>
+<v t="ekr.20220525082935.542"><vh>StrConv.visit_star_expr</vh></v>
+<v t="ekr.20220525082935.543"><vh>StrConv.visit_name_expr</vh></v>
+<v t="ekr.20220525082935.544"><vh>StrConv.pretty_name</vh></v>
+<v t="ekr.20220525082935.545"><vh>StrConv.visit_member_expr</vh></v>
+<v t="ekr.20220525082935.546"><vh>StrConv.visit_yield_expr</vh></v>
+<v t="ekr.20220525082935.547"><vh>StrConv.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082935.548"><vh>StrConv.visit_call_expr</vh></v>
+<v t="ekr.20220525082935.549"><vh>StrConv.visit_op_expr</vh></v>
+<v t="ekr.20220525082935.550"><vh>StrConv.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082935.551"><vh>StrConv.visit_cast_expr</vh></v>
+<v t="ekr.20220525082935.552"><vh>StrConv.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082935.553"><vh>StrConv.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082935.554"><vh>StrConv.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082935.555"><vh>StrConv.visit_unary_expr</vh></v>
+<v t="ekr.20220525082935.556"><vh>StrConv.visit_list_expr</vh></v>
+<v t="ekr.20220525082935.557"><vh>StrConv.visit_dict_expr</vh></v>
+<v t="ekr.20220525082935.558"><vh>StrConv.visit_set_expr</vh></v>
+<v t="ekr.20220525082935.559"><vh>StrConv.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082935.560"><vh>StrConv.visit_index_expr</vh></v>
+<v t="ekr.20220525082935.561"><vh>StrConv.visit_super_expr</vh></v>
+<v t="ekr.20220525082935.562"><vh>StrConv.visit_type_application</vh></v>
+<v t="ekr.20220525082935.563"><vh>StrConv.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082935.564"><vh>StrConv.visit_paramspec_expr</vh></v>
+<v t="ekr.20220525082935.565"><vh>StrConv.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20220525082935.566"><vh>StrConv.visit_type_alias_expr</vh></v>
+<v t="ekr.20220525082935.567"><vh>StrConv.visit_namedtuple_expr</vh></v>
+<v t="ekr.20220525082935.568"><vh>StrConv.visit_enum_call_expr</vh></v>
+<v t="ekr.20220525082935.569"><vh>StrConv.visit_typeddict_expr</vh></v>
+<v t="ekr.20220525082935.570"><vh>StrConv.visit__promote_expr</vh></v>
+<v t="ekr.20220525082935.571"><vh>StrConv.visit_newtype_expr</vh></v>
+<v t="ekr.20220525082935.572"><vh>StrConv.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082935.573"><vh>StrConv.visit_generator_expr</vh></v>
+<v t="ekr.20220525082935.574"><vh>StrConv.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082935.575"><vh>StrConv.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082935.576"><vh>StrConv.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082935.577"><vh>StrConv.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082935.578"><vh>StrConv.visit_slice_expr</vh></v>
+<v t="ekr.20220525082935.579"><vh>StrConv.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082935.580"><vh>StrConv.visit_temp_node</vh></v>
+<v t="ekr.20220525082935.581"><vh>StrConv.visit_as_pattern</vh></v>
+<v t="ekr.20220525082935.582"><vh>StrConv.visit_or_pattern</vh></v>
+<v t="ekr.20220525082935.583"><vh>StrConv.visit_value_pattern</vh></v>
+<v t="ekr.20220525082935.584"><vh>StrConv.visit_singleton_pattern</vh></v>
+<v t="ekr.20220525082935.585"><vh>StrConv.visit_sequence_pattern</vh></v>
+<v t="ekr.20220525082935.586"><vh>StrConv.visit_starred_pattern</vh></v>
+<v t="ekr.20220525082935.587"><vh>StrConv.visit_mapping_pattern</vh></v>
+<v t="ekr.20220525082935.588"><vh>StrConv.visit_class_pattern</vh></v>
+</v>
+<v t="ekr.20220525082935.589"><vh>dump_tagged</vh></v>
+<v t="ekr.20220525082935.590"><vh>indent</vh></v>
+</v>
+</v>
+<v t="ekr.20220603024215.1"><vh>--- data: scope, state</vh>
+<v t="ekr.20220525082934.1257"><vh>@clean operators.py</vh></v>
+<v t="ekr.20220525082934.1565"><vh>@clean scope.py</vh>
+<v t="ekr.20220525082934.1566"><vh>class Scope</vh>
+<v t="ekr.20220525082934.1567"><vh>Scope.__init__</vh></v>
+<v t="ekr.20220525082934.1568"><vh>Scope.current_module_id</vh></v>
+<v t="ekr.20220525082934.1569"><vh>Scope.current_target</vh></v>
+<v t="ekr.20220525082934.1570"><vh>Scope.current_full_target</vh></v>
+<v t="ekr.20220525082934.1571"><vh>Scope.current_type_name</vh></v>
+<v t="ekr.20220525082934.1572"><vh>Scope.current_function_name</vh></v>
+<v t="ekr.20220525082934.1573"><vh>Scope.module_scope</vh></v>
+<v t="ekr.20220525082934.1574"><vh>Scope.function_scope</vh></v>
+<v t="ekr.20220525082934.1575"><vh>Scope.enter_class</vh></v>
+<v t="ekr.20220525082934.1576"><vh>Scope.leave_class</vh></v>
+<v t="ekr.20220525082934.1577"><vh>Scope.class_scope</vh></v>
+<v t="ekr.20220525082934.1578"><vh>Scope.save</vh></v>
+<v t="ekr.20220525082934.1579"><vh>Scope.saved_scope</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.435"><vh>@clean state.py</vh>
+<v t="ekr.20220525082935.436"><vh>class StrictOptionalState</vh>
+<v t="ekr.20220525082935.437"><vh>StrictOptionalState.__init__</vh></v>
+<v t="ekr.20220525082935.438"><vh>StrictOptionalState.strict_optional_set</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.1164"><vh>@clean tvar_scope.py</vh>
+<v t="ekr.20220525082935.1165"><vh>class TypeVarLikeScope</vh>
+<v t="ekr.20220525082935.1166"><vh>TypeVarLikeScope.__init__</vh></v>
+<v t="ekr.20220525082935.1167"><vh>TypeVarLikeScope.get_function_scope</vh></v>
+<v t="ekr.20220525082935.1168"><vh>TypeVarLikeScope.allow_binding</vh></v>
+<v t="ekr.20220525082935.1169"><vh>TypeVarLikeScope.method_frame</vh></v>
+<v t="ekr.20220525082935.1170"><vh>TypeVarLikeScope.class_frame</vh></v>
+<v t="ekr.20220525082935.1171"><vh>TypeVarLikeScope.bind_new</vh></v>
+<v t="ekr.20220525082935.1172"><vh>TypeVarLikeScope.bind_existing</vh></v>
+<v t="ekr.20220525082935.1173"><vh>TypeVarLikeScope.get_binding</vh></v>
+<v t="ekr.20220525082935.1174"><vh>TypeVarLikeScope.__str__</vh></v>
+</v>
+</v>
+</v>
+<v t="ekr.20220603024255.1"><vh>--- parsing</vh>
+<v t="ekr.20220525082934.34"><vh>@clean fastparse.py</vh>
+<v t="ekr.20220525082934.35"><vh>parse</vh></v>
+<v t="ekr.20220525082934.36"><vh>parse_type_ignore_tag</vh></v>
+<v t="ekr.20220525082934.37"><vh>parse_type_comment</vh></v>
+<v t="ekr.20220525082934.38"><vh>parse_type_string</vh></v>
+<v t="ekr.20220525082934.39"><vh>is_no_type_check_decorator</vh></v>
+<v t="ekr.20220525082934.40"><vh>class ASTConverter</vh>
+<v t="ekr.20220525082934.41"><vh>ASTConverter.__init__</vh></v>
+<v t="ekr.20220525082934.42"><vh>ASTConverter.note</vh></v>
+<v t="ekr.20220525082934.43"><vh>ASTConverter.fail</vh></v>
+<v t="ekr.20220525082934.44"><vh>ASTConverter.fail_merge_overload</vh></v>
+<v t="ekr.20220525082934.45"><vh>ASTConverter.visit</vh></v>
+<v t="ekr.20220525082934.46"><vh>ASTConverter.set_line</vh></v>
+<v t="ekr.20220525082934.47"><vh>ASTConverter.translate_opt_expr_list</vh></v>
+<v t="ekr.20220525082934.48"><vh>ASTConverter.translate_expr_list</vh></v>
+<v t="ekr.20220525082934.49"><vh>ASTConverter.get_lineno</vh></v>
+<v t="ekr.20220525082934.50"><vh>ASTConverter.translate_stmt_list</vh></v>
+<v t="ekr.20220525082934.51"><vh>ASTConverter.translate_type_comment</vh></v>
+<v t="ekr.20220525082934.52"><vh>ASTConverter.op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
+<v t="ekr.20220525082934.53"><vh>ASTConverter.from_operator</vh></v>
+<v t="ekr.20220525082934.54"><vh>ASTConverter.comp_op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
+<v t="ekr.20220525082934.55"><vh>ASTConverter.from_comp_operator</vh></v>
+<v t="ekr.20220525082934.56"><vh>ASTConverter.as_block</vh></v>
+<v t="ekr.20220525082934.57"><vh>ASTConverter.as_required_block</vh></v>
+<v t="ekr.20220525082934.58"><vh>ASTConverter.fix_function_overloads</vh></v>
+<v t="ekr.20220525082934.59"><vh>ASTConverter._check_ifstmt_for_overloads</vh></v>
+<v t="ekr.20220525082934.60"><vh>ASTConverter._get_executable_if_block_with_overloads</vh></v>
+<v t="ekr.20220525082934.61"><vh>ASTConverter._strip_contents_from_if_stmt</vh></v>
+<v t="ekr.20220525082934.62"><vh>ASTConverter._is_stripped_if_stmt</vh></v>
+<v t="ekr.20220525082934.63"><vh>ASTConverter.in_method_scope</vh></v>
+<v t="ekr.20220525082934.64"><vh>ASTConverter.translate_module_id</vh></v>
+<v t="ekr.20220525082934.65"><vh>ASTConverter.visit_Module</vh></v>
+<v t="ekr.20220525082934.66"><vh>ASTConverter.visit_FunctionDef</vh></v>
+<v t="ekr.20220525082934.67"><vh>ASTConverter.visit_AsyncFunctionDef</vh></v>
+<v t="ekr.20220525082934.68"><vh>ASTConverter.do_func_def</vh></v>
+<v t="ekr.20220525082934.69"><vh>ASTConverter.set_type_optional</vh></v>
+<v t="ekr.20220525082934.70"><vh>ASTConverter.transform_args</vh></v>
+<v t="ekr.20220525082934.71"><vh>ASTConverter.make_argument</vh></v>
+<v t="ekr.20220525082934.72"><vh>ASTConverter.fail_arg</vh></v>
+<v t="ekr.20220525082934.73"><vh>ASTConverter.visit_ClassDef</vh></v>
+<v t="ekr.20220525082934.74"><vh>ASTConverter.visit_Return</vh></v>
+<v t="ekr.20220525082934.75"><vh>ASTConverter.visit_Delete</vh></v>
+<v t="ekr.20220525082934.76"><vh>ASTConverter.visit_Assign</vh></v>
+<v t="ekr.20220525082934.77"><vh>ASTConverter.visit_AnnAssign</vh></v>
+<v t="ekr.20220525082934.78"><vh>ASTConverter.visit_AugAssign</vh></v>
+<v t="ekr.20220525082934.79"><vh>ASTConverter.visit_For</vh></v>
+<v t="ekr.20220525082934.80"><vh>ASTConverter.visit_AsyncFor</vh></v>
+<v t="ekr.20220525082934.81"><vh>ASTConverter.visit_While</vh></v>
+<v t="ekr.20220525082934.82"><vh>ASTConverter.visit_If</vh></v>
+<v t="ekr.20220525082934.83"><vh>ASTConverter.visit_With</vh></v>
+<v t="ekr.20220525082934.84"><vh>ASTConverter.visit_AsyncWith</vh></v>
+<v t="ekr.20220525082934.85"><vh>ASTConverter.visit_Raise</vh></v>
+<v t="ekr.20220525082934.86"><vh>ASTConverter.visit_Try</vh></v>
+<v t="ekr.20220525082934.87"><vh>ASTConverter.visit_Assert</vh></v>
+<v t="ekr.20220525082934.88"><vh>ASTConverter.visit_Import</vh></v>
+<v t="ekr.20220525082934.89"><vh>ASTConverter.visit_ImportFrom</vh></v>
+<v t="ekr.20220525082934.90"><vh>ASTConverter.visit_Global</vh></v>
+<v t="ekr.20220525082934.91"><vh>ASTConverter.visit_Nonlocal</vh></v>
+<v t="ekr.20220525082934.92"><vh>ASTConverter.visit_Expr</vh></v>
+<v t="ekr.20220525082934.93"><vh>ASTConverter.visit_Pass</vh></v>
+<v t="ekr.20220525082934.94"><vh>ASTConverter.visit_Break</vh></v>
+<v t="ekr.20220525082934.95"><vh>ASTConverter.visit_Continue</vh></v>
+<v t="ekr.20220525082934.96"><vh>ASTConverter.--- expr ---</vh></v>
+<v t="ekr.20220525082934.97"><vh>ASTConverter.visit_NamedExpr</vh></v>
+<v t="ekr.20220525082934.98"><vh>ASTConverter.visit_BoolOp</vh></v>
+<v t="ekr.20220525082934.99"><vh>ASTConverter.group</vh></v>
+<v t="ekr.20220525082934.100"><vh>ASTConverter.visit_BinOp</vh></v>
+<v t="ekr.20220525082934.101"><vh>ASTConverter.visit_UnaryOp</vh></v>
+<v t="ekr.20220525082934.102"><vh>ASTConverter.visit_Lambda</vh></v>
+<v t="ekr.20220525082934.103"><vh>ASTConverter.visit_IfExp</vh></v>
+<v t="ekr.20220525082934.104"><vh>ASTConverter.visit_Dict</vh></v>
+<v t="ekr.20220525082934.105"><vh>ASTConverter.visit_Set</vh></v>
+<v t="ekr.20220525082934.106"><vh>ASTConverter.visit_ListComp</vh></v>
+<v t="ekr.20220525082934.107"><vh>ASTConverter.visit_SetComp</vh></v>
+<v t="ekr.20220525082934.108"><vh>ASTConverter.visit_DictComp</vh></v>
+<v t="ekr.20220525082934.109"><vh>ASTConverter.visit_GeneratorExp</vh></v>
+<v t="ekr.20220525082934.110"><vh>ASTConverter.visit_Await</vh></v>
+<v t="ekr.20220525082934.111"><vh>ASTConverter.visit_Yield</vh></v>
+<v t="ekr.20220525082934.112"><vh>ASTConverter.visit_YieldFrom</vh></v>
+<v t="ekr.20220525082934.113"><vh>ASTConverter.visit_Compare</vh></v>
+<v t="ekr.20220525082934.114"><vh>ASTConverter.visit_Call</vh></v>
+<v t="ekr.20220525082934.115"><vh>ASTConverter.visit_Constant</vh></v>
+<v t="ekr.20220525082934.116"><vh>ASTConverter.visit_Num</vh></v>
+<v t="ekr.20220525082934.117"><vh>ASTConverter.visit_Str</vh></v>
+<v t="ekr.20220525082934.118"><vh>ASTConverter.visit_JoinedStr</vh></v>
+<v t="ekr.20220525082934.119"><vh>ASTConverter.visit_FormattedValue</vh></v>
+<v t="ekr.20220525082934.120"><vh>ASTConverter.visit_Bytes</vh></v>
+<v t="ekr.20220525082934.121"><vh>ASTConverter.visit_NameConstant</vh></v>
+<v t="ekr.20220525082934.122"><vh>ASTConverter.visit_Ellipsis</vh></v>
+<v t="ekr.20220525082934.123"><vh>ASTConverter.visit_Attribute</vh></v>
+<v t="ekr.20220525082934.124"><vh>ASTConverter.visit_Subscript</vh></v>
+<v t="ekr.20220525082934.125"><vh>ASTConverter.visit_Starred</vh></v>
+<v t="ekr.20220525082934.126"><vh>ASTConverter.visit_Name</vh></v>
+<v t="ekr.20220525082934.127"><vh>ASTConverter.visit_List</vh></v>
+<v t="ekr.20220525082934.128"><vh>ASTConverter.visit_Tuple</vh></v>
+<v t="ekr.20220525082934.129"><vh>ASTConverter.--- slice ---</vh></v>
+<v t="ekr.20220525082934.130"><vh>ASTConverter.visit_Slice</vh></v>
+<v t="ekr.20220525082934.131"><vh>ASTConverter.visit_ExtSlice</vh></v>
+<v t="ekr.20220525082934.132"><vh>ASTConverter.visit_Index</vh></v>
+<v t="ekr.20220525082934.133"><vh>ASTConverter.visit_Match</vh></v>
+<v t="ekr.20220525082934.134"><vh>ASTConverter.visit_MatchValue</vh></v>
+<v t="ekr.20220525082934.135"><vh>ASTConverter.visit_MatchSingleton</vh></v>
+<v t="ekr.20220525082934.136"><vh>ASTConverter.visit_MatchSequence</vh></v>
+<v t="ekr.20220525082934.137"><vh>ASTConverter.visit_MatchStar</vh></v>
+<v t="ekr.20220525082934.138"><vh>ASTConverter.visit_MatchMapping</vh></v>
+<v t="ekr.20220525082934.139"><vh>ASTConverter.visit_MatchClass</vh></v>
+<v t="ekr.20220525082934.140"><vh>ASTConverter.visit_MatchAs</vh></v>
+<v t="ekr.20220525082934.141"><vh>ASTConverter.visit_MatchOr</vh></v>
+</v>
+<v t="ekr.20220525082934.142"><vh>class TypeConverter</vh>
+<v t="ekr.20220525082934.143"><vh>TypeConverter.__init__</vh></v>
+<v t="ekr.20220525082934.144"><vh>TypeConverter.convert_column</vh></v>
+<v t="ekr.20220525082934.145"><vh>TypeConverter.invalid_type</vh></v>
+<v t="ekr.20220525082934.146"><vh>TypeConverter.visit</vh></v>
+<v t="ekr.20220525082934.147"><vh>TypeConverter.visit</vh></v>
+<v t="ekr.20220525082934.148"><vh>TypeConverter.visit</vh></v>
+<v t="ekr.20220525082934.149"><vh>TypeConverter.parent</vh></v>
+<v t="ekr.20220525082934.150"><vh>TypeConverter.fail</vh></v>
+<v t="ekr.20220525082934.151"><vh>TypeConverter.note</vh></v>
+<v t="ekr.20220525082934.152"><vh>TypeConverter.translate_expr_list</vh></v>
+<v t="ekr.20220525082934.153"><vh>TypeConverter.visit_raw_str</vh></v>
+<v t="ekr.20220525082934.154"><vh>TypeConverter.visit_Call</vh></v>
+<v t="ekr.20220525082934.155"><vh>TypeConverter.translate_argument_list</vh></v>
+<v t="ekr.20220525082934.156"><vh>TypeConverter._extract_argument_name</vh></v>
+<v t="ekr.20220525082934.157"><vh>TypeConverter.visit_Name</vh></v>
+<v t="ekr.20220525082934.158"><vh>TypeConverter.visit_BinOp</vh></v>
+<v t="ekr.20220525082934.159"><vh>TypeConverter.visit_NameConstant</vh></v>
+<v t="ekr.20220525082934.160"><vh>TypeConverter.visit_Constant</vh></v>
+<v t="ekr.20220525082934.161"><vh>TypeConverter.visit_UnaryOp</vh></v>
+<v t="ekr.20220525082934.162"><vh>TypeConverter.numeric_type</vh></v>
+<v t="ekr.20220525082934.163"><vh>TypeConverter.These next three methods are only used if we are on python &lt;</vh></v>
+<v t="ekr.20220525082934.164"><vh>TypeConverter.visit_Num</vh></v>
+<v t="ekr.20220525082934.165"><vh>TypeConverter.visit_Str</vh></v>
+<v t="ekr.20220525082934.166"><vh>TypeConverter.visit_Bytes</vh></v>
+<v t="ekr.20220525082934.167"><vh>TypeConverter.visit_Index</vh></v>
+<v t="ekr.20220525082934.168"><vh>TypeConverter.visit_Slice</vh></v>
+<v t="ekr.20220525082934.169"><vh>TypeConverter.visit_Subscript</vh></v>
+<v t="ekr.20220525082934.170"><vh>TypeConverter.visit_Tuple</vh></v>
+<v t="ekr.20220525082934.171"><vh>TypeConverter.visit_Attribute</vh></v>
+<v t="ekr.20220525082934.172"><vh>TypeConverter.visit_Ellipsis</vh></v>
+<v t="ekr.20220525082934.173"><vh>TypeConverter.visit_List</vh></v>
+</v>
+<v t="ekr.20220525082934.174"><vh>stringify_name</vh></v>
+</v>
+<v t="ekr.20220525082934.175"><vh>@clean fastparse2.py</vh>
+<v t="ekr.20220525082934.176"><vh>parse</vh></v>
+<v t="ekr.20220525082934.177"><vh>is_no_type_check_decorator</vh></v>
+<v t="ekr.20220525082934.178"><vh>class ASTConverter</vh>
+<v t="ekr.20220525082934.179"><vh>ASTConverter.__init__</vh></v>
+<v t="ekr.20220525082934.180"><vh>ASTConverter.fail</vh></v>
+<v t="ekr.20220525082934.181"><vh>ASTConverter.visit</vh></v>
+<v t="ekr.20220525082934.182"><vh>ASTConverter.set_line</vh></v>
+<v t="ekr.20220525082934.183"><vh>ASTConverter.translate_expr_list</vh></v>
+<v t="ekr.20220525082934.184"><vh>ASTConverter.get_lineno</vh></v>
+<v t="ekr.20220525082934.185"><vh>ASTConverter.translate_stmt_list</vh></v>
+<v t="ekr.20220525082934.186"><vh>ASTConverter.translate_type_comment</vh></v>
+<v t="ekr.20220525082934.187"><vh>ASTConverter.op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
+<v t="ekr.20220525082934.188"><vh>ASTConverter.from_operator</vh></v>
+<v t="ekr.20220525082934.189"><vh>ASTConverter.comp_op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
+<v t="ekr.20220525082934.190"><vh>ASTConverter.from_comp_operator</vh></v>
+<v t="ekr.20220525082934.191"><vh>ASTConverter.as_block</vh></v>
+<v t="ekr.20220525082934.192"><vh>ASTConverter.as_required_block</vh></v>
+<v t="ekr.20220525082934.193"><vh>ASTConverter.fix_function_overloads</vh></v>
+<v t="ekr.20220525082934.194"><vh>ASTConverter.in_method_scope</vh></v>
+<v t="ekr.20220525082934.195"><vh>ASTConverter.translate_module_id</vh></v>
+<v t="ekr.20220525082934.196"><vh>ASTConverter.visit_Module</vh></v>
+<v t="ekr.20220525082934.197"><vh>ASTConverter.visit_FunctionDef</vh></v>
+<v t="ekr.20220525082934.198"><vh>ASTConverter.set_type_optional</vh></v>
+<v t="ekr.20220525082934.199"><vh>ASTConverter.transform_args</vh></v>
+<v t="ekr.20220525082934.200"><vh>ASTConverter.extract_names</vh></v>
+<v t="ekr.20220525082934.201"><vh>ASTConverter.convert_arg</vh></v>
+<v t="ekr.20220525082934.202"><vh>ASTConverter.get_type</vh></v>
+<v t="ekr.20220525082934.203"><vh>ASTConverter.stringify_name</vh></v>
+<v t="ekr.20220525082934.204"><vh>ASTConverter.visit_ClassDef</vh></v>
+<v t="ekr.20220525082934.205"><vh>ASTConverter.visit_Return</vh></v>
+<v t="ekr.20220525082934.206"><vh>ASTConverter.visit_Delete</vh></v>
+<v t="ekr.20220525082934.207"><vh>ASTConverter.visit_Assign</vh></v>
+<v t="ekr.20220525082934.208"><vh>ASTConverter.visit_AugAssign</vh></v>
+<v t="ekr.20220525082934.209"><vh>ASTConverter.visit_For</vh></v>
+<v t="ekr.20220525082934.210"><vh>ASTConverter.visit_While</vh></v>
+<v t="ekr.20220525082934.211"><vh>ASTConverter.visit_If</vh></v>
+<v t="ekr.20220525082934.212"><vh>ASTConverter.visit_With</vh></v>
+<v t="ekr.20220525082934.213"><vh>ASTConverter.visit_Raise</vh></v>
+<v t="ekr.20220525082934.214"><vh>ASTConverter.visit_TryExcept</vh></v>
+<v t="ekr.20220525082934.215"><vh>ASTConverter.visit_TryFinally</vh></v>
+<v t="ekr.20220525082934.216"><vh>ASTConverter.try_handler</vh></v>
+<v t="ekr.20220525082934.217"><vh>ASTConverter.visit_Print</vh></v>
+<v t="ekr.20220525082934.218"><vh>ASTConverter.visit_Exec</vh></v>
+<v t="ekr.20220525082934.219"><vh>ASTConverter.visit_Repr</vh></v>
+<v t="ekr.20220525082934.220"><vh>ASTConverter.visit_Assert</vh></v>
+<v t="ekr.20220525082934.221"><vh>ASTConverter.visit_Import</vh></v>
+<v t="ekr.20220525082934.222"><vh>ASTConverter.visit_ImportFrom</vh></v>
+<v t="ekr.20220525082934.223"><vh>ASTConverter.visit_Global</vh></v>
+<v t="ekr.20220525082934.224"><vh>ASTConverter.visit_Expr</vh></v>
+<v t="ekr.20220525082934.225"><vh>ASTConverter.visit_Pass</vh></v>
+<v t="ekr.20220525082934.226"><vh>ASTConverter.visit_Break</vh></v>
+<v t="ekr.20220525082934.227"><vh>ASTConverter.visit_Continue</vh></v>
+<v t="ekr.20220525082934.228"><vh>ASTConverter.--- expr ---</vh></v>
+<v t="ekr.20220525082934.229"><vh>ASTConverter.visit_BoolOp</vh></v>
+<v t="ekr.20220525082934.230"><vh>ASTConverter.group</vh></v>
+<v t="ekr.20220525082934.231"><vh>ASTConverter.visit_BinOp</vh></v>
+<v t="ekr.20220525082934.232"><vh>ASTConverter.visit_UnaryOp</vh></v>
+<v t="ekr.20220525082934.233"><vh>ASTConverter.visit_Lambda</vh></v>
+<v t="ekr.20220525082934.234"><vh>ASTConverter.visit_IfExp</vh></v>
+<v t="ekr.20220525082934.235"><vh>ASTConverter.visit_Dict</vh></v>
+<v t="ekr.20220525082934.236"><vh>ASTConverter.visit_Set</vh></v>
+<v t="ekr.20220525082934.237"><vh>ASTConverter.visit_ListComp</vh></v>
+<v t="ekr.20220525082934.238"><vh>ASTConverter.visit_SetComp</vh></v>
+<v t="ekr.20220525082934.239"><vh>ASTConverter.visit_DictComp</vh></v>
+<v t="ekr.20220525082934.240"><vh>ASTConverter.visit_GeneratorExp</vh></v>
+<v t="ekr.20220525082934.241"><vh>ASTConverter.visit_Yield</vh></v>
+<v t="ekr.20220525082934.242"><vh>ASTConverter.visit_Compare</vh></v>
+<v t="ekr.20220525082934.243"><vh>ASTConverter.visit_Call</vh></v>
+<v t="ekr.20220525082934.244"><vh>ASTConverter.visit_Num</vh></v>
+<v t="ekr.20220525082934.245"><vh>ASTConverter.visit_Str</vh></v>
+<v t="ekr.20220525082934.246"><vh>ASTConverter.visit_Ellipsis</vh></v>
+<v t="ekr.20220525082934.247"><vh>ASTConverter.visit_Attribute</vh></v>
+<v t="ekr.20220525082934.248"><vh>ASTConverter.visit_Subscript</vh></v>
+<v t="ekr.20220525082934.249"><vh>ASTConverter.visit_Name</vh></v>
+<v t="ekr.20220525082934.250"><vh>ASTConverter.visit_List</vh></v>
+<v t="ekr.20220525082934.251"><vh>ASTConverter.visit_Tuple</vh></v>
+<v t="ekr.20220525082934.252"><vh>ASTConverter.--- slice ---</vh></v>
+<v t="ekr.20220525082934.253"><vh>ASTConverter.visit_Slice</vh></v>
+<v t="ekr.20220525082934.254"><vh>ASTConverter.visit_ExtSlice</vh></v>
+<v t="ekr.20220525082934.255"><vh>ASTConverter.visit_Index</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.1271"><vh>@clean parse.py</vh>
+<v t="ekr.20220525082934.1272"><vh>parse</vh></v>
+</v>
+<v t="ekr.20220525082935.424"><vh>@clean sharedparse.py</vh>
+<v t="ekr.20220525082935.425"><vh>special_function_elide_names</vh></v>
+<v t="ekr.20220525082935.426"><vh>argument_elide_name</vh></v>
+</v>
+</v>
+<v t="ekr.20220603022429.1"><vh>--- semantic analyis</vh>
+<v t="ekr.20220525082934.500"><vh>@clean lookup.py</vh>
+<v t="ekr.20220525082934.501"><vh>lookup_fully_qualified</vh></v>
+</v>
+<v t="ekr.20220525082934.866"><vh>@clean mro.py</vh>
+<v t="ekr.20220525082934.867"><vh>calculate_mro</vh></v>
+<v t="ekr.20220525082934.868"><vh>class MroError</vh></v>
+<v t="ekr.20220525082934.869"><vh>linearize_hierarchy</vh></v>
+<v t="ekr.20220525082934.870"><vh>merge</vh></v>
+</v>
+<v t="ekr.20220525082934.1381"><vh>@clean reachability.py</vh>
+<v t="ekr.20220525082934.1382"><vh>infer_reachability_of_if_statement</vh></v>
+<v t="ekr.20220525082934.1383"><vh>infer_reachability_of_match_statement</vh></v>
+<v t="ekr.20220525082934.1384"><vh>assert_will_always_fail</vh></v>
+<v t="ekr.20220525082934.1385"><vh>infer_condition_value</vh></v>
+<v t="ekr.20220525082934.1386"><vh>infer_pattern_value</vh></v>
+<v t="ekr.20220525082934.1387"><vh>consider_sys_version_info</vh></v>
+<v t="ekr.20220525082934.1388"><vh>consider_sys_platform</vh></v>
+<v t="ekr.20220525082934.1389"><vh>Targ = TypeVar('Targ', int, str, Tuple[int, ...])</vh></v>
+<v t="ekr.20220525082934.1390"><vh>fixed_comparison</vh></v>
+<v t="ekr.20220525082934.1391"><vh>contains_int_or_tuple_of_ints</vh></v>
+<v t="ekr.20220525082934.1392"><vh>contains_sys_version_info</vh></v>
+<v t="ekr.20220525082934.1393"><vh>is_sys_attr</vh></v>
+<v t="ekr.20220525082934.1394"><vh>mark_block_unreachable</vh></v>
+<v t="ekr.20220525082934.1395"><vh>class MarkImportsUnreachableVisitor</vh>
+<v t="ekr.20220525082934.1396"><vh>MarkImportsUnreachableVisitor.visit_import</vh></v>
+<v t="ekr.20220525082934.1397"><vh>MarkImportsUnreachableVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082934.1398"><vh>MarkImportsUnreachableVisitor.visit_import_all</vh></v>
+</v>
+<v t="ekr.20220525082934.1399"><vh>mark_block_mypy_only</vh></v>
+<v t="ekr.20220525082934.1400"><vh>class MarkImportsMypyOnlyVisitor</vh>
+<v t="ekr.20220525082934.1401"><vh>MarkImportsMypyOnlyVisitor.visit_import</vh></v>
+<v t="ekr.20220525082934.1402"><vh>MarkImportsMypyOnlyVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082934.1403"><vh>MarkImportsMypyOnlyVisitor.visit_import_all</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.1580"><vh>@clean semanal.py</vh>
+<v t="ekr.20220525082935.1"><vh>class SemanticAnalyzer</vh>
+<v t="ekr.20220525082935.2"><vh>SemanticAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.3"><vh>SemanticAnalyzer.is_stub_file</vh></v>
+<v t="ekr.20220525082935.4"><vh>SemanticAnalyzer.is_typeshed_stub_file</vh></v>
+<v t="ekr.20220525082935.5"><vh>SemanticAnalyzer.final_iteration</vh></v>
+<v t="ekr.20220525082935.6"><vh>SemanticAnalyzer.Preparing module (performed before semantic analysis)</vh></v>
+<v t="ekr.20220525082935.7"><vh>SemanticAnalyzer.prepare_file</vh></v>
+<v t="ekr.20220525082935.8"><vh>SemanticAnalyzer.prepare_typing_namespace</vh></v>
+<v t="ekr.20220525082935.9"><vh>SemanticAnalyzer.prepare_builtins_namespace</vh></v>
+<v t="ekr.20220525082935.10"><vh>SemanticAnalyzer.Analyzing a target</vh></v>
+<v t="ekr.20220525082935.11"><vh>SemanticAnalyzer.refresh_partial</vh></v>
+<v t="ekr.20220525082935.12"><vh>SemanticAnalyzer.refresh_top_level</vh></v>
+<v t="ekr.20220525082935.13"><vh>SemanticAnalyzer.add_implicit_module_attrs</vh></v>
+<v t="ekr.20220525082935.14"><vh>SemanticAnalyzer.add_builtin_aliases</vh></v>
+<v t="ekr.20220525082935.15"><vh>SemanticAnalyzer.add_typing_extension_aliases</vh></v>
+<v t="ekr.20220525082935.16"><vh>SemanticAnalyzer.create_alias</vh></v>
+<v t="ekr.20220525082935.17"><vh>SemanticAnalyzer.adjust_public_exports</vh></v>
+<v t="ekr.20220525082935.18"><vh>SemanticAnalyzer.file_context</vh></v>
+<v t="ekr.20220525082935.19"><vh>SemanticAnalyzer.Functions</vh></v>
+<v t="ekr.20220525082935.20"><vh>SemanticAnalyzer.visit_func_def</vh></v>
+<v t="ekr.20220525082935.21"><vh>SemanticAnalyzer.analyze_func_def</vh></v>
+<v t="ekr.20220525082935.22"><vh>SemanticAnalyzer.prepare_method_signature</vh></v>
+<v t="ekr.20220525082935.23"><vh>SemanticAnalyzer.set_original_def</vh></v>
+<v t="ekr.20220525082935.24"><vh>SemanticAnalyzer.update_function_type_variables</vh></v>
+<v t="ekr.20220525082935.25"><vh>SemanticAnalyzer.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.26"><vh>SemanticAnalyzer.analyze_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.27"><vh>SemanticAnalyzer.analyze_overload_sigs_and_impl</vh></v>
+<v t="ekr.20220525082935.28"><vh>SemanticAnalyzer.handle_missing_overload_decorators</vh></v>
+<v t="ekr.20220525082935.29"><vh>SemanticAnalyzer.handle_missing_overload_implementation</vh></v>
+<v t="ekr.20220525082935.30"><vh>SemanticAnalyzer.process_final_in_overload</vh></v>
+<v t="ekr.20220525082935.31"><vh>SemanticAnalyzer.process_static_or_class_method_in_overload</vh></v>
+<v t="ekr.20220525082935.32"><vh>SemanticAnalyzer.analyze_property_with_multi_part_definition</vh></v>
+<v t="ekr.20220525082935.33"><vh>SemanticAnalyzer.add_function_to_symbol_table</vh></v>
+<v t="ekr.20220525082935.34"><vh>SemanticAnalyzer.analyze_arg_initializers</vh></v>
+<v t="ekr.20220525082935.35"><vh>SemanticAnalyzer.analyze_function_body</vh></v>
+<v t="ekr.20220525082935.36"><vh>SemanticAnalyzer.check_classvar_in_signature</vh></v>
+<v t="ekr.20220525082935.37"><vh>SemanticAnalyzer.check_function_signature</vh></v>
+<v t="ekr.20220525082935.38"><vh>SemanticAnalyzer.visit_decorator</vh></v>
+<v t="ekr.20220525082935.39"><vh>SemanticAnalyzer.check_decorated_function_is_method</vh></v>
+<v t="ekr.20220525082935.40"><vh>SemanticAnalyzer.Classes</vh></v>
+<v t="ekr.20220525082935.41"><vh>SemanticAnalyzer.visit_class_def</vh></v>
+<v t="ekr.20220525082935.42"><vh>SemanticAnalyzer.analyze_class</vh></v>
+<v t="ekr.20220525082935.43"><vh>SemanticAnalyzer.is_core_builtin_class</vh></v>
+<v t="ekr.20220525082935.44"><vh>SemanticAnalyzer.analyze_class_body_common</vh></v>
+<v t="ekr.20220525082935.45"><vh>SemanticAnalyzer.analyze_namedtuple_classdef</vh></v>
+<v t="ekr.20220525082935.46"><vh>SemanticAnalyzer.apply_class_plugin_hooks</vh></v>
+<v t="ekr.20220525082935.47"><vh>SemanticAnalyzer.get_fullname_for_hook</vh></v>
+<v t="ekr.20220525082935.48"><vh>SemanticAnalyzer.analyze_class_keywords</vh></v>
+<v t="ekr.20220525082935.49"><vh>SemanticAnalyzer.enter_class</vh></v>
+<v t="ekr.20220525082935.50"><vh>SemanticAnalyzer.leave_class</vh></v>
+<v t="ekr.20220525082935.51"><vh>SemanticAnalyzer.analyze_class_decorator</vh></v>
+<v t="ekr.20220525082935.52"><vh>SemanticAnalyzer.clean_up_bases_and_infer_type_variables</vh></v>
+<v t="ekr.20220525082935.53"><vh>SemanticAnalyzer.analyze_class_typevar_declaration</vh></v>
+<v t="ekr.20220525082935.54"><vh>SemanticAnalyzer.analyze_unbound_tvar</vh></v>
+<v t="ekr.20220525082935.55"><vh>SemanticAnalyzer.get_all_bases_tvars</vh></v>
+<v t="ekr.20220525082935.56"><vh>SemanticAnalyzer.prepare_class_def</vh></v>
+<v t="ekr.20220525082935.57"><vh>SemanticAnalyzer.make_empty_type_info</vh></v>
+<v t="ekr.20220525082935.58"><vh>SemanticAnalyzer.get_name_repr_of_expr</vh></v>
+<v t="ekr.20220525082935.59"><vh>SemanticAnalyzer.analyze_base_classes</vh></v>
+<v t="ekr.20220525082935.60"><vh>SemanticAnalyzer.configure_base_classes</vh></v>
+<v t="ekr.20220525082935.61"><vh>SemanticAnalyzer.configure_tuple_base_class</vh></v>
+<v t="ekr.20220525082935.62"><vh>SemanticAnalyzer.set_dummy_mro</vh></v>
+<v t="ekr.20220525082935.63"><vh>SemanticAnalyzer.calculate_class_mro</vh></v>
+<v t="ekr.20220525082935.64"><vh>SemanticAnalyzer.update_metaclass</vh></v>
+<v t="ekr.20220525082935.65"><vh>SemanticAnalyzer.verify_base_classes</vh></v>
+<v t="ekr.20220525082935.66"><vh>SemanticAnalyzer.is_base_class</vh></v>
+<v t="ekr.20220525082935.67"><vh>SemanticAnalyzer.analyze_metaclass</vh></v>
+<v t="ekr.20220525082935.68"><vh>SemanticAnalyzer.Imports</vh></v>
+<v t="ekr.20220525082935.69"><vh>SemanticAnalyzer.visit_import</vh></v>
+<v t="ekr.20220525082935.70"><vh>SemanticAnalyzer.visit_import_from</vh></v>
+<v t="ekr.20220525082935.71"><vh>SemanticAnalyzer.process_imported_symbol</vh></v>
+<v t="ekr.20220525082935.72"><vh>SemanticAnalyzer.report_missing_module_attribute</vh></v>
+<v t="ekr.20220525082935.73"><vh>SemanticAnalyzer.process_import_over_existing_name</vh></v>
+<v t="ekr.20220525082935.74"><vh>SemanticAnalyzer.correct_relative_import</vh></v>
+<v t="ekr.20220525082935.75"><vh>SemanticAnalyzer.visit_import_all</vh></v>
+<v t="ekr.20220525082935.76"><vh>SemanticAnalyzer.Assignment</vh></v>
+<v t="ekr.20220525082935.77"><vh>SemanticAnalyzer.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082935.78"><vh>SemanticAnalyzer.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.79"><vh>SemanticAnalyzer.analyze_identity_global_assignment</vh></v>
+<v t="ekr.20220525082935.80"><vh>SemanticAnalyzer.should_wait_rhs</vh></v>
+<v t="ekr.20220525082935.81"><vh>SemanticAnalyzer.can_be_type_alias</vh></v>
+<v t="ekr.20220525082935.82"><vh>SemanticAnalyzer.is_type_ref</vh></v>
+<v t="ekr.20220525082935.83"><vh>SemanticAnalyzer.is_none_alias</vh></v>
+<v t="ekr.20220525082935.84"><vh>SemanticAnalyzer.record_special_form_lvalue</vh></v>
+<v t="ekr.20220525082935.85"><vh>SemanticAnalyzer.analyze_enum_assign</vh></v>
+<v t="ekr.20220525082935.86"><vh>SemanticAnalyzer.analyze_namedtuple_assign</vh></v>
+<v t="ekr.20220525082935.87"><vh>SemanticAnalyzer.analyze_typeddict_assign</vh></v>
+<v t="ekr.20220525082935.88"><vh>SemanticAnalyzer.analyze_lvalues</vh></v>
+<v t="ekr.20220525082935.89"><vh>SemanticAnalyzer.apply_dynamic_class_hook</vh></v>
+<v t="ekr.20220525082935.90"><vh>SemanticAnalyzer.unwrap_final</vh></v>
+<v t="ekr.20220525082935.91"><vh>SemanticAnalyzer.check_final_implicit_def</vh></v>
+<v t="ekr.20220525082935.92"><vh>SemanticAnalyzer.store_final_status</vh></v>
+<v t="ekr.20220525082935.93"><vh>SemanticAnalyzer.flatten_lvalues</vh></v>
+<v t="ekr.20220525082935.94"><vh>SemanticAnalyzer.unbox_literal</vh></v>
+<v t="ekr.20220525082935.95"><vh>SemanticAnalyzer.process_type_annotation</vh></v>
+<v t="ekr.20220525082935.96"><vh>SemanticAnalyzer.is_annotated_protocol_member</vh></v>
+<v t="ekr.20220525082935.97"><vh>SemanticAnalyzer.analyze_simple_literal_type</vh></v>
+<v t="ekr.20220525082935.98"><vh>SemanticAnalyzer.analyze_alias</vh></v>
+<v t="ekr.20220525082935.99"><vh>SemanticAnalyzer.check_and_set_up_type_alias</vh></v>
+<v t="ekr.20220525082935.100"><vh>SemanticAnalyzer.analyze_lvalue</vh></v>
+<v t="ekr.20220525082935.101"><vh>SemanticAnalyzer.analyze_name_lvalue</vh></v>
+<v t="ekr.20220525082935.102"><vh>SemanticAnalyzer.is_final_redefinition</vh></v>
+<v t="ekr.20220525082935.103"><vh>SemanticAnalyzer.is_alias_for_final_name</vh></v>
+<v t="ekr.20220525082935.104"><vh>SemanticAnalyzer.make_name_lvalue_var</vh></v>
+<v t="ekr.20220525082935.105"><vh>SemanticAnalyzer.make_name_lvalue_point_to_existing_def</vh></v>
+<v t="ekr.20220525082935.106"><vh>SemanticAnalyzer.analyze_tuple_or_list_lvalue</vh></v>
+<v t="ekr.20220525082935.107"><vh>SemanticAnalyzer.analyze_member_lvalue</vh></v>
+<v t="ekr.20220525082935.108"><vh>SemanticAnalyzer.is_self_member_ref</vh></v>
+<v t="ekr.20220525082935.109"><vh>SemanticAnalyzer.check_lvalue_validity</vh></v>
+<v t="ekr.20220525082935.110"><vh>SemanticAnalyzer.store_declared_types</vh></v>
+<v t="ekr.20220525082935.111"><vh>SemanticAnalyzer.process_typevar_declaration</vh></v>
+<v t="ekr.20220525082935.112"><vh>SemanticAnalyzer.check_typevarlike_name</vh></v>
+<v t="ekr.20220525082935.113"><vh>SemanticAnalyzer.get_typevarlike_declaration</vh></v>
+<v t="ekr.20220525082935.114"><vh>SemanticAnalyzer.process_typevar_parameters</vh></v>
+<v t="ekr.20220525082935.115"><vh>SemanticAnalyzer.extract_typevarlike_name</vh></v>
+<v t="ekr.20220525082935.116"><vh>SemanticAnalyzer.process_paramspec_declaration</vh></v>
+<v t="ekr.20220525082935.117"><vh>SemanticAnalyzer.process_typevartuple_declaration</vh></v>
+<v t="ekr.20220525082935.118"><vh>SemanticAnalyzer.basic_new_typeinfo</vh></v>
+<v t="ekr.20220525082935.119"><vh>SemanticAnalyzer.analyze_value_types</vh></v>
+<v t="ekr.20220525082935.120"><vh>SemanticAnalyzer.check_classvar</vh></v>
+<v t="ekr.20220525082935.121"><vh>SemanticAnalyzer.is_classvar</vh></v>
+<v t="ekr.20220525082935.122"><vh>SemanticAnalyzer.is_final_type</vh></v>
+<v t="ekr.20220525082935.123"><vh>SemanticAnalyzer.fail_invalid_classvar</vh></v>
+<v t="ekr.20220525082935.124"><vh>SemanticAnalyzer.process_module_assignment</vh></v>
+<v t="ekr.20220525082935.125"><vh>SemanticAnalyzer.process__all__</vh></v>
+<v t="ekr.20220525082935.126"><vh>SemanticAnalyzer.process__deletable__</vh></v>
+<v t="ekr.20220525082935.127"><vh>SemanticAnalyzer.process__slots__</vh></v>
+<v t="ekr.20220525082935.128"><vh>SemanticAnalyzer.Misc statements</vh></v>
+<v t="ekr.20220525082935.129"><vh>SemanticAnalyzer.visit_block</vh></v>
+<v t="ekr.20220525082935.130"><vh>SemanticAnalyzer.visit_block_maybe</vh></v>
+<v t="ekr.20220525082935.131"><vh>SemanticAnalyzer.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082935.132"><vh>SemanticAnalyzer.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.133"><vh>SemanticAnalyzer.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082935.134"><vh>SemanticAnalyzer.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082935.135"><vh>SemanticAnalyzer.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.136"><vh>SemanticAnalyzer.visit_while_stmt</vh></v>
+<v t="ekr.20220525082935.137"><vh>SemanticAnalyzer.visit_for_stmt</vh></v>
+<v t="ekr.20220525082935.138"><vh>SemanticAnalyzer.visit_break_stmt</vh></v>
+<v t="ekr.20220525082935.139"><vh>SemanticAnalyzer.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082935.140"><vh>SemanticAnalyzer.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.141"><vh>SemanticAnalyzer.visit_try_stmt</vh></v>
+<v t="ekr.20220525082935.142"><vh>SemanticAnalyzer.analyze_try_stmt</vh></v>
+<v t="ekr.20220525082935.143"><vh>SemanticAnalyzer.visit_with_stmt</vh></v>
+<v t="ekr.20220525082935.144"><vh>SemanticAnalyzer.visit_del_stmt</vh></v>
+<v t="ekr.20220525082935.145"><vh>SemanticAnalyzer.is_valid_del_target</vh></v>
+<v t="ekr.20220525082935.146"><vh>SemanticAnalyzer.visit_global_decl</vh></v>
+<v t="ekr.20220525082935.147"><vh>SemanticAnalyzer.visit_nonlocal_decl</vh></v>
+<v t="ekr.20220525082935.148"><vh>SemanticAnalyzer.visit_print_stmt</vh></v>
+<v t="ekr.20220525082935.149"><vh>SemanticAnalyzer.visit_exec_stmt</vh></v>
+<v t="ekr.20220525082935.150"><vh>SemanticAnalyzer.visit_match_stmt</vh></v>
+<v t="ekr.20220525082935.151"><vh>SemanticAnalyzer.Expressions</vh></v>
+<v t="ekr.20220525082935.152"><vh>SemanticAnalyzer.visit_name_expr</vh></v>
+<v t="ekr.20220525082935.153"><vh>SemanticAnalyzer.bind_name_expr</vh></v>
+<v t="ekr.20220525082935.154"><vh>SemanticAnalyzer.visit_super_expr</vh></v>
+<v t="ekr.20220525082935.155"><vh>SemanticAnalyzer.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082935.156"><vh>SemanticAnalyzer.visit_list_expr</vh></v>
+<v t="ekr.20220525082935.157"><vh>SemanticAnalyzer.visit_set_expr</vh></v>
+<v t="ekr.20220525082935.158"><vh>SemanticAnalyzer.visit_dict_expr</vh></v>
+<v t="ekr.20220525082935.159"><vh>SemanticAnalyzer.visit_star_expr</vh></v>
+<v t="ekr.20220525082935.160"><vh>SemanticAnalyzer.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082935.161"><vh>SemanticAnalyzer.visit_call_expr</vh></v>
+<v t="ekr.20220525082935.162"><vh>SemanticAnalyzer.translate_dict_call</vh></v>
+<v t="ekr.20220525082935.163"><vh>SemanticAnalyzer.check_fixed_args</vh></v>
+<v t="ekr.20220525082935.164"><vh>SemanticAnalyzer.visit_member_expr</vh></v>
+<v t="ekr.20220525082935.165"><vh>SemanticAnalyzer.visit_op_expr</vh></v>
+<v t="ekr.20220525082935.166"><vh>SemanticAnalyzer.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082935.167"><vh>SemanticAnalyzer.visit_unary_expr</vh></v>
+<v t="ekr.20220525082935.168"><vh>SemanticAnalyzer.visit_index_expr</vh></v>
+<v t="ekr.20220525082935.169"><vh>SemanticAnalyzer.analyze_type_application</vh></v>
+<v t="ekr.20220525082935.170"><vh>SemanticAnalyzer.analyze_type_application_args</vh></v>
+<v t="ekr.20220525082935.171"><vh>SemanticAnalyzer.visit_slice_expr</vh></v>
+<v t="ekr.20220525082935.172"><vh>SemanticAnalyzer.visit_cast_expr</vh></v>
+<v t="ekr.20220525082935.173"><vh>SemanticAnalyzer.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082935.174"><vh>SemanticAnalyzer.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082935.175"><vh>SemanticAnalyzer.visit_type_application</vh></v>
+<v t="ekr.20220525082935.176"><vh>SemanticAnalyzer.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082935.177"><vh>SemanticAnalyzer.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082935.178"><vh>SemanticAnalyzer.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082935.179"><vh>SemanticAnalyzer.visit_generator_expr</vh></v>
+<v t="ekr.20220525082935.180"><vh>SemanticAnalyzer.analyze_comp_for</vh></v>
+<v t="ekr.20220525082935.181"><vh>SemanticAnalyzer.analyze_comp_for_2</vh></v>
+<v t="ekr.20220525082935.182"><vh>SemanticAnalyzer.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082935.183"><vh>SemanticAnalyzer.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082935.184"><vh>SemanticAnalyzer.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082935.185"><vh>SemanticAnalyzer.visit__promote_expr</vh></v>
+<v t="ekr.20220525082935.186"><vh>SemanticAnalyzer.visit_yield_expr</vh></v>
+<v t="ekr.20220525082935.187"><vh>SemanticAnalyzer.visit_await_expr</vh></v>
+<v t="ekr.20220525082935.188"><vh>SemanticAnalyzer.Patterns</vh></v>
+<v t="ekr.20220525082935.189"><vh>SemanticAnalyzer.visit_as_pattern</vh></v>
+<v t="ekr.20220525082935.190"><vh>SemanticAnalyzer.visit_or_pattern</vh></v>
+<v t="ekr.20220525082935.191"><vh>SemanticAnalyzer.visit_value_pattern</vh></v>
+<v t="ekr.20220525082935.192"><vh>SemanticAnalyzer.visit_sequence_pattern</vh></v>
+<v t="ekr.20220525082935.193"><vh>SemanticAnalyzer.visit_starred_pattern</vh></v>
+<v t="ekr.20220525082935.194"><vh>SemanticAnalyzer.visit_mapping_pattern</vh></v>
+<v t="ekr.20220525082935.195"><vh>SemanticAnalyzer.visit_class_pattern</vh></v>
+<v t="ekr.20220525082935.196"><vh>SemanticAnalyzer.Lookup functions</vh></v>
+<v t="ekr.20220525082935.197"><vh>SemanticAnalyzer.lookup</vh></v>
+<v t="ekr.20220525082935.198"><vh>SemanticAnalyzer.is_active_symbol_in_class_body</vh></v>
+<v t="ekr.20220525082935.199"><vh>SemanticAnalyzer.is_textually_before_statement</vh></v>
+<v t="ekr.20220525082935.200"><vh>SemanticAnalyzer.is_overloaded_item</vh></v>
+<v t="ekr.20220525082935.201"><vh>SemanticAnalyzer.is_defined_in_current_module</vh></v>
+<v t="ekr.20220525082935.202"><vh>SemanticAnalyzer.lookup_qualified</vh></v>
+<v t="ekr.20220525082935.203"><vh>SemanticAnalyzer.lookup_type_node</vh></v>
+<v t="ekr.20220525082935.204"><vh>SemanticAnalyzer.get_module_symbol</vh></v>
+<v t="ekr.20220525082935.205"><vh>SemanticAnalyzer.is_missing_module</vh></v>
+<v t="ekr.20220525082935.206"><vh>SemanticAnalyzer.implicit_symbol</vh></v>
+<v t="ekr.20220525082935.207"><vh>SemanticAnalyzer.create_getattr_var</vh></v>
+<v t="ekr.20220525082935.208"><vh>SemanticAnalyzer.lookup_fully_qualified</vh></v>
+<v t="ekr.20220525082935.209"><vh>SemanticAnalyzer.lookup_fully_qualified_or_none</vh></v>
+<v t="ekr.20220525082935.210"><vh>SemanticAnalyzer.object_type</vh></v>
+<v t="ekr.20220525082935.211"><vh>SemanticAnalyzer.str_type</vh></v>
+<v t="ekr.20220525082935.212"><vh>SemanticAnalyzer.named_type</vh></v>
+<v t="ekr.20220525082935.213"><vh>SemanticAnalyzer.named_type_or_none</vh></v>
+<v t="ekr.20220525082935.214"><vh>SemanticAnalyzer.builtin_type</vh></v>
+<v t="ekr.20220525082935.215"><vh>SemanticAnalyzer.lookup_current_scope</vh></v>
+<v t="ekr.20220525082935.216"><vh>SemanticAnalyzer.Adding symbols</vh></v>
+<v t="ekr.20220525082935.217"><vh>SemanticAnalyzer.add_symbol</vh></v>
+<v t="ekr.20220525082935.218"><vh>SemanticAnalyzer.add_symbol_skip_local</vh></v>
+<v t="ekr.20220525082935.219"><vh>SemanticAnalyzer.add_symbol_table_node</vh></v>
+<v t="ekr.20220525082935.220"><vh>SemanticAnalyzer.add_redefinition</vh></v>
+<v t="ekr.20220525082935.221"><vh>SemanticAnalyzer.add_local</vh></v>
+<v t="ekr.20220525082935.222"><vh>SemanticAnalyzer.add_module_symbol</vh></v>
+<v t="ekr.20220525082935.223"><vh>SemanticAnalyzer._get_node_for_class_scoped_import</vh></v>
+<v t="ekr.20220525082935.224"><vh>SemanticAnalyzer.add_imported_symbol</vh></v>
+<v t="ekr.20220525082935.225"><vh>SemanticAnalyzer.add_unknown_imported_symbol</vh></v>
+<v t="ekr.20220525082935.226"><vh>SemanticAnalyzer.Other helpers</vh></v>
+<v t="ekr.20220525082935.227"><vh>SemanticAnalyzer.tvar_scope_frame</vh></v>
+<v t="ekr.20220525082935.228"><vh>SemanticAnalyzer.defer</vh></v>
+<v t="ekr.20220525082935.229"><vh>SemanticAnalyzer.track_incomplete_refs</vh></v>
+<v t="ekr.20220525082935.230"><vh>SemanticAnalyzer.found_incomplete_ref</vh></v>
+<v t="ekr.20220525082935.231"><vh>SemanticAnalyzer.record_incomplete_ref</vh></v>
+<v t="ekr.20220525082935.232"><vh>SemanticAnalyzer.mark_incomplete</vh></v>
+<v t="ekr.20220525082935.233"><vh>SemanticAnalyzer.is_incomplete_namespace</vh></v>
+<v t="ekr.20220525082935.234"><vh>SemanticAnalyzer.process_placeholder</vh></v>
+<v t="ekr.20220525082935.235"><vh>SemanticAnalyzer.cannot_resolve_name</vh></v>
+<v t="ekr.20220525082935.236"><vh>SemanticAnalyzer.qualified_name</vh></v>
+<v t="ekr.20220525082935.237"><vh>SemanticAnalyzer.enter</vh></v>
+<v t="ekr.20220525082935.238"><vh>SemanticAnalyzer.is_func_scope</vh></v>
+<v t="ekr.20220525082935.239"><vh>SemanticAnalyzer.is_nested_within_func_scope</vh></v>
+<v t="ekr.20220525082935.240"><vh>SemanticAnalyzer.is_class_scope</vh></v>
+<v t="ekr.20220525082935.241"><vh>SemanticAnalyzer.is_module_scope</vh></v>
+<v t="ekr.20220525082935.242"><vh>SemanticAnalyzer.current_symbol_kind</vh></v>
+<v t="ekr.20220525082935.243"><vh>SemanticAnalyzer.current_symbol_table</vh></v>
+<v t="ekr.20220525082935.244"><vh>SemanticAnalyzer.is_global_or_nonlocal</vh></v>
+<v t="ekr.20220525082935.245"><vh>SemanticAnalyzer.add_exports</vh></v>
+<v t="ekr.20220525082935.246"><vh>SemanticAnalyzer.name_not_defined</vh></v>
+<v t="ekr.20220525082935.247"><vh>SemanticAnalyzer.already_defined</vh></v>
+<v t="ekr.20220525082935.248"><vh>SemanticAnalyzer.name_already_defined</vh></v>
+<v t="ekr.20220525082935.249"><vh>SemanticAnalyzer.attribute_already_defined</vh></v>
+<v t="ekr.20220525082935.250"><vh>SemanticAnalyzer.is_local_name</vh></v>
+<v t="ekr.20220525082935.251"><vh>SemanticAnalyzer.in_checked_function</vh></v>
+<v t="ekr.20220525082935.252"><vh>SemanticAnalyzer.fail</vh></v>
+<v t="ekr.20220525082935.253"><vh>SemanticAnalyzer.note</vh></v>
+<v t="ekr.20220525082935.254"><vh>SemanticAnalyzer.accept</vh></v>
+<v t="ekr.20220525082935.255"><vh>SemanticAnalyzer.expr_to_analyzed_type</vh></v>
+<v t="ekr.20220525082935.256"><vh>SemanticAnalyzer.analyze_type_expr</vh></v>
+<v t="ekr.20220525082935.257"><vh>SemanticAnalyzer.type_analyzer</vh></v>
+<v t="ekr.20220525082935.258"><vh>SemanticAnalyzer.expr_to_unanalyzed_type</vh></v>
+<v t="ekr.20220525082935.259"><vh>SemanticAnalyzer.anal_type</vh></v>
+<v t="ekr.20220525082935.260"><vh>SemanticAnalyzer.class_type</vh></v>
+<v t="ekr.20220525082935.261"><vh>SemanticAnalyzer.schedule_patch</vh></v>
+<v t="ekr.20220525082935.262"><vh>SemanticAnalyzer.report_hang</vh></v>
+<v t="ekr.20220525082935.263"><vh>SemanticAnalyzer.add_plugin_dependency</vh></v>
+<v t="ekr.20220525082935.264"><vh>SemanticAnalyzer.add_type_alias_deps</vh></v>
+<v t="ekr.20220525082935.265"><vh>SemanticAnalyzer.is_mangled_global</vh></v>
+<v t="ekr.20220525082935.266"><vh>SemanticAnalyzer.is_initial_mangled_global</vh></v>
+<v t="ekr.20220525082935.267"><vh>SemanticAnalyzer.parse_bool</vh></v>
+<v t="ekr.20220525082935.268"><vh>SemanticAnalyzer.set_future_import_flags</vh></v>
+<v t="ekr.20220525082935.269"><vh>SemanticAnalyzer.is_future_flag_set</vh></v>
+</v>
+<v t="ekr.20220525082935.270"><vh>class HasPlaceholders</vh></v>
+<v t="ekr.20220525082935.271"><vh>has_placeholder</vh></v>
+<v t="ekr.20220525082935.272"><vh>replace_implicit_first_type</vh></v>
+<v t="ekr.20220525082935.273"><vh>refers_to_fullname</vh></v>
+<v t="ekr.20220525082935.274"><vh>refers_to_class_or_function</vh></v>
+<v t="ekr.20220525082935.275"><vh>find_duplicate</vh></v>
+<v t="ekr.20220525082935.276"><vh>remove_imported_names_from_symtable</vh></v>
+<v t="ekr.20220525082935.277"><vh>make_any_non_explicit</vh></v>
+<v t="ekr.20220525082935.278"><vh>class MakeAnyNonExplicit</vh>
+<v t="ekr.20220525082935.279"><vh>MakeAnyNonExplicit.visit_any</vh></v>
+<v t="ekr.20220525082935.280"><vh>MakeAnyNonExplicit.visit_type_alias_type</vh></v>
+</v>
+<v t="ekr.20220525082935.281"><vh>apply_semantic_analyzer_patches</vh></v>
+<v t="ekr.20220525082935.282"><vh>names_modified_by_assignment</vh></v>
+<v t="ekr.20220525082935.283"><vh>names_modified_in_lvalue</vh></v>
+<v t="ekr.20220525082935.284"><vh>is_same_var_from_getattr</vh></v>
+<v t="ekr.20220525082935.285"><vh>dummy_context</vh></v>
+<v t="ekr.20220525082935.286"><vh>is_valid_replacement</vh></v>
+<v t="ekr.20220525082935.287"><vh>is_same_symbol</vh></v>
+</v>
+<v t="ekr.20220525082935.288"><vh>@clean semanal_classprop.py</vh>
+<v t="ekr.20220525082935.289"><vh>calculate_class_abstract_status</vh></v>
+<v t="ekr.20220525082935.290"><vh>check_protocol_status</vh></v>
+<v t="ekr.20220525082935.291"><vh>calculate_class_vars</vh></v>
+<v t="ekr.20220525082935.292"><vh>add_type_promotion</vh></v>
+</v>
+<v t="ekr.20220525082935.293"><vh>@clean semanal_enum.py</vh>
+<v t="ekr.20220525082935.294"><vh>class EnumCallAnalyzer</vh>
+<v t="ekr.20220525082935.295"><vh>EnumCallAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.296"><vh>EnumCallAnalyzer.process_enum_call</vh></v>
+<v t="ekr.20220525082935.297"><vh>EnumCallAnalyzer.check_enum_call</vh></v>
+<v t="ekr.20220525082935.298"><vh>EnumCallAnalyzer.build_enum_call_typeinfo</vh></v>
+<v t="ekr.20220525082935.299"><vh>EnumCallAnalyzer.parse_enum_call_args</vh></v>
+<v t="ekr.20220525082935.300"><vh>EnumCallAnalyzer.fail_enum_call_arg</vh></v>
+<v t="ekr.20220525082935.301"><vh>EnumCallAnalyzer.Helpers</vh></v>
+<v t="ekr.20220525082935.302"><vh>EnumCallAnalyzer.fail</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.303"><vh>@clean semanal_infer.py</vh>
+<v t="ekr.20220525082935.304"><vh>infer_decorator_signature_if_simple</vh></v>
+<v t="ekr.20220525082935.305"><vh>is_identity_signature</vh></v>
+<v t="ekr.20220525082935.306"><vh>calculate_return_type</vh></v>
+<v t="ekr.20220525082935.307"><vh>find_fixed_callable_return</vh></v>
+</v>
+<v t="ekr.20220525082935.308"><vh>@clean semanal_main.py</vh>
+<v t="ekr.20220525082935.309"><vh>semantic_analysis_for_scc</vh></v>
+<v t="ekr.20220525082935.310"><vh>cleanup_builtin_scc</vh></v>
+<v t="ekr.20220525082935.311"><vh>semantic_analysis_for_targets</vh></v>
+<v t="ekr.20220525082935.312"><vh>restore_saved_attrs</vh></v>
+<v t="ekr.20220525082935.313"><vh>process_top_levels</vh></v>
+<v t="ekr.20220525082935.314"><vh>process_functions</vh></v>
+<v t="ekr.20220525082935.315"><vh>process_top_level_function</vh></v>
+<v t="ekr.20220525082935.316"><vh>TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]</vh></v>
+<v t="ekr.20220525082935.317"><vh>get_all_leaf_targets</vh></v>
+<v t="ekr.20220525082935.318"><vh>semantic_analyze_target</vh></v>
+<v t="ekr.20220525082935.319"><vh>check_type_arguments</vh></v>
+<v t="ekr.20220525082935.320"><vh>check_type_arguments_in_targets</vh></v>
+<v t="ekr.20220525082935.321"><vh>apply_class_plugin_hooks</vh></v>
+<v t="ekr.20220525082935.322"><vh>apply_hooks_to_class</vh></v>
+<v t="ekr.20220525082935.323"><vh>calculate_class_properties</vh></v>
+<v t="ekr.20220525082935.324"><vh>check_blockers</vh></v>
+</v>
+<v t="ekr.20220525082935.325"><vh>@clean semanal_namedtuple.py</vh>
+<v t="ekr.20220525082935.326"><vh>class NamedTupleAnalyzer</vh>
+<v t="ekr.20220525082935.327"><vh>NamedTupleAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.328"><vh>NamedTupleAnalyzer.analyze_namedtuple_classdef</vh></v>
+<v t="ekr.20220525082935.329"><vh>NamedTupleAnalyzer.check_namedtuple_classdef</vh></v>
+<v t="ekr.20220525082935.330"><vh>NamedTupleAnalyzer.check_namedtuple</vh></v>
+<v t="ekr.20220525082935.331"><vh>NamedTupleAnalyzer.store_namedtuple_info</vh></v>
+<v t="ekr.20220525082935.332"><vh>NamedTupleAnalyzer.parse_namedtuple_args</vh></v>
+<v t="ekr.20220525082935.333"><vh>NamedTupleAnalyzer.parse_namedtuple_fields_with_types</vh></v>
+<v t="ekr.20220525082935.334"><vh>NamedTupleAnalyzer.build_namedtuple_typeinfo</vh></v>
+<v t="ekr.20220525082935.335"><vh>NamedTupleAnalyzer.save_namedtuple_body</vh></v>
+<v t="ekr.20220525082935.336"><vh>NamedTupleAnalyzer.Helpers</vh></v>
+<v t="ekr.20220525082935.337"><vh>NamedTupleAnalyzer.fail</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.338"><vh>@clean semanal_newtype.py</vh>
+<v t="ekr.20220525082935.339"><vh>class NewTypeAnalyzer</vh>
+<v t="ekr.20220525082935.340"><vh>NewTypeAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.341"><vh>NewTypeAnalyzer.process_newtype_declaration</vh></v>
+<v t="ekr.20220525082935.342"><vh>NewTypeAnalyzer.analyze_newtype_declaration</vh></v>
+<v t="ekr.20220525082935.343"><vh>NewTypeAnalyzer.check_newtype_args</vh></v>
+<v t="ekr.20220525082935.344"><vh>NewTypeAnalyzer.build_newtype_typeinfo</vh></v>
+<v t="ekr.20220525082935.345"><vh>NewTypeAnalyzer.Helpers</vh></v>
+<v t="ekr.20220525082935.346"><vh>NewTypeAnalyzer.make_argument</vh></v>
+<v t="ekr.20220525082935.347"><vh>NewTypeAnalyzer.fail</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.348"><vh>@clean semanal_pass1.py</vh>
+<v t="ekr.20220525082935.349"><vh>class SemanticAnalyzerPreAnalysis</vh>
+<v t="ekr.20220525082935.350"><vh>SemanticAnalyzerPreAnalysis.visit_file</vh></v>
+<v t="ekr.20220525082935.351"><vh>SemanticAnalyzerPreAnalysis.visit_func_def</vh></v>
+<v t="ekr.20220525082935.352"><vh>SemanticAnalyzerPreAnalysis.visit_class_def</vh></v>
+<v t="ekr.20220525082935.353"><vh>SemanticAnalyzerPreAnalysis.visit_import_from</vh></v>
+<v t="ekr.20220525082935.354"><vh>SemanticAnalyzerPreAnalysis.visit_import_all</vh></v>
+<v t="ekr.20220525082935.355"><vh>SemanticAnalyzerPreAnalysis.visit_import</vh></v>
+<v t="ekr.20220525082935.356"><vh>SemanticAnalyzerPreAnalysis.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.357"><vh>SemanticAnalyzerPreAnalysis.visit_block</vh></v>
+<v t="ekr.20220525082935.358"><vh>SemanticAnalyzerPreAnalysis.visit_match_stmt</vh></v>
+<v t="ekr.20220525082935.359"><vh>SemanticAnalyzerPreAnalysis.The remaining methods are an optimization: don't visit nested expressions</vh></v>
+<v t="ekr.20220525082935.360"><vh>SemanticAnalyzerPreAnalysis.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.361"><vh>SemanticAnalyzerPreAnalysis.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082935.362"><vh>SemanticAnalyzerPreAnalysis.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.363"><vh>SemanticAnalyzerPreAnalysis.visit_for_stmt</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.364"><vh>@clean semanal_shared.py</vh>
+<v t="ekr.20220525082935.365"><vh>class SemanticAnalyzerCoreInterface</vh>
+<v t="ekr.20220525082935.366"><vh>SemanticAnalyzerCoreInterface.lookup_qualified</vh></v>
+<v t="ekr.20220525082935.367"><vh>SemanticAnalyzerCoreInterface.lookup_fully_qualified</vh></v>
+<v t="ekr.20220525082935.368"><vh>SemanticAnalyzerCoreInterface.lookup_fully_qualified_or_none</vh></v>
+<v t="ekr.20220525082935.369"><vh>SemanticAnalyzerCoreInterface.fail</vh></v>
+<v t="ekr.20220525082935.370"><vh>SemanticAnalyzerCoreInterface.note</vh></v>
+<v t="ekr.20220525082935.371"><vh>SemanticAnalyzerCoreInterface.record_incomplete_ref</vh></v>
+<v t="ekr.20220525082935.372"><vh>SemanticAnalyzerCoreInterface.defer</vh></v>
+<v t="ekr.20220525082935.373"><vh>SemanticAnalyzerCoreInterface.is_incomplete_namespace</vh></v>
+<v t="ekr.20220525082935.374"><vh>SemanticAnalyzerCoreInterface.final_iteration</vh></v>
+<v t="ekr.20220525082935.375"><vh>SemanticAnalyzerCoreInterface.is_future_flag_set</vh></v>
+<v t="ekr.20220525082935.376"><vh>SemanticAnalyzerCoreInterface.is_stub_file</vh></v>
+</v>
+<v t="ekr.20220525082935.377"><vh>class SemanticAnalyzerInterface</vh>
+<v t="ekr.20220525082935.378"><vh>SemanticAnalyzerInterface.lookup</vh></v>
+<v t="ekr.20220525082935.379"><vh>SemanticAnalyzerInterface.named_type</vh></v>
+<v t="ekr.20220525082935.380"><vh>SemanticAnalyzerInterface.named_type_or_none</vh></v>
+<v t="ekr.20220525082935.381"><vh>SemanticAnalyzerInterface.accept</vh></v>
+<v t="ekr.20220525082935.382"><vh>SemanticAnalyzerInterface.anal_type</vh></v>
+<v t="ekr.20220525082935.383"><vh>SemanticAnalyzerInterface.basic_new_typeinfo</vh></v>
+<v t="ekr.20220525082935.384"><vh>SemanticAnalyzerInterface.schedule_patch</vh></v>
+<v t="ekr.20220525082935.385"><vh>SemanticAnalyzerInterface.add_symbol_table_node</vh></v>
+<v t="ekr.20220525082935.386"><vh>SemanticAnalyzerInterface.current_symbol_table</vh></v>
+<v t="ekr.20220525082935.387"><vh>SemanticAnalyzerInterface.add_symbol</vh></v>
+<v t="ekr.20220525082935.388"><vh>SemanticAnalyzerInterface.add_symbol_skip_local</vh></v>
+<v t="ekr.20220525082935.389"><vh>SemanticAnalyzerInterface.parse_bool</vh></v>
+<v t="ekr.20220525082935.390"><vh>SemanticAnalyzerInterface.qualified_name</vh></v>
+<v t="ekr.20220525082935.391"><vh>SemanticAnalyzerInterface.is_typeshed_stub_file</vh></v>
+<v t="ekr.20220525082935.392"><vh>SemanticAnalyzerInterface.is_func_scope</vh></v>
+</v>
+<v t="ekr.20220525082935.393"><vh>set_callable_name</vh></v>
+<v t="ekr.20220525082935.394"><vh>calculate_tuple_fallback</vh></v>
+<v t="ekr.20220525082935.395"><vh>class _NamedTypeCallback</vh></v>
+<v t="ekr.20220525082935.396"><vh>paramspec_args</vh></v>
+<v t="ekr.20220525082935.397"><vh>paramspec_kwargs</vh></v>
+</v>
+<v t="ekr.20220525082935.398"><vh>@clean semanal_typeargs.py</vh>
+<v t="ekr.20220525082935.399"><vh>class TypeArgumentAnalyzer</vh>
+<v t="ekr.20220525082935.400"><vh>TypeArgumentAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.401"><vh>TypeArgumentAnalyzer.visit_mypy_file</vh></v>
+<v t="ekr.20220525082935.402"><vh>TypeArgumentAnalyzer.visit_func</vh></v>
+<v t="ekr.20220525082935.403"><vh>TypeArgumentAnalyzer.visit_class_def</vh></v>
+<v t="ekr.20220525082935.404"><vh>TypeArgumentAnalyzer.visit_block</vh></v>
+<v t="ekr.20220525082935.405"><vh>TypeArgumentAnalyzer.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082935.406"><vh>TypeArgumentAnalyzer.visit_instance</vh></v>
+<v t="ekr.20220525082935.407"><vh>TypeArgumentAnalyzer.visit_unpack_type</vh></v>
+<v t="ekr.20220525082935.408"><vh>TypeArgumentAnalyzer.check_type_var_values</vh></v>
+<v t="ekr.20220525082935.409"><vh>TypeArgumentAnalyzer.fail</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.410"><vh>@clean semanal_typeddict.py</vh>
+<v t="ekr.20220525082935.411"><vh>class TypedDictAnalyzer</vh>
+<v t="ekr.20220525082935.412"><vh>TypedDictAnalyzer.__init__</vh></v>
+<v t="ekr.20220525082935.413"><vh>TypedDictAnalyzer.analyze_typeddict_classdef</vh></v>
+<v t="ekr.20220525082935.414"><vh>TypedDictAnalyzer.analyze_typeddict_classdef_fields</vh></v>
+<v t="ekr.20220525082935.415"><vh>TypedDictAnalyzer.check_typeddict</vh></v>
+<v t="ekr.20220525082935.416"><vh>TypedDictAnalyzer.parse_typeddict_args</vh></v>
+<v t="ekr.20220525082935.417"><vh>TypedDictAnalyzer.parse_typeddict_fields_with_types</vh></v>
+<v t="ekr.20220525082935.418"><vh>TypedDictAnalyzer.fail_typeddict_arg</vh></v>
+<v t="ekr.20220525082935.419"><vh>TypedDictAnalyzer.build_typeddict_typeinfo</vh></v>
+<v t="ekr.20220525082935.420"><vh>TypedDictAnalyzer.Helpers</vh></v>
+<v t="ekr.20220525082935.421"><vh>TypedDictAnalyzer.is_typeddict</vh></v>
+<v t="ekr.20220525082935.422"><vh>TypedDictAnalyzer.fail</vh></v>
+<v t="ekr.20220525082935.423"><vh>TypedDictAnalyzer.note</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.1175"><vh>@clean typeanal.py</vh>
+<v t="ekr.20220525082935.1176"><vh>analyze_type_alias</vh></v>
+<v t="ekr.20220525082935.1177"><vh>no_subscript_builtin_alias</vh></v>
+<v t="ekr.20220525082935.1178"><vh>class TypeAnalyser</vh>
+<v t="ekr.20220525082935.1179"><vh>TypeAnalyser.__init__</vh></v>
+<v t="ekr.20220525082935.1180"><vh>TypeAnalyser.visit_unbound_type</vh></v>
+<v t="ekr.20220525082935.1181"><vh>TypeAnalyser.visit_unbound_type_nonoptional</vh></v>
+<v t="ekr.20220525082935.1182"><vh>TypeAnalyser.cannot_resolve_type</vh></v>
+<v t="ekr.20220525082935.1183"><vh>TypeAnalyser.apply_concatenate_operator</vh></v>
+<v t="ekr.20220525082935.1184"><vh>TypeAnalyser.try_analyze_special_unbound_type</vh></v>
+<v t="ekr.20220525082935.1185"><vh>TypeAnalyser.get_omitted_any</vh></v>
+<v t="ekr.20220525082935.1186"><vh>TypeAnalyser.analyze_type_with_type_info</vh></v>
+<v t="ekr.20220525082935.1187"><vh>TypeAnalyser.analyze_unbound_type_without_type_info</vh></v>
+<v t="ekr.20220525082935.1188"><vh>TypeAnalyser.visit_any</vh></v>
+<v t="ekr.20220525082935.1189"><vh>TypeAnalyser.visit_none_type</vh></v>
+<v t="ekr.20220525082935.1190"><vh>TypeAnalyser.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082935.1191"><vh>TypeAnalyser.visit_erased_type</vh></v>
+<v t="ekr.20220525082935.1192"><vh>TypeAnalyser.visit_deleted_type</vh></v>
+<v t="ekr.20220525082935.1193"><vh>TypeAnalyser.visit_type_list</vh></v>
+<v t="ekr.20220525082935.1194"><vh>TypeAnalyser.visit_callable_argument</vh></v>
+<v t="ekr.20220525082935.1195"><vh>TypeAnalyser.visit_instance</vh></v>
+<v t="ekr.20220525082935.1196"><vh>TypeAnalyser.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082935.1197"><vh>TypeAnalyser.visit_type_var</vh></v>
+<v t="ekr.20220525082935.1198"><vh>TypeAnalyser.visit_param_spec</vh></v>
+<v t="ekr.20220525082935.1199"><vh>TypeAnalyser.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082935.1200"><vh>TypeAnalyser.visit_unpack_type</vh></v>
+<v t="ekr.20220525082935.1201"><vh>TypeAnalyser.visit_parameters</vh></v>
+<v t="ekr.20220525082935.1202"><vh>TypeAnalyser.visit_callable_type</vh></v>
+<v t="ekr.20220525082935.1203"><vh>TypeAnalyser.anal_type_guard</vh></v>
+<v t="ekr.20220525082935.1204"><vh>TypeAnalyser.anal_type_guard_arg</vh></v>
+<v t="ekr.20220525082935.1205"><vh>TypeAnalyser.anal_star_arg_type</vh></v>
+<v t="ekr.20220525082935.1206"><vh>TypeAnalyser.visit_overloaded</vh></v>
+<v t="ekr.20220525082935.1207"><vh>TypeAnalyser.visit_tuple_type</vh></v>
+<v t="ekr.20220525082935.1208"><vh>TypeAnalyser.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082935.1209"><vh>TypeAnalyser.visit_raw_expression_type</vh></v>
+<v t="ekr.20220525082935.1210"><vh>TypeAnalyser.visit_literal_type</vh></v>
+<v t="ekr.20220525082935.1211"><vh>TypeAnalyser.visit_star_type</vh></v>
+<v t="ekr.20220525082935.1212"><vh>TypeAnalyser.visit_union_type</vh></v>
+<v t="ekr.20220525082935.1213"><vh>TypeAnalyser.visit_partial_type</vh></v>
+<v t="ekr.20220525082935.1214"><vh>TypeAnalyser.visit_ellipsis_type</vh></v>
+<v t="ekr.20220525082935.1215"><vh>TypeAnalyser.visit_type_type</vh></v>
+<v t="ekr.20220525082935.1216"><vh>TypeAnalyser.visit_placeholder_type</vh></v>
+<v t="ekr.20220525082935.1217"><vh>TypeAnalyser.analyze_callable_args_for_paramspec</vh></v>
+<v t="ekr.20220525082935.1218"><vh>TypeAnalyser.analyze_callable_args_for_concatenate</vh></v>
+<v t="ekr.20220525082935.1219"><vh>TypeAnalyser.analyze_callable_type</vh></v>
+<v t="ekr.20220525082935.1220"><vh>TypeAnalyser.analyze_callable_args</vh></v>
+<v t="ekr.20220525082935.1221"><vh>TypeAnalyser.analyze_literal_type</vh></v>
+<v t="ekr.20220525082935.1222"><vh>TypeAnalyser.analyze_literal_param</vh></v>
+<v t="ekr.20220525082935.1223"><vh>TypeAnalyser.analyze_type</vh></v>
+<v t="ekr.20220525082935.1224"><vh>TypeAnalyser.fail</vh></v>
+<v t="ekr.20220525082935.1225"><vh>TypeAnalyser.note</vh></v>
+<v t="ekr.20220525082935.1226"><vh>TypeAnalyser.tvar_scope_frame</vh></v>
+<v t="ekr.20220525082935.1227"><vh>TypeAnalyser.infer_type_variables</vh></v>
+<v t="ekr.20220525082935.1228"><vh>TypeAnalyser.bind_function_type_variables</vh></v>
+<v t="ekr.20220525082935.1229"><vh>TypeAnalyser.is_defined_type_var</vh></v>
+<v t="ekr.20220525082935.1230"><vh>TypeAnalyser.anal_array</vh></v>
+<v t="ekr.20220525082935.1231"><vh>TypeAnalyser.anal_type</vh></v>
+<v t="ekr.20220525082935.1232"><vh>TypeAnalyser.anal_var_def</vh></v>
+<v t="ekr.20220525082935.1233"><vh>TypeAnalyser.anal_var_defs</vh></v>
+<v t="ekr.20220525082935.1234"><vh>TypeAnalyser.named_type_with_normalized_str</vh></v>
+<v t="ekr.20220525082935.1235"><vh>TypeAnalyser.named_type</vh></v>
+<v t="ekr.20220525082935.1236"><vh>TypeAnalyser.tuple_type</vh></v>
+<v t="ekr.20220525082935.1237"><vh>TypeAnalyser.set_allow_param_spec_literals</vh></v>
+</v>
+<v t="ekr.20220525082935.1238"><vh>TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]</vh></v>
+<v t="ekr.20220525082935.1239"><vh>class MsgCallback</vh>
+<v t="ekr.20220525082935.1240"><vh>MsgCallback.__call__</vh></v>
+</v>
+<v t="ekr.20220525082935.1241"><vh>get_omitted_any</vh></v>
+<v t="ekr.20220525082935.1242"><vh>fix_instance</vh></v>
+<v t="ekr.20220525082935.1243"><vh>expand_type_alias</vh></v>
+<v t="ekr.20220525082935.1244"><vh>set_any_tvars</vh></v>
+<v t="ekr.20220525082935.1245"><vh>remove_dups</vh></v>
+<v t="ekr.20220525082935.1246"><vh>flatten_tvars</vh></v>
+<v t="ekr.20220525082935.1247"><vh>class TypeVarLikeQuery</vh>
+<v t="ekr.20220525082935.1248"><vh>TypeVarLikeQuery.__init__</vh></v>
+<v t="ekr.20220525082935.1249"><vh>TypeVarLikeQuery._seems_like_callable</vh></v>
+<v t="ekr.20220525082935.1250"><vh>TypeVarLikeQuery.visit_unbound_type</vh></v>
+<v t="ekr.20220525082935.1251"><vh>TypeVarLikeQuery.visit_callable_type</vh></v>
+</v>
+<v t="ekr.20220525082935.1252"><vh>check_for_explicit_any</vh></v>
+<v t="ekr.20220525082935.1253"><vh>has_explicit_any</vh></v>
+<v t="ekr.20220525082935.1254"><vh>class HasExplicitAny</vh>
+<v t="ekr.20220525082935.1255"><vh>HasExplicitAny.__init__</vh></v>
+<v t="ekr.20220525082935.1256"><vh>HasExplicitAny.visit_any</vh></v>
+<v t="ekr.20220525082935.1257"><vh>HasExplicitAny.visit_typeddict_type</vh></v>
+</v>
+<v t="ekr.20220525082935.1258"><vh>has_any_from_unimported_type</vh></v>
+<v t="ekr.20220525082935.1259"><vh>class HasAnyFromUnimportedType</vh>
+<v t="ekr.20220525082935.1260"><vh>HasAnyFromUnimportedType.__init__</vh></v>
+<v t="ekr.20220525082935.1261"><vh>HasAnyFromUnimportedType.visit_any</vh></v>
+<v t="ekr.20220525082935.1262"><vh>HasAnyFromUnimportedType.visit_typeddict_type</vh></v>
+</v>
+<v t="ekr.20220525082935.1263"><vh>collect_all_inner_types</vh></v>
+<v t="ekr.20220525082935.1264"><vh>class CollectAllInnerTypesQuery</vh>
+<v t="ekr.20220525082935.1265"><vh>CollectAllInnerTypesQuery.__init__</vh></v>
+<v t="ekr.20220525082935.1266"><vh>CollectAllInnerTypesQuery.query_types</vh></v>
+<v t="ekr.20220525082935.1267"><vh>CollectAllInnerTypesQuery.combine_lists_strategy</vh></v>
+</v>
+<v t="ekr.20220525082935.1268"><vh>make_optional_type</vh></v>
+<v t="ekr.20220525082935.1269"><vh>fix_instance_types</vh></v>
+<v t="ekr.20220525082935.1270"><vh>class InstanceFixer</vh>
+<v t="ekr.20220525082935.1271"><vh>InstanceFixer.__init__</vh></v>
+<v t="ekr.20220525082935.1272"><vh>InstanceFixer.visit_instance</vh></v>
+</v>
+</v>
+</v>
+<v t="ekr.20220603022501.1"><vh>--- stubgen</vh>
+<v t="ekr.20220525082935.591"><vh>@clean stubdoc.py</vh>
+<v t="ekr.20220525082935.592"><vh>is_valid_type</vh></v>
+<v t="ekr.20220525082935.593"><vh>class ArgSig</vh>
+<v t="ekr.20220525082935.594"><vh>ArgSig.__init__</vh></v>
+<v t="ekr.20220525082935.595"><vh>ArgSig.__repr__</vh></v>
+<v t="ekr.20220525082935.596"><vh>ArgSig.__eq__</vh></v>
+</v>
+<v t="ekr.20220525082935.597"><vh>class FunctionSig</vh></v>
+<v t="ekr.20220525082935.598"><vh>States of the docstring parser.</vh></v>
+<v t="ekr.20220525082935.599"><vh>class DocStringParser</vh>
+<v t="ekr.20220525082935.600"><vh>DocStringParser.__init__</vh></v>
+<v t="ekr.20220525082935.601"><vh>DocStringParser.add_token</vh></v>
+<v t="ekr.20220525082935.602"><vh>DocStringParser.reset</vh></v>
+<v t="ekr.20220525082935.603"><vh>DocStringParser.get_signatures</vh></v>
+</v>
+<v t="ekr.20220525082935.604"><vh>infer_sig_from_docstring</vh>
+<v t="ekr.20220525082935.605"><vh>is_unique_args</vh></v>
+</v>
+<v t="ekr.20220525082935.606"><vh>infer_arg_sig_from_anon_docstring</vh></v>
+<v t="ekr.20220525082935.607"><vh>infer_ret_type_sig_from_docstring</vh></v>
+<v t="ekr.20220525082935.608"><vh>infer_ret_type_sig_from_anon_docstring</vh></v>
+<v t="ekr.20220525082935.609"><vh>parse_signature</vh></v>
+<v t="ekr.20220525082935.610"><vh>build_signature</vh></v>
+<v t="ekr.20220525082935.611"><vh>parse_all_signatures</vh></v>
+<v t="ekr.20220525082935.612"><vh>find_unique_signatures</vh></v>
+<v t="ekr.20220525082935.613"><vh>infer_prop_type_from_docstring</vh></v>
+</v>
+<v t="ekr.20220525082935.614"><vh>@clean stubgen.py</vh>
+<v t="ekr.20220525082935.615"><vh>class Options</vh>
+<v t="ekr.20220525082935.616"><vh>Options.__init__</vh></v>
+</v>
+<v t="ekr.20220525082935.617"><vh>class StubSource</vh>
+<v t="ekr.20220525082935.618"><vh>StubSource.__init__</vh></v>
+<v t="ekr.20220525082935.619"><vh>StubSource.module</vh></v>
+<v t="ekr.20220525082935.620"><vh>StubSource.path</vh></v>
+</v>
+<v t="ekr.20220525082935.621"><vh>What was generated previously in the stub file. We keep track of these to generate</vh></v>
+<v t="ekr.20220525082935.622"><vh>class AnnotationPrinter</vh>
+<v t="ekr.20220525082935.623"><vh>AnnotationPrinter.__init__</vh></v>
+<v t="ekr.20220525082935.624"><vh>AnnotationPrinter.visit_any</vh></v>
+<v t="ekr.20220525082935.625"><vh>AnnotationPrinter.visit_unbound_type</vh></v>
+<v t="ekr.20220525082935.626"><vh>AnnotationPrinter.visit_none_type</vh></v>
+<v t="ekr.20220525082935.627"><vh>AnnotationPrinter.visit_type_list</vh></v>
+<v t="ekr.20220525082935.628"><vh>AnnotationPrinter.args_str</vh></v>
+</v>
+<v t="ekr.20220525082935.629"><vh>class AliasPrinter</vh>
+<v t="ekr.20220525082935.630"><vh>AliasPrinter.__init__</vh></v>
+<v t="ekr.20220525082935.631"><vh>AliasPrinter.visit_call_expr</vh></v>
+<v t="ekr.20220525082935.632"><vh>AliasPrinter.visit_name_expr</vh></v>
+<v t="ekr.20220525082935.633"><vh>AliasPrinter.visit_member_expr</vh></v>
+<v t="ekr.20220525082935.634"><vh>AliasPrinter.visit_str_expr</vh></v>
+<v t="ekr.20220525082935.635"><vh>AliasPrinter.visit_index_expr</vh></v>
+<v t="ekr.20220525082935.636"><vh>AliasPrinter.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082935.637"><vh>AliasPrinter.visit_list_expr</vh></v>
+<v t="ekr.20220525082935.638"><vh>AliasPrinter.visit_ellipsis</vh></v>
+</v>
+<v t="ekr.20220525082935.639"><vh>class ImportTracker</vh>
+<v t="ekr.20220525082935.640"><vh>ImportTracker.__init__</vh></v>
+<v t="ekr.20220525082935.641"><vh>ImportTracker.add_import_from</vh></v>
+<v t="ekr.20220525082935.642"><vh>ImportTracker.add_import</vh></v>
+<v t="ekr.20220525082935.643"><vh>ImportTracker.require_name</vh></v>
+<v t="ekr.20220525082935.644"><vh>ImportTracker.reexport</vh></v>
+<v t="ekr.20220525082935.645"><vh>ImportTracker.import_lines</vh></v>
+</v>
+<v t="ekr.20220525082935.646"><vh>find_defined_names</vh></v>
+<v t="ekr.20220525082935.647"><vh>class DefinitionFinder</vh>
+<v t="ekr.20220525082935.648"><vh>DefinitionFinder.__init__</vh></v>
+<v t="ekr.20220525082935.649"><vh>DefinitionFinder.visit_class_def</vh></v>
+<v t="ekr.20220525082935.650"><vh>DefinitionFinder.visit_func_def</vh></v>
+</v>
+<v t="ekr.20220525082935.651"><vh>find_referenced_names</vh></v>
+<v t="ekr.20220525082935.652"><vh>class ReferenceFinder</vh>
+<v t="ekr.20220525082935.653"><vh>ReferenceFinder.__init__</vh></v>
+<v t="ekr.20220525082935.654"><vh>ReferenceFinder.visit_block</vh></v>
+<v t="ekr.20220525082935.655"><vh>ReferenceFinder.visit_name_expr</vh></v>
+<v t="ekr.20220525082935.656"><vh>ReferenceFinder.visit_instance</vh></v>
+<v t="ekr.20220525082935.657"><vh>ReferenceFinder.visit_unbound_type</vh></v>
+<v t="ekr.20220525082935.658"><vh>ReferenceFinder.visit_tuple_type</vh></v>
+<v t="ekr.20220525082935.659"><vh>ReferenceFinder.visit_callable_type</vh></v>
+<v t="ekr.20220525082935.660"><vh>ReferenceFinder.add_ref</vh></v>
+</v>
+<v t="ekr.20220525082935.661"><vh>class StubGenerator</vh>
+<v t="ekr.20220525082935.662"><vh>StubGenerator.__init__</vh></v>
+<v t="ekr.20220525082935.663"><vh>StubGenerator.visit_mypy_file</vh></v>
+<v t="ekr.20220525082935.664"><vh>StubGenerator.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.665"><vh>StubGenerator.visit_func_def</vh></v>
+<v t="ekr.20220525082935.666"><vh>StubGenerator.is_none_expr</vh></v>
+<v t="ekr.20220525082935.667"><vh>StubGenerator.visit_decorator</vh></v>
+<v t="ekr.20220525082935.668"><vh>StubGenerator.process_decorator</vh></v>
+<v t="ekr.20220525082935.669"><vh>StubGenerator.process_name_expr_decorator</vh></v>
+<v t="ekr.20220525082935.670"><vh>StubGenerator.refers_to_fullname</vh></v>
+<v t="ekr.20220525082935.671"><vh>StubGenerator.process_member_expr_decorator</vh></v>
+<v t="ekr.20220525082935.672"><vh>StubGenerator.visit_class_def</vh></v>
+<v t="ekr.20220525082935.673"><vh>StubGenerator.get_base_types</vh></v>
+<v t="ekr.20220525082935.674"><vh>StubGenerator.visit_block</vh></v>
+<v t="ekr.20220525082935.675"><vh>StubGenerator.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.676"><vh>StubGenerator.is_namedtuple</vh></v>
+<v t="ekr.20220525082935.677"><vh>StubGenerator.process_namedtuple</vh></v>
+<v t="ekr.20220525082935.678"><vh>StubGenerator.is_alias_expression</vh></v>
+<v t="ekr.20220525082935.679"><vh>StubGenerator.process_typealias</vh></v>
+<v t="ekr.20220525082935.680"><vh>StubGenerator.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.681"><vh>StubGenerator.visit_import_all</vh></v>
+<v t="ekr.20220525082935.682"><vh>StubGenerator.visit_import_from</vh></v>
+<v t="ekr.20220525082935.683"><vh>StubGenerator.visit_import</vh></v>
+<v t="ekr.20220525082935.684"><vh>StubGenerator.get_init</vh></v>
+<v t="ekr.20220525082935.685"><vh>StubGenerator.add</vh></v>
+<v t="ekr.20220525082935.686"><vh>StubGenerator.add_decorator</vh></v>
+<v t="ekr.20220525082935.687"><vh>StubGenerator.clear_decorators</vh></v>
+<v t="ekr.20220525082935.688"><vh>StubGenerator.typing_name</vh></v>
+<v t="ekr.20220525082935.689"><vh>StubGenerator.add_typing_import</vh></v>
+<v t="ekr.20220525082935.690"><vh>StubGenerator.add_abc_import</vh></v>
+<v t="ekr.20220525082935.691"><vh>StubGenerator.add_import_line</vh></v>
+<v t="ekr.20220525082935.692"><vh>StubGenerator.add_coroutine_decorator</vh></v>
+<v t="ekr.20220525082935.693"><vh>StubGenerator.output</vh></v>
+<v t="ekr.20220525082935.694"><vh>StubGenerator.is_not_in_all</vh></v>
+<v t="ekr.20220525082935.695"><vh>StubGenerator.is_private_name</vh></v>
+<v t="ekr.20220525082935.696"><vh>StubGenerator.is_private_member</vh></v>
+<v t="ekr.20220525082935.697"><vh>StubGenerator.get_str_type_of_node</vh></v>
+<v t="ekr.20220525082935.698"><vh>StubGenerator.print_annotation</vh></v>
+<v t="ekr.20220525082935.699"><vh>StubGenerator.is_top_level</vh></v>
+<v t="ekr.20220525082935.700"><vh>StubGenerator.record_name</vh></v>
+<v t="ekr.20220525082935.701"><vh>StubGenerator.is_recorded_name</vh></v>
+</v>
+<v t="ekr.20220525082935.702"><vh>find_method_names</vh></v>
+<v t="ekr.20220525082935.703"><vh>class SelfTraverser</vh>
+<v t="ekr.20220525082935.704"><vh>SelfTraverser.__init__</vh></v>
+<v t="ekr.20220525082935.705"><vh>SelfTraverser.visit_assignment_stmt</vh></v>
+</v>
+<v t="ekr.20220525082935.706"><vh>find_self_initializers</vh></v>
+<v t="ekr.20220525082935.707"><vh>get_qualified_name</vh></v>
+<v t="ekr.20220525082935.708"><vh>remove_blacklisted_modules</vh></v>
+<v t="ekr.20220525082935.709"><vh>is_blacklisted_path</vh></v>
+<v t="ekr.20220525082935.710"><vh>normalize_path_separators</vh></v>
+<v t="ekr.20220525082935.711"><vh>collect_build_targets</vh></v>
+<v t="ekr.20220525082935.712"><vh>find_module_paths_using_imports</vh></v>
+<v t="ekr.20220525082935.713"><vh>is_non_library_module</vh></v>
+<v t="ekr.20220525082935.714"><vh>translate_module_name</vh></v>
+<v t="ekr.20220525082935.715"><vh>find_module_paths_using_search</vh></v>
+<v t="ekr.20220525082935.716"><vh>mypy_options</vh></v>
+<v t="ekr.20220525082935.717"><vh>parse_source_file</vh></v>
+<v t="ekr.20220525082935.718"><vh>generate_asts_for_modules</vh></v>
+<v t="ekr.20220525082935.719"><vh>generate_stub_from_ast</vh></v>
+<v t="ekr.20220525082935.720"><vh>collect_docs_signatures</vh></v>
+<v t="ekr.20220525082935.721"><vh>generate_stubs</vh></v>
+<v t="ekr.20220525082935.722"><vh>HEADER = """%(prog)s [-h] [--py2] [more options, see -h]</vh></v>
+<v t="ekr.20220525082935.723"><vh>parse_options</vh></v>
+<v t="ekr.20220525082935.724"><vh>main</vh></v>
+</v>
+<v t="ekr.20220525082935.725"><vh>@clean stubgenc.py</vh>
+<v t="ekr.20220525082935.726"><vh>generate_stub_for_c_module</vh></v>
+<v t="ekr.20220525082935.727"><vh>add_typing_import</vh></v>
+<v t="ekr.20220525082935.728"><vh>is_c_function</vh></v>
+<v t="ekr.20220525082935.729"><vh>is_c_method</vh></v>
+<v t="ekr.20220525082935.730"><vh>is_c_classmethod</vh></v>
+<v t="ekr.20220525082935.731"><vh>is_c_property</vh></v>
+<v t="ekr.20220525082935.732"><vh>is_c_property_readonly</vh></v>
+<v t="ekr.20220525082935.733"><vh>is_c_type</vh></v>
+<v t="ekr.20220525082935.734"><vh>is_pybind11_overloaded_function_docstring</vh></v>
+<v t="ekr.20220525082935.735"><vh>generate_c_function_stub</vh></v>
+<v t="ekr.20220525082935.736"><vh>strip_or_import</vh></v>
+<v t="ekr.20220525082935.737"><vh>is_static_property</vh></v>
+<v t="ekr.20220525082935.738"><vh>generate_c_property_stub</vh>
+<v t="ekr.20220525082935.739"><vh>infer_prop_type</vh></v>
+</v>
+<v t="ekr.20220525082935.740"><vh>generate_c_type_stub</vh></v>
+<v t="ekr.20220525082935.741"><vh>get_type_fullname</vh></v>
+<v t="ekr.20220525082935.742"><vh>method_name_sort_key</vh></v>
+<v t="ekr.20220525082935.743"><vh>is_pybind_skipped_attribute</vh></v>
+<v t="ekr.20220525082935.744"><vh>is_skipped_attribute</vh></v>
+<v t="ekr.20220525082935.745"><vh>infer_method_sig</vh></v>
+</v>
+<v t="ekr.20220525082935.746"><vh>@clean stubinfo.py</vh>
+<v t="ekr.20220525082935.747"><vh>class StubInfo</vh></v>
+<v t="ekr.20220525082935.748"><vh>is_legacy_bundled_package</vh></v>
+</v>
+<v t="ekr.20220525082935.749"><vh>@clean stubtest.py</vh>
+<v t="ekr.20220525082935.750"><vh>class Missing</vh></v>
+<v t="ekr.20220525082935.751"><vh>MISSING = Missing()</vh></v>
+<v t="ekr.20220525082935.752"><vh>_style</vh></v>
+<v t="ekr.20220525082935.753"><vh>class Error</vh>
+<v t="ekr.20220525082935.754"><vh>Error.__init__</vh></v>
+<v t="ekr.20220525082935.755"><vh>Error.is_missing_stub</vh></v>
+<v t="ekr.20220525082935.756"><vh>Error.is_positional_only_related</vh></v>
+<v t="ekr.20220525082935.757"><vh>Error.get_description</vh></v>
+</v>
+<v t="ekr.20220525082935.758"><vh>====================</vh></v>
+<v t="ekr.20220525082935.759"><vh>test_module</vh></v>
+<v t="ekr.20220525082935.760"><vh>verify</vh></v>
+<v t="ekr.20220525082935.761"><vh>verify_mypyfile</vh>
+<v t="ekr.20220525082935.762"><vh>_belongs_to_runtime</vh></v>
+</v>
+<v t="ekr.20220525082935.763"><vh>if sys.version_info &gt;= (3, 7):</vh></v>
+<v t="ekr.20220525082935.764"><vh>verify_typeinfo</vh></v>
+<v t="ekr.20220525082935.765"><vh>_verify_static_class_methods</vh></v>
+<v t="ekr.20220525082935.766"><vh>_verify_arg_name</vh>
+<v t="ekr.20220525082935.767"><vh>strip_prefix</vh></v>
+<v t="ekr.20220525082935.768"><vh>if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:</vh></v>
+<v t="ekr.20220525082935.769"><vh>names_approx_match</vh></v>
+</v>
+<v t="ekr.20220525082935.770"><vh>_verify_arg_default_value</vh></v>
+<v t="ekr.20220525082935.771"><vh>maybe_strip_cls</vh></v>
+<v t="ekr.20220525082935.772"><vh>class Signature</vh>
+<v t="ekr.20220525082935.773"><vh>Signature.__init__</vh></v>
+<v t="ekr.20220525082935.774"><vh>Signature.__str__</vh></v>
+<v t="ekr.20220525082935.775"><vh>Signature.from_funcitem</vh></v>
+<v t="ekr.20220525082935.776"><vh>Signature.from_inspect_signature</vh></v>
+<v t="ekr.20220525082935.777"><vh>Signature.from_overloadedfuncdef</vh></v>
+</v>
+<v t="ekr.20220525082935.778"><vh>_verify_signature</vh></v>
+<v t="ekr.20220525082935.779"><vh>verify_funcitem</vh></v>
+<v t="ekr.20220525082935.780"><vh>verify_none</vh></v>
+<v t="ekr.20220525082935.781"><vh>verify_var</vh></v>
+<v t="ekr.20220525082935.782"><vh>verify_overloadedfuncdef</vh></v>
+<v t="ekr.20220525082935.783"><vh>verify_typevarexpr</vh></v>
+<v t="ekr.20220525082935.784"><vh>_verify_readonly_property</vh></v>
+<v t="ekr.20220525082935.785"><vh>_resolve_funcitem_from_decorator</vh>
+<v t="ekr.20220525082935.786"><vh>apply_decorator_to_funcitem</vh></v>
+</v>
+<v t="ekr.20220525082935.787"><vh>verify_decorator</vh></v>
+<v t="ekr.20220525082935.788"><vh>verify_typealias</vh></v>
+<v t="ekr.20220525082935.789"><vh>====================</vh></v>
+<v t="ekr.20220525082935.790"><vh>is_probably_private</vh></v>
+<v t="ekr.20220525082935.791"><vh>is_probably_a_function</vh></v>
+<v t="ekr.20220525082935.792"><vh>is_read_only_property</vh></v>
+<v t="ekr.20220525082935.793"><vh>safe_inspect_signature</vh></v>
+<v t="ekr.20220525082935.794"><vh>is_subtype_helper</vh></v>
+<v t="ekr.20220525082935.795"><vh>get_mypy_type_of_runtime_value</vh>
+<v t="ekr.20220525082935.796"><vh>anytype</vh></v>
+</v>
+<v t="ekr.20220525082935.797"><vh>====================</vh></v>
+<v t="ekr.20220525082935.798"><vh>build_stubs</vh></v>
+<v t="ekr.20220525082935.799"><vh>get_stub</vh></v>
+<v t="ekr.20220525082935.800"><vh>get_typeshed_stdlib_modules</vh>
+<v t="ekr.20220525082935.801"><vh>exists_in_version</vh></v>
+</v>
+<v t="ekr.20220525082935.802"><vh>get_allowlist_entries</vh>
+<v t="ekr.20220525082935.803"><vh>strip_comments</vh></v>
+</v>
+<v t="ekr.20220525082935.804"><vh>test_stubs</vh></v>
+<v t="ekr.20220525082935.805"><vh>parse_options</vh></v>
+<v t="ekr.20220525082935.806"><vh>main</vh></v>
+</v>
+<v t="ekr.20220525082935.807"><vh>@clean stubutil.py</vh>
+<v t="ekr.20220525082935.808"><vh>class CantImport</vh></v>
+<v t="ekr.20220525082935.809"><vh>default_py2_interpreter</vh></v>
+<v t="ekr.20220525082935.810"><vh>walk_packages</vh></v>
+<v t="ekr.20220525082935.811"><vh>find_module_path_and_all_py2</vh></v>
+<v t="ekr.20220525082935.812"><vh>find_module_path_using_py2_sys_path</vh></v>
+<v t="ekr.20220525082935.813"><vh>find_module_path_using_sys_path</vh></v>
+<v t="ekr.20220525082935.814"><vh>find_module_path_and_all_py3</vh></v>
+<v t="ekr.20220525082935.815"><vh>generate_guarded</vh></v>
+<v t="ekr.20220525082935.816"><vh>PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}</vh></v>
+<v t="ekr.20220525082935.817"><vh>report_missing</vh></v>
+<v t="ekr.20220525082935.818"><vh>fail_missing</vh></v>
+<v t="ekr.20220525082935.819"><vh>remove_misplaced_type_comments</vh></v>
+<v t="ekr.20220525082935.820"><vh>remove_misplaced_type_comments</vh></v>
+<v t="ekr.20220525082935.821"><vh>remove_misplaced_type_comments</vh></v>
+<v t="ekr.20220525082935.822"><vh>common_dir_prefix</vh></v>
+</v>
+</v>
+<v t="ekr.20220603023451.1"><vh>--- top level</vh>
+<v t="ekr.20220525082936.323"><vh>@clean __init__.py</vh></v>
+<v t="ekr.20220525082936.324"><vh>@clean __main__.py</vh>
+<v t="ekr.20220525082936.325"><vh>console_entry</vh></v>
+</v>
 <v t="ekr.20220525082933.167"><vh>@clean api.py</vh>
 <v t="ekr.20220525082933.168"><vh>_run</vh></v>
 <v t="ekr.20220525082933.169"><vh>run</vh></v>
@@ -209,54 +1832,6 @@
 <v t="ekr.20220525082933.171"><vh>f</vh></v>
 </v>
 </v>
-<v t="ekr.20220525082933.172"><vh>@clean applytype.py</vh>
-<v t="ekr.20220525082933.173"><vh>get_target_type</vh></v>
-<v t="ekr.20220525082933.174"><vh>apply_generic_arguments</vh></v>
-</v>
-<v t="ekr.20220525082933.175"><vh>@clean argmap.py</vh>
-<v t="ekr.20220525082933.176"><vh>map_actuals_to_formals</vh></v>
-<v t="ekr.20220525082933.177"><vh>map_formals_to_actuals</vh></v>
-<v t="ekr.20220525082933.178"><vh>class ArgTypeExpander</vh>
-<v t="ekr.20220525082933.179"><vh>ArgTypeExpander.__init__</vh></v>
-<v t="ekr.20220525082933.180"><vh>ArgTypeExpander.expand_actual_type</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082933.181"><vh>@clean backports.py</vh></v>
-<v t="ekr.20220525082933.182"><vh>@clean binder.py</vh>
-<v t="ekr.20220525082933.183"><vh>class Frame</vh>
-<v t="ekr.20220525082933.184"><vh>Frame.__init__</vh></v>
-</v>
-<v t="ekr.20220525082933.185"><vh>Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]</vh></v>
-<v t="ekr.20220525082933.186"><vh>class ConditionalTypeBinder</vh>
-<v t="ekr.20220525082933.187"><vh>ConditionalTypeBinder.__init__</vh></v>
-<v t="ekr.20220525082933.188"><vh>ConditionalTypeBinder._get_id</vh></v>
-<v t="ekr.20220525082933.189"><vh>ConditionalTypeBinder._add_dependencies</vh></v>
-<v t="ekr.20220525082933.190"><vh>ConditionalTypeBinder.push_frame</vh></v>
-<v t="ekr.20220525082933.191"><vh>ConditionalTypeBinder._put</vh></v>
-<v t="ekr.20220525082933.192"><vh>ConditionalTypeBinder._get</vh></v>
-<v t="ekr.20220525082933.193"><vh>ConditionalTypeBinder.put</vh></v>
-<v t="ekr.20220525082933.194"><vh>ConditionalTypeBinder.unreachable</vh></v>
-<v t="ekr.20220525082933.195"><vh>ConditionalTypeBinder.suppress_unreachable_warnings</vh></v>
-<v t="ekr.20220525082933.196"><vh>ConditionalTypeBinder.get</vh></v>
-<v t="ekr.20220525082933.197"><vh>ConditionalTypeBinder.is_unreachable</vh></v>
-<v t="ekr.20220525082933.198"><vh>ConditionalTypeBinder.is_unreachable_warning_suppressed</vh></v>
-<v t="ekr.20220525082933.199"><vh>ConditionalTypeBinder.cleanse</vh></v>
-<v t="ekr.20220525082933.200"><vh>ConditionalTypeBinder._cleanse_key</vh></v>
-<v t="ekr.20220525082933.201"><vh>ConditionalTypeBinder.update_from_options</vh></v>
-<v t="ekr.20220525082933.202"><vh>ConditionalTypeBinder.pop_frame</vh></v>
-<v t="ekr.20220525082933.203"><vh>ConditionalTypeBinder.accumulate_type_assignments</vh></v>
-<v t="ekr.20220525082933.204"><vh>ConditionalTypeBinder.assign_type</vh></v>
-<v t="ekr.20220525082933.205"><vh>ConditionalTypeBinder.invalidate_dependencies</vh></v>
-<v t="ekr.20220525082933.206"><vh>ConditionalTypeBinder.most_recent_enclosing_type</vh></v>
-<v t="ekr.20220525082933.207"><vh>ConditionalTypeBinder.allow_jump</vh></v>
-<v t="ekr.20220525082933.208"><vh>ConditionalTypeBinder.handle_break</vh></v>
-<v t="ekr.20220525082933.209"><vh>ConditionalTypeBinder.handle_continue</vh></v>
-<v t="ekr.20220525082933.210"><vh>ConditionalTypeBinder.frame_context</vh></v>
-<v t="ekr.20220525082933.211"><vh>ConditionalTypeBinder.top_frame_context</vh></v>
-</v>
-<v t="ekr.20220525082933.212"><vh>get_declaration</vh></v>
-</v>
-<v t="ekr.20220525082933.213"><vh>@clean bogus_type.py</vh></v>
 <v t="ekr.20220525082933.214"><vh>@clean build.py</vh>
 <v t="ekr.20220525082933.215"><vh>class BuildResult</vh>
 <v t="ekr.20220525082933.216"><vh>BuildResult.__init__</vh></v>
@@ -391,6 +1966,1178 @@
 <v t="ekr.20220525082933.338"><vh>missing_stubs_file</vh></v>
 <v t="ekr.20220525082933.339"><vh>record_missing_stub_packages</vh></v>
 </v>
+<v t="ekr.20220525082933.880"><vh>@clean config_parser.py</vh>
+<v t="ekr.20220525082933.881"><vh>parse_version</vh></v>
+<v t="ekr.20220525082933.882"><vh>try_split</vh></v>
+<v t="ekr.20220525082933.883"><vh>expand_path</vh></v>
+<v t="ekr.20220525082933.884"><vh>str_or_array_as_list</vh></v>
+<v t="ekr.20220525082933.885"><vh>split_and_match_files_list</vh></v>
+<v t="ekr.20220525082933.886"><vh>split_and_match_files</vh></v>
+<v t="ekr.20220525082933.887"><vh>check_follow_imports</vh></v>
+<v t="ekr.20220525082933.888"><vh>For most options, the type of the default value set in options.py is</vh></v>
+<v t="ekr.20220525082933.889"><vh>parse_config_file</vh></v>
+<v t="ekr.20220525082933.890"><vh>get_prefix</vh></v>
+<v t="ekr.20220525082933.891"><vh>is_toml</vh></v>
+<v t="ekr.20220525082933.892"><vh>destructure_overrides</vh></v>
+<v t="ekr.20220525082933.893"><vh>parse_section</vh></v>
+<v t="ekr.20220525082933.894"><vh>convert_to_boolean</vh></v>
+<v t="ekr.20220525082933.895"><vh>split_directive</vh></v>
+<v t="ekr.20220525082933.896"><vh>mypy_comments_to_config_map</vh></v>
+<v t="ekr.20220525082933.897"><vh>parse_mypy_comments</vh></v>
+<v t="ekr.20220525082933.898"><vh>get_config_module_names</vh></v>
+<v t="ekr.20220525082933.899"><vh>class ConfigTOMLValueError</vh></v>
+</v>
+<v t="ekr.20220525082934.256"><vh>@clean find_sources.py</vh>
+<v t="ekr.20220525082934.257"><vh>class InvalidSourceList</vh></v>
+<v t="ekr.20220525082934.258"><vh>create_source_list</vh></v>
+<v t="ekr.20220525082934.259"><vh>keyfunc</vh></v>
+<v t="ekr.20220525082934.260"><vh>normalise_package_base</vh></v>
+<v t="ekr.20220525082934.261"><vh>get_explicit_package_bases</vh></v>
+<v t="ekr.20220525082934.262"><vh>class SourceFinder</vh>
+<v t="ekr.20220525082934.263"><vh>SourceFinder.__init__</vh></v>
+<v t="ekr.20220525082934.264"><vh>SourceFinder.is_explicit_package_base</vh></v>
+<v t="ekr.20220525082934.265"><vh>SourceFinder.find_sources_in_dir</vh></v>
+<v t="ekr.20220525082934.266"><vh>SourceFinder.crawl_up</vh></v>
+<v t="ekr.20220525082934.267"><vh>SourceFinder.crawl_up_dir</vh></v>
+<v t="ekr.20220525082934.268"><vh>SourceFinder._crawl_up_helper</vh></v>
+<v t="ekr.20220525082934.269"><vh>SourceFinder.get_init_file</vh></v>
+</v>
+<v t="ekr.20220525082934.270"><vh>module_join</vh></v>
+<v t="ekr.20220525082934.271"><vh>strip_py</vh></v>
+</v>
+<v t="ekr.20220525082934.502"><vh>@clean main.py</vh>
+<v t="ekr.20220525082934.503"><vh>stat_proxy</vh></v>
+<v t="ekr.20220525082934.504"><vh>main</vh></v>
+<v t="ekr.20220525082934.505"><vh>run_build</vh>
+<v t="ekr.20220525082934.506"><vh>flush_errors</vh></v>
+</v>
+<v t="ekr.20220525082934.507"><vh>show_messages</vh></v>
+<v t="ekr.20220525082934.508"><vh>class AugmentedHelpFormatter</vh>
+<v t="ekr.20220525082934.509"><vh>AugmentedHelpFormatter.__init__</vh></v>
+<v t="ekr.20220525082934.510"><vh>AugmentedHelpFormatter._fill_text</vh></v>
+</v>
+<v t="ekr.20220525082934.511"><vh>Define pairs of flag prefixes with inverse meaning.</vh></v>
+<v t="ekr.20220525082934.512"><vh>invert_flag_name</vh></v>
+<v t="ekr.20220525082934.513"><vh>class PythonExecutableInferenceError</vh></v>
+<v t="ekr.20220525082934.514"><vh>python_executable_prefix</vh></v>
+<v t="ekr.20220525082934.515"><vh>_python_executable_from_version</vh></v>
+<v t="ekr.20220525082934.516"><vh>infer_python_executable</vh></v>
+<v t="ekr.20220525082934.517"><vh>HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]</vh></v>
+<v t="ekr.20220525082934.518"><vh>class CapturableArgumentParser</vh>
+<v t="ekr.20220525082934.519"><vh>CapturableArgumentParser.__init__</vh></v>
+<v t="ekr.20220525082934.520"><vh>CapturableArgumentParser.print_usage</vh></v>
+<v t="ekr.20220525082934.521"><vh>CapturableArgumentParser.print_help</vh></v>
+<v t="ekr.20220525082934.522"><vh>CapturableArgumentParser._print_message</vh></v>
+<v t="ekr.20220525082934.523"><vh>CapturableArgumentParser.exit</vh></v>
+<v t="ekr.20220525082934.524"><vh>CapturableArgumentParser.error</vh></v>
+</v>
+<v t="ekr.20220525082934.525"><vh>class CapturableVersionAction</vh>
+<v t="ekr.20220525082934.526"><vh>CapturableVersionAction.__init__</vh></v>
+<v t="ekr.20220525082934.527"><vh>CapturableVersionAction.__call__</vh></v>
+</v>
+<v t="ekr.20220525082934.528"><vh>process_options</vh>
+<v t="ekr.20220525082934.529"><vh>add_invertible_flag</vh></v>
+<v t="ekr.20220525082934.530"><vh>Unless otherwise specified, arguments will be parsed directly onto an</vh></v>
+<v t="ekr.20220525082934.531"><vh>set_strict_flags</vh></v>
+</v>
+<v t="ekr.20220525082934.532"><vh>process_package_roots</vh></v>
+<v t="ekr.20220525082934.533"><vh>process_cache_map</vh></v>
+<v t="ekr.20220525082934.534"><vh>maybe_write_junit_xml</vh></v>
+<v t="ekr.20220525082934.535"><vh>fail</vh></v>
+<v t="ekr.20220525082934.536"><vh>read_types_packages_to_install</vh></v>
+<v t="ekr.20220525082934.537"><vh>install_types</vh></v>
+</v>
+<v t="ekr.20220525082934.1258"><vh>@clean options.py</vh>
+<v t="ekr.20220525082934.1259"><vh>class BuildType</vh></v>
+<v t="ekr.20220525082934.1260"><vh>PER_MODULE_OPTIONS: Final = {</vh></v>
+<v t="ekr.20220525082934.1261"><vh>class Options</vh>
+<v t="ekr.20220525082934.1262"><vh>Options.__init__</vh></v>
+<v t="ekr.20220525082934.1263"><vh>Options.new_semantic_analyzer</vh></v>
+<v t="ekr.20220525082934.1264"><vh>Options.snapshot</vh></v>
+<v t="ekr.20220525082934.1265"><vh>Options.__repr__</vh></v>
+<v t="ekr.20220525082934.1266"><vh>Options.apply_changes</vh></v>
+<v t="ekr.20220525082934.1267"><vh>Options.build_per_module_cache</vh></v>
+<v t="ekr.20220525082934.1268"><vh>Options.clone_for_module</vh></v>
+<v t="ekr.20220525082934.1269"><vh>Options.compile_glob</vh></v>
+<v t="ekr.20220525082934.1270"><vh>Options.select_options_affecting_cache</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082935.429"><vh>@clean split_namespace.py</vh>
+<v t="ekr.20220525082935.430"><vh>class SplitNamespace</vh>
+<v t="ekr.20220525082935.431"><vh>SplitNamespace.__init__</vh></v>
+<v t="ekr.20220525082935.432"><vh>SplitNamespace._get</vh></v>
+<v t="ekr.20220525082935.433"><vh>SplitNamespace.__setattr__</vh></v>
+<v t="ekr.20220525082935.434"><vh>SplitNamespace.__getattr__</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082936.142"><vh>@clean version.py</vh></v>
+</v>
+<v t="ekr.20220603023835.1"><vh>--- traversal</vh>
+<v t="ekr.20220525082934.314"><vh>@clean freetree.py</vh>
+<v t="ekr.20220525082934.315"><vh>class TreeFreer</vh></v>
+<v t="ekr.20220525082934.316"><vh>free_tree</vh></v>
+</v>
+<v t="ekr.20220525082934.790"><vh>@clean mixedtraverser.py</vh>
+<v t="ekr.20220525082934.791"><vh>class MixedTraverserVisitor</vh>
+<v t="ekr.20220525082934.792"><vh>MixedTraverserVisitor.visit_var</vh></v>
+<v t="ekr.20220525082934.793"><vh>MixedTraverserVisitor.visit_func</vh></v>
+<v t="ekr.20220525082934.794"><vh>MixedTraverserVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082934.795"><vh>MixedTraverserVisitor.visit_type_alias_expr</vh></v>
+<v t="ekr.20220525082934.796"><vh>MixedTraverserVisitor.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082934.797"><vh>MixedTraverserVisitor.visit_typeddict_expr</vh></v>
+<v t="ekr.20220525082934.798"><vh>MixedTraverserVisitor.visit_namedtuple_expr</vh></v>
+<v t="ekr.20220525082934.799"><vh>MixedTraverserVisitor.visit__promote_expr</vh></v>
+<v t="ekr.20220525082934.800"><vh>MixedTraverserVisitor.visit_newtype_expr</vh></v>
+<v t="ekr.20220525082934.801"><vh>MixedTraverserVisitor.Statements</vh></v>
+<v t="ekr.20220525082934.802"><vh>MixedTraverserVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082934.803"><vh>MixedTraverserVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082934.804"><vh>MixedTraverserVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082934.805"><vh>MixedTraverserVisitor.Expressions</vh></v>
+<v t="ekr.20220525082934.806"><vh>MixedTraverserVisitor.visit_cast_expr</vh></v>
+<v t="ekr.20220525082934.807"><vh>MixedTraverserVisitor.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082934.808"><vh>MixedTraverserVisitor.visit_type_application</vh></v>
+<v t="ekr.20220525082934.809"><vh>MixedTraverserVisitor.Helpers</vh></v>
+<v t="ekr.20220525082934.810"><vh>MixedTraverserVisitor.visit_optional_type</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.871"><vh>@clean nodes.py</vh>
+<v t="ekr.20220525082934.872"><vh>class Context</vh>
+<v t="ekr.20220525082934.873"><vh>Context.__init__</vh></v>
+<v t="ekr.20220525082934.874"><vh>Context.set_line</vh></v>
+<v t="ekr.20220525082934.875"><vh>Context.get_line</vh></v>
+<v t="ekr.20220525082934.876"><vh>Context.get_column</vh></v>
+</v>
+<v t="ekr.20220525082934.877"><vh>if TYPE_CHECKING:</vh></v>
+<v t="ekr.20220525082934.878"><vh>get_nongen_builtins</vh></v>
+<v t="ekr.20220525082934.879"><vh>RUNTIME_PROTOCOL_DECOS: Final = (</vh></v>
+<v t="ekr.20220525082934.880"><vh>class Node</vh>
+<v t="ekr.20220525082934.881"><vh>Node.__str__</vh></v>
+<v t="ekr.20220525082934.882"><vh>Node.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.883"><vh>class Statement</vh>
+<v t="ekr.20220525082934.884"><vh>Statement.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.885"><vh>class Expression</vh>
+<v t="ekr.20220525082934.886"><vh>Expression.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.887"><vh>class FakeExpression</vh></v>
+<v t="ekr.20220525082934.888"><vh>TODO:</vh></v>
+<v t="ekr.20220525082934.889"><vh>class SymbolNode</vh>
+<v t="ekr.20220525082934.890"><vh>SymbolNode.name</vh></v>
+<v t="ekr.20220525082934.891"><vh>SymbolNode.fullname</vh></v>
+<v t="ekr.20220525082934.892"><vh>SymbolNode.serialize</vh></v>
+<v t="ekr.20220525082934.893"><vh>SymbolNode.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.894"><vh>Items: fullname, related symbol table node, surrounding type (if any)</vh></v>
+<v t="ekr.20220525082934.895"><vh>class MypyFile</vh>
+<v t="ekr.20220525082934.896"><vh>MypyFile.__init__</vh></v>
+<v t="ekr.20220525082934.897"><vh>MypyFile.local_definitions</vh></v>
+<v t="ekr.20220525082934.898"><vh>MypyFile.name</vh></v>
+<v t="ekr.20220525082934.899"><vh>MypyFile.fullname</vh></v>
+<v t="ekr.20220525082934.900"><vh>MypyFile.accept</vh></v>
+<v t="ekr.20220525082934.901"><vh>MypyFile.is_package_init_file</vh></v>
+<v t="ekr.20220525082934.902"><vh>MypyFile.is_future_flag_set</vh></v>
+<v t="ekr.20220525082934.903"><vh>MypyFile.serialize</vh></v>
+<v t="ekr.20220525082934.904"><vh>MypyFile.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.905"><vh>class ImportBase</vh>
+<v t="ekr.20220525082934.906"><vh>ImportBase.__init__</vh></v>
+</v>
+<v t="ekr.20220525082934.907"><vh>class Import</vh>
+<v t="ekr.20220525082934.908"><vh>Import.__init__</vh></v>
+<v t="ekr.20220525082934.909"><vh>Import.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.910"><vh>class ImportFrom</vh>
+<v t="ekr.20220525082934.911"><vh>ImportFrom.__init__</vh></v>
+<v t="ekr.20220525082934.912"><vh>ImportFrom.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.913"><vh>class ImportAll</vh>
+<v t="ekr.20220525082934.914"><vh>ImportAll.__init__</vh></v>
+<v t="ekr.20220525082934.915"><vh>ImportAll.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.916"><vh>class ImportedName</vh>
+<v t="ekr.20220525082934.917"><vh>ImportedName.__init__</vh></v>
+<v t="ekr.20220525082934.918"><vh>ImportedName.name</vh></v>
+<v t="ekr.20220525082934.919"><vh>ImportedName.fullname</vh></v>
+<v t="ekr.20220525082934.920"><vh>ImportedName.serialize</vh></v>
+<v t="ekr.20220525082934.921"><vh>ImportedName.deserialize</vh></v>
+<v t="ekr.20220525082934.922"><vh>ImportedName.__str__</vh></v>
+</v>
+<v t="ekr.20220525082934.923"><vh>FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]</vh></v>
+<v t="ekr.20220525082934.924"><vh>class FuncBase</vh>
+<v t="ekr.20220525082934.925"><vh>FuncBase.__init__</vh></v>
+<v t="ekr.20220525082934.926"><vh>FuncBase.name</vh></v>
+<v t="ekr.20220525082934.927"><vh>FuncBase.fullname</vh></v>
+</v>
+<v t="ekr.20220525082934.928"><vh>OverloadPart: _TypeAlias = Union['FuncDef', 'Decorator']</vh></v>
+<v t="ekr.20220525082934.929"><vh>class OverloadedFuncDef</vh>
+<v t="ekr.20220525082934.930"><vh>OverloadedFuncDef.__init__</vh></v>
+<v t="ekr.20220525082934.931"><vh>OverloadedFuncDef.name</vh></v>
+<v t="ekr.20220525082934.932"><vh>OverloadedFuncDef.accept</vh></v>
+<v t="ekr.20220525082934.933"><vh>OverloadedFuncDef.serialize</vh></v>
+<v t="ekr.20220525082934.934"><vh>OverloadedFuncDef.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.935"><vh>class Argument</vh>
+<v t="ekr.20220525082934.936"><vh>Argument.__init__</vh></v>
+<v t="ekr.20220525082934.937"><vh>Argument.set_line</vh></v>
+</v>
+<v t="ekr.20220525082934.938"><vh>FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [</vh></v>
+<v t="ekr.20220525082934.939"><vh>class FuncItem</vh>
+<v t="ekr.20220525082934.940"><vh>FuncItem.__init__</vh></v>
+<v t="ekr.20220525082934.941"><vh>FuncItem.max_fixed_argc</vh></v>
+<v t="ekr.20220525082934.942"><vh>FuncItem.set_line</vh></v>
+<v t="ekr.20220525082934.943"><vh>FuncItem.is_dynamic</vh></v>
+</v>
+<v t="ekr.20220525082934.944"><vh>FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [</vh></v>
+<v t="ekr.20220525082934.945"><vh>class FuncDef</vh>
+<v t="ekr.20220525082934.946"><vh>FuncDef.__init__</vh></v>
+<v t="ekr.20220525082934.947"><vh>FuncDef.name</vh></v>
+<v t="ekr.20220525082934.948"><vh>FuncDef.accept</vh></v>
+<v t="ekr.20220525082934.949"><vh>FuncDef.serialize</vh></v>
+<v t="ekr.20220525082934.950"><vh>FuncDef.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.951"><vh>All types that are both SymbolNodes and FuncBases. See the FuncBase</vh></v>
+<v t="ekr.20220525082934.952"><vh>class Decorator</vh>
+<v t="ekr.20220525082934.953"><vh>Decorator.__init__</vh></v>
+<v t="ekr.20220525082934.954"><vh>Decorator.name</vh></v>
+<v t="ekr.20220525082934.955"><vh>Decorator.fullname</vh></v>
+<v t="ekr.20220525082934.956"><vh>Decorator.is_final</vh></v>
+<v t="ekr.20220525082934.957"><vh>Decorator.info</vh></v>
+<v t="ekr.20220525082934.958"><vh>Decorator.type</vh></v>
+<v t="ekr.20220525082934.959"><vh>Decorator.accept</vh></v>
+<v t="ekr.20220525082934.960"><vh>Decorator.serialize</vh></v>
+<v t="ekr.20220525082934.961"><vh>Decorator.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.962"><vh>VAR_FLAGS: Final = [</vh></v>
+<v t="ekr.20220525082934.963"><vh>class Var</vh>
+<v t="ekr.20220525082934.964"><vh>Var.__init__</vh></v>
+<v t="ekr.20220525082934.965"><vh>Var.name</vh></v>
+<v t="ekr.20220525082934.966"><vh>Var.fullname</vh></v>
+<v t="ekr.20220525082934.967"><vh>Var.accept</vh></v>
+<v t="ekr.20220525082934.968"><vh>Var.serialize</vh></v>
+<v t="ekr.20220525082934.969"><vh>Var.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.970"><vh>class ClassDef</vh>
+<v t="ekr.20220525082934.971"><vh>ClassDef.__init__</vh></v>
+<v t="ekr.20220525082934.972"><vh>ClassDef.accept</vh></v>
+<v t="ekr.20220525082934.973"><vh>ClassDef.is_generic</vh></v>
+<v t="ekr.20220525082934.974"><vh>ClassDef.serialize</vh></v>
+<v t="ekr.20220525082934.975"><vh>ClassDef.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.976"><vh>class GlobalDecl</vh>
+<v t="ekr.20220525082934.977"><vh>GlobalDecl.__init__</vh></v>
+<v t="ekr.20220525082934.978"><vh>GlobalDecl.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.979"><vh>class NonlocalDecl</vh>
+<v t="ekr.20220525082934.980"><vh>NonlocalDecl.__init__</vh></v>
+<v t="ekr.20220525082934.981"><vh>NonlocalDecl.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.982"><vh>class Block</vh>
+<v t="ekr.20220525082934.983"><vh>Block.__init__</vh></v>
+<v t="ekr.20220525082934.984"><vh>Block.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.985"><vh>Statements</vh></v>
+<v t="ekr.20220525082934.986"><vh>class ExpressionStmt</vh>
+<v t="ekr.20220525082934.987"><vh>ExpressionStmt.__init__</vh></v>
+<v t="ekr.20220525082934.988"><vh>ExpressionStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.989"><vh>class AssignmentStmt</vh>
+<v t="ekr.20220525082934.990"><vh>AssignmentStmt.__init__</vh></v>
+<v t="ekr.20220525082934.991"><vh>AssignmentStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.992"><vh>class OperatorAssignmentStmt</vh>
+<v t="ekr.20220525082934.993"><vh>OperatorAssignmentStmt.__init__</vh></v>
+<v t="ekr.20220525082934.994"><vh>OperatorAssignmentStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.995"><vh>class WhileStmt</vh>
+<v t="ekr.20220525082934.996"><vh>WhileStmt.__init__</vh></v>
+<v t="ekr.20220525082934.997"><vh>WhileStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.998"><vh>class ForStmt</vh>
+<v t="ekr.20220525082934.999"><vh>ForStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1000"><vh>ForStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1001"><vh>class ReturnStmt</vh>
+<v t="ekr.20220525082934.1002"><vh>ReturnStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1003"><vh>ReturnStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1004"><vh>class AssertStmt</vh>
+<v t="ekr.20220525082934.1005"><vh>AssertStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1006"><vh>AssertStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1007"><vh>class DelStmt</vh>
+<v t="ekr.20220525082934.1008"><vh>DelStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1009"><vh>DelStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1010"><vh>class BreakStmt</vh></v>
+<v t="ekr.20220525082934.1011"><vh>class ContinueStmt</vh></v>
+<v t="ekr.20220525082934.1012"><vh>class PassStmt</vh></v>
+<v t="ekr.20220525082934.1013"><vh>class IfStmt</vh>
+<v t="ekr.20220525082934.1014"><vh>IfStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1015"><vh>IfStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1016"><vh>class RaiseStmt</vh>
+<v t="ekr.20220525082934.1017"><vh>RaiseStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1018"><vh>RaiseStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1019"><vh>class TryStmt</vh>
+<v t="ekr.20220525082934.1020"><vh>TryStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1021"><vh>TryStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1022"><vh>class WithStmt</vh>
+<v t="ekr.20220525082934.1023"><vh>WithStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1024"><vh>WithStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1025"><vh>class MatchStmt</vh>
+<v t="ekr.20220525082934.1026"><vh>MatchStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1027"><vh>MatchStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1028"><vh>class PrintStmt</vh>
+<v t="ekr.20220525082934.1029"><vh>PrintStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1030"><vh>PrintStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1031"><vh>class ExecStmt</vh>
+<v t="ekr.20220525082934.1032"><vh>ExecStmt.__init__</vh></v>
+<v t="ekr.20220525082934.1033"><vh>ExecStmt.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1034"><vh>Expressions</vh></v>
+<v t="ekr.20220525082934.1035"><vh>class IntExpr</vh>
+<v t="ekr.20220525082934.1036"><vh>IntExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1037"><vh>IntExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1038"><vh>How mypy uses StrExpr, BytesExpr, and UnicodeExpr:</vh></v>
+<v t="ekr.20220525082934.1039"><vh>class StrExpr</vh>
+<v t="ekr.20220525082934.1040"><vh>StrExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1041"><vh>StrExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1042"><vh>class BytesExpr</vh>
+<v t="ekr.20220525082934.1043"><vh>BytesExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1044"><vh>BytesExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1045"><vh>class UnicodeExpr</vh>
+<v t="ekr.20220525082934.1046"><vh>UnicodeExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1047"><vh>UnicodeExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1048"><vh>class FloatExpr</vh>
+<v t="ekr.20220525082934.1049"><vh>FloatExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1050"><vh>FloatExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1051"><vh>class ComplexExpr</vh>
+<v t="ekr.20220525082934.1052"><vh>ComplexExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1053"><vh>ComplexExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1054"><vh>class EllipsisExpr</vh></v>
+<v t="ekr.20220525082934.1055"><vh>class StarExpr</vh>
+<v t="ekr.20220525082934.1056"><vh>StarExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1057"><vh>StarExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1058"><vh>class RefExpr</vh>
+<v t="ekr.20220525082934.1059"><vh>RefExpr.__init__</vh></v>
+</v>
+<v t="ekr.20220525082934.1060"><vh>class NameExpr</vh>
+<v t="ekr.20220525082934.1061"><vh>NameExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1062"><vh>NameExpr.accept</vh></v>
+<v t="ekr.20220525082934.1063"><vh>NameExpr.serialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1064"><vh>class MemberExpr</vh>
+<v t="ekr.20220525082934.1065"><vh>MemberExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1066"><vh>MemberExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1067"><vh>class ArgKind</vh>
+<v t="ekr.20220525082934.1068"><vh>ArgKind.is_positional</vh></v>
+<v t="ekr.20220525082934.1069"><vh>ArgKind.is_named</vh></v>
+<v t="ekr.20220525082934.1070"><vh>ArgKind.is_required</vh></v>
+<v t="ekr.20220525082934.1071"><vh>ArgKind.is_optional</vh></v>
+<v t="ekr.20220525082934.1072"><vh>ArgKind.is_star</vh></v>
+</v>
+<v t="ekr.20220525082934.1073"><vh>ARG_POS: Final = ArgKind.ARG_POS</vh></v>
+<v t="ekr.20220525082934.1074"><vh>class CallExpr</vh>
+<v t="ekr.20220525082934.1075"><vh>CallExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1076"><vh>CallExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1077"><vh>class YieldFromExpr</vh>
+<v t="ekr.20220525082934.1078"><vh>YieldFromExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1079"><vh>YieldFromExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1080"><vh>class YieldExpr</vh>
+<v t="ekr.20220525082934.1081"><vh>YieldExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1082"><vh>YieldExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1083"><vh>class IndexExpr</vh>
+<v t="ekr.20220525082934.1084"><vh>IndexExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1085"><vh>IndexExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1086"><vh>class UnaryExpr</vh>
+<v t="ekr.20220525082934.1087"><vh>UnaryExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1088"><vh>UnaryExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1089"><vh>class AssignmentExpr</vh>
+<v t="ekr.20220525082934.1090"><vh>AssignmentExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1091"><vh>AssignmentExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1092"><vh>class OpExpr</vh>
+<v t="ekr.20220525082934.1093"><vh>OpExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1094"><vh>OpExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1095"><vh>class ComparisonExpr</vh>
+<v t="ekr.20220525082934.1096"><vh>ComparisonExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1097"><vh>ComparisonExpr.pairwise</vh></v>
+<v t="ekr.20220525082934.1098"><vh>ComparisonExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1099"><vh>class SliceExpr</vh>
+<v t="ekr.20220525082934.1100"><vh>SliceExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1101"><vh>SliceExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1102"><vh>class CastExpr</vh>
+<v t="ekr.20220525082934.1103"><vh>CastExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1104"><vh>CastExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1105"><vh>class AssertTypeExpr</vh>
+<v t="ekr.20220525082934.1106"><vh>AssertTypeExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1107"><vh>AssertTypeExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1108"><vh>class RevealExpr</vh>
+<v t="ekr.20220525082934.1109"><vh>RevealExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1110"><vh>RevealExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1111"><vh>class SuperExpr</vh>
+<v t="ekr.20220525082934.1112"><vh>SuperExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1113"><vh>SuperExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1114"><vh>class LambdaExpr</vh>
+<v t="ekr.20220525082934.1115"><vh>LambdaExpr.name</vh></v>
+<v t="ekr.20220525082934.1116"><vh>LambdaExpr.expr</vh></v>
+<v t="ekr.20220525082934.1117"><vh>LambdaExpr.accept</vh></v>
+<v t="ekr.20220525082934.1118"><vh>LambdaExpr.is_dynamic</vh></v>
+</v>
+<v t="ekr.20220525082934.1119"><vh>class ListExpr</vh>
+<v t="ekr.20220525082934.1120"><vh>ListExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1121"><vh>ListExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1122"><vh>class DictExpr</vh>
+<v t="ekr.20220525082934.1123"><vh>DictExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1124"><vh>DictExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1125"><vh>class TupleExpr</vh>
+<v t="ekr.20220525082934.1126"><vh>TupleExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1127"><vh>TupleExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1128"><vh>class SetExpr</vh>
+<v t="ekr.20220525082934.1129"><vh>SetExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1130"><vh>SetExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1131"><vh>class GeneratorExpr</vh>
+<v t="ekr.20220525082934.1132"><vh>GeneratorExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1133"><vh>GeneratorExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1134"><vh>class ListComprehension</vh>
+<v t="ekr.20220525082934.1135"><vh>ListComprehension.__init__</vh></v>
+<v t="ekr.20220525082934.1136"><vh>ListComprehension.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1137"><vh>class SetComprehension</vh>
+<v t="ekr.20220525082934.1138"><vh>SetComprehension.__init__</vh></v>
+<v t="ekr.20220525082934.1139"><vh>SetComprehension.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1140"><vh>class DictionaryComprehension</vh>
+<v t="ekr.20220525082934.1141"><vh>DictionaryComprehension.__init__</vh></v>
+<v t="ekr.20220525082934.1142"><vh>DictionaryComprehension.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1143"><vh>class ConditionalExpr</vh>
+<v t="ekr.20220525082934.1144"><vh>ConditionalExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1145"><vh>ConditionalExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1146"><vh>class BackquoteExpr</vh>
+<v t="ekr.20220525082934.1147"><vh>BackquoteExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1148"><vh>BackquoteExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1149"><vh>class TypeApplication</vh>
+<v t="ekr.20220525082934.1150"><vh>TypeApplication.__init__</vh></v>
+<v t="ekr.20220525082934.1151"><vh>TypeApplication.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1152"><vh>Variance of a type variable. For example, T in the definition of</vh></v>
+<v t="ekr.20220525082934.1153"><vh>class TypeVarLikeExpr</vh>
+<v t="ekr.20220525082934.1154"><vh>TypeVarLikeExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1155"><vh>TypeVarLikeExpr.name</vh></v>
+<v t="ekr.20220525082934.1156"><vh>TypeVarLikeExpr.fullname</vh></v>
+</v>
+<v t="ekr.20220525082934.1157"><vh>class TypeVarExpr</vh>
+<v t="ekr.20220525082934.1158"><vh>TypeVarExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1159"><vh>TypeVarExpr.accept</vh></v>
+<v t="ekr.20220525082934.1160"><vh>TypeVarExpr.serialize</vh></v>
+<v t="ekr.20220525082934.1161"><vh>TypeVarExpr.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1162"><vh>class ParamSpecExpr</vh>
+<v t="ekr.20220525082934.1163"><vh>ParamSpecExpr.accept</vh></v>
+<v t="ekr.20220525082934.1164"><vh>ParamSpecExpr.serialize</vh></v>
+<v t="ekr.20220525082934.1165"><vh>ParamSpecExpr.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1166"><vh>class TypeVarTupleExpr</vh>
+<v t="ekr.20220525082934.1167"><vh>TypeVarTupleExpr.accept</vh></v>
+<v t="ekr.20220525082934.1168"><vh>TypeVarTupleExpr.serialize</vh></v>
+<v t="ekr.20220525082934.1169"><vh>TypeVarTupleExpr.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1170"><vh>class TypeAliasExpr</vh>
+<v t="ekr.20220525082934.1171"><vh>TypeAliasExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1172"><vh>TypeAliasExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1173"><vh>class NamedTupleExpr</vh>
+<v t="ekr.20220525082934.1174"><vh>NamedTupleExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1175"><vh>NamedTupleExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1176"><vh>class TypedDictExpr</vh>
+<v t="ekr.20220525082934.1177"><vh>TypedDictExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1178"><vh>TypedDictExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1179"><vh>class EnumCallExpr</vh>
+<v t="ekr.20220525082934.1180"><vh>EnumCallExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1181"><vh>EnumCallExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1182"><vh>class PromoteExpr</vh>
+<v t="ekr.20220525082934.1183"><vh>PromoteExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1184"><vh>PromoteExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1185"><vh>class NewTypeExpr</vh>
+<v t="ekr.20220525082934.1186"><vh>NewTypeExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1187"><vh>NewTypeExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1188"><vh>class AwaitExpr</vh>
+<v t="ekr.20220525082934.1189"><vh>AwaitExpr.__init__</vh></v>
+<v t="ekr.20220525082934.1190"><vh>AwaitExpr.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1191"><vh>Constants</vh></v>
+<v t="ekr.20220525082934.1192"><vh>class TempNode</vh>
+<v t="ekr.20220525082934.1193"><vh>TempNode.__init__</vh></v>
+<v t="ekr.20220525082934.1194"><vh>TempNode.__repr__</vh></v>
+<v t="ekr.20220525082934.1195"><vh>TempNode.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1196"><vh>class TypeInfo</vh>
+<v t="ekr.20220525082934.1197"><vh>TypeInfo.__init__</vh></v>
+<v t="ekr.20220525082934.1198"><vh>TypeInfo.add_type_vars</vh></v>
+<v t="ekr.20220525082934.1199"><vh>TypeInfo.name</vh></v>
+<v t="ekr.20220525082934.1200"><vh>TypeInfo.fullname</vh></v>
+<v t="ekr.20220525082934.1201"><vh>TypeInfo.is_generic</vh></v>
+<v t="ekr.20220525082934.1202"><vh>TypeInfo.get</vh></v>
+<v t="ekr.20220525082934.1203"><vh>TypeInfo.get_containing_type_info</vh></v>
+<v t="ekr.20220525082934.1204"><vh>TypeInfo.protocol_members</vh></v>
+<v t="ekr.20220525082934.1205"><vh>TypeInfo.__getitem__</vh></v>
+<v t="ekr.20220525082934.1206"><vh>TypeInfo.__repr__</vh></v>
+<v t="ekr.20220525082934.1207"><vh>TypeInfo.__bool__</vh></v>
+<v t="ekr.20220525082934.1208"><vh>TypeInfo.has_readable_member</vh></v>
+<v t="ekr.20220525082934.1209"><vh>TypeInfo.get_method</vh></v>
+<v t="ekr.20220525082934.1210"><vh>TypeInfo.calculate_metaclass_type</vh></v>
+<v t="ekr.20220525082934.1211"><vh>TypeInfo.is_metaclass</vh></v>
+<v t="ekr.20220525082934.1212"><vh>TypeInfo.has_base</vh></v>
+<v t="ekr.20220525082934.1213"><vh>TypeInfo.direct_base_classes</vh></v>
+<v t="ekr.20220525082934.1214"><vh>TypeInfo.__str__</vh></v>
+<v t="ekr.20220525082934.1215"><vh>TypeInfo.dump</vh></v>
+<v t="ekr.20220525082934.1216"><vh>TypeInfo.serialize</vh></v>
+<v t="ekr.20220525082934.1217"><vh>TypeInfo.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1218"><vh>class FakeInfo</vh>
+<v t="ekr.20220525082934.1219"><vh>FakeInfo.__init__</vh></v>
+<v t="ekr.20220525082934.1220"><vh>FakeInfo.__getattribute__</vh></v>
+</v>
+<v t="ekr.20220525082934.1221"><vh>VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")</vh></v>
+<v t="ekr.20220525082934.1222"><vh>class TypeAlias</vh>
+<v t="ekr.20220525082934.1223"><vh>TypeAlias.__init__</vh></v>
+<v t="ekr.20220525082934.1224"><vh>TypeAlias.name</vh></v>
+<v t="ekr.20220525082934.1225"><vh>TypeAlias.fullname</vh></v>
+<v t="ekr.20220525082934.1226"><vh>TypeAlias.serialize</vh></v>
+<v t="ekr.20220525082934.1227"><vh>TypeAlias.accept</vh></v>
+<v t="ekr.20220525082934.1228"><vh>TypeAlias.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1229"><vh>class PlaceholderNode</vh>
+<v t="ekr.20220525082934.1230"><vh>PlaceholderNode.__init__</vh></v>
+<v t="ekr.20220525082934.1231"><vh>PlaceholderNode.name</vh></v>
+<v t="ekr.20220525082934.1232"><vh>PlaceholderNode.fullname</vh></v>
+<v t="ekr.20220525082934.1233"><vh>PlaceholderNode.serialize</vh></v>
+<v t="ekr.20220525082934.1234"><vh>PlaceholderNode.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1235"><vh>class SymbolTableNode</vh>
+<v t="ekr.20220525082934.1236"><vh>SymbolTableNode.__init__</vh></v>
+<v t="ekr.20220525082934.1237"><vh>SymbolTableNode.fullname</vh></v>
+<v t="ekr.20220525082934.1238"><vh>SymbolTableNode.type</vh></v>
+<v t="ekr.20220525082934.1239"><vh>SymbolTableNode.copy</vh></v>
+<v t="ekr.20220525082934.1240"><vh>SymbolTableNode.__str__</vh></v>
+<v t="ekr.20220525082934.1241"><vh>SymbolTableNode.serialize</vh></v>
+<v t="ekr.20220525082934.1242"><vh>SymbolTableNode.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1243"><vh>class SymbolTable</vh>
+<v t="ekr.20220525082934.1244"><vh>SymbolTable.__str__</vh></v>
+<v t="ekr.20220525082934.1245"><vh>SymbolTable.copy</vh></v>
+<v t="ekr.20220525082934.1246"><vh>SymbolTable.serialize</vh></v>
+<v t="ekr.20220525082934.1247"><vh>SymbolTable.deserialize</vh></v>
+</v>
+<v t="ekr.20220525082934.1248"><vh>get_flags</vh></v>
+<v t="ekr.20220525082934.1249"><vh>set_flags</vh></v>
+<v t="ekr.20220525082934.1250"><vh>get_member_expr_fullname</vh></v>
+<v t="ekr.20220525082934.1251"><vh>deserialize_map: Final = {</vh></v>
+<v t="ekr.20220525082934.1252"><vh>check_arg_kinds</vh></v>
+<v t="ekr.20220525082934.1253"><vh>check_arg_names</vh></v>
+<v t="ekr.20220525082934.1254"><vh>is_class_var</vh></v>
+<v t="ekr.20220525082934.1255"><vh>is_final_node</vh></v>
+<v t="ekr.20220525082934.1256"><vh>local_definitions</vh></v>
+</v>
+<v t="ekr.20220525082934.1273"><vh>@clean patterns.py</vh>
+<v t="ekr.20220525082934.1274"><vh>class Pattern</vh>
+<v t="ekr.20220525082934.1275"><vh>Pattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1276"><vh>class AsPattern</vh>
+<v t="ekr.20220525082934.1277"><vh>AsPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1278"><vh>AsPattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1279"><vh>class OrPattern</vh>
+<v t="ekr.20220525082934.1280"><vh>OrPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1281"><vh>OrPattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1282"><vh>class ValuePattern</vh>
+<v t="ekr.20220525082934.1283"><vh>ValuePattern.__init__</vh></v>
+<v t="ekr.20220525082934.1284"><vh>ValuePattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1285"><vh>class SingletonPattern</vh>
+<v t="ekr.20220525082934.1286"><vh>SingletonPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1287"><vh>SingletonPattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1288"><vh>class SequencePattern</vh>
+<v t="ekr.20220525082934.1289"><vh>SequencePattern.__init__</vh></v>
+<v t="ekr.20220525082934.1290"><vh>SequencePattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1291"><vh>class StarredPattern</vh>
+<v t="ekr.20220525082934.1292"><vh>StarredPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1293"><vh>StarredPattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1294"><vh>class MappingPattern</vh>
+<v t="ekr.20220525082934.1295"><vh>MappingPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1296"><vh>MappingPattern.accept</vh></v>
+</v>
+<v t="ekr.20220525082934.1297"><vh>class ClassPattern</vh>
+<v t="ekr.20220525082934.1298"><vh>ClassPattern.__init__</vh></v>
+<v t="ekr.20220525082934.1299"><vh>ClassPattern.accept</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.1404"><vh>@clean renaming.py</vh>
+<v t="ekr.20220525082934.1405"><vh>class VariableRenameVisitor</vh>
+<v t="ekr.20220525082934.1406"><vh>VariableRenameVisitor.__init__</vh></v>
+<v t="ekr.20220525082934.1407"><vh>VariableRenameVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20220525082934.1408"><vh>VariableRenameVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082934.1409"><vh>VariableRenameVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082934.1410"><vh>VariableRenameVisitor.visit_block</vh></v>
+<v t="ekr.20220525082934.1411"><vh>VariableRenameVisitor.visit_while_stmt</vh></v>
+<v t="ekr.20220525082934.1412"><vh>VariableRenameVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082934.1413"><vh>VariableRenameVisitor.visit_break_stmt</vh></v>
+<v t="ekr.20220525082934.1414"><vh>VariableRenameVisitor.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082934.1415"><vh>VariableRenameVisitor.visit_try_stmt</vh></v>
+<v t="ekr.20220525082934.1416"><vh>VariableRenameVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082934.1417"><vh>VariableRenameVisitor.visit_import</vh></v>
+<v t="ekr.20220525082934.1418"><vh>VariableRenameVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082934.1419"><vh>VariableRenameVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082934.1420"><vh>VariableRenameVisitor.visit_match_stmt</vh></v>
+<v t="ekr.20220525082934.1421"><vh>VariableRenameVisitor.visit_capture_pattern</vh></v>
+<v t="ekr.20220525082934.1422"><vh>VariableRenameVisitor.analyze_lvalue</vh></v>
+<v t="ekr.20220525082934.1423"><vh>VariableRenameVisitor.visit_name_expr</vh></v>
+<v t="ekr.20220525082934.1424"><vh>VariableRenameVisitor.Helpers for renaming references</vh></v>
+<v t="ekr.20220525082934.1425"><vh>VariableRenameVisitor.handle_arg</vh></v>
+<v t="ekr.20220525082934.1426"><vh>VariableRenameVisitor.handle_def</vh></v>
+<v t="ekr.20220525082934.1427"><vh>VariableRenameVisitor.handle_refine</vh></v>
+<v t="ekr.20220525082934.1428"><vh>VariableRenameVisitor.handle_ref</vh></v>
+<v t="ekr.20220525082934.1429"><vh>VariableRenameVisitor.flush_refs</vh></v>
+<v t="ekr.20220525082934.1430"><vh>VariableRenameVisitor.Helpers for determining which assignments define new variables</vh></v>
+<v t="ekr.20220525082934.1431"><vh>VariableRenameVisitor.clear</vh></v>
+<v t="ekr.20220525082934.1432"><vh>VariableRenameVisitor.enter_block</vh></v>
+<v t="ekr.20220525082934.1433"><vh>VariableRenameVisitor.enter_try</vh></v>
+<v t="ekr.20220525082934.1434"><vh>VariableRenameVisitor.enter_loop</vh></v>
+<v t="ekr.20220525082934.1435"><vh>VariableRenameVisitor.current_block</vh></v>
+<v t="ekr.20220525082934.1436"><vh>VariableRenameVisitor.enter_scope</vh></v>
+<v t="ekr.20220525082934.1437"><vh>VariableRenameVisitor.is_nested</vh></v>
+<v t="ekr.20220525082934.1438"><vh>VariableRenameVisitor.reject_redefinition_of_vars_in_scope</vh></v>
+<v t="ekr.20220525082934.1439"><vh>VariableRenameVisitor.reject_redefinition_of_vars_in_loop</vh></v>
+<v t="ekr.20220525082934.1440"><vh>VariableRenameVisitor.record_assignment</vh></v>
+</v>
+<v t="ekr.20220525082934.1441"><vh>class LimitedVariableRenameVisitor</vh>
+<v t="ekr.20220525082934.1442"><vh>LimitedVariableRenameVisitor.__init__</vh></v>
+<v t="ekr.20220525082934.1443"><vh>LimitedVariableRenameVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20220525082934.1444"><vh>LimitedVariableRenameVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082934.1445"><vh>LimitedVariableRenameVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082934.1446"><vh>LimitedVariableRenameVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082934.1447"><vh>LimitedVariableRenameVisitor.analyze_lvalue</vh></v>
+<v t="ekr.20220525082934.1448"><vh>LimitedVariableRenameVisitor.visit_import</vh></v>
+<v t="ekr.20220525082934.1449"><vh>LimitedVariableRenameVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082934.1450"><vh>LimitedVariableRenameVisitor.visit_import_all</vh></v>
+<v t="ekr.20220525082934.1451"><vh>LimitedVariableRenameVisitor.visit_name_expr</vh></v>
+<v t="ekr.20220525082934.1452"><vh>LimitedVariableRenameVisitor.enter_scope</vh></v>
+<v t="ekr.20220525082934.1453"><vh>LimitedVariableRenameVisitor.reject_redefinition_of_vars_in_scope</vh></v>
+<v t="ekr.20220525082934.1454"><vh>LimitedVariableRenameVisitor.record_skipped</vh></v>
+<v t="ekr.20220525082934.1455"><vh>LimitedVariableRenameVisitor.flush_refs</vh></v>
+</v>
+<v t="ekr.20220525082934.1456"><vh>rename_refs</vh></v>
+</v>
+<v t="ekr.20220525082935.981"><vh>@clean traverser.py</vh>
+<v t="ekr.20220525082935.982"><vh>class TraverserVisitor</vh>
+<v t="ekr.20220525082935.983"><vh>TraverserVisitor.__init__</vh></v>
+<v t="ekr.20220525082935.984"><vh>TraverserVisitor.Visit methods</vh></v>
+<v t="ekr.20220525082935.985"><vh>TraverserVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20220525082935.986"><vh>TraverserVisitor.visit_block</vh></v>
+<v t="ekr.20220525082935.987"><vh>TraverserVisitor.visit_func</vh></v>
+<v t="ekr.20220525082935.988"><vh>TraverserVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082935.989"><vh>TraverserVisitor.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.990"><vh>TraverserVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082935.991"><vh>TraverserVisitor.visit_decorator</vh></v>
+<v t="ekr.20220525082935.992"><vh>TraverserVisitor.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082935.993"><vh>TraverserVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.994"><vh>TraverserVisitor.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.995"><vh>TraverserVisitor.visit_while_stmt</vh></v>
+<v t="ekr.20220525082935.996"><vh>TraverserVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082935.997"><vh>TraverserVisitor.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.998"><vh>TraverserVisitor.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082935.999"><vh>TraverserVisitor.visit_del_stmt</vh></v>
+<v t="ekr.20220525082935.1000"><vh>TraverserVisitor.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.1001"><vh>TraverserVisitor.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082935.1002"><vh>TraverserVisitor.visit_try_stmt</vh></v>
+<v t="ekr.20220525082935.1003"><vh>TraverserVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082935.1004"><vh>TraverserVisitor.visit_match_stmt</vh></v>
+<v t="ekr.20220525082935.1005"><vh>TraverserVisitor.visit_member_expr</vh></v>
+<v t="ekr.20220525082935.1006"><vh>TraverserVisitor.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082935.1007"><vh>TraverserVisitor.visit_yield_expr</vh></v>
+<v t="ekr.20220525082935.1008"><vh>TraverserVisitor.visit_call_expr</vh></v>
+<v t="ekr.20220525082935.1009"><vh>TraverserVisitor.visit_op_expr</vh></v>
+<v t="ekr.20220525082935.1010"><vh>TraverserVisitor.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082935.1011"><vh>TraverserVisitor.visit_slice_expr</vh></v>
+<v t="ekr.20220525082935.1012"><vh>TraverserVisitor.visit_cast_expr</vh></v>
+<v t="ekr.20220525082935.1013"><vh>TraverserVisitor.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082935.1014"><vh>TraverserVisitor.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082935.1015"><vh>TraverserVisitor.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082935.1016"><vh>TraverserVisitor.visit_unary_expr</vh></v>
+<v t="ekr.20220525082935.1017"><vh>TraverserVisitor.visit_list_expr</vh></v>
+<v t="ekr.20220525082935.1018"><vh>TraverserVisitor.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082935.1019"><vh>TraverserVisitor.visit_dict_expr</vh></v>
+<v t="ekr.20220525082935.1020"><vh>TraverserVisitor.visit_set_expr</vh></v>
+<v t="ekr.20220525082935.1021"><vh>TraverserVisitor.visit_index_expr</vh></v>
+<v t="ekr.20220525082935.1022"><vh>TraverserVisitor.visit_generator_expr</vh></v>
+<v t="ekr.20220525082935.1023"><vh>TraverserVisitor.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082935.1024"><vh>TraverserVisitor.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082935.1025"><vh>TraverserVisitor.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082935.1026"><vh>TraverserVisitor.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082935.1027"><vh>TraverserVisitor.visit_type_application</vh></v>
+<v t="ekr.20220525082935.1028"><vh>TraverserVisitor.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082935.1029"><vh>TraverserVisitor.visit_star_expr</vh></v>
+<v t="ekr.20220525082935.1030"><vh>TraverserVisitor.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082935.1031"><vh>TraverserVisitor.visit_await_expr</vh></v>
+<v t="ekr.20220525082935.1032"><vh>TraverserVisitor.visit_super_expr</vh></v>
+<v t="ekr.20220525082935.1033"><vh>TraverserVisitor.visit_as_pattern</vh></v>
+<v t="ekr.20220525082935.1034"><vh>TraverserVisitor.visit_or_pattern</vh></v>
+<v t="ekr.20220525082935.1035"><vh>TraverserVisitor.visit_value_pattern</vh></v>
+<v t="ekr.20220525082935.1036"><vh>TraverserVisitor.visit_sequence_pattern</vh></v>
+<v t="ekr.20220525082935.1037"><vh>TraverserVisitor.visit_starred_patten</vh></v>
+<v t="ekr.20220525082935.1038"><vh>TraverserVisitor.visit_mapping_pattern</vh></v>
+<v t="ekr.20220525082935.1039"><vh>TraverserVisitor.visit_class_pattern</vh></v>
+<v t="ekr.20220525082935.1040"><vh>TraverserVisitor.visit_import</vh></v>
+<v t="ekr.20220525082935.1041"><vh>TraverserVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082935.1042"><vh>TraverserVisitor.visit_print_stmt</vh></v>
+<v t="ekr.20220525082935.1043"><vh>TraverserVisitor.visit_exec_stmt</vh></v>
+</v>
+<v t="ekr.20220525082935.1044"><vh>class ReturnSeeker</vh>
+<v t="ekr.20220525082935.1045"><vh>ReturnSeeker.__init__</vh></v>
+<v t="ekr.20220525082935.1046"><vh>ReturnSeeker.visit_return_stmt</vh></v>
+</v>
+<v t="ekr.20220525082935.1047"><vh>has_return_statement</vh></v>
+<v t="ekr.20220525082935.1048"><vh>class FuncCollectorBase</vh>
+<v t="ekr.20220525082935.1049"><vh>FuncCollectorBase.__init__</vh></v>
+<v t="ekr.20220525082935.1050"><vh>FuncCollectorBase.visit_func_def</vh></v>
+</v>
+<v t="ekr.20220525082935.1051"><vh>class YieldSeeker</vh></v>
+<v t="ekr.20220525082935.1052"><vh>has_yield_expression</vh></v>
+<v t="ekr.20220525082935.1053"><vh>class ReturnCollector</vh></v>
+<v t="ekr.20220525082935.1054"><vh>all_return_statements</vh></v>
+<v t="ekr.20220525082935.1055"><vh>class YieldCollector</vh>
+<v t="ekr.20220525082935.1056"><vh>YieldCollector.__init__</vh></v>
+<v t="ekr.20220525082935.1057"><vh>YieldCollector.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.1058"><vh>YieldCollector.visit_yield_expr</vh></v>
+</v>
+<v t="ekr.20220525082935.1059"><vh>all_yield_expressions</vh></v>
+</v>
+<v t="ekr.20220525082935.1060"><vh>@clean treetransform.py</vh>
+<v t="ekr.20220525082935.1061"><vh>class TransformVisitor</vh>
+<v t="ekr.20220525082935.1062"><vh>TransformVisitor.__init__</vh></v>
+<v t="ekr.20220525082935.1063"><vh>TransformVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20220525082935.1064"><vh>TransformVisitor.visit_import</vh></v>
+<v t="ekr.20220525082935.1065"><vh>TransformVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082935.1066"><vh>TransformVisitor.visit_import_all</vh></v>
+<v t="ekr.20220525082935.1067"><vh>TransformVisitor.copy_argument</vh></v>
+<v t="ekr.20220525082935.1068"><vh>TransformVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082935.1069"><vh>TransformVisitor.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082935.1070"><vh>TransformVisitor.copy_function_attributes</vh></v>
+<v t="ekr.20220525082935.1071"><vh>TransformVisitor.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082935.1072"><vh>TransformVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082935.1073"><vh>TransformVisitor.visit_global_decl</vh></v>
+<v t="ekr.20220525082935.1074"><vh>TransformVisitor.visit_nonlocal_decl</vh></v>
+<v t="ekr.20220525082935.1075"><vh>TransformVisitor.visit_block</vh></v>
+<v t="ekr.20220525082935.1076"><vh>TransformVisitor.visit_decorator</vh></v>
+<v t="ekr.20220525082935.1077"><vh>TransformVisitor.visit_var</vh></v>
+<v t="ekr.20220525082935.1078"><vh>TransformVisitor.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082935.1079"><vh>TransformVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.1080"><vh>TransformVisitor.duplicate_assignment</vh></v>
+<v t="ekr.20220525082935.1081"><vh>TransformVisitor.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082935.1082"><vh>TransformVisitor.visit_while_stmt</vh></v>
+<v t="ekr.20220525082935.1083"><vh>TransformVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082935.1084"><vh>TransformVisitor.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.1085"><vh>TransformVisitor.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082935.1086"><vh>TransformVisitor.visit_del_stmt</vh></v>
+<v t="ekr.20220525082935.1087"><vh>TransformVisitor.visit_if_stmt</vh></v>
+<v t="ekr.20220525082935.1088"><vh>TransformVisitor.visit_break_stmt</vh></v>
+<v t="ekr.20220525082935.1089"><vh>TransformVisitor.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082935.1090"><vh>TransformVisitor.visit_pass_stmt</vh></v>
+<v t="ekr.20220525082935.1091"><vh>TransformVisitor.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082935.1092"><vh>TransformVisitor.visit_try_stmt</vh></v>
+<v t="ekr.20220525082935.1093"><vh>TransformVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082935.1094"><vh>TransformVisitor.visit_print_stmt</vh></v>
+<v t="ekr.20220525082935.1095"><vh>TransformVisitor.visit_exec_stmt</vh></v>
+<v t="ekr.20220525082935.1096"><vh>TransformVisitor.visit_star_expr</vh></v>
+<v t="ekr.20220525082935.1097"><vh>TransformVisitor.visit_int_expr</vh></v>
+<v t="ekr.20220525082935.1098"><vh>TransformVisitor.visit_str_expr</vh></v>
+<v t="ekr.20220525082935.1099"><vh>TransformVisitor.visit_bytes_expr</vh></v>
+<v t="ekr.20220525082935.1100"><vh>TransformVisitor.visit_unicode_expr</vh></v>
+<v t="ekr.20220525082935.1101"><vh>TransformVisitor.visit_float_expr</vh></v>
+<v t="ekr.20220525082935.1102"><vh>TransformVisitor.visit_complex_expr</vh></v>
+<v t="ekr.20220525082935.1103"><vh>TransformVisitor.visit_ellipsis</vh></v>
+<v t="ekr.20220525082935.1104"><vh>TransformVisitor.visit_name_expr</vh></v>
+<v t="ekr.20220525082935.1105"><vh>TransformVisitor.duplicate_name</vh></v>
+<v t="ekr.20220525082935.1106"><vh>TransformVisitor.visit_member_expr</vh></v>
+<v t="ekr.20220525082935.1107"><vh>TransformVisitor.copy_ref</vh></v>
+<v t="ekr.20220525082935.1108"><vh>TransformVisitor.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082935.1109"><vh>TransformVisitor.visit_yield_expr</vh></v>
+<v t="ekr.20220525082935.1110"><vh>TransformVisitor.visit_await_expr</vh></v>
+<v t="ekr.20220525082935.1111"><vh>TransformVisitor.visit_call_expr</vh></v>
+<v t="ekr.20220525082935.1112"><vh>TransformVisitor.visit_op_expr</vh></v>
+<v t="ekr.20220525082935.1113"><vh>TransformVisitor.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082935.1114"><vh>TransformVisitor.visit_cast_expr</vh></v>
+<v t="ekr.20220525082935.1115"><vh>TransformVisitor.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082935.1116"><vh>TransformVisitor.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082935.1117"><vh>TransformVisitor.visit_super_expr</vh></v>
+<v t="ekr.20220525082935.1118"><vh>TransformVisitor.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082935.1119"><vh>TransformVisitor.visit_unary_expr</vh></v>
+<v t="ekr.20220525082935.1120"><vh>TransformVisitor.visit_list_expr</vh></v>
+<v t="ekr.20220525082935.1121"><vh>TransformVisitor.visit_dict_expr</vh></v>
+<v t="ekr.20220525082935.1122"><vh>TransformVisitor.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082935.1123"><vh>TransformVisitor.visit_set_expr</vh></v>
+<v t="ekr.20220525082935.1124"><vh>TransformVisitor.visit_index_expr</vh></v>
+<v t="ekr.20220525082935.1125"><vh>TransformVisitor.visit_type_application</vh></v>
+<v t="ekr.20220525082935.1126"><vh>TransformVisitor.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082935.1127"><vh>TransformVisitor.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082935.1128"><vh>TransformVisitor.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082935.1129"><vh>TransformVisitor.visit_generator_expr</vh></v>
+<v t="ekr.20220525082935.1130"><vh>TransformVisitor.duplicate_generator</vh></v>
+<v t="ekr.20220525082935.1131"><vh>TransformVisitor.visit_slice_expr</vh></v>
+<v t="ekr.20220525082935.1132"><vh>TransformVisitor.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082935.1133"><vh>TransformVisitor.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082935.1134"><vh>TransformVisitor.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082935.1135"><vh>TransformVisitor.visit_paramspec_expr</vh></v>
+<v t="ekr.20220525082935.1136"><vh>TransformVisitor.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20220525082935.1137"><vh>TransformVisitor.visit_type_alias_expr</vh></v>
+<v t="ekr.20220525082935.1138"><vh>TransformVisitor.visit_newtype_expr</vh></v>
+<v t="ekr.20220525082935.1139"><vh>TransformVisitor.visit_namedtuple_expr</vh></v>
+<v t="ekr.20220525082935.1140"><vh>TransformVisitor.visit_enum_call_expr</vh></v>
+<v t="ekr.20220525082935.1141"><vh>TransformVisitor.visit_typeddict_expr</vh></v>
+<v t="ekr.20220525082935.1142"><vh>TransformVisitor.visit__promote_expr</vh></v>
+<v t="ekr.20220525082935.1143"><vh>TransformVisitor.visit_temp_node</vh></v>
+<v t="ekr.20220525082935.1144"><vh>TransformVisitor.node</vh></v>
+<v t="ekr.20220525082935.1145"><vh>TransformVisitor.mypyfile</vh></v>
+<v t="ekr.20220525082935.1146"><vh>TransformVisitor.expr</vh></v>
+<v t="ekr.20220525082935.1147"><vh>TransformVisitor.stmt</vh></v>
+<v t="ekr.20220525082935.1148"><vh>TransformVisitor.Helpers</vh></v>
+<v t="ekr.20220525082935.1149"><vh>TransformVisitor.optional_expr</vh></v>
+<v t="ekr.20220525082935.1150"><vh>TransformVisitor.block</vh></v>
+<v t="ekr.20220525082935.1151"><vh>TransformVisitor.optional_block</vh></v>
+<v t="ekr.20220525082935.1152"><vh>TransformVisitor.statements</vh></v>
+<v t="ekr.20220525082935.1153"><vh>TransformVisitor.expressions</vh></v>
+<v t="ekr.20220525082935.1154"><vh>TransformVisitor.optional_expressions</vh></v>
+<v t="ekr.20220525082935.1155"><vh>TransformVisitor.blocks</vh></v>
+<v t="ekr.20220525082935.1156"><vh>TransformVisitor.names</vh></v>
+<v t="ekr.20220525082935.1157"><vh>TransformVisitor.optional_names</vh></v>
+<v t="ekr.20220525082935.1158"><vh>TransformVisitor.type</vh></v>
+<v t="ekr.20220525082935.1159"><vh>TransformVisitor.optional_type</vh></v>
+<v t="ekr.20220525082935.1160"><vh>TransformVisitor.types</vh></v>
+</v>
+<v t="ekr.20220525082935.1161"><vh>class FuncMapInitializer</vh>
+<v t="ekr.20220525082935.1162"><vh>FuncMapInitializer.__init__</vh></v>
+<v t="ekr.20220525082935.1163"><vh>FuncMapInitializer.visit_func_def</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082936.4"><vh>@clean type_visitor.py</vh>
+<v t="ekr.20220525082936.5"><vh>class TypeVisitor</vh>
+<v t="ekr.20220525082936.6"><vh>TypeVisitor.visit_unbound_type</vh></v>
+<v t="ekr.20220525082936.7"><vh>TypeVisitor.visit_any</vh></v>
+<v t="ekr.20220525082936.8"><vh>TypeVisitor.visit_none_type</vh></v>
+<v t="ekr.20220525082936.9"><vh>TypeVisitor.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082936.10"><vh>TypeVisitor.visit_erased_type</vh></v>
+<v t="ekr.20220525082936.11"><vh>TypeVisitor.visit_deleted_type</vh></v>
+<v t="ekr.20220525082936.12"><vh>TypeVisitor.visit_type_var</vh></v>
+<v t="ekr.20220525082936.13"><vh>TypeVisitor.visit_param_spec</vh></v>
+<v t="ekr.20220525082936.14"><vh>TypeVisitor.visit_parameters</vh></v>
+<v t="ekr.20220525082936.15"><vh>TypeVisitor.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082936.16"><vh>TypeVisitor.visit_instance</vh></v>
+<v t="ekr.20220525082936.17"><vh>TypeVisitor.visit_callable_type</vh></v>
+<v t="ekr.20220525082936.18"><vh>TypeVisitor.visit_overloaded</vh></v>
+<v t="ekr.20220525082936.19"><vh>TypeVisitor.visit_tuple_type</vh></v>
+<v t="ekr.20220525082936.20"><vh>TypeVisitor.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082936.21"><vh>TypeVisitor.visit_literal_type</vh></v>
+<v t="ekr.20220525082936.22"><vh>TypeVisitor.visit_union_type</vh></v>
+<v t="ekr.20220525082936.23"><vh>TypeVisitor.visit_partial_type</vh></v>
+<v t="ekr.20220525082936.24"><vh>TypeVisitor.visit_type_type</vh></v>
+<v t="ekr.20220525082936.25"><vh>TypeVisitor.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082936.26"><vh>TypeVisitor.visit_unpack_type</vh></v>
+</v>
+<v t="ekr.20220525082936.27"><vh>class SyntheticTypeVisitor</vh>
+<v t="ekr.20220525082936.28"><vh>SyntheticTypeVisitor.visit_star_type</vh></v>
+<v t="ekr.20220525082936.29"><vh>SyntheticTypeVisitor.visit_type_list</vh></v>
+<v t="ekr.20220525082936.30"><vh>SyntheticTypeVisitor.visit_callable_argument</vh></v>
+<v t="ekr.20220525082936.31"><vh>SyntheticTypeVisitor.visit_ellipsis_type</vh></v>
+<v t="ekr.20220525082936.32"><vh>SyntheticTypeVisitor.visit_raw_expression_type</vh></v>
+<v t="ekr.20220525082936.33"><vh>SyntheticTypeVisitor.visit_placeholder_type</vh></v>
+</v>
+<v t="ekr.20220525082936.34"><vh>class TypeTranslator</vh>
+<v t="ekr.20220525082936.35"><vh>TypeTranslator.visit_unbound_type</vh></v>
+<v t="ekr.20220525082936.36"><vh>TypeTranslator.visit_any</vh></v>
+<v t="ekr.20220525082936.37"><vh>TypeTranslator.visit_none_type</vh></v>
+<v t="ekr.20220525082936.38"><vh>TypeTranslator.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082936.39"><vh>TypeTranslator.visit_erased_type</vh></v>
+<v t="ekr.20220525082936.40"><vh>TypeTranslator.visit_deleted_type</vh></v>
+<v t="ekr.20220525082936.41"><vh>TypeTranslator.visit_instance</vh></v>
+<v t="ekr.20220525082936.42"><vh>TypeTranslator.visit_type_var</vh></v>
+<v t="ekr.20220525082936.43"><vh>TypeTranslator.visit_param_spec</vh></v>
+<v t="ekr.20220525082936.44"><vh>TypeTranslator.visit_parameters</vh></v>
+<v t="ekr.20220525082936.45"><vh>TypeTranslator.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082936.46"><vh>TypeTranslator.visit_partial_type</vh></v>
+<v t="ekr.20220525082936.47"><vh>TypeTranslator.visit_unpack_type</vh></v>
+<v t="ekr.20220525082936.48"><vh>TypeTranslator.visit_callable_type</vh></v>
+<v t="ekr.20220525082936.49"><vh>TypeTranslator.visit_tuple_type</vh></v>
+<v t="ekr.20220525082936.50"><vh>TypeTranslator.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082936.51"><vh>TypeTranslator.visit_literal_type</vh></v>
+<v t="ekr.20220525082936.52"><vh>TypeTranslator.visit_union_type</vh></v>
+<v t="ekr.20220525082936.53"><vh>TypeTranslator.translate_types</vh></v>
+<v t="ekr.20220525082936.54"><vh>TypeTranslator.translate_variables</vh></v>
+<v t="ekr.20220525082936.55"><vh>TypeTranslator.visit_overloaded</vh></v>
+<v t="ekr.20220525082936.56"><vh>TypeTranslator.visit_type_type</vh></v>
+<v t="ekr.20220525082936.57"><vh>TypeTranslator.visit_type_alias_type</vh></v>
+</v>
+<v t="ekr.20220525082936.58"><vh>class TypeQuery</vh>
+<v t="ekr.20220525082936.59"><vh>TypeQuery.__init__</vh></v>
+<v t="ekr.20220525082936.60"><vh>TypeQuery.visit_unbound_type</vh></v>
+<v t="ekr.20220525082936.61"><vh>TypeQuery.visit_type_list</vh></v>
+<v t="ekr.20220525082936.62"><vh>TypeQuery.visit_callable_argument</vh></v>
+<v t="ekr.20220525082936.63"><vh>TypeQuery.visit_any</vh></v>
+<v t="ekr.20220525082936.64"><vh>TypeQuery.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082936.65"><vh>TypeQuery.visit_none_type</vh></v>
+<v t="ekr.20220525082936.66"><vh>TypeQuery.visit_erased_type</vh></v>
+<v t="ekr.20220525082936.67"><vh>TypeQuery.visit_deleted_type</vh></v>
+<v t="ekr.20220525082936.68"><vh>TypeQuery.visit_type_var</vh></v>
+<v t="ekr.20220525082936.69"><vh>TypeQuery.visit_param_spec</vh></v>
+<v t="ekr.20220525082936.70"><vh>TypeQuery.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082936.71"><vh>TypeQuery.visit_unpack_type</vh></v>
+<v t="ekr.20220525082936.72"><vh>TypeQuery.visit_parameters</vh></v>
+<v t="ekr.20220525082936.73"><vh>TypeQuery.visit_partial_type</vh></v>
+<v t="ekr.20220525082936.74"><vh>TypeQuery.visit_instance</vh></v>
+<v t="ekr.20220525082936.75"><vh>TypeQuery.visit_callable_type</vh></v>
+<v t="ekr.20220525082936.76"><vh>TypeQuery.visit_tuple_type</vh></v>
+<v t="ekr.20220525082936.77"><vh>TypeQuery.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082936.78"><vh>TypeQuery.visit_raw_expression_type</vh></v>
+<v t="ekr.20220525082936.79"><vh>TypeQuery.visit_literal_type</vh></v>
+<v t="ekr.20220525082936.80"><vh>TypeQuery.visit_star_type</vh></v>
+<v t="ekr.20220525082936.81"><vh>TypeQuery.visit_union_type</vh></v>
+<v t="ekr.20220525082936.82"><vh>TypeQuery.visit_overloaded</vh></v>
+<v t="ekr.20220525082936.83"><vh>TypeQuery.visit_type_type</vh></v>
+<v t="ekr.20220525082936.84"><vh>TypeQuery.visit_ellipsis_type</vh></v>
+<v t="ekr.20220525082936.85"><vh>TypeQuery.visit_placeholder_type</vh></v>
+<v t="ekr.20220525082936.86"><vh>TypeQuery.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082936.87"><vh>TypeQuery.query_types</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082936.143"><vh>@clean visitor.py</vh>
+<v t="ekr.20220525082936.144"><vh>class ExpressionVisitor</vh>
+<v t="ekr.20220525082936.145"><vh>ExpressionVisitor.visit_int_expr</vh></v>
+<v t="ekr.20220525082936.146"><vh>ExpressionVisitor.visit_str_expr</vh></v>
+<v t="ekr.20220525082936.147"><vh>ExpressionVisitor.visit_bytes_expr</vh></v>
+<v t="ekr.20220525082936.148"><vh>ExpressionVisitor.visit_unicode_expr</vh></v>
+<v t="ekr.20220525082936.149"><vh>ExpressionVisitor.visit_float_expr</vh></v>
+<v t="ekr.20220525082936.150"><vh>ExpressionVisitor.visit_complex_expr</vh></v>
+<v t="ekr.20220525082936.151"><vh>ExpressionVisitor.visit_ellipsis</vh></v>
+<v t="ekr.20220525082936.152"><vh>ExpressionVisitor.visit_star_expr</vh></v>
+<v t="ekr.20220525082936.153"><vh>ExpressionVisitor.visit_name_expr</vh></v>
+<v t="ekr.20220525082936.154"><vh>ExpressionVisitor.visit_member_expr</vh></v>
+<v t="ekr.20220525082936.155"><vh>ExpressionVisitor.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082936.156"><vh>ExpressionVisitor.visit_yield_expr</vh></v>
+<v t="ekr.20220525082936.157"><vh>ExpressionVisitor.visit_call_expr</vh></v>
+<v t="ekr.20220525082936.158"><vh>ExpressionVisitor.visit_op_expr</vh></v>
+<v t="ekr.20220525082936.159"><vh>ExpressionVisitor.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082936.160"><vh>ExpressionVisitor.visit_cast_expr</vh></v>
+<v t="ekr.20220525082936.161"><vh>ExpressionVisitor.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082936.162"><vh>ExpressionVisitor.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082936.163"><vh>ExpressionVisitor.visit_super_expr</vh></v>
+<v t="ekr.20220525082936.164"><vh>ExpressionVisitor.visit_unary_expr</vh></v>
+<v t="ekr.20220525082936.165"><vh>ExpressionVisitor.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082936.166"><vh>ExpressionVisitor.visit_list_expr</vh></v>
+<v t="ekr.20220525082936.167"><vh>ExpressionVisitor.visit_dict_expr</vh></v>
+<v t="ekr.20220525082936.168"><vh>ExpressionVisitor.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082936.169"><vh>ExpressionVisitor.visit_set_expr</vh></v>
+<v t="ekr.20220525082936.170"><vh>ExpressionVisitor.visit_index_expr</vh></v>
+<v t="ekr.20220525082936.171"><vh>ExpressionVisitor.visit_type_application</vh></v>
+<v t="ekr.20220525082936.172"><vh>ExpressionVisitor.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082936.173"><vh>ExpressionVisitor.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082936.174"><vh>ExpressionVisitor.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082936.175"><vh>ExpressionVisitor.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082936.176"><vh>ExpressionVisitor.visit_generator_expr</vh></v>
+<v t="ekr.20220525082936.177"><vh>ExpressionVisitor.visit_slice_expr</vh></v>
+<v t="ekr.20220525082936.178"><vh>ExpressionVisitor.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082936.179"><vh>ExpressionVisitor.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082936.180"><vh>ExpressionVisitor.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082936.181"><vh>ExpressionVisitor.visit_paramspec_expr</vh></v>
+<v t="ekr.20220525082936.182"><vh>ExpressionVisitor.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20220525082936.183"><vh>ExpressionVisitor.visit_type_alias_expr</vh></v>
+<v t="ekr.20220525082936.184"><vh>ExpressionVisitor.visit_namedtuple_expr</vh></v>
+<v t="ekr.20220525082936.185"><vh>ExpressionVisitor.visit_enum_call_expr</vh></v>
+<v t="ekr.20220525082936.186"><vh>ExpressionVisitor.visit_typeddict_expr</vh></v>
+<v t="ekr.20220525082936.187"><vh>ExpressionVisitor.visit_newtype_expr</vh></v>
+<v t="ekr.20220525082936.188"><vh>ExpressionVisitor.visit__promote_expr</vh></v>
+<v t="ekr.20220525082936.189"><vh>ExpressionVisitor.visit_await_expr</vh></v>
+<v t="ekr.20220525082936.190"><vh>ExpressionVisitor.visit_temp_node</vh></v>
+</v>
+<v t="ekr.20220525082936.191"><vh>class StatementVisitor</vh>
+<v t="ekr.20220525082936.192"><vh>StatementVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082936.193"><vh>StatementVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082936.194"><vh>StatementVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082936.195"><vh>StatementVisitor.visit_del_stmt</vh></v>
+<v t="ekr.20220525082936.196"><vh>StatementVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082936.197"><vh>StatementVisitor.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082936.198"><vh>StatementVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082936.199"><vh>StatementVisitor.visit_global_decl</vh></v>
+<v t="ekr.20220525082936.200"><vh>StatementVisitor.visit_nonlocal_decl</vh></v>
+<v t="ekr.20220525082936.201"><vh>StatementVisitor.visit_decorator</vh></v>
+<v t="ekr.20220525082936.202"><vh>StatementVisitor.Module structure</vh></v>
+<v t="ekr.20220525082936.203"><vh>StatementVisitor.visit_import</vh></v>
+<v t="ekr.20220525082936.204"><vh>StatementVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082936.205"><vh>StatementVisitor.visit_import_all</vh></v>
+<v t="ekr.20220525082936.206"><vh>StatementVisitor.Statements</vh></v>
+<v t="ekr.20220525082936.207"><vh>StatementVisitor.visit_block</vh></v>
+<v t="ekr.20220525082936.208"><vh>StatementVisitor.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082936.209"><vh>StatementVisitor.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082936.210"><vh>StatementVisitor.visit_while_stmt</vh></v>
+<v t="ekr.20220525082936.211"><vh>StatementVisitor.visit_return_stmt</vh></v>
+<v t="ekr.20220525082936.212"><vh>StatementVisitor.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082936.213"><vh>StatementVisitor.visit_if_stmt</vh></v>
+<v t="ekr.20220525082936.214"><vh>StatementVisitor.visit_break_stmt</vh></v>
+<v t="ekr.20220525082936.215"><vh>StatementVisitor.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082936.216"><vh>StatementVisitor.visit_pass_stmt</vh></v>
+<v t="ekr.20220525082936.217"><vh>StatementVisitor.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082936.218"><vh>StatementVisitor.visit_try_stmt</vh></v>
+<v t="ekr.20220525082936.219"><vh>StatementVisitor.visit_print_stmt</vh></v>
+<v t="ekr.20220525082936.220"><vh>StatementVisitor.visit_exec_stmt</vh></v>
+<v t="ekr.20220525082936.221"><vh>StatementVisitor.visit_match_stmt</vh></v>
+</v>
+<v t="ekr.20220525082936.222"><vh>class PatternVisitor</vh>
+<v t="ekr.20220525082936.223"><vh>PatternVisitor.visit_as_pattern</vh></v>
+<v t="ekr.20220525082936.224"><vh>PatternVisitor.visit_or_pattern</vh></v>
+<v t="ekr.20220525082936.225"><vh>PatternVisitor.visit_value_pattern</vh></v>
+<v t="ekr.20220525082936.226"><vh>PatternVisitor.visit_singleton_pattern</vh></v>
+<v t="ekr.20220525082936.227"><vh>PatternVisitor.visit_sequence_pattern</vh></v>
+<v t="ekr.20220525082936.228"><vh>PatternVisitor.visit_starred_pattern</vh></v>
+<v t="ekr.20220525082936.229"><vh>PatternVisitor.visit_mapping_pattern</vh></v>
+<v t="ekr.20220525082936.230"><vh>PatternVisitor.visit_class_pattern</vh></v>
+</v>
+<v t="ekr.20220525082936.231"><vh>class NodeVisitor</vh>
+<v t="ekr.20220525082936.232"><vh>NodeVisitor.visit_mypy_file</vh></v>
+<v t="ekr.20220525082936.233"><vh>NodeVisitor.visit_var</vh></v>
+<v t="ekr.20220525082936.234"><vh>NodeVisitor.Module structure</vh></v>
+<v t="ekr.20220525082936.235"><vh>NodeVisitor.visit_import</vh></v>
+<v t="ekr.20220525082936.236"><vh>NodeVisitor.visit_import_from</vh></v>
+<v t="ekr.20220525082936.237"><vh>NodeVisitor.visit_import_all</vh></v>
+<v t="ekr.20220525082936.238"><vh>NodeVisitor.Definitions</vh></v>
+<v t="ekr.20220525082936.239"><vh>NodeVisitor.visit_func_def</vh></v>
+<v t="ekr.20220525082936.240"><vh>NodeVisitor.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082936.241"><vh>NodeVisitor.visit_class_def</vh></v>
+<v t="ekr.20220525082936.242"><vh>NodeVisitor.visit_global_decl</vh></v>
+<v t="ekr.20220525082936.243"><vh>NodeVisitor.visit_nonlocal_decl</vh></v>
+<v t="ekr.20220525082936.244"><vh>NodeVisitor.visit_decorator</vh></v>
+<v t="ekr.20220525082936.245"><vh>NodeVisitor.visit_type_alias</vh></v>
+<v t="ekr.20220525082936.246"><vh>NodeVisitor.visit_placeholder_node</vh></v>
+<v t="ekr.20220525082936.247"><vh>NodeVisitor.Statements</vh></v>
+<v t="ekr.20220525082936.248"><vh>NodeVisitor.visit_block</vh></v>
+<v t="ekr.20220525082936.249"><vh>NodeVisitor.visit_expression_stmt</vh></v>
+<v t="ekr.20220525082936.250"><vh>NodeVisitor.visit_assignment_stmt</vh></v>
+<v t="ekr.20220525082936.251"><vh>NodeVisitor.visit_operator_assignment_stmt</vh></v>
+<v t="ekr.20220525082936.252"><vh>NodeVisitor.visit_while_stmt</vh></v>
+<v t="ekr.20220525082936.253"><vh>NodeVisitor.visit_for_stmt</vh></v>
+<v t="ekr.20220525082936.254"><vh>NodeVisitor.visit_return_stmt</vh></v>
+<v t="ekr.20220525082936.255"><vh>NodeVisitor.visit_assert_stmt</vh></v>
+<v t="ekr.20220525082936.256"><vh>NodeVisitor.visit_del_stmt</vh></v>
+<v t="ekr.20220525082936.257"><vh>NodeVisitor.visit_if_stmt</vh></v>
+<v t="ekr.20220525082936.258"><vh>NodeVisitor.visit_break_stmt</vh></v>
+<v t="ekr.20220525082936.259"><vh>NodeVisitor.visit_continue_stmt</vh></v>
+<v t="ekr.20220525082936.260"><vh>NodeVisitor.visit_pass_stmt</vh></v>
+<v t="ekr.20220525082936.261"><vh>NodeVisitor.visit_raise_stmt</vh></v>
+<v t="ekr.20220525082936.262"><vh>NodeVisitor.visit_try_stmt</vh></v>
+<v t="ekr.20220525082936.263"><vh>NodeVisitor.visit_with_stmt</vh></v>
+<v t="ekr.20220525082936.264"><vh>NodeVisitor.visit_print_stmt</vh></v>
+<v t="ekr.20220525082936.265"><vh>NodeVisitor.visit_exec_stmt</vh></v>
+<v t="ekr.20220525082936.266"><vh>NodeVisitor.visit_match_stmt</vh></v>
+<v t="ekr.20220525082936.267"><vh>NodeVisitor.Expressions (default no-op implementation)</vh></v>
+<v t="ekr.20220525082936.268"><vh>NodeVisitor.visit_int_expr</vh></v>
+<v t="ekr.20220525082936.269"><vh>NodeVisitor.visit_str_expr</vh></v>
+<v t="ekr.20220525082936.270"><vh>NodeVisitor.visit_bytes_expr</vh></v>
+<v t="ekr.20220525082936.271"><vh>NodeVisitor.visit_unicode_expr</vh></v>
+<v t="ekr.20220525082936.272"><vh>NodeVisitor.visit_float_expr</vh></v>
+<v t="ekr.20220525082936.273"><vh>NodeVisitor.visit_complex_expr</vh></v>
+<v t="ekr.20220525082936.274"><vh>NodeVisitor.visit_ellipsis</vh></v>
+<v t="ekr.20220525082936.275"><vh>NodeVisitor.visit_star_expr</vh></v>
+<v t="ekr.20220525082936.276"><vh>NodeVisitor.visit_name_expr</vh></v>
+<v t="ekr.20220525082936.277"><vh>NodeVisitor.visit_member_expr</vh></v>
+<v t="ekr.20220525082936.278"><vh>NodeVisitor.visit_yield_from_expr</vh></v>
+<v t="ekr.20220525082936.279"><vh>NodeVisitor.visit_yield_expr</vh></v>
+<v t="ekr.20220525082936.280"><vh>NodeVisitor.visit_call_expr</vh></v>
+<v t="ekr.20220525082936.281"><vh>NodeVisitor.visit_op_expr</vh></v>
+<v t="ekr.20220525082936.282"><vh>NodeVisitor.visit_comparison_expr</vh></v>
+<v t="ekr.20220525082936.283"><vh>NodeVisitor.visit_cast_expr</vh></v>
+<v t="ekr.20220525082936.284"><vh>NodeVisitor.visit_assert_type_expr</vh></v>
+<v t="ekr.20220525082936.285"><vh>NodeVisitor.visit_reveal_expr</vh></v>
+<v t="ekr.20220525082936.286"><vh>NodeVisitor.visit_super_expr</vh></v>
+<v t="ekr.20220525082936.287"><vh>NodeVisitor.visit_assignment_expr</vh></v>
+<v t="ekr.20220525082936.288"><vh>NodeVisitor.visit_unary_expr</vh></v>
+<v t="ekr.20220525082936.289"><vh>NodeVisitor.visit_list_expr</vh></v>
+<v t="ekr.20220525082936.290"><vh>NodeVisitor.visit_dict_expr</vh></v>
+<v t="ekr.20220525082936.291"><vh>NodeVisitor.visit_tuple_expr</vh></v>
+<v t="ekr.20220525082936.292"><vh>NodeVisitor.visit_set_expr</vh></v>
+<v t="ekr.20220525082936.293"><vh>NodeVisitor.visit_index_expr</vh></v>
+<v t="ekr.20220525082936.294"><vh>NodeVisitor.visit_type_application</vh></v>
+<v t="ekr.20220525082936.295"><vh>NodeVisitor.visit_lambda_expr</vh></v>
+<v t="ekr.20220525082936.296"><vh>NodeVisitor.visit_list_comprehension</vh></v>
+<v t="ekr.20220525082936.297"><vh>NodeVisitor.visit_set_comprehension</vh></v>
+<v t="ekr.20220525082936.298"><vh>NodeVisitor.visit_dictionary_comprehension</vh></v>
+<v t="ekr.20220525082936.299"><vh>NodeVisitor.visit_generator_expr</vh></v>
+<v t="ekr.20220525082936.300"><vh>NodeVisitor.visit_slice_expr</vh></v>
+<v t="ekr.20220525082936.301"><vh>NodeVisitor.visit_conditional_expr</vh></v>
+<v t="ekr.20220525082936.302"><vh>NodeVisitor.visit_backquote_expr</vh></v>
+<v t="ekr.20220525082936.303"><vh>NodeVisitor.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082936.304"><vh>NodeVisitor.visit_paramspec_expr</vh></v>
+<v t="ekr.20220525082936.305"><vh>NodeVisitor.visit_type_var_tuple_expr</vh></v>
+<v t="ekr.20220525082936.306"><vh>NodeVisitor.visit_type_alias_expr</vh></v>
+<v t="ekr.20220525082936.307"><vh>NodeVisitor.visit_namedtuple_expr</vh></v>
+<v t="ekr.20220525082936.308"><vh>NodeVisitor.visit_enum_call_expr</vh></v>
+<v t="ekr.20220525082936.309"><vh>NodeVisitor.visit_typeddict_expr</vh></v>
+<v t="ekr.20220525082936.310"><vh>NodeVisitor.visit_newtype_expr</vh></v>
+<v t="ekr.20220525082936.311"><vh>NodeVisitor.visit__promote_expr</vh></v>
+<v t="ekr.20220525082936.312"><vh>NodeVisitor.visit_await_expr</vh></v>
+<v t="ekr.20220525082936.313"><vh>NodeVisitor.visit_temp_node</vh></v>
+<v t="ekr.20220525082936.314"><vh>NodeVisitor.Patterns</vh></v>
+<v t="ekr.20220525082936.315"><vh>NodeVisitor.visit_as_pattern</vh></v>
+<v t="ekr.20220525082936.316"><vh>NodeVisitor.visit_or_pattern</vh></v>
+<v t="ekr.20220525082936.317"><vh>NodeVisitor.visit_value_pattern</vh></v>
+<v t="ekr.20220525082936.318"><vh>NodeVisitor.visit_singleton_pattern</vh></v>
+<v t="ekr.20220525082936.319"><vh>NodeVisitor.visit_sequence_pattern</vh></v>
+<v t="ekr.20220525082936.320"><vh>NodeVisitor.visit_starred_pattern</vh></v>
+<v t="ekr.20220525082936.321"><vh>NodeVisitor.visit_mapping_pattern</vh></v>
+<v t="ekr.20220525082936.322"><vh>NodeVisitor.visit_class_pattern</vh></v>
+</v>
+</v>
+</v>
+<v t="ekr.20220603022652.1"><vh>--- type checker &amp; inference</vh>
 <v t="ekr.20220525082933.340"><vh>@clean checker.py</vh>
 <v t="ekr.20220525082933.341"><vh>class DeferredNode</vh></v>
 <v t="ekr.20220525082933.342"><vh>class FineGrainedDeferredNode</vh></v>
@@ -428,7 +3175,7 @@
 <v t="ekr.20220525082933.374"><vh>TypeChecker.check_default_args</vh></v>
 <v t="ekr.20220525082933.375"><vh>TypeChecker.is_forward_op_method</vh></v>
 <v t="ekr.20220525082933.376"><vh>TypeChecker.is_reverse_op_method</vh></v>
-<v t="ekr.20220525082933.377"><vh>TypeChecker.check_for_missing_annotations (changed)</vh></v>
+<v t="ekr.20220525082933.377"><vh>TypeChecker.check_for_missing_annotations</vh></v>
 <v t="ekr.20220525082933.378"><vh>TypeChecker.check___new___signature</vh></v>
 <v t="ekr.20220525082933.379"><vh>TypeChecker.is_trivial_body</vh></v>
 <v t="ekr.20220525082933.380"><vh>TypeChecker.check_reverse_op_method</vh></v>
@@ -950,27 +3697,6 @@
 </v>
 <v t="ekr.20220525082933.879"><vh>has_type_component</vh></v>
 </v>
-<v t="ekr.20220525082933.880"><vh>@clean config_parser.py</vh>
-<v t="ekr.20220525082933.881"><vh>parse_version</vh></v>
-<v t="ekr.20220525082933.882"><vh>try_split</vh></v>
-<v t="ekr.20220525082933.883"><vh>expand_path</vh></v>
-<v t="ekr.20220525082933.884"><vh>str_or_array_as_list</vh></v>
-<v t="ekr.20220525082933.885"><vh>split_and_match_files_list</vh></v>
-<v t="ekr.20220525082933.886"><vh>split_and_match_files</vh></v>
-<v t="ekr.20220525082933.887"><vh>check_follow_imports</vh></v>
-<v t="ekr.20220525082933.888"><vh>For most options, the type of the default value set in options.py is</vh></v>
-<v t="ekr.20220525082933.889"><vh>parse_config_file</vh></v>
-<v t="ekr.20220525082933.890"><vh>get_prefix</vh></v>
-<v t="ekr.20220525082933.891"><vh>is_toml</vh></v>
-<v t="ekr.20220525082933.892"><vh>destructure_overrides</vh></v>
-<v t="ekr.20220525082933.893"><vh>parse_section</vh></v>
-<v t="ekr.20220525082933.894"><vh>convert_to_boolean</vh></v>
-<v t="ekr.20220525082933.895"><vh>split_directive</vh></v>
-<v t="ekr.20220525082933.896"><vh>mypy_comments_to_config_map</vh></v>
-<v t="ekr.20220525082933.897"><vh>parse_mypy_comments</vh></v>
-<v t="ekr.20220525082933.898"><vh>get_config_module_names</vh></v>
-<v t="ekr.20220525082933.899"><vh>class ConfigTOMLValueError</vh></v>
-</v>
 <v t="ekr.20220525082933.900"><vh>@clean constraints.py</vh>
 <v t="ekr.20220525082933.901"><vh>class Constraint</vh>
 <v t="ekr.20220525082933.902"><vh>Constraint.__init__</vh></v>
@@ -1025,6 +3751,151 @@
 <v t="ekr.20220525082933.949"><vh>find_matching_overload_item</vh></v>
 <v t="ekr.20220525082933.950"><vh>find_matching_overload_items</vh></v>
 </v>
+<v t="ekr.20220525082934.384"><vh>@clean infer.py</vh>
+<v t="ekr.20220525082934.385"><vh>class ArgumentInferContext</vh></v>
+<v t="ekr.20220525082934.386"><vh>infer_function_type_arguments</vh></v>
+<v t="ekr.20220525082934.387"><vh>infer_type_arguments</vh></v>
+</v>
+<v t="ekr.20220525082935.427"><vh>@clean solve.py</vh>
+<v t="ekr.20220525082935.428"><vh>solve_constraints</vh></v>
+</v>
+<v t="ekr.20220525082935.901"><vh>@clean suggestions.py</vh>
+<v t="ekr.20220525082935.902"><vh>class PyAnnotateSignature</vh></v>
+<v t="ekr.20220525082935.903"><vh>class Callsite</vh></v>
+<v t="ekr.20220525082935.904"><vh>class SuggestionPlugin</vh>
+<v t="ekr.20220525082935.905"><vh>SuggestionPlugin.__init__</vh></v>
+<v t="ekr.20220525082935.906"><vh>SuggestionPlugin.get_function_hook</vh></v>
+<v t="ekr.20220525082935.907"><vh>SuggestionPlugin.get_method_hook</vh></v>
+<v t="ekr.20220525082935.908"><vh>SuggestionPlugin.log</vh></v>
+</v>
+<v t="ekr.20220525082935.909"><vh>class ReturnFinder</vh>
+<v t="ekr.20220525082935.910"><vh>ReturnFinder.__init__</vh></v>
+<v t="ekr.20220525082935.911"><vh>ReturnFinder.visit_return_stmt</vh></v>
+<v t="ekr.20220525082935.912"><vh>ReturnFinder.visit_func_def</vh></v>
+</v>
+<v t="ekr.20220525082935.913"><vh>get_return_types</vh></v>
+<v t="ekr.20220525082935.914"><vh>class ArgUseFinder</vh>
+<v t="ekr.20220525082935.915"><vh>ArgUseFinder.__init__</vh></v>
+<v t="ekr.20220525082935.916"><vh>ArgUseFinder.visit_call_expr</vh></v>
+</v>
+<v t="ekr.20220525082935.917"><vh>get_arg_uses</vh></v>
+<v t="ekr.20220525082935.918"><vh>class SuggestionFailure</vh></v>
+<v t="ekr.20220525082935.919"><vh>is_explicit_any</vh></v>
+<v t="ekr.20220525082935.920"><vh>is_implicit_any</vh></v>
+<v t="ekr.20220525082935.921"><vh>class SuggestionEngine</vh>
+<v t="ekr.20220525082935.922"><vh>SuggestionEngine.__init__</vh></v>
+<v t="ekr.20220525082935.923"><vh>SuggestionEngine.suggest</vh></v>
+<v t="ekr.20220525082935.924"><vh>SuggestionEngine.suggest_callsites</vh></v>
+<v t="ekr.20220525082935.925"><vh>SuggestionEngine.restore_after</vh></v>
+<v t="ekr.20220525082935.926"><vh>SuggestionEngine.with_export_types</vh></v>
+<v t="ekr.20220525082935.927"><vh>SuggestionEngine.get_trivial_type</vh></v>
+<v t="ekr.20220525082935.928"><vh>SuggestionEngine.get_starting_type</vh></v>
+<v t="ekr.20220525082935.929"><vh>SuggestionEngine.get_args</vh></v>
+<v t="ekr.20220525082935.930"><vh>SuggestionEngine.get_default_arg_types</vh></v>
+<v t="ekr.20220525082935.931"><vh>SuggestionEngine.add_adjustments</vh></v>
+<v t="ekr.20220525082935.932"><vh>SuggestionEngine.get_guesses</vh></v>
+<v t="ekr.20220525082935.933"><vh>SuggestionEngine.get_callsites</vh></v>
+<v t="ekr.20220525082935.934"><vh>SuggestionEngine.filter_options</vh></v>
+<v t="ekr.20220525082935.935"><vh>SuggestionEngine.find_best</vh></v>
+<v t="ekr.20220525082935.936"><vh>SuggestionEngine.get_guesses_from_parent</vh></v>
+<v t="ekr.20220525082935.937"><vh>SuggestionEngine.get_suggestion</vh></v>
+<v t="ekr.20220525082935.938"><vh>SuggestionEngine.format_args</vh></v>
+<v t="ekr.20220525082935.939"><vh>SuggestionEngine.find_node</vh></v>
+<v t="ekr.20220525082935.940"><vh>SuggestionEngine.find_node_by_module_and_name</vh></v>
+<v t="ekr.20220525082935.941"><vh>SuggestionEngine.find_node_by_file_and_line</vh></v>
+<v t="ekr.20220525082935.942"><vh>SuggestionEngine.extract_from_decorator</vh></v>
+<v t="ekr.20220525082935.943"><vh>SuggestionEngine.try_type</vh></v>
+<v t="ekr.20220525082935.944"><vh>SuggestionEngine.reload</vh></v>
+<v t="ekr.20220525082935.945"><vh>SuggestionEngine.ensure_loaded</vh></v>
+<v t="ekr.20220525082935.946"><vh>SuggestionEngine.named_type</vh></v>
+<v t="ekr.20220525082935.947"><vh>SuggestionEngine.json_suggestion</vh></v>
+<v t="ekr.20220525082935.948"><vh>SuggestionEngine.pyannotate_signature</vh></v>
+<v t="ekr.20220525082935.949"><vh>SuggestionEngine.format_signature</vh></v>
+<v t="ekr.20220525082935.950"><vh>SuggestionEngine.format_type</vh></v>
+<v t="ekr.20220525082935.951"><vh>SuggestionEngine.score_type</vh></v>
+<v t="ekr.20220525082935.952"><vh>SuggestionEngine.score_callable</vh></v>
+</v>
+<v t="ekr.20220525082935.953"><vh>any_score_type</vh></v>
+<v t="ekr.20220525082935.954"><vh>any_score_callable</vh></v>
+<v t="ekr.20220525082935.955"><vh>is_tricky_callable</vh></v>
+<v t="ekr.20220525082935.956"><vh>class TypeFormatter</vh>
+<v t="ekr.20220525082935.957"><vh>TypeFormatter.__init__</vh></v>
+<v t="ekr.20220525082935.958"><vh>TypeFormatter.visit_any</vh></v>
+<v t="ekr.20220525082935.959"><vh>TypeFormatter.visit_instance</vh></v>
+<v t="ekr.20220525082935.960"><vh>TypeFormatter.visit_tuple_type</vh></v>
+<v t="ekr.20220525082935.961"><vh>TypeFormatter.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082935.962"><vh>TypeFormatter.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082935.963"><vh>TypeFormatter.visit_union_type</vh></v>
+<v t="ekr.20220525082935.964"><vh>TypeFormatter.visit_callable_type</vh></v>
+</v>
+<v t="ekr.20220525082935.965"><vh>class StrToText</vh>
+<v t="ekr.20220525082935.966"><vh>StrToText.__init__</vh></v>
+<v t="ekr.20220525082935.967"><vh>StrToText.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082935.968"><vh>StrToText.visit_instance</vh></v>
+</v>
+<v t="ekr.20220525082935.969"><vh>TType = TypeVar('TType', bound=Type)</vh></v>
+<v t="ekr.20220525082935.970"><vh>make_suggestion_anys</vh></v>
+<v t="ekr.20220525082935.971"><vh>class MakeSuggestionAny</vh>
+<v t="ekr.20220525082935.972"><vh>MakeSuggestionAny.visit_any</vh></v>
+<v t="ekr.20220525082935.973"><vh>MakeSuggestionAny.visit_type_alias_type</vh></v>
+</v>
+<v t="ekr.20220525082935.974"><vh>generate_type_combinations</vh></v>
+<v t="ekr.20220525082935.975"><vh>count_errors</vh></v>
+<v t="ekr.20220525082935.976"><vh>refine_type</vh></v>
+<v t="ekr.20220525082935.977"><vh>refine_union</vh></v>
+<v t="ekr.20220525082935.978"><vh>refine_callable</vh></v>
+<v t="ekr.20220525082935.979"><vh>T = TypeVar('T')</vh></v>
+<v t="ekr.20220525082935.980"><vh>dedup</vh></v>
+</v>
+</v>
+<v t="ekr.20220603023322.1"><vh>--- types</vh>
+<v t="ekr.20220525082933.172"><vh>@clean applytype.py</vh>
+<v t="ekr.20220525082933.173"><vh>get_target_type</vh></v>
+<v t="ekr.20220525082933.174"><vh>apply_generic_arguments</vh></v>
+</v>
+<v t="ekr.20220525082933.175"><vh>@clean argmap.py</vh>
+<v t="ekr.20220525082933.176"><vh>map_actuals_to_formals</vh></v>
+<v t="ekr.20220525082933.177"><vh>map_formals_to_actuals</vh></v>
+<v t="ekr.20220525082933.178"><vh>class ArgTypeExpander</vh>
+<v t="ekr.20220525082933.179"><vh>ArgTypeExpander.__init__</vh></v>
+<v t="ekr.20220525082933.180"><vh>ArgTypeExpander.expand_actual_type</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082933.182"><vh>@clean binder.py</vh>
+<v t="ekr.20220525082933.183"><vh>class Frame</vh>
+<v t="ekr.20220525082933.184"><vh>Frame.__init__</vh></v>
+</v>
+<v t="ekr.20220525082933.185"><vh>Assigns = DefaultDict[Expression, List[Tuple[Type, Optional[Type]]]]</vh></v>
+<v t="ekr.20220525082933.186"><vh>class ConditionalTypeBinder</vh>
+<v t="ekr.20220525082933.187"><vh>ConditionalTypeBinder.__init__</vh></v>
+<v t="ekr.20220525082933.188"><vh>ConditionalTypeBinder._get_id</vh></v>
+<v t="ekr.20220525082933.189"><vh>ConditionalTypeBinder._add_dependencies</vh></v>
+<v t="ekr.20220525082933.190"><vh>ConditionalTypeBinder.push_frame</vh></v>
+<v t="ekr.20220525082933.191"><vh>ConditionalTypeBinder._put</vh></v>
+<v t="ekr.20220525082933.192"><vh>ConditionalTypeBinder._get</vh></v>
+<v t="ekr.20220525082933.193"><vh>ConditionalTypeBinder.put</vh></v>
+<v t="ekr.20220525082933.194"><vh>ConditionalTypeBinder.unreachable</vh></v>
+<v t="ekr.20220525082933.195"><vh>ConditionalTypeBinder.suppress_unreachable_warnings</vh></v>
+<v t="ekr.20220525082933.196"><vh>ConditionalTypeBinder.get</vh></v>
+<v t="ekr.20220525082933.197"><vh>ConditionalTypeBinder.is_unreachable</vh></v>
+<v t="ekr.20220525082933.198"><vh>ConditionalTypeBinder.is_unreachable_warning_suppressed</vh></v>
+<v t="ekr.20220525082933.199"><vh>ConditionalTypeBinder.cleanse</vh></v>
+<v t="ekr.20220525082933.200"><vh>ConditionalTypeBinder._cleanse_key</vh></v>
+<v t="ekr.20220525082933.201"><vh>ConditionalTypeBinder.update_from_options</vh></v>
+<v t="ekr.20220525082933.202"><vh>ConditionalTypeBinder.pop_frame</vh></v>
+<v t="ekr.20220525082933.203"><vh>ConditionalTypeBinder.accumulate_type_assignments</vh></v>
+<v t="ekr.20220525082933.204"><vh>ConditionalTypeBinder.assign_type</vh></v>
+<v t="ekr.20220525082933.205"><vh>ConditionalTypeBinder.invalidate_dependencies</vh></v>
+<v t="ekr.20220525082933.206"><vh>ConditionalTypeBinder.most_recent_enclosing_type</vh></v>
+<v t="ekr.20220525082933.207"><vh>ConditionalTypeBinder.allow_jump</vh></v>
+<v t="ekr.20220525082933.208"><vh>ConditionalTypeBinder.handle_break</vh></v>
+<v t="ekr.20220525082933.209"><vh>ConditionalTypeBinder.handle_continue</vh></v>
+<v t="ekr.20220525082933.210"><vh>ConditionalTypeBinder.frame_context</vh></v>
+<v t="ekr.20220525082933.211"><vh>ConditionalTypeBinder.top_frame_context</vh></v>
+</v>
+<v t="ekr.20220525082933.212"><vh>get_declaration</vh></v>
+</v>
+<v t="ekr.20220525082933.213"><vh>@clean bogus_type.py</vh></v>
 <v t="ekr.20220525082933.951"><vh>@clean copytype.py</vh>
 <v t="ekr.20220525082933.952"><vh>copy_type</vh></v>
 <v t="ekr.20220525082933.953"><vh>class TypeShallowCopier</vh>
@@ -1051,54 +3922,6 @@
 <v t="ekr.20220525082933.974"><vh>TypeShallowCopier.visit_type_alias_type</vh></v>
 <v t="ekr.20220525082933.975"><vh>TypeShallowCopier.copy_common</vh></v>
 </v>
-</v>
-<v t="ekr.20220525082933.976"><vh>@clean defaults.py</vh></v>
-<v t="ekr.20220525082933.977"><vh>@clean dmypy_os.py</vh>
-<v t="ekr.20220525082933.978"><vh>alive</vh></v>
-<v t="ekr.20220525082933.979"><vh>kill</vh></v>
-</v>
-<v t="ekr.20220525082933.980"><vh>@clean dmypy_server.py</vh>
-<v t="ekr.20220525082933.981"><vh>process_start_options</vh></v>
-<v t="ekr.20220525082933.982"><vh>ignore_suppressed_imports</vh></v>
-<v t="ekr.20220525082933.983"><vh>ModulePathPair = Tuple[str, str]</vh></v>
-<v t="ekr.20220525082933.984"><vh>class Server</vh>
-<v t="ekr.20220525082933.985"><vh>Server.__init__</vh></v>
-<v t="ekr.20220525082933.986"><vh>Server._response_metadata</vh></v>
-<v t="ekr.20220525082933.987"><vh>Server.serve</vh></v>
-<v t="ekr.20220525082933.988"><vh>Server.run_command</vh></v>
-<v t="ekr.20220525082933.989"><vh>Server.Command functions (run in the server via RPC).</vh></v>
-<v t="ekr.20220525082933.990"><vh>Server.cmd_status</vh></v>
-<v t="ekr.20220525082933.991"><vh>Server.cmd_stop</vh></v>
-<v t="ekr.20220525082933.992"><vh>Server.cmd_run</vh></v>
-<v t="ekr.20220525082933.993"><vh>Server.cmd_check</vh></v>
-<v t="ekr.20220525082933.994"><vh>Server.cmd_recheck</vh></v>
-<v t="ekr.20220525082933.995"><vh>Server.check</vh></v>
-<v t="ekr.20220525082933.996"><vh>Server.flush_caches</vh></v>
-<v t="ekr.20220525082933.997"><vh>Server.update_stats</vh></v>
-<v t="ekr.20220525082933.998"><vh>Server.following_imports</vh></v>
-<v t="ekr.20220525082933.999"><vh>Server.initialize_fine_grained</vh></v>
-<v t="ekr.20220525082933.1000"><vh>Server.fine_grained_increment</vh></v>
-<v t="ekr.20220525082933.1001"><vh>Server.fine_grained_increment_follow_imports</vh></v>
-<v t="ekr.20220525082933.1002"><vh>Server.find_reachable_changed_modules</vh></v>
-<v t="ekr.20220525082933.1003"><vh>Server.direct_imports</vh></v>
-<v t="ekr.20220525082933.1004"><vh>Server.find_added_suppressed</vh></v>
-<v t="ekr.20220525082933.1005"><vh>Server.increment_output</vh></v>
-<v t="ekr.20220525082933.1006"><vh>Server.pretty_messages</vh></v>
-<v t="ekr.20220525082933.1007"><vh>Server.update_sources</vh></v>
-<v t="ekr.20220525082933.1008"><vh>Server.update_changed</vh></v>
-<v t="ekr.20220525082933.1009"><vh>Server.find_changed</vh></v>
-<v t="ekr.20220525082933.1010"><vh>Server._find_changed</vh></v>
-<v t="ekr.20220525082933.1011"><vh>Server.cmd_suggest</vh></v>
-<v t="ekr.20220525082933.1012"><vh>Server.cmd_hang</vh></v>
-</v>
-<v t="ekr.20220525082933.1013"><vh>Misc utilities.</vh></v>
-<v t="ekr.20220525082933.1014"><vh>get_meminfo</vh></v>
-<v t="ekr.20220525082933.1015"><vh>find_all_sources_in_build</vh></v>
-<v t="ekr.20220525082933.1016"><vh>fix_module_deps</vh></v>
-<v t="ekr.20220525082933.1017"><vh>filter_out_missing_top_level_packages</vh></v>
-</v>
-<v t="ekr.20220525082933.1018"><vh>@clean dmypy_util.py</vh>
-<v t="ekr.20220525082933.1019"><vh>receive</vh></v>
 </v>
 <v t="ekr.20220525082933.1020"><vh>@clean erasetype.py</vh>
 <v t="ekr.20220525082933.1021"><vh>erase_type</vh></v>
@@ -1142,68 +3965,6 @@
 <v t="ekr.20220525082933.1056"><vh>LastKnownValueEraser.visit_union_type</vh></v>
 </v>
 </v>
-<v t="ekr.20220525082933.1057"><vh>@clean errorcodes.py</vh>
-<v t="ekr.20220525082933.1058"><vh>class ErrorCode</vh>
-<v t="ekr.20220525082933.1059"><vh>ErrorCode.__init__</vh></v>
-<v t="ekr.20220525082933.1060"><vh>ErrorCode.__str__</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082933.1061"><vh>@clean errors.py</vh>
-<v t="ekr.20220525082933.1062"><vh>class ErrorInfo</vh>
-<v t="ekr.20220525082933.1063"><vh>ErrorInfo.__init__</vh></v>
-</v>
-<v t="ekr.20220525082933.1064"><vh>Type used internally to represent errors:</vh></v>
-<v t="ekr.20220525082933.1065"><vh>class ErrorWatcher</vh>
-<v t="ekr.20220525082933.1066"><vh>ErrorWatcher.__init__</vh></v>
-<v t="ekr.20220525082933.1067"><vh>ErrorWatcher.__enter__</vh></v>
-<v t="ekr.20220525082933.1068"><vh>ErrorWatcher.__exit__</vh></v>
-<v t="ekr.20220525082933.1069"><vh>ErrorWatcher.on_error</vh></v>
-<v t="ekr.20220525082933.1070"><vh>ErrorWatcher.has_new_errors</vh></v>
-<v t="ekr.20220525082933.1071"><vh>ErrorWatcher.filtered_errors</vh></v>
-</v>
-<v t="ekr.20220525082933.1072"><vh>class Errors</vh>
-<v t="ekr.20220525082933.1073"><vh>Errors.__init__</vh></v>
-<v t="ekr.20220525082933.1074"><vh>Errors.initialize</vh></v>
-<v t="ekr.20220525082933.1075"><vh>Errors.reset</vh></v>
-<v t="ekr.20220525082933.1076"><vh>Errors.set_ignore_prefix</vh></v>
-<v t="ekr.20220525082933.1077"><vh>Errors.simplify_path</vh></v>
-<v t="ekr.20220525082933.1078"><vh>Errors.set_file</vh></v>
-<v t="ekr.20220525082933.1079"><vh>Errors.set_file_ignored_lines</vh></v>
-<v t="ekr.20220525082933.1080"><vh>Errors.current_target</vh></v>
-<v t="ekr.20220525082933.1081"><vh>Errors.current_module</vh></v>
-<v t="ekr.20220525082933.1082"><vh>Errors.import_context</vh></v>
-<v t="ekr.20220525082933.1083"><vh>Errors.set_import_context</vh></v>
-<v t="ekr.20220525082933.1084"><vh>Errors.report</vh></v>
-<v t="ekr.20220525082933.1085"><vh>Errors._add_error_info</vh></v>
-<v t="ekr.20220525082933.1086"><vh>Errors._filter_error</vh></v>
-<v t="ekr.20220525082933.1087"><vh>Errors.add_error_info</vh></v>
-<v t="ekr.20220525082933.1088"><vh>Errors.has_many_errors</vh></v>
-<v t="ekr.20220525082933.1089"><vh>Errors.report_hidden_errors</vh></v>
-<v t="ekr.20220525082933.1090"><vh>Errors.is_ignored_error</vh></v>
-<v t="ekr.20220525082933.1091"><vh>Errors.is_error_code_enabled</vh></v>
-<v t="ekr.20220525082933.1092"><vh>Errors.clear_errors_in_targets</vh></v>
-<v t="ekr.20220525082933.1093"><vh>Errors.generate_unused_ignore_errors</vh></v>
-<v t="ekr.20220525082933.1094"><vh>Errors.generate_ignore_without_code_errors</vh></v>
-<v t="ekr.20220525082933.1095"><vh>Errors.num_messages</vh></v>
-<v t="ekr.20220525082933.1096"><vh>Errors.is_errors</vh></v>
-<v t="ekr.20220525082933.1097"><vh>Errors.is_blockers</vh></v>
-<v t="ekr.20220525082933.1098"><vh>Errors.blocker_module</vh></v>
-<v t="ekr.20220525082933.1099"><vh>Errors.is_errors_for_file</vh></v>
-<v t="ekr.20220525082933.1100"><vh>Errors.raise_error</vh></v>
-<v t="ekr.20220525082933.1101"><vh>Errors.format_messages</vh></v>
-<v t="ekr.20220525082933.1102"><vh>Errors.file_messages</vh></v>
-<v t="ekr.20220525082933.1103"><vh>Errors.new_messages</vh></v>
-<v t="ekr.20220525082933.1104"><vh>Errors.targets</vh></v>
-<v t="ekr.20220525082933.1105"><vh>Errors.render_messages</vh></v>
-<v t="ekr.20220525082933.1106"><vh>Errors.sort_messages</vh></v>
-<v t="ekr.20220525082933.1107"><vh>Errors.remove_duplicates</vh></v>
-</v>
-<v t="ekr.20220525082933.1108"><vh>class CompileError</vh>
-<v t="ekr.20220525082933.1109"><vh>CompileError.__init__</vh></v>
-</v>
-<v t="ekr.20220525082933.1110"><vh>remove_path_prefix</vh></v>
-<v t="ekr.20220525082933.1111"><vh>report_internal_error</vh></v>
-</v>
 <v t="ekr.20220525082933.1112"><vh>@clean expandtype.py</vh>
 <v t="ekr.20220525082934.1"><vh>expand_type</vh></v>
 <v t="ekr.20220525082934.2"><vh>expand_type_by_instance</vh></v>
@@ -1241,347 +4002,6 @@
 <v t="ekr.20220525082934.32"><vh>_extract_argument_name</vh></v>
 <v t="ekr.20220525082934.33"><vh>expr_to_unanalyzed_type</vh></v>
 </v>
-<v t="ekr.20220525082934.34"><vh>@clean fastparse.py</vh>
-<v t="ekr.20220525082934.35"><vh>parse</vh></v>
-<v t="ekr.20220525082934.36"><vh>parse_type_ignore_tag</vh></v>
-<v t="ekr.20220525082934.37"><vh>parse_type_comment</vh></v>
-<v t="ekr.20220525082934.38"><vh>parse_type_string</vh></v>
-<v t="ekr.20220525082934.39"><vh>is_no_type_check_decorator</vh></v>
-<v t="ekr.20220525082934.40"><vh>class ASTConverter</vh>
-<v t="ekr.20220525082934.41"><vh>ASTConverter.__init__</vh></v>
-<v t="ekr.20220525082934.42"><vh>ASTConverter.note</vh></v>
-<v t="ekr.20220525082934.43"><vh>ASTConverter.fail</vh></v>
-<v t="ekr.20220525082934.44"><vh>ASTConverter.fail_merge_overload</vh></v>
-<v t="ekr.20220525082934.45"><vh>ASTConverter.visit</vh></v>
-<v t="ekr.20220525082934.46"><vh>ASTConverter.set_line</vh></v>
-<v t="ekr.20220525082934.47"><vh>ASTConverter.translate_opt_expr_list</vh></v>
-<v t="ekr.20220525082934.48"><vh>ASTConverter.translate_expr_list</vh></v>
-<v t="ekr.20220525082934.49"><vh>ASTConverter.get_lineno</vh></v>
-<v t="ekr.20220525082934.50"><vh>ASTConverter.translate_stmt_list</vh></v>
-<v t="ekr.20220525082934.51"><vh>ASTConverter.translate_type_comment</vh></v>
-<v t="ekr.20220525082934.52"><vh>ASTConverter.op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
-<v t="ekr.20220525082934.53"><vh>ASTConverter.from_operator</vh></v>
-<v t="ekr.20220525082934.54"><vh>ASTConverter.comp_op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
-<v t="ekr.20220525082934.55"><vh>ASTConverter.from_comp_operator</vh></v>
-<v t="ekr.20220525082934.56"><vh>ASTConverter.as_block</vh></v>
-<v t="ekr.20220525082934.57"><vh>ASTConverter.as_required_block</vh></v>
-<v t="ekr.20220525082934.58"><vh>ASTConverter.fix_function_overloads</vh></v>
-<v t="ekr.20220525082934.59"><vh>ASTConverter._check_ifstmt_for_overloads</vh></v>
-<v t="ekr.20220525082934.60"><vh>ASTConverter._get_executable_if_block_with_overloads</vh></v>
-<v t="ekr.20220525082934.61"><vh>ASTConverter._strip_contents_from_if_stmt</vh></v>
-<v t="ekr.20220525082934.62"><vh>ASTConverter._is_stripped_if_stmt</vh></v>
-<v t="ekr.20220525082934.63"><vh>ASTConverter.in_method_scope</vh></v>
-<v t="ekr.20220525082934.64"><vh>ASTConverter.translate_module_id</vh></v>
-<v t="ekr.20220525082934.65"><vh>ASTConverter.visit_Module</vh></v>
-<v t="ekr.20220525082934.66"><vh>ASTConverter.visit_FunctionDef</vh></v>
-<v t="ekr.20220525082934.67"><vh>ASTConverter.visit_AsyncFunctionDef</vh></v>
-<v t="ekr.20220525082934.68"><vh>ASTConverter.do_func_def</vh></v>
-<v t="ekr.20220525082934.69"><vh>ASTConverter.set_type_optional</vh></v>
-<v t="ekr.20220525082934.70"><vh>ASTConverter.transform_args</vh></v>
-<v t="ekr.20220525082934.71"><vh>ASTConverter.make_argument</vh></v>
-<v t="ekr.20220525082934.72"><vh>ASTConverter.fail_arg</vh></v>
-<v t="ekr.20220525082934.73"><vh>ASTConverter.visit_ClassDef</vh></v>
-<v t="ekr.20220525082934.74"><vh>ASTConverter.visit_Return</vh></v>
-<v t="ekr.20220525082934.75"><vh>ASTConverter.visit_Delete</vh></v>
-<v t="ekr.20220525082934.76"><vh>ASTConverter.visit_Assign</vh></v>
-<v t="ekr.20220525082934.77"><vh>ASTConverter.visit_AnnAssign</vh></v>
-<v t="ekr.20220525082934.78"><vh>ASTConverter.visit_AugAssign</vh></v>
-<v t="ekr.20220525082934.79"><vh>ASTConverter.visit_For</vh></v>
-<v t="ekr.20220525082934.80"><vh>ASTConverter.visit_AsyncFor</vh></v>
-<v t="ekr.20220525082934.81"><vh>ASTConverter.visit_While</vh></v>
-<v t="ekr.20220525082934.82"><vh>ASTConverter.visit_If</vh></v>
-<v t="ekr.20220525082934.83"><vh>ASTConverter.visit_With</vh></v>
-<v t="ekr.20220525082934.84"><vh>ASTConverter.visit_AsyncWith</vh></v>
-<v t="ekr.20220525082934.85"><vh>ASTConverter.visit_Raise</vh></v>
-<v t="ekr.20220525082934.86"><vh>ASTConverter.visit_Try</vh></v>
-<v t="ekr.20220525082934.87"><vh>ASTConverter.visit_Assert</vh></v>
-<v t="ekr.20220525082934.88"><vh>ASTConverter.visit_Import</vh></v>
-<v t="ekr.20220525082934.89"><vh>ASTConverter.visit_ImportFrom</vh></v>
-<v t="ekr.20220525082934.90"><vh>ASTConverter.visit_Global</vh></v>
-<v t="ekr.20220525082934.91"><vh>ASTConverter.visit_Nonlocal</vh></v>
-<v t="ekr.20220525082934.92"><vh>ASTConverter.visit_Expr</vh></v>
-<v t="ekr.20220525082934.93"><vh>ASTConverter.visit_Pass</vh></v>
-<v t="ekr.20220525082934.94"><vh>ASTConverter.visit_Break</vh></v>
-<v t="ekr.20220525082934.95"><vh>ASTConverter.visit_Continue</vh></v>
-<v t="ekr.20220525082934.96"><vh>ASTConverter.--- expr ---</vh></v>
-<v t="ekr.20220525082934.97"><vh>ASTConverter.visit_NamedExpr</vh></v>
-<v t="ekr.20220525082934.98"><vh>ASTConverter.visit_BoolOp</vh></v>
-<v t="ekr.20220525082934.99"><vh>ASTConverter.group</vh></v>
-<v t="ekr.20220525082934.100"><vh>ASTConverter.visit_BinOp</vh></v>
-<v t="ekr.20220525082934.101"><vh>ASTConverter.visit_UnaryOp</vh></v>
-<v t="ekr.20220525082934.102"><vh>ASTConverter.visit_Lambda</vh></v>
-<v t="ekr.20220525082934.103"><vh>ASTConverter.visit_IfExp</vh></v>
-<v t="ekr.20220525082934.104"><vh>ASTConverter.visit_Dict</vh></v>
-<v t="ekr.20220525082934.105"><vh>ASTConverter.visit_Set</vh></v>
-<v t="ekr.20220525082934.106"><vh>ASTConverter.visit_ListComp</vh></v>
-<v t="ekr.20220525082934.107"><vh>ASTConverter.visit_SetComp</vh></v>
-<v t="ekr.20220525082934.108"><vh>ASTConverter.visit_DictComp</vh></v>
-<v t="ekr.20220525082934.109"><vh>ASTConverter.visit_GeneratorExp</vh></v>
-<v t="ekr.20220525082934.110"><vh>ASTConverter.visit_Await</vh></v>
-<v t="ekr.20220525082934.111"><vh>ASTConverter.visit_Yield</vh></v>
-<v t="ekr.20220525082934.112"><vh>ASTConverter.visit_YieldFrom</vh></v>
-<v t="ekr.20220525082934.113"><vh>ASTConverter.visit_Compare</vh></v>
-<v t="ekr.20220525082934.114"><vh>ASTConverter.visit_Call</vh></v>
-<v t="ekr.20220525082934.115"><vh>ASTConverter.visit_Constant</vh></v>
-<v t="ekr.20220525082934.116"><vh>ASTConverter.visit_Num</vh></v>
-<v t="ekr.20220525082934.117"><vh>ASTConverter.visit_Str</vh></v>
-<v t="ekr.20220525082934.118"><vh>ASTConverter.visit_JoinedStr</vh></v>
-<v t="ekr.20220525082934.119"><vh>ASTConverter.visit_FormattedValue</vh></v>
-<v t="ekr.20220525082934.120"><vh>ASTConverter.visit_Bytes</vh></v>
-<v t="ekr.20220525082934.121"><vh>ASTConverter.visit_NameConstant</vh></v>
-<v t="ekr.20220525082934.122"><vh>ASTConverter.visit_Ellipsis</vh></v>
-<v t="ekr.20220525082934.123"><vh>ASTConverter.visit_Attribute</vh></v>
-<v t="ekr.20220525082934.124"><vh>ASTConverter.visit_Subscript</vh></v>
-<v t="ekr.20220525082934.125"><vh>ASTConverter.visit_Starred</vh></v>
-<v t="ekr.20220525082934.126"><vh>ASTConverter.visit_Name</vh></v>
-<v t="ekr.20220525082934.127"><vh>ASTConverter.visit_List</vh></v>
-<v t="ekr.20220525082934.128"><vh>ASTConverter.visit_Tuple</vh></v>
-<v t="ekr.20220525082934.129"><vh>ASTConverter.--- slice ---</vh></v>
-<v t="ekr.20220525082934.130"><vh>ASTConverter.visit_Slice</vh></v>
-<v t="ekr.20220525082934.131"><vh>ASTConverter.visit_ExtSlice</vh></v>
-<v t="ekr.20220525082934.132"><vh>ASTConverter.visit_Index</vh></v>
-<v t="ekr.20220525082934.133"><vh>ASTConverter.visit_Match</vh></v>
-<v t="ekr.20220525082934.134"><vh>ASTConverter.visit_MatchValue</vh></v>
-<v t="ekr.20220525082934.135"><vh>ASTConverter.visit_MatchSingleton</vh></v>
-<v t="ekr.20220525082934.136"><vh>ASTConverter.visit_MatchSequence</vh></v>
-<v t="ekr.20220525082934.137"><vh>ASTConverter.visit_MatchStar</vh></v>
-<v t="ekr.20220525082934.138"><vh>ASTConverter.visit_MatchMapping</vh></v>
-<v t="ekr.20220525082934.139"><vh>ASTConverter.visit_MatchClass</vh></v>
-<v t="ekr.20220525082934.140"><vh>ASTConverter.visit_MatchAs</vh></v>
-<v t="ekr.20220525082934.141"><vh>ASTConverter.visit_MatchOr</vh></v>
-</v>
-<v t="ekr.20220525082934.142"><vh>class TypeConverter</vh>
-<v t="ekr.20220525082934.143"><vh>TypeConverter.__init__</vh></v>
-<v t="ekr.20220525082934.144"><vh>TypeConverter.convert_column</vh></v>
-<v t="ekr.20220525082934.145"><vh>TypeConverter.invalid_type</vh></v>
-<v t="ekr.20220525082934.146"><vh>TypeConverter.visit</vh></v>
-<v t="ekr.20220525082934.147"><vh>TypeConverter.visit</vh></v>
-<v t="ekr.20220525082934.148"><vh>TypeConverter.visit</vh></v>
-<v t="ekr.20220525082934.149"><vh>TypeConverter.parent</vh></v>
-<v t="ekr.20220525082934.150"><vh>TypeConverter.fail</vh></v>
-<v t="ekr.20220525082934.151"><vh>TypeConverter.note</vh></v>
-<v t="ekr.20220525082934.152"><vh>TypeConverter.translate_expr_list</vh></v>
-<v t="ekr.20220525082934.153"><vh>TypeConverter.visit_raw_str</vh></v>
-<v t="ekr.20220525082934.154"><vh>TypeConverter.visit_Call</vh></v>
-<v t="ekr.20220525082934.155"><vh>TypeConverter.translate_argument_list</vh></v>
-<v t="ekr.20220525082934.156"><vh>TypeConverter._extract_argument_name</vh></v>
-<v t="ekr.20220525082934.157"><vh>TypeConverter.visit_Name</vh></v>
-<v t="ekr.20220525082934.158"><vh>TypeConverter.visit_BinOp</vh></v>
-<v t="ekr.20220525082934.159"><vh>TypeConverter.visit_NameConstant</vh></v>
-<v t="ekr.20220525082934.160"><vh>TypeConverter.visit_Constant</vh></v>
-<v t="ekr.20220525082934.161"><vh>TypeConverter.visit_UnaryOp</vh></v>
-<v t="ekr.20220525082934.162"><vh>TypeConverter.numeric_type</vh></v>
-<v t="ekr.20220525082934.163"><vh>TypeConverter.These next three methods are only used if we are on python &lt;</vh></v>
-<v t="ekr.20220525082934.164"><vh>TypeConverter.visit_Num</vh></v>
-<v t="ekr.20220525082934.165"><vh>TypeConverter.visit_Str</vh></v>
-<v t="ekr.20220525082934.166"><vh>TypeConverter.visit_Bytes</vh></v>
-<v t="ekr.20220525082934.167"><vh>TypeConverter.visit_Index</vh></v>
-<v t="ekr.20220525082934.168"><vh>TypeConverter.visit_Slice</vh></v>
-<v t="ekr.20220525082934.169"><vh>TypeConverter.visit_Subscript</vh></v>
-<v t="ekr.20220525082934.170"><vh>TypeConverter.visit_Tuple</vh></v>
-<v t="ekr.20220525082934.171"><vh>TypeConverter.visit_Attribute</vh></v>
-<v t="ekr.20220525082934.172"><vh>TypeConverter.visit_Ellipsis</vh></v>
-<v t="ekr.20220525082934.173"><vh>TypeConverter.visit_List</vh></v>
-</v>
-<v t="ekr.20220525082934.174"><vh>stringify_name</vh></v>
-</v>
-<v t="ekr.20220525082934.175"><vh>@clean fastparse2.py</vh>
-<v t="ekr.20220525082934.176"><vh>parse</vh></v>
-<v t="ekr.20220525082934.177"><vh>is_no_type_check_decorator</vh></v>
-<v t="ekr.20220525082934.178"><vh>class ASTConverter</vh>
-<v t="ekr.20220525082934.179"><vh>ASTConverter.__init__</vh></v>
-<v t="ekr.20220525082934.180"><vh>ASTConverter.fail</vh></v>
-<v t="ekr.20220525082934.181"><vh>ASTConverter.visit</vh></v>
-<v t="ekr.20220525082934.182"><vh>ASTConverter.set_line</vh></v>
-<v t="ekr.20220525082934.183"><vh>ASTConverter.translate_expr_list</vh></v>
-<v t="ekr.20220525082934.184"><vh>ASTConverter.get_lineno</vh></v>
-<v t="ekr.20220525082934.185"><vh>ASTConverter.translate_stmt_list</vh></v>
-<v t="ekr.20220525082934.186"><vh>ASTConverter.translate_type_comment</vh></v>
-<v t="ekr.20220525082934.187"><vh>ASTConverter.op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
-<v t="ekr.20220525082934.188"><vh>ASTConverter.from_operator</vh></v>
-<v t="ekr.20220525082934.189"><vh>ASTConverter.comp_op_map: Final[Dict[typing.Type[AST], str]] = {</vh></v>
-<v t="ekr.20220525082934.190"><vh>ASTConverter.from_comp_operator</vh></v>
-<v t="ekr.20220525082934.191"><vh>ASTConverter.as_block</vh></v>
-<v t="ekr.20220525082934.192"><vh>ASTConverter.as_required_block</vh></v>
-<v t="ekr.20220525082934.193"><vh>ASTConverter.fix_function_overloads</vh></v>
-<v t="ekr.20220525082934.194"><vh>ASTConverter.in_method_scope</vh></v>
-<v t="ekr.20220525082934.195"><vh>ASTConverter.translate_module_id</vh></v>
-<v t="ekr.20220525082934.196"><vh>ASTConverter.visit_Module</vh></v>
-<v t="ekr.20220525082934.197"><vh>ASTConverter.visit_FunctionDef</vh></v>
-<v t="ekr.20220525082934.198"><vh>ASTConverter.set_type_optional</vh></v>
-<v t="ekr.20220525082934.199"><vh>ASTConverter.transform_args</vh></v>
-<v t="ekr.20220525082934.200"><vh>ASTConverter.extract_names</vh></v>
-<v t="ekr.20220525082934.201"><vh>ASTConverter.convert_arg</vh></v>
-<v t="ekr.20220525082934.202"><vh>ASTConverter.get_type</vh></v>
-<v t="ekr.20220525082934.203"><vh>ASTConverter.stringify_name</vh></v>
-<v t="ekr.20220525082934.204"><vh>ASTConverter.visit_ClassDef</vh></v>
-<v t="ekr.20220525082934.205"><vh>ASTConverter.visit_Return</vh></v>
-<v t="ekr.20220525082934.206"><vh>ASTConverter.visit_Delete</vh></v>
-<v t="ekr.20220525082934.207"><vh>ASTConverter.visit_Assign</vh></v>
-<v t="ekr.20220525082934.208"><vh>ASTConverter.visit_AugAssign</vh></v>
-<v t="ekr.20220525082934.209"><vh>ASTConverter.visit_For</vh></v>
-<v t="ekr.20220525082934.210"><vh>ASTConverter.visit_While</vh></v>
-<v t="ekr.20220525082934.211"><vh>ASTConverter.visit_If</vh></v>
-<v t="ekr.20220525082934.212"><vh>ASTConverter.visit_With</vh></v>
-<v t="ekr.20220525082934.213"><vh>ASTConverter.visit_Raise</vh></v>
-<v t="ekr.20220525082934.214"><vh>ASTConverter.visit_TryExcept</vh></v>
-<v t="ekr.20220525082934.215"><vh>ASTConverter.visit_TryFinally</vh></v>
-<v t="ekr.20220525082934.216"><vh>ASTConverter.try_handler</vh></v>
-<v t="ekr.20220525082934.217"><vh>ASTConverter.visit_Print</vh></v>
-<v t="ekr.20220525082934.218"><vh>ASTConverter.visit_Exec</vh></v>
-<v t="ekr.20220525082934.219"><vh>ASTConverter.visit_Repr</vh></v>
-<v t="ekr.20220525082934.220"><vh>ASTConverter.visit_Assert</vh></v>
-<v t="ekr.20220525082934.221"><vh>ASTConverter.visit_Import</vh></v>
-<v t="ekr.20220525082934.222"><vh>ASTConverter.visit_ImportFrom</vh></v>
-<v t="ekr.20220525082934.223"><vh>ASTConverter.visit_Global</vh></v>
-<v t="ekr.20220525082934.224"><vh>ASTConverter.visit_Expr</vh></v>
-<v t="ekr.20220525082934.225"><vh>ASTConverter.visit_Pass</vh></v>
-<v t="ekr.20220525082934.226"><vh>ASTConverter.visit_Break</vh></v>
-<v t="ekr.20220525082934.227"><vh>ASTConverter.visit_Continue</vh></v>
-<v t="ekr.20220525082934.228"><vh>ASTConverter.--- expr ---</vh></v>
-<v t="ekr.20220525082934.229"><vh>ASTConverter.visit_BoolOp</vh></v>
-<v t="ekr.20220525082934.230"><vh>ASTConverter.group</vh></v>
-<v t="ekr.20220525082934.231"><vh>ASTConverter.visit_BinOp</vh></v>
-<v t="ekr.20220525082934.232"><vh>ASTConverter.visit_UnaryOp</vh></v>
-<v t="ekr.20220525082934.233"><vh>ASTConverter.visit_Lambda</vh></v>
-<v t="ekr.20220525082934.234"><vh>ASTConverter.visit_IfExp</vh></v>
-<v t="ekr.20220525082934.235"><vh>ASTConverter.visit_Dict</vh></v>
-<v t="ekr.20220525082934.236"><vh>ASTConverter.visit_Set</vh></v>
-<v t="ekr.20220525082934.237"><vh>ASTConverter.visit_ListComp</vh></v>
-<v t="ekr.20220525082934.238"><vh>ASTConverter.visit_SetComp</vh></v>
-<v t="ekr.20220525082934.239"><vh>ASTConverter.visit_DictComp</vh></v>
-<v t="ekr.20220525082934.240"><vh>ASTConverter.visit_GeneratorExp</vh></v>
-<v t="ekr.20220525082934.241"><vh>ASTConverter.visit_Yield</vh></v>
-<v t="ekr.20220525082934.242"><vh>ASTConverter.visit_Compare</vh></v>
-<v t="ekr.20220525082934.243"><vh>ASTConverter.visit_Call</vh></v>
-<v t="ekr.20220525082934.244"><vh>ASTConverter.visit_Num</vh></v>
-<v t="ekr.20220525082934.245"><vh>ASTConverter.visit_Str</vh></v>
-<v t="ekr.20220525082934.246"><vh>ASTConverter.visit_Ellipsis</vh></v>
-<v t="ekr.20220525082934.247"><vh>ASTConverter.visit_Attribute</vh></v>
-<v t="ekr.20220525082934.248"><vh>ASTConverter.visit_Subscript</vh></v>
-<v t="ekr.20220525082934.249"><vh>ASTConverter.visit_Name</vh></v>
-<v t="ekr.20220525082934.250"><vh>ASTConverter.visit_List</vh></v>
-<v t="ekr.20220525082934.251"><vh>ASTConverter.visit_Tuple</vh></v>
-<v t="ekr.20220525082934.252"><vh>ASTConverter.--- slice ---</vh></v>
-<v t="ekr.20220525082934.253"><vh>ASTConverter.visit_Slice</vh></v>
-<v t="ekr.20220525082934.254"><vh>ASTConverter.visit_ExtSlice</vh></v>
-<v t="ekr.20220525082934.255"><vh>ASTConverter.visit_Index</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.256"><vh>@clean find_sources.py</vh>
-<v t="ekr.20220525082934.257"><vh>class InvalidSourceList</vh></v>
-<v t="ekr.20220525082934.258"><vh>create_source_list</vh></v>
-<v t="ekr.20220525082934.259"><vh>keyfunc</vh></v>
-<v t="ekr.20220525082934.260"><vh>normalise_package_base</vh></v>
-<v t="ekr.20220525082934.261"><vh>get_explicit_package_bases</vh></v>
-<v t="ekr.20220525082934.262"><vh>class SourceFinder</vh>
-<v t="ekr.20220525082934.263"><vh>SourceFinder.__init__</vh></v>
-<v t="ekr.20220525082934.264"><vh>SourceFinder.is_explicit_package_base</vh></v>
-<v t="ekr.20220525082934.265"><vh>SourceFinder.find_sources_in_dir</vh></v>
-<v t="ekr.20220525082934.266"><vh>SourceFinder.crawl_up</vh></v>
-<v t="ekr.20220525082934.267"><vh>SourceFinder.crawl_up_dir</vh></v>
-<v t="ekr.20220525082934.268"><vh>SourceFinder._crawl_up_helper</vh></v>
-<v t="ekr.20220525082934.269"><vh>SourceFinder.get_init_file</vh></v>
-</v>
-<v t="ekr.20220525082934.270"><vh>module_join</vh></v>
-<v t="ekr.20220525082934.271"><vh>strip_py</vh></v>
-</v>
-<v t="ekr.20220525082934.272"><vh>@clean fixup.py</vh>
-<v t="ekr.20220525082934.273"><vh>fixup_module</vh></v>
-<v t="ekr.20220525082934.274"><vh>class NodeFixer</vh>
-<v t="ekr.20220525082934.275"><vh>NodeFixer.__init__</vh></v>
-<v t="ekr.20220525082934.276"><vh>NodeFixer.visit_type_info</vh></v>
-<v t="ekr.20220525082934.277"><vh>NodeFixer.visit_symbol_table</vh></v>
-<v t="ekr.20220525082934.278"><vh>NodeFixer.visit_func_def</vh></v>
-<v t="ekr.20220525082934.279"><vh>NodeFixer.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082934.280"><vh>NodeFixer.visit_decorator</vh></v>
-<v t="ekr.20220525082934.281"><vh>NodeFixer.visit_class_def</vh></v>
-<v t="ekr.20220525082934.282"><vh>NodeFixer.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082934.283"><vh>NodeFixer.visit_var</vh></v>
-<v t="ekr.20220525082934.284"><vh>NodeFixer.visit_type_alias</vh></v>
-</v>
-<v t="ekr.20220525082934.285"><vh>class TypeFixer</vh>
-<v t="ekr.20220525082934.286"><vh>TypeFixer.__init__</vh></v>
-<v t="ekr.20220525082934.287"><vh>TypeFixer.visit_instance</vh></v>
-<v t="ekr.20220525082934.288"><vh>TypeFixer.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082934.289"><vh>TypeFixer.visit_any</vh></v>
-<v t="ekr.20220525082934.290"><vh>TypeFixer.visit_callable_type</vh></v>
-<v t="ekr.20220525082934.291"><vh>TypeFixer.visit_overloaded</vh></v>
-<v t="ekr.20220525082934.292"><vh>TypeFixer.visit_erased_type</vh></v>
-<v t="ekr.20220525082934.293"><vh>TypeFixer.visit_deleted_type</vh></v>
-<v t="ekr.20220525082934.294"><vh>TypeFixer.visit_none_type</vh></v>
-<v t="ekr.20220525082934.295"><vh>TypeFixer.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082934.296"><vh>TypeFixer.visit_partial_type</vh></v>
-<v t="ekr.20220525082934.297"><vh>TypeFixer.visit_tuple_type</vh></v>
-<v t="ekr.20220525082934.298"><vh>TypeFixer.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082934.299"><vh>TypeFixer.visit_literal_type</vh></v>
-<v t="ekr.20220525082934.300"><vh>TypeFixer.visit_type_var</vh></v>
-<v t="ekr.20220525082934.301"><vh>TypeFixer.visit_param_spec</vh></v>
-<v t="ekr.20220525082934.302"><vh>TypeFixer.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082934.303"><vh>TypeFixer.visit_unpack_type</vh></v>
-<v t="ekr.20220525082934.304"><vh>TypeFixer.visit_parameters</vh></v>
-<v t="ekr.20220525082934.305"><vh>TypeFixer.visit_unbound_type</vh></v>
-<v t="ekr.20220525082934.306"><vh>TypeFixer.visit_union_type</vh></v>
-<v t="ekr.20220525082934.307"><vh>TypeFixer.visit_void</vh></v>
-<v t="ekr.20220525082934.308"><vh>TypeFixer.visit_type_type</vh></v>
-</v>
-<v t="ekr.20220525082934.309"><vh>lookup_fully_qualified_typeinfo</vh></v>
-<v t="ekr.20220525082934.310"><vh>lookup_fully_qualified_alias</vh></v>
-<v t="ekr.20220525082934.311"><vh>_SUGGESTION: Final = "&lt;missing {}: *should* have gone away during fine-grained update&gt;"</vh></v>
-<v t="ekr.20220525082934.312"><vh>missing_info</vh></v>
-<v t="ekr.20220525082934.313"><vh>missing_alias</vh></v>
-</v>
-<v t="ekr.20220525082934.314"><vh>@clean freetree.py</vh>
-<v t="ekr.20220525082934.315"><vh>class TreeFreer</vh></v>
-<v t="ekr.20220525082934.316"><vh>free_tree</vh></v>
-</v>
-<v t="ekr.20220525082934.317"><vh>@clean fscache.py</vh>
-<v t="ekr.20220525082934.318"><vh>class FileSystemCache</vh>
-<v t="ekr.20220525082934.319"><vh>FileSystemCache.__init__</vh></v>
-<v t="ekr.20220525082934.320"><vh>FileSystemCache.set_package_root</vh></v>
-<v t="ekr.20220525082934.321"><vh>FileSystemCache.flush</vh></v>
-<v t="ekr.20220525082934.322"><vh>FileSystemCache.stat</vh></v>
-<v t="ekr.20220525082934.323"><vh>FileSystemCache.init_under_package_root</vh></v>
-<v t="ekr.20220525082934.324"><vh>FileSystemCache._fake_init</vh></v>
-<v t="ekr.20220525082934.325"><vh>FileSystemCache.listdir</vh></v>
-<v t="ekr.20220525082934.326"><vh>FileSystemCache.isfile</vh></v>
-<v t="ekr.20220525082934.327"><vh>FileSystemCache.isfile_case</vh></v>
-<v t="ekr.20220525082934.328"><vh>FileSystemCache.exists_case</vh></v>
-<v t="ekr.20220525082934.329"><vh>FileSystemCache.isdir</vh></v>
-<v t="ekr.20220525082934.330"><vh>FileSystemCache.exists</vh></v>
-<v t="ekr.20220525082934.331"><vh>FileSystemCache.read</vh></v>
-<v t="ekr.20220525082934.332"><vh>FileSystemCache.hash_digest</vh></v>
-<v t="ekr.20220525082934.333"><vh>FileSystemCache.samefile</vh></v>
-</v>
-<v t="ekr.20220525082934.334"><vh>copy_os_error</vh></v>
-</v>
-<v t="ekr.20220525082934.335"><vh>@clean fswatcher.py</vh>
-<v t="ekr.20220525082934.336"><vh>class FileSystemWatcher</vh>
-<v t="ekr.20220525082934.337"><vh>FileSystemWatcher.__init__</vh></v>
-<v t="ekr.20220525082934.338"><vh>FileSystemWatcher.dump_file_data</vh></v>
-<v t="ekr.20220525082934.339"><vh>FileSystemWatcher.set_file_data</vh></v>
-<v t="ekr.20220525082934.340"><vh>FileSystemWatcher.add_watched_paths</vh></v>
-<v t="ekr.20220525082934.341"><vh>FileSystemWatcher.remove_watched_paths</vh></v>
-<v t="ekr.20220525082934.342"><vh>FileSystemWatcher._update</vh></v>
-<v t="ekr.20220525082934.343"><vh>FileSystemWatcher._find_changed</vh></v>
-<v t="ekr.20220525082934.344"><vh>FileSystemWatcher.find_changed</vh></v>
-<v t="ekr.20220525082934.345"><vh>FileSystemWatcher.update_changed</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.346"><vh>@clean gclogger.py</vh>
-<v t="ekr.20220525082934.347"><vh>class GcLogger</vh>
-<v t="ekr.20220525082934.348"><vh>GcLogger.__enter__</vh></v>
-<v t="ekr.20220525082934.349"><vh>GcLogger.gc_callback</vh></v>
-<v t="ekr.20220525082934.350"><vh>GcLogger.__exit__</vh></v>
-<v t="ekr.20220525082934.351"><vh>GcLogger.get_stats</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.352"><vh>@clean git.py</vh>
-<v t="ekr.20220525082934.353"><vh>is_git_repo</vh></v>
-<v t="ekr.20220525082934.354"><vh>have_git</vh></v>
-<v t="ekr.20220525082934.355"><vh>git_revision</vh></v>
-<v t="ekr.20220525082934.356"><vh>is_dirty</vh></v>
-</v>
 <v t="ekr.20220525082934.357"><vh>@clean indirection.py</vh>
 <v t="ekr.20220525082934.358"><vh>extract_module_names</vh></v>
 <v t="ekr.20220525082934.359"><vh>class TypeIndirectionVisitor</vh>
@@ -1609,32 +4029,6 @@
 <v t="ekr.20220525082934.381"><vh>TypeIndirectionVisitor.visit_partial_type</vh></v>
 <v t="ekr.20220525082934.382"><vh>TypeIndirectionVisitor.visit_type_type</vh></v>
 <v t="ekr.20220525082934.383"><vh>TypeIndirectionVisitor.visit_type_alias_type</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.384"><vh>@clean infer.py</vh>
-<v t="ekr.20220525082934.385"><vh>class ArgumentInferContext</vh></v>
-<v t="ekr.20220525082934.386"><vh>infer_function_type_arguments</vh></v>
-<v t="ekr.20220525082934.387"><vh>infer_type_arguments</vh></v>
-</v>
-<v t="ekr.20220525082934.388"><vh>@clean ipc.py</vh>
-<v t="ekr.20220525082934.389"><vh>class IPCException</vh></v>
-<v t="ekr.20220525082934.390"><vh>class IPCBase</vh>
-<v t="ekr.20220525082934.391"><vh>IPCBase.__init__</vh></v>
-<v t="ekr.20220525082934.392"><vh>IPCBase.read</vh></v>
-<v t="ekr.20220525082934.393"><vh>IPCBase.write</vh></v>
-<v t="ekr.20220525082934.394"><vh>IPCBase.close</vh></v>
-</v>
-<v t="ekr.20220525082934.395"><vh>class IPCClient</vh>
-<v t="ekr.20220525082934.396"><vh>IPCClient.__init__</vh></v>
-<v t="ekr.20220525082934.397"><vh>IPCClient.__enter__</vh></v>
-<v t="ekr.20220525082934.398"><vh>IPCClient.__exit__</vh></v>
-</v>
-<v t="ekr.20220525082934.399"><vh>class IPCServer</vh>
-<v t="ekr.20220525082934.400"><vh>IPCServer.__init__</vh></v>
-<v t="ekr.20220525082934.401"><vh>IPCServer.__enter__</vh></v>
-<v t="ekr.20220525082934.402"><vh>IPCServer.__exit__</vh></v>
-<v t="ekr.20220525082934.403"><vh>IPCServer.cleanup</vh></v>
-<v t="ekr.20220525082934.404"><vh>IPCServer.connection_name</vh></v>
 </v>
 </v>
 <v t="ekr.20220525082934.405"><vh>@clean join.py</vh>
@@ -1737,51 +4131,6 @@
 <v t="ekr.20220525082934.499"><vh>_Hasher.visit_temp_node</vh></v>
 </v>
 </v>
-<v t="ekr.20220525082934.500"><vh>@clean lookup.py</vh>
-<v t="ekr.20220525082934.501"><vh>lookup_fully_qualified</vh></v>
-</v>
-<v t="ekr.20220525082934.502"><vh>@clean main.py</vh>
-<v t="ekr.20220525082934.503"><vh>stat_proxy</vh></v>
-<v t="ekr.20220525082934.504"><vh>main</vh></v>
-<v t="ekr.20220525082934.505"><vh>run_build</vh>
-<v t="ekr.20220525082934.506"><vh>flush_errors</vh></v>
-</v>
-<v t="ekr.20220525082934.507"><vh>show_messages</vh></v>
-<v t="ekr.20220525082934.508"><vh>class AugmentedHelpFormatter</vh>
-<v t="ekr.20220525082934.509"><vh>AugmentedHelpFormatter.__init__</vh></v>
-<v t="ekr.20220525082934.510"><vh>AugmentedHelpFormatter._fill_text</vh></v>
-</v>
-<v t="ekr.20220525082934.511"><vh>Define pairs of flag prefixes with inverse meaning.</vh></v>
-<v t="ekr.20220525082934.512"><vh>invert_flag_name</vh></v>
-<v t="ekr.20220525082934.513"><vh>class PythonExecutableInferenceError</vh></v>
-<v t="ekr.20220525082934.514"><vh>python_executable_prefix</vh></v>
-<v t="ekr.20220525082934.515"><vh>_python_executable_from_version</vh></v>
-<v t="ekr.20220525082934.516"><vh>infer_python_executable</vh></v>
-<v t="ekr.20220525082934.517"><vh>HEADER: Final = """%(prog)s [-h] [-v] [-V] [more options; see below]</vh></v>
-<v t="ekr.20220525082934.518"><vh>class CapturableArgumentParser</vh>
-<v t="ekr.20220525082934.519"><vh>CapturableArgumentParser.__init__</vh></v>
-<v t="ekr.20220525082934.520"><vh>CapturableArgumentParser.print_usage</vh></v>
-<v t="ekr.20220525082934.521"><vh>CapturableArgumentParser.print_help</vh></v>
-<v t="ekr.20220525082934.522"><vh>CapturableArgumentParser._print_message</vh></v>
-<v t="ekr.20220525082934.523"><vh>CapturableArgumentParser.exit</vh></v>
-<v t="ekr.20220525082934.524"><vh>CapturableArgumentParser.error</vh></v>
-</v>
-<v t="ekr.20220525082934.525"><vh>class CapturableVersionAction</vh>
-<v t="ekr.20220525082934.526"><vh>CapturableVersionAction.__init__</vh></v>
-<v t="ekr.20220525082934.527"><vh>CapturableVersionAction.__call__</vh></v>
-</v>
-<v t="ekr.20220525082934.528"><vh>process_options</vh>
-<v t="ekr.20220525082934.529"><vh>add_invertible_flag</vh></v>
-<v t="ekr.20220525082934.530"><vh>Unless otherwise specified, arguments will be parsed directly onto an</vh></v>
-<v t="ekr.20220525082934.531"><vh>set_strict_flags</vh></v>
-</v>
-<v t="ekr.20220525082934.532"><vh>process_package_roots</vh></v>
-<v t="ekr.20220525082934.533"><vh>process_cache_map</vh></v>
-<v t="ekr.20220525082934.534"><vh>maybe_write_junit_xml</vh></v>
-<v t="ekr.20220525082934.535"><vh>fail</vh></v>
-<v t="ekr.20220525082934.536"><vh>read_types_packages_to_install</vh></v>
-<v t="ekr.20220525082934.537"><vh>install_types</vh></v>
-</v>
 <v t="ekr.20220525082934.538"><vh>@clean maptype.py</vh>
 <v t="ekr.20220525082934.539"><vh>map_instance_to_supertype</vh></v>
 <v t="ekr.20220525082934.540"><vh>map_instance_to_supertypes</vh></v>
@@ -1839,1107 +4188,6 @@
 <v t="ekr.20220525082934.589"><vh>typed_dict_mapping_pair</vh></v>
 <v t="ekr.20220525082934.590"><vh>typed_dict_mapping_overlap</vh></v>
 </v>
-<v t="ekr.20220525082934.591"><vh>@clean memprofile.py</vh>
-<v t="ekr.20220525082934.592"><vh>collect_memory_stats</vh></v>
-<v t="ekr.20220525082934.593"><vh>print_memory_profile</vh></v>
-<v t="ekr.20220525082934.594"><vh>find_recursive_objects</vh>
-<v t="ekr.20220525082934.595"><vh>visit</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.596"><vh>@clean messages.py</vh>
-<v t="ekr.20220525082934.597"><vh>class MessageBuilder</vh>
-<v t="ekr.20220525082934.598"><vh>MessageBuilder.__init__</vh></v>
-<v t="ekr.20220525082934.599"><vh>MessageBuilder.Helpers</vh></v>
-<v t="ekr.20220525082934.600"><vh>MessageBuilder.filter_errors</vh></v>
-<v t="ekr.20220525082934.601"><vh>MessageBuilder.add_errors</vh></v>
-<v t="ekr.20220525082934.602"><vh>MessageBuilder.disable_type_names</vh></v>
-<v t="ekr.20220525082934.603"><vh>MessageBuilder.are_type_names_disabled</vh></v>
-<v t="ekr.20220525082934.604"><vh>MessageBuilder.report</vh></v>
-<v t="ekr.20220525082934.605"><vh>MessageBuilder.fail</vh></v>
-<v t="ekr.20220525082934.606"><vh>MessageBuilder.note</vh></v>
-<v t="ekr.20220525082934.607"><vh>MessageBuilder.note_multiline</vh></v>
-<v t="ekr.20220525082934.608"><vh>MessageBuilder.Specific operations</vh></v>
-<v t="ekr.20220525082934.609"><vh>MessageBuilder.has_no_attr</vh></v>
-<v t="ekr.20220525082934.610"><vh>MessageBuilder.unsupported_operand_types</vh></v>
-<v t="ekr.20220525082934.611"><vh>MessageBuilder.unsupported_left_operand</vh></v>
-<v t="ekr.20220525082934.612"><vh>MessageBuilder.not_callable</vh></v>
-<v t="ekr.20220525082934.613"><vh>MessageBuilder.untyped_function_call</vh></v>
-<v t="ekr.20220525082934.614"><vh>MessageBuilder.incompatible_argument</vh></v>
-<v t="ekr.20220525082934.615"><vh>MessageBuilder.incompatible_argument_note</vh></v>
-<v t="ekr.20220525082934.616"><vh>MessageBuilder.maybe_note_concatenate_pos_args</vh></v>
-<v t="ekr.20220525082934.617"><vh>MessageBuilder.invalid_index_type</vh></v>
-<v t="ekr.20220525082934.618"><vh>MessageBuilder.too_few_arguments</vh></v>
-<v t="ekr.20220525082934.619"><vh>MessageBuilder.missing_named_argument</vh></v>
-<v t="ekr.20220525082934.620"><vh>MessageBuilder.too_many_arguments</vh></v>
-<v t="ekr.20220525082934.621"><vh>MessageBuilder.too_many_arguments_from_typed_dict</vh></v>
-<v t="ekr.20220525082934.622"><vh>MessageBuilder.too_many_positional_arguments</vh></v>
-<v t="ekr.20220525082934.623"><vh>MessageBuilder.maybe_note_about_special_args</vh></v>
-<v t="ekr.20220525082934.624"><vh>MessageBuilder.unexpected_keyword_argument</vh></v>
-<v t="ekr.20220525082934.625"><vh>MessageBuilder.duplicate_argument_value</vh></v>
-<v t="ekr.20220525082934.626"><vh>MessageBuilder.does_not_return_value</vh></v>
-<v t="ekr.20220525082934.627"><vh>MessageBuilder.underscore_function_call</vh></v>
-<v t="ekr.20220525082934.628"><vh>MessageBuilder.deleted_as_rvalue</vh></v>
-<v t="ekr.20220525082934.629"><vh>MessageBuilder.deleted_as_lvalue</vh></v>
-<v t="ekr.20220525082934.630"><vh>MessageBuilder.no_variant_matches_arguments</vh></v>
-<v t="ekr.20220525082934.631"><vh>MessageBuilder.wrong_number_values_to_unpack</vh></v>
-<v t="ekr.20220525082934.632"><vh>MessageBuilder.unpacking_strings_disallowed</vh></v>
-<v t="ekr.20220525082934.633"><vh>MessageBuilder.type_not_iterable</vh></v>
-<v t="ekr.20220525082934.634"><vh>MessageBuilder.incompatible_operator_assignment</vh></v>
-<v t="ekr.20220525082934.635"><vh>MessageBuilder.overload_signature_incompatible_with_supertype</vh></v>
-<v t="ekr.20220525082934.636"><vh>MessageBuilder.signature_incompatible_with_supertype</vh></v>
-<v t="ekr.20220525082934.637"><vh>MessageBuilder.pretty_callable_or_overload</vh></v>
-<v t="ekr.20220525082934.638"><vh>MessageBuilder.argument_incompatible_with_supertype</vh></v>
-<v t="ekr.20220525082934.639"><vh>MessageBuilder.comparison_method_example_msg</vh></v>
-<v t="ekr.20220525082934.640"><vh>MessageBuilder.return_type_incompatible_with_supertype</vh></v>
-<v t="ekr.20220525082934.641"><vh>MessageBuilder.override_target</vh></v>
-<v t="ekr.20220525082934.642"><vh>MessageBuilder.incompatible_type_application</vh></v>
-<v t="ekr.20220525082934.643"><vh>MessageBuilder.could_not_infer_type_arguments</vh></v>
-<v t="ekr.20220525082934.644"><vh>MessageBuilder.invalid_var_arg</vh></v>
-<v t="ekr.20220525082934.645"><vh>MessageBuilder.invalid_keyword_var_arg</vh></v>
-<v t="ekr.20220525082934.646"><vh>MessageBuilder.undefined_in_superclass</vh></v>
-<v t="ekr.20220525082934.647"><vh>MessageBuilder.first_argument_for_super_must_be_type</vh></v>
-<v t="ekr.20220525082934.648"><vh>MessageBuilder.too_few_string_formatting_arguments</vh></v>
-<v t="ekr.20220525082934.649"><vh>MessageBuilder.too_many_string_formatting_arguments</vh></v>
-<v t="ekr.20220525082934.650"><vh>MessageBuilder.unsupported_placeholder</vh></v>
-<v t="ekr.20220525082934.651"><vh>MessageBuilder.string_interpolation_with_star_and_key</vh></v>
-<v t="ekr.20220525082934.652"><vh>MessageBuilder.requires_int_or_single_byte</vh></v>
-<v t="ekr.20220525082934.653"><vh>MessageBuilder.requires_int_or_char</vh></v>
-<v t="ekr.20220525082934.654"><vh>MessageBuilder.key_not_in_mapping</vh></v>
-<v t="ekr.20220525082934.655"><vh>MessageBuilder.string_interpolation_mixing_key_and_non_keys</vh></v>
-<v t="ekr.20220525082934.656"><vh>MessageBuilder.cannot_determine_type</vh></v>
-<v t="ekr.20220525082934.657"><vh>MessageBuilder.cannot_determine_type_in_base</vh></v>
-<v t="ekr.20220525082934.658"><vh>MessageBuilder.no_formal_self</vh></v>
-<v t="ekr.20220525082934.659"><vh>MessageBuilder.incompatible_self_argument</vh></v>
-<v t="ekr.20220525082934.660"><vh>MessageBuilder.incompatible_conditional_function_def</vh></v>
-<v t="ekr.20220525082934.661"><vh>MessageBuilder.cannot_instantiate_abstract_class</vh></v>
-<v t="ekr.20220525082934.662"><vh>MessageBuilder.base_class_definitions_incompatible</vh></v>
-<v t="ekr.20220525082934.663"><vh>MessageBuilder.cant_assign_to_method</vh></v>
-<v t="ekr.20220525082934.664"><vh>MessageBuilder.cant_assign_to_classvar</vh></v>
-<v t="ekr.20220525082934.665"><vh>MessageBuilder.final_cant_override_writable</vh></v>
-<v t="ekr.20220525082934.666"><vh>MessageBuilder.cant_override_final</vh></v>
-<v t="ekr.20220525082934.667"><vh>MessageBuilder.cant_assign_to_final</vh></v>
-<v t="ekr.20220525082934.668"><vh>MessageBuilder.protocol_members_cant_be_final</vh></v>
-<v t="ekr.20220525082934.669"><vh>MessageBuilder.final_without_value</vh></v>
-<v t="ekr.20220525082934.670"><vh>MessageBuilder.read_only_property</vh></v>
-<v t="ekr.20220525082934.671"><vh>MessageBuilder.incompatible_typevar_value</vh></v>
-<v t="ekr.20220525082934.672"><vh>MessageBuilder.dangerous_comparison</vh></v>
-<v t="ekr.20220525082934.673"><vh>MessageBuilder.overload_inconsistently_applies_decorator</vh></v>
-<v t="ekr.20220525082934.674"><vh>MessageBuilder.overloaded_signatures_overlap</vh></v>
-<v t="ekr.20220525082934.675"><vh>MessageBuilder.overloaded_signature_will_never_match</vh></v>
-<v t="ekr.20220525082934.676"><vh>MessageBuilder.overloaded_signatures_typevar_specific</vh></v>
-<v t="ekr.20220525082934.677"><vh>MessageBuilder.overloaded_signatures_arg_specific</vh></v>
-<v t="ekr.20220525082934.678"><vh>MessageBuilder.overloaded_signatures_ret_specific</vh></v>
-<v t="ekr.20220525082934.679"><vh>MessageBuilder.warn_both_operands_are_from_unions</vh></v>
-<v t="ekr.20220525082934.680"><vh>MessageBuilder.warn_operand_was_from_union</vh></v>
-<v t="ekr.20220525082934.681"><vh>MessageBuilder.operator_method_signatures_overlap</vh></v>
-<v t="ekr.20220525082934.682"><vh>MessageBuilder.forward_operator_not_callable</vh></v>
-<v t="ekr.20220525082934.683"><vh>MessageBuilder.signatures_incompatible</vh></v>
-<v t="ekr.20220525082934.684"><vh>MessageBuilder.yield_from_invalid_operand_type</vh></v>
-<v t="ekr.20220525082934.685"><vh>MessageBuilder.invalid_signature</vh></v>
-<v t="ekr.20220525082934.686"><vh>MessageBuilder.invalid_signature_for_special_method</vh></v>
-<v t="ekr.20220525082934.687"><vh>MessageBuilder.reveal_type</vh></v>
-<v t="ekr.20220525082934.688"><vh>MessageBuilder.reveal_locals</vh></v>
-<v t="ekr.20220525082934.689"><vh>MessageBuilder.unsupported_type_type</vh></v>
-<v t="ekr.20220525082934.690"><vh>MessageBuilder.redundant_cast</vh></v>
-<v t="ekr.20220525082934.691"><vh>MessageBuilder.assert_type_fail</vh></v>
-<v t="ekr.20220525082934.692"><vh>MessageBuilder.unimported_type_becomes_any</vh></v>
-<v t="ekr.20220525082934.693"><vh>MessageBuilder.need_annotation_for_var</vh></v>
-<v t="ekr.20220525082934.694"><vh>MessageBuilder.explicit_any</vh></v>
-<v t="ekr.20220525082934.695"><vh>MessageBuilder.unexpected_typeddict_keys</vh></v>
-<v t="ekr.20220525082934.696"><vh>MessageBuilder.typeddict_key_must_be_string_literal</vh></v>
-<v t="ekr.20220525082934.697"><vh>MessageBuilder.typeddict_key_not_found</vh></v>
-<v t="ekr.20220525082934.698"><vh>MessageBuilder.typeddict_context_ambiguous</vh></v>
-<v t="ekr.20220525082934.699"><vh>MessageBuilder.typeddict_key_cannot_be_deleted</vh></v>
-<v t="ekr.20220525082934.700"><vh>MessageBuilder.typeddict_setdefault_arguments_inconsistent</vh></v>
-<v t="ekr.20220525082934.701"><vh>MessageBuilder.type_arguments_not_allowed</vh></v>
-<v t="ekr.20220525082934.702"><vh>MessageBuilder.disallowed_any_type</vh></v>
-<v t="ekr.20220525082934.703"><vh>MessageBuilder.incorrectly_returning_any</vh></v>
-<v t="ekr.20220525082934.704"><vh>MessageBuilder.incorrect__exit__return</vh></v>
-<v t="ekr.20220525082934.705"><vh>MessageBuilder.untyped_decorated_function</vh></v>
-<v t="ekr.20220525082934.706"><vh>MessageBuilder.typed_function_untyped_decorator</vh></v>
-<v t="ekr.20220525082934.707"><vh>MessageBuilder.bad_proto_variance</vh></v>
-<v t="ekr.20220525082934.708"><vh>MessageBuilder.concrete_only_assign</vh></v>
-<v t="ekr.20220525082934.709"><vh>MessageBuilder.concrete_only_call</vh></v>
-<v t="ekr.20220525082934.710"><vh>MessageBuilder.cannot_use_function_with_type</vh></v>
-<v t="ekr.20220525082934.711"><vh>MessageBuilder.report_non_method_protocol</vh></v>
-<v t="ekr.20220525082934.712"><vh>MessageBuilder.note_call</vh></v>
-<v t="ekr.20220525082934.713"><vh>MessageBuilder.unreachable_statement</vh></v>
-<v t="ekr.20220525082934.714"><vh>MessageBuilder.redundant_left_operand</vh></v>
-<v t="ekr.20220525082934.715"><vh>MessageBuilder.unreachable_right_operand</vh></v>
-<v t="ekr.20220525082934.716"><vh>MessageBuilder.redundant_condition_in_comprehension</vh></v>
-<v t="ekr.20220525082934.717"><vh>MessageBuilder.redundant_condition_in_if</vh></v>
-<v t="ekr.20220525082934.718"><vh>MessageBuilder.redundant_expr</vh></v>
-<v t="ekr.20220525082934.719"><vh>MessageBuilder.impossible_intersection</vh></v>
-<v t="ekr.20220525082934.720"><vh>MessageBuilder.report_protocol_problems</vh></v>
-<v t="ekr.20220525082934.721"><vh>MessageBuilder.pretty_overload</vh></v>
-<v t="ekr.20220525082934.722"><vh>MessageBuilder.print_more</vh></v>
-<v t="ekr.20220525082934.723"><vh>MessageBuilder.try_report_long_tuple_assignment_error</vh></v>
-<v t="ekr.20220525082934.724"><vh>MessageBuilder.format_long_tuple_type</vh></v>
-<v t="ekr.20220525082934.725"><vh>MessageBuilder.generate_incompatible_tuple_error</vh></v>
-<v t="ekr.20220525082934.726"><vh>MessageBuilder.add_fixture_note</vh></v>
-</v>
-<v t="ekr.20220525082934.727"><vh>quote_type_string</vh></v>
-<v t="ekr.20220525082934.728"><vh>format_callable_args</vh></v>
-<v t="ekr.20220525082934.729"><vh>format_type_inner</vh>
-<v t="ekr.20220525082934.730"><vh>format</vh></v>
-<v t="ekr.20220525082934.731"><vh>format_list</vh></v>
-<v t="ekr.20220525082934.732"><vh>format_literal_value</vh></v>
-</v>
-<v t="ekr.20220525082934.733"><vh>collect_all_instances</vh></v>
-<v t="ekr.20220525082934.734"><vh>class CollectAllInstancesQuery</vh></v>
-<v t="ekr.20220525082934.735"><vh>find_type_overlaps</vh></v>
-<v t="ekr.20220525082934.736"><vh>format_type</vh></v>
-<v t="ekr.20220525082934.737"><vh>format_type_bare</vh></v>
-<v t="ekr.20220525082934.738"><vh>format_type_distinctly</vh></v>
-<v t="ekr.20220525082934.739"><vh>pretty_class_or_static_decorator</vh></v>
-<v t="ekr.20220525082934.740"><vh>pretty_callable</vh></v>
-<v t="ekr.20220525082934.741"><vh>variance_string</vh></v>
-<v t="ekr.20220525082934.742"><vh>get_missing_protocol_members</vh></v>
-<v t="ekr.20220525082934.743"><vh>get_conflict_protocol_types</vh></v>
-<v t="ekr.20220525082934.744"><vh>get_bad_protocol_flags</vh></v>
-<v t="ekr.20220525082934.745"><vh>capitalize</vh></v>
-<v t="ekr.20220525082934.746"><vh>extract_type</vh></v>
-<v t="ekr.20220525082934.747"><vh>strip_quotes</vh></v>
-<v t="ekr.20220525082934.748"><vh>plural_s</vh></v>
-<v t="ekr.20220525082934.749"><vh>format_string_list</vh></v>
-<v t="ekr.20220525082934.750"><vh>format_item_name_list</vh></v>
-<v t="ekr.20220525082934.751"><vh>callable_name</vh></v>
-<v t="ekr.20220525082934.752"><vh>for_function</vh></v>
-<v t="ekr.20220525082934.753"><vh>find_defining_module</vh></v>
-<v t="ekr.20220525082934.754"><vh>For hard-coding suggested missing member alternatives.</vh></v>
-<v t="ekr.20220525082934.755"><vh>best_matches</vh></v>
-<v t="ekr.20220525082934.756"><vh>pretty_seq</vh></v>
-<v t="ekr.20220525082934.757"><vh>append_invariance_notes</vh></v>
-<v t="ekr.20220525082934.758"><vh>make_inferred_type_note</vh></v>
-<v t="ekr.20220525082934.759"><vh>format_key_list</vh></v>
-</v>
-<v t="ekr.20220525082934.760"><vh>@clean message_registry.py</vh>
-<v t="ekr.20220525082934.761"><vh>class ErrorMessage</vh></v>
-</v>
-<v t="ekr.20220525082934.762"><vh>@clean metastore.py</vh>
-<v t="ekr.20220525082934.763"><vh>class MetadataStore</vh>
-<v t="ekr.20220525082934.764"><vh>MetadataStore.getmtime</vh></v>
-<v t="ekr.20220525082934.765"><vh>MetadataStore.read</vh></v>
-<v t="ekr.20220525082934.766"><vh>MetadataStore.write</vh></v>
-<v t="ekr.20220525082934.767"><vh>MetadataStore.remove</vh></v>
-<v t="ekr.20220525082934.768"><vh>MetadataStore.commit</vh></v>
-<v t="ekr.20220525082934.769"><vh>MetadataStore.list_all</vh></v>
-</v>
-<v t="ekr.20220525082934.770"><vh>random_string</vh></v>
-<v t="ekr.20220525082934.771"><vh>class FilesystemMetadataStore</vh>
-<v t="ekr.20220525082934.772"><vh>FilesystemMetadataStore.__init__</vh></v>
-<v t="ekr.20220525082934.773"><vh>FilesystemMetadataStore.getmtime</vh></v>
-<v t="ekr.20220525082934.774"><vh>FilesystemMetadataStore.read</vh></v>
-<v t="ekr.20220525082934.775"><vh>FilesystemMetadataStore.write</vh></v>
-<v t="ekr.20220525082934.776"><vh>FilesystemMetadataStore.remove</vh></v>
-<v t="ekr.20220525082934.777"><vh>FilesystemMetadataStore.commit</vh></v>
-<v t="ekr.20220525082934.778"><vh>FilesystemMetadataStore.list_all</vh></v>
-</v>
-<v t="ekr.20220525082934.779"><vh>SCHEMA = '''</vh></v>
-<v t="ekr.20220525082934.780"><vh>connect_db</vh></v>
-<v t="ekr.20220525082934.781"><vh>class SqliteMetadataStore</vh>
-<v t="ekr.20220525082934.782"><vh>SqliteMetadataStore.__init__</vh></v>
-<v t="ekr.20220525082934.783"><vh>SqliteMetadataStore._query</vh></v>
-<v t="ekr.20220525082934.784"><vh>SqliteMetadataStore.getmtime</vh></v>
-<v t="ekr.20220525082934.785"><vh>SqliteMetadataStore.read</vh></v>
-<v t="ekr.20220525082934.786"><vh>SqliteMetadataStore.write</vh></v>
-<v t="ekr.20220525082934.787"><vh>SqliteMetadataStore.remove</vh></v>
-<v t="ekr.20220525082934.788"><vh>SqliteMetadataStore.commit</vh></v>
-<v t="ekr.20220525082934.789"><vh>SqliteMetadataStore.list_all</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.790"><vh>@clean mixedtraverser.py</vh>
-<v t="ekr.20220525082934.791"><vh>class MixedTraverserVisitor</vh>
-<v t="ekr.20220525082934.792"><vh>MixedTraverserVisitor.visit_var</vh></v>
-<v t="ekr.20220525082934.793"><vh>MixedTraverserVisitor.visit_func</vh></v>
-<v t="ekr.20220525082934.794"><vh>MixedTraverserVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082934.795"><vh>MixedTraverserVisitor.visit_type_alias_expr</vh></v>
-<v t="ekr.20220525082934.796"><vh>MixedTraverserVisitor.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082934.797"><vh>MixedTraverserVisitor.visit_typeddict_expr</vh></v>
-<v t="ekr.20220525082934.798"><vh>MixedTraverserVisitor.visit_namedtuple_expr</vh></v>
-<v t="ekr.20220525082934.799"><vh>MixedTraverserVisitor.visit__promote_expr</vh></v>
-<v t="ekr.20220525082934.800"><vh>MixedTraverserVisitor.visit_newtype_expr</vh></v>
-<v t="ekr.20220525082934.801"><vh>MixedTraverserVisitor.Statements</vh></v>
-<v t="ekr.20220525082934.802"><vh>MixedTraverserVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082934.803"><vh>MixedTraverserVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082934.804"><vh>MixedTraverserVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082934.805"><vh>MixedTraverserVisitor.Expressions</vh></v>
-<v t="ekr.20220525082934.806"><vh>MixedTraverserVisitor.visit_cast_expr</vh></v>
-<v t="ekr.20220525082934.807"><vh>MixedTraverserVisitor.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082934.808"><vh>MixedTraverserVisitor.visit_type_application</vh></v>
-<v t="ekr.20220525082934.809"><vh>MixedTraverserVisitor.Helpers</vh></v>
-<v t="ekr.20220525082934.810"><vh>MixedTraverserVisitor.visit_optional_type</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.811"><vh>@clean modulefinder.py</vh>
-<v t="ekr.20220525082934.812"><vh>class ModuleNotFoundReason</vh>
-<v t="ekr.20220525082934.813"><vh>ModuleNotFoundReason.error_message_templates</vh></v>
-</v>
-<v t="ekr.20220525082934.814"><vh>If we found the module, returns the path to the module as a str.</vh></v>
-<v t="ekr.20220525082934.815"><vh>class BuildSource</vh>
-<v t="ekr.20220525082934.816"><vh>BuildSource.__init__</vh></v>
-<v t="ekr.20220525082934.817"><vh>BuildSource.__repr__</vh></v>
-</v>
-<v t="ekr.20220525082934.818"><vh>class BuildSourceSet</vh>
-<v t="ekr.20220525082934.819"><vh>BuildSourceSet.__init__</vh></v>
-<v t="ekr.20220525082934.820"><vh>BuildSourceSet.is_source</vh></v>
-</v>
-<v t="ekr.20220525082934.821"><vh>class FindModuleCache</vh>
-<v t="ekr.20220525082934.822"><vh>FindModuleCache.__init__</vh></v>
-<v t="ekr.20220525082934.823"><vh>FindModuleCache.clear</vh></v>
-<v t="ekr.20220525082934.824"><vh>FindModuleCache.find_module_via_source_set</vh></v>
-<v t="ekr.20220525082934.825"><vh>FindModuleCache.find_lib_path_dirs</vh></v>
-<v t="ekr.20220525082934.826"><vh>FindModuleCache.get_toplevel_possibilities</vh></v>
-<v t="ekr.20220525082934.827"><vh>FindModuleCache.find_module</vh></v>
-<v t="ekr.20220525082934.828"><vh>FindModuleCache._typeshed_has_version</vh></v>
-<v t="ekr.20220525082934.829"><vh>FindModuleCache._find_module_non_stub_helper</vh></v>
-<v t="ekr.20220525082934.830"><vh>FindModuleCache._update_ns_ancestors</vh></v>
-<v t="ekr.20220525082934.831"><vh>FindModuleCache._can_find_module_in_parent_dir</vh></v>
-<v t="ekr.20220525082934.832"><vh>FindModuleCache._find_module</vh></v>
-<v t="ekr.20220525082934.833"><vh>FindModuleCache._is_compatible_stub_package</vh></v>
-<v t="ekr.20220525082934.834"><vh>FindModuleCache.find_modules_recursive</vh></v>
-</v>
-<v t="ekr.20220525082934.835"><vh>matches_exclude</vh></v>
-<v t="ekr.20220525082934.836"><vh>verify_module</vh></v>
-<v t="ekr.20220525082934.837"><vh>highest_init_level</vh></v>
-<v t="ekr.20220525082934.838"><vh>mypy_path</vh></v>
-<v t="ekr.20220525082934.839"><vh>default_lib_path</vh></v>
-<v t="ekr.20220525082934.840"><vh>get_prefixes</vh></v>
-<v t="ekr.20220525082934.841"><vh>get_site_packages_dirs</vh></v>
-<v t="ekr.20220525082934.842"><vh>expand_site_packages</vh></v>
-<v t="ekr.20220525082934.843"><vh>_parse_pth_file</vh></v>
-<v t="ekr.20220525082934.844"><vh>_make_abspath</vh></v>
-<v t="ekr.20220525082934.845"><vh>add_py2_mypypath_entries</vh></v>
-<v t="ekr.20220525082934.846"><vh>compute_search_paths</vh></v>
-<v t="ekr.20220525082934.847"><vh>load_stdlib_py_versions</vh></v>
-<v t="ekr.20220525082934.848"><vh>parse_version</vh></v>
-<v t="ekr.20220525082934.849"><vh>typeshed_py_version</vh></v>
-<v t="ekr.20220525082934.850"><vh>filter_redundant_py2_dirs</vh></v>
-</v>
-<v t="ekr.20220525082934.851"><vh>@clean moduleinspect.py</vh>
-<v t="ekr.20220525082934.852"><vh>class ModuleProperties</vh>
-<v t="ekr.20220525082934.853"><vh>ModuleProperties.__init__</vh></v>
-</v>
-<v t="ekr.20220525082934.854"><vh>is_c_module</vh></v>
-<v t="ekr.20220525082934.855"><vh>class InspectError</vh></v>
-<v t="ekr.20220525082934.856"><vh>get_package_properties</vh></v>
-<v t="ekr.20220525082934.857"><vh>worker</vh></v>
-<v t="ekr.20220525082934.858"><vh>class ModuleInspect</vh>
-<v t="ekr.20220525082934.859"><vh>ModuleInspect.__init__</vh></v>
-<v t="ekr.20220525082934.860"><vh>ModuleInspect._start</vh></v>
-<v t="ekr.20220525082934.861"><vh>ModuleInspect.close</vh></v>
-<v t="ekr.20220525082934.862"><vh>ModuleInspect.get_package_properties</vh></v>
-<v t="ekr.20220525082934.863"><vh>ModuleInspect._get_from_queue</vh></v>
-<v t="ekr.20220525082934.864"><vh>ModuleInspect.__enter__</vh></v>
-<v t="ekr.20220525082934.865"><vh>ModuleInspect.__exit__</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.866"><vh>@clean mro.py</vh>
-<v t="ekr.20220525082934.867"><vh>calculate_mro</vh></v>
-<v t="ekr.20220525082934.868"><vh>class MroError</vh></v>
-<v t="ekr.20220525082934.869"><vh>linearize_hierarchy</vh></v>
-<v t="ekr.20220525082934.870"><vh>merge</vh></v>
-</v>
-<v t="ekr.20220525082934.871"><vh>@clean nodes.py</vh>
-<v t="ekr.20220525082934.872"><vh>class Context</vh>
-<v t="ekr.20220525082934.873"><vh>Context.__init__</vh></v>
-<v t="ekr.20220525082934.874"><vh>Context.set_line</vh></v>
-<v t="ekr.20220525082934.875"><vh>Context.get_line</vh></v>
-<v t="ekr.20220525082934.876"><vh>Context.get_column</vh></v>
-</v>
-<v t="ekr.20220525082934.877"><vh>if TYPE_CHECKING:</vh></v>
-<v t="ekr.20220525082934.878"><vh>get_nongen_builtins</vh></v>
-<v t="ekr.20220525082934.879"><vh>RUNTIME_PROTOCOL_DECOS: Final = (</vh></v>
-<v t="ekr.20220525082934.880"><vh>class Node</vh>
-<v t="ekr.20220525082934.881"><vh>Node.__str__</vh></v>
-<v t="ekr.20220525082934.882"><vh>Node.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.883"><vh>class Statement</vh>
-<v t="ekr.20220525082934.884"><vh>Statement.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.885"><vh>class Expression</vh>
-<v t="ekr.20220525082934.886"><vh>Expression.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.887"><vh>class FakeExpression</vh></v>
-<v t="ekr.20220525082934.888"><vh>TODO:</vh></v>
-<v t="ekr.20220525082934.889"><vh>class SymbolNode</vh>
-<v t="ekr.20220525082934.890"><vh>SymbolNode.name</vh></v>
-<v t="ekr.20220525082934.891"><vh>SymbolNode.fullname</vh></v>
-<v t="ekr.20220525082934.892"><vh>SymbolNode.serialize</vh></v>
-<v t="ekr.20220525082934.893"><vh>SymbolNode.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.894"><vh>Items: fullname, related symbol table node, surrounding type (if any)</vh></v>
-<v t="ekr.20220525082934.895"><vh>class MypyFile</vh>
-<v t="ekr.20220525082934.896"><vh>MypyFile.__init__</vh></v>
-<v t="ekr.20220525082934.897"><vh>MypyFile.local_definitions</vh></v>
-<v t="ekr.20220525082934.898"><vh>MypyFile.name</vh></v>
-<v t="ekr.20220525082934.899"><vh>MypyFile.fullname</vh></v>
-<v t="ekr.20220525082934.900"><vh>MypyFile.accept</vh></v>
-<v t="ekr.20220525082934.901"><vh>MypyFile.is_package_init_file</vh></v>
-<v t="ekr.20220525082934.902"><vh>MypyFile.is_future_flag_set</vh></v>
-<v t="ekr.20220525082934.903"><vh>MypyFile.serialize</vh></v>
-<v t="ekr.20220525082934.904"><vh>MypyFile.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.905"><vh>class ImportBase</vh>
-<v t="ekr.20220525082934.906"><vh>ImportBase.__init__</vh></v>
-</v>
-<v t="ekr.20220525082934.907"><vh>class Import</vh>
-<v t="ekr.20220525082934.908"><vh>Import.__init__</vh></v>
-<v t="ekr.20220525082934.909"><vh>Import.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.910"><vh>class ImportFrom</vh>
-<v t="ekr.20220525082934.911"><vh>ImportFrom.__init__</vh></v>
-<v t="ekr.20220525082934.912"><vh>ImportFrom.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.913"><vh>class ImportAll</vh>
-<v t="ekr.20220525082934.914"><vh>ImportAll.__init__</vh></v>
-<v t="ekr.20220525082934.915"><vh>ImportAll.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.916"><vh>class ImportedName</vh>
-<v t="ekr.20220525082934.917"><vh>ImportedName.__init__</vh></v>
-<v t="ekr.20220525082934.918"><vh>ImportedName.name</vh></v>
-<v t="ekr.20220525082934.919"><vh>ImportedName.fullname</vh></v>
-<v t="ekr.20220525082934.920"><vh>ImportedName.serialize</vh></v>
-<v t="ekr.20220525082934.921"><vh>ImportedName.deserialize</vh></v>
-<v t="ekr.20220525082934.922"><vh>ImportedName.__str__</vh></v>
-</v>
-<v t="ekr.20220525082934.923"><vh>FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]</vh></v>
-<v t="ekr.20220525082934.924"><vh>class FuncBase</vh>
-<v t="ekr.20220525082934.925"><vh>FuncBase.__init__</vh></v>
-<v t="ekr.20220525082934.926"><vh>FuncBase.name</vh></v>
-<v t="ekr.20220525082934.927"><vh>FuncBase.fullname</vh></v>
-</v>
-<v t="ekr.20220525082934.928"><vh>OverloadPart: _TypeAlias = Union['FuncDef', 'Decorator']</vh></v>
-<v t="ekr.20220525082934.929"><vh>class OverloadedFuncDef</vh>
-<v t="ekr.20220525082934.930"><vh>OverloadedFuncDef.__init__</vh></v>
-<v t="ekr.20220525082934.931"><vh>OverloadedFuncDef.name</vh></v>
-<v t="ekr.20220525082934.932"><vh>OverloadedFuncDef.accept</vh></v>
-<v t="ekr.20220525082934.933"><vh>OverloadedFuncDef.serialize</vh></v>
-<v t="ekr.20220525082934.934"><vh>OverloadedFuncDef.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.935"><vh>class Argument</vh>
-<v t="ekr.20220525082934.936"><vh>Argument.__init__</vh></v>
-<v t="ekr.20220525082934.937"><vh>Argument.set_line</vh></v>
-</v>
-<v t="ekr.20220525082934.938"><vh>FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [</vh></v>
-<v t="ekr.20220525082934.939"><vh>class FuncItem</vh>
-<v t="ekr.20220525082934.940"><vh>FuncItem.__init__</vh></v>
-<v t="ekr.20220525082934.941"><vh>FuncItem.max_fixed_argc</vh></v>
-<v t="ekr.20220525082934.942"><vh>FuncItem.set_line</vh></v>
-<v t="ekr.20220525082934.943"><vh>FuncItem.is_dynamic</vh></v>
-</v>
-<v t="ekr.20220525082934.944"><vh>FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + [</vh></v>
-<v t="ekr.20220525082934.945"><vh>class FuncDef</vh>
-<v t="ekr.20220525082934.946"><vh>FuncDef.__init__</vh></v>
-<v t="ekr.20220525082934.947"><vh>FuncDef.name</vh></v>
-<v t="ekr.20220525082934.948"><vh>FuncDef.accept</vh></v>
-<v t="ekr.20220525082934.949"><vh>FuncDef.serialize</vh></v>
-<v t="ekr.20220525082934.950"><vh>FuncDef.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.951"><vh>All types that are both SymbolNodes and FuncBases. See the FuncBase</vh></v>
-<v t="ekr.20220525082934.952"><vh>class Decorator</vh>
-<v t="ekr.20220525082934.953"><vh>Decorator.__init__</vh></v>
-<v t="ekr.20220525082934.954"><vh>Decorator.name</vh></v>
-<v t="ekr.20220525082934.955"><vh>Decorator.fullname</vh></v>
-<v t="ekr.20220525082934.956"><vh>Decorator.is_final</vh></v>
-<v t="ekr.20220525082934.957"><vh>Decorator.info</vh></v>
-<v t="ekr.20220525082934.958"><vh>Decorator.type</vh></v>
-<v t="ekr.20220525082934.959"><vh>Decorator.accept</vh></v>
-<v t="ekr.20220525082934.960"><vh>Decorator.serialize</vh></v>
-<v t="ekr.20220525082934.961"><vh>Decorator.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.962"><vh>VAR_FLAGS: Final = [</vh></v>
-<v t="ekr.20220525082934.963"><vh>class Var</vh>
-<v t="ekr.20220525082934.964"><vh>Var.__init__</vh></v>
-<v t="ekr.20220525082934.965"><vh>Var.name</vh></v>
-<v t="ekr.20220525082934.966"><vh>Var.fullname</vh></v>
-<v t="ekr.20220525082934.967"><vh>Var.accept</vh></v>
-<v t="ekr.20220525082934.968"><vh>Var.serialize</vh></v>
-<v t="ekr.20220525082934.969"><vh>Var.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.970"><vh>class ClassDef</vh>
-<v t="ekr.20220525082934.971"><vh>ClassDef.__init__</vh></v>
-<v t="ekr.20220525082934.972"><vh>ClassDef.accept</vh></v>
-<v t="ekr.20220525082934.973"><vh>ClassDef.is_generic</vh></v>
-<v t="ekr.20220525082934.974"><vh>ClassDef.serialize</vh></v>
-<v t="ekr.20220525082934.975"><vh>ClassDef.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.976"><vh>class GlobalDecl</vh>
-<v t="ekr.20220525082934.977"><vh>GlobalDecl.__init__</vh></v>
-<v t="ekr.20220525082934.978"><vh>GlobalDecl.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.979"><vh>class NonlocalDecl</vh>
-<v t="ekr.20220525082934.980"><vh>NonlocalDecl.__init__</vh></v>
-<v t="ekr.20220525082934.981"><vh>NonlocalDecl.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.982"><vh>class Block</vh>
-<v t="ekr.20220525082934.983"><vh>Block.__init__</vh></v>
-<v t="ekr.20220525082934.984"><vh>Block.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.985"><vh>Statements</vh></v>
-<v t="ekr.20220525082934.986"><vh>class ExpressionStmt</vh>
-<v t="ekr.20220525082934.987"><vh>ExpressionStmt.__init__</vh></v>
-<v t="ekr.20220525082934.988"><vh>ExpressionStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.989"><vh>class AssignmentStmt</vh>
-<v t="ekr.20220525082934.990"><vh>AssignmentStmt.__init__</vh></v>
-<v t="ekr.20220525082934.991"><vh>AssignmentStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.992"><vh>class OperatorAssignmentStmt</vh>
-<v t="ekr.20220525082934.993"><vh>OperatorAssignmentStmt.__init__</vh></v>
-<v t="ekr.20220525082934.994"><vh>OperatorAssignmentStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.995"><vh>class WhileStmt</vh>
-<v t="ekr.20220525082934.996"><vh>WhileStmt.__init__</vh></v>
-<v t="ekr.20220525082934.997"><vh>WhileStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.998"><vh>class ForStmt</vh>
-<v t="ekr.20220525082934.999"><vh>ForStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1000"><vh>ForStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1001"><vh>class ReturnStmt</vh>
-<v t="ekr.20220525082934.1002"><vh>ReturnStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1003"><vh>ReturnStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1004"><vh>class AssertStmt</vh>
-<v t="ekr.20220525082934.1005"><vh>AssertStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1006"><vh>AssertStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1007"><vh>class DelStmt</vh>
-<v t="ekr.20220525082934.1008"><vh>DelStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1009"><vh>DelStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1010"><vh>class BreakStmt</vh></v>
-<v t="ekr.20220525082934.1011"><vh>class ContinueStmt</vh></v>
-<v t="ekr.20220525082934.1012"><vh>class PassStmt</vh></v>
-<v t="ekr.20220525082934.1013"><vh>class IfStmt</vh>
-<v t="ekr.20220525082934.1014"><vh>IfStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1015"><vh>IfStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1016"><vh>class RaiseStmt</vh>
-<v t="ekr.20220525082934.1017"><vh>RaiseStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1018"><vh>RaiseStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1019"><vh>class TryStmt</vh>
-<v t="ekr.20220525082934.1020"><vh>TryStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1021"><vh>TryStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1022"><vh>class WithStmt</vh>
-<v t="ekr.20220525082934.1023"><vh>WithStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1024"><vh>WithStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1025"><vh>class MatchStmt</vh>
-<v t="ekr.20220525082934.1026"><vh>MatchStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1027"><vh>MatchStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1028"><vh>class PrintStmt</vh>
-<v t="ekr.20220525082934.1029"><vh>PrintStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1030"><vh>PrintStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1031"><vh>class ExecStmt</vh>
-<v t="ekr.20220525082934.1032"><vh>ExecStmt.__init__</vh></v>
-<v t="ekr.20220525082934.1033"><vh>ExecStmt.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1034"><vh>Expressions</vh></v>
-<v t="ekr.20220525082934.1035"><vh>class IntExpr</vh>
-<v t="ekr.20220525082934.1036"><vh>IntExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1037"><vh>IntExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1038"><vh>How mypy uses StrExpr, BytesExpr, and UnicodeExpr:</vh></v>
-<v t="ekr.20220525082934.1039"><vh>class StrExpr</vh>
-<v t="ekr.20220525082934.1040"><vh>StrExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1041"><vh>StrExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1042"><vh>class BytesExpr</vh>
-<v t="ekr.20220525082934.1043"><vh>BytesExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1044"><vh>BytesExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1045"><vh>class UnicodeExpr</vh>
-<v t="ekr.20220525082934.1046"><vh>UnicodeExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1047"><vh>UnicodeExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1048"><vh>class FloatExpr</vh>
-<v t="ekr.20220525082934.1049"><vh>FloatExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1050"><vh>FloatExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1051"><vh>class ComplexExpr</vh>
-<v t="ekr.20220525082934.1052"><vh>ComplexExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1053"><vh>ComplexExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1054"><vh>class EllipsisExpr</vh></v>
-<v t="ekr.20220525082934.1055"><vh>class StarExpr</vh>
-<v t="ekr.20220525082934.1056"><vh>StarExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1057"><vh>StarExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1058"><vh>class RefExpr</vh>
-<v t="ekr.20220525082934.1059"><vh>RefExpr.__init__</vh></v>
-</v>
-<v t="ekr.20220525082934.1060"><vh>class NameExpr</vh>
-<v t="ekr.20220525082934.1061"><vh>NameExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1062"><vh>NameExpr.accept</vh></v>
-<v t="ekr.20220525082934.1063"><vh>NameExpr.serialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1064"><vh>class MemberExpr</vh>
-<v t="ekr.20220525082934.1065"><vh>MemberExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1066"><vh>MemberExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1067"><vh>class ArgKind</vh>
-<v t="ekr.20220525082934.1068"><vh>ArgKind.is_positional</vh></v>
-<v t="ekr.20220525082934.1069"><vh>ArgKind.is_named</vh></v>
-<v t="ekr.20220525082934.1070"><vh>ArgKind.is_required</vh></v>
-<v t="ekr.20220525082934.1071"><vh>ArgKind.is_optional</vh></v>
-<v t="ekr.20220525082934.1072"><vh>ArgKind.is_star</vh></v>
-</v>
-<v t="ekr.20220525082934.1073"><vh>ARG_POS: Final = ArgKind.ARG_POS</vh></v>
-<v t="ekr.20220525082934.1074"><vh>class CallExpr</vh>
-<v t="ekr.20220525082934.1075"><vh>CallExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1076"><vh>CallExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1077"><vh>class YieldFromExpr</vh>
-<v t="ekr.20220525082934.1078"><vh>YieldFromExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1079"><vh>YieldFromExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1080"><vh>class YieldExpr</vh>
-<v t="ekr.20220525082934.1081"><vh>YieldExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1082"><vh>YieldExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1083"><vh>class IndexExpr</vh>
-<v t="ekr.20220525082934.1084"><vh>IndexExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1085"><vh>IndexExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1086"><vh>class UnaryExpr</vh>
-<v t="ekr.20220525082934.1087"><vh>UnaryExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1088"><vh>UnaryExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1089"><vh>class AssignmentExpr</vh>
-<v t="ekr.20220525082934.1090"><vh>AssignmentExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1091"><vh>AssignmentExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1092"><vh>class OpExpr</vh>
-<v t="ekr.20220525082934.1093"><vh>OpExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1094"><vh>OpExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1095"><vh>class ComparisonExpr</vh>
-<v t="ekr.20220525082934.1096"><vh>ComparisonExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1097"><vh>ComparisonExpr.pairwise</vh></v>
-<v t="ekr.20220525082934.1098"><vh>ComparisonExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1099"><vh>class SliceExpr</vh>
-<v t="ekr.20220525082934.1100"><vh>SliceExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1101"><vh>SliceExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1102"><vh>class CastExpr</vh>
-<v t="ekr.20220525082934.1103"><vh>CastExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1104"><vh>CastExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1105"><vh>class AssertTypeExpr</vh>
-<v t="ekr.20220525082934.1106"><vh>AssertTypeExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1107"><vh>AssertTypeExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1108"><vh>class RevealExpr</vh>
-<v t="ekr.20220525082934.1109"><vh>RevealExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1110"><vh>RevealExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1111"><vh>class SuperExpr</vh>
-<v t="ekr.20220525082934.1112"><vh>SuperExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1113"><vh>SuperExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1114"><vh>class LambdaExpr</vh>
-<v t="ekr.20220525082934.1115"><vh>LambdaExpr.name</vh></v>
-<v t="ekr.20220525082934.1116"><vh>LambdaExpr.expr</vh></v>
-<v t="ekr.20220525082934.1117"><vh>LambdaExpr.accept</vh></v>
-<v t="ekr.20220525082934.1118"><vh>LambdaExpr.is_dynamic</vh></v>
-</v>
-<v t="ekr.20220525082934.1119"><vh>class ListExpr</vh>
-<v t="ekr.20220525082934.1120"><vh>ListExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1121"><vh>ListExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1122"><vh>class DictExpr</vh>
-<v t="ekr.20220525082934.1123"><vh>DictExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1124"><vh>DictExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1125"><vh>class TupleExpr</vh>
-<v t="ekr.20220525082934.1126"><vh>TupleExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1127"><vh>TupleExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1128"><vh>class SetExpr</vh>
-<v t="ekr.20220525082934.1129"><vh>SetExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1130"><vh>SetExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1131"><vh>class GeneratorExpr</vh>
-<v t="ekr.20220525082934.1132"><vh>GeneratorExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1133"><vh>GeneratorExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1134"><vh>class ListComprehension</vh>
-<v t="ekr.20220525082934.1135"><vh>ListComprehension.__init__</vh></v>
-<v t="ekr.20220525082934.1136"><vh>ListComprehension.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1137"><vh>class SetComprehension</vh>
-<v t="ekr.20220525082934.1138"><vh>SetComprehension.__init__</vh></v>
-<v t="ekr.20220525082934.1139"><vh>SetComprehension.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1140"><vh>class DictionaryComprehension</vh>
-<v t="ekr.20220525082934.1141"><vh>DictionaryComprehension.__init__</vh></v>
-<v t="ekr.20220525082934.1142"><vh>DictionaryComprehension.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1143"><vh>class ConditionalExpr</vh>
-<v t="ekr.20220525082934.1144"><vh>ConditionalExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1145"><vh>ConditionalExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1146"><vh>class BackquoteExpr</vh>
-<v t="ekr.20220525082934.1147"><vh>BackquoteExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1148"><vh>BackquoteExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1149"><vh>class TypeApplication</vh>
-<v t="ekr.20220525082934.1150"><vh>TypeApplication.__init__</vh></v>
-<v t="ekr.20220525082934.1151"><vh>TypeApplication.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1152"><vh>Variance of a type variable. For example, T in the definition of</vh></v>
-<v t="ekr.20220525082934.1153"><vh>class TypeVarLikeExpr</vh>
-<v t="ekr.20220525082934.1154"><vh>TypeVarLikeExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1155"><vh>TypeVarLikeExpr.name</vh></v>
-<v t="ekr.20220525082934.1156"><vh>TypeVarLikeExpr.fullname</vh></v>
-</v>
-<v t="ekr.20220525082934.1157"><vh>class TypeVarExpr</vh>
-<v t="ekr.20220525082934.1158"><vh>TypeVarExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1159"><vh>TypeVarExpr.accept</vh></v>
-<v t="ekr.20220525082934.1160"><vh>TypeVarExpr.serialize</vh></v>
-<v t="ekr.20220525082934.1161"><vh>TypeVarExpr.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1162"><vh>class ParamSpecExpr</vh>
-<v t="ekr.20220525082934.1163"><vh>ParamSpecExpr.accept</vh></v>
-<v t="ekr.20220525082934.1164"><vh>ParamSpecExpr.serialize</vh></v>
-<v t="ekr.20220525082934.1165"><vh>ParamSpecExpr.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1166"><vh>class TypeVarTupleExpr</vh>
-<v t="ekr.20220525082934.1167"><vh>TypeVarTupleExpr.accept</vh></v>
-<v t="ekr.20220525082934.1168"><vh>TypeVarTupleExpr.serialize</vh></v>
-<v t="ekr.20220525082934.1169"><vh>TypeVarTupleExpr.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1170"><vh>class TypeAliasExpr</vh>
-<v t="ekr.20220525082934.1171"><vh>TypeAliasExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1172"><vh>TypeAliasExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1173"><vh>class NamedTupleExpr</vh>
-<v t="ekr.20220525082934.1174"><vh>NamedTupleExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1175"><vh>NamedTupleExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1176"><vh>class TypedDictExpr</vh>
-<v t="ekr.20220525082934.1177"><vh>TypedDictExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1178"><vh>TypedDictExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1179"><vh>class EnumCallExpr</vh>
-<v t="ekr.20220525082934.1180"><vh>EnumCallExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1181"><vh>EnumCallExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1182"><vh>class PromoteExpr</vh>
-<v t="ekr.20220525082934.1183"><vh>PromoteExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1184"><vh>PromoteExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1185"><vh>class NewTypeExpr</vh>
-<v t="ekr.20220525082934.1186"><vh>NewTypeExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1187"><vh>NewTypeExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1188"><vh>class AwaitExpr</vh>
-<v t="ekr.20220525082934.1189"><vh>AwaitExpr.__init__</vh></v>
-<v t="ekr.20220525082934.1190"><vh>AwaitExpr.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1191"><vh>Constants</vh></v>
-<v t="ekr.20220525082934.1192"><vh>class TempNode</vh>
-<v t="ekr.20220525082934.1193"><vh>TempNode.__init__</vh></v>
-<v t="ekr.20220525082934.1194"><vh>TempNode.__repr__</vh></v>
-<v t="ekr.20220525082934.1195"><vh>TempNode.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1196"><vh>class TypeInfo</vh>
-<v t="ekr.20220525082934.1197"><vh>TypeInfo.__init__</vh></v>
-<v t="ekr.20220525082934.1198"><vh>TypeInfo.add_type_vars</vh></v>
-<v t="ekr.20220525082934.1199"><vh>TypeInfo.name</vh></v>
-<v t="ekr.20220525082934.1200"><vh>TypeInfo.fullname</vh></v>
-<v t="ekr.20220525082934.1201"><vh>TypeInfo.is_generic</vh></v>
-<v t="ekr.20220525082934.1202"><vh>TypeInfo.get</vh></v>
-<v t="ekr.20220525082934.1203"><vh>TypeInfo.get_containing_type_info</vh></v>
-<v t="ekr.20220525082934.1204"><vh>TypeInfo.protocol_members</vh></v>
-<v t="ekr.20220525082934.1205"><vh>TypeInfo.__getitem__</vh></v>
-<v t="ekr.20220525082934.1206"><vh>TypeInfo.__repr__</vh></v>
-<v t="ekr.20220525082934.1207"><vh>TypeInfo.__bool__</vh></v>
-<v t="ekr.20220525082934.1208"><vh>TypeInfo.has_readable_member</vh></v>
-<v t="ekr.20220525082934.1209"><vh>TypeInfo.get_method</vh></v>
-<v t="ekr.20220525082934.1210"><vh>TypeInfo.calculate_metaclass_type</vh></v>
-<v t="ekr.20220525082934.1211"><vh>TypeInfo.is_metaclass</vh></v>
-<v t="ekr.20220525082934.1212"><vh>TypeInfo.has_base</vh></v>
-<v t="ekr.20220525082934.1213"><vh>TypeInfo.direct_base_classes</vh></v>
-<v t="ekr.20220525082934.1214"><vh>TypeInfo.__str__</vh></v>
-<v t="ekr.20220525082934.1215"><vh>TypeInfo.dump</vh></v>
-<v t="ekr.20220525082934.1216"><vh>TypeInfo.serialize</vh></v>
-<v t="ekr.20220525082934.1217"><vh>TypeInfo.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1218"><vh>class FakeInfo</vh>
-<v t="ekr.20220525082934.1219"><vh>FakeInfo.__init__</vh></v>
-<v t="ekr.20220525082934.1220"><vh>FakeInfo.__getattribute__</vh></v>
-</v>
-<v t="ekr.20220525082934.1221"><vh>VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")</vh></v>
-<v t="ekr.20220525082934.1222"><vh>class TypeAlias</vh>
-<v t="ekr.20220525082934.1223"><vh>TypeAlias.__init__</vh></v>
-<v t="ekr.20220525082934.1224"><vh>TypeAlias.name</vh></v>
-<v t="ekr.20220525082934.1225"><vh>TypeAlias.fullname</vh></v>
-<v t="ekr.20220525082934.1226"><vh>TypeAlias.serialize</vh></v>
-<v t="ekr.20220525082934.1227"><vh>TypeAlias.accept</vh></v>
-<v t="ekr.20220525082934.1228"><vh>TypeAlias.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1229"><vh>class PlaceholderNode</vh>
-<v t="ekr.20220525082934.1230"><vh>PlaceholderNode.__init__</vh></v>
-<v t="ekr.20220525082934.1231"><vh>PlaceholderNode.name</vh></v>
-<v t="ekr.20220525082934.1232"><vh>PlaceholderNode.fullname</vh></v>
-<v t="ekr.20220525082934.1233"><vh>PlaceholderNode.serialize</vh></v>
-<v t="ekr.20220525082934.1234"><vh>PlaceholderNode.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1235"><vh>class SymbolTableNode</vh>
-<v t="ekr.20220525082934.1236"><vh>SymbolTableNode.__init__</vh></v>
-<v t="ekr.20220525082934.1237"><vh>SymbolTableNode.fullname</vh></v>
-<v t="ekr.20220525082934.1238"><vh>SymbolTableNode.type</vh></v>
-<v t="ekr.20220525082934.1239"><vh>SymbolTableNode.copy</vh></v>
-<v t="ekr.20220525082934.1240"><vh>SymbolTableNode.__str__</vh></v>
-<v t="ekr.20220525082934.1241"><vh>SymbolTableNode.serialize</vh></v>
-<v t="ekr.20220525082934.1242"><vh>SymbolTableNode.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1243"><vh>class SymbolTable</vh>
-<v t="ekr.20220525082934.1244"><vh>SymbolTable.__str__</vh></v>
-<v t="ekr.20220525082934.1245"><vh>SymbolTable.copy</vh></v>
-<v t="ekr.20220525082934.1246"><vh>SymbolTable.serialize</vh></v>
-<v t="ekr.20220525082934.1247"><vh>SymbolTable.deserialize</vh></v>
-</v>
-<v t="ekr.20220525082934.1248"><vh>get_flags</vh></v>
-<v t="ekr.20220525082934.1249"><vh>set_flags</vh></v>
-<v t="ekr.20220525082934.1250"><vh>get_member_expr_fullname</vh></v>
-<v t="ekr.20220525082934.1251"><vh>deserialize_map: Final = {</vh></v>
-<v t="ekr.20220525082934.1252"><vh>check_arg_kinds</vh></v>
-<v t="ekr.20220525082934.1253"><vh>check_arg_names</vh></v>
-<v t="ekr.20220525082934.1254"><vh>is_class_var</vh></v>
-<v t="ekr.20220525082934.1255"><vh>is_final_node</vh></v>
-<v t="ekr.20220525082934.1256"><vh>local_definitions</vh></v>
-</v>
-<v t="ekr.20220525082934.1257"><vh>@clean operators.py</vh></v>
-<v t="ekr.20220525082934.1258"><vh>@clean options.py</vh>
-<v t="ekr.20220525082934.1259"><vh>class BuildType</vh></v>
-<v t="ekr.20220525082934.1260"><vh>PER_MODULE_OPTIONS: Final = {</vh></v>
-<v t="ekr.20220525082934.1261"><vh>class Options</vh>
-<v t="ekr.20220525082934.1262"><vh>Options.__init__</vh></v>
-<v t="ekr.20220525082934.1263"><vh>Options.new_semantic_analyzer</vh></v>
-<v t="ekr.20220525082934.1264"><vh>Options.snapshot</vh></v>
-<v t="ekr.20220525082934.1265"><vh>Options.__repr__</vh></v>
-<v t="ekr.20220525082934.1266"><vh>Options.apply_changes</vh></v>
-<v t="ekr.20220525082934.1267"><vh>Options.build_per_module_cache</vh></v>
-<v t="ekr.20220525082934.1268"><vh>Options.clone_for_module</vh></v>
-<v t="ekr.20220525082934.1269"><vh>Options.compile_glob</vh></v>
-<v t="ekr.20220525082934.1270"><vh>Options.select_options_affecting_cache</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1271"><vh>@clean parse.py</vh>
-<v t="ekr.20220525082934.1272"><vh>parse</vh></v>
-</v>
-<v t="ekr.20220525082934.1273"><vh>@clean patterns.py</vh>
-<v t="ekr.20220525082934.1274"><vh>class Pattern</vh>
-<v t="ekr.20220525082934.1275"><vh>Pattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1276"><vh>class AsPattern</vh>
-<v t="ekr.20220525082934.1277"><vh>AsPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1278"><vh>AsPattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1279"><vh>class OrPattern</vh>
-<v t="ekr.20220525082934.1280"><vh>OrPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1281"><vh>OrPattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1282"><vh>class ValuePattern</vh>
-<v t="ekr.20220525082934.1283"><vh>ValuePattern.__init__</vh></v>
-<v t="ekr.20220525082934.1284"><vh>ValuePattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1285"><vh>class SingletonPattern</vh>
-<v t="ekr.20220525082934.1286"><vh>SingletonPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1287"><vh>SingletonPattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1288"><vh>class SequencePattern</vh>
-<v t="ekr.20220525082934.1289"><vh>SequencePattern.__init__</vh></v>
-<v t="ekr.20220525082934.1290"><vh>SequencePattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1291"><vh>class StarredPattern</vh>
-<v t="ekr.20220525082934.1292"><vh>StarredPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1293"><vh>StarredPattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1294"><vh>class MappingPattern</vh>
-<v t="ekr.20220525082934.1295"><vh>MappingPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1296"><vh>MappingPattern.accept</vh></v>
-</v>
-<v t="ekr.20220525082934.1297"><vh>class ClassPattern</vh>
-<v t="ekr.20220525082934.1298"><vh>ClassPattern.__init__</vh></v>
-<v t="ekr.20220525082934.1299"><vh>ClassPattern.accept</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1300"><vh>@clean plugin.py</vh>
-<v t="ekr.20220525082934.1301"><vh>class TypeAnalyzerPluginInterface</vh>
-<v t="ekr.20220525082934.1302"><vh>TypeAnalyzerPluginInterface.fail</vh></v>
-<v t="ekr.20220525082934.1303"><vh>TypeAnalyzerPluginInterface.named_type</vh></v>
-<v t="ekr.20220525082934.1304"><vh>TypeAnalyzerPluginInterface.analyze_type</vh></v>
-<v t="ekr.20220525082934.1305"><vh>TypeAnalyzerPluginInterface.analyze_callable_args</vh></v>
-</v>
-<v t="ekr.20220525082934.1306"><vh>class AnalyzeTypeContext</vh></v>
-<v t="ekr.20220525082934.1307"><vh>class CommonPluginApi</vh>
-<v t="ekr.20220525082934.1308"><vh>CommonPluginApi.lookup_fully_qualified</vh></v>
-</v>
-<v t="ekr.20220525082934.1309"><vh>class CheckerPluginInterface</vh>
-<v t="ekr.20220525082934.1310"><vh>CheckerPluginInterface.type_context</vh></v>
-<v t="ekr.20220525082934.1311"><vh>CheckerPluginInterface.fail</vh></v>
-<v t="ekr.20220525082934.1312"><vh>CheckerPluginInterface.named_generic_type</vh></v>
-</v>
-<v t="ekr.20220525082934.1313"><vh>class SemanticAnalyzerPluginInterface</vh>
-<v t="ekr.20220525082934.1314"><vh>SemanticAnalyzerPluginInterface.named_type</vh></v>
-<v t="ekr.20220525082934.1315"><vh>SemanticAnalyzerPluginInterface.builtin_type</vh></v>
-<v t="ekr.20220525082934.1316"><vh>SemanticAnalyzerPluginInterface.named_type_or_none</vh></v>
-<v t="ekr.20220525082934.1317"><vh>SemanticAnalyzerPluginInterface.basic_new_typeinfo</vh></v>
-<v t="ekr.20220525082934.1318"><vh>SemanticAnalyzerPluginInterface.parse_bool</vh></v>
-<v t="ekr.20220525082934.1319"><vh>SemanticAnalyzerPluginInterface.fail</vh></v>
-<v t="ekr.20220525082934.1320"><vh>SemanticAnalyzerPluginInterface.anal_type</vh></v>
-<v t="ekr.20220525082934.1321"><vh>SemanticAnalyzerPluginInterface.class_type</vh></v>
-<v t="ekr.20220525082934.1322"><vh>SemanticAnalyzerPluginInterface.lookup_fully_qualified</vh></v>
-<v t="ekr.20220525082934.1323"><vh>SemanticAnalyzerPluginInterface.lookup_fully_qualified_or_none</vh></v>
-<v t="ekr.20220525082934.1324"><vh>SemanticAnalyzerPluginInterface.lookup_qualified</vh></v>
-<v t="ekr.20220525082934.1325"><vh>SemanticAnalyzerPluginInterface.add_plugin_dependency</vh></v>
-<v t="ekr.20220525082934.1326"><vh>SemanticAnalyzerPluginInterface.add_symbol_table_node</vh></v>
-<v t="ekr.20220525082934.1327"><vh>SemanticAnalyzerPluginInterface.qualified_name</vh></v>
-<v t="ekr.20220525082934.1328"><vh>SemanticAnalyzerPluginInterface.defer</vh></v>
-<v t="ekr.20220525082934.1329"><vh>SemanticAnalyzerPluginInterface.final_iteration</vh></v>
-<v t="ekr.20220525082934.1330"><vh>SemanticAnalyzerPluginInterface.is_stub_file</vh></v>
-</v>
-<v t="ekr.20220525082934.1331"><vh>class ReportConfigContext</vh></v>
-<v t="ekr.20220525082934.1332"><vh>class FunctionSigContext</vh></v>
-<v t="ekr.20220525082934.1333"><vh>class FunctionContext</vh></v>
-<v t="ekr.20220525082934.1334"><vh>class MethodSigContext</vh></v>
-<v t="ekr.20220525082934.1335"><vh>class MethodContext</vh></v>
-<v t="ekr.20220525082934.1336"><vh>class AttributeContext</vh></v>
-<v t="ekr.20220525082934.1337"><vh>class ClassDefContext</vh></v>
-<v t="ekr.20220525082934.1338"><vh>class DynamicClassDefContext</vh></v>
-<v t="ekr.20220525082934.1339"><vh>class Plugin</vh>
-<v t="ekr.20220525082934.1340"><vh>Plugin.__init__</vh></v>
-<v t="ekr.20220525082934.1341"><vh>Plugin.set_modules</vh></v>
-<v t="ekr.20220525082934.1342"><vh>Plugin.lookup_fully_qualified</vh></v>
-<v t="ekr.20220525082934.1343"><vh>Plugin.report_config_data</vh></v>
-<v t="ekr.20220525082934.1344"><vh>Plugin.get_additional_deps</vh></v>
-<v t="ekr.20220525082934.1345"><vh>Plugin.get_type_analyze_hook</vh></v>
-<v t="ekr.20220525082934.1346"><vh>Plugin.get_function_signature_hook</vh></v>
-<v t="ekr.20220525082934.1347"><vh>Plugin.get_function_hook</vh></v>
-<v t="ekr.20220525082934.1348"><vh>Plugin.get_method_signature_hook</vh></v>
-<v t="ekr.20220525082934.1349"><vh>Plugin.get_method_hook</vh></v>
-<v t="ekr.20220525082934.1350"><vh>Plugin.get_attribute_hook</vh></v>
-<v t="ekr.20220525082934.1351"><vh>Plugin.get_class_attribute_hook</vh></v>
-<v t="ekr.20220525082934.1352"><vh>Plugin.get_class_decorator_hook</vh></v>
-<v t="ekr.20220525082934.1353"><vh>Plugin.get_class_decorator_hook_2</vh></v>
-<v t="ekr.20220525082934.1354"><vh>Plugin.get_metaclass_hook</vh></v>
-<v t="ekr.20220525082934.1355"><vh>Plugin.get_base_class_hook</vh></v>
-<v t="ekr.20220525082934.1356"><vh>Plugin.get_customize_class_mro_hook</vh></v>
-<v t="ekr.20220525082934.1357"><vh>Plugin.get_dynamic_class_hook</vh></v>
-</v>
-<v t="ekr.20220525082934.1358"><vh>T = TypeVar('T')</vh></v>
-<v t="ekr.20220525082934.1359"><vh>class ChainedPlugin</vh>
-<v t="ekr.20220525082934.1360"><vh>ChainedPlugin.__init__</vh></v>
-<v t="ekr.20220525082934.1361"><vh>ChainedPlugin.set_modules</vh></v>
-<v t="ekr.20220525082934.1362"><vh>ChainedPlugin.report_config_data</vh></v>
-<v t="ekr.20220525082934.1363"><vh>ChainedPlugin.get_additional_deps</vh></v>
-<v t="ekr.20220525082934.1364"><vh>ChainedPlugin.get_type_analyze_hook</vh></v>
-<v t="ekr.20220525082934.1365"><vh>ChainedPlugin.get_function_signature_hook</vh></v>
-<v t="ekr.20220525082934.1366"><vh>ChainedPlugin.get_function_hook</vh></v>
-<v t="ekr.20220525082934.1367"><vh>ChainedPlugin.get_method_signature_hook</vh></v>
-<v t="ekr.20220525082934.1368"><vh>ChainedPlugin.get_method_hook</vh></v>
-<v t="ekr.20220525082934.1369"><vh>ChainedPlugin.get_attribute_hook</vh></v>
-<v t="ekr.20220525082934.1370"><vh>ChainedPlugin.get_class_attribute_hook</vh></v>
-<v t="ekr.20220525082934.1371"><vh>ChainedPlugin.get_class_decorator_hook</vh></v>
-<v t="ekr.20220525082934.1372"><vh>ChainedPlugin.get_class_decorator_hook_2</vh></v>
-<v t="ekr.20220525082934.1373"><vh>ChainedPlugin.get_metaclass_hook</vh></v>
-<v t="ekr.20220525082934.1374"><vh>ChainedPlugin.get_base_class_hook</vh></v>
-<v t="ekr.20220525082934.1375"><vh>ChainedPlugin.get_customize_class_mro_hook</vh></v>
-<v t="ekr.20220525082934.1376"><vh>ChainedPlugin.get_dynamic_class_hook</vh></v>
-<v t="ekr.20220525082934.1377"><vh>ChainedPlugin._find_hook</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1378"><vh>@clean pyinfo.py</vh>
-<v t="ekr.20220525082934.1379"><vh>getprefixes</vh></v>
-<v t="ekr.20220525082934.1380"><vh>getsitepackages</vh></v>
-</v>
-<v t="ekr.20220525082934.1381"><vh>@clean reachability.py</vh>
-<v t="ekr.20220525082934.1382"><vh>infer_reachability_of_if_statement</vh></v>
-<v t="ekr.20220525082934.1383"><vh>infer_reachability_of_match_statement</vh></v>
-<v t="ekr.20220525082934.1384"><vh>assert_will_always_fail</vh></v>
-<v t="ekr.20220525082934.1385"><vh>infer_condition_value</vh></v>
-<v t="ekr.20220525082934.1386"><vh>infer_pattern_value</vh></v>
-<v t="ekr.20220525082934.1387"><vh>consider_sys_version_info</vh></v>
-<v t="ekr.20220525082934.1388"><vh>consider_sys_platform</vh></v>
-<v t="ekr.20220525082934.1389"><vh>Targ = TypeVar('Targ', int, str, Tuple[int, ...])</vh></v>
-<v t="ekr.20220525082934.1390"><vh>fixed_comparison</vh></v>
-<v t="ekr.20220525082934.1391"><vh>contains_int_or_tuple_of_ints</vh></v>
-<v t="ekr.20220525082934.1392"><vh>contains_sys_version_info</vh></v>
-<v t="ekr.20220525082934.1393"><vh>is_sys_attr</vh></v>
-<v t="ekr.20220525082934.1394"><vh>mark_block_unreachable</vh></v>
-<v t="ekr.20220525082934.1395"><vh>class MarkImportsUnreachableVisitor</vh>
-<v t="ekr.20220525082934.1396"><vh>MarkImportsUnreachableVisitor.visit_import</vh></v>
-<v t="ekr.20220525082934.1397"><vh>MarkImportsUnreachableVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082934.1398"><vh>MarkImportsUnreachableVisitor.visit_import_all</vh></v>
-</v>
-<v t="ekr.20220525082934.1399"><vh>mark_block_mypy_only</vh></v>
-<v t="ekr.20220525082934.1400"><vh>class MarkImportsMypyOnlyVisitor</vh>
-<v t="ekr.20220525082934.1401"><vh>MarkImportsMypyOnlyVisitor.visit_import</vh></v>
-<v t="ekr.20220525082934.1402"><vh>MarkImportsMypyOnlyVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082934.1403"><vh>MarkImportsMypyOnlyVisitor.visit_import_all</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1404"><vh>@clean renaming.py</vh>
-<v t="ekr.20220525082934.1405"><vh>class VariableRenameVisitor</vh>
-<v t="ekr.20220525082934.1406"><vh>VariableRenameVisitor.__init__</vh></v>
-<v t="ekr.20220525082934.1407"><vh>VariableRenameVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20220525082934.1408"><vh>VariableRenameVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082934.1409"><vh>VariableRenameVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082934.1410"><vh>VariableRenameVisitor.visit_block</vh></v>
-<v t="ekr.20220525082934.1411"><vh>VariableRenameVisitor.visit_while_stmt</vh></v>
-<v t="ekr.20220525082934.1412"><vh>VariableRenameVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082934.1413"><vh>VariableRenameVisitor.visit_break_stmt</vh></v>
-<v t="ekr.20220525082934.1414"><vh>VariableRenameVisitor.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082934.1415"><vh>VariableRenameVisitor.visit_try_stmt</vh></v>
-<v t="ekr.20220525082934.1416"><vh>VariableRenameVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082934.1417"><vh>VariableRenameVisitor.visit_import</vh></v>
-<v t="ekr.20220525082934.1418"><vh>VariableRenameVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082934.1419"><vh>VariableRenameVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082934.1420"><vh>VariableRenameVisitor.visit_match_stmt</vh></v>
-<v t="ekr.20220525082934.1421"><vh>VariableRenameVisitor.visit_capture_pattern</vh></v>
-<v t="ekr.20220525082934.1422"><vh>VariableRenameVisitor.analyze_lvalue</vh></v>
-<v t="ekr.20220525082934.1423"><vh>VariableRenameVisitor.visit_name_expr</vh></v>
-<v t="ekr.20220525082934.1424"><vh>VariableRenameVisitor.Helpers for renaming references</vh></v>
-<v t="ekr.20220525082934.1425"><vh>VariableRenameVisitor.handle_arg</vh></v>
-<v t="ekr.20220525082934.1426"><vh>VariableRenameVisitor.handle_def</vh></v>
-<v t="ekr.20220525082934.1427"><vh>VariableRenameVisitor.handle_refine</vh></v>
-<v t="ekr.20220525082934.1428"><vh>VariableRenameVisitor.handle_ref</vh></v>
-<v t="ekr.20220525082934.1429"><vh>VariableRenameVisitor.flush_refs</vh></v>
-<v t="ekr.20220525082934.1430"><vh>VariableRenameVisitor.Helpers for determining which assignments define new variables</vh></v>
-<v t="ekr.20220525082934.1431"><vh>VariableRenameVisitor.clear</vh></v>
-<v t="ekr.20220525082934.1432"><vh>VariableRenameVisitor.enter_block</vh></v>
-<v t="ekr.20220525082934.1433"><vh>VariableRenameVisitor.enter_try</vh></v>
-<v t="ekr.20220525082934.1434"><vh>VariableRenameVisitor.enter_loop</vh></v>
-<v t="ekr.20220525082934.1435"><vh>VariableRenameVisitor.current_block</vh></v>
-<v t="ekr.20220525082934.1436"><vh>VariableRenameVisitor.enter_scope</vh></v>
-<v t="ekr.20220525082934.1437"><vh>VariableRenameVisitor.is_nested</vh></v>
-<v t="ekr.20220525082934.1438"><vh>VariableRenameVisitor.reject_redefinition_of_vars_in_scope</vh></v>
-<v t="ekr.20220525082934.1439"><vh>VariableRenameVisitor.reject_redefinition_of_vars_in_loop</vh></v>
-<v t="ekr.20220525082934.1440"><vh>VariableRenameVisitor.record_assignment</vh></v>
-</v>
-<v t="ekr.20220525082934.1441"><vh>class LimitedVariableRenameVisitor</vh>
-<v t="ekr.20220525082934.1442"><vh>LimitedVariableRenameVisitor.__init__</vh></v>
-<v t="ekr.20220525082934.1443"><vh>LimitedVariableRenameVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20220525082934.1444"><vh>LimitedVariableRenameVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082934.1445"><vh>LimitedVariableRenameVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082934.1446"><vh>LimitedVariableRenameVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082934.1447"><vh>LimitedVariableRenameVisitor.analyze_lvalue</vh></v>
-<v t="ekr.20220525082934.1448"><vh>LimitedVariableRenameVisitor.visit_import</vh></v>
-<v t="ekr.20220525082934.1449"><vh>LimitedVariableRenameVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082934.1450"><vh>LimitedVariableRenameVisitor.visit_import_all</vh></v>
-<v t="ekr.20220525082934.1451"><vh>LimitedVariableRenameVisitor.visit_name_expr</vh></v>
-<v t="ekr.20220525082934.1452"><vh>LimitedVariableRenameVisitor.enter_scope</vh></v>
-<v t="ekr.20220525082934.1453"><vh>LimitedVariableRenameVisitor.reject_redefinition_of_vars_in_scope</vh></v>
-<v t="ekr.20220525082934.1454"><vh>LimitedVariableRenameVisitor.record_skipped</vh></v>
-<v t="ekr.20220525082934.1455"><vh>LimitedVariableRenameVisitor.flush_refs</vh></v>
-</v>
-<v t="ekr.20220525082934.1456"><vh>rename_refs</vh></v>
-</v>
-<v t="ekr.20220525082934.1457"><vh>@clean report.py</vh>
-<v t="ekr.20220525082934.1458"><vh>class Reports</vh>
-<v t="ekr.20220525082934.1459"><vh>Reports.__init__</vh></v>
-<v t="ekr.20220525082934.1460"><vh>Reports.add_report</vh></v>
-<v t="ekr.20220525082934.1461"><vh>Reports.file</vh></v>
-<v t="ekr.20220525082934.1462"><vh>Reports.finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1463"><vh>class AbstractReporter</vh>
-<v t="ekr.20220525082934.1464"><vh>AbstractReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1465"><vh>AbstractReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1466"><vh>AbstractReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1467"><vh>register_reporter</vh></v>
-<v t="ekr.20220525082934.1468"><vh>alias_reporter</vh></v>
-<v t="ekr.20220525082934.1469"><vh>should_skip_path</vh></v>
-<v t="ekr.20220525082934.1470"><vh>iterate_python_lines</vh></v>
-<v t="ekr.20220525082934.1471"><vh>class FuncCounterVisitor</vh></v>
-<v t="ekr.20220525082934.1472"><vh>class LineCountReporter</vh>
-<v t="ekr.20220525082934.1473"><vh>LineCountReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1474"><vh>LineCountReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1475"><vh>LineCountReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1476"><vh>register_reporter('linecount', LineCountReporter)</vh></v>
-<v t="ekr.20220525082934.1477"><vh>class AnyExpressionsReporter</vh>
-<v t="ekr.20220525082934.1478"><vh>AnyExpressionsReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1479"><vh>AnyExpressionsReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1480"><vh>AnyExpressionsReporter.on_finish</vh></v>
-<v t="ekr.20220525082934.1481"><vh>AnyExpressionsReporter._write_out_report</vh></v>
-<v t="ekr.20220525082934.1482"><vh>AnyExpressionsReporter._report_any_exprs</vh></v>
-<v t="ekr.20220525082934.1483"><vh>AnyExpressionsReporter._report_types_of_anys</vh></v>
-</v>
-<v t="ekr.20220525082934.1484"><vh>register_reporter('any-exprs', AnyExpressionsReporter)</vh></v>
-<v t="ekr.20220525082934.1485"><vh>class LineCoverageVisitor</vh>
-<v t="ekr.20220525082934.1486"><vh>LineCoverageVisitor.__init__</vh></v>
-<v t="ekr.20220525082934.1487"><vh>LineCoverageVisitor.The Python AST has position information for the starts of</vh></v>
-<v t="ekr.20220525082934.1488"><vh>LineCoverageVisitor.indentation_level</vh></v>
-<v t="ekr.20220525082934.1489"><vh>LineCoverageVisitor.visit_func_def</vh></v>
-</v>
-<v t="ekr.20220525082934.1490"><vh>class LineCoverageReporter</vh>
-<v t="ekr.20220525082934.1491"><vh>LineCoverageReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1492"><vh>LineCoverageReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1493"><vh>LineCoverageReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1494"><vh>register_reporter('linecoverage', LineCoverageReporter)</vh></v>
-<v t="ekr.20220525082934.1495"><vh>class FileInfo</vh>
-<v t="ekr.20220525082934.1496"><vh>FileInfo.__init__</vh></v>
-<v t="ekr.20220525082934.1497"><vh>FileInfo.total</vh></v>
-<v t="ekr.20220525082934.1498"><vh>FileInfo.attrib</vh></v>
-</v>
-<v t="ekr.20220525082934.1499"><vh>class MemoryXmlReporter</vh>
-<v t="ekr.20220525082934.1500"><vh>MemoryXmlReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1501"><vh>MemoryXmlReporter.XML doesn't like control characters, but they are sometimes</vh></v>
-<v t="ekr.20220525082934.1502"><vh>MemoryXmlReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1503"><vh>MemoryXmlReporter._get_any_info_for_line</vh></v>
-<v t="ekr.20220525082934.1504"><vh>MemoryXmlReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1505"><vh>register_reporter('memory-xml', MemoryXmlReporter, needs_lxml=True)</vh></v>
-<v t="ekr.20220525082934.1506"><vh>get_line_rate</vh></v>
-<v t="ekr.20220525082934.1507"><vh>class CoberturaPackage</vh>
-<v t="ekr.20220525082934.1508"><vh>CoberturaPackage.__init__</vh></v>
-<v t="ekr.20220525082934.1509"><vh>CoberturaPackage.as_xml</vh></v>
-<v t="ekr.20220525082934.1510"><vh>CoberturaPackage.add_packages</vh></v>
-</v>
-<v t="ekr.20220525082934.1511"><vh>class CoberturaXmlReporter</vh>
-<v t="ekr.20220525082934.1512"><vh>CoberturaXmlReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1513"><vh>CoberturaXmlReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1514"><vh>CoberturaXmlReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1515"><vh>register_reporter('cobertura-xml', CoberturaXmlReporter, needs_lxml=True)</vh></v>
-<v t="ekr.20220525082934.1516"><vh>class AbstractXmlReporter</vh>
-<v t="ekr.20220525082934.1517"><vh>AbstractXmlReporter.__init__</vh></v>
-</v>
-<v t="ekr.20220525082934.1518"><vh>class XmlReporter</vh>
-<v t="ekr.20220525082934.1519"><vh>XmlReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1520"><vh>XmlReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1521"><vh>register_reporter('xml', XmlReporter, needs_lxml=True)</vh></v>
-<v t="ekr.20220525082934.1522"><vh>class XsltHtmlReporter</vh>
-<v t="ekr.20220525082934.1523"><vh>XsltHtmlReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1524"><vh>XsltHtmlReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1525"><vh>XsltHtmlReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1526"><vh>register_reporter('xslt-html', XsltHtmlReporter, needs_lxml=True)</vh></v>
-<v t="ekr.20220525082934.1527"><vh>class XsltTxtReporter</vh>
-<v t="ekr.20220525082934.1528"><vh>XsltTxtReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1529"><vh>XsltTxtReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1530"><vh>XsltTxtReporter.on_finish</vh></v>
-</v>
-<v t="ekr.20220525082934.1531"><vh>register_reporter('xslt-txt', XsltTxtReporter, needs_lxml=True)</vh></v>
-<v t="ekr.20220525082934.1532"><vh>class LinePrecisionReporter</vh>
-<v t="ekr.20220525082934.1533"><vh>LinePrecisionReporter.__init__</vh></v>
-<v t="ekr.20220525082934.1534"><vh>LinePrecisionReporter.on_file</vh></v>
-<v t="ekr.20220525082934.1535"><vh>LinePrecisionReporter.on_finish</vh></v>
-</v>
-</v>
 <v t="ekr.20220525082934.1536"><vh>@clean sametypes.py</vh>
 <v t="ekr.20220525082934.1537"><vh>is_same_type</vh></v>
 <v t="ekr.20220525082934.1538"><vh>simplify_union</vh></v>
@@ -2969,489 +4217,6 @@
 <v t="ekr.20220525082934.1562"><vh>SameTypeVisitor.visit_overloaded</vh></v>
 <v t="ekr.20220525082934.1563"><vh>SameTypeVisitor.visit_partial_type</vh></v>
 <v t="ekr.20220525082934.1564"><vh>SameTypeVisitor.visit_type_type</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1565"><vh>@clean scope.py</vh>
-<v t="ekr.20220525082934.1566"><vh>class Scope</vh>
-<v t="ekr.20220525082934.1567"><vh>Scope.__init__</vh></v>
-<v t="ekr.20220525082934.1568"><vh>Scope.current_module_id</vh></v>
-<v t="ekr.20220525082934.1569"><vh>Scope.current_target</vh></v>
-<v t="ekr.20220525082934.1570"><vh>Scope.current_full_target</vh></v>
-<v t="ekr.20220525082934.1571"><vh>Scope.current_type_name</vh></v>
-<v t="ekr.20220525082934.1572"><vh>Scope.current_function_name</vh></v>
-<v t="ekr.20220525082934.1573"><vh>Scope.module_scope</vh></v>
-<v t="ekr.20220525082934.1574"><vh>Scope.function_scope</vh></v>
-<v t="ekr.20220525082934.1575"><vh>Scope.enter_class</vh></v>
-<v t="ekr.20220525082934.1576"><vh>Scope.leave_class</vh></v>
-<v t="ekr.20220525082934.1577"><vh>Scope.class_scope</vh></v>
-<v t="ekr.20220525082934.1578"><vh>Scope.save</vh></v>
-<v t="ekr.20220525082934.1579"><vh>Scope.saved_scope</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082934.1580"><vh>@clean semanal.py</vh>
-<v t="ekr.20220525082935.1"><vh>class SemanticAnalyzer</vh>
-<v t="ekr.20220525082935.2"><vh>SemanticAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.3"><vh>SemanticAnalyzer.is_stub_file</vh></v>
-<v t="ekr.20220525082935.4"><vh>SemanticAnalyzer.is_typeshed_stub_file</vh></v>
-<v t="ekr.20220525082935.5"><vh>SemanticAnalyzer.final_iteration</vh></v>
-<v t="ekr.20220525082935.6"><vh>SemanticAnalyzer.Preparing module (performed before semantic analysis)</vh></v>
-<v t="ekr.20220525082935.7"><vh>SemanticAnalyzer.prepare_file</vh></v>
-<v t="ekr.20220525082935.8"><vh>SemanticAnalyzer.prepare_typing_namespace</vh></v>
-<v t="ekr.20220525082935.9"><vh>SemanticAnalyzer.prepare_builtins_namespace</vh></v>
-<v t="ekr.20220525082935.10"><vh>SemanticAnalyzer.Analyzing a target</vh></v>
-<v t="ekr.20220525082935.11"><vh>SemanticAnalyzer.refresh_partial</vh></v>
-<v t="ekr.20220525082935.12"><vh>SemanticAnalyzer.refresh_top_level</vh></v>
-<v t="ekr.20220525082935.13"><vh>SemanticAnalyzer.add_implicit_module_attrs</vh></v>
-<v t="ekr.20220525082935.14"><vh>SemanticAnalyzer.add_builtin_aliases</vh></v>
-<v t="ekr.20220525082935.15"><vh>SemanticAnalyzer.add_typing_extension_aliases</vh></v>
-<v t="ekr.20220525082935.16"><vh>SemanticAnalyzer.create_alias</vh></v>
-<v t="ekr.20220525082935.17"><vh>SemanticAnalyzer.adjust_public_exports</vh></v>
-<v t="ekr.20220525082935.18"><vh>SemanticAnalyzer.file_context</vh></v>
-<v t="ekr.20220525082935.19"><vh>SemanticAnalyzer.Functions</vh></v>
-<v t="ekr.20220525082935.20"><vh>SemanticAnalyzer.visit_func_def</vh></v>
-<v t="ekr.20220525082935.21"><vh>SemanticAnalyzer.analyze_func_def</vh></v>
-<v t="ekr.20220525082935.22"><vh>SemanticAnalyzer.prepare_method_signature</vh></v>
-<v t="ekr.20220525082935.23"><vh>SemanticAnalyzer.set_original_def</vh></v>
-<v t="ekr.20220525082935.24"><vh>SemanticAnalyzer.update_function_type_variables</vh></v>
-<v t="ekr.20220525082935.25"><vh>SemanticAnalyzer.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.26"><vh>SemanticAnalyzer.analyze_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.27"><vh>SemanticAnalyzer.analyze_overload_sigs_and_impl</vh></v>
-<v t="ekr.20220525082935.28"><vh>SemanticAnalyzer.handle_missing_overload_decorators</vh></v>
-<v t="ekr.20220525082935.29"><vh>SemanticAnalyzer.handle_missing_overload_implementation</vh></v>
-<v t="ekr.20220525082935.30"><vh>SemanticAnalyzer.process_final_in_overload</vh></v>
-<v t="ekr.20220525082935.31"><vh>SemanticAnalyzer.process_static_or_class_method_in_overload</vh></v>
-<v t="ekr.20220525082935.32"><vh>SemanticAnalyzer.analyze_property_with_multi_part_definition</vh></v>
-<v t="ekr.20220525082935.33"><vh>SemanticAnalyzer.add_function_to_symbol_table</vh></v>
-<v t="ekr.20220525082935.34"><vh>SemanticAnalyzer.analyze_arg_initializers</vh></v>
-<v t="ekr.20220525082935.35"><vh>SemanticAnalyzer.analyze_function_body</vh></v>
-<v t="ekr.20220525082935.36"><vh>SemanticAnalyzer.check_classvar_in_signature</vh></v>
-<v t="ekr.20220525082935.37"><vh>SemanticAnalyzer.check_function_signature</vh></v>
-<v t="ekr.20220525082935.38"><vh>SemanticAnalyzer.visit_decorator</vh></v>
-<v t="ekr.20220525082935.39"><vh>SemanticAnalyzer.check_decorated_function_is_method</vh></v>
-<v t="ekr.20220525082935.40"><vh>SemanticAnalyzer.Classes</vh></v>
-<v t="ekr.20220525082935.41"><vh>SemanticAnalyzer.visit_class_def</vh></v>
-<v t="ekr.20220525082935.42"><vh>SemanticAnalyzer.analyze_class</vh></v>
-<v t="ekr.20220525082935.43"><vh>SemanticAnalyzer.is_core_builtin_class</vh></v>
-<v t="ekr.20220525082935.44"><vh>SemanticAnalyzer.analyze_class_body_common</vh></v>
-<v t="ekr.20220525082935.45"><vh>SemanticAnalyzer.analyze_namedtuple_classdef</vh></v>
-<v t="ekr.20220525082935.46"><vh>SemanticAnalyzer.apply_class_plugin_hooks</vh></v>
-<v t="ekr.20220525082935.47"><vh>SemanticAnalyzer.get_fullname_for_hook</vh></v>
-<v t="ekr.20220525082935.48"><vh>SemanticAnalyzer.analyze_class_keywords</vh></v>
-<v t="ekr.20220525082935.49"><vh>SemanticAnalyzer.enter_class</vh></v>
-<v t="ekr.20220525082935.50"><vh>SemanticAnalyzer.leave_class</vh></v>
-<v t="ekr.20220525082935.51"><vh>SemanticAnalyzer.analyze_class_decorator</vh></v>
-<v t="ekr.20220525082935.52"><vh>SemanticAnalyzer.clean_up_bases_and_infer_type_variables</vh></v>
-<v t="ekr.20220525082935.53"><vh>SemanticAnalyzer.analyze_class_typevar_declaration</vh></v>
-<v t="ekr.20220525082935.54"><vh>SemanticAnalyzer.analyze_unbound_tvar</vh></v>
-<v t="ekr.20220525082935.55"><vh>SemanticAnalyzer.get_all_bases_tvars</vh></v>
-<v t="ekr.20220525082935.56"><vh>SemanticAnalyzer.prepare_class_def</vh></v>
-<v t="ekr.20220525082935.57"><vh>SemanticAnalyzer.make_empty_type_info</vh></v>
-<v t="ekr.20220525082935.58"><vh>SemanticAnalyzer.get_name_repr_of_expr</vh></v>
-<v t="ekr.20220525082935.59"><vh>SemanticAnalyzer.analyze_base_classes</vh></v>
-<v t="ekr.20220525082935.60"><vh>SemanticAnalyzer.configure_base_classes</vh></v>
-<v t="ekr.20220525082935.61"><vh>SemanticAnalyzer.configure_tuple_base_class</vh></v>
-<v t="ekr.20220525082935.62"><vh>SemanticAnalyzer.set_dummy_mro</vh></v>
-<v t="ekr.20220525082935.63"><vh>SemanticAnalyzer.calculate_class_mro</vh></v>
-<v t="ekr.20220525082935.64"><vh>SemanticAnalyzer.update_metaclass</vh></v>
-<v t="ekr.20220525082935.65"><vh>SemanticAnalyzer.verify_base_classes</vh></v>
-<v t="ekr.20220525082935.66"><vh>SemanticAnalyzer.is_base_class</vh></v>
-<v t="ekr.20220525082935.67"><vh>SemanticAnalyzer.analyze_metaclass</vh></v>
-<v t="ekr.20220525082935.68"><vh>SemanticAnalyzer.Imports</vh></v>
-<v t="ekr.20220525082935.69"><vh>SemanticAnalyzer.visit_import</vh></v>
-<v t="ekr.20220525082935.70"><vh>SemanticAnalyzer.visit_import_from</vh></v>
-<v t="ekr.20220525082935.71"><vh>SemanticAnalyzer.process_imported_symbol</vh></v>
-<v t="ekr.20220525082935.72"><vh>SemanticAnalyzer.report_missing_module_attribute</vh></v>
-<v t="ekr.20220525082935.73"><vh>SemanticAnalyzer.process_import_over_existing_name</vh></v>
-<v t="ekr.20220525082935.74"><vh>SemanticAnalyzer.correct_relative_import</vh></v>
-<v t="ekr.20220525082935.75"><vh>SemanticAnalyzer.visit_import_all</vh></v>
-<v t="ekr.20220525082935.76"><vh>SemanticAnalyzer.Assignment</vh></v>
-<v t="ekr.20220525082935.77"><vh>SemanticAnalyzer.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082935.78"><vh>SemanticAnalyzer.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.79"><vh>SemanticAnalyzer.analyze_identity_global_assignment</vh></v>
-<v t="ekr.20220525082935.80"><vh>SemanticAnalyzer.should_wait_rhs</vh></v>
-<v t="ekr.20220525082935.81"><vh>SemanticAnalyzer.can_be_type_alias</vh></v>
-<v t="ekr.20220525082935.82"><vh>SemanticAnalyzer.is_type_ref</vh></v>
-<v t="ekr.20220525082935.83"><vh>SemanticAnalyzer.is_none_alias</vh></v>
-<v t="ekr.20220525082935.84"><vh>SemanticAnalyzer.record_special_form_lvalue</vh></v>
-<v t="ekr.20220525082935.85"><vh>SemanticAnalyzer.analyze_enum_assign</vh></v>
-<v t="ekr.20220525082935.86"><vh>SemanticAnalyzer.analyze_namedtuple_assign</vh></v>
-<v t="ekr.20220525082935.87"><vh>SemanticAnalyzer.analyze_typeddict_assign</vh></v>
-<v t="ekr.20220525082935.88"><vh>SemanticAnalyzer.analyze_lvalues</vh></v>
-<v t="ekr.20220525082935.89"><vh>SemanticAnalyzer.apply_dynamic_class_hook</vh></v>
-<v t="ekr.20220525082935.90"><vh>SemanticAnalyzer.unwrap_final</vh></v>
-<v t="ekr.20220525082935.91"><vh>SemanticAnalyzer.check_final_implicit_def</vh></v>
-<v t="ekr.20220525082935.92"><vh>SemanticAnalyzer.store_final_status</vh></v>
-<v t="ekr.20220525082935.93"><vh>SemanticAnalyzer.flatten_lvalues</vh></v>
-<v t="ekr.20220525082935.94"><vh>SemanticAnalyzer.unbox_literal</vh></v>
-<v t="ekr.20220525082935.95"><vh>SemanticAnalyzer.process_type_annotation</vh></v>
-<v t="ekr.20220525082935.96"><vh>SemanticAnalyzer.is_annotated_protocol_member</vh></v>
-<v t="ekr.20220525082935.97"><vh>SemanticAnalyzer.analyze_simple_literal_type</vh></v>
-<v t="ekr.20220525082935.98"><vh>SemanticAnalyzer.analyze_alias</vh></v>
-<v t="ekr.20220525082935.99"><vh>SemanticAnalyzer.check_and_set_up_type_alias</vh></v>
-<v t="ekr.20220525082935.100"><vh>SemanticAnalyzer.analyze_lvalue</vh></v>
-<v t="ekr.20220525082935.101"><vh>SemanticAnalyzer.analyze_name_lvalue</vh></v>
-<v t="ekr.20220525082935.102"><vh>SemanticAnalyzer.is_final_redefinition</vh></v>
-<v t="ekr.20220525082935.103"><vh>SemanticAnalyzer.is_alias_for_final_name</vh></v>
-<v t="ekr.20220525082935.104"><vh>SemanticAnalyzer.make_name_lvalue_var</vh></v>
-<v t="ekr.20220525082935.105"><vh>SemanticAnalyzer.make_name_lvalue_point_to_existing_def</vh></v>
-<v t="ekr.20220525082935.106"><vh>SemanticAnalyzer.analyze_tuple_or_list_lvalue</vh></v>
-<v t="ekr.20220525082935.107"><vh>SemanticAnalyzer.analyze_member_lvalue</vh></v>
-<v t="ekr.20220525082935.108"><vh>SemanticAnalyzer.is_self_member_ref</vh></v>
-<v t="ekr.20220525082935.109"><vh>SemanticAnalyzer.check_lvalue_validity</vh></v>
-<v t="ekr.20220525082935.110"><vh>SemanticAnalyzer.store_declared_types</vh></v>
-<v t="ekr.20220525082935.111"><vh>SemanticAnalyzer.process_typevar_declaration</vh></v>
-<v t="ekr.20220525082935.112"><vh>SemanticAnalyzer.check_typevarlike_name</vh></v>
-<v t="ekr.20220525082935.113"><vh>SemanticAnalyzer.get_typevarlike_declaration</vh></v>
-<v t="ekr.20220525082935.114"><vh>SemanticAnalyzer.process_typevar_parameters</vh></v>
-<v t="ekr.20220525082935.115"><vh>SemanticAnalyzer.extract_typevarlike_name</vh></v>
-<v t="ekr.20220525082935.116"><vh>SemanticAnalyzer.process_paramspec_declaration</vh></v>
-<v t="ekr.20220525082935.117"><vh>SemanticAnalyzer.process_typevartuple_declaration</vh></v>
-<v t="ekr.20220525082935.118"><vh>SemanticAnalyzer.basic_new_typeinfo</vh></v>
-<v t="ekr.20220525082935.119"><vh>SemanticAnalyzer.analyze_value_types</vh></v>
-<v t="ekr.20220525082935.120"><vh>SemanticAnalyzer.check_classvar</vh></v>
-<v t="ekr.20220525082935.121"><vh>SemanticAnalyzer.is_classvar</vh></v>
-<v t="ekr.20220525082935.122"><vh>SemanticAnalyzer.is_final_type</vh></v>
-<v t="ekr.20220525082935.123"><vh>SemanticAnalyzer.fail_invalid_classvar</vh></v>
-<v t="ekr.20220525082935.124"><vh>SemanticAnalyzer.process_module_assignment</vh></v>
-<v t="ekr.20220525082935.125"><vh>SemanticAnalyzer.process__all__</vh></v>
-<v t="ekr.20220525082935.126"><vh>SemanticAnalyzer.process__deletable__</vh></v>
-<v t="ekr.20220525082935.127"><vh>SemanticAnalyzer.process__slots__</vh></v>
-<v t="ekr.20220525082935.128"><vh>SemanticAnalyzer.Misc statements</vh></v>
-<v t="ekr.20220525082935.129"><vh>SemanticAnalyzer.visit_block</vh></v>
-<v t="ekr.20220525082935.130"><vh>SemanticAnalyzer.visit_block_maybe</vh></v>
-<v t="ekr.20220525082935.131"><vh>SemanticAnalyzer.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.132"><vh>SemanticAnalyzer.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.133"><vh>SemanticAnalyzer.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082935.134"><vh>SemanticAnalyzer.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082935.135"><vh>SemanticAnalyzer.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.136"><vh>SemanticAnalyzer.visit_while_stmt</vh></v>
-<v t="ekr.20220525082935.137"><vh>SemanticAnalyzer.visit_for_stmt</vh></v>
-<v t="ekr.20220525082935.138"><vh>SemanticAnalyzer.visit_break_stmt</vh></v>
-<v t="ekr.20220525082935.139"><vh>SemanticAnalyzer.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082935.140"><vh>SemanticAnalyzer.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.141"><vh>SemanticAnalyzer.visit_try_stmt</vh></v>
-<v t="ekr.20220525082935.142"><vh>SemanticAnalyzer.analyze_try_stmt</vh></v>
-<v t="ekr.20220525082935.143"><vh>SemanticAnalyzer.visit_with_stmt</vh></v>
-<v t="ekr.20220525082935.144"><vh>SemanticAnalyzer.visit_del_stmt</vh></v>
-<v t="ekr.20220525082935.145"><vh>SemanticAnalyzer.is_valid_del_target</vh></v>
-<v t="ekr.20220525082935.146"><vh>SemanticAnalyzer.visit_global_decl</vh></v>
-<v t="ekr.20220525082935.147"><vh>SemanticAnalyzer.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082935.148"><vh>SemanticAnalyzer.visit_print_stmt</vh></v>
-<v t="ekr.20220525082935.149"><vh>SemanticAnalyzer.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082935.150"><vh>SemanticAnalyzer.visit_match_stmt</vh></v>
-<v t="ekr.20220525082935.151"><vh>SemanticAnalyzer.Expressions</vh></v>
-<v t="ekr.20220525082935.152"><vh>SemanticAnalyzer.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.153"><vh>SemanticAnalyzer.bind_name_expr</vh></v>
-<v t="ekr.20220525082935.154"><vh>SemanticAnalyzer.visit_super_expr</vh></v>
-<v t="ekr.20220525082935.155"><vh>SemanticAnalyzer.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.156"><vh>SemanticAnalyzer.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.157"><vh>SemanticAnalyzer.visit_set_expr</vh></v>
-<v t="ekr.20220525082935.158"><vh>SemanticAnalyzer.visit_dict_expr</vh></v>
-<v t="ekr.20220525082935.159"><vh>SemanticAnalyzer.visit_star_expr</vh></v>
-<v t="ekr.20220525082935.160"><vh>SemanticAnalyzer.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082935.161"><vh>SemanticAnalyzer.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.162"><vh>SemanticAnalyzer.translate_dict_call</vh></v>
-<v t="ekr.20220525082935.163"><vh>SemanticAnalyzer.check_fixed_args</vh></v>
-<v t="ekr.20220525082935.164"><vh>SemanticAnalyzer.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.165"><vh>SemanticAnalyzer.visit_op_expr</vh></v>
-<v t="ekr.20220525082935.166"><vh>SemanticAnalyzer.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082935.167"><vh>SemanticAnalyzer.visit_unary_expr</vh></v>
-<v t="ekr.20220525082935.168"><vh>SemanticAnalyzer.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.169"><vh>SemanticAnalyzer.analyze_type_application</vh></v>
-<v t="ekr.20220525082935.170"><vh>SemanticAnalyzer.analyze_type_application_args</vh></v>
-<v t="ekr.20220525082935.171"><vh>SemanticAnalyzer.visit_slice_expr</vh></v>
-<v t="ekr.20220525082935.172"><vh>SemanticAnalyzer.visit_cast_expr</vh></v>
-<v t="ekr.20220525082935.173"><vh>SemanticAnalyzer.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082935.174"><vh>SemanticAnalyzer.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082935.175"><vh>SemanticAnalyzer.visit_type_application</vh></v>
-<v t="ekr.20220525082935.176"><vh>SemanticAnalyzer.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082935.177"><vh>SemanticAnalyzer.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082935.178"><vh>SemanticAnalyzer.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082935.179"><vh>SemanticAnalyzer.visit_generator_expr</vh></v>
-<v t="ekr.20220525082935.180"><vh>SemanticAnalyzer.analyze_comp_for</vh></v>
-<v t="ekr.20220525082935.181"><vh>SemanticAnalyzer.analyze_comp_for_2</vh></v>
-<v t="ekr.20220525082935.182"><vh>SemanticAnalyzer.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082935.183"><vh>SemanticAnalyzer.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082935.184"><vh>SemanticAnalyzer.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082935.185"><vh>SemanticAnalyzer.visit__promote_expr</vh></v>
-<v t="ekr.20220525082935.186"><vh>SemanticAnalyzer.visit_yield_expr</vh></v>
-<v t="ekr.20220525082935.187"><vh>SemanticAnalyzer.visit_await_expr</vh></v>
-<v t="ekr.20220525082935.188"><vh>SemanticAnalyzer.Patterns</vh></v>
-<v t="ekr.20220525082935.189"><vh>SemanticAnalyzer.visit_as_pattern</vh></v>
-<v t="ekr.20220525082935.190"><vh>SemanticAnalyzer.visit_or_pattern</vh></v>
-<v t="ekr.20220525082935.191"><vh>SemanticAnalyzer.visit_value_pattern</vh></v>
-<v t="ekr.20220525082935.192"><vh>SemanticAnalyzer.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082935.193"><vh>SemanticAnalyzer.visit_starred_pattern</vh></v>
-<v t="ekr.20220525082935.194"><vh>SemanticAnalyzer.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082935.195"><vh>SemanticAnalyzer.visit_class_pattern</vh></v>
-<v t="ekr.20220525082935.196"><vh>SemanticAnalyzer.Lookup functions</vh></v>
-<v t="ekr.20220525082935.197"><vh>SemanticAnalyzer.lookup</vh></v>
-<v t="ekr.20220525082935.198"><vh>SemanticAnalyzer.is_active_symbol_in_class_body</vh></v>
-<v t="ekr.20220525082935.199"><vh>SemanticAnalyzer.is_textually_before_statement</vh></v>
-<v t="ekr.20220525082935.200"><vh>SemanticAnalyzer.is_overloaded_item</vh></v>
-<v t="ekr.20220525082935.201"><vh>SemanticAnalyzer.is_defined_in_current_module</vh></v>
-<v t="ekr.20220525082935.202"><vh>SemanticAnalyzer.lookup_qualified</vh></v>
-<v t="ekr.20220525082935.203"><vh>SemanticAnalyzer.lookup_type_node</vh></v>
-<v t="ekr.20220525082935.204"><vh>SemanticAnalyzer.get_module_symbol</vh></v>
-<v t="ekr.20220525082935.205"><vh>SemanticAnalyzer.is_missing_module</vh></v>
-<v t="ekr.20220525082935.206"><vh>SemanticAnalyzer.implicit_symbol</vh></v>
-<v t="ekr.20220525082935.207"><vh>SemanticAnalyzer.create_getattr_var</vh></v>
-<v t="ekr.20220525082935.208"><vh>SemanticAnalyzer.lookup_fully_qualified</vh></v>
-<v t="ekr.20220525082935.209"><vh>SemanticAnalyzer.lookup_fully_qualified_or_none</vh></v>
-<v t="ekr.20220525082935.210"><vh>SemanticAnalyzer.object_type</vh></v>
-<v t="ekr.20220525082935.211"><vh>SemanticAnalyzer.str_type</vh></v>
-<v t="ekr.20220525082935.212"><vh>SemanticAnalyzer.named_type</vh></v>
-<v t="ekr.20220525082935.213"><vh>SemanticAnalyzer.named_type_or_none</vh></v>
-<v t="ekr.20220525082935.214"><vh>SemanticAnalyzer.builtin_type</vh></v>
-<v t="ekr.20220525082935.215"><vh>SemanticAnalyzer.lookup_current_scope</vh></v>
-<v t="ekr.20220525082935.216"><vh>SemanticAnalyzer.Adding symbols</vh></v>
-<v t="ekr.20220525082935.217"><vh>SemanticAnalyzer.add_symbol</vh></v>
-<v t="ekr.20220525082935.218"><vh>SemanticAnalyzer.add_symbol_skip_local</vh></v>
-<v t="ekr.20220525082935.219"><vh>SemanticAnalyzer.add_symbol_table_node</vh></v>
-<v t="ekr.20220525082935.220"><vh>SemanticAnalyzer.add_redefinition</vh></v>
-<v t="ekr.20220525082935.221"><vh>SemanticAnalyzer.add_local</vh></v>
-<v t="ekr.20220525082935.222"><vh>SemanticAnalyzer.add_module_symbol</vh></v>
-<v t="ekr.20220525082935.223"><vh>SemanticAnalyzer._get_node_for_class_scoped_import</vh></v>
-<v t="ekr.20220525082935.224"><vh>SemanticAnalyzer.add_imported_symbol</vh></v>
-<v t="ekr.20220525082935.225"><vh>SemanticAnalyzer.add_unknown_imported_symbol</vh></v>
-<v t="ekr.20220525082935.226"><vh>SemanticAnalyzer.Other helpers</vh></v>
-<v t="ekr.20220525082935.227"><vh>SemanticAnalyzer.tvar_scope_frame</vh></v>
-<v t="ekr.20220525082935.228"><vh>SemanticAnalyzer.defer</vh></v>
-<v t="ekr.20220525082935.229"><vh>SemanticAnalyzer.track_incomplete_refs</vh></v>
-<v t="ekr.20220525082935.230"><vh>SemanticAnalyzer.found_incomplete_ref</vh></v>
-<v t="ekr.20220525082935.231"><vh>SemanticAnalyzer.record_incomplete_ref</vh></v>
-<v t="ekr.20220525082935.232"><vh>SemanticAnalyzer.mark_incomplete</vh></v>
-<v t="ekr.20220525082935.233"><vh>SemanticAnalyzer.is_incomplete_namespace</vh></v>
-<v t="ekr.20220525082935.234"><vh>SemanticAnalyzer.process_placeholder</vh></v>
-<v t="ekr.20220525082935.235"><vh>SemanticAnalyzer.cannot_resolve_name</vh></v>
-<v t="ekr.20220525082935.236"><vh>SemanticAnalyzer.qualified_name</vh></v>
-<v t="ekr.20220525082935.237"><vh>SemanticAnalyzer.enter</vh></v>
-<v t="ekr.20220525082935.238"><vh>SemanticAnalyzer.is_func_scope</vh></v>
-<v t="ekr.20220525082935.239"><vh>SemanticAnalyzer.is_nested_within_func_scope</vh></v>
-<v t="ekr.20220525082935.240"><vh>SemanticAnalyzer.is_class_scope</vh></v>
-<v t="ekr.20220525082935.241"><vh>SemanticAnalyzer.is_module_scope</vh></v>
-<v t="ekr.20220525082935.242"><vh>SemanticAnalyzer.current_symbol_kind</vh></v>
-<v t="ekr.20220525082935.243"><vh>SemanticAnalyzer.current_symbol_table</vh></v>
-<v t="ekr.20220525082935.244"><vh>SemanticAnalyzer.is_global_or_nonlocal</vh></v>
-<v t="ekr.20220525082935.245"><vh>SemanticAnalyzer.add_exports</vh></v>
-<v t="ekr.20220525082935.246"><vh>SemanticAnalyzer.name_not_defined</vh></v>
-<v t="ekr.20220525082935.247"><vh>SemanticAnalyzer.already_defined</vh></v>
-<v t="ekr.20220525082935.248"><vh>SemanticAnalyzer.name_already_defined</vh></v>
-<v t="ekr.20220525082935.249"><vh>SemanticAnalyzer.attribute_already_defined</vh></v>
-<v t="ekr.20220525082935.250"><vh>SemanticAnalyzer.is_local_name</vh></v>
-<v t="ekr.20220525082935.251"><vh>SemanticAnalyzer.in_checked_function</vh></v>
-<v t="ekr.20220525082935.252"><vh>SemanticAnalyzer.fail</vh></v>
-<v t="ekr.20220525082935.253"><vh>SemanticAnalyzer.note</vh></v>
-<v t="ekr.20220525082935.254"><vh>SemanticAnalyzer.accept</vh></v>
-<v t="ekr.20220525082935.255"><vh>SemanticAnalyzer.expr_to_analyzed_type</vh></v>
-<v t="ekr.20220525082935.256"><vh>SemanticAnalyzer.analyze_type_expr</vh></v>
-<v t="ekr.20220525082935.257"><vh>SemanticAnalyzer.type_analyzer</vh></v>
-<v t="ekr.20220525082935.258"><vh>SemanticAnalyzer.expr_to_unanalyzed_type</vh></v>
-<v t="ekr.20220525082935.259"><vh>SemanticAnalyzer.anal_type</vh></v>
-<v t="ekr.20220525082935.260"><vh>SemanticAnalyzer.class_type</vh></v>
-<v t="ekr.20220525082935.261"><vh>SemanticAnalyzer.schedule_patch</vh></v>
-<v t="ekr.20220525082935.262"><vh>SemanticAnalyzer.report_hang</vh></v>
-<v t="ekr.20220525082935.263"><vh>SemanticAnalyzer.add_plugin_dependency</vh></v>
-<v t="ekr.20220525082935.264"><vh>SemanticAnalyzer.add_type_alias_deps</vh></v>
-<v t="ekr.20220525082935.265"><vh>SemanticAnalyzer.is_mangled_global</vh></v>
-<v t="ekr.20220525082935.266"><vh>SemanticAnalyzer.is_initial_mangled_global</vh></v>
-<v t="ekr.20220525082935.267"><vh>SemanticAnalyzer.parse_bool</vh></v>
-<v t="ekr.20220525082935.268"><vh>SemanticAnalyzer.set_future_import_flags</vh></v>
-<v t="ekr.20220525082935.269"><vh>SemanticAnalyzer.is_future_flag_set</vh></v>
-</v>
-<v t="ekr.20220525082935.270"><vh>class HasPlaceholders</vh></v>
-<v t="ekr.20220525082935.271"><vh>has_placeholder</vh></v>
-<v t="ekr.20220525082935.272"><vh>replace_implicit_first_type</vh></v>
-<v t="ekr.20220525082935.273"><vh>refers_to_fullname</vh></v>
-<v t="ekr.20220525082935.274"><vh>refers_to_class_or_function</vh></v>
-<v t="ekr.20220525082935.275"><vh>find_duplicate</vh></v>
-<v t="ekr.20220525082935.276"><vh>remove_imported_names_from_symtable</vh></v>
-<v t="ekr.20220525082935.277"><vh>make_any_non_explicit</vh></v>
-<v t="ekr.20220525082935.278"><vh>class MakeAnyNonExplicit</vh>
-<v t="ekr.20220525082935.279"><vh>MakeAnyNonExplicit.visit_any</vh></v>
-<v t="ekr.20220525082935.280"><vh>MakeAnyNonExplicit.visit_type_alias_type</vh></v>
-</v>
-<v t="ekr.20220525082935.281"><vh>apply_semantic_analyzer_patches</vh></v>
-<v t="ekr.20220525082935.282"><vh>names_modified_by_assignment</vh></v>
-<v t="ekr.20220525082935.283"><vh>names_modified_in_lvalue</vh></v>
-<v t="ekr.20220525082935.284"><vh>is_same_var_from_getattr</vh></v>
-<v t="ekr.20220525082935.285"><vh>dummy_context</vh></v>
-<v t="ekr.20220525082935.286"><vh>is_valid_replacement</vh></v>
-<v t="ekr.20220525082935.287"><vh>is_same_symbol</vh></v>
-</v>
-<v t="ekr.20220525082935.288"><vh>@clean semanal_classprop.py</vh>
-<v t="ekr.20220525082935.289"><vh>calculate_class_abstract_status</vh></v>
-<v t="ekr.20220525082935.290"><vh>check_protocol_status</vh></v>
-<v t="ekr.20220525082935.291"><vh>calculate_class_vars</vh></v>
-<v t="ekr.20220525082935.292"><vh>add_type_promotion</vh></v>
-</v>
-<v t="ekr.20220525082935.293"><vh>@clean semanal_enum.py</vh>
-<v t="ekr.20220525082935.294"><vh>class EnumCallAnalyzer</vh>
-<v t="ekr.20220525082935.295"><vh>EnumCallAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.296"><vh>EnumCallAnalyzer.process_enum_call</vh></v>
-<v t="ekr.20220525082935.297"><vh>EnumCallAnalyzer.check_enum_call</vh></v>
-<v t="ekr.20220525082935.298"><vh>EnumCallAnalyzer.build_enum_call_typeinfo</vh></v>
-<v t="ekr.20220525082935.299"><vh>EnumCallAnalyzer.parse_enum_call_args</vh></v>
-<v t="ekr.20220525082935.300"><vh>EnumCallAnalyzer.fail_enum_call_arg</vh></v>
-<v t="ekr.20220525082935.301"><vh>EnumCallAnalyzer.Helpers</vh></v>
-<v t="ekr.20220525082935.302"><vh>EnumCallAnalyzer.fail</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.303"><vh>@clean semanal_infer.py</vh>
-<v t="ekr.20220525082935.304"><vh>infer_decorator_signature_if_simple</vh></v>
-<v t="ekr.20220525082935.305"><vh>is_identity_signature</vh></v>
-<v t="ekr.20220525082935.306"><vh>calculate_return_type</vh></v>
-<v t="ekr.20220525082935.307"><vh>find_fixed_callable_return</vh></v>
-</v>
-<v t="ekr.20220525082935.308"><vh>@clean semanal_main.py</vh>
-<v t="ekr.20220525082935.309"><vh>semantic_analysis_for_scc</vh></v>
-<v t="ekr.20220525082935.310"><vh>cleanup_builtin_scc</vh></v>
-<v t="ekr.20220525082935.311"><vh>semantic_analysis_for_targets</vh></v>
-<v t="ekr.20220525082935.312"><vh>restore_saved_attrs</vh></v>
-<v t="ekr.20220525082935.313"><vh>process_top_levels</vh></v>
-<v t="ekr.20220525082935.314"><vh>process_functions</vh></v>
-<v t="ekr.20220525082935.315"><vh>process_top_level_function</vh></v>
-<v t="ekr.20220525082935.316"><vh>TargetInfo = Tuple[str, Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator], Optional[TypeInfo]]</vh></v>
-<v t="ekr.20220525082935.317"><vh>get_all_leaf_targets</vh></v>
-<v t="ekr.20220525082935.318"><vh>semantic_analyze_target</vh></v>
-<v t="ekr.20220525082935.319"><vh>check_type_arguments</vh></v>
-<v t="ekr.20220525082935.320"><vh>check_type_arguments_in_targets</vh></v>
-<v t="ekr.20220525082935.321"><vh>apply_class_plugin_hooks</vh></v>
-<v t="ekr.20220525082935.322"><vh>apply_hooks_to_class</vh></v>
-<v t="ekr.20220525082935.323"><vh>calculate_class_properties</vh></v>
-<v t="ekr.20220525082935.324"><vh>check_blockers</vh></v>
-</v>
-<v t="ekr.20220525082935.325"><vh>@clean semanal_namedtuple.py</vh>
-<v t="ekr.20220525082935.326"><vh>class NamedTupleAnalyzer</vh>
-<v t="ekr.20220525082935.327"><vh>NamedTupleAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.328"><vh>NamedTupleAnalyzer.analyze_namedtuple_classdef</vh></v>
-<v t="ekr.20220525082935.329"><vh>NamedTupleAnalyzer.check_namedtuple_classdef</vh></v>
-<v t="ekr.20220525082935.330"><vh>NamedTupleAnalyzer.check_namedtuple</vh></v>
-<v t="ekr.20220525082935.331"><vh>NamedTupleAnalyzer.store_namedtuple_info</vh></v>
-<v t="ekr.20220525082935.332"><vh>NamedTupleAnalyzer.parse_namedtuple_args</vh></v>
-<v t="ekr.20220525082935.333"><vh>NamedTupleAnalyzer.parse_namedtuple_fields_with_types</vh></v>
-<v t="ekr.20220525082935.334"><vh>NamedTupleAnalyzer.build_namedtuple_typeinfo</vh></v>
-<v t="ekr.20220525082935.335"><vh>NamedTupleAnalyzer.save_namedtuple_body</vh></v>
-<v t="ekr.20220525082935.336"><vh>NamedTupleAnalyzer.Helpers</vh></v>
-<v t="ekr.20220525082935.337"><vh>NamedTupleAnalyzer.fail</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.338"><vh>@clean semanal_newtype.py</vh>
-<v t="ekr.20220525082935.339"><vh>class NewTypeAnalyzer</vh>
-<v t="ekr.20220525082935.340"><vh>NewTypeAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.341"><vh>NewTypeAnalyzer.process_newtype_declaration</vh></v>
-<v t="ekr.20220525082935.342"><vh>NewTypeAnalyzer.analyze_newtype_declaration</vh></v>
-<v t="ekr.20220525082935.343"><vh>NewTypeAnalyzer.check_newtype_args</vh></v>
-<v t="ekr.20220525082935.344"><vh>NewTypeAnalyzer.build_newtype_typeinfo</vh></v>
-<v t="ekr.20220525082935.345"><vh>NewTypeAnalyzer.Helpers</vh></v>
-<v t="ekr.20220525082935.346"><vh>NewTypeAnalyzer.make_argument</vh></v>
-<v t="ekr.20220525082935.347"><vh>NewTypeAnalyzer.fail</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.348"><vh>@clean semanal_pass1.py</vh>
-<v t="ekr.20220525082935.349"><vh>class SemanticAnalyzerPreAnalysis</vh>
-<v t="ekr.20220525082935.350"><vh>SemanticAnalyzerPreAnalysis.visit_file</vh></v>
-<v t="ekr.20220525082935.351"><vh>SemanticAnalyzerPreAnalysis.visit_func_def</vh></v>
-<v t="ekr.20220525082935.352"><vh>SemanticAnalyzerPreAnalysis.visit_class_def</vh></v>
-<v t="ekr.20220525082935.353"><vh>SemanticAnalyzerPreAnalysis.visit_import_from</vh></v>
-<v t="ekr.20220525082935.354"><vh>SemanticAnalyzerPreAnalysis.visit_import_all</vh></v>
-<v t="ekr.20220525082935.355"><vh>SemanticAnalyzerPreAnalysis.visit_import</vh></v>
-<v t="ekr.20220525082935.356"><vh>SemanticAnalyzerPreAnalysis.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.357"><vh>SemanticAnalyzerPreAnalysis.visit_block</vh></v>
-<v t="ekr.20220525082935.358"><vh>SemanticAnalyzerPreAnalysis.visit_match_stmt</vh></v>
-<v t="ekr.20220525082935.359"><vh>SemanticAnalyzerPreAnalysis.The remaining methods are an optimization: don't visit nested expressions</vh></v>
-<v t="ekr.20220525082935.360"><vh>SemanticAnalyzerPreAnalysis.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.361"><vh>SemanticAnalyzerPreAnalysis.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.362"><vh>SemanticAnalyzerPreAnalysis.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.363"><vh>SemanticAnalyzerPreAnalysis.visit_for_stmt</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.364"><vh>@clean semanal_shared.py</vh>
-<v t="ekr.20220525082935.365"><vh>class SemanticAnalyzerCoreInterface</vh>
-<v t="ekr.20220525082935.366"><vh>SemanticAnalyzerCoreInterface.lookup_qualified</vh></v>
-<v t="ekr.20220525082935.367"><vh>SemanticAnalyzerCoreInterface.lookup_fully_qualified</vh></v>
-<v t="ekr.20220525082935.368"><vh>SemanticAnalyzerCoreInterface.lookup_fully_qualified_or_none</vh></v>
-<v t="ekr.20220525082935.369"><vh>SemanticAnalyzerCoreInterface.fail</vh></v>
-<v t="ekr.20220525082935.370"><vh>SemanticAnalyzerCoreInterface.note</vh></v>
-<v t="ekr.20220525082935.371"><vh>SemanticAnalyzerCoreInterface.record_incomplete_ref</vh></v>
-<v t="ekr.20220525082935.372"><vh>SemanticAnalyzerCoreInterface.defer</vh></v>
-<v t="ekr.20220525082935.373"><vh>SemanticAnalyzerCoreInterface.is_incomplete_namespace</vh></v>
-<v t="ekr.20220525082935.374"><vh>SemanticAnalyzerCoreInterface.final_iteration</vh></v>
-<v t="ekr.20220525082935.375"><vh>SemanticAnalyzerCoreInterface.is_future_flag_set</vh></v>
-<v t="ekr.20220525082935.376"><vh>SemanticAnalyzerCoreInterface.is_stub_file</vh></v>
-</v>
-<v t="ekr.20220525082935.377"><vh>class SemanticAnalyzerInterface</vh>
-<v t="ekr.20220525082935.378"><vh>SemanticAnalyzerInterface.lookup</vh></v>
-<v t="ekr.20220525082935.379"><vh>SemanticAnalyzerInterface.named_type</vh></v>
-<v t="ekr.20220525082935.380"><vh>SemanticAnalyzerInterface.named_type_or_none</vh></v>
-<v t="ekr.20220525082935.381"><vh>SemanticAnalyzerInterface.accept</vh></v>
-<v t="ekr.20220525082935.382"><vh>SemanticAnalyzerInterface.anal_type</vh></v>
-<v t="ekr.20220525082935.383"><vh>SemanticAnalyzerInterface.basic_new_typeinfo</vh></v>
-<v t="ekr.20220525082935.384"><vh>SemanticAnalyzerInterface.schedule_patch</vh></v>
-<v t="ekr.20220525082935.385"><vh>SemanticAnalyzerInterface.add_symbol_table_node</vh></v>
-<v t="ekr.20220525082935.386"><vh>SemanticAnalyzerInterface.current_symbol_table</vh></v>
-<v t="ekr.20220525082935.387"><vh>SemanticAnalyzerInterface.add_symbol</vh></v>
-<v t="ekr.20220525082935.388"><vh>SemanticAnalyzerInterface.add_symbol_skip_local</vh></v>
-<v t="ekr.20220525082935.389"><vh>SemanticAnalyzerInterface.parse_bool</vh></v>
-<v t="ekr.20220525082935.390"><vh>SemanticAnalyzerInterface.qualified_name</vh></v>
-<v t="ekr.20220525082935.391"><vh>SemanticAnalyzerInterface.is_typeshed_stub_file</vh></v>
-<v t="ekr.20220525082935.392"><vh>SemanticAnalyzerInterface.is_func_scope</vh></v>
-</v>
-<v t="ekr.20220525082935.393"><vh>set_callable_name</vh></v>
-<v t="ekr.20220525082935.394"><vh>calculate_tuple_fallback</vh></v>
-<v t="ekr.20220525082935.395"><vh>class _NamedTypeCallback</vh></v>
-<v t="ekr.20220525082935.396"><vh>paramspec_args</vh></v>
-<v t="ekr.20220525082935.397"><vh>paramspec_kwargs</vh></v>
-</v>
-<v t="ekr.20220525082935.398"><vh>@clean semanal_typeargs.py</vh>
-<v t="ekr.20220525082935.399"><vh>class TypeArgumentAnalyzer</vh>
-<v t="ekr.20220525082935.400"><vh>TypeArgumentAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.401"><vh>TypeArgumentAnalyzer.visit_mypy_file</vh></v>
-<v t="ekr.20220525082935.402"><vh>TypeArgumentAnalyzer.visit_func</vh></v>
-<v t="ekr.20220525082935.403"><vh>TypeArgumentAnalyzer.visit_class_def</vh></v>
-<v t="ekr.20220525082935.404"><vh>TypeArgumentAnalyzer.visit_block</vh></v>
-<v t="ekr.20220525082935.405"><vh>TypeArgumentAnalyzer.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082935.406"><vh>TypeArgumentAnalyzer.visit_instance</vh></v>
-<v t="ekr.20220525082935.407"><vh>TypeArgumentAnalyzer.visit_unpack_type</vh></v>
-<v t="ekr.20220525082935.408"><vh>TypeArgumentAnalyzer.check_type_var_values</vh></v>
-<v t="ekr.20220525082935.409"><vh>TypeArgumentAnalyzer.fail</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.410"><vh>@clean semanal_typeddict.py</vh>
-<v t="ekr.20220525082935.411"><vh>class TypedDictAnalyzer</vh>
-<v t="ekr.20220525082935.412"><vh>TypedDictAnalyzer.__init__</vh></v>
-<v t="ekr.20220525082935.413"><vh>TypedDictAnalyzer.analyze_typeddict_classdef</vh></v>
-<v t="ekr.20220525082935.414"><vh>TypedDictAnalyzer.analyze_typeddict_classdef_fields</vh></v>
-<v t="ekr.20220525082935.415"><vh>TypedDictAnalyzer.check_typeddict</vh></v>
-<v t="ekr.20220525082935.416"><vh>TypedDictAnalyzer.parse_typeddict_args</vh></v>
-<v t="ekr.20220525082935.417"><vh>TypedDictAnalyzer.parse_typeddict_fields_with_types</vh></v>
-<v t="ekr.20220525082935.418"><vh>TypedDictAnalyzer.fail_typeddict_arg</vh></v>
-<v t="ekr.20220525082935.419"><vh>TypedDictAnalyzer.build_typeddict_typeinfo</vh></v>
-<v t="ekr.20220525082935.420"><vh>TypedDictAnalyzer.Helpers</vh></v>
-<v t="ekr.20220525082935.421"><vh>TypedDictAnalyzer.is_typeddict</vh></v>
-<v t="ekr.20220525082935.422"><vh>TypedDictAnalyzer.fail</vh></v>
-<v t="ekr.20220525082935.423"><vh>TypedDictAnalyzer.note</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.424"><vh>@clean sharedparse.py</vh>
-<v t="ekr.20220525082935.425"><vh>special_function_elide_names</vh></v>
-<v t="ekr.20220525082935.426"><vh>argument_elide_name</vh></v>
-</v>
-<v t="ekr.20220525082935.427"><vh>@clean solve.py</vh>
-<v t="ekr.20220525082935.428"><vh>solve_constraints</vh></v>
-</v>
-<v t="ekr.20220525082935.429"><vh>@clean split_namespace.py</vh>
-<v t="ekr.20220525082935.430"><vh>class SplitNamespace</vh>
-<v t="ekr.20220525082935.431"><vh>SplitNamespace.__init__</vh></v>
-<v t="ekr.20220525082935.432"><vh>SplitNamespace._get</vh></v>
-<v t="ekr.20220525082935.433"><vh>SplitNamespace.__setattr__</vh></v>
-<v t="ekr.20220525082935.434"><vh>SplitNamespace.__getattr__</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.435"><vh>@clean state.py</vh>
-<v t="ekr.20220525082935.436"><vh>class StrictOptionalState</vh>
-<v t="ekr.20220525082935.437"><vh>StrictOptionalState.__init__</vh></v>
-<v t="ekr.20220525082935.438"><vh>StrictOptionalState.strict_optional_set</vh></v>
 </v>
 </v>
 <v t="ekr.20220525082935.439"><vh>@clean stats.py</vh>
@@ -3508,366 +4273,6 @@
 <v t="ekr.20220525082935.489"><vh>ensure_dir_exists</vh></v>
 <v t="ekr.20220525082935.490"><vh>is_special_form_any</vh></v>
 <v t="ekr.20220525082935.491"><vh>get_original_any</vh></v>
-</v>
-<v t="ekr.20220525082935.492"><vh>@clean strconv.py</vh>
-<v t="ekr.20220525082935.493"><vh>class StrConv</vh>
-<v t="ekr.20220525082935.494"><vh>StrConv.__init__</vh></v>
-<v t="ekr.20220525082935.495"><vh>StrConv.get_id</vh></v>
-<v t="ekr.20220525082935.496"><vh>StrConv.format_id</vh></v>
-<v t="ekr.20220525082935.497"><vh>StrConv.dump</vh></v>
-<v t="ekr.20220525082935.498"><vh>StrConv.func_helper</vh></v>
-<v t="ekr.20220525082935.499"><vh>StrConv.Top-level structures</vh></v>
-<v t="ekr.20220525082935.500"><vh>StrConv.visit_mypy_file</vh></v>
-<v t="ekr.20220525082935.501"><vh>StrConv.visit_import</vh></v>
-<v t="ekr.20220525082935.502"><vh>StrConv.visit_import_from</vh></v>
-<v t="ekr.20220525082935.503"><vh>StrConv.visit_import_all</vh></v>
-<v t="ekr.20220525082935.504"><vh>StrConv.Definitions</vh></v>
-<v t="ekr.20220525082935.505"><vh>StrConv.visit_func_def</vh></v>
-<v t="ekr.20220525082935.506"><vh>StrConv.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.507"><vh>StrConv.visit_class_def</vh></v>
-<v t="ekr.20220525082935.508"><vh>StrConv.visit_var</vh></v>
-<v t="ekr.20220525082935.509"><vh>StrConv.visit_global_decl</vh></v>
-<v t="ekr.20220525082935.510"><vh>StrConv.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082935.511"><vh>StrConv.visit_decorator</vh></v>
-<v t="ekr.20220525082935.512"><vh>StrConv.Statements</vh></v>
-<v t="ekr.20220525082935.513"><vh>StrConv.visit_block</vh></v>
-<v t="ekr.20220525082935.514"><vh>StrConv.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.515"><vh>StrConv.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.516"><vh>StrConv.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.517"><vh>StrConv.visit_while_stmt</vh></v>
-<v t="ekr.20220525082935.518"><vh>StrConv.visit_for_stmt</vh></v>
-<v t="ekr.20220525082935.519"><vh>StrConv.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.520"><vh>StrConv.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.521"><vh>StrConv.visit_break_stmt</vh></v>
-<v t="ekr.20220525082935.522"><vh>StrConv.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082935.523"><vh>StrConv.visit_pass_stmt</vh></v>
-<v t="ekr.20220525082935.524"><vh>StrConv.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082935.525"><vh>StrConv.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082935.526"><vh>StrConv.visit_await_expr</vh></v>
-<v t="ekr.20220525082935.527"><vh>StrConv.visit_del_stmt</vh></v>
-<v t="ekr.20220525082935.528"><vh>StrConv.visit_try_stmt</vh></v>
-<v t="ekr.20220525082935.529"><vh>StrConv.visit_with_stmt</vh></v>
-<v t="ekr.20220525082935.530"><vh>StrConv.visit_print_stmt</vh></v>
-<v t="ekr.20220525082935.531"><vh>StrConv.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082935.532"><vh>StrConv.visit_match_stmt</vh></v>
-<v t="ekr.20220525082935.533"><vh>StrConv.Expressions</vh></v>
-<v t="ekr.20220525082935.534"><vh>StrConv.visit_int_expr</vh></v>
-<v t="ekr.20220525082935.535"><vh>StrConv.visit_str_expr</vh></v>
-<v t="ekr.20220525082935.536"><vh>StrConv.visit_bytes_expr</vh></v>
-<v t="ekr.20220525082935.537"><vh>StrConv.visit_unicode_expr</vh></v>
-<v t="ekr.20220525082935.538"><vh>StrConv.str_repr</vh></v>
-<v t="ekr.20220525082935.539"><vh>StrConv.visit_float_expr</vh></v>
-<v t="ekr.20220525082935.540"><vh>StrConv.visit_complex_expr</vh></v>
-<v t="ekr.20220525082935.541"><vh>StrConv.visit_ellipsis</vh></v>
-<v t="ekr.20220525082935.542"><vh>StrConv.visit_star_expr</vh></v>
-<v t="ekr.20220525082935.543"><vh>StrConv.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.544"><vh>StrConv.pretty_name</vh></v>
-<v t="ekr.20220525082935.545"><vh>StrConv.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.546"><vh>StrConv.visit_yield_expr</vh></v>
-<v t="ekr.20220525082935.547"><vh>StrConv.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082935.548"><vh>StrConv.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.549"><vh>StrConv.visit_op_expr</vh></v>
-<v t="ekr.20220525082935.550"><vh>StrConv.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082935.551"><vh>StrConv.visit_cast_expr</vh></v>
-<v t="ekr.20220525082935.552"><vh>StrConv.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082935.553"><vh>StrConv.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082935.554"><vh>StrConv.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082935.555"><vh>StrConv.visit_unary_expr</vh></v>
-<v t="ekr.20220525082935.556"><vh>StrConv.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.557"><vh>StrConv.visit_dict_expr</vh></v>
-<v t="ekr.20220525082935.558"><vh>StrConv.visit_set_expr</vh></v>
-<v t="ekr.20220525082935.559"><vh>StrConv.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.560"><vh>StrConv.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.561"><vh>StrConv.visit_super_expr</vh></v>
-<v t="ekr.20220525082935.562"><vh>StrConv.visit_type_application</vh></v>
-<v t="ekr.20220525082935.563"><vh>StrConv.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082935.564"><vh>StrConv.visit_paramspec_expr</vh></v>
-<v t="ekr.20220525082935.565"><vh>StrConv.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20220525082935.566"><vh>StrConv.visit_type_alias_expr</vh></v>
-<v t="ekr.20220525082935.567"><vh>StrConv.visit_namedtuple_expr</vh></v>
-<v t="ekr.20220525082935.568"><vh>StrConv.visit_enum_call_expr</vh></v>
-<v t="ekr.20220525082935.569"><vh>StrConv.visit_typeddict_expr</vh></v>
-<v t="ekr.20220525082935.570"><vh>StrConv.visit__promote_expr</vh></v>
-<v t="ekr.20220525082935.571"><vh>StrConv.visit_newtype_expr</vh></v>
-<v t="ekr.20220525082935.572"><vh>StrConv.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082935.573"><vh>StrConv.visit_generator_expr</vh></v>
-<v t="ekr.20220525082935.574"><vh>StrConv.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082935.575"><vh>StrConv.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082935.576"><vh>StrConv.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082935.577"><vh>StrConv.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082935.578"><vh>StrConv.visit_slice_expr</vh></v>
-<v t="ekr.20220525082935.579"><vh>StrConv.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082935.580"><vh>StrConv.visit_temp_node</vh></v>
-<v t="ekr.20220525082935.581"><vh>StrConv.visit_as_pattern</vh></v>
-<v t="ekr.20220525082935.582"><vh>StrConv.visit_or_pattern</vh></v>
-<v t="ekr.20220525082935.583"><vh>StrConv.visit_value_pattern</vh></v>
-<v t="ekr.20220525082935.584"><vh>StrConv.visit_singleton_pattern</vh></v>
-<v t="ekr.20220525082935.585"><vh>StrConv.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082935.586"><vh>StrConv.visit_starred_pattern</vh></v>
-<v t="ekr.20220525082935.587"><vh>StrConv.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082935.588"><vh>StrConv.visit_class_pattern</vh></v>
-</v>
-<v t="ekr.20220525082935.589"><vh>dump_tagged</vh></v>
-<v t="ekr.20220525082935.590"><vh>indent</vh></v>
-</v>
-<v t="ekr.20220525082935.591"><vh>@clean stubdoc.py</vh>
-<v t="ekr.20220525082935.592"><vh>is_valid_type</vh></v>
-<v t="ekr.20220525082935.593"><vh>class ArgSig</vh>
-<v t="ekr.20220525082935.594"><vh>ArgSig.__init__</vh></v>
-<v t="ekr.20220525082935.595"><vh>ArgSig.__repr__</vh></v>
-<v t="ekr.20220525082935.596"><vh>ArgSig.__eq__</vh></v>
-</v>
-<v t="ekr.20220525082935.597"><vh>class FunctionSig</vh></v>
-<v t="ekr.20220525082935.598"><vh>States of the docstring parser.</vh></v>
-<v t="ekr.20220525082935.599"><vh>class DocStringParser</vh>
-<v t="ekr.20220525082935.600"><vh>DocStringParser.__init__</vh></v>
-<v t="ekr.20220525082935.601"><vh>DocStringParser.add_token</vh></v>
-<v t="ekr.20220525082935.602"><vh>DocStringParser.reset</vh></v>
-<v t="ekr.20220525082935.603"><vh>DocStringParser.get_signatures</vh></v>
-</v>
-<v t="ekr.20220525082935.604"><vh>infer_sig_from_docstring</vh>
-<v t="ekr.20220525082935.605"><vh>is_unique_args</vh></v>
-</v>
-<v t="ekr.20220525082935.606"><vh>infer_arg_sig_from_anon_docstring</vh></v>
-<v t="ekr.20220525082935.607"><vh>infer_ret_type_sig_from_docstring</vh></v>
-<v t="ekr.20220525082935.608"><vh>infer_ret_type_sig_from_anon_docstring</vh></v>
-<v t="ekr.20220525082935.609"><vh>parse_signature</vh></v>
-<v t="ekr.20220525082935.610"><vh>build_signature</vh></v>
-<v t="ekr.20220525082935.611"><vh>parse_all_signatures</vh></v>
-<v t="ekr.20220525082935.612"><vh>find_unique_signatures</vh></v>
-<v t="ekr.20220525082935.613"><vh>infer_prop_type_from_docstring</vh></v>
-</v>
-<v t="ekr.20220525082935.614"><vh>@clean stubgen.py</vh>
-<v t="ekr.20220525082935.615"><vh>class Options</vh>
-<v t="ekr.20220525082935.616"><vh>Options.__init__</vh></v>
-</v>
-<v t="ekr.20220525082935.617"><vh>class StubSource</vh>
-<v t="ekr.20220525082935.618"><vh>StubSource.__init__</vh></v>
-<v t="ekr.20220525082935.619"><vh>StubSource.module</vh></v>
-<v t="ekr.20220525082935.620"><vh>StubSource.path</vh></v>
-</v>
-<v t="ekr.20220525082935.621"><vh>What was generated previously in the stub file. We keep track of these to generate</vh></v>
-<v t="ekr.20220525082935.622"><vh>class AnnotationPrinter</vh>
-<v t="ekr.20220525082935.623"><vh>AnnotationPrinter.__init__</vh></v>
-<v t="ekr.20220525082935.624"><vh>AnnotationPrinter.visit_any</vh></v>
-<v t="ekr.20220525082935.625"><vh>AnnotationPrinter.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.626"><vh>AnnotationPrinter.visit_none_type</vh></v>
-<v t="ekr.20220525082935.627"><vh>AnnotationPrinter.visit_type_list</vh></v>
-<v t="ekr.20220525082935.628"><vh>AnnotationPrinter.args_str</vh></v>
-</v>
-<v t="ekr.20220525082935.629"><vh>class AliasPrinter</vh>
-<v t="ekr.20220525082935.630"><vh>AliasPrinter.__init__</vh></v>
-<v t="ekr.20220525082935.631"><vh>AliasPrinter.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.632"><vh>AliasPrinter.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.633"><vh>AliasPrinter.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.634"><vh>AliasPrinter.visit_str_expr</vh></v>
-<v t="ekr.20220525082935.635"><vh>AliasPrinter.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.636"><vh>AliasPrinter.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.637"><vh>AliasPrinter.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.638"><vh>AliasPrinter.visit_ellipsis</vh></v>
-</v>
-<v t="ekr.20220525082935.639"><vh>class ImportTracker</vh>
-<v t="ekr.20220525082935.640"><vh>ImportTracker.__init__</vh></v>
-<v t="ekr.20220525082935.641"><vh>ImportTracker.add_import_from</vh></v>
-<v t="ekr.20220525082935.642"><vh>ImportTracker.add_import</vh></v>
-<v t="ekr.20220525082935.643"><vh>ImportTracker.require_name</vh></v>
-<v t="ekr.20220525082935.644"><vh>ImportTracker.reexport</vh></v>
-<v t="ekr.20220525082935.645"><vh>ImportTracker.import_lines</vh></v>
-</v>
-<v t="ekr.20220525082935.646"><vh>find_defined_names</vh></v>
-<v t="ekr.20220525082935.647"><vh>class DefinitionFinder</vh>
-<v t="ekr.20220525082935.648"><vh>DefinitionFinder.__init__</vh></v>
-<v t="ekr.20220525082935.649"><vh>DefinitionFinder.visit_class_def</vh></v>
-<v t="ekr.20220525082935.650"><vh>DefinitionFinder.visit_func_def</vh></v>
-</v>
-<v t="ekr.20220525082935.651"><vh>find_referenced_names</vh></v>
-<v t="ekr.20220525082935.652"><vh>class ReferenceFinder</vh>
-<v t="ekr.20220525082935.653"><vh>ReferenceFinder.__init__</vh></v>
-<v t="ekr.20220525082935.654"><vh>ReferenceFinder.visit_block</vh></v>
-<v t="ekr.20220525082935.655"><vh>ReferenceFinder.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.656"><vh>ReferenceFinder.visit_instance</vh></v>
-<v t="ekr.20220525082935.657"><vh>ReferenceFinder.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.658"><vh>ReferenceFinder.visit_tuple_type</vh></v>
-<v t="ekr.20220525082935.659"><vh>ReferenceFinder.visit_callable_type</vh></v>
-<v t="ekr.20220525082935.660"><vh>ReferenceFinder.add_ref</vh></v>
-</v>
-<v t="ekr.20220525082935.661"><vh>class StubGenerator</vh>
-<v t="ekr.20220525082935.662"><vh>StubGenerator.__init__</vh></v>
-<v t="ekr.20220525082935.663"><vh>StubGenerator.visit_mypy_file</vh></v>
-<v t="ekr.20220525082935.664"><vh>StubGenerator.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.665"><vh>StubGenerator.visit_func_def</vh></v>
-<v t="ekr.20220525082935.666"><vh>StubGenerator.is_none_expr</vh></v>
-<v t="ekr.20220525082935.667"><vh>StubGenerator.visit_decorator</vh></v>
-<v t="ekr.20220525082935.668"><vh>StubGenerator.process_decorator</vh></v>
-<v t="ekr.20220525082935.669"><vh>StubGenerator.process_name_expr_decorator</vh></v>
-<v t="ekr.20220525082935.670"><vh>StubGenerator.refers_to_fullname</vh></v>
-<v t="ekr.20220525082935.671"><vh>StubGenerator.process_member_expr_decorator</vh></v>
-<v t="ekr.20220525082935.672"><vh>StubGenerator.visit_class_def</vh></v>
-<v t="ekr.20220525082935.673"><vh>StubGenerator.get_base_types</vh></v>
-<v t="ekr.20220525082935.674"><vh>StubGenerator.visit_block</vh></v>
-<v t="ekr.20220525082935.675"><vh>StubGenerator.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.676"><vh>StubGenerator.is_namedtuple</vh></v>
-<v t="ekr.20220525082935.677"><vh>StubGenerator.process_namedtuple</vh></v>
-<v t="ekr.20220525082935.678"><vh>StubGenerator.is_alias_expression</vh></v>
-<v t="ekr.20220525082935.679"><vh>StubGenerator.process_typealias</vh></v>
-<v t="ekr.20220525082935.680"><vh>StubGenerator.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.681"><vh>StubGenerator.visit_import_all</vh></v>
-<v t="ekr.20220525082935.682"><vh>StubGenerator.visit_import_from</vh></v>
-<v t="ekr.20220525082935.683"><vh>StubGenerator.visit_import</vh></v>
-<v t="ekr.20220525082935.684"><vh>StubGenerator.get_init</vh></v>
-<v t="ekr.20220525082935.685"><vh>StubGenerator.add</vh></v>
-<v t="ekr.20220525082935.686"><vh>StubGenerator.add_decorator</vh></v>
-<v t="ekr.20220525082935.687"><vh>StubGenerator.clear_decorators</vh></v>
-<v t="ekr.20220525082935.688"><vh>StubGenerator.typing_name</vh></v>
-<v t="ekr.20220525082935.689"><vh>StubGenerator.add_typing_import</vh></v>
-<v t="ekr.20220525082935.690"><vh>StubGenerator.add_abc_import</vh></v>
-<v t="ekr.20220525082935.691"><vh>StubGenerator.add_import_line</vh></v>
-<v t="ekr.20220525082935.692"><vh>StubGenerator.add_coroutine_decorator</vh></v>
-<v t="ekr.20220525082935.693"><vh>StubGenerator.output</vh></v>
-<v t="ekr.20220525082935.694"><vh>StubGenerator.is_not_in_all</vh></v>
-<v t="ekr.20220525082935.695"><vh>StubGenerator.is_private_name</vh></v>
-<v t="ekr.20220525082935.696"><vh>StubGenerator.is_private_member</vh></v>
-<v t="ekr.20220525082935.697"><vh>StubGenerator.get_str_type_of_node</vh></v>
-<v t="ekr.20220525082935.698"><vh>StubGenerator.print_annotation</vh></v>
-<v t="ekr.20220525082935.699"><vh>StubGenerator.is_top_level</vh></v>
-<v t="ekr.20220525082935.700"><vh>StubGenerator.record_name</vh></v>
-<v t="ekr.20220525082935.701"><vh>StubGenerator.is_recorded_name</vh></v>
-</v>
-<v t="ekr.20220525082935.702"><vh>find_method_names</vh></v>
-<v t="ekr.20220525082935.703"><vh>class SelfTraverser</vh>
-<v t="ekr.20220525082935.704"><vh>SelfTraverser.__init__</vh></v>
-<v t="ekr.20220525082935.705"><vh>SelfTraverser.visit_assignment_stmt</vh></v>
-</v>
-<v t="ekr.20220525082935.706"><vh>find_self_initializers</vh></v>
-<v t="ekr.20220525082935.707"><vh>get_qualified_name</vh></v>
-<v t="ekr.20220525082935.708"><vh>remove_blacklisted_modules</vh></v>
-<v t="ekr.20220525082935.709"><vh>is_blacklisted_path</vh></v>
-<v t="ekr.20220525082935.710"><vh>normalize_path_separators</vh></v>
-<v t="ekr.20220525082935.711"><vh>collect_build_targets</vh></v>
-<v t="ekr.20220525082935.712"><vh>find_module_paths_using_imports</vh></v>
-<v t="ekr.20220525082935.713"><vh>is_non_library_module</vh></v>
-<v t="ekr.20220525082935.714"><vh>translate_module_name</vh></v>
-<v t="ekr.20220525082935.715"><vh>find_module_paths_using_search</vh></v>
-<v t="ekr.20220525082935.716"><vh>mypy_options</vh></v>
-<v t="ekr.20220525082935.717"><vh>parse_source_file</vh></v>
-<v t="ekr.20220525082935.718"><vh>generate_asts_for_modules</vh></v>
-<v t="ekr.20220525082935.719"><vh>generate_stub_from_ast</vh></v>
-<v t="ekr.20220525082935.720"><vh>collect_docs_signatures</vh></v>
-<v t="ekr.20220525082935.721"><vh>generate_stubs</vh></v>
-<v t="ekr.20220525082935.722"><vh>HEADER = """%(prog)s [-h] [--py2] [more options, see -h]</vh></v>
-<v t="ekr.20220525082935.723"><vh>parse_options</vh></v>
-<v t="ekr.20220525082935.724"><vh>main</vh></v>
-</v>
-<v t="ekr.20220525082935.725"><vh>@clean stubgenc.py</vh>
-<v t="ekr.20220525082935.726"><vh>generate_stub_for_c_module</vh></v>
-<v t="ekr.20220525082935.727"><vh>add_typing_import</vh></v>
-<v t="ekr.20220525082935.728"><vh>is_c_function</vh></v>
-<v t="ekr.20220525082935.729"><vh>is_c_method</vh></v>
-<v t="ekr.20220525082935.730"><vh>is_c_classmethod</vh></v>
-<v t="ekr.20220525082935.731"><vh>is_c_property</vh></v>
-<v t="ekr.20220525082935.732"><vh>is_c_property_readonly</vh></v>
-<v t="ekr.20220525082935.733"><vh>is_c_type</vh></v>
-<v t="ekr.20220525082935.734"><vh>is_pybind11_overloaded_function_docstring</vh></v>
-<v t="ekr.20220525082935.735"><vh>generate_c_function_stub</vh></v>
-<v t="ekr.20220525082935.736"><vh>strip_or_import</vh></v>
-<v t="ekr.20220525082935.737"><vh>is_static_property</vh></v>
-<v t="ekr.20220525082935.738"><vh>generate_c_property_stub</vh>
-<v t="ekr.20220525082935.739"><vh>infer_prop_type</vh></v>
-</v>
-<v t="ekr.20220525082935.740"><vh>generate_c_type_stub</vh></v>
-<v t="ekr.20220525082935.741"><vh>get_type_fullname</vh></v>
-<v t="ekr.20220525082935.742"><vh>method_name_sort_key</vh></v>
-<v t="ekr.20220525082935.743"><vh>is_pybind_skipped_attribute</vh></v>
-<v t="ekr.20220525082935.744"><vh>is_skipped_attribute</vh></v>
-<v t="ekr.20220525082935.745"><vh>infer_method_sig</vh></v>
-</v>
-<v t="ekr.20220525082935.746"><vh>@clean stubinfo.py</vh>
-<v t="ekr.20220525082935.747"><vh>class StubInfo</vh></v>
-<v t="ekr.20220525082935.748"><vh>is_legacy_bundled_package</vh></v>
-</v>
-<v t="ekr.20220525082935.749"><vh>@clean stubtest.py</vh>
-<v t="ekr.20220525082935.750"><vh>class Missing</vh></v>
-<v t="ekr.20220525082935.751"><vh>MISSING = Missing()</vh></v>
-<v t="ekr.20220525082935.752"><vh>_style</vh></v>
-<v t="ekr.20220525082935.753"><vh>class Error</vh>
-<v t="ekr.20220525082935.754"><vh>Error.__init__</vh></v>
-<v t="ekr.20220525082935.755"><vh>Error.is_missing_stub</vh></v>
-<v t="ekr.20220525082935.756"><vh>Error.is_positional_only_related</vh></v>
-<v t="ekr.20220525082935.757"><vh>Error.get_description</vh></v>
-</v>
-<v t="ekr.20220525082935.758"><vh>====================</vh></v>
-<v t="ekr.20220525082935.759"><vh>test_module</vh></v>
-<v t="ekr.20220525082935.760"><vh>verify</vh></v>
-<v t="ekr.20220525082935.761"><vh>verify_mypyfile</vh>
-<v t="ekr.20220525082935.762"><vh>_belongs_to_runtime</vh></v>
-</v>
-<v t="ekr.20220525082935.763"><vh>if sys.version_info &gt;= (3, 7):</vh></v>
-<v t="ekr.20220525082935.764"><vh>verify_typeinfo</vh></v>
-<v t="ekr.20220525082935.765"><vh>_verify_static_class_methods</vh></v>
-<v t="ekr.20220525082935.766"><vh>_verify_arg_name</vh>
-<v t="ekr.20220525082935.767"><vh>strip_prefix</vh></v>
-<v t="ekr.20220525082935.768"><vh>if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:</vh></v>
-<v t="ekr.20220525082935.769"><vh>names_approx_match</vh></v>
-</v>
-<v t="ekr.20220525082935.770"><vh>_verify_arg_default_value</vh></v>
-<v t="ekr.20220525082935.771"><vh>maybe_strip_cls</vh></v>
-<v t="ekr.20220525082935.772"><vh>class Signature</vh>
-<v t="ekr.20220525082935.773"><vh>Signature.__init__</vh></v>
-<v t="ekr.20220525082935.774"><vh>Signature.__str__</vh></v>
-<v t="ekr.20220525082935.775"><vh>Signature.from_funcitem</vh></v>
-<v t="ekr.20220525082935.776"><vh>Signature.from_inspect_signature</vh></v>
-<v t="ekr.20220525082935.777"><vh>Signature.from_overloadedfuncdef</vh></v>
-</v>
-<v t="ekr.20220525082935.778"><vh>_verify_signature</vh></v>
-<v t="ekr.20220525082935.779"><vh>verify_funcitem</vh></v>
-<v t="ekr.20220525082935.780"><vh>verify_none</vh></v>
-<v t="ekr.20220525082935.781"><vh>verify_var</vh></v>
-<v t="ekr.20220525082935.782"><vh>verify_overloadedfuncdef</vh></v>
-<v t="ekr.20220525082935.783"><vh>verify_typevarexpr</vh></v>
-<v t="ekr.20220525082935.784"><vh>_verify_readonly_property</vh></v>
-<v t="ekr.20220525082935.785"><vh>_resolve_funcitem_from_decorator</vh>
-<v t="ekr.20220525082935.786"><vh>apply_decorator_to_funcitem</vh></v>
-</v>
-<v t="ekr.20220525082935.787"><vh>verify_decorator</vh></v>
-<v t="ekr.20220525082935.788"><vh>verify_typealias</vh></v>
-<v t="ekr.20220525082935.789"><vh>====================</vh></v>
-<v t="ekr.20220525082935.790"><vh>is_probably_private</vh></v>
-<v t="ekr.20220525082935.791"><vh>is_probably_a_function</vh></v>
-<v t="ekr.20220525082935.792"><vh>is_read_only_property</vh></v>
-<v t="ekr.20220525082935.793"><vh>safe_inspect_signature</vh></v>
-<v t="ekr.20220525082935.794"><vh>is_subtype_helper</vh></v>
-<v t="ekr.20220525082935.795"><vh>get_mypy_type_of_runtime_value</vh>
-<v t="ekr.20220525082935.796"><vh>anytype</vh></v>
-</v>
-<v t="ekr.20220525082935.797"><vh>====================</vh></v>
-<v t="ekr.20220525082935.798"><vh>build_stubs</vh></v>
-<v t="ekr.20220525082935.799"><vh>get_stub</vh></v>
-<v t="ekr.20220525082935.800"><vh>get_typeshed_stdlib_modules</vh>
-<v t="ekr.20220525082935.801"><vh>exists_in_version</vh></v>
-</v>
-<v t="ekr.20220525082935.802"><vh>get_allowlist_entries</vh>
-<v t="ekr.20220525082935.803"><vh>strip_comments</vh></v>
-</v>
-<v t="ekr.20220525082935.804"><vh>test_stubs</vh></v>
-<v t="ekr.20220525082935.805"><vh>parse_options</vh></v>
-<v t="ekr.20220525082935.806"><vh>main</vh></v>
-</v>
-<v t="ekr.20220525082935.807"><vh>@clean stubutil.py</vh>
-<v t="ekr.20220525082935.808"><vh>class CantImport</vh></v>
-<v t="ekr.20220525082935.809"><vh>default_py2_interpreter</vh></v>
-<v t="ekr.20220525082935.810"><vh>walk_packages</vh></v>
-<v t="ekr.20220525082935.811"><vh>find_module_path_and_all_py2</vh></v>
-<v t="ekr.20220525082935.812"><vh>find_module_path_using_py2_sys_path</vh></v>
-<v t="ekr.20220525082935.813"><vh>find_module_path_using_sys_path</vh></v>
-<v t="ekr.20220525082935.814"><vh>find_module_path_and_all_py3</vh></v>
-<v t="ekr.20220525082935.815"><vh>generate_guarded</vh></v>
-<v t="ekr.20220525082935.816"><vh>PY2_MODULES = {'cStringIO', 'urlparse', 'collections.UserDict'}</vh></v>
-<v t="ekr.20220525082935.817"><vh>report_missing</vh></v>
-<v t="ekr.20220525082935.818"><vh>fail_missing</vh></v>
-<v t="ekr.20220525082935.819"><vh>remove_misplaced_type_comments</vh></v>
-<v t="ekr.20220525082935.820"><vh>remove_misplaced_type_comments</vh></v>
-<v t="ekr.20220525082935.821"><vh>remove_misplaced_type_comments</vh></v>
-<v t="ekr.20220525082935.822"><vh>common_dir_prefix</vh></v>
 </v>
 <v t="ekr.20220525082935.823"><vh>@clean subtypes.py</vh>
 <v t="ekr.20220525082935.824"><vh>check_type_parameter</vh></v>
@@ -3952,404 +4357,6 @@
 <v t="ekr.20220525082935.899"><vh>ProperSubtypeVisitor.visit_type_alias_type</vh></v>
 </v>
 <v t="ekr.20220525082935.900"><vh>is_more_precise</vh></v>
-</v>
-<v t="ekr.20220525082935.901"><vh>@clean suggestions.py</vh>
-<v t="ekr.20220525082935.902"><vh>class PyAnnotateSignature</vh></v>
-<v t="ekr.20220525082935.903"><vh>class Callsite</vh></v>
-<v t="ekr.20220525082935.904"><vh>class SuggestionPlugin</vh>
-<v t="ekr.20220525082935.905"><vh>SuggestionPlugin.__init__</vh></v>
-<v t="ekr.20220525082935.906"><vh>SuggestionPlugin.get_function_hook</vh></v>
-<v t="ekr.20220525082935.907"><vh>SuggestionPlugin.get_method_hook</vh></v>
-<v t="ekr.20220525082935.908"><vh>SuggestionPlugin.log</vh></v>
-</v>
-<v t="ekr.20220525082935.909"><vh>class ReturnFinder</vh>
-<v t="ekr.20220525082935.910"><vh>ReturnFinder.__init__</vh></v>
-<v t="ekr.20220525082935.911"><vh>ReturnFinder.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.912"><vh>ReturnFinder.visit_func_def</vh></v>
-</v>
-<v t="ekr.20220525082935.913"><vh>get_return_types</vh></v>
-<v t="ekr.20220525082935.914"><vh>class ArgUseFinder</vh>
-<v t="ekr.20220525082935.915"><vh>ArgUseFinder.__init__</vh></v>
-<v t="ekr.20220525082935.916"><vh>ArgUseFinder.visit_call_expr</vh></v>
-</v>
-<v t="ekr.20220525082935.917"><vh>get_arg_uses</vh></v>
-<v t="ekr.20220525082935.918"><vh>class SuggestionFailure</vh></v>
-<v t="ekr.20220525082935.919"><vh>is_explicit_any</vh></v>
-<v t="ekr.20220525082935.920"><vh>is_implicit_any</vh></v>
-<v t="ekr.20220525082935.921"><vh>class SuggestionEngine</vh>
-<v t="ekr.20220525082935.922"><vh>SuggestionEngine.__init__</vh></v>
-<v t="ekr.20220525082935.923"><vh>SuggestionEngine.suggest</vh></v>
-<v t="ekr.20220525082935.924"><vh>SuggestionEngine.suggest_callsites</vh></v>
-<v t="ekr.20220525082935.925"><vh>SuggestionEngine.restore_after</vh></v>
-<v t="ekr.20220525082935.926"><vh>SuggestionEngine.with_export_types</vh></v>
-<v t="ekr.20220525082935.927"><vh>SuggestionEngine.get_trivial_type</vh></v>
-<v t="ekr.20220525082935.928"><vh>SuggestionEngine.get_starting_type</vh></v>
-<v t="ekr.20220525082935.929"><vh>SuggestionEngine.get_args</vh></v>
-<v t="ekr.20220525082935.930"><vh>SuggestionEngine.get_default_arg_types</vh></v>
-<v t="ekr.20220525082935.931"><vh>SuggestionEngine.add_adjustments</vh></v>
-<v t="ekr.20220525082935.932"><vh>SuggestionEngine.get_guesses</vh></v>
-<v t="ekr.20220525082935.933"><vh>SuggestionEngine.get_callsites</vh></v>
-<v t="ekr.20220525082935.934"><vh>SuggestionEngine.filter_options</vh></v>
-<v t="ekr.20220525082935.935"><vh>SuggestionEngine.find_best</vh></v>
-<v t="ekr.20220525082935.936"><vh>SuggestionEngine.get_guesses_from_parent</vh></v>
-<v t="ekr.20220525082935.937"><vh>SuggestionEngine.get_suggestion</vh></v>
-<v t="ekr.20220525082935.938"><vh>SuggestionEngine.format_args</vh></v>
-<v t="ekr.20220525082935.939"><vh>SuggestionEngine.find_node</vh></v>
-<v t="ekr.20220525082935.940"><vh>SuggestionEngine.find_node_by_module_and_name</vh></v>
-<v t="ekr.20220525082935.941"><vh>SuggestionEngine.find_node_by_file_and_line</vh></v>
-<v t="ekr.20220525082935.942"><vh>SuggestionEngine.extract_from_decorator</vh></v>
-<v t="ekr.20220525082935.943"><vh>SuggestionEngine.try_type</vh></v>
-<v t="ekr.20220525082935.944"><vh>SuggestionEngine.reload</vh></v>
-<v t="ekr.20220525082935.945"><vh>SuggestionEngine.ensure_loaded</vh></v>
-<v t="ekr.20220525082935.946"><vh>SuggestionEngine.named_type</vh></v>
-<v t="ekr.20220525082935.947"><vh>SuggestionEngine.json_suggestion</vh></v>
-<v t="ekr.20220525082935.948"><vh>SuggestionEngine.pyannotate_signature</vh></v>
-<v t="ekr.20220525082935.949"><vh>SuggestionEngine.format_signature</vh></v>
-<v t="ekr.20220525082935.950"><vh>SuggestionEngine.format_type</vh></v>
-<v t="ekr.20220525082935.951"><vh>SuggestionEngine.score_type</vh></v>
-<v t="ekr.20220525082935.952"><vh>SuggestionEngine.score_callable</vh></v>
-</v>
-<v t="ekr.20220525082935.953"><vh>any_score_type</vh></v>
-<v t="ekr.20220525082935.954"><vh>any_score_callable</vh></v>
-<v t="ekr.20220525082935.955"><vh>is_tricky_callable</vh></v>
-<v t="ekr.20220525082935.956"><vh>class TypeFormatter</vh>
-<v t="ekr.20220525082935.957"><vh>TypeFormatter.__init__</vh></v>
-<v t="ekr.20220525082935.958"><vh>TypeFormatter.visit_any</vh></v>
-<v t="ekr.20220525082935.959"><vh>TypeFormatter.visit_instance</vh></v>
-<v t="ekr.20220525082935.960"><vh>TypeFormatter.visit_tuple_type</vh></v>
-<v t="ekr.20220525082935.961"><vh>TypeFormatter.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082935.962"><vh>TypeFormatter.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082935.963"><vh>TypeFormatter.visit_union_type</vh></v>
-<v t="ekr.20220525082935.964"><vh>TypeFormatter.visit_callable_type</vh></v>
-</v>
-<v t="ekr.20220525082935.965"><vh>class StrToText</vh>
-<v t="ekr.20220525082935.966"><vh>StrToText.__init__</vh></v>
-<v t="ekr.20220525082935.967"><vh>StrToText.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082935.968"><vh>StrToText.visit_instance</vh></v>
-</v>
-<v t="ekr.20220525082935.969"><vh>TType = TypeVar('TType', bound=Type)</vh></v>
-<v t="ekr.20220525082935.970"><vh>make_suggestion_anys</vh></v>
-<v t="ekr.20220525082935.971"><vh>class MakeSuggestionAny</vh>
-<v t="ekr.20220525082935.972"><vh>MakeSuggestionAny.visit_any</vh></v>
-<v t="ekr.20220525082935.973"><vh>MakeSuggestionAny.visit_type_alias_type</vh></v>
-</v>
-<v t="ekr.20220525082935.974"><vh>generate_type_combinations</vh></v>
-<v t="ekr.20220525082935.975"><vh>count_errors</vh></v>
-<v t="ekr.20220525082935.976"><vh>refine_type</vh></v>
-<v t="ekr.20220525082935.977"><vh>refine_union</vh></v>
-<v t="ekr.20220525082935.978"><vh>refine_callable</vh></v>
-<v t="ekr.20220525082935.979"><vh>T = TypeVar('T')</vh></v>
-<v t="ekr.20220525082935.980"><vh>dedup</vh></v>
-</v>
-<v t="ekr.20220525082935.981"><vh>@clean traverser.py</vh>
-<v t="ekr.20220525082935.982"><vh>class TraverserVisitor</vh>
-<v t="ekr.20220525082935.983"><vh>TraverserVisitor.__init__</vh></v>
-<v t="ekr.20220525082935.984"><vh>TraverserVisitor.Visit methods</vh></v>
-<v t="ekr.20220525082935.985"><vh>TraverserVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20220525082935.986"><vh>TraverserVisitor.visit_block</vh></v>
-<v t="ekr.20220525082935.987"><vh>TraverserVisitor.visit_func</vh></v>
-<v t="ekr.20220525082935.988"><vh>TraverserVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082935.989"><vh>TraverserVisitor.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.990"><vh>TraverserVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082935.991"><vh>TraverserVisitor.visit_decorator</vh></v>
-<v t="ekr.20220525082935.992"><vh>TraverserVisitor.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.993"><vh>TraverserVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.994"><vh>TraverserVisitor.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.995"><vh>TraverserVisitor.visit_while_stmt</vh></v>
-<v t="ekr.20220525082935.996"><vh>TraverserVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082935.997"><vh>TraverserVisitor.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.998"><vh>TraverserVisitor.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082935.999"><vh>TraverserVisitor.visit_del_stmt</vh></v>
-<v t="ekr.20220525082935.1000"><vh>TraverserVisitor.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.1001"><vh>TraverserVisitor.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082935.1002"><vh>TraverserVisitor.visit_try_stmt</vh></v>
-<v t="ekr.20220525082935.1003"><vh>TraverserVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082935.1004"><vh>TraverserVisitor.visit_match_stmt</vh></v>
-<v t="ekr.20220525082935.1005"><vh>TraverserVisitor.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.1006"><vh>TraverserVisitor.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082935.1007"><vh>TraverserVisitor.visit_yield_expr</vh></v>
-<v t="ekr.20220525082935.1008"><vh>TraverserVisitor.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.1009"><vh>TraverserVisitor.visit_op_expr</vh></v>
-<v t="ekr.20220525082935.1010"><vh>TraverserVisitor.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082935.1011"><vh>TraverserVisitor.visit_slice_expr</vh></v>
-<v t="ekr.20220525082935.1012"><vh>TraverserVisitor.visit_cast_expr</vh></v>
-<v t="ekr.20220525082935.1013"><vh>TraverserVisitor.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082935.1014"><vh>TraverserVisitor.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082935.1015"><vh>TraverserVisitor.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082935.1016"><vh>TraverserVisitor.visit_unary_expr</vh></v>
-<v t="ekr.20220525082935.1017"><vh>TraverserVisitor.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.1018"><vh>TraverserVisitor.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.1019"><vh>TraverserVisitor.visit_dict_expr</vh></v>
-<v t="ekr.20220525082935.1020"><vh>TraverserVisitor.visit_set_expr</vh></v>
-<v t="ekr.20220525082935.1021"><vh>TraverserVisitor.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.1022"><vh>TraverserVisitor.visit_generator_expr</vh></v>
-<v t="ekr.20220525082935.1023"><vh>TraverserVisitor.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082935.1024"><vh>TraverserVisitor.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082935.1025"><vh>TraverserVisitor.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082935.1026"><vh>TraverserVisitor.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082935.1027"><vh>TraverserVisitor.visit_type_application</vh></v>
-<v t="ekr.20220525082935.1028"><vh>TraverserVisitor.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082935.1029"><vh>TraverserVisitor.visit_star_expr</vh></v>
-<v t="ekr.20220525082935.1030"><vh>TraverserVisitor.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082935.1031"><vh>TraverserVisitor.visit_await_expr</vh></v>
-<v t="ekr.20220525082935.1032"><vh>TraverserVisitor.visit_super_expr</vh></v>
-<v t="ekr.20220525082935.1033"><vh>TraverserVisitor.visit_as_pattern</vh></v>
-<v t="ekr.20220525082935.1034"><vh>TraverserVisitor.visit_or_pattern</vh></v>
-<v t="ekr.20220525082935.1035"><vh>TraverserVisitor.visit_value_pattern</vh></v>
-<v t="ekr.20220525082935.1036"><vh>TraverserVisitor.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082935.1037"><vh>TraverserVisitor.visit_starred_patten</vh></v>
-<v t="ekr.20220525082935.1038"><vh>TraverserVisitor.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082935.1039"><vh>TraverserVisitor.visit_class_pattern</vh></v>
-<v t="ekr.20220525082935.1040"><vh>TraverserVisitor.visit_import</vh></v>
-<v t="ekr.20220525082935.1041"><vh>TraverserVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082935.1042"><vh>TraverserVisitor.visit_print_stmt</vh></v>
-<v t="ekr.20220525082935.1043"><vh>TraverserVisitor.visit_exec_stmt</vh></v>
-</v>
-<v t="ekr.20220525082935.1044"><vh>class ReturnSeeker</vh>
-<v t="ekr.20220525082935.1045"><vh>ReturnSeeker.__init__</vh></v>
-<v t="ekr.20220525082935.1046"><vh>ReturnSeeker.visit_return_stmt</vh></v>
-</v>
-<v t="ekr.20220525082935.1047"><vh>has_return_statement</vh></v>
-<v t="ekr.20220525082935.1048"><vh>class FuncCollectorBase</vh>
-<v t="ekr.20220525082935.1049"><vh>FuncCollectorBase.__init__</vh></v>
-<v t="ekr.20220525082935.1050"><vh>FuncCollectorBase.visit_func_def</vh></v>
-</v>
-<v t="ekr.20220525082935.1051"><vh>class YieldSeeker</vh></v>
-<v t="ekr.20220525082935.1052"><vh>has_yield_expression</vh></v>
-<v t="ekr.20220525082935.1053"><vh>class ReturnCollector</vh></v>
-<v t="ekr.20220525082935.1054"><vh>all_return_statements</vh></v>
-<v t="ekr.20220525082935.1055"><vh>class YieldCollector</vh>
-<v t="ekr.20220525082935.1056"><vh>YieldCollector.__init__</vh></v>
-<v t="ekr.20220525082935.1057"><vh>YieldCollector.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.1058"><vh>YieldCollector.visit_yield_expr</vh></v>
-</v>
-<v t="ekr.20220525082935.1059"><vh>all_yield_expressions</vh></v>
-</v>
-<v t="ekr.20220525082935.1060"><vh>@clean treetransform.py</vh>
-<v t="ekr.20220525082935.1061"><vh>class TransformVisitor</vh>
-<v t="ekr.20220525082935.1062"><vh>TransformVisitor.__init__</vh></v>
-<v t="ekr.20220525082935.1063"><vh>TransformVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20220525082935.1064"><vh>TransformVisitor.visit_import</vh></v>
-<v t="ekr.20220525082935.1065"><vh>TransformVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082935.1066"><vh>TransformVisitor.visit_import_all</vh></v>
-<v t="ekr.20220525082935.1067"><vh>TransformVisitor.copy_argument</vh></v>
-<v t="ekr.20220525082935.1068"><vh>TransformVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082935.1069"><vh>TransformVisitor.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082935.1070"><vh>TransformVisitor.copy_function_attributes</vh></v>
-<v t="ekr.20220525082935.1071"><vh>TransformVisitor.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082935.1072"><vh>TransformVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082935.1073"><vh>TransformVisitor.visit_global_decl</vh></v>
-<v t="ekr.20220525082935.1074"><vh>TransformVisitor.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082935.1075"><vh>TransformVisitor.visit_block</vh></v>
-<v t="ekr.20220525082935.1076"><vh>TransformVisitor.visit_decorator</vh></v>
-<v t="ekr.20220525082935.1077"><vh>TransformVisitor.visit_var</vh></v>
-<v t="ekr.20220525082935.1078"><vh>TransformVisitor.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082935.1079"><vh>TransformVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.1080"><vh>TransformVisitor.duplicate_assignment</vh></v>
-<v t="ekr.20220525082935.1081"><vh>TransformVisitor.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082935.1082"><vh>TransformVisitor.visit_while_stmt</vh></v>
-<v t="ekr.20220525082935.1083"><vh>TransformVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082935.1084"><vh>TransformVisitor.visit_return_stmt</vh></v>
-<v t="ekr.20220525082935.1085"><vh>TransformVisitor.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082935.1086"><vh>TransformVisitor.visit_del_stmt</vh></v>
-<v t="ekr.20220525082935.1087"><vh>TransformVisitor.visit_if_stmt</vh></v>
-<v t="ekr.20220525082935.1088"><vh>TransformVisitor.visit_break_stmt</vh></v>
-<v t="ekr.20220525082935.1089"><vh>TransformVisitor.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082935.1090"><vh>TransformVisitor.visit_pass_stmt</vh></v>
-<v t="ekr.20220525082935.1091"><vh>TransformVisitor.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082935.1092"><vh>TransformVisitor.visit_try_stmt</vh></v>
-<v t="ekr.20220525082935.1093"><vh>TransformVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082935.1094"><vh>TransformVisitor.visit_print_stmt</vh></v>
-<v t="ekr.20220525082935.1095"><vh>TransformVisitor.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082935.1096"><vh>TransformVisitor.visit_star_expr</vh></v>
-<v t="ekr.20220525082935.1097"><vh>TransformVisitor.visit_int_expr</vh></v>
-<v t="ekr.20220525082935.1098"><vh>TransformVisitor.visit_str_expr</vh></v>
-<v t="ekr.20220525082935.1099"><vh>TransformVisitor.visit_bytes_expr</vh></v>
-<v t="ekr.20220525082935.1100"><vh>TransformVisitor.visit_unicode_expr</vh></v>
-<v t="ekr.20220525082935.1101"><vh>TransformVisitor.visit_float_expr</vh></v>
-<v t="ekr.20220525082935.1102"><vh>TransformVisitor.visit_complex_expr</vh></v>
-<v t="ekr.20220525082935.1103"><vh>TransformVisitor.visit_ellipsis</vh></v>
-<v t="ekr.20220525082935.1104"><vh>TransformVisitor.visit_name_expr</vh></v>
-<v t="ekr.20220525082935.1105"><vh>TransformVisitor.duplicate_name</vh></v>
-<v t="ekr.20220525082935.1106"><vh>TransformVisitor.visit_member_expr</vh></v>
-<v t="ekr.20220525082935.1107"><vh>TransformVisitor.copy_ref</vh></v>
-<v t="ekr.20220525082935.1108"><vh>TransformVisitor.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082935.1109"><vh>TransformVisitor.visit_yield_expr</vh></v>
-<v t="ekr.20220525082935.1110"><vh>TransformVisitor.visit_await_expr</vh></v>
-<v t="ekr.20220525082935.1111"><vh>TransformVisitor.visit_call_expr</vh></v>
-<v t="ekr.20220525082935.1112"><vh>TransformVisitor.visit_op_expr</vh></v>
-<v t="ekr.20220525082935.1113"><vh>TransformVisitor.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082935.1114"><vh>TransformVisitor.visit_cast_expr</vh></v>
-<v t="ekr.20220525082935.1115"><vh>TransformVisitor.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082935.1116"><vh>TransformVisitor.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082935.1117"><vh>TransformVisitor.visit_super_expr</vh></v>
-<v t="ekr.20220525082935.1118"><vh>TransformVisitor.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082935.1119"><vh>TransformVisitor.visit_unary_expr</vh></v>
-<v t="ekr.20220525082935.1120"><vh>TransformVisitor.visit_list_expr</vh></v>
-<v t="ekr.20220525082935.1121"><vh>TransformVisitor.visit_dict_expr</vh></v>
-<v t="ekr.20220525082935.1122"><vh>TransformVisitor.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082935.1123"><vh>TransformVisitor.visit_set_expr</vh></v>
-<v t="ekr.20220525082935.1124"><vh>TransformVisitor.visit_index_expr</vh></v>
-<v t="ekr.20220525082935.1125"><vh>TransformVisitor.visit_type_application</vh></v>
-<v t="ekr.20220525082935.1126"><vh>TransformVisitor.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082935.1127"><vh>TransformVisitor.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082935.1128"><vh>TransformVisitor.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082935.1129"><vh>TransformVisitor.visit_generator_expr</vh></v>
-<v t="ekr.20220525082935.1130"><vh>TransformVisitor.duplicate_generator</vh></v>
-<v t="ekr.20220525082935.1131"><vh>TransformVisitor.visit_slice_expr</vh></v>
-<v t="ekr.20220525082935.1132"><vh>TransformVisitor.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082935.1133"><vh>TransformVisitor.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082935.1134"><vh>TransformVisitor.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082935.1135"><vh>TransformVisitor.visit_paramspec_expr</vh></v>
-<v t="ekr.20220525082935.1136"><vh>TransformVisitor.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20220525082935.1137"><vh>TransformVisitor.visit_type_alias_expr</vh></v>
-<v t="ekr.20220525082935.1138"><vh>TransformVisitor.visit_newtype_expr</vh></v>
-<v t="ekr.20220525082935.1139"><vh>TransformVisitor.visit_namedtuple_expr</vh></v>
-<v t="ekr.20220525082935.1140"><vh>TransformVisitor.visit_enum_call_expr</vh></v>
-<v t="ekr.20220525082935.1141"><vh>TransformVisitor.visit_typeddict_expr</vh></v>
-<v t="ekr.20220525082935.1142"><vh>TransformVisitor.visit__promote_expr</vh></v>
-<v t="ekr.20220525082935.1143"><vh>TransformVisitor.visit_temp_node</vh></v>
-<v t="ekr.20220525082935.1144"><vh>TransformVisitor.node</vh></v>
-<v t="ekr.20220525082935.1145"><vh>TransformVisitor.mypyfile</vh></v>
-<v t="ekr.20220525082935.1146"><vh>TransformVisitor.expr</vh></v>
-<v t="ekr.20220525082935.1147"><vh>TransformVisitor.stmt</vh></v>
-<v t="ekr.20220525082935.1148"><vh>TransformVisitor.Helpers</vh></v>
-<v t="ekr.20220525082935.1149"><vh>TransformVisitor.optional_expr</vh></v>
-<v t="ekr.20220525082935.1150"><vh>TransformVisitor.block</vh></v>
-<v t="ekr.20220525082935.1151"><vh>TransformVisitor.optional_block</vh></v>
-<v t="ekr.20220525082935.1152"><vh>TransformVisitor.statements</vh></v>
-<v t="ekr.20220525082935.1153"><vh>TransformVisitor.expressions</vh></v>
-<v t="ekr.20220525082935.1154"><vh>TransformVisitor.optional_expressions</vh></v>
-<v t="ekr.20220525082935.1155"><vh>TransformVisitor.blocks</vh></v>
-<v t="ekr.20220525082935.1156"><vh>TransformVisitor.names</vh></v>
-<v t="ekr.20220525082935.1157"><vh>TransformVisitor.optional_names</vh></v>
-<v t="ekr.20220525082935.1158"><vh>TransformVisitor.type</vh></v>
-<v t="ekr.20220525082935.1159"><vh>TransformVisitor.optional_type</vh></v>
-<v t="ekr.20220525082935.1160"><vh>TransformVisitor.types</vh></v>
-</v>
-<v t="ekr.20220525082935.1161"><vh>class FuncMapInitializer</vh>
-<v t="ekr.20220525082935.1162"><vh>FuncMapInitializer.__init__</vh></v>
-<v t="ekr.20220525082935.1163"><vh>FuncMapInitializer.visit_func_def</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.1164"><vh>@clean tvar_scope.py</vh>
-<v t="ekr.20220525082935.1165"><vh>class TypeVarLikeScope</vh>
-<v t="ekr.20220525082935.1166"><vh>TypeVarLikeScope.__init__</vh></v>
-<v t="ekr.20220525082935.1167"><vh>TypeVarLikeScope.get_function_scope</vh></v>
-<v t="ekr.20220525082935.1168"><vh>TypeVarLikeScope.allow_binding</vh></v>
-<v t="ekr.20220525082935.1169"><vh>TypeVarLikeScope.method_frame</vh></v>
-<v t="ekr.20220525082935.1170"><vh>TypeVarLikeScope.class_frame</vh></v>
-<v t="ekr.20220525082935.1171"><vh>TypeVarLikeScope.bind_new</vh></v>
-<v t="ekr.20220525082935.1172"><vh>TypeVarLikeScope.bind_existing</vh></v>
-<v t="ekr.20220525082935.1173"><vh>TypeVarLikeScope.get_binding</vh></v>
-<v t="ekr.20220525082935.1174"><vh>TypeVarLikeScope.__str__</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082935.1175"><vh>@clean typeanal.py</vh>
-<v t="ekr.20220525082935.1176"><vh>analyze_type_alias</vh></v>
-<v t="ekr.20220525082935.1177"><vh>no_subscript_builtin_alias</vh></v>
-<v t="ekr.20220525082935.1178"><vh>class TypeAnalyser</vh>
-<v t="ekr.20220525082935.1179"><vh>TypeAnalyser.__init__</vh></v>
-<v t="ekr.20220525082935.1180"><vh>TypeAnalyser.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.1181"><vh>TypeAnalyser.visit_unbound_type_nonoptional</vh></v>
-<v t="ekr.20220525082935.1182"><vh>TypeAnalyser.cannot_resolve_type</vh></v>
-<v t="ekr.20220525082935.1183"><vh>TypeAnalyser.apply_concatenate_operator</vh></v>
-<v t="ekr.20220525082935.1184"><vh>TypeAnalyser.try_analyze_special_unbound_type</vh></v>
-<v t="ekr.20220525082935.1185"><vh>TypeAnalyser.get_omitted_any</vh></v>
-<v t="ekr.20220525082935.1186"><vh>TypeAnalyser.analyze_type_with_type_info</vh></v>
-<v t="ekr.20220525082935.1187"><vh>TypeAnalyser.analyze_unbound_type_without_type_info</vh></v>
-<v t="ekr.20220525082935.1188"><vh>TypeAnalyser.visit_any</vh></v>
-<v t="ekr.20220525082935.1189"><vh>TypeAnalyser.visit_none_type</vh></v>
-<v t="ekr.20220525082935.1190"><vh>TypeAnalyser.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082935.1191"><vh>TypeAnalyser.visit_erased_type</vh></v>
-<v t="ekr.20220525082935.1192"><vh>TypeAnalyser.visit_deleted_type</vh></v>
-<v t="ekr.20220525082935.1193"><vh>TypeAnalyser.visit_type_list</vh></v>
-<v t="ekr.20220525082935.1194"><vh>TypeAnalyser.visit_callable_argument</vh></v>
-<v t="ekr.20220525082935.1195"><vh>TypeAnalyser.visit_instance</vh></v>
-<v t="ekr.20220525082935.1196"><vh>TypeAnalyser.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082935.1197"><vh>TypeAnalyser.visit_type_var</vh></v>
-<v t="ekr.20220525082935.1198"><vh>TypeAnalyser.visit_param_spec</vh></v>
-<v t="ekr.20220525082935.1199"><vh>TypeAnalyser.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082935.1200"><vh>TypeAnalyser.visit_unpack_type</vh></v>
-<v t="ekr.20220525082935.1201"><vh>TypeAnalyser.visit_parameters</vh></v>
-<v t="ekr.20220525082935.1202"><vh>TypeAnalyser.visit_callable_type</vh></v>
-<v t="ekr.20220525082935.1203"><vh>TypeAnalyser.anal_type_guard</vh></v>
-<v t="ekr.20220525082935.1204"><vh>TypeAnalyser.anal_type_guard_arg</vh></v>
-<v t="ekr.20220525082935.1205"><vh>TypeAnalyser.anal_star_arg_type</vh></v>
-<v t="ekr.20220525082935.1206"><vh>TypeAnalyser.visit_overloaded</vh></v>
-<v t="ekr.20220525082935.1207"><vh>TypeAnalyser.visit_tuple_type</vh></v>
-<v t="ekr.20220525082935.1208"><vh>TypeAnalyser.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082935.1209"><vh>TypeAnalyser.visit_raw_expression_type</vh></v>
-<v t="ekr.20220525082935.1210"><vh>TypeAnalyser.visit_literal_type</vh></v>
-<v t="ekr.20220525082935.1211"><vh>TypeAnalyser.visit_star_type</vh></v>
-<v t="ekr.20220525082935.1212"><vh>TypeAnalyser.visit_union_type</vh></v>
-<v t="ekr.20220525082935.1213"><vh>TypeAnalyser.visit_partial_type</vh></v>
-<v t="ekr.20220525082935.1214"><vh>TypeAnalyser.visit_ellipsis_type</vh></v>
-<v t="ekr.20220525082935.1215"><vh>TypeAnalyser.visit_type_type</vh></v>
-<v t="ekr.20220525082935.1216"><vh>TypeAnalyser.visit_placeholder_type</vh></v>
-<v t="ekr.20220525082935.1217"><vh>TypeAnalyser.analyze_callable_args_for_paramspec</vh></v>
-<v t="ekr.20220525082935.1218"><vh>TypeAnalyser.analyze_callable_args_for_concatenate</vh></v>
-<v t="ekr.20220525082935.1219"><vh>TypeAnalyser.analyze_callable_type</vh></v>
-<v t="ekr.20220525082935.1220"><vh>TypeAnalyser.analyze_callable_args</vh></v>
-<v t="ekr.20220525082935.1221"><vh>TypeAnalyser.analyze_literal_type</vh></v>
-<v t="ekr.20220525082935.1222"><vh>TypeAnalyser.analyze_literal_param</vh></v>
-<v t="ekr.20220525082935.1223"><vh>TypeAnalyser.analyze_type</vh></v>
-<v t="ekr.20220525082935.1224"><vh>TypeAnalyser.fail</vh></v>
-<v t="ekr.20220525082935.1225"><vh>TypeAnalyser.note</vh></v>
-<v t="ekr.20220525082935.1226"><vh>TypeAnalyser.tvar_scope_frame</vh></v>
-<v t="ekr.20220525082935.1227"><vh>TypeAnalyser.infer_type_variables</vh></v>
-<v t="ekr.20220525082935.1228"><vh>TypeAnalyser.bind_function_type_variables</vh></v>
-<v t="ekr.20220525082935.1229"><vh>TypeAnalyser.is_defined_type_var</vh></v>
-<v t="ekr.20220525082935.1230"><vh>TypeAnalyser.anal_array</vh></v>
-<v t="ekr.20220525082935.1231"><vh>TypeAnalyser.anal_type</vh></v>
-<v t="ekr.20220525082935.1232"><vh>TypeAnalyser.anal_var_def</vh></v>
-<v t="ekr.20220525082935.1233"><vh>TypeAnalyser.anal_var_defs</vh></v>
-<v t="ekr.20220525082935.1234"><vh>TypeAnalyser.named_type_with_normalized_str</vh></v>
-<v t="ekr.20220525082935.1235"><vh>TypeAnalyser.named_type</vh></v>
-<v t="ekr.20220525082935.1236"><vh>TypeAnalyser.tuple_type</vh></v>
-<v t="ekr.20220525082935.1237"><vh>TypeAnalyser.set_allow_param_spec_literals</vh></v>
-</v>
-<v t="ekr.20220525082935.1238"><vh>TypeVarLikeList = List[Tuple[str, TypeVarLikeExpr]]</vh></v>
-<v t="ekr.20220525082935.1239"><vh>class MsgCallback</vh>
-<v t="ekr.20220525082935.1240"><vh>MsgCallback.__call__</vh></v>
-</v>
-<v t="ekr.20220525082935.1241"><vh>get_omitted_any</vh></v>
-<v t="ekr.20220525082935.1242"><vh>fix_instance</vh></v>
-<v t="ekr.20220525082935.1243"><vh>expand_type_alias</vh></v>
-<v t="ekr.20220525082935.1244"><vh>set_any_tvars</vh></v>
-<v t="ekr.20220525082935.1245"><vh>remove_dups</vh></v>
-<v t="ekr.20220525082935.1246"><vh>flatten_tvars</vh></v>
-<v t="ekr.20220525082935.1247"><vh>class TypeVarLikeQuery</vh>
-<v t="ekr.20220525082935.1248"><vh>TypeVarLikeQuery.__init__</vh></v>
-<v t="ekr.20220525082935.1249"><vh>TypeVarLikeQuery._seems_like_callable</vh></v>
-<v t="ekr.20220525082935.1250"><vh>TypeVarLikeQuery.visit_unbound_type</vh></v>
-<v t="ekr.20220525082935.1251"><vh>TypeVarLikeQuery.visit_callable_type</vh></v>
-</v>
-<v t="ekr.20220525082935.1252"><vh>check_for_explicit_any</vh></v>
-<v t="ekr.20220525082935.1253"><vh>has_explicit_any</vh></v>
-<v t="ekr.20220525082935.1254"><vh>class HasExplicitAny</vh>
-<v t="ekr.20220525082935.1255"><vh>HasExplicitAny.__init__</vh></v>
-<v t="ekr.20220525082935.1256"><vh>HasExplicitAny.visit_any</vh></v>
-<v t="ekr.20220525082935.1257"><vh>HasExplicitAny.visit_typeddict_type</vh></v>
-</v>
-<v t="ekr.20220525082935.1258"><vh>has_any_from_unimported_type</vh></v>
-<v t="ekr.20220525082935.1259"><vh>class HasAnyFromUnimportedType</vh>
-<v t="ekr.20220525082935.1260"><vh>HasAnyFromUnimportedType.__init__</vh></v>
-<v t="ekr.20220525082935.1261"><vh>HasAnyFromUnimportedType.visit_any</vh></v>
-<v t="ekr.20220525082935.1262"><vh>HasAnyFromUnimportedType.visit_typeddict_type</vh></v>
-</v>
-<v t="ekr.20220525082935.1263"><vh>collect_all_inner_types</vh></v>
-<v t="ekr.20220525082935.1264"><vh>class CollectAllInnerTypesQuery</vh>
-<v t="ekr.20220525082935.1265"><vh>CollectAllInnerTypesQuery.__init__</vh></v>
-<v t="ekr.20220525082935.1266"><vh>CollectAllInnerTypesQuery.query_types</vh></v>
-<v t="ekr.20220525082935.1267"><vh>CollectAllInnerTypesQuery.combine_lists_strategy</vh></v>
-</v>
-<v t="ekr.20220525082935.1268"><vh>make_optional_type</vh></v>
-<v t="ekr.20220525082935.1269"><vh>fix_instance_types</vh></v>
-<v t="ekr.20220525082935.1270"><vh>class InstanceFixer</vh>
-<v t="ekr.20220525082935.1271"><vh>InstanceFixer.__init__</vh></v>
-<v t="ekr.20220525082935.1272"><vh>InstanceFixer.visit_instance</vh></v>
-</v>
 </v>
 <v t="ekr.20220525082935.1273"><vh>@clean typeops.py</vh>
 <v t="ekr.20220525082935.1274"><vh>is_recursive_pair</vh></v>
@@ -4829,94 +4836,298 @@
 <v t="ekr.20220525082936.2"><vh>fill_typevars_with_any</vh></v>
 <v t="ekr.20220525082936.3"><vh>has_no_typevars</vh></v>
 </v>
-<v t="ekr.20220525082936.4"><vh>@clean type_visitor.py</vh>
-<v t="ekr.20220525082936.5"><vh>class TypeVisitor</vh>
-<v t="ekr.20220525082936.6"><vh>TypeVisitor.visit_unbound_type</vh></v>
-<v t="ekr.20220525082936.7"><vh>TypeVisitor.visit_any</vh></v>
-<v t="ekr.20220525082936.8"><vh>TypeVisitor.visit_none_type</vh></v>
-<v t="ekr.20220525082936.9"><vh>TypeVisitor.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082936.10"><vh>TypeVisitor.visit_erased_type</vh></v>
-<v t="ekr.20220525082936.11"><vh>TypeVisitor.visit_deleted_type</vh></v>
-<v t="ekr.20220525082936.12"><vh>TypeVisitor.visit_type_var</vh></v>
-<v t="ekr.20220525082936.13"><vh>TypeVisitor.visit_param_spec</vh></v>
-<v t="ekr.20220525082936.14"><vh>TypeVisitor.visit_parameters</vh></v>
-<v t="ekr.20220525082936.15"><vh>TypeVisitor.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082936.16"><vh>TypeVisitor.visit_instance</vh></v>
-<v t="ekr.20220525082936.17"><vh>TypeVisitor.visit_callable_type</vh></v>
-<v t="ekr.20220525082936.18"><vh>TypeVisitor.visit_overloaded</vh></v>
-<v t="ekr.20220525082936.19"><vh>TypeVisitor.visit_tuple_type</vh></v>
-<v t="ekr.20220525082936.20"><vh>TypeVisitor.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082936.21"><vh>TypeVisitor.visit_literal_type</vh></v>
-<v t="ekr.20220525082936.22"><vh>TypeVisitor.visit_union_type</vh></v>
-<v t="ekr.20220525082936.23"><vh>TypeVisitor.visit_partial_type</vh></v>
-<v t="ekr.20220525082936.24"><vh>TypeVisitor.visit_type_type</vh></v>
-<v t="ekr.20220525082936.25"><vh>TypeVisitor.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082936.26"><vh>TypeVisitor.visit_unpack_type</vh></v>
 </v>
-<v t="ekr.20220525082936.27"><vh>class SyntheticTypeVisitor</vh>
-<v t="ekr.20220525082936.28"><vh>SyntheticTypeVisitor.visit_star_type</vh></v>
-<v t="ekr.20220525082936.29"><vh>SyntheticTypeVisitor.visit_type_list</vh></v>
-<v t="ekr.20220525082936.30"><vh>SyntheticTypeVisitor.visit_callable_argument</vh></v>
-<v t="ekr.20220525082936.31"><vh>SyntheticTypeVisitor.visit_ellipsis_type</vh></v>
-<v t="ekr.20220525082936.32"><vh>SyntheticTypeVisitor.visit_raw_expression_type</vh></v>
-<v t="ekr.20220525082936.33"><vh>SyntheticTypeVisitor.visit_placeholder_type</vh></v>
+<v t="ekr.20220603023507.1"><vh>--- utils</vh>
+<v t="ekr.20220525082933.181"><vh>@clean backports.py</vh></v>
+<v t="ekr.20220525082933.976"><vh>@clean defaults.py</vh></v>
+<v t="ekr.20220525082934.272"><vh>@clean fixup.py</vh>
+<v t="ekr.20220525082934.273"><vh>fixup_module</vh></v>
+<v t="ekr.20220525082934.274"><vh>class NodeFixer</vh>
+<v t="ekr.20220525082934.275"><vh>NodeFixer.__init__</vh></v>
+<v t="ekr.20220525082934.276"><vh>NodeFixer.visit_type_info</vh></v>
+<v t="ekr.20220525082934.277"><vh>NodeFixer.visit_symbol_table</vh></v>
+<v t="ekr.20220525082934.278"><vh>NodeFixer.visit_func_def</vh></v>
+<v t="ekr.20220525082934.279"><vh>NodeFixer.visit_overloaded_func_def</vh></v>
+<v t="ekr.20220525082934.280"><vh>NodeFixer.visit_decorator</vh></v>
+<v t="ekr.20220525082934.281"><vh>NodeFixer.visit_class_def</vh></v>
+<v t="ekr.20220525082934.282"><vh>NodeFixer.visit_type_var_expr</vh></v>
+<v t="ekr.20220525082934.283"><vh>NodeFixer.visit_var</vh></v>
+<v t="ekr.20220525082934.284"><vh>NodeFixer.visit_type_alias</vh></v>
 </v>
-<v t="ekr.20220525082936.34"><vh>class TypeTranslator</vh>
-<v t="ekr.20220525082936.35"><vh>TypeTranslator.visit_unbound_type</vh></v>
-<v t="ekr.20220525082936.36"><vh>TypeTranslator.visit_any</vh></v>
-<v t="ekr.20220525082936.37"><vh>TypeTranslator.visit_none_type</vh></v>
-<v t="ekr.20220525082936.38"><vh>TypeTranslator.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082936.39"><vh>TypeTranslator.visit_erased_type</vh></v>
-<v t="ekr.20220525082936.40"><vh>TypeTranslator.visit_deleted_type</vh></v>
-<v t="ekr.20220525082936.41"><vh>TypeTranslator.visit_instance</vh></v>
-<v t="ekr.20220525082936.42"><vh>TypeTranslator.visit_type_var</vh></v>
-<v t="ekr.20220525082936.43"><vh>TypeTranslator.visit_param_spec</vh></v>
-<v t="ekr.20220525082936.44"><vh>TypeTranslator.visit_parameters</vh></v>
-<v t="ekr.20220525082936.45"><vh>TypeTranslator.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082936.46"><vh>TypeTranslator.visit_partial_type</vh></v>
-<v t="ekr.20220525082936.47"><vh>TypeTranslator.visit_unpack_type</vh></v>
-<v t="ekr.20220525082936.48"><vh>TypeTranslator.visit_callable_type</vh></v>
-<v t="ekr.20220525082936.49"><vh>TypeTranslator.visit_tuple_type</vh></v>
-<v t="ekr.20220525082936.50"><vh>TypeTranslator.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082936.51"><vh>TypeTranslator.visit_literal_type</vh></v>
-<v t="ekr.20220525082936.52"><vh>TypeTranslator.visit_union_type</vh></v>
-<v t="ekr.20220525082936.53"><vh>TypeTranslator.translate_types</vh></v>
-<v t="ekr.20220525082936.54"><vh>TypeTranslator.translate_variables</vh></v>
-<v t="ekr.20220525082936.55"><vh>TypeTranslator.visit_overloaded</vh></v>
-<v t="ekr.20220525082936.56"><vh>TypeTranslator.visit_type_type</vh></v>
-<v t="ekr.20220525082936.57"><vh>TypeTranslator.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082934.285"><vh>class TypeFixer</vh>
+<v t="ekr.20220525082934.286"><vh>TypeFixer.__init__</vh></v>
+<v t="ekr.20220525082934.287"><vh>TypeFixer.visit_instance</vh></v>
+<v t="ekr.20220525082934.288"><vh>TypeFixer.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082934.289"><vh>TypeFixer.visit_any</vh></v>
+<v t="ekr.20220525082934.290"><vh>TypeFixer.visit_callable_type</vh></v>
+<v t="ekr.20220525082934.291"><vh>TypeFixer.visit_overloaded</vh></v>
+<v t="ekr.20220525082934.292"><vh>TypeFixer.visit_erased_type</vh></v>
+<v t="ekr.20220525082934.293"><vh>TypeFixer.visit_deleted_type</vh></v>
+<v t="ekr.20220525082934.294"><vh>TypeFixer.visit_none_type</vh></v>
+<v t="ekr.20220525082934.295"><vh>TypeFixer.visit_uninhabited_type</vh></v>
+<v t="ekr.20220525082934.296"><vh>TypeFixer.visit_partial_type</vh></v>
+<v t="ekr.20220525082934.297"><vh>TypeFixer.visit_tuple_type</vh></v>
+<v t="ekr.20220525082934.298"><vh>TypeFixer.visit_typeddict_type</vh></v>
+<v t="ekr.20220525082934.299"><vh>TypeFixer.visit_literal_type</vh></v>
+<v t="ekr.20220525082934.300"><vh>TypeFixer.visit_type_var</vh></v>
+<v t="ekr.20220525082934.301"><vh>TypeFixer.visit_param_spec</vh></v>
+<v t="ekr.20220525082934.302"><vh>TypeFixer.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082934.303"><vh>TypeFixer.visit_unpack_type</vh></v>
+<v t="ekr.20220525082934.304"><vh>TypeFixer.visit_parameters</vh></v>
+<v t="ekr.20220525082934.305"><vh>TypeFixer.visit_unbound_type</vh></v>
+<v t="ekr.20220525082934.306"><vh>TypeFixer.visit_union_type</vh></v>
+<v t="ekr.20220525082934.307"><vh>TypeFixer.visit_void</vh></v>
+<v t="ekr.20220525082934.308"><vh>TypeFixer.visit_type_type</vh></v>
 </v>
-<v t="ekr.20220525082936.58"><vh>class TypeQuery</vh>
-<v t="ekr.20220525082936.59"><vh>TypeQuery.__init__</vh></v>
-<v t="ekr.20220525082936.60"><vh>TypeQuery.visit_unbound_type</vh></v>
-<v t="ekr.20220525082936.61"><vh>TypeQuery.visit_type_list</vh></v>
-<v t="ekr.20220525082936.62"><vh>TypeQuery.visit_callable_argument</vh></v>
-<v t="ekr.20220525082936.63"><vh>TypeQuery.visit_any</vh></v>
-<v t="ekr.20220525082936.64"><vh>TypeQuery.visit_uninhabited_type</vh></v>
-<v t="ekr.20220525082936.65"><vh>TypeQuery.visit_none_type</vh></v>
-<v t="ekr.20220525082936.66"><vh>TypeQuery.visit_erased_type</vh></v>
-<v t="ekr.20220525082936.67"><vh>TypeQuery.visit_deleted_type</vh></v>
-<v t="ekr.20220525082936.68"><vh>TypeQuery.visit_type_var</vh></v>
-<v t="ekr.20220525082936.69"><vh>TypeQuery.visit_param_spec</vh></v>
-<v t="ekr.20220525082936.70"><vh>TypeQuery.visit_type_var_tuple</vh></v>
-<v t="ekr.20220525082936.71"><vh>TypeQuery.visit_unpack_type</vh></v>
-<v t="ekr.20220525082936.72"><vh>TypeQuery.visit_parameters</vh></v>
-<v t="ekr.20220525082936.73"><vh>TypeQuery.visit_partial_type</vh></v>
-<v t="ekr.20220525082936.74"><vh>TypeQuery.visit_instance</vh></v>
-<v t="ekr.20220525082936.75"><vh>TypeQuery.visit_callable_type</vh></v>
-<v t="ekr.20220525082936.76"><vh>TypeQuery.visit_tuple_type</vh></v>
-<v t="ekr.20220525082936.77"><vh>TypeQuery.visit_typeddict_type</vh></v>
-<v t="ekr.20220525082936.78"><vh>TypeQuery.visit_raw_expression_type</vh></v>
-<v t="ekr.20220525082936.79"><vh>TypeQuery.visit_literal_type</vh></v>
-<v t="ekr.20220525082936.80"><vh>TypeQuery.visit_star_type</vh></v>
-<v t="ekr.20220525082936.81"><vh>TypeQuery.visit_union_type</vh></v>
-<v t="ekr.20220525082936.82"><vh>TypeQuery.visit_overloaded</vh></v>
-<v t="ekr.20220525082936.83"><vh>TypeQuery.visit_type_type</vh></v>
-<v t="ekr.20220525082936.84"><vh>TypeQuery.visit_ellipsis_type</vh></v>
-<v t="ekr.20220525082936.85"><vh>TypeQuery.visit_placeholder_type</vh></v>
-<v t="ekr.20220525082936.86"><vh>TypeQuery.visit_type_alias_type</vh></v>
-<v t="ekr.20220525082936.87"><vh>TypeQuery.query_types</vh></v>
+<v t="ekr.20220525082934.309"><vh>lookup_fully_qualified_typeinfo</vh></v>
+<v t="ekr.20220525082934.310"><vh>lookup_fully_qualified_alias</vh></v>
+<v t="ekr.20220525082934.311"><vh>_SUGGESTION: Final = "&lt;missing {}: *should* have gone away during fine-grained update&gt;"</vh></v>
+<v t="ekr.20220525082934.312"><vh>missing_info</vh></v>
+<v t="ekr.20220525082934.313"><vh>missing_alias</vh></v>
 </v>
+<v t="ekr.20220525082934.317"><vh>@clean fscache.py</vh>
+<v t="ekr.20220525082934.318"><vh>class FileSystemCache</vh>
+<v t="ekr.20220525082934.319"><vh>FileSystemCache.__init__</vh></v>
+<v t="ekr.20220525082934.320"><vh>FileSystemCache.set_package_root</vh></v>
+<v t="ekr.20220525082934.321"><vh>FileSystemCache.flush</vh></v>
+<v t="ekr.20220525082934.322"><vh>FileSystemCache.stat</vh></v>
+<v t="ekr.20220525082934.323"><vh>FileSystemCache.init_under_package_root</vh></v>
+<v t="ekr.20220525082934.324"><vh>FileSystemCache._fake_init</vh></v>
+<v t="ekr.20220525082934.325"><vh>FileSystemCache.listdir</vh></v>
+<v t="ekr.20220525082934.326"><vh>FileSystemCache.isfile</vh></v>
+<v t="ekr.20220525082934.327"><vh>FileSystemCache.isfile_case</vh></v>
+<v t="ekr.20220525082934.328"><vh>FileSystemCache.exists_case</vh></v>
+<v t="ekr.20220525082934.329"><vh>FileSystemCache.isdir</vh></v>
+<v t="ekr.20220525082934.330"><vh>FileSystemCache.exists</vh></v>
+<v t="ekr.20220525082934.331"><vh>FileSystemCache.read</vh></v>
+<v t="ekr.20220525082934.332"><vh>FileSystemCache.hash_digest</vh></v>
+<v t="ekr.20220525082934.333"><vh>FileSystemCache.samefile</vh></v>
+</v>
+<v t="ekr.20220525082934.334"><vh>copy_os_error</vh></v>
+</v>
+<v t="ekr.20220525082934.335"><vh>@clean fswatcher.py</vh>
+<v t="ekr.20220525082934.336"><vh>class FileSystemWatcher</vh>
+<v t="ekr.20220525082934.337"><vh>FileSystemWatcher.__init__</vh></v>
+<v t="ekr.20220525082934.338"><vh>FileSystemWatcher.dump_file_data</vh></v>
+<v t="ekr.20220525082934.339"><vh>FileSystemWatcher.set_file_data</vh></v>
+<v t="ekr.20220525082934.340"><vh>FileSystemWatcher.add_watched_paths</vh></v>
+<v t="ekr.20220525082934.341"><vh>FileSystemWatcher.remove_watched_paths</vh></v>
+<v t="ekr.20220525082934.342"><vh>FileSystemWatcher._update</vh></v>
+<v t="ekr.20220525082934.343"><vh>FileSystemWatcher._find_changed</vh></v>
+<v t="ekr.20220525082934.344"><vh>FileSystemWatcher.find_changed</vh></v>
+<v t="ekr.20220525082934.345"><vh>FileSystemWatcher.update_changed</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.352"><vh>@clean git.py</vh>
+<v t="ekr.20220525082934.353"><vh>is_git_repo</vh></v>
+<v t="ekr.20220525082934.354"><vh>have_git</vh></v>
+<v t="ekr.20220525082934.355"><vh>git_revision</vh></v>
+<v t="ekr.20220525082934.356"><vh>is_dirty</vh></v>
+</v>
+<v t="ekr.20220525082934.388"><vh>@clean ipc.py</vh>
+<v t="ekr.20220525082934.389"><vh>class IPCException</vh></v>
+<v t="ekr.20220525082934.390"><vh>class IPCBase</vh>
+<v t="ekr.20220525082934.391"><vh>IPCBase.__init__</vh></v>
+<v t="ekr.20220525082934.392"><vh>IPCBase.read</vh></v>
+<v t="ekr.20220525082934.393"><vh>IPCBase.write</vh></v>
+<v t="ekr.20220525082934.394"><vh>IPCBase.close</vh></v>
+</v>
+<v t="ekr.20220525082934.395"><vh>class IPCClient</vh>
+<v t="ekr.20220525082934.396"><vh>IPCClient.__init__</vh></v>
+<v t="ekr.20220525082934.397"><vh>IPCClient.__enter__</vh></v>
+<v t="ekr.20220525082934.398"><vh>IPCClient.__exit__</vh></v>
+</v>
+<v t="ekr.20220525082934.399"><vh>class IPCServer</vh>
+<v t="ekr.20220525082934.400"><vh>IPCServer.__init__</vh></v>
+<v t="ekr.20220525082934.401"><vh>IPCServer.__enter__</vh></v>
+<v t="ekr.20220525082934.402"><vh>IPCServer.__exit__</vh></v>
+<v t="ekr.20220525082934.403"><vh>IPCServer.cleanup</vh></v>
+<v t="ekr.20220525082934.404"><vh>IPCServer.connection_name</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.762"><vh>@clean metastore.py</vh>
+<v t="ekr.20220525082934.763"><vh>class MetadataStore</vh>
+<v t="ekr.20220525082934.764"><vh>MetadataStore.getmtime</vh></v>
+<v t="ekr.20220525082934.765"><vh>MetadataStore.read</vh></v>
+<v t="ekr.20220525082934.766"><vh>MetadataStore.write</vh></v>
+<v t="ekr.20220525082934.767"><vh>MetadataStore.remove</vh></v>
+<v t="ekr.20220525082934.768"><vh>MetadataStore.commit</vh></v>
+<v t="ekr.20220525082934.769"><vh>MetadataStore.list_all</vh></v>
+</v>
+<v t="ekr.20220525082934.770"><vh>random_string</vh></v>
+<v t="ekr.20220525082934.771"><vh>class FilesystemMetadataStore</vh>
+<v t="ekr.20220525082934.772"><vh>FilesystemMetadataStore.__init__</vh></v>
+<v t="ekr.20220525082934.773"><vh>FilesystemMetadataStore.getmtime</vh></v>
+<v t="ekr.20220525082934.774"><vh>FilesystemMetadataStore.read</vh></v>
+<v t="ekr.20220525082934.775"><vh>FilesystemMetadataStore.write</vh></v>
+<v t="ekr.20220525082934.776"><vh>FilesystemMetadataStore.remove</vh></v>
+<v t="ekr.20220525082934.777"><vh>FilesystemMetadataStore.commit</vh></v>
+<v t="ekr.20220525082934.778"><vh>FilesystemMetadataStore.list_all</vh></v>
+</v>
+<v t="ekr.20220525082934.779"><vh>SCHEMA = '''</vh></v>
+<v t="ekr.20220525082934.780"><vh>connect_db</vh></v>
+<v t="ekr.20220525082934.781"><vh>class SqliteMetadataStore</vh>
+<v t="ekr.20220525082934.782"><vh>SqliteMetadataStore.__init__</vh></v>
+<v t="ekr.20220525082934.783"><vh>SqliteMetadataStore._query</vh></v>
+<v t="ekr.20220525082934.784"><vh>SqliteMetadataStore.getmtime</vh></v>
+<v t="ekr.20220525082934.785"><vh>SqliteMetadataStore.read</vh></v>
+<v t="ekr.20220525082934.786"><vh>SqliteMetadataStore.write</vh></v>
+<v t="ekr.20220525082934.787"><vh>SqliteMetadataStore.remove</vh></v>
+<v t="ekr.20220525082934.788"><vh>SqliteMetadataStore.commit</vh></v>
+<v t="ekr.20220525082934.789"><vh>SqliteMetadataStore.list_all</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.811"><vh>@clean modulefinder.py</vh>
+<v t="ekr.20220525082934.812"><vh>class ModuleNotFoundReason</vh>
+<v t="ekr.20220525082934.813"><vh>ModuleNotFoundReason.error_message_templates</vh></v>
+</v>
+<v t="ekr.20220525082934.814"><vh>If we found the module, returns the path to the module as a str.</vh></v>
+<v t="ekr.20220525082934.815"><vh>class BuildSource</vh>
+<v t="ekr.20220525082934.816"><vh>BuildSource.__init__</vh></v>
+<v t="ekr.20220525082934.817"><vh>BuildSource.__repr__</vh></v>
+</v>
+<v t="ekr.20220525082934.818"><vh>class BuildSourceSet</vh>
+<v t="ekr.20220525082934.819"><vh>BuildSourceSet.__init__</vh></v>
+<v t="ekr.20220525082934.820"><vh>BuildSourceSet.is_source</vh></v>
+</v>
+<v t="ekr.20220525082934.821"><vh>class FindModuleCache</vh>
+<v t="ekr.20220525082934.822"><vh>FindModuleCache.__init__</vh></v>
+<v t="ekr.20220525082934.823"><vh>FindModuleCache.clear</vh></v>
+<v t="ekr.20220525082934.824"><vh>FindModuleCache.find_module_via_source_set</vh></v>
+<v t="ekr.20220525082934.825"><vh>FindModuleCache.find_lib_path_dirs</vh></v>
+<v t="ekr.20220525082934.826"><vh>FindModuleCache.get_toplevel_possibilities</vh></v>
+<v t="ekr.20220525082934.827"><vh>FindModuleCache.find_module</vh></v>
+<v t="ekr.20220525082934.828"><vh>FindModuleCache._typeshed_has_version</vh></v>
+<v t="ekr.20220525082934.829"><vh>FindModuleCache._find_module_non_stub_helper</vh></v>
+<v t="ekr.20220525082934.830"><vh>FindModuleCache._update_ns_ancestors</vh></v>
+<v t="ekr.20220525082934.831"><vh>FindModuleCache._can_find_module_in_parent_dir</vh></v>
+<v t="ekr.20220525082934.832"><vh>FindModuleCache._find_module</vh></v>
+<v t="ekr.20220525082934.833"><vh>FindModuleCache._is_compatible_stub_package</vh></v>
+<v t="ekr.20220525082934.834"><vh>FindModuleCache.find_modules_recursive</vh></v>
+</v>
+<v t="ekr.20220525082934.835"><vh>matches_exclude</vh></v>
+<v t="ekr.20220525082934.836"><vh>verify_module</vh></v>
+<v t="ekr.20220525082934.837"><vh>highest_init_level</vh></v>
+<v t="ekr.20220525082934.838"><vh>mypy_path</vh></v>
+<v t="ekr.20220525082934.839"><vh>default_lib_path</vh></v>
+<v t="ekr.20220525082934.840"><vh>get_prefixes</vh></v>
+<v t="ekr.20220525082934.841"><vh>get_site_packages_dirs</vh></v>
+<v t="ekr.20220525082934.842"><vh>expand_site_packages</vh></v>
+<v t="ekr.20220525082934.843"><vh>_parse_pth_file</vh></v>
+<v t="ekr.20220525082934.844"><vh>_make_abspath</vh></v>
+<v t="ekr.20220525082934.845"><vh>add_py2_mypypath_entries</vh></v>
+<v t="ekr.20220525082934.846"><vh>compute_search_paths</vh></v>
+<v t="ekr.20220525082934.847"><vh>load_stdlib_py_versions</vh></v>
+<v t="ekr.20220525082934.848"><vh>parse_version</vh></v>
+<v t="ekr.20220525082934.849"><vh>typeshed_py_version</vh></v>
+<v t="ekr.20220525082934.850"><vh>filter_redundant_py2_dirs</vh></v>
+</v>
+<v t="ekr.20220525082934.851"><vh>@clean moduleinspect.py</vh>
+<v t="ekr.20220525082934.852"><vh>class ModuleProperties</vh>
+<v t="ekr.20220525082934.853"><vh>ModuleProperties.__init__</vh></v>
+</v>
+<v t="ekr.20220525082934.854"><vh>is_c_module</vh></v>
+<v t="ekr.20220525082934.855"><vh>class InspectError</vh></v>
+<v t="ekr.20220525082934.856"><vh>get_package_properties</vh></v>
+<v t="ekr.20220525082934.857"><vh>worker</vh></v>
+<v t="ekr.20220525082934.858"><vh>class ModuleInspect</vh>
+<v t="ekr.20220525082934.859"><vh>ModuleInspect.__init__</vh></v>
+<v t="ekr.20220525082934.860"><vh>ModuleInspect._start</vh></v>
+<v t="ekr.20220525082934.861"><vh>ModuleInspect.close</vh></v>
+<v t="ekr.20220525082934.862"><vh>ModuleInspect.get_package_properties</vh></v>
+<v t="ekr.20220525082934.863"><vh>ModuleInspect._get_from_queue</vh></v>
+<v t="ekr.20220525082934.864"><vh>ModuleInspect.__enter__</vh></v>
+<v t="ekr.20220525082934.865"><vh>ModuleInspect.__exit__</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.1300"><vh>@clean plugin.py</vh>
+<v t="ekr.20220525082934.1301"><vh>class TypeAnalyzerPluginInterface</vh>
+<v t="ekr.20220525082934.1302"><vh>TypeAnalyzerPluginInterface.fail</vh></v>
+<v t="ekr.20220525082934.1303"><vh>TypeAnalyzerPluginInterface.named_type</vh></v>
+<v t="ekr.20220525082934.1304"><vh>TypeAnalyzerPluginInterface.analyze_type</vh></v>
+<v t="ekr.20220525082934.1305"><vh>TypeAnalyzerPluginInterface.analyze_callable_args</vh></v>
+</v>
+<v t="ekr.20220525082934.1306"><vh>class AnalyzeTypeContext</vh></v>
+<v t="ekr.20220525082934.1307"><vh>class CommonPluginApi</vh>
+<v t="ekr.20220525082934.1308"><vh>CommonPluginApi.lookup_fully_qualified</vh></v>
+</v>
+<v t="ekr.20220525082934.1309"><vh>class CheckerPluginInterface</vh>
+<v t="ekr.20220525082934.1310"><vh>CheckerPluginInterface.type_context</vh></v>
+<v t="ekr.20220525082934.1311"><vh>CheckerPluginInterface.fail</vh></v>
+<v t="ekr.20220525082934.1312"><vh>CheckerPluginInterface.named_generic_type</vh></v>
+</v>
+<v t="ekr.20220525082934.1313"><vh>class SemanticAnalyzerPluginInterface</vh>
+<v t="ekr.20220525082934.1314"><vh>SemanticAnalyzerPluginInterface.named_type</vh></v>
+<v t="ekr.20220525082934.1315"><vh>SemanticAnalyzerPluginInterface.builtin_type</vh></v>
+<v t="ekr.20220525082934.1316"><vh>SemanticAnalyzerPluginInterface.named_type_or_none</vh></v>
+<v t="ekr.20220525082934.1317"><vh>SemanticAnalyzerPluginInterface.basic_new_typeinfo</vh></v>
+<v t="ekr.20220525082934.1318"><vh>SemanticAnalyzerPluginInterface.parse_bool</vh></v>
+<v t="ekr.20220525082934.1319"><vh>SemanticAnalyzerPluginInterface.fail</vh></v>
+<v t="ekr.20220525082934.1320"><vh>SemanticAnalyzerPluginInterface.anal_type</vh></v>
+<v t="ekr.20220525082934.1321"><vh>SemanticAnalyzerPluginInterface.class_type</vh></v>
+<v t="ekr.20220525082934.1322"><vh>SemanticAnalyzerPluginInterface.lookup_fully_qualified</vh></v>
+<v t="ekr.20220525082934.1323"><vh>SemanticAnalyzerPluginInterface.lookup_fully_qualified_or_none</vh></v>
+<v t="ekr.20220525082934.1324"><vh>SemanticAnalyzerPluginInterface.lookup_qualified</vh></v>
+<v t="ekr.20220525082934.1325"><vh>SemanticAnalyzerPluginInterface.add_plugin_dependency</vh></v>
+<v t="ekr.20220525082934.1326"><vh>SemanticAnalyzerPluginInterface.add_symbol_table_node</vh></v>
+<v t="ekr.20220525082934.1327"><vh>SemanticAnalyzerPluginInterface.qualified_name</vh></v>
+<v t="ekr.20220525082934.1328"><vh>SemanticAnalyzerPluginInterface.defer</vh></v>
+<v t="ekr.20220525082934.1329"><vh>SemanticAnalyzerPluginInterface.final_iteration</vh></v>
+<v t="ekr.20220525082934.1330"><vh>SemanticAnalyzerPluginInterface.is_stub_file</vh></v>
+</v>
+<v t="ekr.20220525082934.1331"><vh>class ReportConfigContext</vh></v>
+<v t="ekr.20220525082934.1332"><vh>class FunctionSigContext</vh></v>
+<v t="ekr.20220525082934.1333"><vh>class FunctionContext</vh></v>
+<v t="ekr.20220525082934.1334"><vh>class MethodSigContext</vh></v>
+<v t="ekr.20220525082934.1335"><vh>class MethodContext</vh></v>
+<v t="ekr.20220525082934.1336"><vh>class AttributeContext</vh></v>
+<v t="ekr.20220525082934.1337"><vh>class ClassDefContext</vh></v>
+<v t="ekr.20220525082934.1338"><vh>class DynamicClassDefContext</vh></v>
+<v t="ekr.20220525082934.1339"><vh>class Plugin</vh>
+<v t="ekr.20220525082934.1340"><vh>Plugin.__init__</vh></v>
+<v t="ekr.20220525082934.1341"><vh>Plugin.set_modules</vh></v>
+<v t="ekr.20220525082934.1342"><vh>Plugin.lookup_fully_qualified</vh></v>
+<v t="ekr.20220525082934.1343"><vh>Plugin.report_config_data</vh></v>
+<v t="ekr.20220525082934.1344"><vh>Plugin.get_additional_deps</vh></v>
+<v t="ekr.20220525082934.1345"><vh>Plugin.get_type_analyze_hook</vh></v>
+<v t="ekr.20220525082934.1346"><vh>Plugin.get_function_signature_hook</vh></v>
+<v t="ekr.20220525082934.1347"><vh>Plugin.get_function_hook</vh></v>
+<v t="ekr.20220525082934.1348"><vh>Plugin.get_method_signature_hook</vh></v>
+<v t="ekr.20220525082934.1349"><vh>Plugin.get_method_hook</vh></v>
+<v t="ekr.20220525082934.1350"><vh>Plugin.get_attribute_hook</vh></v>
+<v t="ekr.20220525082934.1351"><vh>Plugin.get_class_attribute_hook</vh></v>
+<v t="ekr.20220525082934.1352"><vh>Plugin.get_class_decorator_hook</vh></v>
+<v t="ekr.20220525082934.1353"><vh>Plugin.get_class_decorator_hook_2</vh></v>
+<v t="ekr.20220525082934.1354"><vh>Plugin.get_metaclass_hook</vh></v>
+<v t="ekr.20220525082934.1355"><vh>Plugin.get_base_class_hook</vh></v>
+<v t="ekr.20220525082934.1356"><vh>Plugin.get_customize_class_mro_hook</vh></v>
+<v t="ekr.20220525082934.1357"><vh>Plugin.get_dynamic_class_hook</vh></v>
+</v>
+<v t="ekr.20220525082934.1358"><vh>T = TypeVar('T')</vh></v>
+<v t="ekr.20220525082934.1359"><vh>class ChainedPlugin</vh>
+<v t="ekr.20220525082934.1360"><vh>ChainedPlugin.__init__</vh></v>
+<v t="ekr.20220525082934.1361"><vh>ChainedPlugin.set_modules</vh></v>
+<v t="ekr.20220525082934.1362"><vh>ChainedPlugin.report_config_data</vh></v>
+<v t="ekr.20220525082934.1363"><vh>ChainedPlugin.get_additional_deps</vh></v>
+<v t="ekr.20220525082934.1364"><vh>ChainedPlugin.get_type_analyze_hook</vh></v>
+<v t="ekr.20220525082934.1365"><vh>ChainedPlugin.get_function_signature_hook</vh></v>
+<v t="ekr.20220525082934.1366"><vh>ChainedPlugin.get_function_hook</vh></v>
+<v t="ekr.20220525082934.1367"><vh>ChainedPlugin.get_method_signature_hook</vh></v>
+<v t="ekr.20220525082934.1368"><vh>ChainedPlugin.get_method_hook</vh></v>
+<v t="ekr.20220525082934.1369"><vh>ChainedPlugin.get_attribute_hook</vh></v>
+<v t="ekr.20220525082934.1370"><vh>ChainedPlugin.get_class_attribute_hook</vh></v>
+<v t="ekr.20220525082934.1371"><vh>ChainedPlugin.get_class_decorator_hook</vh></v>
+<v t="ekr.20220525082934.1372"><vh>ChainedPlugin.get_class_decorator_hook_2</vh></v>
+<v t="ekr.20220525082934.1373"><vh>ChainedPlugin.get_metaclass_hook</vh></v>
+<v t="ekr.20220525082934.1374"><vh>ChainedPlugin.get_base_class_hook</vh></v>
+<v t="ekr.20220525082934.1375"><vh>ChainedPlugin.get_customize_class_mro_hook</vh></v>
+<v t="ekr.20220525082934.1376"><vh>ChainedPlugin.get_dynamic_class_hook</vh></v>
+<v t="ekr.20220525082934.1377"><vh>ChainedPlugin._find_hook</vh></v>
+</v>
+</v>
+<v t="ekr.20220525082934.1378"><vh>@clean pyinfo.py</vh>
+<v t="ekr.20220525082934.1379"><vh>getprefixes</vh></v>
+<v t="ekr.20220525082934.1380"><vh>getsitepackages</vh></v>
 </v>
 <v t="ekr.20220525082936.88"><vh>@clean util.py</vh>
 <v t="ekr.20220525082936.89"><vh>is_dunder</vh></v>
@@ -4975,195 +5186,6 @@
 <v t="ekr.20220525082936.140"><vh>TODO: replace with uses of perf_counter_ns when support for py3.6 is dropped</vh></v>
 <v t="ekr.20220525082936.141"><vh>time_spent_us</vh></v>
 </v>
-<v t="ekr.20220525082936.142"><vh>@clean version.py</vh></v>
-<v t="ekr.20220525082936.143"><vh>@clean visitor.py</vh>
-<v t="ekr.20220525082936.144"><vh>class ExpressionVisitor</vh>
-<v t="ekr.20220525082936.145"><vh>ExpressionVisitor.visit_int_expr</vh></v>
-<v t="ekr.20220525082936.146"><vh>ExpressionVisitor.visit_str_expr</vh></v>
-<v t="ekr.20220525082936.147"><vh>ExpressionVisitor.visit_bytes_expr</vh></v>
-<v t="ekr.20220525082936.148"><vh>ExpressionVisitor.visit_unicode_expr</vh></v>
-<v t="ekr.20220525082936.149"><vh>ExpressionVisitor.visit_float_expr</vh></v>
-<v t="ekr.20220525082936.150"><vh>ExpressionVisitor.visit_complex_expr</vh></v>
-<v t="ekr.20220525082936.151"><vh>ExpressionVisitor.visit_ellipsis</vh></v>
-<v t="ekr.20220525082936.152"><vh>ExpressionVisitor.visit_star_expr</vh></v>
-<v t="ekr.20220525082936.153"><vh>ExpressionVisitor.visit_name_expr</vh></v>
-<v t="ekr.20220525082936.154"><vh>ExpressionVisitor.visit_member_expr</vh></v>
-<v t="ekr.20220525082936.155"><vh>ExpressionVisitor.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082936.156"><vh>ExpressionVisitor.visit_yield_expr</vh></v>
-<v t="ekr.20220525082936.157"><vh>ExpressionVisitor.visit_call_expr</vh></v>
-<v t="ekr.20220525082936.158"><vh>ExpressionVisitor.visit_op_expr</vh></v>
-<v t="ekr.20220525082936.159"><vh>ExpressionVisitor.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082936.160"><vh>ExpressionVisitor.visit_cast_expr</vh></v>
-<v t="ekr.20220525082936.161"><vh>ExpressionVisitor.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082936.162"><vh>ExpressionVisitor.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082936.163"><vh>ExpressionVisitor.visit_super_expr</vh></v>
-<v t="ekr.20220525082936.164"><vh>ExpressionVisitor.visit_unary_expr</vh></v>
-<v t="ekr.20220525082936.165"><vh>ExpressionVisitor.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082936.166"><vh>ExpressionVisitor.visit_list_expr</vh></v>
-<v t="ekr.20220525082936.167"><vh>ExpressionVisitor.visit_dict_expr</vh></v>
-<v t="ekr.20220525082936.168"><vh>ExpressionVisitor.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082936.169"><vh>ExpressionVisitor.visit_set_expr</vh></v>
-<v t="ekr.20220525082936.170"><vh>ExpressionVisitor.visit_index_expr</vh></v>
-<v t="ekr.20220525082936.171"><vh>ExpressionVisitor.visit_type_application</vh></v>
-<v t="ekr.20220525082936.172"><vh>ExpressionVisitor.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082936.173"><vh>ExpressionVisitor.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082936.174"><vh>ExpressionVisitor.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082936.175"><vh>ExpressionVisitor.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082936.176"><vh>ExpressionVisitor.visit_generator_expr</vh></v>
-<v t="ekr.20220525082936.177"><vh>ExpressionVisitor.visit_slice_expr</vh></v>
-<v t="ekr.20220525082936.178"><vh>ExpressionVisitor.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082936.179"><vh>ExpressionVisitor.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082936.180"><vh>ExpressionVisitor.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082936.181"><vh>ExpressionVisitor.visit_paramspec_expr</vh></v>
-<v t="ekr.20220525082936.182"><vh>ExpressionVisitor.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20220525082936.183"><vh>ExpressionVisitor.visit_type_alias_expr</vh></v>
-<v t="ekr.20220525082936.184"><vh>ExpressionVisitor.visit_namedtuple_expr</vh></v>
-<v t="ekr.20220525082936.185"><vh>ExpressionVisitor.visit_enum_call_expr</vh></v>
-<v t="ekr.20220525082936.186"><vh>ExpressionVisitor.visit_typeddict_expr</vh></v>
-<v t="ekr.20220525082936.187"><vh>ExpressionVisitor.visit_newtype_expr</vh></v>
-<v t="ekr.20220525082936.188"><vh>ExpressionVisitor.visit__promote_expr</vh></v>
-<v t="ekr.20220525082936.189"><vh>ExpressionVisitor.visit_await_expr</vh></v>
-<v t="ekr.20220525082936.190"><vh>ExpressionVisitor.visit_temp_node</vh></v>
-</v>
-<v t="ekr.20220525082936.191"><vh>class StatementVisitor</vh>
-<v t="ekr.20220525082936.192"><vh>StatementVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082936.193"><vh>StatementVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082936.194"><vh>StatementVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082936.195"><vh>StatementVisitor.visit_del_stmt</vh></v>
-<v t="ekr.20220525082936.196"><vh>StatementVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082936.197"><vh>StatementVisitor.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082936.198"><vh>StatementVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082936.199"><vh>StatementVisitor.visit_global_decl</vh></v>
-<v t="ekr.20220525082936.200"><vh>StatementVisitor.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082936.201"><vh>StatementVisitor.visit_decorator</vh></v>
-<v t="ekr.20220525082936.202"><vh>StatementVisitor.Module structure</vh></v>
-<v t="ekr.20220525082936.203"><vh>StatementVisitor.visit_import</vh></v>
-<v t="ekr.20220525082936.204"><vh>StatementVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082936.205"><vh>StatementVisitor.visit_import_all</vh></v>
-<v t="ekr.20220525082936.206"><vh>StatementVisitor.Statements</vh></v>
-<v t="ekr.20220525082936.207"><vh>StatementVisitor.visit_block</vh></v>
-<v t="ekr.20220525082936.208"><vh>StatementVisitor.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082936.209"><vh>StatementVisitor.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082936.210"><vh>StatementVisitor.visit_while_stmt</vh></v>
-<v t="ekr.20220525082936.211"><vh>StatementVisitor.visit_return_stmt</vh></v>
-<v t="ekr.20220525082936.212"><vh>StatementVisitor.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082936.213"><vh>StatementVisitor.visit_if_stmt</vh></v>
-<v t="ekr.20220525082936.214"><vh>StatementVisitor.visit_break_stmt</vh></v>
-<v t="ekr.20220525082936.215"><vh>StatementVisitor.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082936.216"><vh>StatementVisitor.visit_pass_stmt</vh></v>
-<v t="ekr.20220525082936.217"><vh>StatementVisitor.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082936.218"><vh>StatementVisitor.visit_try_stmt</vh></v>
-<v t="ekr.20220525082936.219"><vh>StatementVisitor.visit_print_stmt</vh></v>
-<v t="ekr.20220525082936.220"><vh>StatementVisitor.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082936.221"><vh>StatementVisitor.visit_match_stmt</vh></v>
-</v>
-<v t="ekr.20220525082936.222"><vh>class PatternVisitor</vh>
-<v t="ekr.20220525082936.223"><vh>PatternVisitor.visit_as_pattern</vh></v>
-<v t="ekr.20220525082936.224"><vh>PatternVisitor.visit_or_pattern</vh></v>
-<v t="ekr.20220525082936.225"><vh>PatternVisitor.visit_value_pattern</vh></v>
-<v t="ekr.20220525082936.226"><vh>PatternVisitor.visit_singleton_pattern</vh></v>
-<v t="ekr.20220525082936.227"><vh>PatternVisitor.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082936.228"><vh>PatternVisitor.visit_starred_pattern</vh></v>
-<v t="ekr.20220525082936.229"><vh>PatternVisitor.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082936.230"><vh>PatternVisitor.visit_class_pattern</vh></v>
-</v>
-<v t="ekr.20220525082936.231"><vh>class NodeVisitor</vh>
-<v t="ekr.20220525082936.232"><vh>NodeVisitor.visit_mypy_file</vh></v>
-<v t="ekr.20220525082936.233"><vh>NodeVisitor.visit_var</vh></v>
-<v t="ekr.20220525082936.234"><vh>NodeVisitor.Module structure</vh></v>
-<v t="ekr.20220525082936.235"><vh>NodeVisitor.visit_import</vh></v>
-<v t="ekr.20220525082936.236"><vh>NodeVisitor.visit_import_from</vh></v>
-<v t="ekr.20220525082936.237"><vh>NodeVisitor.visit_import_all</vh></v>
-<v t="ekr.20220525082936.238"><vh>NodeVisitor.Definitions</vh></v>
-<v t="ekr.20220525082936.239"><vh>NodeVisitor.visit_func_def</vh></v>
-<v t="ekr.20220525082936.240"><vh>NodeVisitor.visit_overloaded_func_def</vh></v>
-<v t="ekr.20220525082936.241"><vh>NodeVisitor.visit_class_def</vh></v>
-<v t="ekr.20220525082936.242"><vh>NodeVisitor.visit_global_decl</vh></v>
-<v t="ekr.20220525082936.243"><vh>NodeVisitor.visit_nonlocal_decl</vh></v>
-<v t="ekr.20220525082936.244"><vh>NodeVisitor.visit_decorator</vh></v>
-<v t="ekr.20220525082936.245"><vh>NodeVisitor.visit_type_alias</vh></v>
-<v t="ekr.20220525082936.246"><vh>NodeVisitor.visit_placeholder_node</vh></v>
-<v t="ekr.20220525082936.247"><vh>NodeVisitor.Statements</vh></v>
-<v t="ekr.20220525082936.248"><vh>NodeVisitor.visit_block</vh></v>
-<v t="ekr.20220525082936.249"><vh>NodeVisitor.visit_expression_stmt</vh></v>
-<v t="ekr.20220525082936.250"><vh>NodeVisitor.visit_assignment_stmt</vh></v>
-<v t="ekr.20220525082936.251"><vh>NodeVisitor.visit_operator_assignment_stmt</vh></v>
-<v t="ekr.20220525082936.252"><vh>NodeVisitor.visit_while_stmt</vh></v>
-<v t="ekr.20220525082936.253"><vh>NodeVisitor.visit_for_stmt</vh></v>
-<v t="ekr.20220525082936.254"><vh>NodeVisitor.visit_return_stmt</vh></v>
-<v t="ekr.20220525082936.255"><vh>NodeVisitor.visit_assert_stmt</vh></v>
-<v t="ekr.20220525082936.256"><vh>NodeVisitor.visit_del_stmt</vh></v>
-<v t="ekr.20220525082936.257"><vh>NodeVisitor.visit_if_stmt</vh></v>
-<v t="ekr.20220525082936.258"><vh>NodeVisitor.visit_break_stmt</vh></v>
-<v t="ekr.20220525082936.259"><vh>NodeVisitor.visit_continue_stmt</vh></v>
-<v t="ekr.20220525082936.260"><vh>NodeVisitor.visit_pass_stmt</vh></v>
-<v t="ekr.20220525082936.261"><vh>NodeVisitor.visit_raise_stmt</vh></v>
-<v t="ekr.20220525082936.262"><vh>NodeVisitor.visit_try_stmt</vh></v>
-<v t="ekr.20220525082936.263"><vh>NodeVisitor.visit_with_stmt</vh></v>
-<v t="ekr.20220525082936.264"><vh>NodeVisitor.visit_print_stmt</vh></v>
-<v t="ekr.20220525082936.265"><vh>NodeVisitor.visit_exec_stmt</vh></v>
-<v t="ekr.20220525082936.266"><vh>NodeVisitor.visit_match_stmt</vh></v>
-<v t="ekr.20220525082936.267"><vh>NodeVisitor.Expressions (default no-op implementation)</vh></v>
-<v t="ekr.20220525082936.268"><vh>NodeVisitor.visit_int_expr</vh></v>
-<v t="ekr.20220525082936.269"><vh>NodeVisitor.visit_str_expr</vh></v>
-<v t="ekr.20220525082936.270"><vh>NodeVisitor.visit_bytes_expr</vh></v>
-<v t="ekr.20220525082936.271"><vh>NodeVisitor.visit_unicode_expr</vh></v>
-<v t="ekr.20220525082936.272"><vh>NodeVisitor.visit_float_expr</vh></v>
-<v t="ekr.20220525082936.273"><vh>NodeVisitor.visit_complex_expr</vh></v>
-<v t="ekr.20220525082936.274"><vh>NodeVisitor.visit_ellipsis</vh></v>
-<v t="ekr.20220525082936.275"><vh>NodeVisitor.visit_star_expr</vh></v>
-<v t="ekr.20220525082936.276"><vh>NodeVisitor.visit_name_expr</vh></v>
-<v t="ekr.20220525082936.277"><vh>NodeVisitor.visit_member_expr</vh></v>
-<v t="ekr.20220525082936.278"><vh>NodeVisitor.visit_yield_from_expr</vh></v>
-<v t="ekr.20220525082936.279"><vh>NodeVisitor.visit_yield_expr</vh></v>
-<v t="ekr.20220525082936.280"><vh>NodeVisitor.visit_call_expr</vh></v>
-<v t="ekr.20220525082936.281"><vh>NodeVisitor.visit_op_expr</vh></v>
-<v t="ekr.20220525082936.282"><vh>NodeVisitor.visit_comparison_expr</vh></v>
-<v t="ekr.20220525082936.283"><vh>NodeVisitor.visit_cast_expr</vh></v>
-<v t="ekr.20220525082936.284"><vh>NodeVisitor.visit_assert_type_expr</vh></v>
-<v t="ekr.20220525082936.285"><vh>NodeVisitor.visit_reveal_expr</vh></v>
-<v t="ekr.20220525082936.286"><vh>NodeVisitor.visit_super_expr</vh></v>
-<v t="ekr.20220525082936.287"><vh>NodeVisitor.visit_assignment_expr</vh></v>
-<v t="ekr.20220525082936.288"><vh>NodeVisitor.visit_unary_expr</vh></v>
-<v t="ekr.20220525082936.289"><vh>NodeVisitor.visit_list_expr</vh></v>
-<v t="ekr.20220525082936.290"><vh>NodeVisitor.visit_dict_expr</vh></v>
-<v t="ekr.20220525082936.291"><vh>NodeVisitor.visit_tuple_expr</vh></v>
-<v t="ekr.20220525082936.292"><vh>NodeVisitor.visit_set_expr</vh></v>
-<v t="ekr.20220525082936.293"><vh>NodeVisitor.visit_index_expr</vh></v>
-<v t="ekr.20220525082936.294"><vh>NodeVisitor.visit_type_application</vh></v>
-<v t="ekr.20220525082936.295"><vh>NodeVisitor.visit_lambda_expr</vh></v>
-<v t="ekr.20220525082936.296"><vh>NodeVisitor.visit_list_comprehension</vh></v>
-<v t="ekr.20220525082936.297"><vh>NodeVisitor.visit_set_comprehension</vh></v>
-<v t="ekr.20220525082936.298"><vh>NodeVisitor.visit_dictionary_comprehension</vh></v>
-<v t="ekr.20220525082936.299"><vh>NodeVisitor.visit_generator_expr</vh></v>
-<v t="ekr.20220525082936.300"><vh>NodeVisitor.visit_slice_expr</vh></v>
-<v t="ekr.20220525082936.301"><vh>NodeVisitor.visit_conditional_expr</vh></v>
-<v t="ekr.20220525082936.302"><vh>NodeVisitor.visit_backquote_expr</vh></v>
-<v t="ekr.20220525082936.303"><vh>NodeVisitor.visit_type_var_expr</vh></v>
-<v t="ekr.20220525082936.304"><vh>NodeVisitor.visit_paramspec_expr</vh></v>
-<v t="ekr.20220525082936.305"><vh>NodeVisitor.visit_type_var_tuple_expr</vh></v>
-<v t="ekr.20220525082936.306"><vh>NodeVisitor.visit_type_alias_expr</vh></v>
-<v t="ekr.20220525082936.307"><vh>NodeVisitor.visit_namedtuple_expr</vh></v>
-<v t="ekr.20220525082936.308"><vh>NodeVisitor.visit_enum_call_expr</vh></v>
-<v t="ekr.20220525082936.309"><vh>NodeVisitor.visit_typeddict_expr</vh></v>
-<v t="ekr.20220525082936.310"><vh>NodeVisitor.visit_newtype_expr</vh></v>
-<v t="ekr.20220525082936.311"><vh>NodeVisitor.visit__promote_expr</vh></v>
-<v t="ekr.20220525082936.312"><vh>NodeVisitor.visit_await_expr</vh></v>
-<v t="ekr.20220525082936.313"><vh>NodeVisitor.visit_temp_node</vh></v>
-<v t="ekr.20220525082936.314"><vh>NodeVisitor.Patterns</vh></v>
-<v t="ekr.20220525082936.315"><vh>NodeVisitor.visit_as_pattern</vh></v>
-<v t="ekr.20220525082936.316"><vh>NodeVisitor.visit_or_pattern</vh></v>
-<v t="ekr.20220525082936.317"><vh>NodeVisitor.visit_value_pattern</vh></v>
-<v t="ekr.20220525082936.318"><vh>NodeVisitor.visit_singleton_pattern</vh></v>
-<v t="ekr.20220525082936.319"><vh>NodeVisitor.visit_sequence_pattern</vh></v>
-<v t="ekr.20220525082936.320"><vh>NodeVisitor.visit_starred_pattern</vh></v>
-<v t="ekr.20220525082936.321"><vh>NodeVisitor.visit_mapping_pattern</vh></v>
-<v t="ekr.20220525082936.322"><vh>NodeVisitor.visit_class_pattern</vh></v>
-</v>
-</v>
-<v t="ekr.20220525082936.323"><vh>@clean __init__.py</vh></v>
-<v t="ekr.20220525082936.324"><vh>@clean __main__.py</vh>
-<v t="ekr.20220525082936.325"><vh>console_entry</vh></v>
 </v>
 <v t="ekr.20220525082936.327"><vh>@path dmypy</vh>
 <v t="ekr.20220525082936.328"><vh>@clean client.py</vh>
@@ -6496,6 +6518,9 @@
 <v t="ekr.20220320050830.1"><vh>Recent files</vh>
 <v t="ekr.20220525082934.502"></v>
 <v t="ekr.20220525082933.340"></v>
+<v t="ekr.20220525082935.1316"></v>
+<v t="ekr.20220525082933.131"></v>
+<v t="ekr.20220525082933.340"></v>
 </v>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220530121430.1"><vh>--- Notes</vh>
@@ -6518,12 +6543,24 @@
 <v t="ekr.20220526075516.1"><vh>--- 1 use of matches_exclude</vh>
 <v t="ekr.20220525082934.834"></v>
 </v>
-<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
 </v>
 <v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
+<v t="ekr.20220603081942.1"><vh>--- ref</vh>
 <v t="ekr.20220525082934.945"></v>
 <v t="ekr.20220525082934.935"></v>
 <v t="ekr.20220601102059.1"><vh>From check-annotations.test</vh></v>
+<v t="ekr.20220603082651.1"><vh>COPY (changed) TypeChecker.check_for_missing_annotations</vh></v>
+<v t="ekr.20220601141113.1"><vh>clone-find-marked (flattened)</vh>
+<v t="ekr.20220525082934.1035"></v>
+<v t="ekr.20220525082934.1039"></v>
+<v t="ekr.20220525082934.1045"></v>
+<v t="ekr.20220525082934.1048"></v>
+<v t="ekr.20220525082934.1067"></v>
+</v>
+<v t="ekr.20220525082933.328"></v>
+</v>
+<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
+<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
 <v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
 <v t="ekr.20220525082933.377"></v>
 </vnodes>
@@ -6534,6 +6571,13 @@
 
 https://github.com/python/mypy/issues/12352
 PR: https://github.com/python/mypy/pull/12918
+
+implementation overview: https://github.com/python/mypy/wiki/Implementation-Overview
+type inference: https://mypy.readthedocs.io/en/stable/type_inference_and_annotations.html
+variance: https://mypy.readthedocs.io/en/stable/common_issues.html#variance
+
+- Create test file and trace through it.
+  Enable stdout?  Use --pdb?
 
 @language python
 
@@ -15704,18 +15748,6 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
 </t>
 <t tx="ekr.20220525082933.377">def check_for_missing_annotations(self, fdef: FuncItem) -&gt; None:
     # Check for functions with unspecified/not fully specified types.
-    
-    import pdb
-    import sys
-    if r'C:\Repos\leo-editor' not in sys.path:
-        sys.path.append(r'C:\Repos\leo-editor')
-    from leo.core import leoGlobals as g
-    assert g, pdb
-    # name = fdef._name
-    # print statements seem to be cached until later!
-    # g.printObj(fdef)
-    # g.trace(g.callers())
-
     def is_unannotated_any(t: Type) -&gt; bool:
         if not isinstance(t, ProperType):
             return False
@@ -15724,12 +15756,6 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
     has_explicit_annotation = (isinstance(fdef.type, CallableType)
                                and any(not is_unannotated_any(t)
                                        for t in fdef.type.arg_types + [fdef.type.ret_type]))
-
-    ### EKR: #12352: new function.           
-    def arg_is_unannotated_and_uninitialized(fdef: Any, t: Type):
-        if is_unannotated_any(t):
-            return True  ### Fail: to do: don't fail if the initializer is a known type.
-        return False
 
     show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
     check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
@@ -15754,10 +15780,9 @@ def enter_attribute_inference_context(self) -&gt; Iterator[None]:
             elif fdef.is_coroutine and isinstance(ret_type, Instance):
                 if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-            if fdef.name == 'f1_str':
-                pdb.set_trace()
-            if any(arg_is_unannotated_and_uninitialized(fdef, t) for t in fdef.type.arg_types):
+            if any(is_unannotated_any(t) for t in fdef.type.arg_types):
                 self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+
 </t>
 <t tx="ekr.20220525082933.378">def check___new___signature(self, fdef: FuncDef, typ: CallableType) -&gt; None:
     self_type = fill_typevars_with_any(fdef.info)
@@ -100418,20 +100443,26 @@ pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 ---    pass
 --- reveal_type(f1)  # N: Revealed type is "def (a: Any) -&gt; Any"
 
-def f1_str(a="abc") -&gt; Any:
+def f1_str(a="abc") -&gt; None:
     pass
-reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -&gt; Any"
+
+--- reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -&gt; None"
 
 [builtins fixtures/tuple.pyi]
 </t>
-<t tx="ekr.20220531174305.1">g.cls()
+<t tx="ekr.20220531174305.1">@language python
+g.cls()
 import subprocess
-# Must add the test file to mypy/test/testcheck.py
-test = 'mypy/test/testcheck.py::TypeCheckSuite::check-default-annotations.test'
-pdb = '--pdb'
-command = f"pytest {test} {pdb}"
+
+if 0:  # Standalone test.
+    command = 'mypy ekr_test.py'
+else:
+    # Must add the test file to mypy/test/testcheck.py
+    test = 'mypy/test/testcheck.py::TypeCheckSuite::check-default-annotations.test'
+    pdb = '' # '--pdb'
+    command = f"pytest {test} {pdb}"
 proc = subprocess.Popen(command, shell=True)
-print(proc)
+assert(proc)
 
 # Print statements don't seem to be useful: they are printed after all the tests run!
 
@@ -100620,6 +100651,102 @@ reveal_type(a)  # N: Revealed type is "builtins.int"
 <t tx="ekr.20220601131038.1"></t>
 <t tx="ekr.20220601131042.1">test-one
 test-all
+</t>
+<t tx="ekr.20220601141113.1"># Found 5 marked nodes</t>
+<t tx="ekr.20220603022429.1"></t>
+<t tx="ekr.20220603022501.1"></t>
+<t tx="ekr.20220603022652.1"></t>
+<t tx="ekr.20220603022738.1"></t>
+<t tx="ekr.20220603023322.1"></t>
+<t tx="ekr.20220603023451.1"></t>
+<t tx="ekr.20220603023507.1"></t>
+<t tx="ekr.20220603023612.1"></t>
+<t tx="ekr.20220603023835.1"></t>
+<t tx="ekr.20220603024215.1"></t>
+<t tx="ekr.20220603024255.1"></t>
+<t tx="ekr.20220603081942.1"></t>
+<t tx="ekr.20220603082651.1">def check_for_missing_annotations(self, fdef: FuncItem) -&gt; None:
+    # Check for functions with unspecified/not fully specified types.
+    
+    # from mypy.nodes import FloatExpr, IntExpr, StrExpr, UnicodeExpr
+    
+    # import pdb
+    # import sys
+    
+    # if r'C:\Repos\leo-editor' not in sys.path:
+        # sys.path.append(r'C:\Repos\leo-editor')
+    # from leo.core import leoGlobals as g
+    # assert g, pdb
+
+    def is_unannotated_any(t: Type) -&gt; bool:
+        if not isinstance(t, ProperType):
+            return False
+        return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
+
+    has_explicit_annotation = (isinstance(fdef.type, CallableType)
+                               and any(not is_unannotated_any(t)
+                                       for t in fdef.type.arg_types + [fdef.type.ret_type]))
+
+    ### EKR: #12352: new function.           
+    def any_arg_is_unannotated(fdef: Any):
+        if fdef.name == 'f1_str':
+            trace = []
+            for i, arg in enumerate(fdef.arguments):
+                # g.printObj(z)
+                trace.append(f"          arg i: {i}\n")
+                trace.append(f"           kind: {arg.kind}\n")
+                trace.append(f"    initializer: {arg.initializer}\n")
+                trace.append(f"type_annotation: {arg.type_annotation}\n")
+                trace.append(f"       variable: {arg.variable}\n")
+            ### pdb.set_trace()  # Enables stdout.
+            print(''.join(trace))
+            # for arg in fdef.arguments:
+                # # g.printObj(z)
+                # print(f"           kind: {arg.kind}")
+                # print(f"    initializer: {arg.initializer}")
+                # print(f"type_annotation: {arg.type_annotation}")
+                # print(f"       variable: {arg.variable}")
+                
+        for arg in fdef.arguments:
+            if not arg.type_annotation:
+                return True  # Fail
+            # if isinstance(arg.initializer, (FloatExpr, IntExpr, StrExpr, UnicodeExpr)):
+                # pass
+            # elif not arg.type_annotation:
+                # return True  # Fail
+        return False  # All good.
+
+        # Legacy equivalent.
+        # for t in fdef.type.arg_types:
+            # if is_unannotated_any(t):
+                # return True  # Fail
+        # return False
+
+    show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
+    check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
+    if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
+        if fdef.type is None and self.options.disallow_untyped_defs:
+            if (not fdef.arguments or (len(fdef.arguments) == 1 and
+                    (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
+                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+                if not has_return_statement(fdef) and not fdef.is_generator:
+                    self.note('Use "-&gt; None" if function does not return a value', fdef,
+                              code=codes.NO_UNTYPED_DEF)
+            else:
+                self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
+        elif isinstance(fdef.type, CallableType):
+            ret_type = get_proper_type(fdef.type.ret_type)
+            if is_unannotated_any(ret_type):
+                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+            elif fdef.is_generator:
+                if is_unannotated_any(self.get_generator_return_type(ret_type,
+                                                                     fdef.is_coroutine)):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+            elif fdef.is_coroutine and isinstance(ret_type, Instance):
+                if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
+                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
+            if any_arg_is_unannotated(fdef):
+                self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 </t>
 </tnodes>
 </leo_file>

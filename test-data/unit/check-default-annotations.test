@@ -7,8 +7,9 @@
 ---    pass
 --- reveal_type(f1)  # N: Revealed type is "def (a: Any) -> Any"
 
-def f1_str(a="abc") -> Any:
+def f1_str(a="abc") -> None:
     pass
-reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -> Any"
+
+--- reveal_type(f1_str)  # N: Revealed type is "def (a: Any =) -> None"
 
 [builtins fixtures/tuple.pyi]
