@@ -67,9 +67,11 @@ from mypyc.ir.ops import (
     Assign,
     BasicBlock,
     Branch,
+    ComparisonOp,
     GetAttr,
     InitStatic,
     Integer,
+    IntOp,
     LoadStatic,
     Op,
     RaiseStandardError,
@@ -87,6 +89,7 @@ from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
     dict_rprimitive,
     int_rprimitive,
+    is_fixed_width_rtype,
     is_list_rprimitive,
     is_none_rprimitive,
     is_object_rprimitive,
@@ -94,6 +97,7 @@ from mypyc.ir.rtypes import (
     none_rprimitive,
     object_rprimitive,
     str_rprimitive,
+    uint32_rprimitive,
 )
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
@@ -450,6 +454,24 @@ class IRBuilder:
         """If target is NULL, assign value produced by get_val to it."""
         error_block, body_block = BasicBlock(), BasicBlock()
         self.add(Branch(target, error_block, body_block, Branch.IS_ERROR))
+        self.activate_block(error_block)
+        self.add(Assign(target, self.coerce(get_val(), target.type, line)))
+        self.goto(body_block)
+        self.activate_block(body_block)
+
+    def assign_if_bitmap_unset(
+        self, target: Register, get_val: Callable[[], Value], index: int, line: int
+    ) -> None:
+        error_block, body_block = BasicBlock(), BasicBlock()
+        o = self.int_op(
+            uint32_rprimitive,
+            self.builder.args[-1 - index // 32],
+            Integer(1 << (index & 31), uint32_rprimitive),
+            IntOp.AND,
+            line,
+        )
+        b = self.add(ComparisonOp(o, Integer(0, uint32_rprimitive), ComparisonOp.EQ))
+        self.add(Branch(b, error_block, body_block, Branch.BOOL))
         self.activate_block(error_block)
         self.add(Assign(target, self.coerce(get_val(), target.type, line)))
         self.goto(body_block)
@@ -1259,6 +1281,7 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
     value to the argument.
     """
     fitem = builder.fn_info.fitem
+    nb = 0
     for arg in fitem.arguments:
         if arg.initializer:
             target = builder.lookup(arg.variable)
@@ -1284,7 +1307,14 @@ def gen_arg_defaults(builder: IRBuilder) -> None:
                     )
 
             assert isinstance(target, AssignmentTargetRegister)
-            builder.assign_if_null(target.register, get_default, arg.initializer.line)
+            reg = target.register
+            if not is_fixed_width_rtype(reg.type):
+                builder.assign_if_null(target.register, get_default, arg.initializer.line)
+            else:
+                builder.assign_if_bitmap_unset(
+                    target.register, get_default, nb, arg.initializer.line
+                )
+                nb += 1
 
 
 def remangle_redefinition_name(name: str) -> str:

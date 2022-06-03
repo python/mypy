@@ -112,6 +112,7 @@ from mypyc.ir.rtypes import (
     pointer_rprimitive,
     short_int_rprimitive,
     str_rprimitive,
+    uint32_rprimitive,
 )
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import concrete_arg_kind
@@ -956,8 +957,14 @@ class LowLevelIRBuilder:
         and coerce arguments to the appropriate type.
         """
 
-        sig_arg_kinds = [arg.kind for arg in sig.args]
-        sig_arg_names = [arg.name for arg in sig.args]
+        sig_args = sig.args
+        n = sig.num_bitmap_args
+        if n:
+            sig_args = sig_args[:-n]
+
+        sig_arg_kinds = [arg.kind for arg in sig_args]
+        sig_arg_names = [arg.name for arg in sig_args]
+
         concrete_kinds = [concrete_arg_kind(arg_kind) for arg_kind in arg_kinds]
         formal_to_actual = map_actuals_to_formals(
             concrete_kinds,
@@ -970,7 +977,7 @@ class LowLevelIRBuilder:
         # First scan for */** and construct those
         has_star = has_star2 = False
         star_arg_entries = []
-        for lst, arg in zip(formal_to_actual, sig.args):
+        for lst, arg in zip(formal_to_actual, sig_args):
             if arg.kind.is_star():
                 star_arg_entries.extend([(args[i], arg_kinds[i], arg_names[i]) for i in lst])
             has_star = has_star or arg.kind == ARG_STAR
@@ -983,8 +990,8 @@ class LowLevelIRBuilder:
         # Flatten out the arguments, loading error values for default
         # arguments, constructing tuples/dicts for star args, and
         # coercing everything to the expected type.
-        output_args = []
-        for lst, arg in zip(formal_to_actual, sig.args):
+        output_args: List[Value] = []
+        for lst, arg in zip(formal_to_actual, sig_args):
             if arg.kind == ARG_STAR:
                 assert star_arg
                 output_arg = star_arg
@@ -992,7 +999,10 @@ class LowLevelIRBuilder:
                 assert star2_arg
                 output_arg = star2_arg
             elif not lst:
-                output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
+                if is_fixed_width_rtype(arg.type):
+                    output_arg = Integer(0, arg.type)
+                else:
+                    output_arg = self.add(LoadErrorValue(arg.type, is_borrowed=True))
             else:
                 base_arg = args[lst[0]]
 
@@ -1002,6 +1012,17 @@ class LowLevelIRBuilder:
                     output_arg = self.coerce(base_arg, arg.type, line)
 
             output_args.append(output_arg)
+
+        for i in reversed(range(n)):
+            bitmap = 0
+            c = 0
+            for lst, arg in zip(formal_to_actual, sig_args):
+                if arg.kind.is_optional() and is_fixed_width_rtype(arg.type):
+                    if i * 32 <= c < (i + 1) * 32:
+                        if lst:
+                            bitmap |= 1 << (c & 31)
+                    c += 1
+            output_args.append(Integer(bitmap, uint32_rprimitive))
 
         return output_args
 

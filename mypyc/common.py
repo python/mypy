@@ -128,3 +128,9 @@ def short_id_from_name(func_name: str, shortname: str, line: int | None) -> str:
     else:
         partial_name = shortname
     return partial_name
+
+
+def bitmap_name(index: int) -> str:
+    if index == 0:
+        return "__bitmap"
+    return f"__bitmap{index + 1}"

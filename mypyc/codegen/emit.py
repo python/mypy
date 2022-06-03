@@ -986,7 +986,11 @@ class Emitter:
 
     def emit_error_check(self, value: str, rtype: RType, failure: str) -> None:
         """Emit code for checking a native function return value for uncaught exception."""
-        if not isinstance(rtype, RTuple):
+        if is_fixed_width_rtype(rtype):
+            # The error value is also valid as a normal value, so we need to also check
+            # for a raised exception.
+            self.emit_line(f"if ({value} == {self.c_error_value(rtype)} && PyErr_Occurred()) {{")
+        elif not isinstance(rtype, RTuple):
             self.emit_line(f"if ({value} == {self.c_error_value(rtype)}) {{")
         else:
             if len(rtype.types) == 0:
