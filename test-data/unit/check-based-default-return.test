@@ -101,7 +101,7 @@ class A:
 
 f = lambda x: x
 g = lambda: ...
-reveal_type(f)  # N: Revealed type is "def (x: Untyped) -> Any (unknown)"
+reveal_type(f)  # N: Revealed type is "def (x: Untyped) -> Any"
 reveal_type(g)  # N: Revealed type is "def () -> ellipsis"
 
 

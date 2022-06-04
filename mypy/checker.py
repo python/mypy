@@ -3500,7 +3500,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_subtype(rvalue_type, lvalue_type, context, msg,
                                    f'{rvalue_name} has type',
                                    f'{lvalue_name} has type', code=code)
-                if isinstance(rvalue, (NameExpr, MemberExpr)):
+                if not self.current_node_deferred and isinstance(rvalue, (NameExpr, MemberExpr)):
                     if (
                         self.options.disallow_untyped_calls
                         and isinstance(rvalue_type, UntypedType)

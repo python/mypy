@@ -964,7 +964,7 @@ class AnyType(ProperType):
             elif type_of_any == TypeOfAny.from_error:
                 return "from error"
             elif type_of_any == TypeOfAny.special_form:
-                return "unknown"
+                return None
             elif type_of_any == TypeOfAny.from_another_any:
                 return (describe_type_of_any(self.source_any.type_of_any)
                         if self.source_any else None)
