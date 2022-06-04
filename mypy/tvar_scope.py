@@ -13,6 +13,8 @@ class TypeVarLikeScope:
     Node fullname -> TypeVarLikeType.
     """
 
+    ekr_callers_dict = {}
+
     def __init__(self,
                  parent: 'Optional[TypeVarLikeScope]' = None,
                  is_class_scope: bool = False,
@@ -26,6 +28,14 @@ class TypeVarLikeScope:
           prohibited: Type variables that aren't strictly in scope exactly,
                       but can't be bound because they're part of an outer class's scope.
         """
+        if 0: ###
+            from leo.core import leoGlobals as g
+            callers = g.callers(3)
+            parent_s = parent.__class__.__name__ if parent else ''
+            key = f"{parent_s}:{callers}"
+            if key not in self.ekr_callers_dict:
+                self.ekr_callers_dict [key] = True
+                g.trace(f"{parent_s:>18} ns: {namespace or '':15} {callers}")
         self.scope: Dict[str, TypeVarLikeType] = {}
         self.parent = parent
         self.func_id = 0

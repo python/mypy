@@ -655,7 +655,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.prepare_method_signature(defn, self.type)
 
         # Analyze function signature
+        from leo.core import leoGlobals as g  ###
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+            
+            if defn._name.startswith('f1_str'):  ###
+                g.pdb()
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)

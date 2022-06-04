@@ -73,6 +73,11 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     The scc will be processed roughly in the order the modules are included
     in the list.
     """
+    ### import pdb ; pdb.set_trace()
+    ### from leo.core import leoGlobals as g
+    
+    ### Something here cause error messages to be printed LATER.
+
     patches: Patches = []
     # Note that functions can't define new module-level attributes
     # using 'global x', since module top levels are fully processed

@@ -59,6 +59,11 @@ def main(script_path: Optional[str],
         clean_exit: Don't hard kill the process on exit. This allows catching
             SystemExit.
     """
+    if 1:  ### Add Leo to sys.path
+        path = r'C:\Repos\leo-editor'
+        if path not in sys.path:
+            sys.path.append(path)
+        
     util.check_python_version('mypy')
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
