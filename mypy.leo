@@ -1455,7 +1455,7 @@
 <v t="ekr.20220525082935.1175"><vh>@clean typeanal.py</vh>
 <v t="ekr.20220525082935.1176"><vh>analyze_type_alias</vh></v>
 <v t="ekr.20220525082935.1177"><vh>no_subscript_builtin_alias</vh></v>
-<v t="ekr.20220525082935.1178"><vh>class TypeAnalyser</vh>
+<v t="ekr.20220525082935.1178"><vh>class TypeAnalyser ***</vh>
 <v t="ekr.20220525082935.1179"><vh>TypeAnalyser.__init__</vh></v>
 <v t="ekr.20220525082935.1180"><vh>TypeAnalyser.visit_unbound_type</vh></v>
 <v t="ekr.20220525082935.1181"><vh>TypeAnalyser.visit_unbound_type_nonoptional</vh></v>
@@ -1479,7 +1479,7 @@
 <v t="ekr.20220525082935.1199"><vh>TypeAnalyser.visit_type_var_tuple</vh></v>
 <v t="ekr.20220525082935.1200"><vh>TypeAnalyser.visit_unpack_type</vh></v>
 <v t="ekr.20220525082935.1201"><vh>TypeAnalyser.visit_parameters</vh></v>
-<v t="ekr.20220525082935.1202"><vh>TypeAnalyser.visit_callable_type</vh></v>
+<v t="ekr.20220525082935.1202"><vh>TypeAnalyser.visit_callable_type (*** to be changed)</vh></v>
 <v t="ekr.20220525082935.1203"><vh>TypeAnalyser.anal_type_guard</vh></v>
 <v t="ekr.20220525082935.1204"><vh>TypeAnalyser.anal_type_guard_arg</vh></v>
 <v t="ekr.20220525082935.1205"><vh>TypeAnalyser.anal_star_arg_type</vh></v>
@@ -6516,12 +6516,13 @@
 </v>
 </v>
 <v t="ekr.20220320050830.1"><vh>Recent files</vh>
-<v t="ekr.20220525082934.502"></v>
 <v t="ekr.20220525082933.340"></v>
 <v t="ekr.20220525082935.1316"></v>
 <v t="ekr.20220525082933.131"></v>
 <v t="ekr.20220525082933.340"></v>
+<v t="ekr.20220525082934.502"></v>
 </v>
+<v t="ekr.20220525082933.166"></v>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220530121430.1"><vh>--- Notes</vh>
 <v t="ekr.20220530121437.1"><vh>Adding tests</vh></v>
@@ -6544,25 +6545,83 @@
 <v t="ekr.20220525082934.834"></v>
 </v>
 </v>
-<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
 <v t="ekr.20220603081942.1"><vh>--- ref</vh>
-<v t="ekr.20220525082934.945"></v>
-<v t="ekr.20220525082934.935"></v>
 <v t="ekr.20220601102059.1"><vh>From check-annotations.test</vh></v>
 <v t="ekr.20220603082651.1"><vh>COPY (changed) TypeChecker.check_for_missing_annotations</vh></v>
-<v t="ekr.20220601141113.1"><vh>clone-find-marked (flattened)</vh>
+<v t="ekr.20220525082933.328"></v>
+<v t="ekr.20220525082933.377"></v>
+</v>
+<v t="ekr.20220603083720.1"><vh>--- testing</vh>
+<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
+<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
+<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
+<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
+</v>
+<v t="ekr.20220604073659.1"><vh>--- logs</vh>
+<v t="ekr.20220603105128.1"><vh>log: main.py</vh>
+<v t="ekr.20220603103733.1"><vh>process_options: sources</vh></v>
+<v t="ekr.20220603103653.1"><vh>process_options: Options</vh></v>
+</v>
+<v t="ekr.20220603105155.1"><vh>log: build.py</vh></v>
+<v t="ekr.20220603111629.1"><vh>log: semanal_main.py</vh></v>
+<v t="ekr.20220604112118.1"><vh>log: pdb.w from analyze_func_def</vh></v>
+</v>
+<v t="ekr.20220604084307.1"><vh>--- changed</vh>
+<v t="ekr.20220525082935.1166"></v>
+<v t="ekr.20220525082934.504"></v>
+</v>
+<v t="ekr.20220603103251.1"><vh>--- main calling sequence</vh>
+<v t="ekr.20220525082934.504"></v>
+<v t="ekr.20220525082934.505"></v>
+<v t="ekr.20220525082933.217"></v>
+<v t="ekr.20220525082933.219"></v>
+<v t="ekr.20220525082933.321"></v>
+<v t="ekr.20220525082933.328"></v>
+<v t="ekr.20220525082933.331"></v>
+<v t="ekr.20220525082935.309"></v>
+</v>
+<v t="ekr.20220604075851.1"><vh>--- Annotation data</vh></v>
+<v t="ekr.20220601141113.1"><vh>--- constant nodes</vh>
 <v t="ekr.20220525082934.1035"></v>
 <v t="ekr.20220525082934.1039"></v>
 <v t="ekr.20220525082934.1045"></v>
 <v t="ekr.20220525082934.1048"></v>
 <v t="ekr.20220525082934.1067"></v>
 </v>
+<v t="ekr.20220604115701.1"><vh>--- type-related classes</vh>
+<v t="ekr.20220525082934.945"></v>
+<v t="ekr.20220525082934.935"></v>
+<v t="ekr.20220525082935.1165"></v>
+<v t="ekr.20220525082935.1178"></v>
+<v t="ekr.20220525082935.1476"></v>
+<v t="ekr.20220525082934.1067"></v>
+</v>
+<v t="ekr.20220525082935.21"></v>
+<v t="ekr.20220525082935.37"></v>
+<v t="ekr.20220525082935.34"></v>
+<v t="ekr.20220525082935.1202"></v>
+<v t="ekr.20220604120250.1"><vh>git diff HEAD </vh>
+<v t="ekr.20220604120252.34"><vh>mypy/build.py</vh>
+<v t="ekr.20220604120252.289"><vh>Changed</vh>
+<v t="ekr.20220604120252.290"><vh>build</vh>
+<v t="ekr.20220604120252.291"><vh>Old:build</vh></v>
+<v t="ekr.20220525082933.217"></v>
+</v>
+<v t="ekr.20220604120252.292"><vh>dispatch</vh>
+<v t="ekr.20220604120252.293"><vh>Old:dispatch</vh></v>
+<v t="ekr.20220525082933.321"></v>
+</v>
+<v t="ekr.20220604120252.294"><vh>process_graph</vh>
+<v t="ekr.20220604120252.295"><vh>Old:process_graph</vh></v>
 <v t="ekr.20220525082933.328"></v>
 </v>
-<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
-<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
-<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
-<v t="ekr.20220525082933.377"></v>
+<v t="ekr.20220604120252.296"><vh>process_stale_scc</vh>
+<v t="ekr.20220604120252.297"><vh>Old:process_stale_scc</vh></v>
+<v t="ekr.20220525082933.331"></v>
+</v>
+</v>
+</v>
+</v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220319232947.1"></t>
@@ -6573,11 +6632,7 @@ https://github.com/python/mypy/issues/12352
 PR: https://github.com/python/mypy/pull/12918
 
 implementation overview: https://github.com/python/mypy/wiki/Implementation-Overview
-type inference: https://mypy.readthedocs.io/en/stable/type_inference_and_annotations.html
-variance: https://mypy.readthedocs.io/en/stable/common_issues.html#variance
-
-- Create test file and trace through it.
-  Enable stdout?  Use --pdb?
+forum: https://github.com/edreamleo/ekr-mypy/discussions/
 
 @language python
 
@@ -10932,6 +10987,7 @@ class BuildResult:
       fscache: optionally a file-system cacher
 
     """
+
     # If we were not given a flush_errors, we use one that will populate those
     # fields for callers that want the traditional API.
     messages = []
@@ -13822,6 +13878,7 @@ if __name__ == '__main__':
              manager: BuildManager,
              stdout: TextIO,
              ) -&gt; Graph:
+
     log_configuration(manager, sources)
 
     t0 = time.time()
@@ -14118,6 +14175,7 @@ if __name__ == '__main__':
 </t>
 <t tx="ekr.20220525082933.328">def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
     """Process everything in dependency order."""
+
     sccs = sorted_components(graph)
     manager.log("Found %d SCCs; largest has %d nodes" %
                 (len(sccs), max(len(scc) for scc in sccs)))
@@ -14333,6 +14391,7 @@ if __name__ == '__main__':
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
+
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -45322,6 +45381,11 @@ MEM_PROFILE: Final = False  # If True, dump memory profile
         clean_exit: Don't hard kill the process on exit. This allows catching
             SystemExit.
     """
+    if 1:  ### Add Leo to sys.path
+        path = r'C:\Repos\leo-editor'
+        if path not in sys.path:
+            sys.path.append(path)
+        
     util.check_python_version('mypy')
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
@@ -56039,7 +56103,9 @@ from mypy.nodes import (
 
     @others
 </t>
-<t tx="ekr.20220525082935.1166">def __init__(self,
+<t tx="ekr.20220525082935.1166">ekr_callers_dict = {}
+
+def __init__(self,
              parent: 'Optional[TypeVarLikeScope]' = None,
              is_class_scope: bool = False,
              prohibited: 'Optional[TypeVarLikeScope]' = None,
@@ -56052,6 +56118,14 @@ from mypy.nodes import (
       prohibited: Type variables that aren't strictly in scope exactly,
                   but can't be bound because they're part of an outer class's scope.
     """
+    if 0: ###
+        from leo.core import leoGlobals as g
+        callers = g.callers(3)
+        parent_s = parent.__class__.__name__ if parent else ''
+        key = f"{parent_s}:{callers}"
+        if key not in self.ekr_callers_dict:
+            self.ekr_callers_dict [key] = True
+            g.trace(f"{parent_s:&gt;18} ns: {namespace or '':15} {callers}")
     self.scope: Dict[str, TypeVarLikeType] = {}
     self.parent = parent
     self.func_id = 0
@@ -56325,8 +56399,7 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
     # Is this called from global scope?
     global_scope: bool = True
 
-    @others
-</t>
+    @others</t>
 <t tx="ekr.20220525082935.1179">def __init__(self,
              api: SemanticAnalyzerCoreInterface,
              tvar_scope: TypeVarLikeScope,
@@ -64461,7 +64534,11 @@ def file_context(self,
         self.prepare_method_signature(defn, self.type)
 
     # Analyze function signature
+    from leo.core import leoGlobals as g  ###
     with self.tvar_scope_frame(self.tvar_scope.method_frame()):
+        
+        if defn._name.startswith('f1_str'):  ###
+            g.pdb()
         if defn.type:
             self.check_classvar_in_signature(defn.type)
             assert isinstance(defn.type, CallableType)
@@ -66402,6 +66479,11 @@ core_modules: Final = ['typing', 'builtins', 'abc', 'collections']
     The scc will be processed roughly in the order the modules are included
     in the list.
     """
+    ### import pdb ; pdb.set_trace()
+    ### from leo.core import leoGlobals as g
+    
+    ### Something here cause error messages to be printed LATER.
+
     patches: Patches = []
     # Note that functions can't define new module-level attributes
     # using 'global x', since module top levels are fully processed
@@ -100454,7 +100536,7 @@ def f1_str(a="abc") -&gt; None:
 g.cls()
 import subprocess
 
-if 0:  # Standalone test.
+if 1:  # Standalone test.
     command = 'mypy ekr_test.py'
 else:
     # Must add the test file to mypy/test/testcheck.py
@@ -100747,6 +100829,687 @@ test-all
                     self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
             if any_arg_is_unannotated(fdef):
                 self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
+</t>
+<t tx="ekr.20220603083720.1"></t>
+<t tx="ekr.20220603103251.1">@language python
+@nowrap
+
+
+</t>
+<t tx="ekr.20220603103653.1">Options({'allow_redefinition': False,
+ 'allow_untyped_globals': False,
+ 'always_false': [],
+ 'always_true': [],
+ 'bazel': False,
+ 'build_type': 0,
+ 'cache_dir': 'None',
+ 'cache_fine_grained': False,
+ 'cache_map': {},
+ 'check_untyped_defs': True,
+ 'color_output': True,
+ 'config_file': '.mypy.ini',
+ 'custom_typeshed_dir': None,
+ 'custom_typing_module': None,
+ 'debug_cache': False,
+ 'disable_error_code': [],
+ 'disabled_error_codes': set(),
+ 'disallow_any_decorated': False,
+ 'disallow_any_explicit': False,
+ 'disallow_any_expr': False,
+ 'disallow_any_generics': False,
+ 'disallow_any_unimported': False,
+ 'disallow_incomplete_defs': True,
+ 'disallow_subclassing_any': False,
+ 'disallow_untyped_calls': False,
+ 'disallow_untyped_decorators': False,
+ 'disallow_untyped_defs': True,
+ 'dump_build_stats': False,
+ 'dump_deps': False,
+ 'dump_graph': False,
+ 'dump_inference_stats': False,
+ 'dump_type_stats': False,
+ 'enable_error_code': [],
+ 'enable_incomplete_features': False,
+ 'enabled_error_codes': set(),
+ 'error_summary': True,
+ 'exclude': [''],
+ 'explicit_package_bases': False,
+ 'export_types': False,
+ 'fast_exit': True,
+ 'fast_module_lookup': False,
+ 'files': None,
+ 'fine_grained_incremental': False,
+ 'follow_imports': 'normal',
+ 'follow_imports_for_stubs': False,
+ 'ignore_errors': False,
+ 'ignore_missing_imports': False,
+ 'ignore_missing_imports_per_module': False,
+ 'implicit_reexport': True,
+ 'incremental': False,
+ 'install_types': False,
+ 'junit_xml': None,
+ 'local_partial_types': False,
+ 'logical_deps': False,
+ 'many_errors_threshold': 200,
+ 'mypy_path': [],
+ 'mypyc': False,
+ 'namespace_packages': False,
+ 'no_implicit_optional': False,
+ 'no_silence_site_packages': False,
+ 'no_site_packages': False,
+ 'non_interactive': False,
+ 'package_root': [],
+ 'pdb': False,
+ 'per_module_options': {},
+ 'platform': 'win32',
+ 'plugins': [],
+ 'preserve_asts': False,
+ 'pretty': False,
+ 'python_executable': 'C:\\Repos\\ekr-mypy\\venv\\Scripts\\python.exe',
+ 'python_version': (3, 9),
+ 'quickstart_file': None,
+ 'raise_exceptions': False,
+ 'report_dirs': {},
+ 'scripts_are_modules': False,
+ 'semantic_analysis_only': False,
+ 'shadow_file': None,
+ 'show_absolute_path': False,
+ 'show_column_numbers': False,
+ 'show_error_codes': True,
+ 'show_error_context': False,
+ 'show_none_errors': True,
+ 'show_traceback': False,
+ 'skip_cache_mtime_checks': False,
+ 'skip_version_check': False,
+ 'sqlite_cache': False,
+ 'strict_concatenate': False,
+ 'strict_equality': False,
+ 'strict_optional': True,
+ 'strict_optional_whitelist': None,
+ 'timing_stats': None,
+ 'transform_source': None,
+ 'unused_configs': set(),
+ 'use_builtins_fixtures': False,
+ 'use_fine_grained_cache': False,
+ 'verbosity': 0,
+ 'warn_incomplete_stub': False,
+ 'warn_no_return': True,
+ 'warn_redundant_casts': False,
+ 'warn_return_any': False,
+ 'warn_unreachable': False,
+ 'warn_unused_configs': False,
+ 'warn_unused_ignores': False})</t>
+<t tx="ekr.20220603103733.1">@language python
+
+sources = [
+    BuildSource(
+        path='ekr_test.py', module='ekr_test', has_text=False,
+        base_dir='C:\\Repos\\ekr-mypy')
+]
+
+</t>
+<t tx="ekr.20220603105128.1">main.py: main():
+
+sources, options = process_options(...)
+res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+
+main.py: run_build():
+
+res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+# Gives error message.
+res: &lt;mypy.build.BuildResult object at 0x000001EFAA73C340&gt;
+</t>
+<t tx="ekr.20220603105155.1">build.py: _build:
+    
+search_paths = SearchPaths(
+    python_path=('C:\\Repos\\ekr-mypy', 'C:\\Repos\\ekr-mypy'),
+    mypy_path=(),
+    package_path=(
+        'C:\\Repos\\ekr-mypy\\venv\\Scripts',
+        'C:\\Python\\Python3.10\\python310.zip',
+        'C:\\Python\\Python3.10\\DLLs',
+        'C:\\Python\\Python3.10\\lib',
+        'C:\\Python\\Python3.10',
+        'C:\\Repos\\ekr-mypy\\venv',
+        'C:\\Repos\\ekr-mypy\\venv\\lib\\site-packages',
+        'c:\\repos\\ekr-mypy'
+    ),
+    typeshed_path=(
+        'c:\\repos\\ekr-mypy\\mypy\\typeshed\\stdlib',
+        'c:\\repos\\ekr-mypy\\mypy\\typeshed\\stubs\\mypy-extensions'
+    )
+)
+
+source_set = &lt;mypy.modulefinder.BuildSourceSet object at 0x000001B0A6285630&gt;
+
+graph = dispatch(sources, manager, stdout)
+# Gives error.
+
+graph = {
+    'ekr_test': &lt;mypy.build.State object at 0x000001B0A635C100&gt;,
+
+    '_ast': &lt;mypy.build.State object at 0x000001B0A635FD30&gt;,
+    '_collections_abc': &lt;mypy.build.State object at 0x000001B0A635EB00&gt;,
+    '_typeshed': &lt;mypy.build.State object at 0x000001B0A6386110&gt;,
+    '_winapi': &lt;mypy.build.State object at 0x000001B0A638E0E0&gt;,
+    'abc': &lt;mypy.build.State object at 0x000001B0A655E950&gt;,
+    'array': &lt;mypy.build.State object at 0x000001B0A639E530&gt;,
+    'builtins': &lt;mypy.build.State object at 0x000001B0A635C130&gt;,
+    'codecs': &lt;mypy.build.State object at 0x000001B0A63876D0&gt;,
+    'collections': &lt;mypy.build.State object at 0x000001B0A639FDC0&gt;,
+    'collections.abc': &lt;mypy.build.State object at 0x000001B0A639EE60&gt;,
+    'contextlib': &lt;mypy.build.State object at 0x000001B0A6382290&gt;,
+    'ctypes': &lt;mypy.build.State object at 0x000001B0A638A5C0&gt;,
+    'email': &lt;mypy.build.State object at 0x000001B0A7247EE0&gt;,
+    'email.charset': &lt;mypy.build.State object at 0x000001B0A7247FD0&gt;,
+    'email.contentmanager': &lt;mypy.build.State object at 0x000001B0A7247C40&gt;,
+    'email.errors': &lt;mypy.build.State object at 0x000001B0A7247A00&gt;,
+    'email.header': &lt;mypy.build.State object at 0x000001B0A639CD30&gt;,
+    'email.message': &lt;mypy.build.State object at 0x000001B0A6389DB0&gt;,
+    'email.policy': &lt;mypy.build.State object at 0x000001B0A639D960&gt;,
+    'genericpath': &lt;mypy.build.State object at 0x000001B0A638D5D0&gt;,
+    'importlib': &lt;mypy.build.State object at 0x000001B0A638A290&gt;,
+    'importlib.abc': &lt;mypy.build.State object at 0x000001B0A655CE50&gt;,
+    'importlib.machinery': &lt;mypy.build.State object at 0x000001B0A638D7B0&gt;,
+    'importlib.metadata': &lt;mypy.build.State object at 0x000001B0A6385810&gt;,
+    'io': &lt;mypy.build.State object at 0x000001B0A639EA40&gt;,
+    'mmap': &lt;mypy.build.State object at 0x000001B0A655FC40&gt;,
+    'ntpath': &lt;mypy.build.State object at 0x000001B0A7247FA0&gt;,
+    'os': &lt;mypy.build.State object at 0x000001B0A6381D20&gt;,
+    'os.path': &lt;mypy.build.State object at 0x000001B0A6381E40&gt;,\
+    'pathlib': &lt;mypy.build.State object at 0x000001B0A638D630&gt;,
+    'pickle': &lt;mypy.build.State object at 0x000001B0A6385A20&gt;,
+    'posixpath': &lt;mypy.build.State object at 0x000001B0A655F490&gt;,
+    'subprocess': &lt;mypy.build.State object at 0x000001B0A63855A0&gt;,
+    'sys': &lt;mypy.build.State object at 0x000001B0A638B430&gt;,
+    'types': &lt;mypy.build.State object at 0x000001B0A638E350&gt;,
+    'typing': &lt;mypy.build.State object at 0x000001B0A638F580&gt;,
+    'typing_extensions': &lt;mypy.build.State object at 0x000001B0A6387250&gt;,
+}
+
+
+# in process_graph: Same keys as above.
+sccs = [frozenset(
+    {'email.contentmanager','email.header', 'types', 'sys', 'pickle', 'io', 'ntpath', 'collections.abc', 'importlib.metadata', 'genericpath', 'subprocess', 'mmap', 'importlib.machinery', 'collections', 'contextlib', 'pathlib', '_typeshed', 'builtins', 'email.message', 'email.policy', '_collections_abc', 'importlib', 'os', 'os.path', 'email.errors', 'email.charset', 'codecs', 'email', 'abc', 'typing_extensions', 'typing', '_ast', 'array', 'ctypes', 'importlib.abc', '_winapi', 'posixpath'}), frozenset({'ekr_test'})]
+    
+process_stale_scc
+# Takes a long time. Does *not* give error message.
+
+stale = [ # Same keys as above.
+    'typing_extensions', 'typing', 'types', 'sys', 'subprocess', 'posixpath', 'pickle', 'pathlib', 'os.path', 'os', 'ntpath', 'mmap', 'io', 'importlib.metadata', 'importlib.machinery', 'importlib.abc', 'importlib', 'genericpath', 'email.policy', 'email.message', 'email.header', 'email.errors', 'email.contentmanager', 'email.charset', 'email', 'ctypes', 'contextlib', 'collections.abc', 'collections', 'codecs', 'array', 'abc', '_winapi', '_typeshed', '_collections_abc', '_ast', 'builtins']
+
+</t>
+<t tx="ekr.20220603111629.1">semantic_analysis_for_scc</t>
+<t tx="ekr.20220604073659.1"></t>
+<t tx="ekr.20220604075851.1"></t>
+<t tx="ekr.20220604084307.1"></t>
+<t tx="ekr.20220604112118.1">(Pdb) w
+  __main__.py(12)console_entry()
+-&gt; main(None, sys.stdout, sys.stderr)
+  main.py(101)main()
+-&gt; res, messages, blockers = run_build(sources, options, fscache, t0, stdout, stderr)
+  main.py(178)run_build()
+-&gt; res = build.build(sources, options, None, flush_errors, fscache, stdout, stderr)
+  build.py(155)build()
+-&gt; result = _build(
+  build.py(231)_build()
+-&gt; graph = dispatch(sources, manager, stdout)
+  build.py(2731)dispatch()
+-&gt; process_graph(graph, manager)
+  build.py(3090)process_graph()
+-&gt; process_stale_scc(graph, scc, manager)
+  build.py(3183)process_stale_scc()
+-&gt; mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+  semanal_main.py(86)semantic_analysis_for_scc()
+-&gt; process_functions(graph, scc, patches)
+  semanal_main.py(242)process_functions()
+-&gt; process_top_level_function(analyzer,
+  semanal_main.py(283)process_top_level_function()
+-&gt; deferred, incomplete, progress = semantic_analyze_target(target, state, node, active_type,
+  semanal_main.py(335)semantic_analyze_target()
+-&gt; analyzer.refresh_partial(refresh_node,
+  semanal.py(417)refresh_partial()
+-&gt; self.accept(node)
+  semanal.py(5354)accept()
+-&gt; node.accept(self)
+  nodes.py(748)accept()
+-&gt; return visitor.visit_func_def(self)
+  semanal.py(637)visit_func_def()
+-&gt; self.analyze_func_def(defn)
+&gt; semanal.py(663)analyze_func_def()</t>
+<t tx="ekr.20220604115701.1"></t>
+<t tx="ekr.20220604120250.1">@ignore
+@nosearch
+HEAD=c4f85cd87</t>
+<t tx="ekr.20220604120252.289"></t>
+<t tx="ekr.20220604120252.290">@ignore
+@nosearch
+@language patch
+--- HEAD
++++ uncommitted
+@@ -29,6 +29,7 @@
+       fscache: optionally a file-system cacher
+ 
+     """
++
+     # If we were not given a flush_errors, we use one that will populate those
+     # fields for callers that want the traditional API.
+     messages = []
+@language python
+</t>
+<t tx="ekr.20220604120252.291">def build(sources: List[BuildSource],
+          options: Options,
+          alt_lib_path: Optional[str] = None,
+          flush_errors: Optional[Callable[[List[str], bool], None]] = None,
+          fscache: Optional[FileSystemCache] = None,
+          stdout: Optional[TextIO] = None,
+          stderr: Optional[TextIO] = None,
+          extra_plugins: Optional[Sequence[Plugin]] = None,
+          ) -&gt; BuildResult:
+    """Analyze a program.
+
+    A single call to build performs parsing, semantic analysis and optionally
+    type checking for the program *and* all imported modules, recursively.
+
+    Return BuildResult if successful or only non-blocking errors were found;
+    otherwise raise CompileError.
+
+    If a flush_errors callback is provided, all error messages will be
+    passed to it and the errors and messages fields of BuildResult and
+    CompileError (respectively) will be empty. Otherwise those fields will
+    report any error messages.
+
+    Args:
+      sources: list of sources to build
+      options: build options
+      alt_lib_path: an additional directory for looking up library modules
+        (takes precedence over other directories)
+      flush_errors: optional function to flush errors after a file is processed
+      fscache: optionally a file-system cacher
+
+    """
+    # If we were not given a flush_errors, we use one that will populate those
+    # fields for callers that want the traditional API.
+    messages = []
+
+    @others
+    flush_errors = flush_errors or default_flush_errors
+    stdout = stdout or sys.stdout
+    stderr = stderr or sys.stderr
+    extra_plugins = extra_plugins or []
+
+    try:
+        result = _build(
+            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
+        )
+        result.errors = messages
+        return result
+    except CompileError as e:
+        # CompileErrors raised from an errors object carry all of the
+        # messages that have not been reported out by error streaming.
+        # Patch it up to contain either none or all none of the messages,
+        # depending on whether we are flushing errors.
+        serious = not e.use_stdout
+        flush_errors(e.messages, serious)
+        e.messages = messages
+        raise
+
+
+</t>
+<t tx="ekr.20220604120252.292">@ignore
+@nosearch
+@language patch
+--- HEAD
++++ uncommitted
+@@ -2,6 +2,7 @@
+              manager: BuildManager,
+              stdout: TextIO,
+              ) -&gt; Graph:
++
+     log_configuration(manager, sources)
+ 
+     t0 = time.time()
+@language python
+</t>
+<t tx="ekr.20220604120252.293">def dispatch(sources: List[BuildSource],
+             manager: BuildManager,
+             stdout: TextIO,
+             ) -&gt; Graph:
+    log_configuration(manager, sources)
+
+    t0 = time.time()
+    graph = load_graph(sources, manager)
+
+    # This is a kind of unfortunate hack to work around some of fine-grained's
+    # fragility: if we have loaded less than 50% of the specified files from
+    # cache in fine-grained cache mode, load the graph again honestly.
+    # In this case, we just turn the cache off entirely, so we don't need
+    # to worry about some files being loaded and some from cache and so
+    # that fine-grained mode never *writes* to the cache.
+    if manager.use_fine_grained_cache() and len(graph) &lt; 0.50 * len(sources):
+        manager.log("Redoing load_graph without cache because too much was missing")
+        manager.cache_enabled = False
+        graph = load_graph(sources, manager)
+
+    t1 = time.time()
+    manager.add_stats(graph_size=len(graph),
+                      stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
+                                      for g in graph.values()),
+                      graph_load_time=(t1 - t0),
+                      fm_cache_size=len(manager.find_module_cache.results),
+                      )
+    if not graph:
+        print("Nothing to do?!", file=stdout)
+        return graph
+    manager.log(f"Loaded graph with {len(graph)} nodes ({t1 - t0:.3f} sec)")
+    if manager.options.dump_graph:
+        dump_graph(graph, stdout)
+        return graph
+
+    # Fine grained dependencies that didn't have an associated module in the build
+    # are serialized separately, so we read them after we load the graph.
+    # We need to read them both for running in daemon mode and if we are generating
+    # a fine-grained cache (so that we can properly update them incrementally).
+    # The `read_deps_cache` will also validate
+    # the deps cache against the loaded individual cache files.
+    if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
+        t2 = time.time()
+        fg_deps_meta = read_deps_cache(manager, graph)
+        manager.add_stats(load_fg_deps_time=time.time() - t2)
+        if fg_deps_meta is not None:
+            manager.fg_deps_meta = fg_deps_meta
+        elif manager.stats.get('fresh_metas', 0) &gt; 0:
+            # Clear the stats so we don't infinite loop because of positive fresh_metas
+            manager.stats.clear()
+            # There were some cache files read, but no fine-grained dependencies loaded.
+            manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
+            manager.cache_enabled = False
+            manager.log("Falling back to full run -- reloading graph...")
+            return dispatch(sources, manager, stdout)
+
+    # If we are loading a fine-grained incremental mode cache, we
+    # don't want to do a real incremental reprocess of the
+    # graph---we'll handle it all later.
+    if not manager.use_fine_grained_cache():
+        process_graph(graph, manager)
+        # Update plugins snapshot.
+        write_plugins_snapshot(manager)
+        manager.old_plugins_snapshot = manager.plugins_snapshot
+        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
+            # If we are running a daemon or are going to write cache for further fine grained use,
+            # then we need to collect fine grained protocol dependencies.
+            # Since these are a global property of the program, they are calculated after we
+            # processed the whole graph.
+            TypeState.add_all_protocol_deps(manager.fg_deps)
+            if not manager.options.fine_grained_incremental:
+                rdeps = generate_deps_for_cache(manager, graph)
+                write_deps_cache(rdeps, manager, graph)
+
+    if manager.options.dump_deps:
+        # This speeds up startup a little when not using the daemon mode.
+        from mypy.server.deps import dump_all_dependencies
+        dump_all_dependencies(manager.modules, manager.all_types,
+                              manager.options.python_version, manager.options)
+    return graph
+
+
+</t>
+<t tx="ekr.20220604120252.294">@ignore
+@nosearch
+@language patch
+--- HEAD
++++ uncommitted
+@@ -1,5 +1,6 @@
+ def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
+     """Process everything in dependency order."""
++
+     sccs = sorted_components(graph)
+     manager.log("Found %d SCCs; largest has %d nodes" %
+                 (len(sccs), max(len(scc) for scc in sccs)))
+@language python
+</t>
+<t tx="ekr.20220604120252.295">def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
+    """Process everything in dependency order."""
+    sccs = sorted_components(graph)
+    manager.log("Found %d SCCs; largest has %d nodes" %
+                (len(sccs), max(len(scc) for scc in sccs)))
+
+    fresh_scc_queue: List[List[str]] = []
+
+    # We're processing SCCs from leaves (those without further
+    # dependencies) to roots (those from which everything else can be
+    # reached).
+    for ascc in sccs:
+        # Order the SCC's nodes using a heuristic.
+        # Note that ascc is a set, and scc is a list.
+        scc = order_ascc(graph, ascc)
+        # Make the order of the SCC that includes 'builtins' and 'typing',
+        # among other things, predictable. Various things may  break if
+        # the order changes.
+        if 'builtins' in ascc:
+            scc = sorted(scc, reverse=True)
+            # If builtins is in the list, move it last.  (This is a bit of
+            # a hack, but it's necessary because the builtins module is
+            # part of a small cycle involving at least {builtins, abc,
+            # typing}.  Of these, builtins must be processed last or else
+            # some builtin objects will be incompletely processed.)
+            scc.remove('builtins')
+            scc.append('builtins')
+        if manager.options.verbosity &gt;= 2:
+            for id in scc:
+                manager.trace(f"Priorities for {id}:",
+                              " ".join("%s:%d" % (x, graph[id].priorities[x])
+                                       for x in graph[id].dependencies
+                                       if x in ascc and x in graph[id].priorities))
+        # Because the SCCs are presented in topological sort order, we
+        # don't need to look at dependencies recursively for staleness
+        # -- the immediate dependencies are sufficient.
+        stale_scc = {id for id in scc if not graph[id].is_fresh()}
+        fresh = not stale_scc
+        deps = set()
+        for id in scc:
+            deps.update(graph[id].dependencies)
+        deps -= ascc
+        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
+        fresh = fresh and not stale_deps
+        undeps = set()
+        if fresh:
+            # Check if any dependencies that were suppressed according
+            # to the cache have been added back in this run.
+            # NOTE: Newly suppressed dependencies are handled by is_fresh().
+            for id in scc:
+                undeps.update(graph[id].suppressed)
+            undeps &amp;= graph.keys()
+            if undeps:
+                fresh = False
+        if fresh:
+            # All cache files are fresh.  Check that no dependency's
+            # cache file is newer than any scc node's cache file.
+            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
+            viable = {id for id in stale_deps if graph[id].meta is not None}
+            newest_in_deps = 0 if not viable else max(graph[dep].xmeta.data_mtime
+                                                      for dep in viable)
+            if manager.options.verbosity &gt;= 3:  # Dump all mtimes for extreme debugging.
+                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
+                for id in all_ids:
+                    if id in scc:
+                        if graph[id].xmeta.data_mtime &lt; newest_in_deps:
+                            key = "*id:"
+                        else:
+                            key = "id:"
+                    else:
+                        if graph[id].xmeta.data_mtime &gt; oldest_in_scc:
+                            key = "+dep:"
+                        else:
+                            key = "dep:"
+                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
+            # If equal, give the benefit of the doubt, due to 1-sec time granularity
+            # (on some platforms).
+            if oldest_in_scc &lt; newest_in_deps:
+                fresh = False
+                fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
+            else:
+                fresh_msg = "fresh"
+        elif undeps:
+            fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
+        elif stale_scc:
+            fresh_msg = "inherently stale"
+            if stale_scc != ascc:
+                fresh_msg += f" ({' '.join(sorted(stale_scc))})"
+            if stale_deps:
+                fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
+        else:
+            fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
+
+        # Initialize transitive_error for all SCC members from union
+        # of transitive_error of dependencies.
+        if any(graph[dep].transitive_error for dep in deps if dep in graph):
+            for id in scc:
+                graph[id].transitive_error = True
+
+        scc_str = " ".join(scc)
+        if fresh:
+            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
+            fresh_scc_queue.append(scc)
+        else:
+            if len(fresh_scc_queue) &gt; 0:
+                manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
+                # Defer processing fresh SCCs until we actually run into a stale SCC
+                # and need the earlier modules to be loaded.
+                #
+                # Note that `process_graph` may end with us not having processed every
+                # single fresh SCC. This is intentional -- we don't need those modules
+                # loaded if there are no more stale SCCs to be rechecked.
+                #
+                # Also note we shouldn't have to worry about transitive_error here,
+                # since modules with transitive errors aren't written to the cache,
+                # and if any dependencies were changed, this SCC would be stale.
+                # (Also, in quick_and_dirty mode we don't care about transitive errors.)
+                #
+                # TODO: see if it's possible to determine if we need to process only a
+                # _subset_ of the past SCCs instead of having to process them all.
+                for prev_scc in fresh_scc_queue:
+                    process_fresh_modules(graph, prev_scc, manager)
+                fresh_scc_queue = []
+            size = len(scc)
+            if size == 1:
+                manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
+            else:
+                manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
+            process_stale_scc(graph, scc, manager)
+
+    sccs_left = len(fresh_scc_queue)
+    nodes_left = sum(len(scc) for scc in fresh_scc_queue)
+    manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
+    if sccs_left:
+        manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
+                    .format(sccs_left, nodes_left))
+        manager.trace(str(fresh_scc_queue))
+    else:
+        manager.log("No fresh SCCs left in queue")
+
+
+</t>
+<t tx="ekr.20220604120252.296">@ignore
+@nosearch
+@language patch
+--- HEAD
++++ uncommitted
+@@ -3,6 +3,7 @@
+ 
+     Exception: If quick_and_dirty is set, use the cache for fresh modules.
+     """
++
+     stale = scc
+     for id in stale:
+         # We may already have parsed the module, or not.
+@language python
+</t>
+<t tx="ekr.20220604120252.297">def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -&gt; None:
+    """Process the modules in one SCC from source code.
+
+    Exception: If quick_and_dirty is set, use the cache for fresh modules.
+    """
+    stale = scc
+    for id in stale:
+        # We may already have parsed the module, or not.
+        # If the former, parse_file() is a no-op.
+        graph[id].parse_file()
+    if 'typing' in scc:
+        # For historical reasons we need to manually add typing aliases
+        # for built-in generic collections, see docstring of
+        # SemanticAnalyzerPass2.add_builtin_aliases for details.
+        typing_mod = graph['typing'].tree
+        assert typing_mod, "The typing module was not parsed"
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+
+    # Track what modules aren't yet done so we can finish them as soon
+    # as possible, saving memory.
+    unfinished_modules = set(stale)
+    for id in stale:
+        graph[id].type_check_first_pass()
+        if not graph[id].type_checker().deferred_nodes:
+            unfinished_modules.discard(id)
+            graph[id].finish_passes()
+
+    while unfinished_modules:
+        for id in stale:
+            if id not in unfinished_modules:
+                continue
+            if not graph[id].type_check_second_pass():
+                unfinished_modules.discard(id)
+                graph[id].finish_passes()
+    for id in stale:
+        graph[id].generate_unused_ignore_notes()
+        graph[id].generate_ignore_without_code_notes()
+    if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
+        for id in stale:
+            graph[id].transitive_error = True
+    for id in stale:
+        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
+        graph[id].write_cache()
+        graph[id].mark_as_rechecked()
+
+
+</t>
+<t tx="ekr.20220604120252.34">@ignore
+@nosearch
+@language patch
+--- HEAD
++++ uncommitted
+@@ -138,6 +138,7 @@
+       fscache: optionally a file-system cacher
+ 
+     """
++
+     # If we were not given a flush_errors, we use one that will populate those
+     # fields for callers that want the traditional API.
+     messages = []
+@@ -2670,6 +2671,7 @@
+              manager: BuildManager,
+              stdout: TextIO,
+              ) -&gt; Graph:
++
+     log_configuration(manager, sources)
+ 
+     t0 = time.time()
+@@ -2958,6 +2960,7 @@
+ 
+ def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
+     """Process everything in dependency order."""
++
+     sccs = sorted_components(graph)
+     manager.log("Found %d SCCs; largest has %d nodes" %
+                 (len(sccs), max(len(scc) for scc in sccs)))
+@@ -3165,6 +3168,7 @@
+ 
+     Exception: If quick_and_dirty is set, use the cache for fresh modules.
+     """
++
+     stale = scc
+     for id in stale:
+         # We may already have parsed the module, or not.
+@language python
 </t>
 </tnodes>
 </leo_file>
