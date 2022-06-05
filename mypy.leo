@@ -6518,13 +6518,11 @@
 </v>
 <v t="ekr.20220320050830.1"><vh>Recent files</vh>
 <v t="ekr.20220525082933.340"></v>
-<v t="ekr.20220525082935.1316"></v>
-<v t="ekr.20220525082933.131"></v>
-<v t="ekr.20220525082933.340"></v>
 <v t="ekr.20220525082934.502"></v>
+<v t="ekr.20220525082933.131"></v>
+<v t="ekr.20220525082935.1316"></v>
 </v>
 <v t="ekr.20220525082933.166"></v>
-<v t="ekr.20220525082935.1316"></v>
 <v t="ekr.20220525082935.1613"></v>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220530121430.1"><vh>--- Notes</vh>
@@ -7073,6 +7071,12 @@
 <v t="ekr.20220525082935.1390"></v>
 </v>
 </v>
+<v t="ekr.20220605090606.1"><vh>--- crash TypeStrVisitor.visit_instance</vh>
+<v t="ekr.20220525082936.106"></v>
+<v t="ekr.20220525082935.1603"></v>
+<v t="ekr.20220525082935.1324"></v>
+<v t="ekr.20220525082935.1613"></v>
+</v>
 </v>
 <v t="ekr.20220603083720.1"><vh>--- testing</vh>
 <v t="ekr.20220605063338.1"><vh>--- others</vh>
@@ -7108,18 +7112,14 @@
 <v t="ekr.20220605082736.20"><vh>stop</vh></v>
 </v>
 </v>
+<v t="ekr.20220605090347.1"><vh>--- Instance hierarchy</vh>
 <v t="ekr.20220525082934.945"></v>
-<v t="ekr.20220525082935.1202"></v>
-<v t="ekr.20220605090347.1"><vh>--- Instance hierarchy</vh></v>
 <v t="ekr.20220525082934.872"></v>
 <v t="ekr.20220525082935.1319"></v>
 <v t="ekr.20220525082935.1348"></v>
 <v t="ekr.20220525082935.1444"></v>
-<v t="ekr.20220605090606.1"><vh>--- crash</vh></v>
-<v t="ekr.20220525082936.106"></v>
-<v t="ekr.20220525082935.1603"></v>
-<v t="ekr.20220525082935.1324"></v>
-<v t="ekr.20220525082935.1613"></v>
+</v>
+<v t="ekr.20220525082935.1202"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220320050830.1"></t>
@@ -57544,45 +57544,33 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 <t tx="ekr.20220525082935.1202">def visit_callable_type(self, t: CallableType, nested: bool = True) -&gt; Type:
     # Every Callable can bind its own type variables, if they're not in the outer scope
 
+    sherlock = True
     trace = 'ekr_a:' in repr(t)  ###
+    if trace:  ###
+        from leo.core import leoGlobals as g
 
-    if trace:
-        from leo.core import leoGlobals as g  ###
     with self.tvar_scope_frame():
         if self.defining_alias:
             variables = t.variables
         else:
             variables = self.bind_function_type_variables(t, t)
-        if trace:  ###
-            g.trace(variables)  # []
-            patterns = ['+.*']
-            tracer = g.SherlockTracer(patterns)
-            assert tracer
-            tracer.run()
         special = self.anal_type_guard(t.ret_type)
         arg_kinds = t.arg_kinds
-        if trace:
-            print('----- 1')
-            ### g.pdb()
         if len(arg_kinds) &gt;= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
             arg_types = self.anal_array(t.arg_types[:-2], nested=nested) + [
                 self.anal_star_arg_type(t.arg_types[-2], ARG_STAR, nested=nested),
                 self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
             ]
         else:
-            if trace:
-                print('----- 2')
             arg_types = self.anal_array(t.arg_types, nested=nested)
-        if trace:
-            print('----- end tracing -----')
-            tracer.stop()
-            del tracer
-        #
+
+        if trace and sherlock:  ###
+            patterns = ['+.*', '-__*', '-lookup_qualified', '-ChainedPlugin*']
+            tracer = g.SherlockTracer(patterns)
+            tracer.run()
+
         ### The task: make ekr_a have a 'builtins.str' type.
-        if trace:  ###
-            f = t.definition  # A FuncDef
-            # arg_types: list of types: builtins.str, AnyType, etc.
-            g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
+    
         ret = t.copy_modified(arg_types=arg_types,
                               ret_type=self.anal_type(t.ret_type, nested=nested),
                               # If the fallback isn't filled in yet,
@@ -57592,8 +57580,17 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
                               variables=self.anal_var_defs(variables),
                               type_guard=special,
                               )
+                              
+        if trace and sherlock:
+            tracer.stop()
+                              
+        if trace:  ###
+            f = t.definition  # A FuncDef
+            # arg_types: list of types: builtins.str, AnyType, etc.
+            g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
+
     if trace:
-        g.trace('ret', ret)
+        g.trace('ret', ret.__class__.__name__, ret)
     return ret
 
 </t>
@@ -63265,7 +63262,7 @@ from mypy.type_visitor import (  # noqa
 </t>
 <t tx="ekr.20220525082935.1613">def visit_instance(self, t: Instance) -&gt; str:
 
-    if 1:  ### EKR
+    if 0:  ### EKR
         args = getattr(t, 'args', None)
         last_known_value = getattr(t, 'last_known_value', None)
         type_ = getattr(t, 'type', None)
@@ -63275,17 +63272,17 @@ from mypy.type_visitor import (  # noqa
         if last_known_value and not args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
-            s = f'{t.last_known_value}?'
+            s = f'{last_known_value}?'
         else:
             s = type_fullname or type_name or '&lt;???&gt;'
         if args:
             if type_fullname == 'builtins.tuple':
                 assert len(t.args) == 1
-                s += f'[{self.list_str(t.args)}, ...]'
+                s += f'[{self.list_str(args)}, ...]'
             else:
-                s += f'[{self.list_str(t.args)}]'
+                s += f'[{self.list_str(args)}]'
         if self.id_mapper:
-            s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
+            s += f'&lt;{self.id_mapper.id(type)}&gt;'
         return s
     else:  ### Legacy
         if t.last_known_value and not t.args:

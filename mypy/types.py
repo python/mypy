@@ -2632,7 +2632,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_instance(self, t: Instance) -> str:
 
-        if 1:  ### EKR
+        if 0:  ### EKR
             args = getattr(t, 'args', None)
             last_known_value = getattr(t, 'last_known_value', None)
             type_ = getattr(t, 'type', None)
@@ -2642,17 +2642,17 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if last_known_value and not args:
                 # Instances with a literal fallback should never be generic. If they are,
                 # something went wrong so we fall back to showing the full Instance repr.
-                s = f'{t.last_known_value}?'
+                s = f'{last_known_value}?'
             else:
                 s = type_fullname or type_name or '<???>'
             if args:
                 if type_fullname == 'builtins.tuple':
                     assert len(t.args) == 1
-                    s += f'[{self.list_str(t.args)}, ...]'
+                    s += f'[{self.list_str(args)}, ...]'
                 else:
-                    s += f'[{self.list_str(t.args)}]'
+                    s += f'[{self.list_str(args)}]'
             if self.id_mapper:
-                s += f'<{self.id_mapper.id(t.type)}>'
+                s += f'<{self.id_mapper.id(type)}>'
             return s
         else:  ### Legacy
             if t.last_known_value and not t.args:
