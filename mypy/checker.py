@@ -1004,7 +1004,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 if defn.type:
                     assert isinstance(defn.type, CallableType)
-                    if self.options.default_return and isinstance(defn.type.ret_type, NoneType):
+                    if self.options.default_return and isinstance(get_proper_type(
+                        defn.type.ret_type), NoneType
+                    ):
                         if defn.unanalyzed_type:
                             assert isinstance(defn.unanalyzed_type, CallableType)
                             if is_unannotated_any(get_proper_type(defn.unanalyzed_type.ret_type)):
@@ -4238,9 +4240,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         ):
             if isinstance(
                 get_proper_type(e.func.type.ret_type), NoneType
-            ) and (not e.func.unanalyzed_type or is_unannotated_any(e.func.unanalyzed_type.ret_type)):
+            ) and (not e.func.unanalyzed_type or (isinstance(e.func.unanalyzed_type, CallableType)
+                and is_unannotated_any(e.func.unanalyzed_type.ret_type))
+            ):
                 self.fail("Property is missing a type annotation",
                           e.func, code=codes.NO_UNTYPED_DEF)
+
     def check_for_untyped_decorator(self,
                                     func: FuncDef,
                                     dec_type: Type,
