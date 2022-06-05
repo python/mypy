@@ -14,6 +14,7 @@
 </v>
 <v t="ekr.20220526075331.1"><vh>Files</vh>
 <v t="ekr.20220224065603.3"><vh>@edit C:\Repos\leo-editor\.mypy.ini</vh></v>
+<v t="ekr.20220604124935.1"><vh>@edit .mypy.ini</vh></v>
 <v t="ekr.20220525082932.2"><vh>@path C:/Repos/ekr-mypy</vh>
 <v t="ekr.20220525082932.3"><vh>@clean conftest.py</vh>
 <v t="ekr.20220525082933.1"><vh>pytest_configure</vh></v>
@@ -1041,10 +1042,10 @@
 <v t="ekr.20220525082935.31"><vh>SemanticAnalyzer.process_static_or_class_method_in_overload</vh></v>
 <v t="ekr.20220525082935.32"><vh>SemanticAnalyzer.analyze_property_with_multi_part_definition</vh></v>
 <v t="ekr.20220525082935.33"><vh>SemanticAnalyzer.add_function_to_symbol_table</vh></v>
-<v t="ekr.20220525082935.34"><vh>SemanticAnalyzer.analyze_arg_initializers</vh></v>
+<v t="ekr.20220525082935.34"><vh>SemanticAnalyzer.analyze_arg_initializers (Calls arg.initializer.accept)</vh></v>
 <v t="ekr.20220525082935.35"><vh>SemanticAnalyzer.analyze_function_body</vh></v>
 <v t="ekr.20220525082935.36"><vh>SemanticAnalyzer.check_classvar_in_signature</vh></v>
-<v t="ekr.20220525082935.37"><vh>SemanticAnalyzer.check_function_signature</vh></v>
+<v t="ekr.20220525082935.37"><vh>SemanticAnalyzer.check_function_signature (Template for dummy args!)</vh></v>
 <v t="ekr.20220525082935.38"><vh>SemanticAnalyzer.visit_decorator</vh></v>
 <v t="ekr.20220525082935.39"><vh>SemanticAnalyzer.check_decorated_function_is_method</vh></v>
 <v t="ekr.20220525082935.40"><vh>SemanticAnalyzer.Classes</vh></v>
@@ -2450,7 +2451,7 @@
 <v t="ekr.20220525082934.1147"><vh>BackquoteExpr.__init__</vh></v>
 <v t="ekr.20220525082934.1148"><vh>BackquoteExpr.accept</vh></v>
 </v>
-<v t="ekr.20220525082934.1149"><vh>class TypeApplication</vh>
+<v t="ekr.20220525082934.1149"><vh>class TypeApplication (has accept method)</vh>
 <v t="ekr.20220525082934.1150"><vh>TypeApplication.__init__</vh></v>
 <v t="ekr.20220525082934.1151"><vh>TypeApplication.accept</vh></v>
 </v>
@@ -2460,7 +2461,7 @@
 <v t="ekr.20220525082934.1155"><vh>TypeVarLikeExpr.name</vh></v>
 <v t="ekr.20220525082934.1156"><vh>TypeVarLikeExpr.fullname</vh></v>
 </v>
-<v t="ekr.20220525082934.1157"><vh>class TypeVarExpr</vh>
+<v t="ekr.20220525082934.1157"><vh>class TypeVarExpr (has accept method)</vh>
 <v t="ekr.20220525082934.1158"><vh>TypeVarExpr.__init__</vh></v>
 <v t="ekr.20220525082934.1159"><vh>TypeVarExpr.accept</vh></v>
 <v t="ekr.20220525082934.1160"><vh>TypeVarExpr.serialize</vh></v>
@@ -2471,12 +2472,12 @@
 <v t="ekr.20220525082934.1164"><vh>ParamSpecExpr.serialize</vh></v>
 <v t="ekr.20220525082934.1165"><vh>ParamSpecExpr.deserialize</vh></v>
 </v>
-<v t="ekr.20220525082934.1166"><vh>class TypeVarTupleExpr</vh>
+<v t="ekr.20220525082934.1166"><vh>class TypeVarTupleExpr (has accept method)</vh>
 <v t="ekr.20220525082934.1167"><vh>TypeVarTupleExpr.accept</vh></v>
 <v t="ekr.20220525082934.1168"><vh>TypeVarTupleExpr.serialize</vh></v>
 <v t="ekr.20220525082934.1169"><vh>TypeVarTupleExpr.deserialize</vh></v>
 </v>
-<v t="ekr.20220525082934.1170"><vh>class TypeAliasExpr</vh>
+<v t="ekr.20220525082934.1170"><vh>class TypeAliasExpr (has accept method)</vh>
 <v t="ekr.20220525082934.1171"><vh>TypeAliasExpr.__init__</vh></v>
 <v t="ekr.20220525082934.1172"><vh>TypeAliasExpr.accept</vh></v>
 </v>
@@ -2484,7 +2485,7 @@
 <v t="ekr.20220525082934.1174"><vh>NamedTupleExpr.__init__</vh></v>
 <v t="ekr.20220525082934.1175"><vh>NamedTupleExpr.accept</vh></v>
 </v>
-<v t="ekr.20220525082934.1176"><vh>class TypedDictExpr</vh>
+<v t="ekr.20220525082934.1176"><vh>class TypedDictExpr (has accept method)</vh>
 <v t="ekr.20220525082934.1177"><vh>TypedDictExpr.__init__</vh></v>
 <v t="ekr.20220525082934.1178"><vh>TypedDictExpr.accept</vh></v>
 </v>
@@ -2538,7 +2539,7 @@
 <v t="ekr.20220525082934.1220"><vh>FakeInfo.__getattribute__</vh></v>
 </v>
 <v t="ekr.20220525082934.1221"><vh>VAR_NO_INFO: Final[TypeInfo] = FakeInfo("Var is lacking info")</vh></v>
-<v t="ekr.20220525082934.1222"><vh>class TypeAlias</vh>
+<v t="ekr.20220525082934.1222"><vh>class TypeAlias (has accept method)</vh>
 <v t="ekr.20220525082934.1223"><vh>TypeAlias.__init__</vh></v>
 <v t="ekr.20220525082934.1224"><vh>TypeAlias.name</vh></v>
 <v t="ekr.20220525082934.1225"><vh>TypeAlias.fullname</vh></v>
@@ -3575,7 +3576,7 @@
 <v t="ekr.20220525082933.765"><vh>ArgInferSecondPassQuery.__init__</vh></v>
 <v t="ekr.20220525082933.766"><vh>ArgInferSecondPassQuery.visit_callable_type</vh></v>
 </v>
-<v t="ekr.20220525082933.767"><vh>class HasTypeVarQuery</vh></v>
+<v t="ekr.20220525082933.767"><vh>class HasTypeVarQuery(TypeQuery) (return bool)</vh></v>
 <v t="ekr.20220525082933.768"><vh>has_erased_component</vh></v>
 <v t="ekr.20220525082933.769"><vh>class HasErasedComponentsQuery</vh></v>
 <v t="ekr.20220525082933.770"><vh>has_uninhabited_component</vh></v>
@@ -3729,9 +3730,9 @@
 <v t="ekr.20220525082933.928"><vh>ConstraintBuilderVisitor.Errors</vh></v>
 <v t="ekr.20220525082933.929"><vh>ConstraintBuilderVisitor.visit_partial_type</vh></v>
 <v t="ekr.20220525082933.930"><vh>ConstraintBuilderVisitor.Non-trivial leaf type</vh></v>
-<v t="ekr.20220525082933.931"><vh>ConstraintBuilderVisitor.visit_type_var</vh></v>
+<v t="ekr.20220525082933.931"><vh>ConstraintBuilderVisitor.visit_type_var (assert False)</vh></v>
 <v t="ekr.20220525082933.932"><vh>ConstraintBuilderVisitor.visit_param_spec</vh></v>
-<v t="ekr.20220525082933.933"><vh>ConstraintBuilderVisitor.visit_type_var_tuple</vh></v>
+<v t="ekr.20220525082933.933"><vh>ConstraintBuilderVisitor.visit_type_var_tuple (raise NotImplemented)</vh></v>
 <v t="ekr.20220525082933.934"><vh>ConstraintBuilderVisitor.visit_unpack_type</vh></v>
 <v t="ekr.20220525082933.935"><vh>ConstraintBuilderVisitor.visit_parameters</vh></v>
 <v t="ekr.20220525082933.936"><vh>ConstraintBuilderVisitor.Non-leaf types</vh></v>
@@ -3946,7 +3947,7 @@
 <v t="ekr.20220525082933.1040"><vh>EraseTypeVisitor.visit_literal_type</vh></v>
 <v t="ekr.20220525082933.1041"><vh>EraseTypeVisitor.visit_union_type</vh></v>
 <v t="ekr.20220525082933.1042"><vh>EraseTypeVisitor.visit_type_type</vh></v>
-<v t="ekr.20220525082933.1043"><vh>EraseTypeVisitor.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082933.1043"><vh>EraseTypeVisitor.visit_type_alias_type (raise RuntimeError)</vh></v>
 </v>
 <v t="ekr.20220525082933.1044"><vh>erase_typevars</vh>
 <v t="ekr.20220525082933.1045"><vh>erase_id</vh></v>
@@ -4062,7 +4063,7 @@
 <v t="ekr.20220525082934.432"><vh>TypeJoinVisitor.visit_literal_type</vh></v>
 <v t="ekr.20220525082934.433"><vh>TypeJoinVisitor.visit_partial_type</vh></v>
 <v t="ekr.20220525082934.434"><vh>TypeJoinVisitor.visit_type_type</vh></v>
-<v t="ekr.20220525082934.435"><vh>TypeJoinVisitor.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082934.435"><vh>TypeJoinVisitor.visit_type_alias_type (assert False)</vh></v>
 <v t="ekr.20220525082934.436"><vh>TypeJoinVisitor.join</vh></v>
 <v t="ekr.20220525082934.437"><vh>TypeJoinVisitor.default</vh></v>
 </v>
@@ -4354,7 +4355,7 @@
 <v t="ekr.20220525082935.896"><vh>ProperSubtypeVisitor.visit_union_type</vh></v>
 <v t="ekr.20220525082935.897"><vh>ProperSubtypeVisitor.visit_partial_type</vh></v>
 <v t="ekr.20220525082935.898"><vh>ProperSubtypeVisitor.visit_type_type</vh></v>
-<v t="ekr.20220525082935.899"><vh>ProperSubtypeVisitor.visit_type_alias_type</vh></v>
+<v t="ekr.20220525082935.899"><vh>ProperSubtypeVisitor.visit_type_alias_type (assert False)</vh></v>
 </v>
 <v t="ekr.20220525082935.900"><vh>is_more_precise</vh></v>
 </v>
@@ -4406,7 +4407,7 @@
 <v t="ekr.20220525082935.1316"><vh>@clean types.py</vh>
 <v t="ekr.20220525082935.1317"><vh>class TypeOfAny</vh></v>
 <v t="ekr.20220525082935.1318"><vh>deserialize_type</vh></v>
-<v t="ekr.20220525082935.1319"><vh>class Type</vh>
+<v t="ekr.20220525082935.1319"><vh>class Type (has accept method)</vh>
 <v t="ekr.20220525082935.1320"><vh>Type.__init__</vh></v>
 <v t="ekr.20220525082935.1321"><vh>Type.can_be_true_default</vh></v>
 <v t="ekr.20220525082935.1322"><vh>Type.can_be_false_default</vh></v>
@@ -4415,7 +4416,7 @@
 <v t="ekr.20220525082935.1325"><vh>Type.serialize</vh></v>
 <v t="ekr.20220525082935.1326"><vh>Type.deserialize</vh></v>
 </v>
-<v t="ekr.20220525082935.1327"><vh>class TypeAliasType</vh>
+<v t="ekr.20220525082935.1327"><vh>class TypeAliasType (has accept method)</vh>
 <v t="ekr.20220525082935.1328"><vh>TypeAliasType.__init__</vh></v>
 <v t="ekr.20220525082935.1329"><vh>TypeAliasType._expand_once</vh></v>
 <v t="ekr.20220525082935.1330"><vh>TypeAliasType._partial_expansion</vh></v>
@@ -4454,7 +4455,7 @@
 <v t="ekr.20220525082935.1359"><vh>TypeVarLikeType.serialize</vh></v>
 <v t="ekr.20220525082935.1360"><vh>TypeVarLikeType.deserialize</vh></v>
 </v>
-<v t="ekr.20220525082935.1361"><vh>class TypeVarType</vh>
+<v t="ekr.20220525082935.1361"><vh>class TypeVarType (has accept method)</vh>
 <v t="ekr.20220525082935.1362"><vh>TypeVarType.__init__</vh></v>
 <v t="ekr.20220525082935.1363"><vh>TypeVarType.new_unification_variable</vh></v>
 <v t="ekr.20220525082935.1364"><vh>TypeVarType.accept</vh></v>
@@ -4476,7 +4477,7 @@
 <v t="ekr.20220525082935.1379"><vh>ParamSpecType.serialize</vh></v>
 <v t="ekr.20220525082935.1380"><vh>ParamSpecType.deserialize</vh></v>
 </v>
-<v t="ekr.20220525082935.1381"><vh>class TypeVarTupleType</vh>
+<v t="ekr.20220525082935.1381"><vh>class TypeVarTupleType (has accept method)</vh>
 <v t="ekr.20220525082935.1382"><vh>TypeVarTupleType.serialize</vh></v>
 <v t="ekr.20220525082935.1383"><vh>TypeVarTupleType.deserialize</vh></v>
 <v t="ekr.20220525082935.1384"><vh>TypeVarTupleType.accept</vh></v>
@@ -4498,7 +4499,7 @@
 <v t="ekr.20220525082935.1398"><vh>CallableArgument.accept</vh></v>
 <v t="ekr.20220525082935.1399"><vh>CallableArgument.serialize</vh></v>
 </v>
-<v t="ekr.20220525082935.1400"><vh>class TypeList</vh>
+<v t="ekr.20220525082935.1400"><vh>class TypeList (has accept method)</vh>
 <v t="ekr.20220525082935.1401"><vh>TypeList.__init__</vh></v>
 <v t="ekr.20220525082935.1402"><vh>TypeList.accept</vh></v>
 <v t="ekr.20220525082935.1403"><vh>TypeList.serialize</vh></v>
@@ -4640,7 +4641,7 @@
 <v t="ekr.20220525082935.1527"><vh>TupleType.copy_modified</vh></v>
 <v t="ekr.20220525082935.1528"><vh>TupleType.slice</vh></v>
 </v>
-<v t="ekr.20220525082935.1529"><vh>class TypedDictType</vh>
+<v t="ekr.20220525082935.1529"><vh>class TypedDictType (has accept method)</vh>
 <v t="ekr.20220525082935.1530"><vh>TypedDictType.__init__</vh></v>
 <v t="ekr.20220525082935.1531"><vh>TypedDictType.accept</vh></v>
 <v t="ekr.20220525082935.1532"><vh>TypedDictType.__hash__</vh></v>
@@ -4702,7 +4703,7 @@
 <v t="ekr.20220525082935.1582"><vh>EllipsisType.accept</vh></v>
 <v t="ekr.20220525082935.1583"><vh>EllipsisType.serialize</vh></v>
 </v>
-<v t="ekr.20220525082935.1584"><vh>class TypeType</vh>
+<v t="ekr.20220525082935.1584"><vh>class TypeType (has accept method)</vh>
 <v t="ekr.20220525082935.1585"><vh>TypeType.__init__</vh></v>
 <v t="ekr.20220525082935.1586"><vh>TypeType.make_normalized</vh></v>
 <v t="ekr.20220525082935.1587"><vh>TypeType.accept</vh></v>
@@ -4767,7 +4768,7 @@
 <v t="ekr.20220525082935.1642"><vh>InstantiateAliasVisitor.visit_type_var</vh></v>
 </v>
 <v t="ekr.20220525082935.1643"><vh>replace_alias_tvars</vh></v>
-<v t="ekr.20220525082935.1644"><vh>class HasTypeVars</vh></v>
+<v t="ekr.20220525082935.1644"><vh>class HasTypeVars(TypeQuery)</vh></v>
 <v t="ekr.20220525082935.1645"><vh>has_type_vars</vh></v>
 <v t="ekr.20220525082935.1646"><vh>flatten_nested_unions</vh></v>
 <v t="ekr.20220525082935.1647"><vh>union_items</vh></v>
@@ -6551,12 +6552,6 @@
 <v t="ekr.20220525082933.328"></v>
 <v t="ekr.20220525082933.377"></v>
 </v>
-<v t="ekr.20220603083720.1"><vh>--- testing</vh>
-<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
-<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
-<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
-<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
-</v>
 <v t="ekr.20220604073659.1"><vh>--- logs</vh>
 <v t="ekr.20220603105128.1"><vh>log: main.py</vh>
 <v t="ekr.20220603103733.1"><vh>process_options: sources</vh></v>
@@ -6581,13 +6576,6 @@
 <v t="ekr.20220525082935.309"></v>
 </v>
 <v t="ekr.20220604075851.1"><vh>--- Annotation data</vh></v>
-<v t="ekr.20220601141113.1"><vh>--- constant nodes</vh>
-<v t="ekr.20220525082934.1035"></v>
-<v t="ekr.20220525082934.1039"></v>
-<v t="ekr.20220525082934.1045"></v>
-<v t="ekr.20220525082934.1048"></v>
-<v t="ekr.20220525082934.1067"></v>
-</v>
 <v t="ekr.20220604115701.1"><vh>--- type-related classes</vh>
 <v t="ekr.20220525082934.945"></v>
 <v t="ekr.20220525082934.935"></v>
@@ -6595,32 +6583,499 @@
 <v t="ekr.20220525082935.1178"></v>
 <v t="ekr.20220525082935.1476"></v>
 <v t="ekr.20220525082934.1067"></v>
+<v t="ekr.20220601141113.1"><vh>--- constant nodes</vh>
+<v t="ekr.20220525082934.1035"></v>
+<v t="ekr.20220525082934.1039"></v>
+<v t="ekr.20220525082934.1045"></v>
+<v t="ekr.20220525082934.1048"></v>
+<v t="ekr.20220525082934.1067"></v>
 </v>
+</v>
+<v t="ekr.20220603083720.1"><vh>--- testing</vh>
+<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
+<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
+<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
+<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
+<v t="ekr.20220604124935.1"></v>
+</v>
+<v t="ekr.20220604125006.1"><vh>--- typing calling sequence</vh>
 <v t="ekr.20220525082935.21"></v>
 <v t="ekr.20220525082935.37"></v>
 <v t="ekr.20220525082935.34"></v>
 <v t="ekr.20220525082935.1202"></v>
-<v t="ekr.20220604120250.1"><vh>git diff HEAD </vh>
-<v t="ekr.20220604120252.34"><vh>mypy/build.py</vh>
-<v t="ekr.20220604120252.289"><vh>Changed</vh>
-<v t="ekr.20220604120252.290"><vh>build</vh>
-<v t="ekr.20220604120252.291"><vh>Old:build</vh></v>
-<v t="ekr.20220525082933.217"></v>
+<v t="ekr.20220525082935.1230"></v>
+<v t="ekr.20220525082935.1231"></v>
 </v>
-<v t="ekr.20220604120252.292"><vh>dispatch</vh>
-<v t="ekr.20220604120252.293"><vh>Old:dispatch</vh></v>
-<v t="ekr.20220525082933.321"></v>
+<v t="ekr.20220605050554.1"><vh>--- searches</vh>
+<v t="ekr.20220605045416.1"><vh>--- Found 125:def accept</vh>
+<v t="ekr.20220525082935.1412"></v>
+<v t="ekr.20220525082934.1278"></v>
+<v t="ekr.20220525082934.1006"></v>
+<v t="ekr.20220525082934.1107"></v>
+<v t="ekr.20220525082934.1091"></v>
+<v t="ekr.20220525082934.991"></v>
+<v t="ekr.20220525082934.1190"></v>
+<v t="ekr.20220525082934.1148"></v>
+<v t="ekr.20220525082934.984"></v>
+<v t="ekr.20220525082934.1044"></v>
+<v t="ekr.20220525082935.1398"></v>
+<v t="ekr.20220525082935.1485"></v>
+<v t="ekr.20220525082934.1076"></v>
+<v t="ekr.20220525082934.1104"></v>
+<v t="ekr.20220525082934.1010"></v>
+<v t="ekr.20220525082934.1011"></v>
+<v t="ekr.20220525082934.1054"></v>
+<v t="ekr.20220525082934.1012"></v>
+<v t="ekr.20220525082934.972"></v>
+<v t="ekr.20220525082934.1299"></v>
+<v t="ekr.20220525082934.1098"></v>
+<v t="ekr.20220525082934.1053"></v>
+<v t="ekr.20220525082934.1145"></v>
+<v t="ekr.20220525082934.959"></v>
+<v t="ekr.20220525082935.1440"></v>
+<v t="ekr.20220525082934.1009"></v>
+<v t="ekr.20220525082934.1124"></v>
+<v t="ekr.20220525082934.1142"></v>
+<v t="ekr.20220525082935.1582"></v>
+<v t="ekr.20220525082934.1181"></v>
+<v t="ekr.20220525082935.1437"></v>
+<v t="ekr.20220525082934.1033"></v>
+<v t="ekr.20220525082934.886"></v>
+<v t="ekr.20220525082933.729"></v>
+<v t="ekr.20220525082934.988"></v>
+<v t="ekr.20220525082934.1050"></v>
+<v t="ekr.20220525082934.1000"></v>
+<v t="ekr.20220525082934.948"></v>
+<v t="ekr.20220525082934.1133"></v>
+<v t="ekr.20220525082934.978"></v>
+<v t="ekr.20220525082934.1015"></v>
+<v t="ekr.20220525082934.909"></v>
+<v t="ekr.20220525082934.915"></v>
+<v t="ekr.20220525082934.912"></v>
+<v t="ekr.20220525082934.1085"></v>
+<v t="ekr.20220525082935.1446"></v>
+<v t="ekr.20220525082934.1037"></v>
+<v t="ekr.20220525082934.1117"></v>
+<v t="ekr.20220525082934.1136"></v>
+<v t="ekr.20220525082934.1121"></v>
+<v t="ekr.20220525082935.1554"></v>
+<v t="ekr.20220525082934.1296"></v>
+<v t="ekr.20220525082934.1027"></v>
+<v t="ekr.20220525082934.1066"></v>
+<v t="ekr.20220525082934.900"></v>
+<v t="ekr.20220525082934.1175"></v>
+<v t="ekr.20220525082934.1062"></v>
+<v t="ekr.20220525082934.1187"></v>
+<v t="ekr.20220525082934.882"></v>
+<v t="ekr.20220525082935.1432"></v>
+<v t="ekr.20220525082934.981"></v>
+<v t="ekr.20220525082934.994"></v>
+<v t="ekr.20220525082934.1094"></v>
+<v t="ekr.20220525082934.1281"></v>
+<v t="ekr.20220525082935.1511"></v>
+<v t="ekr.20220525082934.932"></v>
+<v t="ekr.20220525082935.1471"></v>
+<v t="ekr.20220525082934.1163"></v>
+<v t="ekr.20220525082935.1375"></v>
+<v t="ekr.20220525082935.1580"></v>
+<v t="ekr.20220525082934.1275"></v>
+<v t="ekr.20220525082933.817"></v>
+<v t="ekr.20220525082934.1234"></v>
+<v t="ekr.20220525082935.1594"></v>
+<v t="ekr.20220525082934.1030"></v>
+<v t="ekr.20220525082934.1184"></v>
+<v t="ekr.20220525082934.1018"></v>
+<v t="ekr.20220525082935.1546"></v>
+<v t="ekr.20220525082935.1347"></v>
+<v t="ekr.20220525082934.1003"></v>
+<v t="ekr.20220525082934.1110"></v>
+<v t="ekr.20220525082935.254"></v>
+<v t="ekr.20220525082935.381"></v>
+<v t="ekr.20220525082934.1290"></v>
+<v t="ekr.20220525082934.1139"></v>
+<v t="ekr.20220525082934.1130"></v>
+<v t="ekr.20220525082934.1287"></v>
+<v t="ekr.20220525082934.1101"></v>
+<v t="ekr.20220525082934.1057"></v>
+<v t="ekr.20220525082934.1293"></v>
+<v t="ekr.20220525082935.1563"></v>
+<v t="ekr.20220525082934.884"></v>
+<v t="ekr.20220525082934.1041"></v>
+<v t="ekr.20220525082933.878"></v>
+<v t="ekr.20220525082934.1113"></v>
+<v t="ekr.20220525082934.1195"></v>
+<v t="ekr.20220525082934.1021"></v>
+<v t="ekr.20220525082934.1127"></v>
+<v t="ekr.20220525082935.1522"></v>
+<v t="ekr.20220525082935.1323"></v>
+<v t="ekr.20220525082934.1227"></v>
+<v t="ekr.20220525082934.1172"></v>
+<v t="ekr.20220525082935.1335"></v>
+<v t="ekr.20220525082934.1151"></v>
+<v t="ekr.20220525082933.356"></v>
+<v t="ekr.20220525082934.1178"></v>
+<v t="ekr.20220525082935.1531"></v>
+<v t="ekr.20220525082935.1402"></v>
+<v t="ekr.20220525082935.1587"></v>
+<v t="ekr.20220525082934.1159"></v>
+<v t="ekr.20220525082934.1167"></v>
+<v t="ekr.20220525082935.1384"></v>
+<v t="ekr.20220525082935.1364"></v>
+<v t="ekr.20220525082934.1088"></v>
+<v t="ekr.20220525082935.1391"></v>
+<v t="ekr.20220525082934.1047"></v>
+<v t="ekr.20220525082935.1422"></v>
+<v t="ekr.20220525082935.1573"></v>
+<v t="ekr.20220525082935.1406"></v>
+<v t="ekr.20220525082934.1284"></v>
+<v t="ekr.20220525082934.967"></v>
+<v t="ekr.20220525082934.997"></v>
+<v t="ekr.20220525082934.1024"></v>
+<v t="ekr.20220525082934.1082"></v>
+<v t="ekr.20220525082934.1079"></v>
 </v>
-<v t="ekr.20220604120252.294"><vh>process_graph</vh>
-<v t="ekr.20220604120252.295"><vh>Old:process_graph</vh></v>
-<v t="ekr.20220525082933.328"></v>
+<v t="ekr.20220605050431.1"><vh>--- type-related accept</vh>
+<v t="ekr.20220525082935.1412"></v>
+<v t="ekr.20220525082935.1485"></v>
+<v t="ekr.20220525082935.1437"></v>
+<v t="ekr.20220525082933.729"></v>
+<v t="ekr.20220525082935.1554"></v>
+<v t="ekr.20220525082934.1187"></v>
+<v t="ekr.20220525082935.1432"></v>
+<v t="ekr.20220525082935.1375"></v>
+<v t="ekr.20220525082935.1580"></v>
+<v t="ekr.20220525082935.1594"></v>
+<v t="ekr.20220525082935.1546"></v>
+<v t="ekr.20220525082935.1347"></v>
+<v t="ekr.20220525082935.254"></v>
+<v t="ekr.20220525082935.1563"></v>
+<v t="ekr.20220525082935.1522"></v>
+<v t="ekr.20220525082935.1323"></v>
+<v t="ekr.20220525082933.356"></v>
+<v t="ekr.20220525082935.1587"></v>
+<v t="ekr.20220525082935.1391"></v>
+<v t="ekr.20220525082935.1422"></v>
+<v t="ekr.20220525082935.1573"></v>
 </v>
-<v t="ekr.20220604120252.296"><vh>process_stale_scc</vh>
-<v t="ekr.20220604120252.297"><vh>Old:process_stale_scc</vh></v>
-<v t="ekr.20220525082933.331"></v>
+</v>
+<v t="ekr.20220605050628.1"><vh>Found 174:def visit_*_type</vh>
+<v t="ekr.20220605050827.1"><vh>--- return bool</vh>
+<v t="ekr.20220525082933.767"></v>
+<v t="ekr.20220525082935.1644"></v>
+<v t="ekr.20220525082935.1262"></v>
+<v t="ekr.20220525082935.1257"></v>
+</v>
+<v t="ekr.20220605050753.1"><vh>--- return str</vh>
+<v t="ekr.20220525082935.627"></v>
+<v t="ekr.20220525082933.944"></v>
+<v t="ekr.20220605051839.1"><vh>StrConv.visit*</vh>
+<v t="ekr.20220525082935.566"></v>
+<v t="ekr.20220525082935.562"></v>
+<v t="ekr.20220525082935.563"></v>
+<v t="ekr.20220525082935.565"></v>
+<v t="ekr.20220525082935.569"></v>
 </v>
 </v>
+<v t="ekr.20220605050725.1"><vh>_Hasher.visit* (returns None)</vh>
+<v t="ekr.20220525082934.492"></v>
+<v t="ekr.20220525082934.482"></v>
+<v t="ekr.20220525082934.489"></v>
+<v t="ekr.20220525082934.491"></v>
+<v t="ekr.20220525082934.495"></v>
 </v>
+<v t="ekr.20220605055805.1"><vh>ConstraintBuilderVisitor.visit*</vh>
+<v t="ekr.20220525082933.947"></v>
+<v t="ekr.20220525082933.942"></v>
+<v t="ekr.20220525082933.931"></v>
+<v t="ekr.20220525082933.933"></v>
+</v>
+<v t="ekr.20220525082936.653"></v>
+<v t="ekr.20220605051707.1"><vh>EraseTypeVisitor.visit*</vh>
+<v t="ekr.20220525082933.1042"></v>
+<v t="ekr.20220525082933.1031"></v>
+<v t="ekr.20220525082933.1034"></v>
+<v t="ekr.20220525082933.1039"></v>
+<v t="ekr.20220525082933.1043"></v>
+</v>
+<v t="ekr.20220605051729.1"><vh>ExpandTypeVisitor.visit*</vh>
+<v t="ekr.20220525082934.28"></v>
+<v t="ekr.20220525082934.27"></v>
+<v t="ekr.20220525082934.14"></v>
+<v t="ekr.20220525082934.16"></v>
+<v t="ekr.20220525082934.23"></v>
+</v>
+<v t="ekr.20220605051745.1"><vh>ExpressionChecker.visit*</vh>
+<v t="ekr.20220525082933.703"></v>
+<v t="ekr.20220525082933.702"></v>
+<v t="ekr.20220525082933.740"></v>
+<v t="ekr.20220525082933.742"></v>
+<v t="ekr.20220525082933.746"></v>
+<v t="ekr.20220525082933.697"></v>
+</v>
+<v t="ekr.20220605051035.1"><vh>ExpressionVisitor.visit* (abstract methods)</vh>
+<v t="ekr.20220525082936.183"></v>
+<v t="ekr.20220525082936.171"></v>
+<v t="ekr.20220525082936.180"></v>
+<v t="ekr.20220525082936.182"></v>
+<v t="ekr.20220525082936.186"></v>
+</v>
+<v t="ekr.20220605052456.1"><vh>FtypeFixer.visit*</vh>
+<v t="ekr.20220525082934.288"></v>
+<v t="ekr.20220525082934.308"></v>
+<v t="ekr.20220525082934.300"></v>
+<v t="ekr.20220525082934.302"></v>
+<v t="ekr.20220525082934.298"></v>
+</v>
+<v t="ekr.20220605055541.1"><vh>InstantiateAliasVisitor.visit.*</vh>
+<v t="ekr.20220525082935.1640"></v>
+<v t="ekr.20220525082935.1642"></v>
+</v>
+<v t="ekr.20220525082933.1055"></v>
+<v t="ekr.20220525082935.280"></v>
+<v t="ekr.20220525082935.973"></v>
+<v t="ekr.20220605055612.1"><vh>MixedTraverserVisitor.visit* (calls accept)</vh>
+<v t="ekr.20220525082934.795"></v>
+<v t="ekr.20220525082934.808"></v>
+<v t="ekr.20220525082934.796"></v>
+<v t="ekr.20220525082934.797"></v>
+</v>
+<v t="ekr.20220605051146.1"><vh>NodeFixer.visit* (calls accept)</vh>
+<v t="ekr.20220525082934.284"></v>
+<v t="ekr.20220525082934.282"></v>
+<v t="ekr.20220525082934.276"></v>
+</v>
+<v t="ekr.20220605055725.1"><vh>NodeReplaceVisitor.visit*</vh>
+<v t="ekr.20220525082936.555"></v>
+<v t="ekr.20220525082936.552"></v>
+<v t="ekr.20220525082936.550"></v>
+</v>
+<v t="ekr.20220605051316.1"><vh>NodeVisitor.visit* (do nothings)</vh>
+<v t="ekr.20220525082936.245"></v>
+<v t="ekr.20220525082936.306"></v>
+<v t="ekr.20220525082936.294"></v>
+<v t="ekr.20220525082936.303"></v>
+<v t="ekr.20220525082936.305"></v>
+<v t="ekr.20220525082936.309"></v>
+</v>
+<v t="ekr.20220605052125.1"><vh>ProperSubtypeVisitor.visit* (return bool)</vh>
+<v t="ekr.20220525082935.899"></v>
+<v t="ekr.20220525082935.898"></v>
+<v t="ekr.20220525082935.886"></v>
+<v t="ekr.20220525082935.888"></v>
+<v t="ekr.20220525082935.893"></v>
+</v>
+<v t="ekr.20220605052108.1"><vh>SameTypeVisitor.visit* (return bool)</vh>
+<v t="ekr.20220525082934.1551"></v>
+<v t="ekr.20220525082934.1564"></v>
+<v t="ekr.20220525082934.1552"></v>
+<v t="ekr.20220525082934.1554"></v>
+<v t="ekr.20220525082934.1559"></v>
+</v>
+<v t="ekr.20220525082935.175"></v>
+<v t="ekr.20220525082933.572"></v>
+<v t="ekr.20220605051629.1"><vh>SnapshotTypeVisitor.visit* (return bool)</vh>
+<v t="ekr.20220525082936.522"></v>
+<v t="ekr.20220525082936.521"></v>
+<v t="ekr.20220525082936.509"></v>
+<v t="ekr.20220525082936.511"></v>
+<v t="ekr.20220525082936.516"></v>
+</v>
+<v t="ekr.20220525082935.451"></v>
+<v t="ekr.20220525082935.967"></v>
+<v t="ekr.20220605051919.1"><vh>SubexpressionFinder.visit*</vh>
+<v t="ekr.20220525082936.728"></v>
+<v t="ekr.20220525082936.755"></v>
+<v t="ekr.20220525082936.727"></v>
+<v t="ekr.20220525082936.730"></v>
+</v>
+<v t="ekr.20220605051951.1"><vh>SubtypeVisitor.visit* (return bool) </vh>
+<v t="ekr.20220525082935.854"></v>
+<v t="ekr.20220525082935.853"></v>
+<v t="ekr.20220525082935.841"></v>
+<v t="ekr.20220525082935.843"></v>
+<v t="ekr.20220525082935.848"></v>
+</v>
+<v t="ekr.20220525082936.29"></v>
+<v t="ekr.20220605052414.1"><vh>TransformVisitor.visit*</vh>
+<v t="ekr.20220525082935.1137"></v>
+<v t="ekr.20220525082935.1125"></v>
+<v t="ekr.20220525082935.1134"></v>
+<v t="ekr.20220525082935.1136"></v>
+<v t="ekr.20220525082935.1141"></v>
+</v>
+<v t="ekr.20220525082935.1027"></v>
+<v t="ekr.20220605060332.1"><vh>Type...</vh>
+<v t="ekr.20220605052436.1"><vh>TypeAnalyzer.visit*</vh>
+<v t="ekr.20220525082935.1196"></v>
+<v t="ekr.20220525082935.1193"></v>
+<v t="ekr.20220525082935.1215"></v>
+<v t="ekr.20220525082935.1197"></v>
+<v t="ekr.20220525082935.1199"></v>
+<v t="ekr.20220525082935.1208"></v>
+</v>
+<v t="ekr.20220525082935.405"></v>
+<v t="ekr.20220525082935.962"></v>
+<v t="ekr.20220605052524.1"><vh>TypeIndirectionVisitor.visit*</vh>
+<v t="ekr.20220525082934.383"></v>
+<v t="ekr.20220525082934.382"></v>
+<v t="ekr.20220525082934.369"></v>
+<v t="ekr.20220525082934.371"></v>
+<v t="ekr.20220525082934.378"></v>
+</v>
+<v t="ekr.20220605052544.1"><vh>TypeJoinVisitor.visit*</vh>
+<v t="ekr.20220525082934.435"></v>
+<v t="ekr.20220525082934.434"></v>
+<v t="ekr.20220525082934.422"></v>
+<v t="ekr.20220525082934.424"></v>
+<v t="ekr.20220525082934.431"></v>
+</v>
+<v t="ekr.20220605052610.1"><vh>TypeMeetVisitor.visit*</vh>
+<v t="ekr.20220525082934.584"></v>
+<v t="ekr.20220525082934.583"></v>
+<v t="ekr.20220525082934.571"></v>
+<v t="ekr.20220525082934.573"></v>
+<v t="ekr.20220525082934.580"></v>
+</v>
+<v t="ekr.20220605052624.1"><vh>TypeQuery.visit*</vh>
+<v t="ekr.20220525082936.86"></v>
+<v t="ekr.20220525082936.61"></v>
+<v t="ekr.20220525082936.83"></v>
+<v t="ekr.20220525082936.68"></v>
+<v t="ekr.20220525082936.70"></v>
+<v t="ekr.20220525082936.77"></v>
+</v>
+<v t="ekr.20220605052646.1"><vh>TypeReplaceVisitor.visit*</vh>
+<v t="ekr.20220525082936.566"></v>
+<v t="ekr.20220525082936.585"></v>
+<v t="ekr.20220525082936.575"></v>
+<v t="ekr.20220525082936.576"></v>
+<v t="ekr.20220525082936.578"></v>
+<v t="ekr.20220525082936.581"></v>
+</v>
+<v t="ekr.20220605052704.1"><vh>TypeShallowCopier.visit*</vh>
+<v t="ekr.20220525082933.974"></v>
+<v t="ekr.20220525082933.973"></v>
+<v t="ekr.20220525082933.961"></v>
+<v t="ekr.20220525082933.964"></v>
+<v t="ekr.20220525082933.969"></v>
+</v>
+<v t="ekr.20220605052726.1"><vh>TypeStrVisitor.visit*</vh>
+<v t="ekr.20220525082935.1630"></v>
+<v t="ekr.20220525082935.1606"></v>
+<v t="ekr.20220525082935.1628"></v>
+<v t="ekr.20220525082935.1614"></v>
+<v t="ekr.20220525082935.1617"></v>
+<v t="ekr.20220525082935.1621"></v>
+</v>
+<v t="ekr.20220605052748.1"><vh>TypeTranslator.visit*</vh>
+<v t="ekr.20220525082936.57"></v>
+<v t="ekr.20220525082936.56"></v>
+<v t="ekr.20220525082936.42"></v>
+<v t="ekr.20220525082936.45"></v>
+<v t="ekr.20220525082936.50"></v>
+</v>
+<v t="ekr.20220605052832.1"><vh>TypeTraverserVisitor.visit</vh>
+<v t="ekr.20220525082935.1699"></v>
+<v t="ekr.20220525082935.1693"></v>
+<v t="ekr.20220525082935.1689"></v>
+<v t="ekr.20220525082935.1677"></v>
+<v t="ekr.20220525082935.1680"></v>
+<v t="ekr.20220525082935.1686"></v>
+</v>
+<v t="ekr.20220605052858.1"><vh>TypeTriggersVisitor.visit*</vh>
+<v t="ekr.20220525082936.690"></v>
+<v t="ekr.20220525082936.691"></v>
+<v t="ekr.20220525082936.693"></v>
+<v t="ekr.20220525082936.696"></v>
+</v>
+<v t="ekr.20220525082936.681"></v>
+<v t="ekr.20220605052922.1"><vh>TypeVarEraser.visit*</vh>
+<v t="ekr.20220525082933.1051"></v>
+<v t="ekr.20220525082933.1049"></v>
+</v>
+<v t="ekr.20220525082935.1312"></v>
+<v t="ekr.20220605052939.1"><vh>TypeVisitor.visit* (abstract type)</vh>
+<v t="ekr.20220525082936.25"></v>
+<v t="ekr.20220525082936.24"></v>
+<v t="ekr.20220525082936.12"></v>
+<v t="ekr.20220525082936.15"></v>
+<v t="ekr.20220525082936.20"></v>
+</v>
+<v t="ekr.20220525082935.1635"></v>
+</v>
+</v>
+<v t="ekr.20220605053216.1"><vh>Found 56:class Type*</vh>
+<v t="ekr.20220525082933.558"></v>
+<v t="ekr.20220605054323.1"><vh>--- error classes</vh>
+<v t="ekr.20220525082934.31"></v>
+</v>
+<v t="ekr.20220605054114.1"><vh>--- unit test methods</vh>
+<v t="ekr.20220525082936.1277"></v>
+<v t="ekr.20220525082936.1458"></v>
+<v t="ekr.20220525082936.1294"></v>
+<v t="ekr.20220525082936.1280"></v>
+</v>
+<v t="ekr.20220605054822.1"><vh>--- no accept or visit methods</vh>
+<v t="ekr.20220525082934.1301"></v>
+<v t="ekr.20220525082936.1482"></v>
+<v t="ekr.20220525082936.880"></v>
+<v t="ekr.20220525082935.411"></v>
+<v t="ekr.20220525082935.1341"></v>
+<v t="ekr.20220525082934.1196"></v>
+<v t="ekr.20220525082936.1073"></v>
+<v t="ekr.20220525082935.1317"></v>
+<v t="ekr.20220525082933.344"></v>
+<v t="ekr.20220525082935.1656"></v>
+<v t="ekr.20220525082935.1349"></v>
+<v t="ekr.20220525082934.1153"></v>
+<v t="ekr.20220525082935.1165"></v>
+<v t="ekr.20220525082935.1357"></v>
+</v>
+<v t="ekr.20220605053602.1"><vh>--- accept methods</vh>
+<v t="ekr.20220525082935.1319"></v>
+<v t="ekr.20220525082934.1222"></v>
+<v t="ekr.20220525082934.1170"></v>
+<v t="ekr.20220525082935.1327"></v>
+<v t="ekr.20220525082934.1149"></v>
+<v t="ekr.20220525082934.1176"></v>
+<v t="ekr.20220525082935.1529"></v>
+<v t="ekr.20220525082935.1400"></v>
+<v t="ekr.20220525082935.1584"></v>
+<v t="ekr.20220525082934.1157"></v>
+<v t="ekr.20220525082934.1166"></v>
+<v t="ekr.20220525082935.1381"></v>
+<v t="ekr.20220525082935.1361"></v>
+</v>
+<v t="ekr.20220605053626.1"><vh>--- visit methods</vh>
+<v t="ekr.20220525082935.1178"></v>
+<v t="ekr.20220525082935.399"></v>
+<v t="ekr.20220525082933.346"></v>
+<v t="ekr.20220525082934.142"></v>
+<v t="ekr.20220525082934.285"></v>
+<v t="ekr.20220525082935.956"></v>
+<v t="ekr.20220525082934.359"></v>
+<v t="ekr.20220525082934.413"></v>
+<v t="ekr.20220525082934.562"></v>
+<v t="ekr.20220525082936.58"></v>
+<v t="ekr.20220525082936.563"></v>
+<v t="ekr.20220525082933.953"></v>
+<v t="ekr.20220525082935.1603"></v>
+<v t="ekr.20220525082936.34"></v>
+<v t="ekr.20220525082935.1671"></v>
+<v t="ekr.20220525082936.677"></v>
+<v t="ekr.20220525082933.1047"></v>
+<v t="ekr.20220525082935.1309"></v>
+<v t="ekr.20220525082935.1247"></v>
+<v t="ekr.20220525082936.5"></v>
+</v>
+</v>
+<v t="ekr.20220605060436.1"><vh>Found 7:class Node</vh>
+<v t="ekr.20220525082934.880"></v>
+<v t="ekr.20220525082934.274"></v>
+<v t="ekr.20220525082933.322"></v>
+<v t="ekr.20220525082936.529"></v>
+<v t="ekr.20220525082936.597"></v>
+<v t="ekr.20220525082936.231"></v>
 </v>
 </vnodes>
 <tnodes>
@@ -10987,7 +11442,6 @@ class BuildResult:
       fscache: optionally a file-system cacher
 
     """
-
     # If we were not given a flush_errors, we use one that will populate those
     # fields for callers that want the traditional API.
     messages = []
@@ -13878,7 +14332,6 @@ if __name__ == '__main__':
              manager: BuildManager,
              stdout: TextIO,
              ) -&gt; Graph:
-
     log_configuration(manager, sources)
 
     t0 = time.time()
@@ -14175,7 +14628,6 @@ if __name__ == '__main__':
 </t>
 <t tx="ekr.20220525082933.328">def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
     """Process everything in dependency order."""
-
     sccs = sorted_components(graph)
     manager.log("Found %d SCCs; largest has %d nodes" %
                 (len(sccs), max(len(scc) for scc in sccs)))
@@ -14391,7 +14843,6 @@ if __name__ == '__main__':
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
-
     stale = scc
     for id in stale:
         # We may already have parsed the module, or not.
@@ -57047,6 +57498,10 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 </t>
 <t tx="ekr.20220525082935.1202">def visit_callable_type(self, t: CallableType, nested: bool = True) -&gt; Type:
     # Every Callable can bind its own type variables, if they're not in the outer scope
+    from leo.core import leoGlobals as g  ###
+    if 'ekr_a:' in repr(t):  ###
+        ### t.definition is a FuncDef object.
+        g.pdb()
     with self.tvar_scope_frame():
         if self.defining_alias:
             variables = t.variables
@@ -64537,7 +64992,7 @@ def file_context(self,
     from leo.core import leoGlobals as g  ###
     with self.tvar_scope_frame(self.tvar_scope.method_frame()):
         
-        if defn._name.startswith('f1_str'):  ###
+        if False and defn._name.startswith('f1_str'):  ###
             g.pdb()
         if defn.type:
             self.check_classvar_in_signature(defn.type)
@@ -101078,438 +101533,68 @@ stale = [ # Same keys as above.
 -&gt; self.analyze_func_def(defn)
 &gt; semanal.py(663)analyze_func_def()</t>
 <t tx="ekr.20220604115701.1"></t>
-<t tx="ekr.20220604120250.1">@ignore
-@nosearch
-HEAD=c4f85cd87</t>
-<t tx="ekr.20220604120252.289"></t>
-<t tx="ekr.20220604120252.290">@ignore
-@nosearch
-@language patch
---- HEAD
-+++ uncommitted
-@@ -29,6 +29,7 @@
-       fscache: optionally a file-system cacher
- 
-     """
-+
-     # If we were not given a flush_errors, we use one that will populate those
-     # fields for callers that want the traditional API.
-     messages = []
-@language python
-</t>
-<t tx="ekr.20220604120252.291">def build(sources: List[BuildSource],
-          options: Options,
-          alt_lib_path: Optional[str] = None,
-          flush_errors: Optional[Callable[[List[str], bool], None]] = None,
-          fscache: Optional[FileSystemCache] = None,
-          stdout: Optional[TextIO] = None,
-          stderr: Optional[TextIO] = None,
-          extra_plugins: Optional[Sequence[Plugin]] = None,
-          ) -&gt; BuildResult:
-    """Analyze a program.
+<t tx="ekr.20220604125006.1"></t>
+<t tx="ekr.20220605045416.1">@nosearch
 
-    A single call to build performs parsing, semantic analysis and optionally
-    type checking for the program *and* all imported modules, recursively.
+# Word, Ignore Case, Head, Body
 
-    Return BuildResult if successful or only non-blocking errors were found;
-    otherwise raise CompileError.
+# found 125 nodes</t>
+<t tx="ekr.20220605050431.1"># Found 21 marked nodes</t>
+<t tx="ekr.20220605050554.1"></t>
+<t tx="ekr.20220605050628.1">@nosearch
 
-    If a flush_errors callback is provided, all error messages will be
-    passed to it and the errors and messages fields of BuildResult and
-    CompileError (respectively) will be empty. Otherwise those fields will
-    report any error messages.
+# Word, Ignore Case, Regex, Head, Body
 
-    Args:
-      sources: list of sources to build
-      options: build options
-      alt_lib_path: an additional directory for looking up library modules
-        (takes precedence over other directories)
-      flush_errors: optional function to flush errors after a file is processed
-      fscache: optionally a file-system cacher
+# found 174 nodes</t>
+<t tx="ekr.20220605050725.1"></t>
+<t tx="ekr.20220605050753.1"></t>
+<t tx="ekr.20220605050827.1"></t>
+<t tx="ekr.20220605051035.1"></t>
+<t tx="ekr.20220605051146.1"></t>
+<t tx="ekr.20220605051316.1"></t>
+<t tx="ekr.20220605051629.1"></t>
+<t tx="ekr.20220605051707.1"></t>
+<t tx="ekr.20220605051729.1"></t>
+<t tx="ekr.20220605051745.1"></t>
+<t tx="ekr.20220605051839.1"></t>
+<t tx="ekr.20220605051919.1"></t>
+<t tx="ekr.20220605051951.1"></t>
+<t tx="ekr.20220605052108.1"></t>
+<t tx="ekr.20220605052125.1"></t>
+<t tx="ekr.20220605052414.1"></t>
+<t tx="ekr.20220605052436.1"></t>
+<t tx="ekr.20220605052456.1"></t>
+<t tx="ekr.20220605052524.1"></t>
+<t tx="ekr.20220605052544.1"></t>
+<t tx="ekr.20220605052610.1"></t>
+<t tx="ekr.20220605052624.1"></t>
+<t tx="ekr.20220605052646.1"></t>
+<t tx="ekr.20220605052704.1"></t>
+<t tx="ekr.20220605052726.1"></t>
+<t tx="ekr.20220605052748.1"></t>
+<t tx="ekr.20220605052832.1"></t>
+<t tx="ekr.20220605052858.1"></t>
+<t tx="ekr.20220605052922.1"></t>
+<t tx="ekr.20220605052939.1"></t>
+<t tx="ekr.20220605053216.1">@nosearch
 
-    """
-    # If we were not given a flush_errors, we use one that will populate those
-    # fields for callers that want the traditional API.
-    messages = []
+# Head, Body
 
-    @others
-    flush_errors = flush_errors or default_flush_errors
-    stdout = stdout or sys.stdout
-    stderr = stderr or sys.stderr
-    extra_plugins = extra_plugins or []
+# found 56 nodes</t>
+<t tx="ekr.20220605053602.1"></t>
+<t tx="ekr.20220605053626.1"></t>
+<t tx="ekr.20220605054114.1"></t>
+<t tx="ekr.20220605054323.1"></t>
+<t tx="ekr.20220605054822.1"></t>
+<t tx="ekr.20220605055541.1"></t>
+<t tx="ekr.20220605055612.1"></t>
+<t tx="ekr.20220605055725.1"></t>
+<t tx="ekr.20220605055805.1"></t>
+<t tx="ekr.20220605060332.1"></t>
+<t tx="ekr.20220605060436.1">@nosearch
 
-    try:
-        result = _build(
-            sources, options, alt_lib_path, flush_errors, fscache, stdout, stderr, extra_plugins
-        )
-        result.errors = messages
-        return result
-    except CompileError as e:
-        # CompileErrors raised from an errors object carry all of the
-        # messages that have not been reported out by error streaming.
-        # Patch it up to contain either none or all none of the messages,
-        # depending on whether we are flushing errors.
-        serious = not e.use_stdout
-        flush_errors(e.messages, serious)
-        e.messages = messages
-        raise
+# Head, Body
 
-
-</t>
-<t tx="ekr.20220604120252.292">@ignore
-@nosearch
-@language patch
---- HEAD
-+++ uncommitted
-@@ -2,6 +2,7 @@
-              manager: BuildManager,
-              stdout: TextIO,
-              ) -&gt; Graph:
-+
-     log_configuration(manager, sources)
- 
-     t0 = time.time()
-@language python
-</t>
-<t tx="ekr.20220604120252.293">def dispatch(sources: List[BuildSource],
-             manager: BuildManager,
-             stdout: TextIO,
-             ) -&gt; Graph:
-    log_configuration(manager, sources)
-
-    t0 = time.time()
-    graph = load_graph(sources, manager)
-
-    # This is a kind of unfortunate hack to work around some of fine-grained's
-    # fragility: if we have loaded less than 50% of the specified files from
-    # cache in fine-grained cache mode, load the graph again honestly.
-    # In this case, we just turn the cache off entirely, so we don't need
-    # to worry about some files being loaded and some from cache and so
-    # that fine-grained mode never *writes* to the cache.
-    if manager.use_fine_grained_cache() and len(graph) &lt; 0.50 * len(sources):
-        manager.log("Redoing load_graph without cache because too much was missing")
-        manager.cache_enabled = False
-        graph = load_graph(sources, manager)
-
-    t1 = time.time()
-    manager.add_stats(graph_size=len(graph),
-                      stubs_found=sum(g.path is not None and g.path.endswith('.pyi')
-                                      for g in graph.values()),
-                      graph_load_time=(t1 - t0),
-                      fm_cache_size=len(manager.find_module_cache.results),
-                      )
-    if not graph:
-        print("Nothing to do?!", file=stdout)
-        return graph
-    manager.log(f"Loaded graph with {len(graph)} nodes ({t1 - t0:.3f} sec)")
-    if manager.options.dump_graph:
-        dump_graph(graph, stdout)
-        return graph
-
-    # Fine grained dependencies that didn't have an associated module in the build
-    # are serialized separately, so we read them after we load the graph.
-    # We need to read them both for running in daemon mode and if we are generating
-    # a fine-grained cache (so that we can properly update them incrementally).
-    # The `read_deps_cache` will also validate
-    # the deps cache against the loaded individual cache files.
-    if manager.options.cache_fine_grained or manager.use_fine_grained_cache():
-        t2 = time.time()
-        fg_deps_meta = read_deps_cache(manager, graph)
-        manager.add_stats(load_fg_deps_time=time.time() - t2)
-        if fg_deps_meta is not None:
-            manager.fg_deps_meta = fg_deps_meta
-        elif manager.stats.get('fresh_metas', 0) &gt; 0:
-            # Clear the stats so we don't infinite loop because of positive fresh_metas
-            manager.stats.clear()
-            # There were some cache files read, but no fine-grained dependencies loaded.
-            manager.log("Error reading fine-grained dependencies cache -- aborting cache load")
-            manager.cache_enabled = False
-            manager.log("Falling back to full run -- reloading graph...")
-            return dispatch(sources, manager, stdout)
-
-    # If we are loading a fine-grained incremental mode cache, we
-    # don't want to do a real incremental reprocess of the
-    # graph---we'll handle it all later.
-    if not manager.use_fine_grained_cache():
-        process_graph(graph, manager)
-        # Update plugins snapshot.
-        write_plugins_snapshot(manager)
-        manager.old_plugins_snapshot = manager.plugins_snapshot
-        if manager.options.cache_fine_grained or manager.options.fine_grained_incremental:
-            # If we are running a daemon or are going to write cache for further fine grained use,
-            # then we need to collect fine grained protocol dependencies.
-            # Since these are a global property of the program, they are calculated after we
-            # processed the whole graph.
-            TypeState.add_all_protocol_deps(manager.fg_deps)
-            if not manager.options.fine_grained_incremental:
-                rdeps = generate_deps_for_cache(manager, graph)
-                write_deps_cache(rdeps, manager, graph)
-
-    if manager.options.dump_deps:
-        # This speeds up startup a little when not using the daemon mode.
-        from mypy.server.deps import dump_all_dependencies
-        dump_all_dependencies(manager.modules, manager.all_types,
-                              manager.options.python_version, manager.options)
-    return graph
-
-
-</t>
-<t tx="ekr.20220604120252.294">@ignore
-@nosearch
-@language patch
---- HEAD
-+++ uncommitted
-@@ -1,5 +1,6 @@
- def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
-     """Process everything in dependency order."""
-+
-     sccs = sorted_components(graph)
-     manager.log("Found %d SCCs; largest has %d nodes" %
-                 (len(sccs), max(len(scc) for scc in sccs)))
-@language python
-</t>
-<t tx="ekr.20220604120252.295">def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
-    """Process everything in dependency order."""
-    sccs = sorted_components(graph)
-    manager.log("Found %d SCCs; largest has %d nodes" %
-                (len(sccs), max(len(scc) for scc in sccs)))
-
-    fresh_scc_queue: List[List[str]] = []
-
-    # We're processing SCCs from leaves (those without further
-    # dependencies) to roots (those from which everything else can be
-    # reached).
-    for ascc in sccs:
-        # Order the SCC's nodes using a heuristic.
-        # Note that ascc is a set, and scc is a list.
-        scc = order_ascc(graph, ascc)
-        # Make the order of the SCC that includes 'builtins' and 'typing',
-        # among other things, predictable. Various things may  break if
-        # the order changes.
-        if 'builtins' in ascc:
-            scc = sorted(scc, reverse=True)
-            # If builtins is in the list, move it last.  (This is a bit of
-            # a hack, but it's necessary because the builtins module is
-            # part of a small cycle involving at least {builtins, abc,
-            # typing}.  Of these, builtins must be processed last or else
-            # some builtin objects will be incompletely processed.)
-            scc.remove('builtins')
-            scc.append('builtins')
-        if manager.options.verbosity &gt;= 2:
-            for id in scc:
-                manager.trace(f"Priorities for {id}:",
-                              " ".join("%s:%d" % (x, graph[id].priorities[x])
-                                       for x in graph[id].dependencies
-                                       if x in ascc and x in graph[id].priorities))
-        # Because the SCCs are presented in topological sort order, we
-        # don't need to look at dependencies recursively for staleness
-        # -- the immediate dependencies are sufficient.
-        stale_scc = {id for id in scc if not graph[id].is_fresh()}
-        fresh = not stale_scc
-        deps = set()
-        for id in scc:
-            deps.update(graph[id].dependencies)
-        deps -= ascc
-        stale_deps = {id for id in deps if id in graph and not graph[id].is_interface_fresh()}
-        fresh = fresh and not stale_deps
-        undeps = set()
-        if fresh:
-            # Check if any dependencies that were suppressed according
-            # to the cache have been added back in this run.
-            # NOTE: Newly suppressed dependencies are handled by is_fresh().
-            for id in scc:
-                undeps.update(graph[id].suppressed)
-            undeps &amp;= graph.keys()
-            if undeps:
-                fresh = False
-        if fresh:
-            # All cache files are fresh.  Check that no dependency's
-            # cache file is newer than any scc node's cache file.
-            oldest_in_scc = min(graph[id].xmeta.data_mtime for id in scc)
-            viable = {id for id in stale_deps if graph[id].meta is not None}
-            newest_in_deps = 0 if not viable else max(graph[dep].xmeta.data_mtime
-                                                      for dep in viable)
-            if manager.options.verbosity &gt;= 3:  # Dump all mtimes for extreme debugging.
-                all_ids = sorted(ascc | viable, key=lambda id: graph[id].xmeta.data_mtime)
-                for id in all_ids:
-                    if id in scc:
-                        if graph[id].xmeta.data_mtime &lt; newest_in_deps:
-                            key = "*id:"
-                        else:
-                            key = "id:"
-                    else:
-                        if graph[id].xmeta.data_mtime &gt; oldest_in_scc:
-                            key = "+dep:"
-                        else:
-                            key = "dep:"
-                    manager.trace(" %5s %.0f %s" % (key, graph[id].xmeta.data_mtime, id))
-            # If equal, give the benefit of the doubt, due to 1-sec time granularity
-            # (on some platforms).
-            if oldest_in_scc &lt; newest_in_deps:
-                fresh = False
-                fresh_msg = f"out of date by {newest_in_deps - oldest_in_scc:.0f} seconds"
-            else:
-                fresh_msg = "fresh"
-        elif undeps:
-            fresh_msg = f"stale due to changed suppression ({' '.join(sorted(undeps))})"
-        elif stale_scc:
-            fresh_msg = "inherently stale"
-            if stale_scc != ascc:
-                fresh_msg += f" ({' '.join(sorted(stale_scc))})"
-            if stale_deps:
-                fresh_msg += f" with stale deps ({' '.join(sorted(stale_deps))})"
-        else:
-            fresh_msg = f"stale due to deps ({' '.join(sorted(stale_deps))})"
-
-        # Initialize transitive_error for all SCC members from union
-        # of transitive_error of dependencies.
-        if any(graph[dep].transitive_error for dep in deps if dep in graph):
-            for id in scc:
-                graph[id].transitive_error = True
-
-        scc_str = " ".join(scc)
-        if fresh:
-            manager.trace(f"Queuing {fresh_msg} SCC ({scc_str})")
-            fresh_scc_queue.append(scc)
-        else:
-            if len(fresh_scc_queue) &gt; 0:
-                manager.log(f"Processing {len(fresh_scc_queue)} queued fresh SCCs")
-                # Defer processing fresh SCCs until we actually run into a stale SCC
-                # and need the earlier modules to be loaded.
-                #
-                # Note that `process_graph` may end with us not having processed every
-                # single fresh SCC. This is intentional -- we don't need those modules
-                # loaded if there are no more stale SCCs to be rechecked.
-                #
-                # Also note we shouldn't have to worry about transitive_error here,
-                # since modules with transitive errors aren't written to the cache,
-                # and if any dependencies were changed, this SCC would be stale.
-                # (Also, in quick_and_dirty mode we don't care about transitive errors.)
-                #
-                # TODO: see if it's possible to determine if we need to process only a
-                # _subset_ of the past SCCs instead of having to process them all.
-                for prev_scc in fresh_scc_queue:
-                    process_fresh_modules(graph, prev_scc, manager)
-                fresh_scc_queue = []
-            size = len(scc)
-            if size == 1:
-                manager.log(f"Processing SCC singleton ({scc_str}) as {fresh_msg}")
-            else:
-                manager.log("Processing SCC of size %d (%s) as %s" % (size, scc_str, fresh_msg))
-            process_stale_scc(graph, scc, manager)
-
-    sccs_left = len(fresh_scc_queue)
-    nodes_left = sum(len(scc) for scc in fresh_scc_queue)
-    manager.add_stats(sccs_left=sccs_left, nodes_left=nodes_left)
-    if sccs_left:
-        manager.log("{} fresh SCCs ({} nodes) left in queue (and will remain unprocessed)"
-                    .format(sccs_left, nodes_left))
-        manager.trace(str(fresh_scc_queue))
-    else:
-        manager.log("No fresh SCCs left in queue")
-
-
-</t>
-<t tx="ekr.20220604120252.296">@ignore
-@nosearch
-@language patch
---- HEAD
-+++ uncommitted
-@@ -3,6 +3,7 @@
- 
-     Exception: If quick_and_dirty is set, use the cache for fresh modules.
-     """
-+
-     stale = scc
-     for id in stale:
-         # We may already have parsed the module, or not.
-@language python
-</t>
-<t tx="ekr.20220604120252.297">def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -&gt; None:
-    """Process the modules in one SCC from source code.
-
-    Exception: If quick_and_dirty is set, use the cache for fresh modules.
-    """
-    stale = scc
-    for id in stale:
-        # We may already have parsed the module, or not.
-        # If the former, parse_file() is a no-op.
-        graph[id].parse_file()
-    if 'typing' in scc:
-        # For historical reasons we need to manually add typing aliases
-        # for built-in generic collections, see docstring of
-        # SemanticAnalyzerPass2.add_builtin_aliases for details.
-        typing_mod = graph['typing'].tree
-        assert typing_mod, "The typing module was not parsed"
-    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
-
-    # Track what modules aren't yet done so we can finish them as soon
-    # as possible, saving memory.
-    unfinished_modules = set(stale)
-    for id in stale:
-        graph[id].type_check_first_pass()
-        if not graph[id].type_checker().deferred_nodes:
-            unfinished_modules.discard(id)
-            graph[id].finish_passes()
-
-    while unfinished_modules:
-        for id in stale:
-            if id not in unfinished_modules:
-                continue
-            if not graph[id].type_check_second_pass():
-                unfinished_modules.discard(id)
-                graph[id].finish_passes()
-    for id in stale:
-        graph[id].generate_unused_ignore_notes()
-        graph[id].generate_ignore_without_code_notes()
-    if any(manager.errors.is_errors_for_file(graph[id].xpath) for id in stale):
-        for id in stale:
-            graph[id].transitive_error = True
-    for id in stale:
-        manager.flush_errors(manager.errors.file_messages(graph[id].xpath), False)
-        graph[id].write_cache()
-        graph[id].mark_as_rechecked()
-
-
-</t>
-<t tx="ekr.20220604120252.34">@ignore
-@nosearch
-@language patch
---- HEAD
-+++ uncommitted
-@@ -138,6 +138,7 @@
-       fscache: optionally a file-system cacher
- 
-     """
-+
-     # If we were not given a flush_errors, we use one that will populate those
-     # fields for callers that want the traditional API.
-     messages = []
-@@ -2670,6 +2671,7 @@
-              manager: BuildManager,
-              stdout: TextIO,
-              ) -&gt; Graph:
-+
-     log_configuration(manager, sources)
- 
-     t0 = time.time()
-@@ -2958,6 +2960,7 @@
- 
- def process_graph(graph: Graph, manager: BuildManager) -&gt; None:
-     """Process everything in dependency order."""
-+
-     sccs = sorted_components(graph)
-     manager.log("Found %d SCCs; largest has %d nodes" %
-                 (len(sccs), max(len(scc) for scc in sccs)))
-@@ -3165,6 +3168,7 @@
- 
-     Exception: If quick_and_dirty is set, use the cache for fresh modules.
-     """
-+
-     stale = scc
-     for id in stale:
-         # We may already have parsed the module, or not.
-@language python
-</t>
+# found 7 nodes</t>
 </tnodes>
 </leo_file>
