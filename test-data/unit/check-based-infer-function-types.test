@@ -317,7 +317,7 @@ class B:
 b = B()
 reveal_type(b.f)  # E: Expression has type "Untyped"  [no-any-expr] \
                   # N: Revealed type is "Untyped"
-b.f = 1
+b.f = 1  # E: Usage of untyped name "f" in typed context  [no-untyped-usage]
 del b.f
 [builtins fixtures/property.pyi]
 
@@ -336,3 +336,34 @@ reveal_type(a.p)  # N: Revealed type is "None"
 a.p = 1  # E: Incompatible types in assignment (expression has type "int", variable has type "None")  [assignment]
 del a.p
 [builtins fixtures/property.pyi]
+
+
+[case testPropertyInheritInfer-xfail]
+# Overloaded overrides aren't supported yet
+class A:
+    @property
+    def p(self) -> int: ...
+class B(A):
+    @property
+    def p(self):
+        1 + ""  # E: Unsupported operand types for + ("int" and "str")  [operator]
+        return 1
+
+b = B()
+reveal_type(b.p)  # N: Revealed type is "int"
+c = b.p
+[builtins fixtures/property.pyi]
+
+
+[case testDefaultReturnOverride-xfail]
+class A:
+    def foo(self) -> int: ...
+    def bar(self, i: int) -> int: ...
+
+class B(A):
+    def foo(self): ...
+    def bar(self, i: int): ...
+
+b: B
+reveal_type(b.foo)  # N: Revealed type is "def () -> int"
+reveal_type(b.bar)  # N: Revealed type is "def (i: int) -> int"

@@ -47,7 +47,6 @@ Some important properties:
   daemon strips and reuses existing ASTs (to improve performance and/or
   reduce memory use).
 """
-from builtins import isinstance
 from contextlib import contextmanager
 
 from typing import (
