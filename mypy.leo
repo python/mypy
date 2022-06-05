@@ -4407,7 +4407,7 @@
 <v t="ekr.20220525082935.1316"><vh>@clean types.py</vh>
 <v t="ekr.20220525082935.1317"><vh>class TypeOfAny</vh></v>
 <v t="ekr.20220525082935.1318"><vh>deserialize_type</vh></v>
-<v t="ekr.20220525082935.1319"><vh>class Type (has accept method)</vh>
+<v t="ekr.20220525082935.1319"><vh>class Type(Context) (has accept method)</vh>
 <v t="ekr.20220525082935.1320"><vh>Type.__init__</vh></v>
 <v t="ekr.20220525082935.1321"><vh>Type.can_be_true_default</vh></v>
 <v t="ekr.20220525082935.1322"><vh>Type.can_be_false_default</vh></v>
@@ -4440,7 +4440,7 @@
 <v t="ekr.20220525082935.1346"><vh>RequiredType.__repr__</vh></v>
 <v t="ekr.20220525082935.1347"><vh>RequiredType.accept</vh></v>
 </v>
-<v t="ekr.20220525082935.1348"><vh>class ProperType</vh></v>
+<v t="ekr.20220525082935.1348"><vh>class ProperType(Type)</vh></v>
 <v t="ekr.20220525082935.1349"><vh>class TypeVarId</vh>
 <v t="ekr.20220525082935.1350"><vh>TypeVarId.__init__</vh></v>
 <v t="ekr.20220525082935.1351"><vh>TypeVarId.new</vh></v>
@@ -4550,7 +4550,7 @@
 <v t="ekr.20220525082935.1442"><vh>DeletedType.deserialize</vh></v>
 </v>
 <v t="ekr.20220525082935.1443"><vh>Fake TypeInfo to be used as a placeholder during Instance de-serialization.</vh></v>
-<v t="ekr.20220525082935.1444"><vh>class Instance</vh>
+<v t="ekr.20220525082935.1444"><vh>class Instance(ProperType)</vh>
 <v t="ekr.20220525082935.1445"><vh>Instance.__init__</vh></v>
 <v t="ekr.20220525082935.1446"><vh>Instance.accept</vh></v>
 <v t="ekr.20220525082935.1447"><vh>Instance.__hash__</vh></v>
@@ -4734,7 +4734,7 @@
 <v t="ekr.20220525082935.1610"><vh>TypeStrVisitor.visit_uninhabited_type</vh></v>
 <v t="ekr.20220525082935.1611"><vh>TypeStrVisitor.visit_erased_type</vh></v>
 <v t="ekr.20220525082935.1612"><vh>TypeStrVisitor.visit_deleted_type</vh></v>
-<v t="ekr.20220525082935.1613"><vh>TypeStrVisitor.visit_instance</vh></v>
+<v t="ekr.20220525082935.1613"><vh>TypeStrVisitor.visit_instance (crashes with Sherlock)</vh></v>
 <v t="ekr.20220525082935.1614"><vh>TypeStrVisitor.visit_type_var</vh></v>
 <v t="ekr.20220525082935.1615"><vh>TypeStrVisitor.visit_param_spec</vh></v>
 <v t="ekr.20220525082935.1616"><vh>TypeStrVisitor.visit_parameters</vh></v>
@@ -6524,6 +6524,8 @@
 <v t="ekr.20220525082934.502"></v>
 </v>
 <v t="ekr.20220525082933.166"></v>
+<v t="ekr.20220525082935.1316"></v>
+<v t="ekr.20220525082935.1613"></v>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220530121430.1"><vh>--- Notes</vh>
 <v t="ekr.20220530121437.1"><vh>Adding tests</vh></v>
@@ -7081,9 +7083,8 @@
 <v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
 <v t="ekr.20220604124935.1"></v>
 <v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
-</v>
-<v t="ekr.20220525082934.945"></v>
-<v t="ekr.20220605082736.1"><vh>COPY: class g.SherlockTracer</vh>
+<v t="ekr.20220605082736.1"><vh>class SherlockTracer (not used)</vh>
+<v t="ekr.20220605084049.1"><vh>&lt;&lt; SherlockTracer docstring &gt;&gt;</vh></v>
 <v t="ekr.20220605082736.2"><vh>__init__</vh></v>
 <v t="ekr.20220605082736.3"><vh>__call__</vh></v>
 <v t="ekr.20220605082736.4"><vh>sherlock.bad_pattern</vh></v>
@@ -7106,7 +7107,19 @@
 <v t="ekr.20220605082736.19"><vh>show</vh></v>
 <v t="ekr.20220605082736.20"><vh>stop</vh></v>
 </v>
+</v>
+<v t="ekr.20220525082934.945"></v>
 <v t="ekr.20220525082935.1202"></v>
+<v t="ekr.20220605090347.1"><vh>--- Instance hierarchy</vh></v>
+<v t="ekr.20220525082934.872"></v>
+<v t="ekr.20220525082935.1319"></v>
+<v t="ekr.20220525082935.1348"></v>
+<v t="ekr.20220525082935.1444"></v>
+<v t="ekr.20220605090606.1"><vh>--- crash</vh></v>
+<v t="ekr.20220525082936.106"></v>
+<v t="ekr.20220525082935.1603"></v>
+<v t="ekr.20220525082935.1324"></v>
+<v t="ekr.20220525082935.1613"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220320050830.1"></t>
@@ -57530,7 +57543,9 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 </t>
 <t tx="ekr.20220525082935.1202">def visit_callable_type(self, t: CallableType, nested: bool = True) -&gt; Type:
     # Every Callable can bind its own type variables, if they're not in the outer scope
+
     trace = 'ekr_a:' in repr(t)  ###
+
     if trace:
         from leo.core import leoGlobals as g  ###
     with self.tvar_scope_frame():
@@ -57546,13 +57561,22 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
             tracer.run()
         special = self.anal_type_guard(t.ret_type)
         arg_kinds = t.arg_kinds
+        if trace:
+            print('----- 1')
+            ### g.pdb()
         if len(arg_kinds) &gt;= 2 and arg_kinds[-2] == ARG_STAR and arg_kinds[-1] == ARG_STAR2:
             arg_types = self.anal_array(t.arg_types[:-2], nested=nested) + [
                 self.anal_star_arg_type(t.arg_types[-2], ARG_STAR, nested=nested),
                 self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
             ]
         else:
+            if trace:
+                print('----- 2')
             arg_types = self.anal_array(t.arg_types, nested=nested)
+        if trace:
+            print('----- end tracing -----')
+            tracer.stop()
+            del tracer
         #
         ### The task: make ekr_a have a 'builtins.str' type.
         if trace:  ###
@@ -57569,9 +57593,6 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
                               type_guard=special,
                               )
     if trace:
-        print('----- end tracing -----')
-        tracer.stop()
-        del tracer
         g.trace('ret', ret)
     return ret
 
@@ -63243,22 +63264,46 @@ from mypy.type_visitor import (  # noqa
 
 </t>
 <t tx="ekr.20220525082935.1613">def visit_instance(self, t: Instance) -&gt; str:
-    if t.last_known_value and not t.args:
-        # Instances with a literal fallback should never be generic. If they are,
-        # something went wrong so we fall back to showing the full Instance repr.
-        s = f'{t.last_known_value}?'
-    else:
-        s = t.type.fullname or t.type.name or '&lt;???&gt;'
 
-    if t.args:
-        if t.type.fullname == 'builtins.tuple':
-            assert len(t.args) == 1
-            s += f'[{self.list_str(t.args)}, ...]'
+    if 1:  ### EKR
+        args = getattr(t, 'args', None)
+        last_known_value = getattr(t, 'last_known_value', None)
+        type_ = getattr(t, 'type', None)
+        type_fullname = getattr(type_, 'fullname', None) if type_ else None
+        type_name = getattr(type_, 'name', None) if type_ else None
+        
+        if last_known_value and not args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = f'{t.last_known_value}?'
         else:
-            s += f'[{self.list_str(t.args)}]'
-    if self.id_mapper:
-        s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
-    return s
+            s = type_fullname or type_name or '&lt;???&gt;'
+        if args:
+            if type_fullname == 'builtins.tuple':
+                assert len(t.args) == 1
+                s += f'[{self.list_str(t.args)}, ...]'
+            else:
+                s += f'[{self.list_str(t.args)}]'
+        if self.id_mapper:
+            s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
+        return s
+    else:  ### Legacy
+        if t.last_known_value and not t.args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = f'{t.last_known_value}?'
+        else:
+            s = t.type.fullname or t.type.name or '&lt;???&gt;'
+
+        if t.args:
+            if t.type.fullname == 'builtins.tuple':
+                assert len(t.args) == 1
+                s += f'[{self.list_str(t.args)}, ...]'
+            else:
+                s += f'[{self.list_str(t.args)}]'
+        if self.id_mapper:
+            s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
+        return s
 
 </t>
 <t tx="ekr.20220525082935.1614">def visit_type_var(self, t: TypeVarType) -&gt; str:
@@ -101567,41 +101612,7 @@ stale = [ # Same keys as above.
 
 # found 10 nodes</t>
 <t tx="ekr.20220605082736.1">class SherlockTracer:
-    """
-    A stand-alone tracer class with many of Sherlock's features.
-
-    This class should work in any environment containing the re, os and sys modules.
-
-    The arguments in the pattern lists determine which functions get traced
-    or which stats get printed. Each pattern starts with "+", "-", "+:" or
-    "-:", followed by a regular expression::
-
-    "+x"  Enables tracing (or stats) for all functions/methods whose name
-          matches the regular expression x.
-    "-x"  Disables tracing for functions/methods.
-    "+:x" Enables tracing for all functions in the **file** whose name matches x.
-    "-:x" Disables tracing for an entire file.
-
-    Enabling and disabling depends on the order of arguments in the pattern
-    list. Consider the arguments for the Rope trace::
-
-    patterns=['+.*','+:.*',
-        '-:.*\\lib\\.*','+:.*rope.*','-:.*leoGlobals.py',
-        '-:.*worder.py','-:.*prefs.py','-:.*resources.py',])
-
-    This enables tracing for everything, then disables tracing for all
-    library modules, except for all rope modules. Finally, it disables the
-    tracing for Rope's worder, prefs and resources modules. Btw, this is
-    one of the best uses for regular expressions that I know of.
-
-    Being able to zero in on the code of interest can be a big help in
-    studying other people's code. This is a non-invasive method: no tracing
-    code needs to be inserted anywhere.
-
-    Usage:
-
-    g.SherlockTracer(patterns).run()
-    """
+    &lt;&lt; SherlockTracer docstring &gt;&gt;
     @others
 </t>
 <t tx="ekr.20220605082736.10">def do_return(self, frame: Any, arg: Any) -&gt; None:  # Arg *is* used below.
@@ -101874,13 +101885,14 @@ def pop(self) -&gt; None:
     self.trace_lines = True  # True: trace lines in enabled functions.
     self.verbose = verbose  # True: print filename:func
     self.set_patterns(patterns)
-    try:
-        from leo.core.leoQt import QtCore
-        if QtCore:
-            # pylint: disable=no-member
-            QtCore.pyqtRemoveInputHook()
-    except Exception:
-        pass
+    if 0:
+        try:
+            from leo.core.leoQt import QtCore
+            if QtCore:
+                # pylint: disable=no-member
+                QtCore.pyqtRemoveInputHook()
+        except Exception:
+            pass
 </t>
 <t tx="ekr.20220605082736.20">def stop(self) -&gt; None:
     """Stop all tracing."""
@@ -102008,5 +102020,43 @@ def do_line(self, frame: Any, arg: Any) -&gt; None:
     else:
         print(f"{g.shortFileName(file_name)} {n} {full_name} {line}")
 </t>
+<t tx="ekr.20220605084049.1">"""
+A stand-alone tracer class with many of Sherlock's features.
+
+This class should work in any environment containing the re, os and sys modules.
+
+The arguments in the pattern lists determine which functions get traced
+or which stats get printed. Each pattern starts with "+", "-", "+:" or
+"-:", followed by a regular expression::
+
+"+x"  Enables tracing (or stats) for all functions/methods whose name
+      matches the regular expression x.
+"-x"  Disables tracing for functions/methods.
+"+:x" Enables tracing for all functions in the **file** whose name matches x.
+"-:x" Disables tracing for an entire file.
+
+Enabling and disabling depends on the order of arguments in the pattern
+list. Consider the arguments for the Rope trace::
+
+patterns=['+.*','+:.*',
+    '-:.*\\lib\\.*','+:.*rope.*','-:.*leoGlobals.py',
+    '-:.*worder.py','-:.*prefs.py','-:.*resources.py',])
+
+This enables tracing for everything, then disables tracing for all
+library modules, except for all rope modules. Finally, it disables the
+tracing for Rope's worder, prefs and resources modules. Btw, this is
+one of the best uses for regular expressions that I know of.
+
+Being able to zero in on the code of interest can be a big help in
+studying other people's code. This is a non-invasive method: no tracing
+code needs to be inserted anywhere.
+
+Usage:
+
+g.SherlockTracer(patterns).run()
+"""
+</t>
+<t tx="ekr.20220605090347.1"></t>
+<t tx="ekr.20220605090606.1"></t>
 </tnodes>
 </leo_file>
