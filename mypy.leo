@@ -6546,10 +6546,12 @@
 <v t="ekr.20220525082934.834"></v>
 </v>
 </v>
+<v t="ekr.20220604084307.1"><vh>--- changed</vh>
+<v t="ekr.20220525082935.1166"></v>
+<v t="ekr.20220525082934.504"></v>
+</v>
 <v t="ekr.20220603081942.1"><vh>--- ref</vh>
-<v t="ekr.20220601102059.1"><vh>From check-annotations.test</vh></v>
-<v t="ekr.20220603082651.1"><vh>COPY (changed) TypeChecker.check_for_missing_annotations</vh></v>
-<v t="ekr.20220525082933.328"></v>
+<v t="ekr.20220605063113.1"><vh>--- first idea</vh>
 <v t="ekr.20220525082933.377"></v>
 </v>
 <v t="ekr.20220604073659.1"><vh>--- logs</vh>
@@ -6561,10 +6563,6 @@
 <v t="ekr.20220603111629.1"><vh>log: semanal_main.py</vh></v>
 <v t="ekr.20220604112118.1"><vh>log: pdb.w from analyze_func_def</vh></v>
 </v>
-<v t="ekr.20220604084307.1"><vh>--- changed</vh>
-<v t="ekr.20220525082935.1166"></v>
-<v t="ekr.20220525082934.504"></v>
-</v>
 <v t="ekr.20220603103251.1"><vh>--- main calling sequence</vh>
 <v t="ekr.20220525082934.504"></v>
 <v t="ekr.20220525082934.505"></v>
@@ -6575,7 +6573,6 @@
 <v t="ekr.20220525082933.331"></v>
 <v t="ekr.20220525082935.309"></v>
 </v>
-<v t="ekr.20220604075851.1"><vh>--- Annotation data</vh></v>
 <v t="ekr.20220604115701.1"><vh>--- type-related classes</vh>
 <v t="ekr.20220525082934.945"></v>
 <v t="ekr.20220525082934.935"></v>
@@ -6590,21 +6587,6 @@
 <v t="ekr.20220525082934.1048"></v>
 <v t="ekr.20220525082934.1067"></v>
 </v>
-</v>
-<v t="ekr.20220603083720.1"><vh>--- testing</vh>
-<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
-<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
-<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
-<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
-<v t="ekr.20220604124935.1"></v>
-</v>
-<v t="ekr.20220604125006.1"><vh>--- typing calling sequence</vh>
-<v t="ekr.20220525082935.21"></v>
-<v t="ekr.20220525082935.37"></v>
-<v t="ekr.20220525082935.34"></v>
-<v t="ekr.20220525082935.1202"></v>
-<v t="ekr.20220525082935.1230"></v>
-<v t="ekr.20220525082935.1231"></v>
 </v>
 <v t="ekr.20220605050554.1"><vh>--- searches</vh>
 <v t="ekr.20220605045416.1"><vh>--- Found 125:def accept</vh>
@@ -6756,7 +6738,6 @@
 <v t="ekr.20220525082935.1391"></v>
 <v t="ekr.20220525082935.1422"></v>
 <v t="ekr.20220525082935.1573"></v>
-</v>
 </v>
 <v t="ekr.20220605050628.1"><vh>Found 174:def visit_*_type</vh>
 <v t="ekr.20220605050827.1"><vh>--- return bool</vh>
@@ -7077,6 +7058,27 @@
 <v t="ekr.20220525082936.597"></v>
 <v t="ekr.20220525082936.231"></v>
 </v>
+</v>
+</v>
+<v t="ekr.20220603083720.1"><vh>--- testing</vh>
+<v t="ekr.20220605063338.1"><vh>--- others</vh>
+<v t="ekr.20220601102059.1"><vh>From check-annotations.test</vh></v>
+<v t="ekr.20220601070439.1"><vh>@button test-all</vh></v>
+<v t="ekr.20220531174305.1"><vh>@button test-one</vh></v>
+</v>
+<v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
+<v t="ekr.20220604124935.1"></v>
+</v>
+<v t="ekr.20220604125006.1"><vh>--- typing calling sequence</vh>
+<v t="ekr.20220525082935.21"></v>
+<v t="ekr.20220525082935.37"></v>
+<v t="ekr.20220525082935.34"></v>
+<v t="ekr.20220525082935.1202"></v>
+<v t="ekr.20220525082935.1230"></v>
+<v t="ekr.20220525082935.1231"></v>
+</v>
+<v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
+<v t="ekr.20220525082935.1202"></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220319232947.1"></t>
@@ -7088,6 +7090,9 @@ PR: https://github.com/python/mypy/pull/12918
 
 implementation overview: https://github.com/python/mypy/wiki/Implementation-Overview
 forum: https://github.com/edreamleo/ekr-mypy/discussions/
+
+todo:
+- verify that we *will* change type inference.
 
 @language python
 
@@ -101202,89 +101207,6 @@ test-all
 <t tx="ekr.20220603024215.1"></t>
 <t tx="ekr.20220603024255.1"></t>
 <t tx="ekr.20220603081942.1"></t>
-<t tx="ekr.20220603082651.1">def check_for_missing_annotations(self, fdef: FuncItem) -&gt; None:
-    # Check for functions with unspecified/not fully specified types.
-    
-    # from mypy.nodes import FloatExpr, IntExpr, StrExpr, UnicodeExpr
-    
-    # import pdb
-    # import sys
-    
-    # if r'C:\Repos\leo-editor' not in sys.path:
-        # sys.path.append(r'C:\Repos\leo-editor')
-    # from leo.core import leoGlobals as g
-    # assert g, pdb
-
-    def is_unannotated_any(t: Type) -&gt; bool:
-        if not isinstance(t, ProperType):
-            return False
-        return isinstance(t, AnyType) and t.type_of_any == TypeOfAny.unannotated
-
-    has_explicit_annotation = (isinstance(fdef.type, CallableType)
-                               and any(not is_unannotated_any(t)
-                                       for t in fdef.type.arg_types + [fdef.type.ret_type]))
-
-    ### EKR: #12352: new function.           
-    def any_arg_is_unannotated(fdef: Any):
-        if fdef.name == 'f1_str':
-            trace = []
-            for i, arg in enumerate(fdef.arguments):
-                # g.printObj(z)
-                trace.append(f"          arg i: {i}\n")
-                trace.append(f"           kind: {arg.kind}\n")
-                trace.append(f"    initializer: {arg.initializer}\n")
-                trace.append(f"type_annotation: {arg.type_annotation}\n")
-                trace.append(f"       variable: {arg.variable}\n")
-            ### pdb.set_trace()  # Enables stdout.
-            print(''.join(trace))
-            # for arg in fdef.arguments:
-                # # g.printObj(z)
-                # print(f"           kind: {arg.kind}")
-                # print(f"    initializer: {arg.initializer}")
-                # print(f"type_annotation: {arg.type_annotation}")
-                # print(f"       variable: {arg.variable}")
-                
-        for arg in fdef.arguments:
-            if not arg.type_annotation:
-                return True  # Fail
-            # if isinstance(arg.initializer, (FloatExpr, IntExpr, StrExpr, UnicodeExpr)):
-                # pass
-            # elif not arg.type_annotation:
-                # return True  # Fail
-        return False  # All good.
-
-        # Legacy equivalent.
-        # for t in fdef.type.arg_types:
-            # if is_unannotated_any(t):
-                # return True  # Fail
-        # return False
-
-    show_untyped = not self.is_typeshed_stub or self.options.warn_incomplete_stub
-    check_incomplete_defs = self.options.disallow_incomplete_defs and has_explicit_annotation
-    if show_untyped and (self.options.disallow_untyped_defs or check_incomplete_defs):
-        if fdef.type is None and self.options.disallow_untyped_defs:
-            if (not fdef.arguments or (len(fdef.arguments) == 1 and
-                    (fdef.arg_names[0] == 'self' or fdef.arg_names[0] == 'cls'))):
-                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-                if not has_return_statement(fdef) and not fdef.is_generator:
-                    self.note('Use "-&gt; None" if function does not return a value', fdef,
-                              code=codes.NO_UNTYPED_DEF)
-            else:
-                self.fail(message_registry.FUNCTION_TYPE_EXPECTED, fdef)
-        elif isinstance(fdef.type, CallableType):
-            ret_type = get_proper_type(fdef.type.ret_type)
-            if is_unannotated_any(ret_type):
-                self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-            elif fdef.is_generator:
-                if is_unannotated_any(self.get_generator_return_type(ret_type,
-                                                                     fdef.is_coroutine)):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-            elif fdef.is_coroutine and isinstance(ret_type, Instance):
-                if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
-                    self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
-            if any_arg_is_unannotated(fdef):
-                self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
-</t>
 <t tx="ekr.20220603083720.1"></t>
 <t tx="ekr.20220603103251.1">@language python
 @nowrap
@@ -101496,7 +101418,6 @@ stale = [ # Same keys as above.
 </t>
 <t tx="ekr.20220603111629.1">semantic_analysis_for_scc</t>
 <t tx="ekr.20220604073659.1"></t>
-<t tx="ekr.20220604075851.1"></t>
 <t tx="ekr.20220604084307.1"></t>
 <t tx="ekr.20220604112118.1">(Pdb) w
   __main__.py(12)console_entry()
@@ -101596,5 +101517,7 @@ stale = [ # Same keys as above.
 # Head, Body
 
 # found 7 nodes</t>
+<t tx="ekr.20220605063113.1"></t>
+<t tx="ekr.20220605063338.1"></t>
 </tnodes>
 </leo_file>
