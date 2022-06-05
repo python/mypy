@@ -660,6 +660,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
+        from leo.core import leoGlobals as g  ###
+        if 'ekr_a:' in repr(t):  ###
+            ### t.definition is a FuncDef object.
+            g.pdb()
         with self.tvar_scope_frame():
             if self.defining_alias:
                 variables = t.variables
