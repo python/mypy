@@ -16,7 +16,7 @@ from mypy import state
 from mypy import util
 from mypy.modulefinder import (
     BuildSource, FindModuleCache, SearchPaths,
-    get_site_packages_dirs, mypy_path,
+    get_search_dirs, mypy_path,
 )
 from mypy.find_sources import create_source_list, InvalidSourceList
 from mypy.fscache import FileSystemCache
@@ -1043,10 +1043,10 @@ def process_options(args: List[str],
     # Set target.
     if special_opts.modules + special_opts.packages:
         options.build_type = BuildType.MODULE
-        egg_dirs, site_packages = get_site_packages_dirs(options.python_executable)
+        search_dirs = get_search_dirs(options.python_executable)
         search_paths = SearchPaths((os.getcwd(),),
                                    tuple(mypy_path() + options.mypy_path),
-                                   tuple(egg_dirs + site_packages),
+                                   tuple(search_dirs),
                                    ())
         targets = []
         # TODO: use the same cache that the BuildManager will

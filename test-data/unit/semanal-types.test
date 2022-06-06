@@ -1421,7 +1421,7 @@ MypyFile:1(
   ImportFrom:1(typing, [_promote])
   ClassDef:3(
     S
-    Promote(builtins.str)
+    Promote([builtins.str])
     Decorators(
       PromoteExpr:2(builtins.str))
     PassStmt:3()))

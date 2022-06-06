@@ -146,20 +146,21 @@ def calculate_class_vars(info: TypeInfo) -> None:
                     node.is_classvar = True
 
 
-def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options) -> None:
+def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options,
+                       builtin_names: SymbolTable) -> None:
     """Setup extra, ad-hoc subtyping relationships between classes (promotion).
 
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_target: Optional[Type] = None
+    promote_targets: List[Type] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed
             if isinstance(analyzed, PromoteExpr):
                 # _promote class decorator (undocumented feature).
-                promote_target = analyzed.type
-    if not promote_target:
+                promote_targets.append(analyzed.type)
+    if not promote_targets:
         promotions = (TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3
                       else TYPE_PROMOTIONS_PYTHON2)
         if defn.fullname in promotions:
@@ -168,5 +169,14 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
             if target_sym:
                 target_info = target_sym.node
                 assert isinstance(target_info, TypeInfo)
-                promote_target = Instance(target_info, [])
-    defn.info._promote = promote_target
+                promote_targets.append(Instance(target_info, []))
+    # Special case the promotions between 'int' and native integer types.
+    # These have promotions going both ways, such as from 'int' to 'i64'
+    # and 'i64' to 'int', for convenience.
+    if defn.fullname == 'mypy_extensions.i64' or defn.fullname == 'mypy_extensions.i32':
+        int_sym = builtin_names['int']
+        assert isinstance(int_sym.node, TypeInfo)
+        int_sym.node._promote.append(Instance(defn.info, []))
+        defn.info.alt_promote = int_sym.node
+    if promote_targets:
+        defn.info._promote.extend(promote_targets)

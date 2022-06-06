@@ -42,7 +42,7 @@ from mypy.subtypes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.typeops import separate_union_literals
-from mypy.util import unmangle
+from mypy.util import unmangle, plural_s
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
@@ -2108,14 +2108,6 @@ def strip_quotes(s: str) -> str:
     s = re.sub('^"', '', s)
     s = re.sub('"$', '', s)
     return s
-
-
-def plural_s(s: Union[int, Sequence[Any]]) -> str:
-    count = s if isinstance(s, int) else len(s)
-    if count > 1:
-        return 's'
-    else:
-        return ''
 
 
 def format_string_list(lst: List[str]) -> str:

@@ -571,6 +571,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if not actual.values:
                 return infer_constraints(template, actual.upper_bound, self.direction)
             return []
+        elif isinstance(actual, ParamSpecType):
+            return infer_constraints(template, actual.upper_bound, self.direction)
         else:
             return []
 
