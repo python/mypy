@@ -2632,45 +2632,22 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
 
     def visit_instance(self, t: Instance) -> str:
 
-        if 0:  ### EKR
-            args = getattr(t, 'args', None)
-            last_known_value = getattr(t, 'last_known_value', None)
-            type_ = getattr(t, 'type', None)
-            type_fullname = getattr(type_, 'fullname', None) if type_ else None
-            type_name = getattr(type_, 'name', None) if type_ else None
-            
-            if last_known_value and not args:
-                # Instances with a literal fallback should never be generic. If they are,
-                # something went wrong so we fall back to showing the full Instance repr.
-                s = f'{last_known_value}?'
-            else:
-                s = type_fullname or type_name or '<???>'
-            if args:
-                if type_fullname == 'builtins.tuple':
-                    assert len(t.args) == 1
-                    s += f'[{self.list_str(args)}, ...]'
-                else:
-                    s += f'[{self.list_str(args)}]'
-            if self.id_mapper:
-                s += f'<{self.id_mapper.id(type)}>'
-            return s
-        else:  ### Legacy
-            if t.last_known_value and not t.args:
-                # Instances with a literal fallback should never be generic. If they are,
-                # something went wrong so we fall back to showing the full Instance repr.
-                s = f'{t.last_known_value}?'
-            else:
-                s = t.type.fullname or t.type.name or '<???>'
+        if t.last_known_value and not t.args:
+            # Instances with a literal fallback should never be generic. If they are,
+            # something went wrong so we fall back to showing the full Instance repr.
+            s = f'{t.last_known_value}?'
+        else:
+            s = t.type.fullname or t.type.name or '<???>'
 
-            if t.args:
-                if t.type.fullname == 'builtins.tuple':
-                    assert len(t.args) == 1
-                    s += f'[{self.list_str(t.args)}, ...]'
-                else:
-                    s += f'[{self.list_str(t.args)}]'
-            if self.id_mapper:
-                s += f'<{self.id_mapper.id(t.type)}>'
-            return s
+        if t.args:
+            if t.type.fullname == 'builtins.tuple':
+                assert len(t.args) == 1
+                s += f'[{self.list_str(t.args)}, ...]'
+            else:
+                s += f'[{self.list_str(t.args)}]'
+        if self.id_mapper:
+            s += f'<{self.id_mapper.id(t.type)}>'
+        return s
 
     def visit_type_var(self, t: TypeVarType) -> str:
         if t.name is None:

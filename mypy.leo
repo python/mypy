@@ -3834,7 +3834,6 @@
 <v t="ekr.20220525082935.967"><vh>StrToText.visit_type_alias_type</vh></v>
 <v t="ekr.20220525082935.968"><vh>StrToText.visit_instance</vh></v>
 </v>
-<v t="ekr.20220525082935.969"><vh>TType = TypeVar('TType', bound=Type)</vh></v>
 <v t="ekr.20220525082935.970"><vh>make_suggestion_anys</vh></v>
 <v t="ekr.20220525082935.971"><vh>class MakeSuggestionAny</vh>
 <v t="ekr.20220525082935.972"><vh>MakeSuggestionAny.visit_any</vh></v>
@@ -3845,7 +3844,6 @@
 <v t="ekr.20220525082935.976"><vh>refine_type</vh></v>
 <v t="ekr.20220525082935.977"><vh>refine_union</vh></v>
 <v t="ekr.20220525082935.978"><vh>refine_callable</vh></v>
-<v t="ekr.20220525082935.979"><vh>T = TypeVar('T')</vh></v>
 <v t="ekr.20220525082935.980"><vh>dedup</vh></v>
 </v>
 </v>
@@ -6523,7 +6521,6 @@
 <v t="ekr.20220525082935.1316"></v>
 </v>
 <v t="ekr.20220525082933.166"></v>
-<v t="ekr.20220525082935.1613"></v>
 <v t="ekr.20220320050857.1"><vh>=== #12352: auto annotations</vh>
 <v t="ekr.20220530121430.1"><vh>--- Notes</vh>
 <v t="ekr.20220530121437.1"><vh>Adding tests</vh></v>
@@ -7087,30 +7084,7 @@
 <v t="ekr.20220531174005.1"><vh>@clean test-data/unit/check-default-annotations.test</vh></v>
 <v t="ekr.20220604124935.1"></v>
 <v t="ekr.20220603080610.1"><vh>@file ekr_test.py</vh></v>
-<v t="ekr.20220605082736.1"><vh>class SherlockTracer (not used)</vh>
-<v t="ekr.20220605084049.1"><vh>&lt;&lt; SherlockTracer docstring &gt;&gt;</vh></v>
-<v t="ekr.20220605082736.2"><vh>__init__</vh></v>
-<v t="ekr.20220605082736.3"><vh>__call__</vh></v>
-<v t="ekr.20220605082736.4"><vh>sherlock.bad_pattern</vh></v>
-<v t="ekr.20220605082736.5"><vh>sherlock.check_pattern</vh></v>
-<v t="ekr.20220605082736.6"><vh>sherlock.dispatch</vh></v>
-<v t="ekr.20220605082736.7"><vh>sherlock.do_call &amp; helper</vh>
-<v t="ekr.20220605082736.8"><vh>sherlock.get_args</vh></v>
-</v>
-<v t="ekr.20220605082736.9"><vh>sherlock.do_line (not used)</vh></v>
-<v t="ekr.20220605082736.10"><vh>sherlock.do_return &amp; helper</vh>
-<v t="ekr.20220605082736.11"><vh>sherlock.format_ret</vh></v>
-</v>
-<v t="ekr.20220605082736.12"><vh>sherlock.fn_is_enabled (not used)</vh></v>
-<v t="ekr.20220605082736.13"><vh>get_full_name</vh></v>
-<v t="ekr.20220605082736.14"><vh>sherlock.is_enabled</vh></v>
-<v t="ekr.20220605082736.15"><vh>print_stats</vh></v>
-<v t="ekr.20220605082736.16"><vh>run</vh></v>
-<v t="ekr.20220605082736.17"><vh>push &amp; pop</vh></v>
-<v t="ekr.20220605082736.18"><vh>set_patterns</vh></v>
-<v t="ekr.20220605082736.19"><vh>show</vh></v>
-<v t="ekr.20220605082736.20"><vh>stop</vh></v>
-</v>
+<v t="ekr.20220525082935.1613"></v>
 </v>
 <v t="ekr.20220605090347.1"><vh>--- Instance hierarchy</vh>
 <v t="ekr.20220525082934.945"></v>
@@ -7119,7 +7093,10 @@
 <v t="ekr.20220525082935.1348"></v>
 <v t="ekr.20220525082935.1444"></v>
 </v>
+<v t="ekr.20220525082935.1427"></v>
 <v t="ekr.20220525082935.1202"></v>
+<v t="ekr.20220525082935.1478"></v>
+<v t="ekr.20220606030512.1"><vh>--- tracing methods ---</vh></v>
 </vnodes>
 <tnodes>
 <t tx="ekr.20220320050830.1"></t>
@@ -7132,7 +7109,7 @@ implementation overview: https://github.com/python/mypy/wiki/Implementation-Over
 forum: https://github.com/edreamleo/ekr-mypy/discussions/
 
 todo:
-- verify that we *will* change type inference.
+- Inject trace values into nodes/functions?
 
 @language python
 
@@ -57544,7 +57521,7 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
 <t tx="ekr.20220525082935.1202">def visit_callable_type(self, t: CallableType, nested: bool = True) -&gt; Type:
     # Every Callable can bind its own type variables, if they're not in the outer scope
 
-    sherlock = True
+    sherlock = False
     trace = 'ekr_a:' in repr(t)  ###
     if trace:  ###
         from leo.core import leoGlobals as g
@@ -57565,11 +57542,13 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
             arg_types = self.anal_array(t.arg_types, nested=nested)
 
         if trace and sherlock:  ###
-            patterns = ['+.*', '-__*', '-lookup_qualified', '-ChainedPlugin*']
-            tracer = g.SherlockTracer(patterns)
+            patterns = ['+.*', '-ChainedPlugin*', '-__*', '-lookup_qualified'] 
+            tracer = g.SherlockTracer(patterns, show_args=True, show_return=False)
             tracer.run()
 
         ### The task: make ekr_a have a 'builtins.str' type.
+        
+        ### This simply instantiates a new CallableType from kwargs
     
         ret = t.copy_modified(arg_types=arg_types,
                               ret_type=self.anal_type(t.ret_type, nested=nested),
@@ -57581,15 +57560,13 @@ GENERIC_STUB_NOT_AT_RUNTIME_TYPES: Final = {
                               type_guard=special,
                               )
                               
-        if trace and sherlock:
+        if trace and sherlock:  ###
             tracer.stop()
-                              
-        if trace:  ###
-            f = t.definition  # A FuncDef
-            # arg_types: list of types: builtins.str, AnyType, etc.
-            g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
 
     if trace:
+        f = t.definition  # A FuncDef
+        # arg_types: list of types: builtins.str, AnyType, etc.
+        g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
         g.trace('ret', ret.__class__.__name__, ret)
     return ret
 
@@ -63262,45 +63239,22 @@ from mypy.type_visitor import (  # noqa
 </t>
 <t tx="ekr.20220525082935.1613">def visit_instance(self, t: Instance) -&gt; str:
 
-    if 0:  ### EKR
-        args = getattr(t, 'args', None)
-        last_known_value = getattr(t, 'last_known_value', None)
-        type_ = getattr(t, 'type', None)
-        type_fullname = getattr(type_, 'fullname', None) if type_ else None
-        type_name = getattr(type_, 'name', None) if type_ else None
-        
-        if last_known_value and not args:
-            # Instances with a literal fallback should never be generic. If they are,
-            # something went wrong so we fall back to showing the full Instance repr.
-            s = f'{last_known_value}?'
-        else:
-            s = type_fullname or type_name or '&lt;???&gt;'
-        if args:
-            if type_fullname == 'builtins.tuple':
-                assert len(t.args) == 1
-                s += f'[{self.list_str(args)}, ...]'
-            else:
-                s += f'[{self.list_str(args)}]'
-        if self.id_mapper:
-            s += f'&lt;{self.id_mapper.id(type)}&gt;'
-        return s
-    else:  ### Legacy
-        if t.last_known_value and not t.args:
-            # Instances with a literal fallback should never be generic. If they are,
-            # something went wrong so we fall back to showing the full Instance repr.
-            s = f'{t.last_known_value}?'
-        else:
-            s = t.type.fullname or t.type.name or '&lt;???&gt;'
+    if t.last_known_value and not t.args:
+        # Instances with a literal fallback should never be generic. If they are,
+        # something went wrong so we fall back to showing the full Instance repr.
+        s = f'{t.last_known_value}?'
+    else:
+        s = t.type.fullname or t.type.name or '&lt;???&gt;'
 
-        if t.args:
-            if t.type.fullname == 'builtins.tuple':
-                assert len(t.args) == 1
-                s += f'[{self.list_str(t.args)}, ...]'
-            else:
-                s += f'[{self.list_str(t.args)}]'
-        if self.id_mapper:
-            s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
-        return s
+    if t.args:
+        if t.type.fullname == 'builtins.tuple':
+            assert len(t.args) == 1
+            s += f'[{self.list_str(t.args)}, ...]'
+        else:
+            s += f'[{self.list_str(t.args)}]'
+    if self.id_mapper:
+        s += f'&lt;{self.id_mapper.id(t.type)}&gt;'
+    return s
 
 </t>
 <t tx="ekr.20220525082935.1614">def visit_type_var(self, t: TypeVarType) -&gt; str:
@@ -80021,10 +79975,6 @@ def __init__(self, module: Optional[str], graph: Graph) -&gt; None:
 
 
 </t>
-<t tx="ekr.20220525082935.969">TType = TypeVar('TType', bound=Type)
-
-
-</t>
 <t tx="ekr.20220525082935.97">def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -&gt; Optional[Type]:
     """Return builtins.int if rvalue is an int literal, etc.
 
@@ -80066,7 +80016,9 @@ def __init__(self, module: Optional[str], graph: Graph) -&gt; None:
     return None
 
 </t>
-<t tx="ekr.20220525082935.970">def make_suggestion_anys(t: TType) -&gt; TType:
+<t tx="ekr.20220525082935.970">TType = TypeVar('TType', bound=Type)
+
+def make_suggestion_anys(t: TType) -&gt; TType:
     """Make all anys in the type as coming from the suggestion engine.
 
     This keeps those Anys from influencing constraint generation,
@@ -80220,10 +80172,6 @@ def __init__(self, module: Optional[str], graph: Graph) -&gt; None:
 
 
 </t>
-<t tx="ekr.20220525082935.979">T = TypeVar('T')
-
-
-</t>
 <t tx="ekr.20220525082935.98">def analyze_alias(self, rvalue: Expression,
                   allow_placeholder: bool = False) -&gt; Tuple[Optional[Type], List[str],
                                                             Set[str], List[str]]:
@@ -80261,7 +80209,9 @@ def __init__(self, module: Optional[str], graph: Graph) -&gt; None:
     return typ, alias_tvars, depends_on, qualified_tvars
 
 </t>
-<t tx="ekr.20220525082935.980">def dedup(old: List[T]) -&gt; List[T]:
+<t tx="ekr.20220525082935.980">T = TypeVar('T')
+
+def dedup(old: List[T]) -&gt; List[T]:
     new: List[T] = []
     for x in old:
         if x not in new:
@@ -101608,452 +101558,8 @@ stale = [ # Same keys as above.
 # Word, Ignore Case, Head, Body
 
 # found 10 nodes</t>
-<t tx="ekr.20220605082736.1">class SherlockTracer:
-    &lt;&lt; SherlockTracer docstring &gt;&gt;
-    @others
-</t>
-<t tx="ekr.20220605082736.10">def do_return(self, frame: Any, arg: Any) -&gt; None:  # Arg *is* used below.
-    """Trace a return statement."""
-    code = frame.f_code
-    fn = code.co_filename
-    locals_ = frame.f_locals
-    name = code.co_name
-    full_name = self.get_full_name(locals_, name)
-    if self.is_enabled(fn, full_name, self.patterns):
-        n = 0
-        while frame:
-            frame = frame.f_back
-            n += 1
-        dots = '.' * max(0, n - self.n) if self.dots else ''
-        path = f"{os.path.basename(fn):&gt;20}" if self.verbose else ''
-        if name and name == '__init__':
-            try:
-                ret1 = locals_ and locals_.get('self', None)
-                ret = self.format_ret(ret1)
-            except NameError:
-                ret = f"&lt;{ret1.__class__.__name__}&gt;"
-        else:
-            ret = self.format_ret(arg)
-        print(f"{path}{dots}-{full_name}{ret}")
-</t>
-<t tx="ekr.20220605082736.11">def format_ret(self, arg: Any) -&gt; str:
-    """Format arg, the value returned by a "return" statement."""
-    try:
-        if isinstance(arg, types.GeneratorType):
-            ret = '&lt;generator&gt;'
-        elif isinstance(arg, (tuple, list)):
-            # Clearer w/o f-string.
-            ret = "[%s]" % ','.join([self.show(z) for z in arg])
-            if len(ret) &gt; 40:
-                # Clearer w/o f-string.
-                ret = "[\n%s]" % ('\n,'.join([self.show(z) for z in arg]))
-        elif arg:
-            ret = self.show(arg)
-            if len(ret) &gt; 40:
-                ret = f"\n    {ret}"
-        else:
-            ret = '' if arg is None else repr(arg)
-    except Exception:
-        exctype, value = sys.exc_info()[:2]
-        s = f"&lt;**exception: {exctype.__name__}, {value} arg: {arg !r}**&gt;"
-        ret = f" -&gt;\n    {s}" if len(s) &gt; 40 else f" -&gt; {s}"
-    return f" -&gt; {ret}"
-</t>
-<t tx="ekr.20220605082736.12">def fn_is_enabled(self, func: Any, patterns: List[str]) -&gt; bool:
-    """Return True if tracing for the given function is enabled."""
-    if func in self.ignored_functions:
-        return False
-
-    def ignore_function() -&gt; None:
-        if func not in self.ignored_functions:
-            self.ignored_functions.append(func)
-            print(f"Ignore function: {func}")
-    #
-    # New in Leo 6.3. Never trace dangerous functions.
-    table = (
-        '_deepcopy.*',
-        # Unicode primitives.
-        'encode\b', 'decode\b',
-        # System functions
-        '.*__next\b',
-        '&lt;frozen&gt;', '&lt;genexpr&gt;', '&lt;listcomp&gt;',
-        # '&lt;decorator-gen-.*&gt;',
-        'get\b',
-        # String primitives.
-        'append\b', 'split\b', 'join\b',
-        # File primitives...
-        'access_check\b', 'expanduser\b', 'exists\b', 'find_spec\b',
-        'abspath\b', 'normcase\b', 'normpath\b', 'splitdrive\b',
-    )
-    g.trace('=====', func)
-    for z in table:
-        if re.match(z, func):
-            ignore_function()
-            return False
-    #
-    # Legacy code.
-    try:
-        enabled, pattern = False, None
-        for pattern in patterns:
-            if pattern.startswith('+:'):
-                if re.match(pattern[2:], func):
-                    enabled = True
-            elif pattern.startswith('-:'):
-                if re.match(pattern[2:], func):
-                    enabled = False
-        return enabled
-    except Exception:
-        self.bad_pattern(pattern)
-        return False
-</t>
-<t tx="ekr.20220605082736.13">def get_full_name(self, locals_: Any, name: str) -&gt; str:
-    """Return class_name::name if possible."""
-    full_name = name
-    try:
-        user_self = locals_ and locals_.get('self', None)
-        if user_self:
-            full_name = user_self.__class__.__name__ + '::' + name
-    except Exception:
-        pass
-    return full_name
-</t>
-<t tx="ekr.20220605082736.14">ignored_files: List[str] = []  # List of files.
-ignored_functions: List[str] = []  # List of files.
-
-def is_enabled(
-    self,
-    file_name: str,
-    function_name: str,
-    patterns: List[str]=None,
-) -&gt; bool:
-    """Return True if tracing for function_name in the given file is enabled."""
-    #
-    # New in Leo 6.3. Never trace through some files.
-    if not os:
-        return False  # Shutting down.
-    base_name = os.path.basename(file_name)
-    if base_name in self.ignored_files:
-        return False
-
-    def ignore_file() -&gt; None:
-        if not base_name in self.ignored_files:
-            self.ignored_files.append(base_name)
-
-    def ignore_function() -&gt; None:
-        if function_name not in self.ignored_functions:
-            self.ignored_functions.append(function_name)
-
-    if f"{os.sep}lib{os.sep}" in file_name:
-        ignore_file()
-        return False
-    if base_name.startswith('&lt;') and base_name.endswith('&gt;'):
-        ignore_file()
-        return False
-    #
-    # New in Leo 6.3. Never trace dangerous functions.
-    table = (
-        '_deepcopy.*',
-        # Unicode primitives.
-        'encode\b', 'decode\b',
-        # System functions
-        '.*__next\b',
-        '&lt;frozen&gt;', '&lt;genexpr&gt;', '&lt;listcomp&gt;',
-        # '&lt;decorator-gen-.*&gt;',
-        'get\b',
-        # String primitives.
-        'append\b', 'split\b', 'join\b',
-        # File primitives...
-        'access_check\b', 'expanduser\b', 'exists\b', 'find_spec\b',
-        'abspath\b', 'normcase\b', 'normpath\b', 'splitdrive\b',
-    )
-    for z in table:
-        if re.match(z, function_name):
-            ignore_function()
-            return False
-    #
-    # Legacy code.
-    enabled = False
-    if patterns is None:
-        patterns = self.patterns
-    for pattern in patterns:
-        try:
-            if pattern.startswith('+:'):
-                if re.match(pattern[2:], file_name):
-                    enabled = True
-            elif pattern.startswith('-:'):
-                if re.match(pattern[2:], file_name):
-                    enabled = False
-            elif pattern.startswith('+'):
-                if re.match(pattern[1:], function_name):
-                    enabled = True
-            elif pattern.startswith('-'):
-                if re.match(pattern[1:], function_name):
-                    enabled = False
-            else:
-                self.bad_pattern(pattern)
-        except Exception:
-            self.bad_pattern(pattern)
-    return enabled
-</t>
-<t tx="ekr.20220605082736.15">def print_stats(self, patterns: List[str]=None) -&gt; None:
-    """Print all accumulated statisitics."""
-    print('\nSherlock statistics...')
-    if not patterns:
-        patterns = ['+.*', '+:.*',]
-    for fn in sorted(self.stats.keys()):
-        d = self.stats.get(fn)
-        if self.fn_is_enabled(fn, patterns):
-            result = sorted(d.keys())  # type:ignore
-        else:
-            result = [key for key in sorted(d.keys())  # type:ignore
-                if self.is_enabled(fn, key, patterns)]
-        if result:
-            print('')
-            fn = fn.replace('\\', '/')
-            parts = fn.split('/')
-            print('/'.join(parts[-2:]))
-            for key in result:
-                print(f"{d.get(key):4} {key}")
-</t>
-<t tx="ekr.20220605082736.16"># Modified from pdb.Pdb.set_trace.
-
-def run(self, frame: Any=None) -&gt; None:
-    """Trace from the given frame or the caller's frame."""
-    print("SherlockTracer.run:patterns:\n%s" % '\n'.join(self.patterns))
-    if frame is None:
-        frame = sys._getframe().f_back
-    # Compute self.n, the number of frames to ignore.
-    self.n = 0
-    while frame:
-        frame = frame.f_back
-        self.n += 1
-    # Pass self to sys.settrace to give easy access to all methods.
-    sys.settrace(self)
-</t>
-<t tx="ekr.20220605082736.17">def push(self, patterns: List[str]) -&gt; None:
-    """Push the old patterns and set the new."""
-    self.pattern_stack.append(self.patterns)  # type:ignore
-    self.set_patterns(patterns)
-    print(f"SherlockTracer.push: {self.patterns}")
-
-def pop(self) -&gt; None:
-    """Restore the pushed patterns."""
-    if self.pattern_stack:
-        self.patterns = self.pattern_stack.pop()  # type:ignore
-        print(f"SherlockTracer.pop: {self.patterns}")
-    else:
-        print('SherlockTracer.pop: pattern stack underflow')
-</t>
-<t tx="ekr.20220605082736.18">def set_patterns(self, patterns: List[str]) -&gt; None:
-    """Set the patterns in effect."""
-    self.patterns = [z for z in patterns if self.check_pattern(z)]
-</t>
-<t tx="ekr.20220605082736.19">def show(self, item: Any) -&gt; str:
-    """return the best representation of item."""
-    if not item:
-        return repr(item)
-    if isinstance(item, dict):
-        return 'dict'
-    if isinstance(item, str):
-        s = repr(item)
-        if len(s) &lt;= 20:
-            return s
-        return s[:17] + '...'
-    return repr(item)
-</t>
-<t tx="ekr.20220605082736.2">def __init__(
-    self,
-    patterns: List[Any],
-    dots: bool=True,
-    show_args: bool=True,
-    show_return: bool=True,
-    verbose: bool=True,
-) -&gt; None:
-    """SherlockTracer ctor."""
-    self.bad_patterns: List[str] = []  # List of bad patterns.
-    self.dots = dots  # True: print level dots.
-    self.contents_d: Dict[str, List] = {}  # Keys are file names, values are file lines.
-    self.n = 0  # The frame level on entry to run.
-    self.stats: Dict[str, Dict] = {}  # Keys are full file names, values are dicts.
-    self.patterns: List[Any] = None  # A list of regex patterns to match.
-    self.pattern_stack: List[str] = []
-    self.show_args = show_args  # True: show args for each function call.
-    self.show_return = show_return  # True: show returns from each function.
-    self.trace_lines = True  # True: trace lines in enabled functions.
-    self.verbose = verbose  # True: print filename:func
-    self.set_patterns(patterns)
-    if 0:
-        try:
-            from leo.core.leoQt import QtCore
-            if QtCore:
-                # pylint: disable=no-member
-                QtCore.pyqtRemoveInputHook()
-        except Exception:
-            pass
-</t>
-<t tx="ekr.20220605082736.20">def stop(self) -&gt; None:
-    """Stop all tracing."""
-    sys.settrace(None)
-</t>
-<t tx="ekr.20220605082736.3">def __call__(self, frame: Any, event: Any, arg: Any) -&gt; Any:
-    """Exists so that self.dispatch can return self."""
-    return self.dispatch(frame, event, arg)
-</t>
-<t tx="ekr.20220605082736.4">def bad_pattern(self, pattern: Any) -&gt; None:
-    """Report a bad Sherlock pattern."""
-    if pattern not in self.bad_patterns:
-        self.bad_patterns.append(pattern)
-        print(f"\nignoring bad pattern: {pattern}\n")
-</t>
-<t tx="ekr.20220605082736.5">def check_pattern(self, pattern: str) -&gt; bool:
-    """Give an error and return False for an invalid pattern."""
-    try:
-        for prefix in ('+:', '-:', '+', '-'):
-            if pattern.startswith(prefix):
-                re.match(pattern[len(prefix) :], 'xyzzy')
-                return True
-        self.bad_pattern(pattern)
-        return False
-    except Exception:
-        self.bad_pattern(pattern)
-        return False
-</t>
-<t tx="ekr.20220605082736.6">def dispatch(self, frame: Any, event: Any, arg: Any) -&gt; Any:
-    """The dispatch method."""
-    if event == 'call':
-        self.do_call(frame, arg)
-    elif event == 'return' and self.show_return:
-        self.do_return(frame, arg)
-    elif event == 'line' and self.trace_lines:
-        self.do_line(frame, arg)
-    # Queue the SherlockTracer instance again.
-    return self
-</t>
-<t tx="ekr.20220605082736.7">def do_call(self, frame: Any, unused_arg: Any) -&gt; None:
-    """Trace through a function call."""
-    frame1 = frame
-    code = frame.f_code
-    file_name = code.co_filename
-    locals_ = frame.f_locals
-    function_name = code.co_name
-    try:
-        full_name = self.get_full_name(locals_, function_name)
-    except Exception:
-        full_name = function_name
-    if not self.is_enabled(file_name, full_name, self.patterns):
-        # 2020/09/09: Don't touch, for example, __ methods.
-        return
-    n = 0  # The number of callers of this def.
-    while frame:
-        frame = frame.f_back
-        n += 1
-    dots = '.' * max(0, n - self.n) if self.dots else ''
-    path = f"{os.path.basename(file_name):&gt;20}" if self.verbose else ''
-    leadin = '+' if self.show_return else ''
-    args = "(%s)" % self.get_args(frame1) if self.show_args else ''
-    print(f"{path}:{dots}{leadin}{full_name}{args}")
-    # Always update stats.
-    d = self.stats.get(file_name, {})
-    d[full_name] = 1 + d.get(full_name, 0)
-    self.stats[file_name] = d
-</t>
-<t tx="ekr.20220605082736.8">def get_args(self, frame: Any) -&gt; str:
-    """Return name=val for each arg in the function call."""
-    code = frame.f_code
-    locals_ = frame.f_locals
-    name = code.co_name
-    n = code.co_argcount
-    if code.co_flags &amp; 4:
-        n = n + 1
-    if code.co_flags &amp; 8:
-        n = n + 1
-    result = []
-    for i in range(n):
-        name = code.co_varnames[i]
-        if name != 'self':
-            arg = locals_.get(name, '*undefined*')
-            if arg:
-                if isinstance(arg, (list, tuple)):
-                    # Clearer w/o f-string
-                    val = "[%s]" % ','.join(
-                        [self.show(z) for z in arg if self.show(z)])
-                else:
-                    val = self.show(arg)
-                if val:
-                    result.append(f"{name}={val}")
-    return ','.join(result)
-</t>
-<t tx="ekr.20220605082736.9">bad_fns: List[str] = []
-
-def do_line(self, frame: Any, arg: Any) -&gt; None:
-    """print each line of enabled functions."""
-    if 1:
-        return
-    code = frame.f_code
-    file_name = code.co_filename
-    locals_ = frame.f_locals
-    name = code.co_name
-    full_name = self.get_full_name(locals_, name)
-    if not self.is_enabled(file_name, full_name, self.patterns):
-        return
-    n = frame.f_lineno - 1  # Apparently, the first line is line 1.
-    d = self.contents_d
-    lines = d.get(file_name)
-    if not lines:
-        print(file_name)
-        try:
-            with open(file_name) as f:
-                s = f.read()
-        except Exception:
-            if file_name not in self.bad_fns:
-                self.bad_fns.append(file_name)
-                print(f"open({file_name}) failed")
-            return
-        lines = g.splitLines(s)
-        d[file_name] = lines
-    line = lines[n].rstrip() if n &lt; len(lines) else '&lt;EOF&gt;'
-    if 0:
-        print(f"{name:3} {line}")
-    else:
-        print(f"{g.shortFileName(file_name)} {n} {full_name} {line}")
-</t>
-<t tx="ekr.20220605084049.1">"""
-A stand-alone tracer class with many of Sherlock's features.
-
-This class should work in any environment containing the re, os and sys modules.
-
-The arguments in the pattern lists determine which functions get traced
-or which stats get printed. Each pattern starts with "+", "-", "+:" or
-"-:", followed by a regular expression::
-
-"+x"  Enables tracing (or stats) for all functions/methods whose name
-      matches the regular expression x.
-"-x"  Disables tracing for functions/methods.
-"+:x" Enables tracing for all functions in the **file** whose name matches x.
-"-:x" Disables tracing for an entire file.
-
-Enabling and disabling depends on the order of arguments in the pattern
-list. Consider the arguments for the Rope trace::
-
-patterns=['+.*','+:.*',
-    '-:.*\\lib\\.*','+:.*rope.*','-:.*leoGlobals.py',
-    '-:.*worder.py','-:.*prefs.py','-:.*resources.py',])
-
-This enables tracing for everything, then disables tracing for all
-library modules, except for all rope modules. Finally, it disables the
-tracing for Rope's worder, prefs and resources modules. Btw, this is
-one of the best uses for regular expressions that I know of.
-
-Being able to zero in on the code of interest can be a big help in
-studying other people's code. This is a non-invasive method: no tracing
-code needs to be inserted anywhere.
-
-Usage:
-
-g.SherlockTracer(patterns).run()
-"""
-</t>
 <t tx="ekr.20220605090347.1"></t>
 <t tx="ekr.20220605090606.1"></t>
+<t tx="ekr.20220606030512.1"></t>
 </tnodes>
 </leo_file>

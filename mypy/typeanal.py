@@ -661,7 +661,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
-        sherlock = True
+        sherlock = False
         trace = 'ekr_a:' in repr(t)  ###
         if trace:  ###
             from leo.core import leoGlobals as g
@@ -682,11 +682,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 arg_types = self.anal_array(t.arg_types, nested=nested)
 
             if trace and sherlock:  ###
-                patterns = ['+.*', '-__*', '-lookup_qualified', '-ChainedPlugin*']
-                tracer = g.SherlockTracer(patterns)
+                patterns = ['+.*', '-ChainedPlugin*', '-__*', '-lookup_qualified'] 
+                tracer = g.SherlockTracer(patterns, show_args=True, show_return=False)
                 tracer.run()
 
             ### The task: make ekr_a have a 'builtins.str' type.
+            
+            ### This simply instantiates a new CallableType from kwargs
         
             ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
@@ -698,15 +700,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   type_guard=special,
                                   )
                                   
-            if trace and sherlock:
+            if trace and sherlock:  ###
                 tracer.stop()
-                                  
-            if trace:  ###
-                f = t.definition  # A FuncDef
-                # arg_types: list of types: builtins.str, AnyType, etc.
-                g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
 
         if trace:
+            f = t.definition  # A FuncDef
+            # arg_types: list of types: builtins.str, AnyType, etc.
+            g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
             g.trace('ret', ret.__class__.__name__, ret)
         return ret
 
