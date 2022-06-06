@@ -661,10 +661,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
-        sherlock = False
-        trace = 'ekr_a:' in repr(t)  ###
-        if trace:  ###
-            from leo.core import leoGlobals as g
+        ###
+            # sherlock = False
+            # trace = 'ekr_a:' in repr(t)
+            # if trace:
+                # from leo.core import leoGlobals as g
 
         with self.tvar_scope_frame():
             if self.defining_alias:
@@ -681,10 +682,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
 
-            if trace and sherlock:  ###
-                patterns = ['+.*', '-ChainedPlugin*', '-__*', '-lookup_qualified'] 
-                tracer = g.SherlockTracer(patterns, show_args=True, show_return=False)
-                tracer.run()
+            ###
+                # if trace and sherlock:
+                    # patterns = ['+.*', '-ChainedPlugin*', '-__*', '-lookup_qualified'] 
+                    # tracer = g.SherlockTracer(patterns, show_args=True, show_return=False)
+                    # tracer.run()
 
             ### The task: make ekr_a have a 'builtins.str' type.
             
@@ -699,15 +701,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   variables=self.anal_var_defs(variables),
                                   type_guard=special,
                                   )
-                                  
-            if trace and sherlock:  ###
-                tracer.stop()
-
-        if trace:
-            f = t.definition  # A FuncDef
-            # arg_types: list of types: builtins.str, AnyType, etc.
-            g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
-            g.trace('ret', ret.__class__.__name__, ret)
+        ###      
+            # if trace and sherlock:
+                # tracer.stop()
+            # if trace:
+                # f = t.definition  # A FuncDef
+                # # arg_types: list of types: builtins.str, AnyType, etc.
+                # g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
+                # g.trace('ret', ret.__class__.__name__, ret)
         return ret
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:
