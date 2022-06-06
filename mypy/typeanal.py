@@ -662,10 +662,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
         trace = 'ekr_a:' in repr(t)
-        ###
-            # sherlock = False
-            # if trace:
-                # from leo.core import leoGlobals as g
 
         with self.tvar_scope_frame():
             if self.defining_alias:
@@ -682,15 +678,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
 
-            ###
-                # if trace and sherlock:
-                    # patterns = ['+.*', '-ChainedPlugin*', '-__*', '-lookup_qualified'] 
-                    # tracer = g.SherlockTracer(patterns, show_args=True, show_return=False)
-                    # tracer.run()
-
             ### The task: make ekr_a have a 'builtins.str' type.
-            
-            ### This simply instantiates a new CallableType from kwargs
         
             ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
@@ -702,18 +690,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   type_guard=special,
                                   )
                                   
-            if trace:
+            if trace:  ###
                 # ret is a CallableType
-                print(ret.serialize())
-                import pdb ; pdb.set_trace()  ###                  
-        ###      
-            # if trace and sherlock:
-                # tracer.stop()
-            # if trace:
-                # f = t.definition  # A FuncDef
-                # # arg_types: list of types: builtins.str, AnyType, etc.
-                # g.trace(f._name, arg_types, arg_types[0].__class__.__name__)
-                # g.trace('ret', ret.__class__.__name__, ret)
+                import pprint
+                print('arg_types...')
+                for i, z in enumerate(arg_types):
+                    print(f"arg: {i} {pprint.pformat(z.serialize())}")
+                    # pprint.pprint(z.serialize())
+                print('ret...')
+                pprint.pprint(ret.serialize())
         return ret
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:
