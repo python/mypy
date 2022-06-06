@@ -695,8 +695,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 import pprint
                 print('arg_types...')
                 for i, z in enumerate(arg_types):
-                    print(f"arg: {i} {pprint.pformat(z.serialize())}")
-                    # pprint.pprint(z.serialize())
+                    print(f"arg {i}: {pprint.pformat(z.serialize())}")
                 print('ret...')
                 pprint.pprint(ret.serialize())
         return ret
