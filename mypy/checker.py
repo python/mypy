@@ -462,13 +462,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     # Definitions
     #
 
-    def visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+    def visit_overloaded_func_def(self, defn: OverloadedFuncDef, do_items=True) -> None:
         if not self.recurse_into_functions:
             return
         with self.tscope.function_scope(defn):
-            self._visit_overloaded_func_def(defn)
+            self._visit_overloaded_func_def(defn, do_items)
 
-    def _visit_overloaded_func_def(self, defn: OverloadedFuncDef) -> None:
+    def _visit_overloaded_func_def(self, defn: OverloadedFuncDef, do_items=True) -> None:
         num_abstract = 0
         if not defn.items:
             # In this case we have already complained about none of these being
@@ -480,11 +480,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if defn.is_property:
             # HACK: Infer the type of the property.
             self.visit_decorator(cast(Decorator, defn.items[0]))
-        for fdef in defn.items:
-            assert isinstance(fdef, Decorator)
-            self.check_func_item(fdef.func, name=fdef.func.name)
-            if fdef.func.is_abstract:
-                num_abstract += 1
+        if do_items:
+            for fdef in defn.items:
+                assert isinstance(fdef, Decorator)
+                self.check_func_item(fdef.func, name=fdef.func.name)
+                if fdef.func.is_abstract:
+                    num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
         if defn.impl:
@@ -818,7 +819,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 item_ret_types = []
                 for item in super_.node.items:
                     assert isinstance(item, Decorator)
-                    assert isinstance(item.func.type, CallableType)
+                    if not isinstance(item.func.type, CallableType):
+                        continue
                     for arg, arg_type in zip(item.func.arg_names, item.func.type.arg_types):
                         if not arg:
                             continue
@@ -831,10 +833,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     arg: UnionType.make_union(arg_type) for arg, arg_type in item_arg_types.items()
                 })
                 any_ = UntypedType()
-                if defn.unanalyzed_type:
+                if defn.unanalyzed_type and super_.node.impl:
                     assert isinstance(defn.unanalyzed_type, CallableType)
                     assert isinstance(defn.type, CallableType)
-                    assert super_.node.impl
                     t = get_proper_type(super_.node.impl.type)
                     assert isinstance(t, CallableType)
                     ret_type = (
@@ -878,7 +879,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     for new_item in new.type.items:
                         new_item.arg_types[0] = defn.type.arg_types[0]
                 defn.is_overload = True
-                self.visit_overloaded_func_def(new)
+                self.visit_overloaded_func_def(new, do_items=False)
                 defn.type = new.type
                 return
         with self.tscope.function_scope(defn):
