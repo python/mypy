@@ -23,12 +23,13 @@ if TYPE_CHECKING:
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column', 'end_line')
+    __slots__ = ('line', 'column', 'end_line', "end_column")
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
         self.end_line: Optional[int] = None
+        self.end_column: Optional[int] = None
 
     def set_line(self,
                  target: Union['Context', int],
