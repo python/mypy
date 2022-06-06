@@ -661,9 +661,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
+        trace = 'ekr_a:' in repr(t)
         ###
             # sherlock = False
-            # trace = 'ekr_a:' in repr(t)
             # if trace:
                 # from leo.core import leoGlobals as g
 
@@ -701,6 +701,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   variables=self.anal_var_defs(variables),
                                   type_guard=special,
                                   )
+                                  
+            if trace:
+                # ret is a CallableType
+                print(ret.serialize())
+                import pdb ; pdb.set_trace()  ###                  
         ###      
             # if trace and sherlock:
                 # tracer.stop()
