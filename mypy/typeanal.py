@@ -658,39 +658,49 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
+    ekr_call_set = set()
+
+
+    def callers(self, n: int=4) -> str:
+        """
+        Return a string containing a comma-separated list of the callers
+        of the function that called g.callerList.
+        """
+        i, result = 2, []
+        while True:
+            s = self.callerName(n=i)
+            if s:
+                result.append(s)
+            if not s or len(result) >= n:
+                break
+            i += 1
+        return ', '.join(reversed(result))
+        
+    def callerName(self, n: int) -> str:
+        """Get the function name from the call stack."""
+        import sys
+        try:
+            f1 = sys._getframe(n)
+            code1 = f1.f_code
+            return code1.co_name
+        except Exception:
+            return ''
+
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
         trace = 'ekr_' in repr(t)  ###
-        verbose = False
-        if trace:
-            import pprint
-            import sys
+        tag, verbose = 'visit_callable_type', False
 
-            def callers(n: int=4) -> str:
-                """
-                Return a string containing a comma-separated list of the callers
-                of the function that called g.callerList.
-                """
-                i, result = 2, []
-                while True:
-                    s = callerName(n=i)
-                    if s:
-                        result.append(s)
-                    if not s or len(result) >= n:
-                        break
-                    i += 1
-                return ','.join(reversed(result))
-                
-            def callerName(n: int) -> str:
-                """Get the function name from the call stack."""
-                try:
-                    f1 = sys._getframe(n)
-                    code1 = f1.f_code
-                    return code1.co_name
-                except Exception:
-                    return ''
-            print(f"===== visit_callable_type t: {t.__class__.__name__} {t}")
+        if trace and verbose:
+            key = self.callers(60)
+            if key not in self.ekr_call_set:
+                print(f"{tag}     callers: {key}\n")
+                self.ekr_call_set.add(key)
+        elif trace:
+            #  visit_func_def, analyze_func_def, visit_callable_type
+            print(f"{tag}     callers: {self.callers(3)}")
+            print(f"{tag}           t: {t.__class__.__name__} {t}")
 
         with self.tvar_scope_frame():
             if self.defining_alias:
@@ -706,6 +716,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ]
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
+                
+            if trace:  ###
+                if verbose:
+                    import pprint
+                    for i, z in enumerate(arg_types):
+                        print(f"{tag} arg_types {i}: {z}")
+                        print(f"{tag} arg_types {i}: {pprint.pformat(z.serialize())}")
+                else:
+                    for i, z in enumerate(arg_types):
+                        print(f"{tag} arg_types {i}: {z}")
 
             ### The task: make ekr_a have a 'builtins.str' type.
         
@@ -720,15 +740,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   )
                                   
             if trace:  ###
-                # ret is a CallableType
-                if verbose:
-                    for i, z in enumerate(arg_types):
-                        print(f"arg_types {i}: {z}")
-                        print(f"arg_types {i}: {pprint.pformat(z.serialize())}")
-                else:
-                    for i, z in enumerate(arg_types):
-                        print(f"arg_types {i}: {z}")
-                print(f"ret: {ret}")
+                print(f"{tag}         ret: {ret.__class__.__name__} {ret}")
                 if verbose:
                     pprint.pprint(ret.serialize())
                 print('')
