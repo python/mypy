@@ -637,8 +637,15 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_func_def(defn)
 
     def analyze_func_def(self, defn: FuncDef) -> None:
-        self.function_stack.append(defn)
+        
+        trace = defn._name.startswith(('f1_', 'f2_'))
+        if trace:
+            print('===== analyze_func._def:', defn._name)
+            if 0:  # verbose
+                print(defn)
 
+        self.function_stack.append(defn)
+        
         if defn.type:
             assert isinstance(defn.type, CallableType)
             self.update_function_type_variables(defn.type, defn)
@@ -655,12 +662,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.prepare_method_signature(defn, self.type)
 
         # Analyze function signature
-        ### from leo.core import leoGlobals as g  ###
         with self.tvar_scope_frame(self.tvar_scope.method_frame()):
-            
-            if False and defn._name.startswith('f1_str'):  ###
-                import pdb ; pdb.set_trace()
-
             if defn.type:
                 self.check_classvar_in_signature(defn.type)
                 assert isinstance(defn.type, CallableType)
