@@ -573,9 +573,10 @@ class SemanticAnalyzer(NodeVisitor[None],
         self.errors.set_file(file_node.path, file_node.fullname, scope=scope)
         self.cur_mod_node = file_node
         self.cur_mod_id = file_node.fullname
+        custom_typeshed_dir = options.custom_typeshed_dir
         with scope.module_scope(self.cur_mod_id):
             self._is_stub_file = file_node.path.lower().endswith('.pyi')
-            self._is_typeshed_stub_file = is_typeshed_file(file_node.path)
+            self._is_typeshed_stub_file = is_typeshed_file(file_node.path, custom_typeshed_dir)
             self.globals = file_node.names
             self.tvar_scope = TypeVarLikeScope()
 

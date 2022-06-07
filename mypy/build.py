@@ -238,6 +238,7 @@ def _build(sources: List[BuildSource],
     #
     # Ignore current directory prefix in error messages.
     manager = BuildManager(data_dir, search_paths,
+                           alt_lib_path,
                            ignore_prefix=os.getcwd(),
                            source_set=source_set,
                            reports=reports,
@@ -631,6 +632,20 @@ class BuildManager:
                               and not has_reporters)
         self.fscache = fscache
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options)
+
+        # Check for shadowed core library modules as soon as we have a FindModuleCache
+        for module in CORE_BUILTIN_MODULES:
+            # This module is built into Python so it doesn't exist on disk
+            if module == '_importlib_modulespec':
+                continue
+            path = self.find_module_cache.find_module(module)
+            if (not is_typeshed_file(path, options.custom_typeshed_dir)
+                    and not is_stub_package_file(path)):
+                raise CompileError([
+                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
+                    f'note: A user-defined top-level module with name "{module}" is not supported'
+                ])
+
         self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
@@ -2400,14 +2415,11 @@ class State:
             # those errors to avoid spuriously flagging them as unused ignores.
             if self.meta:
                 self.verify_dependencies(suppressed_only=True)
-            self.manager.errors.generate_unused_ignore_errors(self.xpath)
+            self.manager.errors.generate_unused_ignore_errors(self.xpath, self.options)
 
     def generate_ignore_without_code_notes(self) -> None:
         if self.manager.errors.is_error_code_enabled(codes.IGNORE_WITHOUT_CODE):
-            self.manager.errors.generate_ignore_without_code_errors(
-                self.xpath,
-                self.options.warn_unused_ignores,
-            )
+            self.manager.errors.generate_ignore_without_code_errors(self.xpath, self.options)
 
 
 # Module import and diagnostic glue
@@ -2485,15 +2497,13 @@ def find_module_and_diagnose(manager: BuildManager,
                 if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = 'silent'
-        if (id in CORE_BUILTIN_MODULES
-                and not is_typeshed_file(result)
-                and not is_stub_package_file(result)
-                and not options.use_builtins_fixtures
-                and not options.custom_typeshed_dir):
+        """ if (id in CORE_BUILTIN_MODULES
+                and not is_typeshed_file(result, options.custom_typeshed_dir)
+                and not is_stub_package_file(result)):
             raise CompileError([
                 f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
                 f'note: A user-defined top-level module with name "{id}" is not supported'
-            ])
+            ]) """
         return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
@@ -3202,7 +3212,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
         # SemanticAnalyzerPass2.add_builtin_aliases for details.
         typing_mod = graph['typing'].tree
         assert typing_mod, "The typing module was not parsed"
-    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors)
+    mypy.semanal_main.semantic_analysis_for_scc(graph, scc, manager.errors, manager.options)
 
     # Track what modules aren't yet done so we can finish them as soon
     # as possible, saving memory.

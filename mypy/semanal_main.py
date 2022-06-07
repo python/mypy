@@ -65,7 +65,10 @@ CORE_WARMUP: Final = 2
 core_modules: Final = ['typing', 'builtins', 'abc', 'collections']
 
 
-def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+def semantic_analysis_for_scc(graph: 'Graph',
+                              scc: List[str],
+                              errors: Errors,
+                              options: Options) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -83,7 +86,7 @@ def semantic_analysis_for_scc(graph: 'Graph', scc: List[str], errors: Errors) ->
     # callbacks to be required.
     apply_semantic_analyzer_patches(patches)
     # This pass might need fallbacks calculated above.
-    check_type_arguments(graph, scc, errors)
+    check_type_arguments(graph, scc, errors, options)
     # Run class decorator hooks (they requite complete MROs and no placeholders).
     apply_class_plugin_hooks(graph, scc, errors)
     calculate_class_properties(graph, scc, errors)
@@ -134,7 +137,7 @@ def semantic_analysis_for_targets(
                                    n.node.fullname, n.node, n.active_typeinfo, patches)
     apply_semantic_analyzer_patches(patches)
 
-    check_type_arguments_in_targets(nodes, state, state.manager.errors)
+    check_type_arguments_in_targets(nodes, state)
     calculate_class_properties(graph, [state.id], state.manager.errors)
     apply_class_plugin_hooks(graph, [state.id], state.manager.errors)
 
@@ -353,28 +356,34 @@ def semantic_analyze_target(target: str,
         return [], analyzer.incomplete, analyzer.progress
 
 
-def check_type_arguments(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+def check_type_arguments(graph: 'Graph',
+                         scc: List[str],
+                         errors: Errors,
+                         options: Options) -> None:
     for module in scc:
         state = graph[module]
         assert state.tree
+        typeshed_file = is_typeshed_file(state.path or '', options.custom_typeshed_dir)
         analyzer = TypeArgumentAnalyzer(errors,
                                         state.options,
-                                        is_typeshed_file(state.path or ''))
+                                        typeshed_file)
         with state.wrap_context():
             with mypy.state.state.strict_optional_set(state.options.strict_optional):
                 state.tree.accept(analyzer)
 
 
-def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode], state: 'State',
-                                    errors: Errors) -> None:
+def check_type_arguments_in_targets(targets: List[FineGrainedDeferredNode],
+                                    state: 'State') -> None:
     """Check type arguments against type variable bounds and restrictions.
 
     This mirrors the logic in check_type_arguments() except that we process only
     some targets. This is used in fine grained incremental mode.
     """
+    errors = state.manager.errors
+    typeshed_file = is_typeshed_file(state.path or '', state.manager.options.custom_typeshed_dir)
     analyzer = TypeArgumentAnalyzer(errors,
                                     state.options,
-                                    is_typeshed_file(state.path or ''))
+                                    typeshed_file)
     with state.wrap_context():
         with mypy.state.state.strict_optional_set(state.options.strict_optional):
             for target in targets:

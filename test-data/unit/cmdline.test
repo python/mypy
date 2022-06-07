@@ -1399,3 +1399,13 @@ b\.c \d+
 # cmd: mypy --enable-incomplete-features a.py
 [file a.py]
 pass
+
+[case testCoreBuiltinFileNotFromTypeshed]
+from typing import Union
+
+def foo(a: Union[int, str]) -> str:
+    return str
+[file typing.py]
+class Bar:
+    pass
+[out]

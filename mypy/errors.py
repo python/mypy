@@ -550,9 +550,10 @@ class Errors:
             if not has_blocker and path in self.has_blockers:
                 self.has_blockers.remove(path)
 
-    def generate_unused_ignore_errors(self, file: str) -> None:
+    def generate_unused_ignore_errors(self, file: str, options: Options) -> None:
+        custom_typeshed_dir = options.custom_typeshed_dir
         ignored_lines = self.ignored_lines[file]
-        if not is_typeshed_file(file) and file not in self.ignored_files:
+        if not is_typeshed_file(file, custom_typeshed_dir) and file not in self.ignored_files:
             ignored_lines = self.ignored_lines[file]
             used_ignored_lines = self.used_ignored_lines[file]
             for line, ignored_codes in ignored_lines.items():
@@ -577,8 +578,8 @@ class Errors:
 
     def generate_ignore_without_code_errors(self,
                                             file: str,
-                                            is_warning_unused_ignores: bool) -> None:
-        if is_typeshed_file(file) or file in self.ignored_files:
+                                            options: Options) -> None:
+        if is_typeshed_file(file, options.custom_typeshed_dir) or file in self.ignored_files:
             return
 
         used_ignored_lines = self.used_ignored_lines[file]
@@ -595,7 +596,7 @@ class Errors:
 
             # If the ignore is itself unused and that would be warned about, let
             # that error stand alone
-            if is_warning_unused_ignores and not used_ignored_lines[line]:
+            if options.warn_unused_ignores and not used_ignored_lines[line]:
                 continue
 
             codes_hint = ''

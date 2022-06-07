@@ -749,9 +749,10 @@ class FancyFormatter:
         return self.style(msg, 'red', bold=True)
 
 
-def is_typeshed_file(file: str) -> bool:
-    # gross, but no other clear way to tell
-    return 'typeshed' in os.path.abspath(file).split(os.sep)
+def is_typeshed_file(file: str, custom_typeshed_dir: Optional[str]) -> bool:
+    typeshed_dir = custom_typeshed_dir or os.path.join(os.path.dirname(__file__), "typeshed")
+    # Check that the file prefix is in typeshed_dir
+    return os.path.commonpath((typeshed_dir, os.path.abspath(file))) == typeshed_dir
 
 
 def is_stub_package_file(file: str) -> bool:

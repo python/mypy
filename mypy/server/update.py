@@ -602,7 +602,7 @@ def update_module_isolated(module: str,
     assert state.tree is not None, "file must be at least parsed"
     t0 = time.time()
     try:
-        semantic_analysis_for_scc(graph, [state.id], manager.errors)
+        semantic_analysis_for_scc(graph, [state.id], manager.errors, manager.options)
     except CompileError as err:
         # There was a blocking error, so module AST is incomplete. Restore old modules.
         restore([module])
