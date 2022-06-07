@@ -6506,3 +6506,33 @@ if True:
         @overload
         def f3(g: D) -> D: ...
 def f3(g): ...  # E: Name "f3" already defined on line 32
+
+[case testOverloadingWithParamSpec]
+from typing import TypeVar, Callable, Any, overload
+from typing_extensions import ParamSpec, Concatenate
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+@overload
+def func(x: Callable[Concatenate[Any, P], R]) -> Callable[P, R]: ...  # E: Overloaded function signatures 1 and 2 overlap with incompatible return types
+@overload
+def func(x: Callable[P, R]) -> Callable[Concatenate[str, P], R]: ...
+def func(x: Callable[..., R]) -> Callable[..., R]: ...
+
+def foo(arg1: str, arg2: int) -> bytes: ...
+reveal_type(func(foo))  # N: Revealed type is "def (arg2: builtins.int) -> builtins.bytes"
+
+def bar() -> int: ...
+reveal_type(func(bar))  # N: Revealed type is "def (builtins.str) -> builtins.int"
+
+baz: Callable[[str, str], str] = lambda x, y: 'baz'
+reveal_type(func(baz))  # N: Revealed type is "def (builtins.str) -> builtins.str"
+
+eggs = lambda: 'eggs'
+reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
+
+spam: Callable[..., str] = lambda x, y: 'baz'
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
+
+[builtins fixtures/paramspec.pyi]
