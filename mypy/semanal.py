@@ -640,11 +640,11 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_func_def(self, defn: FuncDef) -> None:
 
-        key, tag = defn._name, 'analyze_func_def:'
+        key, trace_tag = defn._name, 'analyze_func_def:'
         trace = key.startswith(('f1_', 'f2_')) and key not in self.ekr_func_set
         if trace:
             self.ekr_func_set.add(key)
-            print(f"{tag} {key}\n")  # defn
+            print(f"{trace_tag} {key}")  # defn
 
         self.function_stack.append(defn)
         
@@ -672,6 +672,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 tag = self.track_incomplete_refs()
+                if trace:
+                    print(f"{trace_tag} tag: {tag}\n")
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
