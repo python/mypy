@@ -56,7 +56,7 @@ if sys.platform == 'win32':
         """
         command = [sys.executable, '-m', 'mypy.dmypy', '--status-file', status_file, 'daemon']
         pickled_options = pickle.dumps((options.snapshot(), timeout, log_file))
-        command.append('--options-data="{}"'.format(base64.b64encode(pickled_options).decode()))
+        command.append(f'--options-data="{base64.b64encode(pickled_options).decode()}"')
         info = STARTUPINFO()
         info.dwFlags = 0x1  # STARTF_USESHOWWINDOW aka use wShowWindow's value
         info.wShowWindow = 0  # SW_HIDE aka make the window invisible
@@ -200,7 +200,7 @@ class Server:
         self.formatter = FancyFormatter(sys.stdout, sys.stderr, options.show_error_codes)
 
     def _response_metadata(self) -> Dict[str, str]:
-        py_version = '{}_{}'.format(self.options.python_version[0], self.options.python_version[1])
+        py_version = f'{self.options.python_version[0]}_{self.options.python_version[1]}'
         return {
             'platform': self.options.platform,
             'python_version': py_version,
@@ -209,8 +209,8 @@ class Server:
     def serve(self) -> None:
         """Serve requests, synchronously (no thread or fork)."""
         command = None
+        server = IPCServer(CONNECTION_NAME, self.timeout)
         try:
-            server = IPCServer(CONNECTION_NAME, self.timeout)
             with open(self.status_file, 'w') as f:
                 json.dump({'pid': os.getpid(), 'connection_name': server.connection_name}, f)
                 f.write('\n')  # I like my JSON with a trailing newline
@@ -264,7 +264,7 @@ class Server:
         key = 'cmd_' + command
         method = getattr(self.__class__, key, None)
         if method is None:
-            return {'error': "Unrecognized command '%s'" % command}
+            return {'error': f"Unrecognized command '{command}'"}
         else:
             if command not in {'check', 'recheck', 'run'}:
                 # Only the above commands use some error formatting.
@@ -298,11 +298,11 @@ class Server:
     def cmd_run(self, version: str, args: Sequence[str],
                 is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
+        stderr = io.StringIO()
+        stdout = io.StringIO()
         try:
             # Process options can exit on improper arguments, so we need to catch that and
             # capture stderr so the client can report it
-            stderr = io.StringIO()
-            stdout = io.StringIO()
             with redirect_stderr(stderr):
                 with redirect_stdout(stdout):
                     sources, options = mypy.main.process_options(
@@ -367,7 +367,7 @@ class Server:
             sources = sources + added_sources  # Make a copy!
         t1 = time.time()
         manager = self.fine_grained_manager.manager
-        manager.log("fine-grained increment: cmd_recheck: {:.3f}s".format(t1 - t0))
+        manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
         if not self.following_imports():
             messages = self.fine_grained_increment(sources, remove, update)
         else:
@@ -525,10 +525,10 @@ class Server:
                                               manager.search_paths)
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
         t1 = time.time()
-        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
+        manager.log(f"fine-grained increment: find_changed: {t1 - t0:.3f}s")
         messages = self.fine_grained_manager.update(changed, removed)
         t2 = time.time()
-        manager.log("fine-grained increment: update: {:.3f}s".format(t2 - t1))
+        manager.log(f"fine-grained increment: update: {t2 - t1:.3f}s")
         manager.add_stats(
             find_changes_time=t1 - t0,
             fg_update_time=t2 - t1,
@@ -555,7 +555,7 @@ class Server:
         manager.search_paths = compute_search_paths(sources, manager.options, manager.data_dir)
 
         t1 = time.time()
-        manager.log("fine-grained increment: find_changed: {:.3f}s".format(t1 - t0))
+        manager.log(f"fine-grained increment: find_changed: {t1 - t0:.3f}s")
 
         seen = {source.module for source in sources}
 
@@ -646,7 +646,7 @@ class Server:
 
         t5 = time.time()
 
-        manager.log("fine-grained increment: update: {:.3f}s".format(t5 - t1))
+        manager.log(f"fine-grained increment: update: {t5 - t1:.3f}s")
         manager.add_stats(
             find_changes_time=t1 - t0,
             fg_update_time=t2 - t1,
@@ -902,7 +902,7 @@ def get_meminfo() -> Dict[str, Any]:
 def find_all_sources_in_build(graph: mypy.build.Graph,
                               extra: Sequence[BuildSource] = ()) -> List[BuildSource]:
     result = list(extra)
-    seen = set(source.module for source in result)
+    seen = {source.module for source in result}
     for module, state in graph.items():
         if module not in seen:
             result.append(BuildSource(state.path, module))

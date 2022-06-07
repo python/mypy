@@ -212,6 +212,29 @@ imports.
     By default, mypy will suppress any error messages generated within :pep:`561`
     compliant packages. Adding this flag will disable this behavior.
 
+.. option:: --fast-module-lookup
+
+    The default logic used to scan through search paths to resolve imports has a
+    quadratic worse-case behavior in some cases, which is for instance triggered
+    by a large number of folders sharing a top-level namespace as in::
+
+        foo/
+            company/
+                foo/
+                    a.py
+        bar/
+            company/
+                bar/
+                    b.py
+        baz/
+            company/
+                baz/
+                    c.py
+        ...
+
+    If you are in this situation, you can enable an experimental fast path by
+    setting the :option:`--fast-module-lookup` option.
+
 
 .. _platform-configuration:
 
@@ -548,11 +571,11 @@ of the above sections.
         from typing import Optional
 
         a = None  # Need type annotation here if using --local-partial-types
-        b = None  # type: Optional[int]
+        b: Optional[int] = None
 
         class Foo:
             bar = None  # Need type annotation here if using --local-partial-types
-            baz = None  # type: Optional[int]
+            baz: Optional[int] = None
 
             def __init__(self) -> None:
                 self.bar = 1
@@ -616,6 +639,7 @@ of the above sections.
 .. option:: --disable-error-code
 
     This flag allows disabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
     .. code-block:: python
 
@@ -623,20 +647,21 @@ of the above sections.
         x = 'a string'
         x.trim()  # error: "str" has no attribute "trim"  [attr-defined]
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 
 .. option:: --enable-error-code
 
     This flag allows enabling one or multiple error codes globally.
+    See :ref:`error-codes` for more information.
 
-    Note: This flag will override disabled error codes from the --disable-error-code
-    flag
+    Note: This flag will override disabled error codes from the
+    :option:`--disable-error-code <mypy --disable-error-code>` flag.
 
     .. code-block:: python
 
-        # --disable-error-code attr-defined
+        # When using --disable-error-code attr-defined
         x = 'a string'
         x.trim()
 

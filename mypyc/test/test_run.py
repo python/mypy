@@ -3,7 +3,6 @@
 import ast
 import glob
 import os.path
-import platform
 import re
 import subprocess
 import contextlib
@@ -174,11 +173,7 @@ class TestRun(MypycDataSuite):
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.strict_optional = True
-        # N.B: We try to (and ought to!) run with the current
-        # version of python, since we are going to link and run
-        # against the current version of python.
-        # But a lot of the tests use type annotations so we can't say it is 3.5.
-        options.python_version = max(sys.version_info[:2], (3, 6))
+        options.python_version = sys.version_info[:2]
         options.export_types = True
         options.preserve_asts = True
         options.incremental = self.separate
@@ -263,7 +258,7 @@ class TestRun(MypycDataSuite):
 
         # Assert that an output file got created
         suffix = 'pyd' if sys.platform == 'win32' else 'so'
-        assert glob.glob('native.*.{}'.format(suffix)) or glob.glob('native.{}'.format(suffix))
+        assert glob.glob(f'native.*.{suffix}') or glob.glob(f'native.{suffix}')
 
         driver_path = 'driver.py'
         if not os.path.isfile(driver_path):
@@ -276,19 +271,20 @@ class TestRun(MypycDataSuite):
         env = os.environ.copy()
         env['MYPYC_RUN_BENCH'] = '1' if bench else '0'
 
-        # XXX: This is an ugly hack.
-        if 'MYPYC_RUN_GDB' in os.environ:
-            if platform.system() == 'Darwin':
+        debugger = testcase.config.getoption('debugger')
+        if debugger:
+            if debugger == 'lldb':
                 subprocess.check_call(['lldb', '--', sys.executable, driver_path], env=env)
-                assert False, ("Test can't pass in lldb mode. (And remember to pass -s to "
-                               "pytest)")
-            elif platform.system() == 'Linux':
+            elif debugger == 'gdb':
                 subprocess.check_call(['gdb', '--args', sys.executable, driver_path], env=env)
-                assert False, ("Test can't pass in gdb mode. (And remember to pass -s to "
-                               "pytest)")
             else:
-                assert False, 'Unsupported OS'
-
+                assert False, 'Unsupported debugger'
+            # TODO: find a way to automatically disable capturing
+            # stdin/stdout when in debugging mode
+            assert False, (
+                "Test can't pass in debugging mode. "
+                "(Make sure to pass -s to pytest to interact with the debugger)"
+            )
         proc = subprocess.Popen([sys.executable, driver_path], stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, env=env)
         output = proc.communicate()[0].decode('utf8')
@@ -309,7 +305,7 @@ class TestRun(MypycDataSuite):
                 msg = 'Invalid output'
                 expected = testcase.output
             else:
-                msg = 'Invalid output (step {})'.format(incremental_step)
+                msg = f'Invalid output (step {incremental_step})'
                 expected = testcase.output2.get(incremental_step, [])
 
             if not expected:
@@ -376,7 +372,6 @@ class TestRunSeparate(TestRun):
     This puts other.py and other_b.py into a compilation group named "stuff".
     Any files not mentioned in the comment will get single-file groups.
     """
-
     separate = True
     test_name_suffix = '_separate'
     files = [

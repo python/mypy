@@ -254,7 +254,7 @@ class SymbolNode(Node):
         method = deserialize_map.get(classname)
         if method is not None:
             return method(data)
-        raise NotImplementedError('unexpected .class {}'.format(classname))
+        raise NotImplementedError(f'unexpected .class {classname}')
 
 
 # Items: fullname, related symbol table node, surrounding type (if any)
@@ -483,7 +483,7 @@ class ImportedName(SymbolNode):
         assert False, "ImportedName should never be serialized"
 
     def __str__(self) -> str:
-        return 'ImportedName(%s)' % self.target_fullname
+        return f'ImportedName({self.target_fullname})'
 
 
 FUNCBASE_FLAGS: Final = ["is_property", "is_class", "is_static", "is_final"]
@@ -668,16 +668,16 @@ class FuncItem(FuncBase):
     __deletable__ = ('arguments', 'max_pos', 'min_args')
 
     def __init__(self,
-                 arguments: List[Argument],
-                 body: 'Block',
+                 arguments: Optional[List[Argument]] = None,
+                 body: Optional['Block'] = None,
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__()
-        self.arguments = arguments
-        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in arguments]
+        self.arguments = arguments or []
+        self.arg_names = [None if arg.pos_only else arg.variable.name for arg in self.arguments]
         self.arg_kinds: List[ArgKind] = [arg.kind for arg in self.arguments]
         self.max_pos: int = (
             self.arg_kinds.count(ARG_POS) + self.arg_kinds.count(ARG_OPT))
-        self.body: 'Block' = body
+        self.body: 'Block' = body or Block([])
         self.type = typ
         self.unanalyzed_type = typ
         self.is_overload: bool = False
@@ -725,10 +725,11 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'original_def',
                  )
 
+    # Note that all __init__ args must have default values
     def __init__(self,
-                 name: str,              # Function name
-                 arguments: List[Argument],
-                 body: 'Block',
+                 name: str = '',              # Function name
+                 arguments: Optional[List[Argument]] = None,
+                 body: Optional['Block'] = None,
                  typ: 'Optional[mypy.types.FunctionLike]' = None) -> None:
         super().__init__(arguments, body, typ)
         self._name = name
@@ -1660,7 +1661,7 @@ class NameExpr(RefExpr):
         return visitor.visit_name_expr(self)
 
     def serialize(self) -> JsonDict:
-        assert False, "Serializing NameExpr: %s" % (self,)
+        assert False, f"Serializing NameExpr: {self}"
 
 
 class MemberExpr(RefExpr):
@@ -2565,7 +2566,7 @@ class TypeInfo(SymbolNode):
         'deletable_attributes', 'slots', 'assuming', 'assuming_proper',
         'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
         'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
-        'is_newtype', 'is_intersection', 'metadata',
+        'is_newtype', 'is_intersection', 'metadata', 'alt_promote',
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2657,7 +2658,17 @@ class TypeInfo(SymbolNode):
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: Optional["mypy.types.Type"]
+    _promote: List["mypy.types.Type"]
+
+    # This is used for promoting native integer types such as 'i64' to
+    # 'int'. (_promote is used for the other direction.) This only
+    # supports one-step promotions (e.g., i64 -> int, not
+    # i64 -> int -> float, and this isn't used to promote in joins.
+    #
+    # This results in some unintuitive results, such as that even
+    # though i64 is compatible with int and int is compatible with
+    # float, i64 is *not* compatible with float.
+    alt_promote: Optional["TypeInfo"]
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -2717,7 +2728,8 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
-        self._promote = None
+        self._promote = []
+        self.alt_promote = None
         self.tuple_type = None
         self.is_named_tuple = False
         self.typeddict_type = None
@@ -2778,7 +2790,7 @@ class TypeInfo(SymbolNode):
             raise KeyError(name)
 
     def __repr__(self) -> str:
-        return '<TypeInfo %s>' % self.fullname
+        return f'<TypeInfo {self.fullname}>'
 
     def __bool__(self) -> bool:
         # We defined this here instead of just overriding it in
@@ -2859,8 +2871,7 @@ class TypeInfo(SymbolNode):
 
         head = 'TypeInfo' + str_conv.format_id(self)
         if self.bases:
-            base = 'Bases({})'.format(', '.join(type_str(base)
-                                                for base in self.bases))
+            base = f"Bases({', '.join(type_str(base) for base in self.bases)})"
         mro = 'Mro({})'.format(', '.join(item.fullname + str_conv.format_id(item)
                                          for item in self.mro))
         names = []
@@ -2868,18 +2879,18 @@ class TypeInfo(SymbolNode):
             description = name + str_conv.format_id(self.names[name].node)
             node = self.names[name].node
             if isinstance(node, Var) and node.type:
-                description += ' ({})'.format(type_str(node.type))
+                description += f' ({type_str(node.type)})'
             names.append(description)
         items = [
-            'Name({})'.format(self.fullname),
+            f'Name({self.fullname})',
             base,
             mro,
             ('Names', names),
         ]
         if self.declared_metaclass:
-            items.append('DeclaredMetaclass({})'.format(type_str(self.declared_metaclass)))
+            items.append(f'DeclaredMetaclass({type_str(self.declared_metaclass)})')
         if self.metaclass_type:
-            items.append('MetaclassType({})'.format(type_str(self.metaclass_type)))
+            items.append(f'MetaclassType({type_str(self.metaclass_type)})')
         return mypy.strconv.dump_tagged(
             items,
             head,
@@ -2897,7 +2908,7 @@ class TypeInfo(SymbolNode):
                 'has_param_spec_type': self.has_param_spec_type,
                 'bases': [b.serialize() for b in self.bases],
                 'mro': [c.fullname for c in self.mro],
-                '_promote': None if self._promote is None else self._promote.serialize(),
+                '_promote': [p.serialize() for p in self._promote],
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
                 'metaclass_type':
@@ -2924,8 +2935,7 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data['type_vars']
         ti.has_param_spec_type = data['has_param_spec_type']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
-        ti._promote = (None if data['_promote'] is None
-                       else mypy.types.deserialize_type(data['_promote']))
+        ti._promote = [mypy.types.deserialize_type(p) for p in data['_promote']]
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
         ti.metaclass_type = (None if data['metaclass_type'] is None
@@ -3328,12 +3338,12 @@ class SymbolTableNode:
         return new
 
     def __str__(self) -> str:
-        s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
+        s = f'{node_kinds[self.kind]}/{short_type(self.node)}'
         if isinstance(self.node, SymbolNode):
-            s += ' ({})'.format(self.node.fullname)
+            s += f' ({self.node.fullname})'
         # Include declared type of variables and functions.
         if self.type is not None:
-            s += ' : {}'.format(self.type)
+            s += f' : {self.type}'
         return s
 
     def serialize(self, prefix: str, name: str) -> JsonDict:
@@ -3358,7 +3368,7 @@ class SymbolTableNode:
         if isinstance(self.node, MypyFile):
             data['cross_ref'] = self.node.fullname
         else:
-            assert self.node is not None, '%s:%s' % (prefix, name)
+            assert self.node is not None, f'{prefix}:{name}'
             if prefix is not None:
                 fullname = self.node.fullname
                 if (fullname is not None and '.' in fullname
@@ -3366,7 +3376,7 @@ class SymbolTableNode:
                         and not (isinstance(self.node, Var)
                                  and self.node.from_module_getattr)):
                     assert not isinstance(self.node, PlaceholderNode), (
-                        'Definition of {} is unexpectedly incomplete'.format(fullname)
+                        f'Definition of {fullname} is unexpectedly incomplete'
                     )
                     data['cross_ref'] = fullname
                     return data
@@ -3468,7 +3478,7 @@ def get_member_expr_fullname(expr: MemberExpr) -> Optional[str]:
         initial = get_member_expr_fullname(expr.expr)
     else:
         return None
-    return '{}.{}'.format(initial, expr.name)
+    return f'{initial}.{expr.name}'
 
 
 deserialize_map: Final = {
@@ -3519,7 +3529,7 @@ def check_arg_names(names: Sequence[Optional[str]], nodes: List[T], fail: Callab
     seen_names: Set[Optional[str]] = set()
     for name, node in zip(names, nodes):
         if name is not None and name in seen_names:
-            fail('Duplicate argument "{}" in {}'.format(name, description), node)
+            fail(f'Duplicate argument "{name}" in {description}', node)
             break
         seen_names.add(name)
 

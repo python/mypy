@@ -5,6 +5,7 @@
 import array
 import ctypes
 import mmap
+import pickle
 import sys
 from collections.abc import Awaitable, Container, Iterable, Set as AbstractSet
 from os import PathLike
@@ -63,11 +64,26 @@ class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderL
 SupportsRichComparison: TypeAlias = SupportsDunderLT | SupportsDunderGT
 SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
 
+# Dunder protocols
+
+class SupportsAdd(Protocol):
+    def __add__(self, __x: Any) -> Any: ...
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
 
 class SupportsRDivMod(Protocol[_T_contra, _T_co]):
     def __rdivmod__(self, __other: _T_contra) -> _T_co: ...
+
+# This protocol is generic over the iterator type, while Iterable is
+# generic over the type that is iterated over.
+class SupportsIter(Protocol[_T_co]):
+    def __iter__(self) -> _T_co: ...
+
+# This protocol is generic over the iterator type, while AsyncIterable is
+# generic over the type that is iterated over.
+class SupportsAiter(Protocol[_T_co]):
+    def __aiter__(self) -> _T_co: ...
 
 class SupportsLenAndGetItem(Protocol[_T_co]):
     def __len__(self) -> int: ...
@@ -194,8 +210,13 @@ class SupportsWrite(Protocol[_T_contra]):
 ReadOnlyBuffer: TypeAlias = bytes  # stable
 # Anything that implements the read-write buffer interface.
 # The buffer interface is defined purely on the C level, so we cannot define a normal Protocol
-# for it. Instead we have to list the most common stdlib buffer classes in a Union.
-WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
+# for it (until PEP 688 is implemented). Instead we have to list the most common stdlib buffer classes in a Union.
+if sys.version_info >= (3, 8):
+    WriteableBuffer: TypeAlias = (
+        bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData | pickle.PickleBuffer
+    )  # stable
+else:
+    WriteableBuffer: TypeAlias = bytearray | memoryview | array.array[Any] | mmap.mmap | ctypes._CData  # stable
 # Same as _WriteableBuffer, but also includes read-only buffer types (like bytes).
 ReadableBuffer: TypeAlias = ReadOnlyBuffer | WriteableBuffer  # stable
 

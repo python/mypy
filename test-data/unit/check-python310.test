@@ -1576,3 +1576,18 @@ def f(x: AST) -> None:
             reveal_type(b)  # N: Revealed type is "builtins.int"
             reveal_type(c)  # N: Revealed type is "builtins.str"
 [builtins fixtures/tuple.pyi]
+
+[case testMatchReachableDottedNames]
+# flags: --warn-unreachable
+class Consts:
+    BLANK = ""
+    SPECIAL = "asdf"
+
+def test_func(test_str: str) -> str:
+    match test_str:
+        case Consts.BLANK:
+            return "blank"
+        case Consts.SPECIAL:
+            return "special"
+        case _:
+            return "other"

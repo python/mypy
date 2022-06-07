@@ -75,6 +75,7 @@ VTableMethod = NamedTuple(
                      ('method', FuncIR),
                      ('shadow_method', Optional[FuncIR])])
 
+
 VTableEntries = List[VTableMethod]
 
 
@@ -105,6 +106,19 @@ class ClassIR:
         # Does this class need getseters to be generated for its attributes? (getseters are also
         # added if is_generated is False)
         self.needs_getseters = False
+        # Is this class declared as serializable (supports copy.copy
+        # and pickle) using @mypyc_attr(serializable=True)?
+        #
+        # Additionally, any class with this attribute False but with
+        # an __init__ that can be called without any arguments is
+        # *implicitly serializable*. In this case __init__ will be
+        # called during deserialization without arguments. If this is
+        # True, we match Python semantics and __init__ won't be called
+        # during deserialization.
+        #
+        # This impacts also all subclasses. Use is_serializable() to
+        # also consider base classes.
+        self._serializable = False
         # If this a subclass of some built-in python class, the name
         # of the object for that class. We currently only support this
         # in a few ad-hoc cases.
@@ -152,6 +166,19 @@ class ClassIR:
         # None if separate compilation prevents this from working
         self.children: Optional[List[ClassIR]] = []
 
+        # Instance attributes that are initialized in the class body.
+        self.attrs_with_defaults: Set[str] = set()
+
+        # Attributes that are always initialized in __init__ or class body
+        # (inferred in mypyc.analysis.attrdefined using interprocedural analysis)
+        self._always_initialized_attrs: Set[str] = set()
+
+        # Attributes that are sometimes initialized in __init__
+        self._sometimes_initialized_attrs: Set[str] = set()
+
+        # If True, __init__ can make 'self' visible to unanalyzed/arbitrary code
+        self.init_self_leak = False
+
     def __repr__(self) -> str:
         return (
             "ClassIR("
@@ -162,7 +189,7 @@ class ClassIR:
 
     @property
     def fullname(self) -> str:
-        return "{}.{}".format(self.module_name, self.name)
+        return f"{self.module_name}.{self.name}"
 
     def real_base(self) -> Optional['ClassIR']:
         """Return the actual concrete base class, if there is one."""
@@ -172,7 +199,7 @@ class ClassIR:
 
     def vtable_entry(self, name: str) -> int:
         assert self.vtable is not None, "vtable not computed yet"
-        assert name in self.vtable, '%r has no attribute %r' % (self.name, name)
+        assert name in self.vtable, f'{self.name!r} has no attribute {name!r}'
         return self.vtable[name]
 
     def attr_details(self, name: str) -> Tuple[RType, 'ClassIR']:
@@ -181,7 +208,7 @@ class ClassIR:
                 return ir.attributes[name], ir
             if name in ir.property_types:
                 return ir.property_types[name], ir
-        raise KeyError('%r has no attribute %r' % (self.name, name))
+        raise KeyError(f'{self.name!r} has no attribute {name!r}')
 
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
@@ -190,7 +217,7 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.method_decls:
                 return ir.method_decls[name]
-        raise KeyError('%r has no attribute %r' % (self.name, name))
+        raise KeyError(f'{self.name!r} has no attribute {name!r}')
 
     def method_sig(self, name: str) -> FuncSignature:
         return self.method_decl(name).sig
@@ -230,11 +257,16 @@ class ClassIR:
                 return True
         return False
 
+    def is_always_defined(self, name: str) -> bool:
+        if self.is_deletable(name):
+            return False
+        return name in self._always_initialized_attrs
+
     def name_prefix(self, names: NameGenerator) -> str:
         return names.private_name(self.module_name, self.name)
 
     def struct_name(self, names: NameGenerator) -> str:
-        return '{}Object'.format(exported_name(self.fullname))
+        return f'{exported_name(self.fullname)}Object'
 
     def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, 'ClassIR']]:
         for ir in self.mro:
@@ -278,6 +310,9 @@ class ClassIR:
         # to get stable order.
         return sorted(concrete, key=lambda c: (len(c.children or []), c.name))
 
+    def is_serializable(self) -> bool:
+        return any(ci._serializable for ci in self.mro)
+
     def serialize(self) -> JsonDict:
         return {
             'name': self.name,
@@ -291,6 +326,7 @@ class ClassIR:
             'has_dict': self.has_dict,
             'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
             'needs_getseters': self.needs_getseters,
+            '_serializable': self._serializable,
             'builtin_base': self.builtin_base,
             'ctor': self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
@@ -326,6 +362,10 @@ class ClassIR:
                 cir.fullname for cir in self.children
             ] if self.children is not None else None,
             'deletable': self.deletable,
+            'attrs_with_defaults': sorted(self.attrs_with_defaults),
+            '_always_initialized_attrs': sorted(self._always_initialized_attrs),
+            '_sometimes_initialized_attrs': sorted(self._sometimes_initialized_attrs),
+            'init_self_leak': self.init_self_leak,
         }
 
     @classmethod
@@ -343,6 +383,7 @@ class ClassIR:
         ir.has_dict = data['has_dict']
         ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
         ir.needs_getseters = data['needs_getseters']
+        ir._serializable = data['_serializable']
         ir.builtin_base = data['builtin_base']
         ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
         ir.attributes = OrderedDict(
@@ -375,6 +416,10 @@ class ClassIR:
         ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
         ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
         ir.deletable = data['deletable']
+        ir.attrs_with_defaults = set(data['attrs_with_defaults'])
+        ir._always_initialized_attrs = set(data['_always_initialized_attrs'])
+        ir._sometimes_initialized_attrs = set(data['_sometimes_initialized_attrs'])
+        ir.init_self_leak = data['init_self_leak']
 
         return ir
 

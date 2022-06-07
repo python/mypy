@@ -38,10 +38,11 @@ def f(x):
     r2 :: object
     r3 :: int
 L0:
-    r0 = CPyList_GetItemShort(x, 0)
-    r1 = cast(list, r0)
+    r0 = CPyList_GetItemShortBorrow(x, 0)
+    r1 = borrow cast(list, r0)
     r2 = CPyList_GetItemShort(r1, 2)
     r3 = unbox(int, r2)
+    keep_alive x, r0
     return r3
 
 [case testListSet]

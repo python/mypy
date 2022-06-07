@@ -7284,3 +7284,19 @@ def meth1(self: Any, y: str) -> str: ...
 
 T = TypeVar("T")
 def meth2(self: Any, y: T) -> T: ...
+
+[case testClassScopeImportWithWrapperAndError]
+class Foo:
+    from mod import foo # E: Unsupported class scoped import
+
+[file mod.py]
+from typing import Any, Callable, TypeVar
+
+FuncT = TypeVar("FuncT", bound=Callable[..., Any])
+def identity_wrapper(func: FuncT) -> FuncT:
+    return func
+
+@identity_wrapper
+def foo(self: Any) -> str:
+    return ""
+

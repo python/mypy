@@ -270,9 +270,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
-                    if base._promote and self._is_subtype(base._promote, self.right):
+                    if base._promote and any(self._is_subtype(p, self.right)
+                                             for p in base._promote):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
+                # Special case: Low-level integer types are compatible with 'int'. We can't
+                # use promotions, since 'int' is already promoted to low-level integer types,
+                # and we can't have circular promotions.
+                if left.type.alt_promote is right.type:
+                    return True
             rname = right.type.fullname
             # Always try a nominal check if possible,
             # there might be errors that a user wants to silence *once*.
@@ -350,7 +356,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return self._is_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
-        raise NotImplementedError
+        if isinstance(self.right, UnpackType):
+            return self._is_subtype(left.type, self.right.type)
+        return False
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
@@ -589,7 +597,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
-        assert False, "This should be never called, got {}".format(left)
+        assert False, f"This should be never called, got {left}"
 
 
 T = TypeVar('T', Instance, TypeAliasType)
@@ -1413,7 +1421,8 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                 return True
             if not self.ignore_promotions:
                 for base in left.type.mro:
-                    if base._promote and self._is_proper_subtype(base._promote, right):
+                    if base._promote and any(self._is_proper_subtype(p, right)
+                                             for p in base._promote):
                         TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                         return True
 
@@ -1482,7 +1491,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return self._is_proper_subtype(left.upper_bound, self.right)
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
-        raise NotImplementedError
+        if isinstance(self.right, UnpackType):
+            return self._is_proper_subtype(left.type, self.right.type)
+        return False
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
@@ -1584,7 +1595,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         return False
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
-        assert False, "This should be never called, got {}".format(left)
+        assert False, f"This should be never called, got {left}"
 
 
 def is_more_precise(left: Type, right: Type, *, ignore_promotions: bool = False) -> bool:

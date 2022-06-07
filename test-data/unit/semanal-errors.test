@@ -867,7 +867,8 @@ x = None # type: Callable[int, str]
 y = None # type: Callable[int]
 z = None # type: Callable[int, int, int]
 [out]
-main:2: error: The first argument to Callable must be a list of types or "..."
+main:2: error: The first argument to Callable must be a list of types, parameter specification, or "..."
+main:2: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas
 main:3: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 main:4: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 

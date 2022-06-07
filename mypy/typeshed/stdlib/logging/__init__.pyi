@@ -408,7 +408,7 @@ class LogRecord:
     ) -> None: ...
     def getMessage(self) -> str: ...
 
-_L = TypeVar("_L", Logger, LoggerAdapter[Logger], LoggerAdapter[Any])
+_L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 
 class LoggerAdapter(Generic[_L]):
     logger: _L

@@ -14,8 +14,7 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    copy_type, TypeAliasType, TypeQuery, ParamSpecType, Parameters,
-    ENUM_REMOVED_PROPS
+    TypeAliasType, TypeQuery, ParamSpecType, Parameters, ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -23,6 +22,7 @@ from mypy.nodes import (
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.expandtype import expand_type_by_instance, expand_type
+from mypy.copytype import copy_type
 
 from mypy.typevars import fill_typevars
 
@@ -318,7 +318,7 @@ def simple_literal_value_key(t: ProperType) -> Optional[Tuple[str, ...]]:
     return None
 
 
-def simple_literal_type(t: ProperType) -> Optional[Instance]:
+def simple_literal_type(t: Optional[ProperType]) -> Optional[Instance]:
     """Extract the underlying fallback Instance type for a simple Literal"""
     if isinstance(t, Instance) and t.last_known_value is not None:
         t = t.last_known_value
@@ -811,7 +811,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
                 if fullname not in sum_types:
                     sum_types[fullname] = (set(get_enum_values(typ.fallback))
                                            if typ.fallback.type.is_enum
-                                           else set((True, False)),
+                                           else {True, False},
                                            [])
                 literals, indexes = sum_types[fullname]
                 literals.discard(typ.value)

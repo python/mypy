@@ -263,6 +263,7 @@ class Options:
         self.dump_inference_stats = False
         self.dump_build_stats = False
         self.enable_incomplete_features = False
+        self.timing_stats: Optional[str] = None
 
         # -- test options --
         # Stop after the semantic analysis phase
@@ -292,6 +293,8 @@ class Options:
         self.cache_map: Dict[str, Tuple[str, str]] = {}
         # Don't properly free objects on exit, just kill the current process.
         self.fast_exit = True
+        # fast path for finding modules from source set
+        self.fast_module_lookup = False
         # Used to transform source code before parsing if not None
         # TODO: Make the type precise (AnyStr -> AnyStr)
         self.transform_source: Optional[Callable[[Any], Any]] = None
@@ -324,7 +327,7 @@ class Options:
         return d
 
     def __repr__(self) -> str:
-        return 'Options({})'.format(pprint.pformat(self.snapshot()))
+        return f'Options({pprint.pformat(self.snapshot())})'
 
     def apply_changes(self, changes: Dict[str, object]) -> 'Options':
         new_options = Options()

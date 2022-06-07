@@ -86,7 +86,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
           and narrowed.type.is_metaclass()):
         # We'd need intersection types, so give up.
         return declared
-    elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
+    elif isinstance(declared, Instance):
+        if declared.type.alt_promote:
+            # Special case: low-level integer type can't be narrowed
+            return declared
+        return meet_types(declared, narrowed)
+    elif isinstance(declared, (TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
@@ -444,8 +449,8 @@ def are_tuples_overlapping(left: Type, right: Type, *,
     left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
-    assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
-    assert isinstance(right, TupleType), 'Type {} is not a tuple'.format(right)
+    assert isinstance(left, TupleType), f'Type {left} is not a tuple'
+    assert isinstance(right, TupleType), f'Type {right} is not a tuple'
     if len(left.items) != len(right.items):
         return False
     return all(is_overlapping_types(l, r,
@@ -574,6 +579,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     else:
                         return NoneType()
             else:
+                alt_promote = t.type.alt_promote
+                if alt_promote and alt_promote is self.s.type:
+                    return t
+                alt_promote = self.s.type.alt_promote
+                if alt_promote and alt_promote is t.type:
+                    return self.s
                 if is_subtype(t, self.s):
                     return t
                 elif is_subtype(self.s, t):
@@ -712,7 +723,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)

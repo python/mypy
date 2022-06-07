@@ -202,7 +202,7 @@ class TypeState:
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
                 for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname, attr))
+                    trigger = make_trigger(f'{base_info.fullname}.{attr}')
                     if 'typing' in trigger or 'builtins' in trigger:
                         # TODO: avoid everything from typeshed
                         continue

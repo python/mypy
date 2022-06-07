@@ -120,7 +120,7 @@ implicitly casting from ``UserId`` where ``int`` is expected. Examples:
     name_by_id(42)          # Fails type check
     name_by_id(UserId(42))  # OK
 
-    num = UserId(5) + 1     # type: int
+    num: int = UserId(5) + 1
 
 :py:func:`NewType <typing.NewType>` accepts exactly two arguments. The first argument must be a string literal
 containing the name of the new type and must equal the name of the variable to which the new
@@ -985,7 +985,7 @@ dictionary value depends on the key:
 
    Movie = TypedDict('Movie', {'name': str, 'year': int})
 
-   movie = {'name': 'Blade Runner', 'year': 1982}  # type: Movie
+   movie: Movie = {'name': 'Blade Runner', 'year': 1982}
 
 ``Movie`` is a ``TypedDict`` type with two items: ``'name'`` (with type ``str``)
 and ``'year'`` (with type ``int``). Note that we used an explicit type
@@ -1080,7 +1080,7 @@ keys. This will be flagged as an error:
 .. code-block:: python
 
    # Error: 'year' missing
-   toy_story = {'name': 'Toy Story'}  # type: Movie
+   toy_story: Movie = {'name': 'Toy Story'}
 
 Sometimes you want to allow keys to be left out when creating a
 ``TypedDict`` object. You can provide the ``total=False`` argument to
@@ -1090,7 +1090,7 @@ Sometimes you want to allow keys to be left out when creating a
 
    GuiOptions = TypedDict(
        'GuiOptions', {'language': str, 'color': str}, total=False)
-   options = {}  # type: GuiOptions  # Okay
+   options: GuiOptions = {}  # Okay
    options['language'] = 'en'
 
 You may need to use :py:meth:`~dict.get` to access items of a partial (non-total)

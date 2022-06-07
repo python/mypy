@@ -9,10 +9,14 @@ import copy
 import enum
 import importlib
 import inspect
+import os
 import re
 import sys
 import types
+import typing
+import typing_extensions
 import warnings
+from contextlib import redirect_stdout, redirect_stderr
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
@@ -23,10 +27,11 @@ import mypy.build
 import mypy.modulefinder
 import mypy.state
 import mypy.types
+import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, plural_s, is_dunder
 
 
 class Missing:
@@ -48,6 +53,10 @@ def _style(message: str, **kwargs: Any) -> str:
     """Wrapper around mypy.util for fancy formatting."""
     kwargs.setdefault("color", "none")
     return _formatter.style(message, **kwargs)
+
+
+class StubtestFailure(Exception):
+    pass
 
 
 class Error:
@@ -105,9 +114,9 @@ class Error:
 
         stub_loc_str = ""
         if stub_line:
-            stub_loc_str += " at line {}".format(stub_line)
+            stub_loc_str += f" at line {stub_line}"
         if stub_file:
-            stub_loc_str += " in file {}".format(Path(stub_file))
+            stub_loc_str += f" in file {Path(stub_file)}"
 
         runtime_line = None
         runtime_file = None
@@ -123,9 +132,9 @@ class Error:
 
         runtime_loc_str = ""
         if runtime_line:
-            runtime_loc_str += " at line {}".format(runtime_line)
+            runtime_loc_str += f" at line {runtime_line}"
         if runtime_file:
-            runtime_loc_str += " in file {}".format(Path(runtime_file))
+            runtime_loc_str += f" in file {Path(runtime_file)}"
 
         output = [
             _style("error: ", color="red", bold=True),
@@ -160,19 +169,20 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        yield Error([module_name], "failed to find stubs", MISSING, None)
+        yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc="N/A")
         return
 
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            runtime = importlib.import_module(module_name)
-            # Also run the equivalent of `from module import *`
-            # This could have the additional effect of loading not-yet-loaded submodules
-            # mentioned in __all__
-            __import__(module_name, fromlist=["*"])
+        with open(os.devnull, "w") as devnull:
+            with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
+                warnings.simplefilter("ignore")
+                runtime = importlib.import_module(module_name)
+                # Also run the equivalent of `from module import *`
+                # This could have the additional effect of loading not-yet-loaded submodules
+                # mentioned in __all__
+                __import__(module_name, fromlist=["*"])
     except Exception as e:
-        yield Error([module_name], "failed to import: {}".format(e), stub, MISSING)
+        yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
     with warnings.catch_warnings():
@@ -253,11 +263,11 @@ def verify_mypyfile(
         runtime_all_as_set = None
 
     # Check things in the stub
-    to_check = set(
+    to_check = {
         m
         for m, o in stub.names.items()
         if not o.module_hidden and (not is_probably_private(m) or hasattr(runtime, m))
-    )
+    }
 
     def _belongs_to_runtime(r: types.ModuleType, attr: str) -> bool:
         obj = getattr(r, attr)
@@ -348,7 +358,7 @@ def verify_typeinfo(
     for entry in sorted(to_check):
         mangled_entry = entry
         if entry.startswith("__") and not entry.endswith("__"):
-            mangled_entry = "_{}{}".format(stub.name, entry)
+            mangled_entry = f"_{stub.name}{entry}"
         stub_to_verify = next((t.names[entry].node for t in stub.mro if entry in t.names), MISSING)
         assert stub_to_verify is not None
         try:
@@ -465,6 +475,8 @@ def _verify_arg_default_value(
                 and stub_type is not None
                 # Avoid false positives for marker objects
                 and type(runtime_arg.default) != object
+                # And ellipsis
+                and runtime_arg.default is not ...
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
@@ -524,7 +536,7 @@ class Signature(Generic[T]):
             arg_type = get_type(arg)
             return (
                 get_name(arg)
-                + (": {}".format(arg_type) if arg_type else "")
+                + (f": {arg_type}" if arg_type else "")
                 + (" = ..." if has_default(arg) else "")
             )
 
@@ -596,7 +608,7 @@ class Signature(Generic[T]):
                 # For positional-only args, we allow overloads to have different names for the same
                 # argument. To accomplish this, we just make up a fake index-based name.
                 name = (
-                    "__{}".format(index)
+                    f"__{index}"
                     if arg.variable.name.startswith("__") or assume_positional_only
                     else arg.variable.name
                 )
@@ -695,24 +707,24 @@ def _verify_signature(
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
-                    yield 'runtime does not have argument "{}"'.format(stub_arg.variable.name)
+                    yield f'runtime does not have argument "{stub_arg.variable.name}"'
                 else:
-                    yield 'stub argument "{}" is not keyword-only'.format(stub_arg.variable.name)
+                    yield f'stub argument "{stub_arg.variable.name}" is not keyword-only'
             if stub.varpos is not None:
-                yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
+                yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
     elif len(stub.pos) < len(runtime.pos):
         for runtime_arg in runtime.pos[len(stub.pos):]:
             if runtime_arg.name not in stub.kwonly:
-                yield 'stub does not have argument "{}"'.format(runtime_arg.name)
+                yield f'stub does not have argument "{runtime_arg.name}"'
             else:
-                yield 'runtime argument "{}" is not keyword-only'.format(runtime_arg.name)
+                yield f'runtime argument "{runtime_arg.name}" is not keyword-only'
 
     # Checks involving *args
     if len(stub.pos) <= len(runtime.pos) or runtime.varpos is None:
         if stub.varpos is None and runtime.varpos is not None:
-            yield 'stub does not have *args argument "{}"'.format(runtime.varpos.name)
+            yield f'stub does not have *args argument "{runtime.varpos.name}"'
         if stub.varpos is not None and runtime.varpos is None:
-            yield 'runtime does not have *args argument "{}"'.format(stub.varpos.variable.name)
+            yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
 
     # Check keyword-only args
     for arg in sorted(set(stub.kwonly) & set(runtime.kwonly)):
@@ -728,26 +740,26 @@ def _verify_signature(
         # takes *kwargs, since runtime logic may prevent additional arguments from actually being
         # accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
-            yield 'runtime does not have argument "{}"'.format(arg)
+            yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
-        if arg in set(stub_arg.variable.name for stub_arg in stub.pos):
+        if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
             if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
-                yield 'stub argument "{}" is not keyword-only'.format(arg)
+                yield f'stub argument "{arg}" is not keyword-only'
         else:
-            yield 'stub does not have argument "{}"'.format(arg)
+            yield f'stub does not have argument "{arg}"'
 
     # Checks involving **kwargs
     if stub.varkw is None and runtime.varkw is not None:
         # As mentioned above, don't enforce that the stub takes **kwargs.
         # Also check against positional parameters, to avoid a nitpicky message when an argument
         # isn't marked as keyword-only
-        stub_pos_names = set(stub_arg.variable.name for stub_arg in stub.pos)
+        stub_pos_names = {stub_arg.variable.name for stub_arg in stub.pos}
         # Ideally we'd do a strict subset check, but in practice the errors from that aren't useful
         if not set(runtime.kwonly).issubset(set(stub.kwonly) | stub_pos_names):
-            yield 'stub does not have **kwargs argument "{}"'.format(runtime.varkw.name)
+            yield f'stub does not have **kwargs argument "{runtime.varkw.name}"'
     if stub.varkw is not None and runtime.varkw is None:
-        yield 'runtime does not have **kwargs argument "{}"'.format(stub.varkw.variable.name)
+        yield f'runtime does not have **kwargs argument "{stub.varkw.variable.name}"'
 
 
 @verify.register(nodes.FuncItem)
@@ -849,7 +861,7 @@ def verify_var(
         if should_error:
             yield Error(
                 object_path,
-                "variable differs from runtime type {}".format(runtime_type),
+                f"variable differs from runtime type {runtime_type}",
                 stub,
                 runtime,
             )
@@ -901,7 +913,7 @@ def verify_overloadedfuncdef(
             "is inconsistent, " + message,
             stub,
             runtime,
-            stub_desc=str(stub.type) + "\nInferred signature: {}".format(stub_sig),
+            stub_desc=str(stub.type) + f"\nInferred signature: {stub_sig}",
             runtime_desc="def " + str(signature),
         )
 
@@ -910,8 +922,32 @@ def verify_overloadedfuncdef(
 def verify_typevarexpr(
     stub: nodes.TypeVarExpr, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if False:
-        yield None
+    if isinstance(runtime, Missing):
+        # We seem to insert these typevars into NamedTuple stubs, but they
+        # don't exist at runtime. Just ignore!
+        if stub.name == "_NT":
+            return
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+    if not isinstance(runtime, TypeVar):
+        yield Error(object_path, "is not a TypeVar", stub, runtime)
+        return
+
+
+@verify.register(nodes.ParamSpecExpr)
+def verify_paramspecexpr(
+    stub: nodes.ParamSpecExpr, runtime: MaybeMissing[Any], object_path: List[str]
+) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+    maybe_paramspec_types = (
+        getattr(typing, "ParamSpec", None), getattr(typing_extensions, "ParamSpec", None)
+    )
+    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    if not paramspec_types or not isinstance(runtime, paramspec_types):
+        yield Error(object_path, "is not a ParamSpec", stub, runtime)
+        return
 
 
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
@@ -941,7 +977,6 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
 
     Returns None if we can't figure out what that would be. For convenience, this function also
     accepts FuncItems.
-
     """
     if isinstance(dec, nodes.FuncItem):
         return dec
@@ -962,7 +997,12 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
         ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
             return func
         if decorator.fullname == "builtins.classmethod":
-            assert func.arguments[0].variable.name in ("cls", "metacls")
+            if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
+                raise StubtestFailure(
+                    f"unexpected class argument name {func.arguments[0].variable.name!r} "
+                    f"in {dec.fullname}"
+                )
+            # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
             # Remove the cls argument, since it's not present in inspect.signature of classmethods
             ret.arguments = ret.arguments[1:]
@@ -1291,26 +1331,16 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
             sources.extend(found_sources)
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
 
-    try:
-        res = mypy.build.build(sources=sources, options=options)
-    except mypy.errors.CompileError as e:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to failed mypy compile:\n",
-            str(e),
-        ]
-        print("".join(output))
-        raise RuntimeError from e
-    if res.errors:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to mypy build errors:\n",
-        ]
-        print("".join(output) + "\n".join(res.errors))
-        raise RuntimeError
+    if sources:
+        try:
+            res = mypy.build.build(sources=sources, options=options)
+        except mypy.errors.CompileError as e:
+            raise StubtestFailure(f"failed mypy compile:\n{e}") from e
+        if res.errors:
+            raise StubtestFailure("mypy build errors:\n" + "\n".join(res.errors))
 
-    global _all_stubs
-    _all_stubs = res.files
+        global _all_stubs
+        _all_stubs = res.files
 
     return all_modules
 
@@ -1372,7 +1402,21 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
                 yield entry
 
 
-def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) -> int:
+class _Arguments:
+    modules: List[str]
+    concise: bool
+    ignore_missing_stub: bool
+    ignore_positional_only: bool
+    allowlist: List[str]
+    generate_allowlist: bool
+    ignore_unused_allowlist: bool
+    mypy_config_file: str
+    custom_typeshed_dir: str
+    check_typeshed: bool
+    version: str
+
+
+def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
     # Values in the dict will store whether we used the allowlist entry or not.
@@ -1388,13 +1432,23 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
 
     modules = args.modules
     if args.check_typeshed:
-        assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
+        if args.modules:
+            print(
+                _style("error:", color="red", bold=True),
+                "cannot pass both --check-typeshed and a list of modules",
+            )
+            return 1
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
         # typeshed added a stub for __main__, but that causes stubtest to check itself
         annoying_modules = {"antigravity", "this", "__main__"}
         modules = [m for m in modules if m not in annoying_modules]
 
-    assert modules, "No modules to check"
+    if not modules:
+        print(
+            _style("error:", color="red", bold=True),
+            "no modules to check",
+        )
+        return 1
 
     options = Options()
     options.incremental = False
@@ -1409,10 +1463,15 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
-    except RuntimeError:
+    except StubtestFailure as stubtest_failure:
+        print(
+            _style("error:", color="red", bold=True),
+            f"not checking stubs due to {stubtest_failure}",
+        )
         return 1
 
     exit_code = 0
+    error_count = 0
     for module in modules:
         for error in test_module(module):
             # Filter errors
@@ -1438,6 +1497,7 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
                 generated_allowlist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
+            error_count += 1
 
     # Print unused allowlist entries
     if not args.ignore_unused_allowlist:
@@ -1446,18 +1506,35 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
             # This lets us allowlist errors that don't manifest at all on some systems
             if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
-                print("note: unused allowlist entry {}".format(w))
+                error_count += 1
+                print(f"note: unused allowlist entry {w}")
 
     # Print the generated allowlist
     if args.generate_allowlist:
         for e in sorted(generated_allowlist):
             print(e)
         exit_code = 0
+    elif not args.concise:
+        if error_count:
+            print(
+                _style(
+                    f"Found {error_count} error{plural_s(error_count)}"
+                    f" (checked {len(modules)} module{plural_s(modules)})",
+                    color="red", bold=True
+                )
+            )
+        else:
+            print(
+                _style(
+                    f"Success: no issues found in {len(modules)} module{plural_s(modules)}",
+                    color="green", bold=True
+                )
+            )
 
     return exit_code
 
 
-def parse_options(args: List[str]) -> argparse.Namespace:
+def parse_options(args: List[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
@@ -1515,8 +1592,11 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
+    )
 
-    return parser.parse_args(args)
+    return parser.parse_args(args, namespace=_Arguments())
 
 
 def main() -> int:

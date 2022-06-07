@@ -21,7 +21,8 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
+    is_list_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -39,12 +40,13 @@ from mypyc.primitives.set_ops import set_add_op, set_update_op
 from mypyc.primitives.str_ops import str_slice_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
 from mypyc.irbuild.for_helpers import (
     translate_list_comprehension, translate_set_comprehension,
     comprehension_helper
 )
 from mypyc.irbuild.constant_fold import constant_fold_expr
+from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 
 
 # Name and attribute references
@@ -130,8 +132,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    obj = builder.accept(expr.expr)
+    can_borrow = builder.is_native_attr_ref(expr)
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -142,7 +146,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
+    borrow = can_borrow and builder.can_borrow
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
 
 
 def check_instance_attribute_access_through_class(builder: IRBuilder,
@@ -400,14 +405,40 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
     if folded:
         return folded
 
+    # Special case some int ops to allow borrowing operands.
+    if (is_int_rprimitive(builder.node_type(expr.left))
+            and is_int_rprimitive(builder.node_type(expr.right))):
+        if expr.op == '//':
+            expr = try_optimize_int_floor_divide(expr)
+        if expr.op in int_borrow_friendly_op:
+            borrow_left = is_borrow_friendly_expr(builder, expr.right)
+            left = builder.accept(expr.left, can_borrow=borrow_left)
+            right = builder.accept(expr.right, can_borrow=True)
+            return builder.binary_op(left, right, expr.op, expr.line)
+
     return builder.binary_op(
         builder.accept(expr.left), builder.accept(expr.right), expr.op, expr.line
     )
 
 
+def try_optimize_int_floor_divide(expr: OpExpr) -> OpExpr:
+    """Replace // with a power of two with a right shift, if possible."""
+    if not isinstance(expr.right, IntExpr):
+        return expr
+    divisor = expr.right.value
+    shift = divisor.bit_length() - 1
+    if 0 < shift < 28 and divisor == (1 << shift):
+        return OpExpr('>>', expr.left, IntExpr(shift))
+    return expr
+
+
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
-    base = builder.accept(expr.base)
     index = expr.index
+    base_type = builder.node_type(expr.base)
+    is_list = is_list_rprimitive(base_type)
+    can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
     if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
         return builder.add(TupleGet(base, index.value, expr.line))
@@ -417,7 +448,7 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index)
+    index_reg = builder.accept(expr.index, can_borrow=is_list)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
 
@@ -476,7 +507,7 @@ def try_gen_slice_op(builder: IRBuilder, base: Value, index: SliceExpr) -> Optio
 def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Value:
     if_body, else_body, next_block = BasicBlock(), BasicBlock(), BasicBlock()
 
-    builder.process_conditional(expr.cond, if_body, else_body)
+    process_conditional(builder, expr.cond, if_body, else_body)
     expr_type = builder.node_type(expr)
     # Having actual Phi nodes would be really nice here!
     target = Register(expr_type)
@@ -501,7 +532,8 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
-    if (e.operators[0] in ['in', 'not in']
+    first_op = e.operators[0]
+    if (first_op in ['in', 'not in']
             and len(e.operators) == 1
             and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
@@ -548,6 +580,23 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             else:
                 return builder.true()
 
+    if len(e.operators) == 1:
+        # Special some common simple cases
+        if first_op in ('is', 'is not'):
+            right_expr = e.operands[1]
+            if isinstance(right_expr, NameExpr) and right_expr.fullname == 'builtins.None':
+                # Special case 'is None' / 'is not None'.
+                return translate_is_none(builder, e.operands[0], negated=first_op != 'is')
+        left_expr = e.operands[0]
+        if is_int_rprimitive(builder.node_type(left_expr)):
+            right_expr = e.operands[1]
+            if is_int_rprimitive(builder.node_type(right_expr)):
+                if first_op in int_borrow_friendly_op:
+                    borrow_left = is_borrow_friendly_expr(builder, right_expr)
+                    left = builder.accept(left_expr, can_borrow=borrow_left)
+                    right = builder.accept(right_expr, can_borrow=True)
+                    return builder.compare_tagged(left, right, first_op, e.line)
+
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
@@ -570,6 +619,11 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             e.line)
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Value:
+    v = builder.accept(expr, can_borrow=True)
+    return builder.binary_op(v, builder.none_object(), 'is not' if negated else 'is', expr.line)
 
 
 def transform_basic_comparison(builder: IRBuilder,
