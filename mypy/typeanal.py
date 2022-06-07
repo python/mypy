@@ -690,7 +690,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
         trace = 'ekr_' in repr(t)  ###
-        tag, verbose = 'visit_callable_type', False
+        tag, verbose = 'visit_callable_type:', False
 
         if trace and verbose:
             key = self.callers(60)
