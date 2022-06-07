@@ -6,7 +6,7 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
-    ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
+    ParamSpecType, Parameters, UnpackType, TypeVarTupleType, TypeVarLikeType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
@@ -134,6 +134,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
             return typ.values
         else:
             return [typ.upper_bound]
+    elif isinstance(typ, ParamSpecType):
+        return [typ.upper_bound]
     elif isinstance(typ, UnionType):
         return list(typ.items)
     elif isinstance(typ, Overloaded):
@@ -255,14 +257,14 @@ def is_overlapping_types(left: Type,
 
     def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
         t1, t2 = get_proper_types((t1, t2))
-        return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
+        return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
 
     if prohibit_none_typevar_overlap:
         if is_none_typevar_overlap(left, right) or is_none_typevar_overlap(right, left):
             return False
 
     if (len(left_possible) > 1 or len(right_possible) > 1
-            or isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):
+            or isinstance(left, TypeVarLikeType) or isinstance(right, TypeVarLikeType)):
         for l in left_possible:
             for r in right_possible:
                 if _is_overlapping_types(l, r):
