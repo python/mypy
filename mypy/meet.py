@@ -117,8 +117,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
     If this function receives any other type, we return a list containing just that
     original type. (E.g. pretend the type was contained within a singleton union).
 
-    The only exception is regular TypeVars: we return a list containing that TypeVar's
-    upper bound.
+    The only current exceptions are regular TypeVars and ParamSpecs. For these "TypeVarLike"s,
+    we return a list containing that TypeVarLike's upper bound.
 
     This function is useful primarily when checking to see if two types are overlapping:
     the algorithm to check if two unions are overlapping is fundamentally the same as
@@ -246,21 +246,21 @@ def is_overlapping_types(left: Type,
     right_possible = get_possible_variants(right)
 
     # We start by checking multi-variant types like Unions first. We also perform
-    # the same logic if either type happens to be a TypeVar.
+    # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
     #
-    # Handling the TypeVars now lets us simulate having them bind to the corresponding
+    # Handling the TypeVarLikes now lets us simulate having them bind to the corresponding
     # type -- if we deferred these checks, the "return-early" logic of the other
     # checks will prevent us from detecting certain overlaps.
     #
-    # If both types are singleton variants (and are not TypeVars), we've hit the base case:
+    # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+    def is_none_typevarlike_overlap(t1: Type, t2: Type) -> bool:
         t1, t2 = get_proper_types((t1, t2))
         return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
 
     if prohibit_none_typevar_overlap:
-        if is_none_typevar_overlap(left, right) or is_none_typevar_overlap(right, left):
+        if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
             return False
 
     if (len(left_possible) > 1 or len(right_possible) > 1
@@ -271,11 +271,11 @@ def is_overlapping_types(left: Type,
                     return True
         return False
 
-    # Now that we've finished handling TypeVars, we're free to end early
+    # Now that we've finished handling TypeVarLikes, we're free to end early
     # if one one of the types is None and we're running in strict-optional mode.
     # (None only overlaps with None in strict-optional mode).
     #
-    # We must perform this check after the TypeVar checks because
+    # We must perform this check after the TypeVarLike checks because
     # a TypeVar could be bound to None, for example.
 
     if state.strict_optional and isinstance(left, NoneType) != isinstance(right, NoneType):
