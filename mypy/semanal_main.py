@@ -435,6 +435,8 @@ def apply_hooks_to_class(self: SemanticAnalyzer,
 
 
 def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -> None:
+    builtins = graph['builtins'].tree
+    assert builtins
     for module in scc:
         state = graph[module]
         tree = state.tree
@@ -445,7 +447,8 @@ def calculate_class_properties(graph: 'Graph', scc: List[str], errors: Errors) -
                     calculate_class_abstract_status(node.node, tree.is_stub, errors)
                     check_protocol_status(node.node, errors)
                     calculate_class_vars(node.node)
-                    add_type_promotion(node.node, tree.names, graph[module].options)
+                    add_type_promotion(node.node, tree.names, graph[module].options,
+                                       builtins.names)
 
 
 def check_blockers(graph: 'Graph', scc: List[str]) -> None:

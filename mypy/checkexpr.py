@@ -14,6 +14,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.traverser import has_await_expression
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -2586,13 +2587,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (is_subtype(right_type, left_type)
                 and isinstance(left_type, Instance)
                 and isinstance(right_type, Instance)
+                and left_type.type.alt_promote is not right_type.type
                 and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)):
-            # When we do "A() + B()" where B is a subclass of B, we'll actually try calling
+            # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
             # __radd__ method.
             #
             # This mechanism lets subclasses "refine" the expected outcome of the operation, even
             # if they're located on the RHS.
+            #
+            # As a special case, the alt_promote check makes sure that we don't use the
+            # __radd__ method of int if the LHS is a native int type.
 
             variants_raw = [
                 (right_op, right_type, left_expr),
@@ -3799,8 +3804,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         # If any of the comprehensions use async for, the expression will return an async generator
-        # object
-        if any(e.is_async):
+        # object, or if the left-side expression uses await.
+        if any(e.is_async) or has_await_expression(e.left_expr):
             typ = 'typing.AsyncGenerator'
             # received type is always None in async generator expressions
             additional_args: List[Type] = [NoneType()]
