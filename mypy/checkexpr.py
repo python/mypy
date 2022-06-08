@@ -4120,7 +4120,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.msg.does_not_return_value(None, e)
         return ret
 
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: Union[str, ErrorMessage], ignore_binder: bool = False) -> Type:
+    def check_awaitable_expr(
+            self, t: Type, ctx: Context, msg: Union[str, ErrorMessage], ignore_binder: bool = False
+    ) -> Type:
         """Check the argument to `await` and extract the type of value.
 
         Also used by `async for` and `async with`.
@@ -4132,7 +4134,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
             ret_type = self.chk.get_generator_return_type(generator, False)
             ret_type = get_proper_type(ret_type)
-            if not ignore_binder and isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
+            if (
+                not ignore_binder
+                and isinstance(ret_type, UninhabitedType)
+                and not ret_type.ambiguous
+            ):
                 self.chk.binder.unreachable()
             return ret_type
 

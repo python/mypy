@@ -5298,7 +5298,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Partial types are special, ignore them here.
             return None
         try:
-            aw_type = self.expr_checker.check_awaitable_expr(typ, Context(), '', ignore_binder=True)
+            aw_type = self.expr_checker.check_awaitable_expr(
+                typ, Context(), '', ignore_binder=True
+            )
         except KeyError:
             # This is a hack to speed up tests by not including Awaitable in all typing stubs.
             return None
@@ -5308,7 +5310,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return None
         return aw_type
 
-    def check_possible_missing_await(self, subtype: Type, supertype: Type, context: Context) -> None:
+    def check_possible_missing_await(
+            self, subtype: Type, supertype: Type, context: Context
+    ) -> None:
         """Check if the given type becomes a subtype when awaited."""
         if is_named_instance(supertype, "typing.Awaitable"):
             # Avoid infinite recursion.
