@@ -1,9 +1,3 @@
-# EKR additions
-mypy.leo
-html/
-index.html
-*.css
-
 build/
 __pycache__
 *.py[cod]
