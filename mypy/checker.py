@@ -5315,8 +5315,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             aw_type = self.get_precise_awaitable_type(subtype, local_errors)
             if aw_type is None:
                 return
-            if self.check_subtype(aw_type, supertype, context):
-                self.msg.possible_missing_await(context)
+            if not self.check_subtype(aw_type, supertype, context):
+                return
+        self.msg.possible_missing_await(context)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)
