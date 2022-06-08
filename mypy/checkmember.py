@@ -180,22 +180,13 @@ def may_be_awaitable_attribute(
     mx: MemberContext,
     override_info: Optional[TypeInfo] = None
 ) -> bool:
+    """Check if the given type has the attribute when awaited."""
     if name == "__await__":
         # Avoid infinite recursion.
         return False
-    if isinstance(get_proper_type(typ), PartialType):
-        # Partial types are special, ignore them here.
-        return False
     with mx.msg.filter_errors() as local_errors:
-        try:
-            aw_type = mx.chk.expr_checker.check_awaitable_expr(typ, mx.context, '', ignore_binder=True)
-            if isinstance(get_proper_type(aw_type), AnyType):
-                # Avoid potentially misleading notes.
-                return False
-        except KeyError:
-            # This is a hack to speed up tests by not including Awaitable in all typing stubs.
-            return False
-        if local_errors.has_new_errors():
+        aw_type = mx.chk.get_precise_awaitable_type(typ, local_errors)
+        if aw_type is None:
             return False
         _ = _analyze_member_access(name, aw_type, mx, override_info)
         return not local_errors.has_new_errors()
@@ -210,7 +201,7 @@ def report_missing_attribute(
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
     if may_be_awaitable_attribute(name, typ, mx, override_info):
-        mx.msg.note('Maybe you forgot to use "await"?', mx.context)
+        mx.msg.possible_missing_await(mx.context)
     return res_type
 
 

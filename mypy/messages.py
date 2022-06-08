@@ -806,6 +806,9 @@ class MessageBuilder:
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f'{format_type(type)} object is not iterable', context)
 
+    def possible_missing_await(self, context: Context) -> None:
+        self.note('Maybe you forgot to use "await"?', context)
+
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail(f'Result type of {op} incompatible in assignment',

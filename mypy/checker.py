@@ -12,7 +12,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
-from mypy.errors import Errors, report_internal_error
+from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
@@ -5284,30 +5284,39 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
-        if self.check_possible_missing_await(subtype, supertype, context):
-            self.msg.note('Maybe you forgot to use "await"?', context)
+        self.check_possible_missing_await(subtype, supertype, context)
         return False
 
-    def check_possible_missing_await(self, subtype: Type, supertype: Type, context: Context) -> bool:
-        subtype = get_proper_type(subtype)
+    def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Optional[Type]:
+        """If type implements Awaitable[X] with non-Any X, return X.
+
+        In all other cases return None.
+        """
+        if isinstance(get_proper_type(typ), PartialType):
+            # Partial types are special, ignore them here.
+            return None
+        try:
+            aw_type = self.expr_checker.check_awaitable_expr(typ, Context(), '', ignore_binder=True)
+        except KeyError:
+            # This is a hack to speed up tests by not including Awaitable in all typing stubs.
+            return None
+        if local_errors.has_new_errors():
+            return None
+        if isinstance(get_proper_type(aw_type), AnyType):
+            return None
+        return aw_type
+
+    def check_possible_missing_await(self, subtype: Type, supertype: Type, context: Context) -> None:
+        """Check if the given type becomes a subtype when awaited."""
         if is_named_instance(supertype, "typing.Awaitable"):
             # Avoid infinite recursion.
-            return False
-        if isinstance(subtype, PartialType):
-            # Partial types are special, ignore them here.
-            return False
+            return
         with self.msg.filter_errors() as local_errors:
-            try:
-                aw_type = self.expr_checker.check_awaitable_expr(subtype, context, '', ignore_binder=True)
-                if isinstance(get_proper_type(aw_type), AnyType):
-                    # Avoid potentially misleading notes.
-                    return False
-            except KeyError:
-                # This is a hack to speed up tests by not including Awaitable in all typing stubs.
-                return False
-            if local_errors.has_new_errors():
-                return False
-            return self.check_subtype(aw_type, supertype, context)
+            aw_type = self.get_precise_awaitable_type(subtype, local_errors)
+            if aw_type is None:
+                return
+            if self.check_subtype(aw_type, supertype, context):
+                self.msg.possible_missing_await(context)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)
