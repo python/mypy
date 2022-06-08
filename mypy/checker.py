@@ -5291,7 +5291,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Optional[Type]:
         """If type implements Awaitable[X] with non-Any X, return X.
 
-        In all other cases return None.
+        In all other cases return None. This method must be called in context
+        of local_errors.
         """
         if isinstance(get_proper_type(typ), PartialType):
             # Partial types are special, ignore them here.
