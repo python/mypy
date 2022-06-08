@@ -13,8 +13,6 @@ class TypeVarLikeScope:
     Node fullname -> TypeVarLikeType.
     """
 
-    ekr_callers_dict = {}
-
     def __init__(self,
                  parent: 'Optional[TypeVarLikeScope]' = None,
                  is_class_scope: bool = False,
