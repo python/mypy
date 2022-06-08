@@ -891,8 +891,8 @@ async def test(x: Sub[D]) -> None:
     g(foo())  # E: Argument 1 to "g" has incompatible type "Coroutine[Any, Any, D]"; expected "C" \
               # N: Maybe you forgot to use "await"?
     g(await foo())
-    bad: Awaitable[int]
-    g(bad)  # E: Argument 1 to "g" has incompatible type "Awaitable[int]"; expected "C"
+    unknown: Awaitable[Any]
+    g(unknown)  # E: Argument 1 to "g" has incompatible type "Awaitable[Any]"; expected "C"
 
     x.x  # E: "Sub[D]" has no attribute "x" \
          # N: Maybe you forgot to use "await"?
@@ -902,8 +902,8 @@ async def test(x: Sub[D]) -> None:
     a: C = x  # E: Incompatible types in assignment (expression has type "Sub[D]", variable has type "C") \
               # N: Maybe you forgot to use "await"?
     b: C = await x
-    bad2: Awaitable[int]
-    d: C = bad2  # E: Incompatible types in assignment (expression has type "Awaitable[int]", variable has type "C")
+    unknown2: Awaitable[Any]
+    d: C = unknown2  # E: Incompatible types in assignment (expression has type "Awaitable[Any]", variable has type "C")
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

@@ -189,6 +189,9 @@ def may_be_awaitable(
     with mx.msg.filter_errors() as local_errors:
         try:
             aw_type = mx.chk.expr_checker.check_awaitable_expr(typ, mx.context, '', ignore_binder=True)
+            if isinstance(get_proper_type(aw_type), AnyType):
+                # Avoid potentially misleading notes.
+                return False
         except KeyError:
             # This is a hack to speed up tests by not including Awaitable in all typing stubs.
             return False

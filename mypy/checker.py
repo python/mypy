@@ -5299,6 +5299,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         with self.msg.filter_errors() as local_errors:
             try:
                 aw_type = self.expr_checker.check_awaitable_expr(subtype, context, '', ignore_binder=True)
+                if isinstance(get_proper_type(aw_type), AnyType):
+                    # Avoid potentially misleading notes.
+                    return False
             except KeyError:
                 # This is a hack to speed up tests by not including Awaitable in all typing stubs.
                 return False
