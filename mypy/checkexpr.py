@@ -1572,6 +1572,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   outer_context=outer_context)
             self.msg.incompatible_argument_note(original_caller_type, callee_type, context,
                                                 code=code)
+            if self.chk.check_possible_missing_await(caller_type, callee_type, context):
+                self.msg.note('Maybe you forgot to use "await"?', context)
 
     def check_overload_call(self,
                             callee: Overloaded,

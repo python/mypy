@@ -5284,7 +5284,27 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
+        if self.check_possible_missing_await(subtype, supertype, context):
+            self.msg.note('Maybe you forgot to use "await"?', context)
         return False
+
+    def check_possible_missing_await(self, subtype: Type, supertype: Type, context: Context) -> bool:
+        subtype = get_proper_type(subtype)
+        if is_named_instance(supertype, "typing.Awaitable"):
+            # Avoid infinite recursion.
+            return False
+        if isinstance(subtype, PartialType):
+            # Partial types are special, ignore them here.
+            return False
+        with self.msg.filter_errors() as local_errors:
+            try:
+                aw_type = self.expr_checker.check_awaitable_expr(subtype, context, '', ignore_binder=True)
+            except KeyError:
+                # This is a hack to speed up tests by not including Awaitable in all typing stubs.
+                return False
+            if local_errors.has_new_errors():
+                return False
+            return self.check_subtype(aw_type, supertype, context)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)

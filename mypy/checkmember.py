@@ -183,7 +183,7 @@ def may_be_awaitable(
     if name == "__await__":
         # Avoid infinite recursion.
         return False
-    if isinstance(typ, PartialType):
+    if isinstance(get_proper_type(typ), PartialType):
         # Partial types are special, ignore them here.
         return False
     with mx.msg.filter_errors() as local_errors:
