@@ -192,6 +192,8 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
+    ### print('_build: source_set.source_modules', source_set.source_modules)
+    ### print('_build: source_set.source_paths', source_set.source_paths)
     cached_read = fscache.read
     errors = Errors(options.show_error_context,
                     options.show_column_numbers,
@@ -2671,9 +2673,15 @@ def dispatch(sources: List[BuildSource],
              stdout: TextIO,
              ) -> Graph:
     log_configuration(manager, sources)
+    
+    ### print('dispatch: sources', sources)  ### Only one file.
 
     t0 = time.time()
     graph = load_graph(sources, manager)
+    
+    if 0:  ###
+        import pprint
+        print('dispatch: graph', pprint.pformat(graph))  ### Many modules.
 
     # This is a kind of unfortunate hack to work around some of fine-grained's
     # fragility: if we have loaded less than 50% of the specified files from
@@ -3166,6 +3174,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
     stale = scc
+    ### print('process_stale_scc: scc', scc)  ###
     for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.

@@ -636,12 +636,52 @@ class SemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self.analyze_func_def(defn)
 
+    ekr_call_set = set()
+    ekr_name_set = set()
+
+
+    def callers(self, n: int=4) -> str:
+        """
+        Return a string containing a comma-separated list of the callers
+        of the function that called g.callerList.
+        """
+        i, result = 2, []
+        while True:
+            s = self.callerName(n=i)
+            if s:
+                result.append(s)
+            if not s or len(result) >= n:
+                break
+            i += 1
+        return ', '.join(reversed(result))
+        
+    def callerName(self, n: int) -> str:
+        """Get the function name from the call stack."""
+        import sys
+        try:
+            f1 = sys._getframe(n)
+            code1 = f1.f_code
+            return code1.co_name
+        except Exception:
+            return ''
+
     def analyze_func_def(self, defn: FuncDef) -> None:
 
         key, trace_tag = defn._name, 'analyze_func_def:'
-        trace = key.startswith(('f1_', 'f2_'))
+        callers = self.callers(60)
+        trace = False or key.startswith(('f1_', 'f2_'))
         if trace:
-            print(f"{trace_tag} {key}")  # defn
+            if 1:  # Brief
+                print(f"{trace_tag} {key}")
+            elif key in self.ekr_name_set and callers in self.ekr_call_set:
+                pass
+            elif callers in self.ekr_call_set:
+                print(f"{trace_tag} {key}")
+            else:
+                self.ekr_call_set.add(callers)
+                print('')
+                print(f"{trace_tag} {key} callers: {callers}\n")
+            self.ekr_name_set.add(key)
 
         self.function_stack.append(defn)
         
@@ -669,7 +709,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 tag = self.track_incomplete_refs()
-                if trace:
+                if 0: ###
                     print(f"{trace_tag} tag: {tag}\n")
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).

@@ -690,7 +690,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Every Callable can bind its own type variables, if they're not in the outer scope
         
         # Hurray! t.definition is either None or is a FuncDef!
-        trace = t.definition and t.definition._name.startswith('f1_str')
+        trace = t.definition and t.definition._name.startswith(('f1_str', 'f2_str'))
         trace_tag, verbose = 'visit_callable_type:', False
         if trace:
             import pprint

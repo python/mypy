@@ -153,6 +153,8 @@ def run_build(sources: List[BuildSource],
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     messages = []
+    
+    ### print('run_build sources:', sources) # Just one file.
 
     def flush_errors(new_messages: List[str], serious: bool) -> None:
         if options.pretty:
