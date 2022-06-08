@@ -636,14 +636,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self.analyze_func_def(defn)
 
-    ekr_func_set = set()
-
     def analyze_func_def(self, defn: FuncDef) -> None:
 
         key, trace_tag = defn._name, 'analyze_func_def:'
-        trace = key.startswith(('f1_', 'f2_')) and key not in self.ekr_func_set
+        trace = key.startswith(('f1_', 'f2_'))
         if trace:
-            self.ekr_func_set.add(key)
             print(f"{trace_tag} {key}")  # defn
 
         self.function_stack.append(defn)
