@@ -174,7 +174,7 @@ def _analyze_member_access(name: str,
     return report_missing_attribute(mx.original_type, typ, name, mx)
 
 
-def may_be_awaitable(
+def may_be_awaitable_attribute(
     name: str,
     typ: Type,
     mx: MemberContext,
@@ -209,7 +209,7 @@ def report_missing_attribute(
     override_info: Optional[TypeInfo] = None
 ) -> Type:
     res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
-    if may_be_awaitable(name, typ, mx, override_info):
+    if may_be_awaitable_attribute(name, typ, mx, override_info):
         mx.msg.note('Maybe you forgot to use "await"?', mx.context)
     return res_type
 
