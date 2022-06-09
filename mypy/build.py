@@ -2958,9 +2958,8 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
-                    # print(f"load_graph: NEW dependency: {dep:30} from {os.path.basename(newst.path)}")
-                    ancestor_s = st.path.replace('c:\\repos\\ekr-mypy\\mypy\\','')
-                    print(f"load_graph: NEW dependency: {dep:>25} from {ancestor_s}")
+                    ### ancestor_s = st.path.replace('c:\\repos\\ekr-mypy\\mypy\\','')
+                    ### print(f"load_graph: NEW dependency: {dep:>25} from {ancestor_s}")
                     graph[newst.id] = newst
                     new.append(newst)
             if dep in graph and dep in st.suppressed_set:
