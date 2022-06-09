@@ -2899,6 +2899,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
+        
+        ### print('load_graph: dependencies:', dependencies)
+
         if not manager.use_fine_grained_cache():
             # TODO: Ideally we could skip here modules that appeared in st.suppressed
             # because they are not in build with `follow-imports=skip`.
@@ -2955,6 +2958,9 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
+                    # print(f"load_graph: NEW dependency: {dep:30} from {os.path.basename(newst.path)}")
+                    ancestor_s = st.path.replace('c:\\repos\\ekr-mypy\\mypy\\','')
+                    print(f"load_graph: NEW dependency: {dep:>25} from {ancestor_s}")
                     graph[newst.id] = newst
                     new.append(newst)
             if dep in graph and dep in st.suppressed_set:
