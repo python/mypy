@@ -2606,7 +2606,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             for lv in s.lvalues
         )
 
-    def analyze_simple_literal_type(self, rvalue: Expression, is_final: bool) -> Optional[Type]:
+    def analyze_simple_literal_type(
+        self, rvalue: Expression, is_final: bool, do_bools=False
+    ) -> Optional[Type]:
         """Return builtins.int if rvalue is an int literal, etc.
 
         If this is a 'Final' context, we return "Literal[...]" instead."""
@@ -2631,7 +2633,11 @@ class SemanticAnalyzer(NodeVisitor[None],
             value, type_name = rvalue.value, 'builtins.bytes'
         if isinstance(rvalue, UnicodeExpr):
             value, type_name = rvalue.value, 'builtins.unicode'
-
+        if (
+            do_bools and isinstance(rvalue, NameExpr)
+            and rvalue.fullname in ("builtins.True", "builtins.False")
+        ):
+            value, type_name = rvalue.name == "True", 'builtins.bool'
         if type_name is not None:
             assert value is not None
             typ = self.named_type_or_none(type_name)
@@ -5729,7 +5735,7 @@ def infer_fdef_types_from_defaults(defn: Union[FuncDef, Decorator], self: Semant
                 typ = None
                 if arg.variable.is_inferred and arg.initializer:
                     arg.initializer.accept(self)
-                    typ = self.analyze_simple_literal_type(arg.initializer, False)
+                    typ = self.analyze_simple_literal_type(arg.initializer, False, do_bools=True)
                 arg_types.append(typ or UntypedType())
         ret_type = None
         if self.options.default_return and self.options.disallow_untyped_defs:
@@ -5756,6 +5762,7 @@ def infer_fdef_types_from_defaults(defn: Union[FuncDef, Decorator], self: Semant
             for i, arg in enumerate(defn.arguments):
                 if is_unannotated_any(defn.type.arg_types[i]):
                     if arg.variable.is_inferred and arg.initializer:
-                        ret = self.analyze_simple_literal_type(arg.initializer, False)
+                        ret = self.analyze_simple_literal_type(
+                            arg.initializer, False, do_bools=True)
                         if ret:
                             defn.type.arg_types[i] = ret

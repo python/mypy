@@ -60,7 +60,7 @@ reveal_type(A2.__init__)  # N: Revealed type is "def (self: __main__.A2, a: int)
 reveal_type(B2.__init__)  # N: Revealed type is "def (self: __main__.B2, a: int)"
 
 
-[case testDefaultInstance]
+[case testDefaultInstance-xfail]
 class A: ...
 def f(a=A()): ...
 reveal_type(f)  # N: Revealed type is "def (a: __main__.A =)"

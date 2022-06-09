@@ -1017,15 +1017,18 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 break
 
         # Infer argument types from default values,
-        #  this is done in semanal for literals, but done again here for some reason
-        if self.options.infer_function_types and not typ.fully_typed:
-            arg_types = []
-            for arg, arg_type in zip(defn.arguments, typ.arg_types):
-                if arg.initializer and is_unannotated_any(arg_type):
-                    arg_types.append(self.expr_checker.accept(arg.initializer))
-                else:
-                    arg_types.append(arg_type)
-            typ.arg_types = arg_types
+        #  The issue is that we need to get the type before other nodes are evaluated.
+        #  perhaps if the arg has a default, we could mark it as 'InferableType', and if something
+        #  encounters that type, then defer it.
+        # if self.options.infer_function_types and not typ.fully_typed:
+        #     arg_types = []
+        #     for arg, arg_type in zip(defn.arguments, typ.arg_types):
+        #         if arg.initializer and is_unannotated_any(arg_type):
+        #             arg_types.append(self.expr_checker.accept(arg.initializer))
+        #         else:
+        #             arg_types.append(arg_type)
+        #     typ = typ.copy_modified(arg_types = arg_types)
+        #     defn.type = typ
 
         # Expand type variables with value restrictions to ordinary types.
         expanded = self.expand_typevars(defn, typ)
