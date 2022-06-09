@@ -636,9 +636,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self.analyze_func_def(defn)
 
-    ekr_call_set = set()
-    ekr_name_set = set()
-
 
     def callers(self, n: int=4) -> str:
         """
@@ -667,30 +664,17 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_func_def(self, defn: FuncDef) -> None:
 
-        ### Aha: self is a SemanticAnalyer !!!
-
-        key, trace_tag = defn._name, 'analyze_func_def:'
-        callers = self.callers(60)
-        
-        trace = False or key.startswith(('f1_', 'f2_'))
+        trace_tag = 'analyze_func_def:'
+        module_name = self.cur_mod_id
+        ### callers = self.callers(60)
+        trace = module_name.startswith('ekr')
         if trace:
-            if 1:  # Brief
-                module_name = self.cur_mod_id
-                ast = self.modules.get(module_name)
-                print(
-                    f"{trace_tag}  defn._fullname: {defn._fullname}\n"
-                    f"{trace_tag} self.cur_mod_id: {module_name}\n"
-                    f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
-                )
-            elif key in self.ekr_name_set and callers in self.ekr_call_set:
-                pass
-            elif callers in self.ekr_call_set:
-                print(f"{trace_tag} {defn._fullname}")
-            else:
-                self.ekr_call_set.add(callers)
-                print('')
-                print(f"{trace_tag} {defn._fullname} callers: {callers}\n")
-            self.ekr_name_set.add(key)
+            ast = self.modules.get(module_name)
+            print(
+                f"{trace_tag}  defn._fullname: {defn._fullname}\n"
+                f"{trace_tag} self.cur_mod_id: {module_name}\n"
+                f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
+            )
 
         self.function_stack.append(defn)
         
