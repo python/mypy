@@ -1,8 +1,8 @@
 -r mypy-requirements.txt
 -r build-requirements.txt
 attrs>=18.0
-filelock>=3.0.0,<3.4.2; python_version<'3.7'
-filelock>=3.0.0; python_version>='3.7'
+filelock>=3.3.0,<3.4.2; python_version<'3.7'
+filelock>=3.3.0; python_version>='3.7'
 flake8==3.9.2
 flake8-bugbear==22.3.20
 flake8-pyi>=20.5
