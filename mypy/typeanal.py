@@ -688,20 +688,11 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
-        
-        # Hurray! t.definition is either None or is a FuncDef!
 
         trace = t.definition and t.definition._name.startswith(('f1_str', 'f2_str'))
         trace_tag = 'visit_callable_type:'
-        ###
-            # if trace and verbose:
-                # key = self.callers(60)
-                # if key not in self.ekr_call_set:
-                    # print(f"{trace_tag}     callers: {key}\n")
-                    # self.ekr_call_set.add(key)
         if trace:
-            # callers: visit_func_def, analyze_func_def, visit_callable_type
-            # print(f"{trace_tag}     callers: {self.callers(3)}")
+            # t.definition is either None or is a FuncDef!
             print(f"{trace_tag}   func name: (t.definition._name) {t.definition._name}")
             print(f"{trace_tag}           t: {t.__class__.__name__} {t}")
 
