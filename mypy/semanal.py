@@ -666,7 +666,6 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         trace_tag = 'analyze_func_def:'
         module_name = self.cur_mod_id
-        ### callers = self.callers(60)
         trace = module_name.startswith('ekr')
         if trace:
             ast = self.modules.get(module_name)
@@ -702,8 +701,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # class-level imported names and type variables are in scope.
                 analyzer = self.type_analyzer()
                 tag = self.track_incomplete_refs()
-                if 0: ###
-                    print(f"{trace_tag} tag: {tag}\n")
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
@@ -2575,6 +2572,12 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
+        trace_tag = 'process_type_annotation'
+        module_name = self.cur_mod_id
+        trace = module_name.startswith('ekr')  ###
+        if trace:
+            print(f"\n{trace_tag} Entry: {s.type} {s}")
+            
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
@@ -2583,6 +2586,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             if analyzed is None or has_placeholder(analyzed):
                 return
             s.type = analyzed
+            if trace:
+                print(f"{trace_tag} Adjust: {lvalue} => {analyzed}") ###
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                 if isinstance(lvalue.node, Var):

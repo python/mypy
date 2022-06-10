@@ -690,19 +690,19 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Every Callable can bind its own type variables, if they're not in the outer scope
         
         # Hurray! t.definition is either None or is a FuncDef!
+
         trace = t.definition and t.definition._name.startswith(('f1_str', 'f2_str'))
-        trace_tag, verbose = 'visit_callable_type:', False
+        trace_tag = 'visit_callable_type:'
+        ###
+            # if trace and verbose:
+                # key = self.callers(60)
+                # if key not in self.ekr_call_set:
+                    # print(f"{trace_tag}     callers: {key}\n")
+                    # self.ekr_call_set.add(key)
         if trace:
-            import pprint
-        if trace and verbose:
-            key = self.callers(60)
-            if key not in self.ekr_call_set:
-                print(f"{trace_tag}     callers: {key}\n")
-                self.ekr_call_set.add(key)
-        elif trace:
             # callers: visit_func_def, analyze_func_def, visit_callable_type
+            # print(f"{trace_tag}     callers: {self.callers(3)}")
             print(f"{trace_tag}   func name: (t.definition._name) {t.definition._name}")
-            print(f"{trace_tag}     callers: {self.callers(3)}")
             print(f"{trace_tag}           t: {t.__class__.__name__} {t}")
 
         with self.tvar_scope_frame():
@@ -718,23 +718,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     self.anal_star_arg_type(t.arg_types[-1], ARG_STAR2, nested=nested),
                 ]
             else:
-                if trace:
-                    ###    import pdb ; pdb.set_trace()  ###
-                    print(f"{trace_tag} t.arg_types: {t.arg_types}")
                 arg_types = self.anal_array(t.arg_types, nested=nested)
                 
-            # # # if trace:  ###
-                # # # if verbose:
-                    # # # import pprint
-                    # # # for i, z in enumerate(arg_types):
-                        # # # print(f"{trace_tag} arg_types {i}: {z}")
-                        # # # print(f"{trace_tag} arg_types {i}: {pprint.pformat(z.serialize())}")
-                # # # else:
-                    # # # for i, z in enumerate(arg_types):
-                        # # # print(f"{trace_tag} arg_types {i}: {z}")
 
             ### The task: make ekr_a have a 'builtins.str' type.
-        
+            for i, arg in enumerate(arg_types):
+                if trace:
+                    print(f"{trace_tag} arg_types {i}: {arg}")
+
             ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
                                   # If the fallback isn't filled in yet,
@@ -748,8 +739,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             assert isinstance(ret, CallableType), ret.__class__.__name__ ###
             if trace:  ###
                 print(f"{trace_tag}         ret: {ret}")
-                if verbose:
-                    pprint.pprint(ret.serialize())
                 print('')
         return ret
 

@@ -1,6 +1,9 @@
 
 """Stand-alone test file for issue #12352"""
 
+ekr_a: str="abc"
+ekr_b="abc"
+
 # Passes with legacy mypy.
 def f1_str_annotated(ekr_a: str="abc") -> None:
     pass
