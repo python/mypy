@@ -2576,10 +2576,11 @@ class SemanticAnalyzer(NodeVisitor[None],
         module_name = self.cur_mod_id
         trace = module_name.startswith('ekr')  ###
         if trace:
+            print('')
             print(
-                f"\n{trace_tag}  Entry: s: {s.__class__.__name__} " # s is an AssignmentStmt.
-                f"s.type: {s.type.__class__.__name__} = {s.type}" # s.type is an UnboundType
-                f"\n{trace_tag}         s: {s}")
+                f"{trace_tag}  Entry: s: {s.__class__.__name__} " # s is an AssignmentStmt.
+                f"s.type: {s.type.__class__.__name__} = {s.type}\n" # s.type is an UnboundType
+                f"{trace_tag}         s: {s}")
             print('')
 
         if s.type:
@@ -2599,8 +2600,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if isinstance(lvalue.node, Var):
                     lvalue.node.is_abstract_var = True
         else:
-            if trace:  ###
-                print('')
             if (self.type and self.type.is_protocol and
                     self.is_annotated_protocol_member(s) and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
