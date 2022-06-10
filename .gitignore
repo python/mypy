@@ -1,3 +1,9 @@
+# EKR: ignore changes to *this* file
+.gitignore
+
+# EKR: Ignore Leo files
+*.leo
+
 build/
 __pycache__
 *.py[cod]
