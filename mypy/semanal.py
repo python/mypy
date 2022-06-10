@@ -2576,8 +2576,12 @@ class SemanticAnalyzer(NodeVisitor[None],
         module_name = self.cur_mod_id
         trace = module_name.startswith('ekr')  ###
         if trace:
-            print(f"\n{trace_tag} Entry: {s.type} {s}")
-            
+            print(
+                f"\n{trace_tag}  Entry: s: {s.__class__.__name__} " # s is an AssignmentStmt.
+                f"s.type: {s.type.__class__.__name__} = {s.type}" # s.type is an UnboundType
+                f"\n{trace_tag}         s: {s}")
+            print('')
+
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
@@ -2587,12 +2591,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return
             s.type = analyzed
             if trace:
-                print(f"{trace_tag} Adjust: {lvalue} => {analyzed}") ###
+                print(
+                    f"{trace_tag} Adjust: lvalue {lvalue.__class__.__name__} => "  # An ast.NameExpr node.
+                    f"{analyzed.__class__.__name__} = {analyzed}") # an Instance, a subclass of ProperType and Type.
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                 if isinstance(lvalue.node, Var):
                     lvalue.node.is_abstract_var = True
         else:
+            if trace:  ###
+                print('')
             if (self.type and self.type.is_protocol and
                     self.is_annotated_protocol_member(s) and not self.is_func_scope()):
                 self.fail('All protocol members must have explicitly declared types', s)
