@@ -12,7 +12,8 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, ERR_FALSE
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, Extend,
+    ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -210,6 +211,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
+            # We sometimes assign from an integer prepresentation of a pointer
+            # to a real pointer, and C compilers insist on a cast.
+            if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
+                src = f'(void *){src}'
             self.emit_line(f'{dest} = {src};')
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
@@ -538,6 +543,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # for C backend the generated code are straight assignments
         self.emit_line(f"{dest} = {value};")
 
+    def visit_extend(self, op: Extend) -> None:
+        dest = self.reg(op)
+        value = self.reg(op.src)
+        if op.signed:
+            src_cast = self.emit_signed_int_cast(op.src.type)
+        else:
+            src_cast = self.emit_unsigned_int_cast(op.src.type)
+        self.emit_line("{} = {}{};".format(dest, src_cast, value))
+
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
         ann = ''
@@ -551,6 +565,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        if op.op == IntOp.RIGHT_SHIFT:
+            # Signed right shift
+            lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
+            rhs = self.emit_signed_int_cast(op.rhs.type) + rhs
         self.emit_line(f'{dest} = {lhs} {op.op_str[op.op]} {rhs};')
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
@@ -624,7 +642,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = str(val)
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
-                s += 'ULL'
+                if val >= (1 << 63):
+                    s += 'ULL'
+                else:
+                    s += 'LL'
             elif val == -(1 << 63):
                 # Avoid overflowing C integer literal
                 s = '(-9223372036854775807LL - 1)'

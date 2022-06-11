@@ -17,7 +17,8 @@ from mypyc.ir.rtypes import (
     is_list_rprimitive, is_dict_rprimitive, is_set_rprimitive, is_tuple_rprimitive,
     is_none_rprimitive, is_object_rprimitive, object_rprimitive, is_str_rprimitive,
     int_rprimitive, is_optional_type, optional_value_type, is_int32_rprimitive,
-    is_int64_rprimitive, is_bit_rprimitive, is_range_rprimitive, is_bytes_rprimitive
+    is_int64_rprimitive, is_bit_rprimitive, is_range_rprimitive, is_bytes_rprimitive,
+    is_fixed_width_rtype
 )
 from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.class_ir import ClassIR, all_concrete_classes
@@ -479,9 +480,16 @@ class Emitter:
                 return
 
         # TODO: Verify refcount handling.
-        if (is_list_rprimitive(typ) or is_dict_rprimitive(typ) or is_set_rprimitive(typ)
-                or is_str_rprimitive(typ) or is_range_rprimitive(typ) or is_float_rprimitive(typ)
-                or is_int_rprimitive(typ) or is_bool_rprimitive(typ) or is_bit_rprimitive(typ)):
+        if (is_list_rprimitive(typ)
+                or is_dict_rprimitive(typ)
+                or is_set_rprimitive(typ)
+                or is_str_rprimitive(typ)
+                or is_range_rprimitive(typ)
+                or is_float_rprimitive(typ)
+                or is_int_rprimitive(typ)
+                or is_bool_rprimitive(typ)
+                or is_bit_rprimitive(typ)
+                or is_fixed_width_rtype(typ)):
             if declare_dest:
                 self.emit_line(f'PyObject *{dest};')
             if is_list_rprimitive(typ):
@@ -496,12 +504,13 @@ class Emitter:
                 prefix = 'PyRange'
             elif is_float_rprimitive(typ):
                 prefix = 'CPyFloat'
-            elif is_int_rprimitive(typ):
+            elif is_int_rprimitive(typ) or is_fixed_width_rtype(typ):
+                # TODO: Range check for fixed-width types?
                 prefix = 'PyLong'
             elif is_bool_rprimitive(typ) or is_bit_rprimitive(typ):
                 prefix = 'PyBool'
             else:
-                assert False, 'unexpected primitive type'
+                assert False, f'unexpected primitive type: {typ}'
             check = '({}_Check({}))'
             if likely:
                 check = f'(likely{check})'
@@ -765,6 +774,20 @@ class Emitter:
             self.emit_line(failure)
             self.emit_line('} else')
             self.emit_line(f'    {dest} = 1;')
+        elif is_int64_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            if declare_dest:
+                self.emit_line(f'int64_t {dest};')
+            self.emit_line(f'{dest} = CPyLong_AsInt64({src});')
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
+        elif is_int32_rprimitive(typ):
+            # Whether we are borrowing or not makes no difference.
+            if declare_dest:
+                self.emit_line('int32_t {};'.format(dest))
+            self.emit_line('{} = CPyLong_AsInt32({});'.format(dest, src))
+            # TODO: Handle 'optional'
+            # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):
             self.declare_tuple_struct(typ)
             if declare_dest:
