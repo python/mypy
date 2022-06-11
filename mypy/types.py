@@ -2700,7 +2700,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += r
 
             if t.arg_kinds[i].is_optional():
-                s += ' ='
+                ### s += ' ='
+                s += ' <OPT1>'
 
         return f'[{s}]'
 
@@ -2737,7 +2738,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += name + ': '
             s += t.arg_types[i].accept(self)
             if t.arg_kinds[i].is_optional():
-                s += ' ='
+                ### s += ' ='
+                s += ' <OPT2>'
 
         if param_spec is not None:
             n = param_spec.name
