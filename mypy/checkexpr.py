@@ -406,8 +406,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     else:
                         callee_module = e.callee.fullname.rpartition(".")[0]
                 elif isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, NameExpr):
-                    assert e.callee.expr.fullname
-                    callee_module = e.callee.expr.fullname.rpartition(".")[0]
+                    if e.callee.expr.fullname:
+                        callee_module = e.callee.expr.fullname.rpartition(".")[0]
+                    elif e.callee.name == "__init_subclass__":
+                        t = get_proper_type(callee_type.bound_args[0])
+                        assert isinstance(t, TypeType)
+                        assert isinstance(t.item, Instance)
+                        assert isinstance(t.item.type, TypeInfo)
+                        callee_module = t.item.type.module_name
+                    else:
+                        # TODO: test time error
+                        callee_module = None
                 else:
                     # If this branch gets hit then look for a new way to get the module name
                     # TODO: test time error

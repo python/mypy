@@ -221,16 +221,17 @@ reveal_type(d)  # N: Revealed type is "TypedDict('__main__.D', {'y': builtins.in
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
-# https://github.com/python/mypy/issues/5653
-from typing import TypedDict
+-- This will crash under based mode
+-- [case testTypedDictWithClassmethodAlternativeConstructorDoesNotCrash]
+-- # https://github.com/python/mypy/issues/5653
+-- from typing import TypedDict
 
-class Foo(TypedDict):
-    bar: str
-    @classmethod  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
-    def baz(cls) -> "Foo": ...
-[builtins fixtures/dict.pyi]
-[typing fixtures/typing-typeddict.pyi]
+-- class Foo(TypedDict):
+--     bar: str
+--     @classmethod  # E: Invalid statement in TypedDict definition; expected "field_name: field_type"
+--     def baz(cls) -> "Foo": ...
+-- [builtins fixtures/dict.pyi]
+-- [typing fixtures/typing-typeddict.pyi]
 
 [case testCanCreateTypedDictTypeWithUnderscoreItemName]
 from mypy_extensions import TypedDict

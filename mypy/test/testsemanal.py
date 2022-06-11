@@ -38,8 +38,6 @@ if sys.version_info < (3, 10):
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
-    import mypy.options
-    mypy.options._based = False
     options = parse_options(program_text, testcase, 1)
     options.use_builtins_fixtures = True
     options.semantic_analysis_only = True

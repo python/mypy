@@ -77,8 +77,6 @@ class FineGrainedSuite(DataSuite):
         with open(main_path, 'w', encoding='utf8') as f:
             f.write(main_src)
 
-        from mypy import options as mypy_options
-        mypy_options._based = False
         options = self.get_options(main_src, testcase, build_cache=False)
         build_options = self.get_options(main_src, testcase, build_cache=True)
         server = Server(options, DEFAULT_STATUS_FILE)
