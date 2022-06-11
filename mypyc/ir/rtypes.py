@@ -52,9 +52,13 @@ class RType:
     is_refcounted = True
     # C type; use Emitter.ctype() to access
     _ctype: str
-    # If True, error/undefined value overlaps with a valid value. To detect
-    # an exception, PyErr_Occurred() must be used in addition to checking for
-    # error value.
+    # If True, error/undefined value overlaps with a valid value. To
+    # detect an exception, PyErr_Occurred() must be used in addition
+    # to checking for error value as the return value of a function.
+    #
+    # For example, no i64 value can be reserved for error value, so we
+    # pick an arbitrary value (e.g. -113) to signal error, but this is
+    # also a valid non-error value.
     error_overlap = False
 
     @abstractmethod
