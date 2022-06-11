@@ -1,13 +1,22 @@
 
 """Stand-alone test file for issue #12352"""
 
-ekr_a: str="abc"
-ekr_b="abc"
-
 # Passes with legacy mypy.
-def f1_str_annotated(ekr_a: str="abc") -> None:
+def ekr_f_annotated_initialized(a: str="abc") -> None:
+    pass
+    
+def ekr_f_annotated(a: str) -> None:
     pass
 
 # Fails with legacy mypy.
-def f2_str_not_annotated(ekr_b="abc") -> None:
+# Change this case!
+def ekr_f_not_annotated(a="abc") -> None:
     pass
+    
+# Later
+# def ekr_f_not_annotated2(b, a="abc") -> None:
+    # pass
+    
+a: str="abc"
+b="xyz"
+c: str

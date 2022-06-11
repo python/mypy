@@ -666,13 +666,18 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         trace_tag = 'analyze_func_def:'
         module_name = self.cur_mod_id
-        trace = module_name.startswith('ekr')
+        trace = False and module_name.startswith('ekr')
         if trace:
             ast = self.modules.get(module_name)
+            initializers_s = ','.join(str(z.initializer) for z in defn.arguments)
             print(
+                # f"{trace_tag}            defn: {defn.__class__.__name__}\n"
                 f"{trace_tag}  defn._fullname: {defn._fullname}\n"
+                f"{trace_tag}       arguments: {defn.arguments}\n"
+                f"{trace_tag}    initializers: {initializers_s}\n"
                 f"{trace_tag} self.cur_mod_id: {module_name}\n"
                 f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
+                
             )
 
         self.function_stack.append(defn)
@@ -2572,16 +2577,15 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
+
         trace_tag = 'process_type_annotation'
         module_name = self.cur_mod_id
         trace = module_name.startswith('ekr')  ###
         if trace:
-            print('')
-            print(
-                f"{trace_tag}  Entry: s: {s.__class__.__name__} " # s is an AssignmentStmt.
-                f"s.type: {s.type.__class__.__name__} = {s.type}\n" # s.type is an UnboundType
-                f"{trace_tag}         s: {s}")
-            print('')
+            # s is an AssignmentStmt.
+            print(f"{trace_tag}      s: {s.__class__.__name__}")
+            # s.type is an UnboundType for annotated assignments; None for unannotated assignments.
+            print(f"{trace_tag} s.type: {s.type.__class__.__name__} {s.type}")
 
         if s.type:
             lvalue = s.lvalues[-1]
@@ -2593,8 +2597,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             s.type = analyzed
             if trace:
                 print(
-                    f"{trace_tag} Adjust: lvalue {lvalue.__class__.__name__} => "  # An ast.NameExpr node.
-                    f"{analyzed.__class__.__name__} = {analyzed}") # an Instance, a subclass of ProperType and Type.
+                    # An ast.NameExpr node.
+                    f"{trace_tag} Adjust: lvalue {lvalue.__class__.__name__} => "
+                    # an Instance, a subclass of ProperType and Type.
+                    f"{analyzed.__class__.__name__} = {analyzed}")
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                 if isinstance(lvalue.node, Var):
@@ -2611,6 +2617,9 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
+                
+        if trace:
+            print('')  ###
 
     def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
         """Check whether a protocol member is annotated.

@@ -689,12 +689,29 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
-        trace = t.definition and t.definition._name.startswith(('f1_str', 'f2_str'))
+        trace = t.definition and t.definition._name.startswith('ekr_f')
         trace_tag = 'visit_callable_type:'
-        if trace:
+        ###
+        if t.definition:
+            arguments = t.definition.arguments
+            initializers = [arg.initializer for arg in arguments]
+            assert len(t.arg_names) == len(initializers), (t.arg_names, initializers)
+        else:
+            arguments = []
+            initializers = []
+        # Supposedly t.definition is only for traces???
+        if trace and t.definition:
             # t.definition is either None or is a FuncDef!
-            print(f"{trace_tag}   func name: (t.definition._name) {t.definition._name}")
-            print(f"{trace_tag}           t: {t.__class__.__name__} {t}")
+            arguments_s = [z.variable.name for z in arguments]
+            initializers_s = [str(z) for z in initializers]
+            # print(f"{trace_tag} t.definition: {t.definition}") # Prints parse tree.
+            print(f"{trace_tag}                  t: {t.__class__.__name__} {t}")
+            print(f"{trace_tag} t.definition._name: {t.definition._name}")
+            print(f"{trace_tag}          arguments: {arguments_s}")
+            print(f"{trace_tag}       initializers: {initializers_s}")
+            print(f"{trace_tag}        t.arg_kinds: {t.arg_kinds}")
+            print(f"{trace_tag}        t.arg_names: {t.arg_names}")
+            print(f"{trace_tag}        t.arg_types: {t.arg_types}")
 
         with self.tvar_scope_frame():
             if self.defining_alias:
@@ -711,11 +728,31 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
                 
+            if initializers:  ### Associate args with types.
+                n_args = len(t.arg_kinds)
+                # assert len(arguments) == n_args, (n_args, arguments, t.arg_kinds)
+                assert len(t.arg_names) == n_args, (n_args, t.arg_names, t.arg_kinds)
+                for i, arg_name in enumerate(t.arg_names):
+                    arg_type = t.arg_types[i]
+                    arg_kind = t.arg_kinds[i]
+                    initializer = initializers[i]
+                    # ARG_OPT: Positional, optional argument (functions only, not calls)
+                    # ARG_NAMED_OPT:  keyword-only function arg
+                    # Only initialized args will have arg_kind == ArgKind.ARG_OPT
+                    if arg_kind == ArgKind.ARG_OPT:
+                        assert initializer
+                        if trace:
+                            arg_s = f"arg {i}"
+                            print(f"{trace_tag} {arg_s:>18}: {arg_name}: {arg_kind} = {arg_type}")
+                            initializer_s = f" initializer {i}"
+                            print(f"{trace_tag} {initializer_s:>18}: {initializer}")
 
-            ### The task: make ekr_a have a 'builtins.str' type.
-            for i, arg in enumerate(arg_types):
-                if trace:
-                    print(f"{trace_tag} arg_types {i}: {arg}")
+                    ### Model
+                        # analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
+                        # # Don't store not ready types (including placeholders).
+                        # if analyzed is None or has_placeholder(analyzed):
+                            # return
+                        # s.type = analyzed
 
             ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
