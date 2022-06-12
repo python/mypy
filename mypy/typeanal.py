@@ -694,11 +694,13 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ###
         if t.definition:
             arguments = t.definition.arguments
-            initializers = [arg.initializer for arg in arguments]
+            initializers = [z.initializer for z in arguments]
+            annotations = [z.type_annotation for z in arguments]
             assert len(t.arg_names) == len(initializers), (t.arg_names, initializers)
         else:
             arguments = []
             initializers = []
+            annotations = []
         # Supposedly t.definition is only for traces???
         if trace and t.definition:
             # t.definition is either None or is a FuncDef!
@@ -736,17 +738,26 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     arg_type = t.arg_types[i]
                     arg_kind = t.arg_kinds[i]
                     initializer = initializers[i]
-                    # ARG_OPT: Positional, optional argument (functions only, not calls)
-                    # ARG_NAMED_OPT:  keyword-only function arg
+                    annotation = annotations[i]
                     # Only initialized args will have arg_kind == ArgKind.ARG_OPT
+                    if trace:
+                        arg_s = f"arg {i}"
+                        print(f"{trace_tag} {arg_s:>18}: kind: {arg_kind} name: {arg_name}")
+                        arg_type_s = f"arg type {i}"
+                        print(f"{trace_tag} {arg_type_s:>18}: {arg_type.__class__.__name__} {arg_type}")
+                        annotation_s = f"Annotation {i}"
+                        print(f"{trace_tag} {annotation_s:>18}: {annotation.__class__.__name__} {annotation}")
+                    
                     if arg_kind == ArgKind.ARG_OPT:
                         assert initializer
                         if trace:
-                            arg_s = f"arg {i}"
-                            print(f"{trace_tag} {arg_s:>18}: {arg_name}: {arg_kind} = {arg_type}")
-                            initializer_s = f" initializer {i}"
+                            if not annotation:
+                                ### To do: create an annotation!
+                                ### Create UnboundType(str)
+                                print(f"{trace_tag} {'***** TO DO':>18}:")
+                            initializer_s = f"Initializer {i}"
                             print(f"{trace_tag} {initializer_s:>18}: {initializer}")
-
+            
                     ### Model
                         # analyzed = self.anal_type(s.type, allow_tuple_literal=allow_tuple_literal)
                         # # Don't store not ready types (including placeholders).
