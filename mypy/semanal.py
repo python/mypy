@@ -640,18 +640,17 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         trace_tag = 'analyze_func_def:'
         module_name = self.cur_mod_id
-        trace = False and module_name.startswith('ekr')
+        trace = module_name.startswith('ekr')
         if trace:
-            ast = self.modules.get(module_name)
+            # ast = self.modules.get(module_name)
             initializers_s = ','.join(str(z.initializer) for z in defn.arguments)
             print(
                 # f"{trace_tag}            defn: {defn.__class__.__name__}\n"
                 f"{trace_tag}  defn._fullname: {defn._fullname}\n"
                 f"{trace_tag}       arguments: {defn.arguments}\n"
                 f"{trace_tag}    initializers: {initializers_s}\n"
-                f"{trace_tag} self.cur_mod_id: {module_name}\n"
-                f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
-                
+                # f"{trace_tag} self.cur_mod_id: {module_name}\n"
+                # f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
             )
 
         self.function_stack.append(defn)
@@ -682,6 +681,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                 tag = self.track_incomplete_refs()
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
+                if False and trace:
+                    import pdb ; pdb.set_trace()  ###
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
                     return
@@ -2575,15 +2576,17 @@ class SemanticAnalyzer(NodeVisitor[None],
                 return code1.co_name
             except Exception:
                 return ''
-        trace_tag = 'process_type_annotation'
-        module_name = self.cur_mod_id
-        trace = module_name.startswith('ekr')  ###
+        if 1:
+            trace = False
+        else:
+            trace_tag = 'SA.process_type_annotation'
+            module_name = self.cur_mod_id
+            trace = module_name.startswith('ekr')  ###
+        
         if trace:
-            print(f"{trace_tag} callers: {callers(2)}")
-            # s is an AssignmentStmt.
-            print(f"{trace_tag}       s: {s.__class__.__name__}")
-            # s.type is an UnboundType for annotated assignments; None for unannotated assignments.
-            print(f"{trace_tag}  s.type: {s.type.__class__.__name__} {s.type}")
+            # s.type: UnboundType for annotated assignments, else None.
+            # print(f"{trace_tag}      s: {s}")
+            print(f"{trace_tag} s.type: {s.type.__class__.__name__} {s.type}")
 
         if s.type:
             lvalue = s.lvalues[-1]
@@ -4743,7 +4746,16 @@ class SemanticAnalyzer(NodeVisitor[None],
         return None
 
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
+        
+        trace_tag = 'lookup_fully_qualified'
+        module_name = self.cur_mod_id
+        trace = module_name.startswith('ekr')  ###
         ret = self.lookup_fully_qualified_or_none(fullname)
+        if False and trace:
+            print('')
+            print(f"{trace_tag} {fullname} => {ret}")
+            print('')
+
         assert ret is not None, fullname
         return ret
 

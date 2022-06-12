@@ -1768,6 +1768,7 @@ class TypeConverter:
         return None
 
     def visit_Name(self, n: Name) -> Type:
+        ### print('visit_Name', n, n.id)   ###
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
 
     def visit_BinOp(self, n: ast3.BinOp) -> Type:
@@ -1786,6 +1787,7 @@ class TypeConverter:
         if isinstance(n.value, bool):
             return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
+            ### print('visit_NameConstant', n, n.value)
             return UnboundType(str(n.value), line=self.line, column=n.col_offset)
 
     # Only for 3.8 and newer
@@ -1795,6 +1797,7 @@ class TypeConverter:
             # None is a type.
             return UnboundType('None', line=self.line)
         if isinstance(val, str):
+            ### print('visit_Constant', n, val)   ###
             # Parse forward reference.
             if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
                 return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
