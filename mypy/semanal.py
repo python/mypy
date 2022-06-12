@@ -636,32 +636,6 @@ class SemanticAnalyzer(NodeVisitor[None],
         with self.scope.function_scope(defn):
             self.analyze_func_def(defn)
 
-
-    def callers(self, n: int=4) -> str:
-        """
-        Return a string containing a comma-separated list of the callers
-        of the function that called g.callerList.
-        """
-        i, result = 2, []
-        while True:
-            s = self.callerName(n=i)
-            if s:
-                result.append(s)
-            if not s or len(result) >= n:
-                break
-            i += 1
-        return ', '.join(reversed(result))
-        
-    def callerName(self, n: int) -> str:
-        """Get the function name from the call stack."""
-        import sys
-        try:
-            f1 = sys._getframe(n)
-            code1 = f1.f_code
-            return code1.co_name
-        except Exception:
-            return ''
-
     def analyze_func_def(self, defn: FuncDef) -> None:
 
         trace_tag = 'analyze_func_def:'

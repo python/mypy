@@ -660,32 +660,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     ekr_call_set = set()
 
-
-    def callers(self, n: int=4) -> str:
-        """
-        Return a string containing a comma-separated list of the callers
-        of the function that called g.callerList.
-        """
-        i, result = 2, []
-        while True:
-            s = self.callerName(n=i)
-            if s:
-                result.append(s)
-            if not s or len(result) >= n:
-                break
-            i += 1
-        return ', '.join(reversed(result))
-        
-    def callerName(self, n: int) -> str:
-        """Get the function name from the call stack."""
-        import sys
-        try:
-            f1 = sys._getframe(n)
-            code1 = f1.f_code
-            return code1.co_name
-        except Exception:
-            return ''
-
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
 
