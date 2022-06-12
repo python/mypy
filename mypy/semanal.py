@@ -2551,15 +2551,39 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
+        def callers(n: int=4) -> str:
+            """
+            Return a string containing a comma-separated list of the callers
+            of the function that called g.callerList.
+            """
+            i, result = 2, []
+            while True:
+                s = callerName(n=i)
+                if s:
+                    result.append(s)
+                if not s or len(result) >= n:
+                    break
+                i += 1
+            return ', '.join(reversed(result))
 
+        def callerName(n: int) -> str:
+            """Get the function name from the call stack."""
+            import sys
+            try:
+                f1 = sys._getframe(n)
+                code1 = f1.f_code
+                return code1.co_name
+            except Exception:
+                return ''
         trace_tag = 'process_type_annotation'
         module_name = self.cur_mod_id
         trace = module_name.startswith('ekr')  ###
         if trace:
+            print(f"{trace_tag} callers: {callers(2)}")
             # s is an AssignmentStmt.
-            print(f"{trace_tag}      s: {s.__class__.__name__}")
+            print(f"{trace_tag}       s: {s.__class__.__name__}")
             # s.type is an UnboundType for annotated assignments; None for unannotated assignments.
-            print(f"{trace_tag} s.type: {s.type.__class__.__name__} {s.type}")
+            print(f"{trace_tag}  s.type: {s.type.__class__.__name__} {s.type}")
 
         if s.type:
             lvalue = s.lvalues[-1]
