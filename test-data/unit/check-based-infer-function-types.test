@@ -339,7 +339,8 @@ del a.p
 
 
 [case testPropertyInheritInfer-xfail]
-# Overloaded overrides aren't supported yet
+# Overloaded overrides aren't supported yet, so this is only the getter
+# xfail because infer function types has been disabled for now.
 class A:
     @property
     def p(self) -> int: ...

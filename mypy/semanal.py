@@ -47,6 +47,7 @@ Some important properties:
   daemon strips and reuses existing ASTs (to improve performance and/or
   reduce memory use).
 """
+
 from contextlib import contextmanager
 
 from typing import (
@@ -989,6 +990,13 @@ class SemanticAnalyzer(NodeVisitor[None],
                 if len(item.decorators) == 1:
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):
+                        none_func = callable_type(
+                            item.func, self.named_type("builtins.function"), NoneType()
+                        )
+                        untyped_func = callable_type(
+                            item.func, self.named_type("builtins.function"),
+                            UntypedType(TypeOfAny.explicit)
+                        )
                         if node.name == 'setter':
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
@@ -997,9 +1005,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             # infer types from the getter
                             if isinstance(first_item.func.type, CallableType):
                                 if not item.func.type:
-                                    item.func.type = callable_type(
-                                        item.func, self.named_type("builtins.function"), NoneType()
-                                    )
+                                    item.func.type = none_func
                                     if len(item.func.type.arg_types) == 2:
                                         item.func.type.arg_types[1] = first_item.func.type.ret_type
                                 elif isinstance(item.func.type, CallableType):
@@ -1013,10 +1019,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             else:
                                 # set some boring defaults
                                 if not item.func.type:
-                                    item.func.type = callable_type(
-                                        item.func, self.named_type("builtins.function"),
-                                        UntypedType(TypeOfAny.explicit)
-                                    )
+                                    item.func.type = untyped_func
                                     item.func.type.arg_types[1] = UntypedType(TypeOfAny.explicit)
                                     item.func.type.implicit = True
                                 elif isinstance(item.func.type, CallableType):
@@ -1031,15 +1034,10 @@ class SemanticAnalyzer(NodeVisitor[None],
                             # infer types from the getter
                             if first_item.func.type:
                                 if not item.type:
-                                    item.func.type = callable_type(
-                                        item.func, self.named_type("builtins.function"), NoneType()
-                                    )
+                                    item.func.type = none_func
                             else:
                                 if not item.func.type:
-                                    item.func.type = callable_type(
-                                        item.func, self.named_type("builtins.function"),
-                                        UntypedType(TypeOfAny.explicit)
-                                    )
+                                    item.func.type = untyped_func
                                     item.func.type.implicit = True
                 else:
                     self.fail("Decorated property not supported", item)
