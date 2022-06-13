@@ -7,6 +7,7 @@
 - Infer Property types
 - Calls to incomplete functions are an error (configurable with `incomplete_is_typed`)
 - Added a new type `Untyped`, it's like `Any`, but more specific
+- Added a dependency on `basedtyping`
 ### Enhancements
 - Render types a lot better in output messages
 
