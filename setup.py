@@ -218,6 +218,7 @@ setup(name='basedmypy',
       cmdclass=cmdclass,
       # When changing this, also update mypy-requirements.txt.
       install_requires=["typed_ast >= 1.4.0, < 2; python_version<'3.8'",
+                        "basedtyping>=0.0.1",
                         'typing_extensions>=3.10',
                         'mypy_extensions >= 0.4.3',
                         "tomli>=1.1.0; python_version<'3.11'",
