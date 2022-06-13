@@ -28,7 +28,7 @@ from sys import stderr
 from typing import (AbstractSet, Any, Dict, Iterable, Iterator, List, Sequence,
                     Mapping, NamedTuple, Optional, Set, Tuple, TypeVar, Union,
                     Callable, TextIO, cast, NoReturn)
-from typing_extensions import ClassVar, NoReturn, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
+from typing_extensions import ClassVar, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
 from mypy_extensions import TypedDict
 
 from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable

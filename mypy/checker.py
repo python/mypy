@@ -2398,7 +2398,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(l, TupleExpr):
                 self.check_assignment_for_untyped(l.items)
             elif isinstance(l, (NameExpr, MemberExpr)):
-                t = get_proper_type(self.type_map.get(l))
+                t = get_proper_type(self._type_maps[0].get(l))
                 if not t:
                     # No type? it's either deferred or can't be inferred (handled elsewhere)
                     continue

@@ -474,8 +474,6 @@ else:
         "TYPE_CHECKING",
     ]
 
-Any = object()
-
 @_final
 class TypeVar:
     __name__: str

@@ -1844,7 +1844,7 @@ def format_type_inner(typ: Type,
     elif isinstance(typ, TypeType):
         if not mypy.options._based:
             return f'Type[{format(typ.item)}]'
-        return f'type[{f}]'
+        return f'type[{format(typ.item)}]'
     elif isinstance(typ, FunctionLike):
         func = typ
         if func.is_type_obj():
