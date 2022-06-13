@@ -2595,7 +2595,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         self.any_as_dots = False
 
     def visit_unbound_type(self, t: UnboundType) -> str:
-        s = t.name + '?'
+        s = t.name + '? (unbound)'
         if t.args:
             s += f'[{self.list_str(t.args)}]'
         return s

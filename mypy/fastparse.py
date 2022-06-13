@@ -784,6 +784,11 @@ class ASTConverter:
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
+        
+        if n.name.startswith('ekr_'):
+            print('ASTConverter.do_func_def', n.name)  ###
+            print('')
+        
         self.class_and_function_stack.append('F')
         no_type_check = bool(n.decorator_list and
                              any(is_no_type_check_decorator(d) for d in n.decorator_list))

@@ -666,7 +666,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ### Called by Sa.analyze_func_def
         ### t.definition is a FuncDef.
 
-        trace = t.definition and t.definition._name.startswith('ekr_f')
+        trace = False ### t.definition and t.definition._name.startswith('ekr_f')
         trace_tag = 'TA.visit_callable_type:'
         ###
         if t.definition:
@@ -681,12 +681,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         # Supposedly t.definition is only for traces???
         if trace and t.definition:
             # t.definition is either None or is a FuncDef!
-            arguments_s = [z.variable.name for z in arguments]
+            arguments_s = [z.variable.name for z in arguments]  # A list of Argument objects.
             initializers_s = [str(z) for z in initializers]
+            annotations_s = [f"{z.__class__.__name__} = {z}" for z in annotations]
             # print(f"{trace_tag} t.definition: {t.definition}") # Prints parse tree.
             print(f"{trace_tag}                  t: {t.__class__.__name__} {t}")
             print(f"{trace_tag} t.definition._name: {t.definition._name}")
             print(f"{trace_tag}          arguments: {arguments_s}")
+            print(f"{trace_tag}        annotations: {annotations_s}")
             print(f"{trace_tag}       initializers: {initializers_s}")
             print(f"{trace_tag}        t.arg_kinds: {t.arg_kinds}")
             print(f"{trace_tag}        t.arg_names: {t.arg_names}")
@@ -727,7 +729,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     
                     if arg_kind == ArgKind.ARG_OPT and not annotation:
                         ###
-                        ### Create an annotation!
+                        ### Create an annotation in the FuncDef (t.definition.arguments)
                         ###
                         assert initializer
                         if trace:
@@ -737,6 +739,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         # Call the *global* expr_to_unanalyzed_type. SA is not available.
                         from mypy.exprtotype import expr_to_unanalyzed_type
                         new_type = expr_to_unanalyzed_type(initializer)
+                        ### import pdb ; pdb.set_trace()  ###
                         assert isinstance(new_type, UnboundType), repr(new_type)
                         print(f"{trace_tag} {'new type':>18}: {new_type.__class__.__name__} {new_type}")
                         ### Experimental.
@@ -744,8 +747,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                             # annotations = [z.type_annotation for z in arguments]
                         t.definition.arguments[i].type_annotation = new_type
                         arg_types[i] = new_type
-                        # t.arg_types[i] = new_type
-                        # t.definition.arguments = arguments
+                            # t.arg_types[i] = new_type
+                            # t.definition.arguments = arguments
                         print(f"{trace_tag} {'NEW RET':>18}: {t.__class__.__name__} {t}")
                         return t  ### Hack!
 

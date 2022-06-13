@@ -1126,6 +1126,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if is_unannotated_any(self.get_coroutine_return_type(ret_type)):
                         self.fail(message_registry.RETURN_TYPE_EXPECTED, fdef)
                 if any(is_unannotated_any(t) for t in fdef.type.arg_types):
+                    print('TC.check_for_missing_annotations:', fdef.__class__.__name__, fdef.type.arg_types)  ###
                     self.fail(message_registry.ARGUMENT_TYPE_EXPECTED, fdef)
 
     def check___new___signature(self, fdef: FuncDef, typ: CallableType) -> None:

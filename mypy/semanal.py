@@ -609,6 +609,21 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_func_def(self, defn: FuncDef) -> None:
+        
+        ###
+        # semantic_analysis_for_scc calls this *twice* for top-level functions:
+        # process_top_levels(graph, scc, patches)
+        # process_functions(graph, scc, patches)
+            
+        trace_tag = 'SA.visit_func_def:'
+        module_name = self.cur_mod_id
+        trace = module_name.startswith('ekr')
+        if trace:  ###
+            print(f"{trace_tag} {defn._name}")  # defn.fullname exists only on the second call.
+            print(defn)
+            print('')
+            ### import pdb ; pdb.set_trace(header=trace_tag)  ### SA.visit_func_def
+
         self.statement = defn
 
         # Visit default values because they may contain assignment expressions.
@@ -638,7 +653,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_func_def(self, defn: FuncDef) -> None:
 
-        trace_tag = 'analyze_func_def:'
+        trace_tag = 'SA.analyze_func_def:'
         module_name = self.cur_mod_id
         trace = module_name.startswith('ekr')
         if trace:
@@ -649,6 +664,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                 f"{trace_tag}  defn._fullname: {defn._fullname}\n"
                 f"{trace_tag}       arguments: {defn.arguments}\n"
                 f"{trace_tag}    initializers: {initializers_s}\n"
+                f"{trace_tag}            defn: {defn.__class__.__name__} {defn}\n"
                 # f"{trace_tag} self.cur_mod_id: {module_name}\n"
                 # f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
             )
