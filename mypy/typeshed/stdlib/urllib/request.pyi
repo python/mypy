@@ -150,6 +150,10 @@ class HTTPRedirectHandler(BaseHandler):
     def http_error_302(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_303(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_307(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage
+        ) -> _UrlopenRet | None: ...
 
 class HTTPCookieProcessor(BaseHandler):
     cookiejar: CookieJar
@@ -330,6 +334,11 @@ class FancyURLopener(URLopener):
     def http_error_307(
         self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
     ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+        ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+
     def http_error_401(
         self,
         url: str,

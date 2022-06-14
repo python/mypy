@@ -2,17 +2,36 @@ import ssl
 import sys
 from collections import deque
 from collections.abc import Callable
+from enum import Enum
 from typing import Any, ClassVar
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 from . import constants, events, futures, protocols, transports
 
 def _create_transport_context(server_side: bool, server_hostname: str | None) -> ssl.SSLContext: ...
 
-_UNWRAPPED: Literal["UNWRAPPED"]
-_DO_HANDSHAKE: Literal["DO_HANDSHAKE"]
-_WRAPPED: Literal["WRAPPED"]
-_SHUTDOWN: Literal["SHUTDOWN"]
+if sys.version_info >= (3, 11):
+    SSLAgainErrors: tuple[type[ssl.SSLWantReadError], type[ssl.SSLSyscallError]]
+
+    class SSLProtocolState(Enum):
+        UNWRAPPED: str
+        DO_HANDSHAKE: str
+        WRAPPED: str
+        FLUSHING: str
+        SHUTDOWN: str
+
+    class AppProtocolState(Enum):
+        STATE_INIT: str
+        STATE_CON_MADE: str
+        STATE_EOF: str
+        STATE_CON_LOST: str
+    def add_flowcontrol_defaults(high: int | None, low: int | None, kb: int) -> tuple[int, int]: ...
+
+else:
+    _UNWRAPPED: Literal["UNWRAPPED"]
+    _DO_HANDSHAKE: Literal["DO_HANDSHAKE"]
+    _WRAPPED: Literal["WRAPPED"]
+    _SHUTDOWN: Literal["SHUTDOWN"]
 
 class _SSLPipe:
 
@@ -70,8 +89,20 @@ class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
     def write(self, data: bytes) -> None: ...
     def can_write_eof(self) -> Literal[False]: ...
     def abort(self) -> None: ...
+    if sys.version_info >= (3, 11):
+        def get_write_buffer_limits(self) -> tuple[int, int]: ...
+        def get_read_buffer_limits(self) -> tuple[int, int]: ...
+        def set_read_buffer_limits(self, high: int | None = ..., low: int | None = ...) -> None: ...
+        def get_read_buffer_size(self) -> int: ...
 
-class SSLProtocol(protocols.Protocol):
+if sys.version_info >= (3, 11):
+    _SSLProtocolBase: TypeAlias = protocols.BufferedProtocol
+else:
+    _SSLProtocolBase: TypeAlias = protocols.Protocol
+
+class SSLProtocol(_SSLProtocolBase):
+    if sys.version_info >= (3, 11):
+        max_size: ClassVar[int]
 
     _server_side: bool
     _server_hostname: str | None
@@ -92,7 +123,20 @@ class SSLProtocol(protocols.Protocol):
     _app_protocol: protocols.BaseProtocol
     _app_protocol_is_buffer: bool
 
-    if sys.version_info >= (3, 7):
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            loop: events.AbstractEventLoop,
+            app_protocol: protocols.BaseProtocol,
+            sslcontext: ssl.SSLContext,
+            waiter: futures.Future[Any],
+            server_side: bool = ...,
+            server_hostname: str | None = ...,
+            call_connection_made: bool = ...,
+            ssl_handshake_timeout: int | None = ...,
+            ssl_shutdown_timeout: float | None = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 7):
         def __init__(
             self,
             loop: events.AbstractEventLoop,
@@ -123,17 +167,25 @@ class SSLProtocol(protocols.Protocol):
     def connection_lost(self, exc: BaseException | None) -> None: ...
     def pause_writing(self) -> None: ...
     def resume_writing(self) -> None: ...
-    def data_received(self, data: bytes) -> None: ...
     def eof_received(self) -> None: ...
     def _get_extra_info(self, name: str, default: Any | None = ...) -> Any: ...
     def _start_shutdown(self) -> None: ...
-    def _write_appdata(self, data: bytes) -> None: ...
+    if sys.version_info >= (3, 11):
+        def _write_appdata(self, list_of_data: list[bytes]) -> None: ...
+    else:
+        def _write_appdata(self, data: bytes) -> None: ...
+
     def _start_handshake(self) -> None: ...
     if sys.version_info >= (3, 7):
         def _check_handshake_timeout(self) -> None: ...
 
     def _on_handshake_complete(self, handshake_exc: BaseException | None) -> None: ...
-    def _process_write_backlog(self) -> None: ...
     def _fatal_error(self, exc: BaseException, message: str = ...) -> None: ...
-    def _finalize(self) -> None: ...
     def _abort(self) -> None: ...
+    if sys.version_info >= (3, 11):
+        def buffer_updated(self, nbytes: int) -> None: ...
+        def get_buffer(self, n: int) -> memoryview: ...
+    else:
+        def _finalize(self) -> None: ...
+        def _process_write_backlog(self) -> None: ...
+        def data_received(self, data: bytes) -> None: ...

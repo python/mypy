@@ -82,7 +82,17 @@ else:
         ignore_dangling_symlinks: bool = ...,
     ) -> _PathReturn: ...
 
-def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
+if sys.version_info >= (3, 11):
+    def rmtree(
+        path: StrOrBytesPath,
+        ignore_errors: bool = ...,
+        onerror: Callable[[Any, Any, Any], Any] | None = ...,
+        *,
+        dir_fd: int | None = ...,
+    ) -> None: ...
+
+else:
+    def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
 
 _CopyFn: TypeAlias = Callable[[str, str], None] | Callable[[StrPath, StrPath], None]
 
