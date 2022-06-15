@@ -181,10 +181,10 @@ def may_be_awaitable_attribute(
     override_info: Optional[TypeInfo] = None
 ) -> bool:
     """Check if the given type has the attribute when awaited."""
-    if name == "__await__":
+    if mx.chk.checking_missing_await:
         # Avoid infinite recursion.
         return False
-    with mx.msg.filter_errors() as local_errors:
+    with mx.chk.checking_await_set(), mx.msg.filter_errors() as local_errors:
         aw_type = mx.chk.get_precise_awaitable_type(typ, local_errors)
         if aw_type is None:
             return False
