@@ -399,7 +399,8 @@ class Errors:
                allow_dups: bool = False,
                origin_line: Optional[int] = None,
                offset: int = 0,
-               end_line: Optional[int] = None) -> None:
+               end_line: Optional[int] = None,
+               notes: Optional[List[str]] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -445,6 +446,14 @@ class Errors:
                          origin=(self.file, origin_line, end_line),
                          target=self.current_target())
         self.add_error_info(info)
+        for msg in notes or ():
+            note = ErrorInfo(
+                info.import_ctx, info.file, info.module, info.type, info.function_or_member,
+                info.line, info.column, 'note', msg,
+                code=None, blocker=False, only_once=False, allow_dups=False
+            )
+            self.add_error_info(note)
+            info.notes.append(note)
 
     def _add_error_info(self, file: str, info: ErrorInfo) -> None:
         assert file not in self.flushed_files

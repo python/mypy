@@ -151,7 +151,8 @@ class MessageBuilder:
                file: Optional[str] = None,
                origin: Optional[Context] = None,
                offset: int = 0,
-               allow_dups: bool = False) -> None:
+               allow_dups: bool = False,
+               notes: Optional[List[str]] = None) -> None:
         """Report an error or note (unless disabled)."""
         if origin is not None:
             end_line = origin.end_line
@@ -163,7 +164,7 @@ class MessageBuilder:
                            context.get_column() if context else -1,
                            msg, severity=severity, file=file, offset=offset,
                            origin_line=origin.get_line() if origin else None,
-                           end_line=end_line, code=code, allow_dups=allow_dups)
+                           end_line=end_line, code=code, allow_dups=allow_dups, notes=notes)
 
     def fail(self,
              msg: str,
@@ -172,10 +173,11 @@ class MessageBuilder:
              code: Optional[ErrorCode] = None,
              file: Optional[str] = None,
              origin: Optional[Context] = None,
-             allow_dups: bool = False) -> None:
+             allow_dups: bool = False,
+             notes: Optional[List[str]] = None) -> None:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'error', code=code, file=file,
-                    origin=origin, allow_dups=allow_dups)
+                    origin=origin, allow_dups=allow_dups, notes=notes)
 
     def note(self,
              msg: str,
@@ -390,10 +392,15 @@ class MessageBuilder:
         return AnyType(TypeOfAny.from_error)
 
     def partially_typed_function_call(self, callee: CallableType, context: CallExpr):
-        name = callable_name(callee) or f'"{context.callee.name}"' or '(unknown)'  # type: ignore
+        name = (
+            callable_name(callee)
+            or (context.callee.name
+                if isinstance(context.callee, (NameExpr, MemberExpr))
+                else "(anonymous)"
+                )
+        )
         self.fail(f'Call to incomplete function {name} in typed context', context,
-                  code=codes.NO_UNTYPED_CALL)
-        self.note(f'Type is "{callee}"', context)
+                  code=codes.NO_UNTYPED_CALL, notes=[f'Type is "{callee}"'])
 
     def untyped_indexed_assignment(self, context: IndexExpr):
         # don't care about CallExpr because they are handled by partially_typed_function_call
