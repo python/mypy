@@ -975,7 +975,8 @@ def process_options(args: List[str],
         mypy.options._based = False
 
     based_enabled_codes = (
-        {"redundant-expr", "truthy-bool", "ignore-without-code", "unused-awaitable"}
+        {"redundant-expr", "truthy-bool", "ignore-without-code", "unused-awaitable",
+         "no-untyped-usage"}
         if mypy.options._based else set()
     )
     options = Options()

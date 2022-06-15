@@ -379,8 +379,7 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         flag_list: List[str] = flags.group(1).split()
         if based:
             flag_list.insert(0, '--default-return')
-        else:
-            flag_list.extend(["--disable-error-code", "no-untyped-usage"])
+            flag_list.extend(["--enable-error-code", "no-untyped-usage"])
         flag_list.append('--no-site-packages')  # the tests shouldn't need an installed Python
         if "--local-partial-types" in flag_list:
             flag_list.remove("--local-partial-types")
@@ -394,11 +393,11 @@ def parse_options(program_text: str, testcase: DataDrivenTestCase,
         options = Options()
         if based:
             options.default_return = True
+            options.enabled_error_codes.add(errorcodes.NO_UNTYPED_USAGE)
         else:
             # TODO: Enable strict optional in test cases by default
             #  (requires *many* test case changes)
             options.strict_optional = False
-            options.disabled_error_codes.add(errorcodes.NO_UNTYPED_USAGE)
         options.error_summary = False
 
     # Allow custom python version to override testcase_pyversion.
