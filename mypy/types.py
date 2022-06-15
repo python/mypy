@@ -936,17 +936,18 @@ class AnyType(ProperType):
         return isinstance(other, AnyType)
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'AnyType', 'type_of_any': self.type_of_any,
+        return {'.class': type(self).__name__, 'type_of_any': self.type_of_any,
                 'source_any': self.source_any.serialize() if self.source_any is not None else None,
                 'missing_import_name': self.missing_import_name}
 
     @classmethod
     def deserialize(cls, data: JsonDict) -> 'AnyType':
-        assert data['.class'] == 'AnyType'
+        assert data['.class'] == cls.__name__
         source = data['source_any']
-        return AnyType(data['type_of_any'],
-                       AnyType.deserialize(source) if source is not None else None,
-                       data['missing_import_name'])
+        return cls(type_of_any=data['type_of_any'],
+                   source_any=cast(
+                       AnyType, deserialize_type(source)) if source is not None else None,
+                   missing_import_name=data['missing_import_name'])
 
     def describe(self) -> str:
         if not mypy.options._based:
@@ -983,10 +984,12 @@ class AnyType(ProperType):
 class UntypedType(AnyType):
     def __init__(self,
                  type_of_any: int = TypeOfAny.unannotated,
+                 source_any: Optional['AnyType'] = None,
                  missing_import_name: Optional[str] = None,
                  line: int = -1,
                  column: int = -1):
         super().__init__(type_of_any,
+                         source_any=source_any,
                          missing_import_name=missing_import_name,
                          line=line,
                          column=column)
