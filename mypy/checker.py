@@ -30,7 +30,10 @@ from mypy.nodes import (
 from mypy import nodes
 from mypy import operators
 from mypy.literals import literal, literal_hash, Key
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
+from mypy.typeanal import (
+    has_any_from_unimported_type, check_for_explicit_any, make_optional_type,
+    maybe_expand_unimported_type_becomes_any,
+)
 from mypy.types import (
     Type, AnyType, CallableType, FunctionLike, Overloaded, TupleType, TypedDictType,
     Instance, NoneType, strip_type, TypeType, TypeOfAny,
@@ -893,11 +896,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if fdef.type and isinstance(fdef.type, CallableType):
                             ret_type = fdef.type.ret_type
                             if has_any_from_unimported_type(ret_type):
-                                self.msg.unimported_type_becomes_any("Return type", ret_type, fdef)
+                                maybe_expand_unimported_type_becomes_any(
+                                    "Return type", ret_type, fdef, self.msg
+                                )
                             for idx, arg_type in enumerate(fdef.type.arg_types):
                                 if has_any_from_unimported_type(arg_type):
                                     prefix = f'Argument {idx + 1} to "{fdef.name}"'
-                                    self.msg.unimported_type_becomes_any(prefix, arg_type, fdef)
+                                    maybe_expand_unimported_type_becomes_any(
+                                        prefix, arg_type, fdef, self.msg
+                                    )
                     check_for_explicit_any(fdef.type, self.options, self.is_typeshed_stub,
                                            self.msg, context=fdef)
 
@@ -2228,10 +2235,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(s.lvalues[-1], TupleExpr):
                 # This is a multiple assignment. Instead of figuring out which type is problematic,
                 # give a generic error message.
-                self.msg.unimported_type_becomes_any("A type on this line",
-                                                     AnyType(TypeOfAny.special_form), s)
+                maybe_expand_unimported_type_becomes_any("A type on this line",
+                                                     AnyType(TypeOfAny.special_form), s, self.msg)
             else:
-                self.msg.unimported_type_becomes_any("Type of variable", s.type, s)
+                maybe_expand_unimported_type_becomes_any("Type of variable", s.type, s, self.msg)
         check_for_explicit_any(s.type, self.options, self.is_typeshed_stub, self.msg, context=s)
 
         if len(s.lvalues) > 1:
@@ -3303,6 +3310,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
         else:
+            orig_lvalue_type = lvalue_type
             lvalue_type = get_proper_type(lvalue_type)
             always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(rvalue, lvalue_type,
@@ -3312,8 +3320,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
-            elif lvalue_type:
-                self.check_subtype(rvalue_type, lvalue_type, context, msg,
+            elif orig_lvalue_type:
+                self.check_subtype(rvalue_type, orig_lvalue_type, context, msg,
                                    f'{rvalue_name} has type',
                                    f'{lvalue_name} has type', code=code)
             return rvalue_type
@@ -5245,6 +5253,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         else:
             msg_text = msg
         subtype = get_proper_type(subtype)
+        orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(subtype, supertype, context, msg_text,
                                        subtype_label, supertype_label, code=code):
@@ -5255,13 +5264,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         note_msg = ''
         notes: List[str] = []
         if subtype_label is not None or supertype_label is not None:
-            subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
+            subtype_str, supertype_str = format_type_distinctly(subtype, orig_supertype)
             if subtype_label is not None:
                 extra_info.append(subtype_label + ' ' + subtype_str)
             if supertype_label is not None:
                 extra_info.append(supertype_label + ' ' + supertype_str)
             note_msg = make_inferred_type_note(outer_context or context, subtype,
-                                               supertype, supertype_str)
+                                               orig_supertype, supertype_str)
             if isinstance(subtype, Instance) and isinstance(supertype, Instance):
                 notes = append_invariance_notes([], subtype, supertype)
         if extra_info:
@@ -5284,7 +5293,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if supertype.type.is_protocol and supertype.type.protocol_members == ['__call__']:
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
-                self.msg.note_call(supertype, call, context, code=code)
+                self.msg.note_call(orig_supertype, call, context, code=code)
         return False
 
     def contains_none(self, t: Type) -> bool:

@@ -8650,7 +8650,7 @@ Alias = Literal[2]
 [out]
 ==
 ==
-main:2: error: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Literal[2]")
+main:2: error: Incompatible types in assignment (expression has type "Literal[1]", variable has type "Alias")
 
 [case testLiteralFineGrainedOverload]
 from mod import foo
@@ -8721,7 +8721,7 @@ Alias3 = Literal[4]
 [builtins fixtures/tuple.pyi]
 [out]
 ==
-main:5: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
+main:5: error: Argument 1 to "expect_3" has incompatible type "Alias1"; expected "Literal[3]"
 
 [case testLiteralFineGrainedChainedFunctionDefinitions]
 from mod1 import func1

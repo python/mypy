@@ -1483,6 +1483,23 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return []
 
 
+def maybe_expand_unimported_type_becomes_any(
+    prefix: str, typ: Type, ctx: Context, msg: MessageBuilder,
+) -> None:
+    """Show an error about `typ` turning into Any, possibly expanding any type aliases
+    if necessary to make the error message clearer
+    """
+    if isinstance(typ, TypeAliasType):
+        assert typ.alias is not None
+        if has_any_from_unimported_type(typ.alias.target):
+            # The underlying type that this type alias points to has parts that turn
+            # into Anys, so printing the unexpanded alias doesn't really make it
+            # obvious where the Any type is
+            # Avoid that by expanding the alias before printing in that case
+            typ = get_proper_type(typ)
+    msg.unimported_type_becomes_any(prefix, typ, ctx)
+
+
 def check_for_explicit_any(typ: Optional[Type],
                            options: Options,
                            is_typeshed_stub: bool,

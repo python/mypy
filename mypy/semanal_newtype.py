@@ -17,7 +17,9 @@ from mypy.nodes import (
 from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
 from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
+from mypy.typeanal import (
+    check_for_explicit_any, has_any_from_unimported_type, maybe_expand_unimported_type_becomes_any,
+)
 from mypy.messages import MessageBuilder, format_type
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
@@ -92,7 +94,9 @@ class NewTypeAnalyzer:
                                context=s)
 
         if self.options.disallow_any_unimported and has_any_from_unimported_type(old_type):
-            self.msg.unimported_type_becomes_any("Argument 2 to NewType(...)", old_type, s)
+            maybe_expand_unimported_type_becomes_any(
+                "Argument 2 to NewType(...)", old_type, s, self.msg
+            )
 
         # If so, add it to the symbol table.
         assert isinstance(call.analyzed, NewTypeExpr)

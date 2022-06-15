@@ -238,11 +238,11 @@ t10: Tuple[int, ...] = t09
 A = tuple[int, ...]
 a: A = ()
 b: A = (1, 2, 3)
-c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "Tuple[int, ...]")
+c: A = ('x', 'y')  # E: Incompatible types in assignment (expression has type "Tuple[str, str]", variable has type "A")
 
 B = tuple[int, str]
 x: B = (1, 'x')
-y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "Tuple[int, str]")
+y: B = ('x', 1)  # E: Incompatible types in assignment (expression has type "Tuple[str, int]", variable has type "B")
 
 reveal_type(tuple[int, ...]())  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]

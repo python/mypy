@@ -563,7 +563,7 @@ def func(x: IntNode[T]) -> IntNode[T]:
     return x
 reveal_type(func) # N: Revealed type is "def [T] (x: __main__.Node[builtins.int, T`-1]) -> __main__.Node[builtins.int, T`-1]"
 
-func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "Node[int, <nothing>]"
+func(1) # E: Argument 1 to "func" has incompatible type "int"; expected "IntNode[<nothing>]"
 func(Node('x', 1)) # E: Argument 1 to "Node" has incompatible type "str"; expected "int"
 reveal_type(func(Node(1, 'x'))) # N: Revealed type is "__main__.Node[builtins.int, builtins.str]"
 
@@ -772,7 +772,7 @@ def f(x: T) -> UNode[T]:
 reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, __main__.Node[builtins.int]]"
 
 TNode = Union[T, Node[int]]
-s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "Union[str, Node[int]]")
+s = 1 # type: TNode[str] # E: Incompatible types in assignment (expression has type "int", variable has type "TNode[str]")
 
 if not isinstance(s, str):
     s.x = 1
@@ -800,7 +800,7 @@ reveal_type(x) # N: Revealed type is "builtins.int"
 def f2(x: IntTP[T]) -> IntTP[T]:
     return x
 
-f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "Tuple[int, <nothing>]"
+f2((1, 2, 3)) # E: Argument 1 to "f2" has incompatible type "Tuple[int, int, int]"; expected "IntTP[<nothing>]"
 reveal_type(f2((1, 'x'))) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 
 [builtins fixtures/for.pyi]
@@ -825,9 +825,9 @@ reveal_type(make_cb(1)) # N: Revealed type is "def (*Any, **Any) -> builtins.int
 def use_cb(arg: T, cb: C2[T]) -> Node[T]:
     return cb(arg, arg)
 
-use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "Callable[[int, int], Node[int]]"
+use_cb(1, 1) # E: Argument 2 to "use_cb" has incompatible type "int"; expected "C2[int]"
 my_cb = None # type: C2[int]
-use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "Callable[[int, int], Node[int]]"; expected "Callable[[str, str], Node[str]]"
+use_cb('x', my_cb) # E: Argument 2 to "use_cb" has incompatible type "C2[int]"; expected "C2[str]"
 reveal_type(use_cb(1, my_cb)) # N: Revealed type is "__main__.Node[builtins.int]"
 [builtins fixtures/tuple.pyi]
 
@@ -849,7 +849,7 @@ def fun2(v: Vec[T], scale: T) -> Vec[T]:
     return v
 
 reveal_type(fun1([(1, 1)])) # N: Revealed type is "builtins.int"
-fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "List[Tuple[bool, bool]]"
+fun1(1) # E: Argument 1 to "fun1" has incompatible type "int"; expected "Vec[bool]"
 fun1([(1, 'x')]) # E: Cannot infer type argument 1 of "fun1"
 
 reveal_type(fun2([(1, 1)], 1)) # N: Revealed type is "builtins.list[Tuple[builtins.int, builtins.int]]"

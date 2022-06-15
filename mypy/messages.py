@@ -26,7 +26,7 @@ from mypy.types import (
     Type, CallableType, Instance, TypeVarType, TupleType, TypedDictType, LiteralType,
     UnionType, NoneType, AnyType, Overloaded, FunctionLike, DeletedType, TypeType,
     UninhabitedType, TypeOfAny, UnboundType, PartialType, get_proper_type, ProperType,
-    ParamSpecType, Parameters, get_proper_types
+    ParamSpecType, Parameters, get_proper_types, TypeAliasType
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.nodes import (
@@ -405,7 +405,6 @@ class MessageBuilder:
         Return the error code that used for the argument (multiple error
         codes are possible).
         """
-        arg_type = get_proper_type(arg_type)
 
         target = ''
         callee_name = callable_name(callee)
@@ -469,6 +468,7 @@ class MessageBuilder:
         elif callee_name == '<dict>':
             name = callee_name[1:-1]
             n -= 1
+            arg_type = get_proper_type(arg_type)
             key_type, value_type = cast(TupleType, arg_type).items
             expected_key_type, expected_value_type = cast(TupleType, callee.arg_types[0]).items
 
@@ -534,6 +534,7 @@ class MessageBuilder:
                 arg_name = outer_context.arg_names[n - 1]
                 if arg_name is not None:
                     arg_label = f'"{arg_name}"'
+            arg_type = get_proper_type(arg_type)
             if (arg_kind == ARG_STAR2
                     and isinstance(arg_type, TypedDictType)
                     and m <= len(callee.arg_names)
@@ -1186,6 +1187,10 @@ class MessageBuilder:
                   code=codes.ASSERT_TYPE)
 
     def unimported_type_becomes_any(self, prefix: str, typ: Type, ctx: Context) -> None:
+        """Print an error about an unfollowed import turning a type into Any
+
+        Using typeanal.maybe_expand_unimported_type_becomes_any is preferred because
+        it will expand type aliases to make errors clearer."""
         self.fail(f"{prefix} becomes {format_type(typ)} due to an unfollowed import",
                   ctx, code=codes.NO_ANY_UNIMPORTED)
 
@@ -1696,32 +1701,42 @@ def format_type_inner(typ: Type,
         else:
             return typ.value_repr()
 
-    # TODO: show type alias names in errors.
+    def format_from_names(name: str, fullname: str, args: Sequence[Type]) -> str:
+        """Format a type given its short name, full name, and type arguments"""
+
+        # Some of this only really makes sense for instances, but it's easier
+        # to include it here than try to only use that code when formatting
+        # an Instance
+        if fullname in ('types.ModuleType', '_importlib_modulespec.ModuleType'):
+            # Make some common error messages simpler and tidier.
+            return 'Module'
+        if verbosity >= 2 or (fullnames and fullname in fullnames):
+            base_str = fullname
+        else:
+            base_str = name
+        if not args:
+            # No type arguments, just return the type name
+            return base_str
+        elif fullname == 'builtins.tuple':
+            item_type_str = format(args[0])
+            return f'Tuple[{item_type_str}, ...]'
+        elif fullname in reverse_builtin_aliases:
+            alias = reverse_builtin_aliases[fullname]
+            alias = alias.split('.')[-1]
+            return f'{alias}[{format_list(args)}]'
+        else:
+            # There are type arguments. Convert the arguments to strings.
+            return f'{base_str}[{format_list(args)}]'
+
+    if isinstance(typ, TypeAliasType):
+        # typ.alias should only ever be None during creation
+        assert typ.alias is not None
+        return format_from_names(typ.alias.name, typ.alias.fullname, typ.args)
+    # get_proper_type doesn't do anything here but we need it to make mypy happy
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):
-        itype = typ
-        # Get the short name of the type.
-        if itype.type.fullname in ('types.ModuleType', '_importlib_modulespec.ModuleType'):
-            # Make some common error messages simpler and tidier.
-            return 'Module'
-        if verbosity >= 2 or (fullnames and itype.type.fullname in fullnames):
-            base_str = itype.type.fullname
-        else:
-            base_str = itype.type.name
-        if not itype.args:
-            # No type arguments, just return the type name
-            return base_str
-        elif itype.type.fullname == 'builtins.tuple':
-            item_type_str = format(itype.args[0])
-            return f'Tuple[{item_type_str}, ...]'
-        elif itype.type.fullname in reverse_builtin_aliases:
-            alias = reverse_builtin_aliases[itype.type.fullname]
-            alias = alias.split('.')[-1]
-            return f'{alias}[{format_list(itype.args)}]'
-        else:
-            # There are type arguments. Convert the arguments to strings.
-            return f'{base_str}[{format_list(itype.args)}]'
+        return format_from_names(typ.type.name, typ.type.fullname, typ.args)
     elif isinstance(typ, TypeVarType):
         # This is similar to non-generic instance types.
         return typ.name
@@ -1842,24 +1857,31 @@ def format_type_inner(typ: Type,
         return 'object'
 
 
-def collect_all_instances(t: Type) -> List[Instance]:
-    """Return all instances that `t` contains (including `t`).
+def collect_all_names(t: Type) -> List[Tuple[str, str]]:
+    """Return all (shortname, fullname) pairs for all instances and
+    type aliases that show up when printing `t` in an error message.
 
-    This is similar to collect_all_inner_types from typeanal but only
-    returns instances and will recurse into fallbacks.
+    TODO: extend this to include all name pairs that will show up in
+    the error message
     """
-    visitor = CollectAllInstancesQuery()
+    visitor = CollectAllNamesQuery()
     t.accept(visitor)
-    return visitor.instances
+    return visitor.names
 
 
-class CollectAllInstancesQuery(TypeTraverserVisitor):
+class CollectAllNamesQuery(TypeTraverserVisitor):
     def __init__(self) -> None:
-        self.instances: List[Instance] = []
+        # list of (shortname, fullname) pairs
+        self.names: List[Tuple[str, str]] = []
 
     def visit_instance(self, t: Instance) -> None:
-        self.instances.append(t)
+        self.names.append((t.type.name, t.type.fullname))
         super().visit_instance(t)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        assert t.alias is not None
+        self.names.append((t.alias.name, t.alias.fullname))
+        super().visit_type_alias_type(t)
 
 
 def find_type_overlaps(*types: Type) -> Set[str]:
@@ -1870,8 +1892,8 @@ def find_type_overlaps(*types: Type) -> Set[str]:
     """
     d: Dict[str, Set[str]] = {}
     for type in types:
-        for inst in collect_all_instances(type):
-            d.setdefault(inst.type.name, set()).add(inst.type.fullname)
+        for name, fullname in collect_all_names(type):
+            d.setdefault(name, set()).add(fullname)
     for shortname in d.keys():
         if f'typing.{shortname}' in TYPES_FOR_UNIMPORTED_HINTS:
             d[shortname].add(f'typing.{shortname}')
