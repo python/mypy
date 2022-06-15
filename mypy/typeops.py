@@ -14,7 +14,8 @@ from mypy.types import (
     TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
     TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
     AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    TypeAliasType, TypeQuery, ParamSpecType, Parameters, ENUM_REMOVED_PROPS
+    TypeAliasType, TypeQuery, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
+    ENUM_REMOVED_PROPS,
 )
 from mypy.nodes import (
     FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
@@ -42,7 +43,22 @@ def tuple_fallback(typ: TupleType) -> Instance:
     info = typ.partial_fallback.type
     if info.fullname != 'builtins.tuple':
         return typ.partial_fallback
-    return Instance(info, [join_type_list(typ.items)])
+    items = []
+    for item in typ.items:
+        proper_type = get_proper_type(item)
+        if isinstance(proper_type, UnpackType):
+            unpacked_type = get_proper_type(proper_type.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                items.append(unpacked_type.upper_bound)
+            elif isinstance(unpacked_type, TupleType):
+                # TODO: might make sense to do recursion here to support nested unpacks
+                # of tuple constants
+                items.extend(unpacked_type.items)
+            else:
+                raise NotImplementedError
+        else:
+            items.append(item)
+    return Instance(info, [join_type_list(items)])
 
 
 def type_object_type_from_function(signature: FunctionLike,
