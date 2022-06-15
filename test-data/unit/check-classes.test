@@ -7300,3 +7300,31 @@ def identity_wrapper(func: FuncT) -> FuncT:
 def foo(self: Any) -> str:
     return ""
 
+[case testParentClassWithTypeAliasAndSubclassWithMethod]
+from typing import Any, Callable, TypeVar
+
+class Parent:
+    foo = Callable[..., int] 
+    class bar:
+        pass
+    import typing as baz
+    foobar = TypeVar("foobar")
+
+class Child(Parent):
+    def foo(self, val: int) -> int:  # E: Signature of "foo" incompatible with supertype "Parent"
+        return val
+    def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent"
+        return val
+    def baz(self, val: float) -> float:  # E: Signature of "baz" incompatible with supertype "Parent"
+        return val
+    def foobar(self) -> bool:  # E: Signature of "foobar" incompatible with supertype "Parent"
+        return False
+
+x: Parent.foo = lambda: 5
+y: Parent.bar = Parent.bar()
+z: Parent.baz.Any = 1
+child = Child()
+a: int = child.foo(1)
+b: str = child.bar("abc")
+c: float = child.baz(3.4)
+d: bool = child.foobar()
