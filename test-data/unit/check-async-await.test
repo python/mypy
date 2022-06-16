@@ -865,6 +865,60 @@ async with C() as x: # E: "async with" outside async function
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
 
+[case testAwaitMissingNote]
+# flags: --python-version 3.7
+from typing import Generic, TypeVar, Generator, Any, Awaitable, Type
+
+class C:
+    x: int
+class D(C): ...
+
+async def foo() -> D: ...
+def g(x: C) -> None: ...
+
+T = TypeVar("T")
+class Custom(Generic[T]):
+    def __await__(self) -> Generator[Any, Any, T]: ...
+
+class Sub(Custom[T]): ...
+
+async def test(x: Sub[D], tx: Type[Sub[D]]) -> None:
+    foo().x  # E: "Coroutine[Any, Any, D]" has no attribute "x" \
+             # N: Maybe you forgot to use "await"?
+    (await foo()).x
+    foo().bad  # E: "Coroutine[Any, Any, D]" has no attribute "bad"
+
+    g(foo())  # E: Argument 1 to "g" has incompatible type "Coroutine[Any, Any, D]"; expected "C" \
+              # N: Maybe you forgot to use "await"?
+    g(await foo())
+    unknown: Awaitable[Any]
+    g(unknown)  # E: Argument 1 to "g" has incompatible type "Awaitable[Any]"; expected "C"
+
+    x.x  # E: "Sub[D]" has no attribute "x" \
+         # N: Maybe you forgot to use "await"?
+    (await x).x
+    x.bad  # E: "Sub[D]" has no attribute "bad"
+
+    a: C = x  # E: Incompatible types in assignment (expression has type "Sub[D]", variable has type "C") \
+              # N: Maybe you forgot to use "await"?
+    b: C = await x
+    unknown2: Awaitable[Any]
+    d: C = unknown2  # E: Incompatible types in assignment (expression has type "Awaitable[Any]", variable has type "C")
+
+    # The notes are not show for Type[...] (because awaiting them will not work)
+    tx.x  # E: "Type[Sub[D]]" has no attribute "x"
+    a2: C = tx  # E: Incompatible types in assignment (expression has type "Type[Sub[D]]", variable has type "C")
+
+class F:
+    def __await__(self: T) -> Generator[Any, Any, T]: ...
+class G(F): ...
+
+# This should not crash.
+x: int = G()  # E: Incompatible types in assignment (expression has type "G", variable has type "int")
+
+[builtins fixtures/async_await.pyi]
+[typing fixtures/typing-async.pyi]
+
 [case testAsyncGeneratorExpressionAwait]
 from typing import AsyncGenerator
 
@@ -874,4 +928,5 @@ async def f() -> AsyncGenerator[int, None]:
 
     return (await g(x) for x in [1, 2, 3])
 
+[builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]

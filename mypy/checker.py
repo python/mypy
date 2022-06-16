@@ -12,7 +12,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
-from mypy.errors import Errors, report_internal_error
+from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
@@ -38,7 +38,7 @@ from mypy.types import (
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
-    OVERLOAD_NAMES,
+    OVERLOAD_NAMES, UnboundType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -275,6 +275,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        # This flag is set when we run type-check or attribute access check for the purpose
+        # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
+        self.checking_missing_await = False
 
     @property
     def type_context(self) -> List[Optional[Type]]:
@@ -5285,7 +5289,53 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
+        self.check_possible_missing_await(subtype, supertype, context)
         return False
+
+    def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Optional[Type]:
+        """If type implements Awaitable[X] with non-Any X, return X.
+
+        In all other cases return None. This method must be called in context
+        of local_errors.
+        """
+        if isinstance(get_proper_type(typ), PartialType):
+            # Partial types are special, ignore them here.
+            return None
+        try:
+            aw_type = self.expr_checker.check_awaitable_expr(
+                typ, Context(), '', ignore_binder=True
+            )
+        except KeyError:
+            # This is a hack to speed up tests by not including Awaitable in all typing stubs.
+            return None
+        if local_errors.has_new_errors():
+            return None
+        if isinstance(get_proper_type(aw_type), (AnyType, UnboundType)):
+            return None
+        return aw_type
+
+    @contextmanager
+    def checking_await_set(self) -> Iterator[None]:
+        self.checking_missing_await = True
+        try:
+            yield
+        finally:
+            self.checking_missing_await = False
+
+    def check_possible_missing_await(
+            self, subtype: Type, supertype: Type, context: Context
+    ) -> None:
+        """Check if the given type becomes a subtype when awaited."""
+        if self.checking_missing_await:
+            # Avoid infinite recursion.
+            return
+        with self.checking_await_set(), self.msg.filter_errors() as local_errors:
+            aw_type = self.get_precise_awaitable_type(subtype, local_errors)
+            if aw_type is None:
+                return
+            if not self.check_subtype(aw_type, supertype, context):
+                return
+        self.msg.possible_missing_await(context)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)
