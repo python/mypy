@@ -211,7 +211,6 @@ def _build(sources: List[BuildSource],
     #
     # Ignore current directory prefix in error messages.
     manager = BuildManager(data_dir, search_paths,
-                           alt_lib_path,
                            ignore_prefix=os.getcwd(),
                            source_set=source_set,
                            reports=reports,
