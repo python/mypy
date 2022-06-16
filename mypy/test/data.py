@@ -11,10 +11,16 @@ import sys
 
 import pytest
 from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union, Pattern
+from typing_extensions import Final
 
 from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
 
 root_dir = os.path.normpath(PREFIX)
+
+# Debuggers that we support for debugging mypyc run tests
+# implementation of using each of these debuggers is in test_run.py
+# TODO: support more debuggers
+SUPPORTED_DEBUGGERS: Final = ["gdb", "lldb"]
 
 
 # File modify/create operation: copy module contents from source_path.
@@ -549,6 +555,13 @@ def pytest_addoption(parser: Any) -> None:
                     help='Set the verbose flag when creating mypy Options')
     group.addoption('--mypyc-showc', action='store_true', default=False,
                     help='Display C code on mypyc test failures')
+    group.addoption(
+        "--mypyc-debug",
+        default=None,
+        dest="debugger",
+        choices=SUPPORTED_DEBUGGERS,
+        help="Run the first mypyc run test with the specified debugger",
+    )
 
 
 # This function name is special to pytest.  See

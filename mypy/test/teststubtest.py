@@ -43,9 +43,13 @@ class _SpecialForm:
 
 Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
+Protocol: _SpecialForm = ...
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
+
+class ParamSpec:
+    def __init__(self, name: str) -> None: ...
 
 _T = TypeVar("_T")
 _T_co = TypeVar("_T_co", covariant=True)
@@ -328,8 +332,8 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="""
             from typing import TypeVar
-            T = TypeVar("T", bound=str)
-            def f6(text: T = ...) -> None: ...
+            _T = TypeVar("_T", bound=str)
+            def f6(text: _T = ...) -> None: ...
             """,
             runtime="def f6(text = None): pass",
             error="f6",
@@ -805,7 +809,7 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_non_public_1(self) -> Iterator[Case]:
         yield Case(
-            stub="__all__: list[str]", runtime="", error="test_module.__all__"
+            stub="__all__: list[str]", runtime="", error=f"{TEST_MODULE_NAME}.__all__"
         )  # dummy case
         yield Case(stub="_f: int", runtime="def _f(): ...", error="_f")
 
@@ -1020,6 +1024,54 @@ class StubtestUnit(unittest.TestCase):
             error="opt3",
         )
 
+    @collect_cases
+    def test_protocol(self) -> Iterator[Case]:
+        if sys.version_info < (3, 7):
+            return
+        yield Case(
+            stub="""
+            from typing_extensions import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            runtime="""
+            from typing_extensions import Protocol
+
+            class X(Protocol):
+                def foo(self, x: int, y: bytes = ...) -> str: ...
+            """,
+            # TODO: this should not be an error, #12820
+            error="X.__init__"
+        )
+
+    @collect_cases
+    def test_type_var(self) -> Iterator[Case]:
+        yield Case(
+            stub="from typing import TypeVar", runtime="from typing import TypeVar", error=None
+        )
+        yield Case(
+            stub="A = TypeVar('A')",
+            runtime="A = TypeVar('A')",
+            error=None,
+        )
+        yield Case(
+            stub="B = TypeVar('B')",
+            runtime="B = 5",
+            error="B",
+        )
+        if sys.version_info >= (3, 10):
+            yield Case(
+                stub="from typing import ParamSpec",
+                runtime="from typing import ParamSpec",
+                error=None
+            )
+            yield Case(
+                stub="C = ParamSpec('C')",
+                runtime="C = ParamSpec('C')",
+                error=None,
+            )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
@@ -1033,9 +1085,11 @@ class StubtestMiscUnit(unittest.TestCase):
             options=[],
         )
         expected = (
-            'error: {0}.bad is inconsistent, stub argument "number" differs from runtime '
-            'argument "num"\nStub: at line 1\ndef (number: builtins.int, text: builtins.str)\n'
-            "Runtime: at line 1 in file {0}.py\ndef (num, text)\n\n".format(TEST_MODULE_NAME)
+            f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
+            'from runtime argument "num"\n'
+            'Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n'
+            f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
+            'Found 1 error (checked 1 module)\n'
         )
         assert remove_color_code(output) == expected
 
@@ -1054,17 +1108,17 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(
             stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
         )
-        assert not output
+        assert output == 'Success: no issues found in 1 module\n'
 
         output = run_stubtest(
             stub="", runtime="def f(): pass", options=["--ignore-missing-stub"]
         )
-        assert not output
+        assert output == 'Success: no issues found in 1 module\n'
 
         output = run_stubtest(
             stub="def f(__a): ...", runtime="def f(a): pass", options=["--ignore-positional-only"]
         )
-        assert not output
+        assert output == 'Success: no issues found in 1 module\n'
 
     def test_allowlist(self) -> None:
         # Can't use this as a context because Windows
@@ -1078,18 +1132,21 @@ class StubtestMiscUnit(unittest.TestCase):
                 runtime="def bad(asdf, text): pass",
                 options=["--allowlist", allowlist.name],
             )
-            assert not output
+            assert output == 'Success: no issues found in 1 module\n'
 
             # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
-            assert output == f"note: unused allowlist entry {TEST_MODULE_NAME}.bad\n"
+            assert output == (
+                f"note: unused allowlist entry {TEST_MODULE_NAME}.bad\n"
+                "Found 1 error (checked 1 module)\n"
+            )
 
             output = run_stubtest(
                 stub="",
                 runtime="",
                 options=["--allowlist", allowlist.name, "--ignore-unused-allowlist"],
             )
-            assert not output
+            assert output == 'Success: no issues found in 1 module\n'
 
             # test regex matching
             with open(allowlist.name, mode="w+") as f:
@@ -1114,8 +1171,9 @@ class StubtestMiscUnit(unittest.TestCase):
                 ),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
-            assert output == "note: unused allowlist entry unused.*\n{}.also_bad\n".format(
-                TEST_MODULE_NAME
+            assert output == (
+                f"note: unused allowlist entry unused.*\n"
+                f"{TEST_MODULE_NAME}.also_bad\n"
             )
         finally:
             os.unlink(allowlist.name)
@@ -1137,7 +1195,23 @@ class StubtestMiscUnit(unittest.TestCase):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options(["not_a_module"]))
-        assert "error: not_a_module failed to find stubs" in remove_color_code(output.getvalue())
+        assert remove_color_code(output.getvalue()) == (
+            "error: not_a_module failed to find stubs\n"
+            "Stub:\nMISSING\nRuntime:\nN/A\n\n"
+            "Found 1 error (checked 1 module)\n"
+        )
+
+    def test_only_py(self) -> None:
+        # in this case, stubtest will check the py against itself
+        # this is useful to support packages with a mix of stubs and inline types
+        with use_tmp_dir(TEST_MODULE_NAME):
+            with open(f"{TEST_MODULE_NAME}.py", "w") as f:
+                f.write("a = 1")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                test_stubs(parse_options([TEST_MODULE_NAME]))
+            output_str = remove_color_code(output.getvalue())
+            assert output_str == 'Success: no issues found in 1 module\n'
 
     def test_get_typeshed_stdlib_modules(self) -> None:
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
@@ -1171,8 +1245,23 @@ class StubtestMiscUnit(unittest.TestCase):
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
-            "error: test_module.temp variable differs from runtime type Literal[5]\n"
+            f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
             "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
+            "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
-        assert output == ""
+        assert output == "Success: no issues found in 1 module\n"
+
+    def test_no_modules(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            test_stubs(parse_options([]))
+        assert remove_color_code(output.getvalue()) == "error: no modules to check\n"
+
+    def test_module_and_typeshed(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            test_stubs(parse_options(["--check-typeshed", "some_module"]))
+        assert remove_color_code(output.getvalue()) == (
+            "error: cannot pass both --check-typeshed and a list of modules\n"
+        )

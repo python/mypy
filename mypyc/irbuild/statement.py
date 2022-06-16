@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
     Branch, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ir.rtypes import RInstance, exc_rtuple
+from mypyc.ir.rtypes import RInstance, exc_rtuple, is_tagged
 from mypyc.primitives.generic_ops import py_delattr_op
 from mypyc.primitives.misc_ops import type_op, import_from_op
 from mypyc.primitives.exc_ops import (
@@ -35,7 +35,8 @@ from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
 from mypyc.irbuild.for_helpers import for_loop_helper
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.ast_helpers import process_conditional, is_borrow_friendly_expr
 
 GenFunc = Callable[[], None]
 
@@ -119,9 +120,16 @@ def is_simple_lvalue(expr: Expression) -> bool:
 def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignmentStmt) -> None:
     """Operator assignment statement such as x += 1"""
     builder.disallow_class_assignments([stmt.lvalue], stmt.line)
+    if (is_tagged(builder.node_type(stmt.lvalue))
+            and is_tagged(builder.node_type(stmt.rvalue))
+            and stmt.op in int_borrow_friendly_op):
+        can_borrow = (is_borrow_friendly_expr(builder, stmt.rvalue)
+                      and is_borrow_friendly_expr(builder, stmt.lvalue))
+    else:
+        can_borrow = False
     target = builder.get_assignment_target(stmt.lvalue)
-    target_value = builder.read(target, stmt.line)
-    rreg = builder.accept(stmt.rvalue)
+    target_value = builder.read(target, stmt.line, can_borrow=can_borrow)
+    rreg = builder.accept(stmt.rvalue, can_borrow=can_borrow)
     # the Python parser strips the '=' from operator assignment statements, so re-add it
     op = stmt.op + '='
     res = builder.binary_op(target_value, rreg, op, stmt.line)
@@ -207,7 +215,7 @@ def transform_if_stmt(builder: IRBuilder, stmt: IfStmt) -> None:
     # If statements are normalized
     assert len(stmt.expr) == 1
 
-    builder.process_conditional(stmt.expr[0], if_body, else_body)
+    process_conditional(builder, stmt.expr[0], if_body, else_body)
     builder.activate_block(if_body)
     builder.accept(stmt.body[0])
     builder.goto(next)
@@ -226,7 +234,7 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
     # Split block so that we get a handle to the top of the loop.
     builder.goto_and_activate(top)
-    builder.process_conditional(s.expr, body, normal_loop_exit)
+    process_conditional(builder, s.expr, body, normal_loop_exit)
 
     builder.activate_block(body)
     builder.accept(s.body)

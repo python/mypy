@@ -15,3 +15,12 @@ package_path = os.path.join(PREFIX, 'test-data', 'packages')
 # This is *within* the tempfile.TemporaryDirectory that is chroot'ed per testcase.
 # It is also hard-coded in numerous places, so don't change it.
 test_temp_dir = 'tmp'
+
+# The PEP 561 tests do a bunch of pip installs which, even though they operate
+# on distinct temporary virtual environments, run into race conditions on shared
+# file-system state. To make this work reliably in parallel mode, we'll use a
+# FileLock courtesy of the tox-dev/py-filelock package.
+# Ref. https://github.com/python/mypy/issues/12615
+# Ref. mypy/test/testpep561.py
+pip_lock = os.path.join(package_path, '.pip_lock')
+pip_timeout = 60

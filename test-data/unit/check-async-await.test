@@ -864,3 +864,14 @@ async with C() as x: # E: "async with" outside async function
 
 [builtins fixtures/async_await.pyi]
 [typing fixtures/typing-async.pyi]
+
+[case testAsyncGeneratorExpressionAwait]
+from typing import AsyncGenerator
+
+async def f() -> AsyncGenerator[int, None]:
+    async def g(x: int) -> int:
+        return x
+
+    return (await g(x) for x in [1, 2, 3])
+
+[typing fixtures/typing-async.pyi]

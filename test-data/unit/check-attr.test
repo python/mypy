@@ -1734,3 +1734,18 @@ class C:
         # E: Unsupported converter, only named functions and types are currently supported
     )
 [builtins fixtures/dict.pyi]
+
+[case testAttrsNestedClass]
+from typing import List
+import attr
+
+@attr.s
+class C:
+    @attr.s
+    class D:
+        pass
+    x = attr.ib(type=List[D])
+
+c = C(x=[C.D()])
+reveal_type(c.x)  # N: Revealed type is "builtins.list[__main__.C.D]"
+[builtins fixtures/list.pyi]

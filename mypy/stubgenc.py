@@ -288,7 +288,7 @@ def generate_c_property_stub(name: str, obj: object,
             return None
 
     # Ignore special properties/attributes.
-    if name.startswith('__') and name.endswith('__'):
+    if is_skipped_attribute(name):
         return
 
     inferred = infer_prop_type(getattr(obj, '__doc__', None))

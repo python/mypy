@@ -135,11 +135,10 @@ L4:
     r5 = i < l :: signed
     if r5 goto L5 else goto L10 :: bool
 L5:
-    r6 = CPyList_GetItem(a, i)
+    r6 = CPyList_GetItemBorrow(a, i)
     if is_error(r6) goto L11 (error at sum:6) else goto L6
 L6:
     r7 = unbox(int, r6)
-    dec_ref r6
     if is_error(r7) goto L11 (error at sum:6) else goto L7
 L7:
     r8 = CPyTagged_Add(sum, r7)

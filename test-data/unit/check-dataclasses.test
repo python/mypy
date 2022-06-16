@@ -526,6 +526,34 @@ Application.COUNTER = 1
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testTypeAliasInDataclassDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+from typing_extensions import TypeAlias
+
+@dataclass
+class Foo:
+    x: int
+
+@dataclass
+class One:
+    S: TypeAlias = Foo  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+a = One()
+reveal_type(a.S)  # N: Revealed type is "def (x: builtins.int) -> __main__.Foo"
+a.S()  # E: Missing positional argument "x" in call to "Foo"
+reveal_type(a.S(5))  # N: Revealed type is "__main__.Foo"
+
+@dataclass
+class Two:
+    S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+c = Two()
+x = c.S  # E: Member "S" is not assignable
+reveal_type(x)  # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassOrdering]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -1743,4 +1771,22 @@ class C:
 c = C()
 c2 = C(x=1)
 c.x  # E: "C" has no attribute "x"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassCheckTypeVarBounds]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Protocol, Dict, TypeVar, Generic
+
+class DataclassProtocol(Protocol):
+    __dataclass_fields__: Dict
+
+T = TypeVar("T", bound=DataclassProtocol)
+
+@dataclass
+class MyDataclass:
+    x: int = 1
+
+class MyGeneric(Generic[T]): ...
+class MyClass(MyGeneric[MyDataclass]): ...
 [builtins fixtures/dataclasses.pyi]

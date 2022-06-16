@@ -46,6 +46,7 @@ typecheck_files = [
     'check-multiple-inheritance.test',
     'check-super.test',
     'check-modules.test',
+    'check-modules-fast.test',
     'check-typevar-values.test',
     'check-unsupported.test',
     'check-unreachable-code.test',
@@ -104,6 +105,7 @@ typecheck_files = [
     'check-singledispatch.test',
     'check-slots.test',
     'check-formatting.test',
+    'check-native-int.test',
 ]
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):

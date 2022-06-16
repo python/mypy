@@ -250,8 +250,11 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(right)) {
         return false;
     } else {
-        int result = PyObject_RichCompareBool(CPyTagged_LongAsObject(left),
-                                              CPyTagged_LongAsObject(right), Py_EQ);
+        PyObject *left_obj = CPyTagged_AsObject(left);
+        PyObject *right_obj = CPyTagged_AsObject(right);
+        int result = PyObject_RichCompareBool(left_obj, right_obj, Py_EQ);
+        Py_DECREF(left_obj);
+        Py_DECREF(right_obj);
         if (result == -1) {
             CPyError_OutOfMemory();
         }

@@ -21,7 +21,7 @@ from mypyc.ir.rtypes import (
     RType, RInstance, RTuple, RArray, RVoid, is_bool_rprimitive, is_int_rprimitive,
     is_short_int_rprimitive, is_none_rprimitive, object_rprimitive, bool_rprimitive,
     short_int_rprimitive, int_rprimitive, void_rtype, pointer_rprimitive, is_pointer_rprimitive,
-    bit_rprimitive, is_bit_rprimitive
+    bit_rprimitive, is_bit_rprimitive, is_fixed_width_rtype
 )
 
 if TYPE_CHECKING:
@@ -90,6 +90,9 @@ ERR_MAGIC: Final = 1
 ERR_FALSE: Final = 2
 # Always fails
 ERR_ALWAYS: Final = 3
+# Like ERR_MAGIC, but the magic return overlaps with a possible return value, and
+# an extra PyErr_Occurred() check is also required
+ERR_MAGIC_OVERLAPPING: Final = 4
 
 # Hack: using this line number for an op will suppress it in tracebacks
 NO_TRACEBACK_LINE_NO = -10000
@@ -489,14 +492,17 @@ class Call(RegisterOp):
     The call target can be a module-level function or a class.
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self, fn: 'FuncDecl', args: Sequence[Value], line: int) -> None:
-        super().__init__(line)
         self.fn = fn
         self.args = list(args)
         assert len(self.args) == len(fn.sig.args)
         self.type = fn.sig.ret_type
+        ret_type = fn.sig.ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return list(self.args[:])
@@ -508,14 +514,11 @@ class Call(RegisterOp):
 class MethodCall(RegisterOp):
     """Native method call obj.method(arg, ...)"""
 
-    error_kind = ERR_MAGIC
-
     def __init__(self,
                  obj: Value,
                  method: str,
                  args: List[Value],
                  line: int = -1) -> None:
-        super().__init__(line)
         self.obj = obj
         self.method = method
         self.args = args
@@ -524,7 +527,13 @@ class MethodCall(RegisterOp):
         method_ir = self.receiver_type.class_ir.method_sig(method)
         assert method_ir is not None, "{} doesn't have method {}".format(
             self.receiver_type.name, method)
-        self.type = method_ir.ret_type
+        ret_type = method_ir.ret_type
+        self.type = ret_type
+        if not ret_type.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return self.args[:] + [self.obj]
@@ -605,8 +614,11 @@ class GetAttr(RegisterOp):
         self.attr = attr
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
-        self.type = obj.type.attr_type(attr)
-        self.is_borrowed = borrow
+        attr_type = obj.type.attr_type(attr)
+        self.type = attr_type
+        if is_fixed_width_rtype(attr_type):
+            self.error_kind = ERR_NEVER
+        self.is_borrowed = borrow and attr_type.is_refcounted
 
     def sources(self) -> List[Value]:
         return [self.obj]
@@ -829,12 +841,14 @@ class Unbox(RegisterOp):
     representation. Only supported for types with an unboxed representation.
     """
 
-    error_kind = ERR_MAGIC
-
     def __init__(self, src: Value, typ: RType, line: int) -> None:
-        super().__init__(line)
         self.src = src
         self.type = typ
+        if not typ.error_overlap:
+            self.error_kind = ERR_MAGIC
+        else:
+            self.error_kind = ERR_MAGIC_OVERLAPPING
+        super().__init__(line)
 
     def sources(self) -> List[Value]:
         return [self.src]
@@ -924,22 +938,20 @@ class Truncate(RegisterOp):
 
     Truncate a value from type with more bits to type with less bits.
 
-    Both src_type and dst_type should be non-reference counted integer
-    types or bool. Note that int_rprimitive is reference counted so
-    it should never be used here.
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
     """
 
     error_kind = ERR_NEVER
 
     def __init__(self,
                  src: Value,
-                 src_type: RType,
                  dst_type: RType,
                  line: int = -1) -> None:
         super().__init__(line)
         self.src = src
-        self.src_type = src_type
         self.type = dst_type
+        self.src_type = src.type
 
     def sources(self) -> List[Value]:
         return [self.src]
@@ -949,6 +961,41 @@ class Truncate(RegisterOp):
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:
         return visitor.visit_truncate(self)
+
+
+class Extend(RegisterOp):
+    """result = extend src from src_type to dst_type
+
+    Extend a value from a type with fewer bits to a type with more bits.
+
+    dst_type and src_type can be native integer types, bools or tagged
+    integers. Tagged integers should have the tag bit unset.
+
+    If 'signed' is true, perform sign extension. Otherwise, the result will be
+    zero extended.
+    """
+
+    error_kind = ERR_NEVER
+
+    def __init__(self,
+                 src: Value,
+                 dst_type: RType,
+                 signed: bool,
+                 line: int = -1) -> None:
+        super().__init__(line)
+        self.src = src
+        self.type = dst_type
+        self.src_type = src.type
+        self.signed = signed
+
+    def sources(self) -> List[Value]:
+        return [self.src]
+
+    def stolen(self) -> List[Value]:
+        return []
+
+    def accept(self, visitor: 'OpVisitor[T]') -> T:
+        return visitor.visit_extend(self)
 
 
 class LoadGlobal(RegisterOp):
@@ -1035,6 +1082,11 @@ class IntOp(RegisterOp):
         return visitor.visit_int_op(self)
 
 
+# We can't have this in the IntOp class body, because of
+# https://github.com/mypyc/mypyc/issues/932.
+int_op_to_id: Final = {op: op_id for op_id, op in IntOp.op_str.items()}
+
+
 class ComparisonOp(RegisterOp):
     """Low-level comparison op for integers and pointers.
 
@@ -1074,6 +1126,15 @@ class ComparisonOp(RegisterOp):
         UGT: '>',
         ULE: '<=',
         UGE: '>=',
+    }
+
+    signed_ops: Final = {
+        '==': EQ,
+        '!=': NEQ,
+        '<': SLT,
+        '>': SGT,
+        '<=': SLE,
+        '>=': SGE,
     }
 
     def __init__(self, lhs: Value, rhs: Value, op: int, line: int = -1) -> None:
@@ -1325,6 +1386,10 @@ class OpVisitor(Generic[T]):
 
     @abstractmethod
     def visit_truncate(self, op: Truncate) -> T:
+        raise NotImplementedError
+
+    @abstractmethod
+    def visit_extend(self, op: Extend) -> T:
         raise NotImplementedError
 
     @abstractmethod

@@ -51,7 +51,9 @@ jobs:
             let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
             // posting comment fails if too long, so truncate
             if (data.length > 30000) {
-              data = data.substring(0, 30000) + `\n\n... (truncated ${data.length - 30000} chars) ...\n`
+              let truncated_data = data.substring(0, 30000)
+              let lines_truncated = data.split('\n').length - truncated_data.split('\n').length
+              data = truncated_data + `\n\n... (truncated ${lines_truncated} lines) ...\n`
             }
 
             console.log("Diff from mypy_primer:")
