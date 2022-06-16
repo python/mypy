@@ -613,6 +613,10 @@ class BuildManager:
             if module == '_importlib_modulespec':
                 continue
             path = self.find_module_cache.find_module(module)
+            if not isinstance(path, str):
+                raise CompileError([
+                    "Failed to find builtin module {module}, perhaps typeshed is broken?",
+                ])
             if (not is_typeshed_file(path, options.custom_typeshed_dir)
                     and not is_stub_package_file(path)):
                 raise CompileError([
