@@ -359,20 +359,32 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if callee_type.implicit:
                 self.msg.untyped_function_call(callee_type, e)
             elif has_untyped_type(callee_type):
-                # check for partially typed defs
-                if isinstance(callee_type.definition, FuncDef):
-                    if callee_type.definition.info:
-                        callee_module = callee_type.definition.info.module_name
+                # Get module of the function, to get its settings
+                #  This is fairly sus, and I'm sure there are cases where it gets
+                #   the wrong module.
+                if isinstance(e.callee, MemberExpr):
+                    if e.callee.kind is None:
+                        # class, kinda hacky
+                        it = self.chk._type_maps[0][e.callee.expr]
+                        assert isinstance(it, CallableType)
+                        assert isinstance(it.ret_type, Instance)
+                        callee_module = it.ret_type.type.module_name
                     else:
-                        callee_module = callee_type.definition.fullname.rpartition(".")[0]
+                        # module
+                        callee_module = e.callee.expr.fullname
                 elif isinstance(e.callee, NameExpr):
                     assert e.callee.fullname
-                    callee_module = e.callee.fullname.rpartition(".")[0]
+                    if "." not in e.callee.fullname:
+                        # local def
+                        callee_module = self.chk.tree.name
+                    else:
+                        callee_module = e.callee.fullname.rpartition(".")[0]
                 elif isinstance(e.callee, MemberExpr) and isinstance(e.callee.expr, NameExpr):
                     assert e.callee.expr.fullname
                     callee_module = e.callee.expr.fullname.rpartition(".")[0]
                 else:
                     # If this branch gets hit then look for a new way to get the module name
+                    # TODO: test time error
                     callee_module = None
                 if callee_module:
                     callee_options = self.chk.options.per_module(callee_module)
