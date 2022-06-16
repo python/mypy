@@ -2883,7 +2883,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             if fallback_name != 'builtins.tuple':
                 if not mypy.options._based:
                     return f'Tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
-                return 'tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
+                return f'tuple[{s}, fallback={t.partial_fallback.accept(self)}]'
         if not mypy.options._based:
             return f'Tuple[{s}]'
         return f"({s})" if len(t.items) != 1 else f"({s},)"
