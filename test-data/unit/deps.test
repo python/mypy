@@ -872,6 +872,8 @@ c.y  # type: ignore
 <b.c.y> -> m
 <b.c> -> m
 <b> -> m
+<types.ModuleType.__await__> -> <types.ModuleType>
+<types.ModuleType> -> typing.Awaitable
 
 [case testIgnoredMissingInstanceAttribute]
 from a import C
@@ -879,10 +881,11 @@ C().x  # type: ignore
 [file a.py]
 class C: pass
 [out]
+<a.C.__await__> -> <a.C>
 <a.C.__init__> -> m
 <a.C.__new__> -> m
 <a.C.x> -> m
-<a.C> -> m
+<a.C> -> m, typing.Awaitable
 <a> -> m
 
 [case testIgnoredMissingClassAttribute]

@@ -4,10 +4,10 @@
 // Copyright Contributors to the pythoncapi_compat project.
 //
 // Homepage:
-// https://github.com/pythoncapi/pythoncapi_compat
+// https://github.com/python/pythoncapi_compat
 //
 // Latest version:
-// https://raw.githubusercontent.com/pythoncapi/pythoncapi_compat/master/pythoncapi_compat.h
+// https://raw.githubusercontent.com/python/pythoncapi_compat/master/pythoncapi_compat.h
 //
 // SPDX-License-Identifier: 0BSD
 
@@ -26,27 +26,32 @@ extern "C" {
 // the inline keyword in C (only in C++): use __inline instead.
 #if (defined(_MSC_VER) && _MSC_VER < 1900 \
      && !defined(__cplusplus) && !defined(inline))
-#  define PYCAPI_COMPAT_INLINE(TYPE static __inline TYPE
+#  define PYCAPI_COMPAT_STATIC_INLINE(TYPE) static __inline TYPE
 #else
 #  define PYCAPI_COMPAT_STATIC_INLINE(TYPE) static inline TYPE
 #endif
 
 
-// C++ compatibility
-#ifdef __cplusplus
-#  define PYCAPI_COMPAT_CAST(TYPE, EXPR) reinterpret_cast<TYPE>(EXPR)
-#  define PYCAPI_COMPAT_NULL nullptr
-#else
-#  define PYCAPI_COMPAT_CAST(TYPE, EXPR) (TYPE)(EXPR)
-#  define PYCAPI_COMPAT_NULL NULL
+// C++ compatibility: _Py_CAST() and _Py_NULL
+#ifndef _Py_CAST
+#  ifdef __cplusplus
+#    define _Py_CAST(type, expr) \
+         const_cast<type>(reinterpret_cast<const type>(expr))
+#  else
+#    define _Py_CAST(type, expr) ((type)(expr))
+#  endif
+#endif
+#ifndef _Py_NULL
+#  ifdef __cplusplus
+#    define _Py_NULL nullptr
+#  else
+#    define _Py_NULL NULL
+#  endif
 #endif
 
 // Cast argument to PyObject* type.
 #ifndef _PyObject_CAST
-#  define _PyObject_CAST(op) PYCAPI_COMPAT_CAST(PyObject*, op)
-#endif
-#ifndef _PyObject_CAST_CONST
-#  define _PyObject_CAST_CONST(op) PYCAPI_COMPAT_CAST(const PyObject*, op)
+#  define _PyObject_CAST(op) _Py_CAST(PyObject*, op)
 #endif
 
 
@@ -71,30 +76,6 @@ _Py_XNewRef(PyObject *obj)
     return obj;
 }
 #define Py_XNewRef(obj) _Py_XNewRef(_PyObject_CAST(obj))
-#endif
-
-
-// See https://bugs.python.org/issue42522
-#if !defined(_Py_StealRef)
-PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
-__Py_StealRef(PyObject *obj)
-{
-    Py_DECREF(obj);
-    return obj;
-}
-#define _Py_StealRef(obj) __Py_StealRef(_PyObject_CAST(obj))
-#endif
-
-
-// See https://bugs.python.org/issue42522
-#if !defined(_Py_XStealRef)
-PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
-__Py_XStealRef(PyObject *obj)
-{
-    Py_XDECREF(obj);
-    return obj;
-}
-#define _Py_XStealRef(obj) __Py_XStealRef(_PyObject_CAST(obj))
 #endif
 
 
@@ -171,27 +152,28 @@ _Py_SET_SIZE(PyVarObject *ob, Py_ssize_t size)
 PYCAPI_COMPAT_STATIC_INLINE(PyCodeObject*)
 PyFrame_GetCode(PyFrameObject *frame)
 {
-    assert(frame != PYCAPI_COMPAT_NULL);
-    assert(frame->f_code != PYCAPI_COMPAT_NULL);
-    return PYCAPI_COMPAT_CAST(PyCodeObject*, Py_NewRef(frame->f_code));
+    assert(frame != _Py_NULL);
+    assert(frame->f_code != _Py_NULL);
+    return _Py_CAST(PyCodeObject*, Py_NewRef(frame->f_code));
 }
 #endif
 
 PYCAPI_COMPAT_STATIC_INLINE(PyCodeObject*)
 _PyFrame_GetCodeBorrow(PyFrameObject *frame)
 {
-    return PYCAPI_COMPAT_CAST(PyCodeObject *,
-                              _Py_StealRef(PyFrame_GetCode(frame)));
+    PyCodeObject *code = PyFrame_GetCode(frame);
+    Py_DECREF(code);
+    return code;
 }
 
 
-// bpo-40421 added PyFrame_GetCode() to Python 3.9.0b1
+// bpo-40421 added PyFrame_GetBack() to Python 3.9.0b1
 #if PY_VERSION_HEX < 0x030900B1 && !defined(PYPY_VERSION)
 PYCAPI_COMPAT_STATIC_INLINE(PyFrameObject*)
 PyFrame_GetBack(PyFrameObject *frame)
 {
-    assert(frame != PYCAPI_COMPAT_NULL);
-    return PYCAPI_COMPAT_CAST(PyFrameObject*, Py_XNewRef(frame->f_back));
+    assert(frame != _Py_NULL);
+    return _Py_CAST(PyFrameObject*, Py_XNewRef(frame->f_back));
 }
 #endif
 
@@ -199,8 +181,66 @@ PyFrame_GetBack(PyFrameObject *frame)
 PYCAPI_COMPAT_STATIC_INLINE(PyFrameObject*)
 _PyFrame_GetBackBorrow(PyFrameObject *frame)
 {
-    return PYCAPI_COMPAT_CAST(PyFrameObject *,
-                                  _Py_XStealRef(PyFrame_GetBack(frame)));
+    PyFrameObject *back = PyFrame_GetBack(frame);
+    Py_XDECREF(back);
+    return back;
+}
+#endif
+
+
+// bpo-40421 added PyFrame_GetLocals() to Python 3.11.0a7
+#if PY_VERSION_HEX < 0x030B00A7 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
+PyFrame_GetLocals(PyFrameObject *frame)
+{
+#if PY_VERSION_HEX >= 0x030400B1
+    if (PyFrame_FastToLocalsWithError(frame) < 0) {
+        return NULL;
+    }
+#else
+    PyFrame_FastToLocals(frame);
+#endif
+    return Py_NewRef(frame->f_locals);
+}
+#endif
+
+
+// bpo-40421 added PyFrame_GetGlobals() to Python 3.11.0a7
+#if PY_VERSION_HEX < 0x030B00A7 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
+PyFrame_GetGlobals(PyFrameObject *frame)
+{
+    return Py_NewRef(frame->f_globals);
+}
+#endif
+
+
+// bpo-40421 added PyFrame_GetBuiltins() to Python 3.11.0a7
+#if PY_VERSION_HEX < 0x030B00A7 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
+PyFrame_GetBuiltins(PyFrameObject *frame)
+{
+    return Py_NewRef(frame->f_builtins);
+}
+#endif
+
+
+// bpo-40421 added PyFrame_GetLasti() to Python 3.11.0b1
+#if PY_VERSION_HEX < 0x030B00B1 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(int)
+PyFrame_GetLasti(PyFrameObject *frame)
+{
+#if PY_VERSION_HEX >= 0x030A00A7
+    // bpo-27129: Since Python 3.10.0a7, f_lasti is an instruction offset,
+    // not a bytes offset anymore. Python uses 16-bit "wordcode" (2 bytes)
+    // instructions.
+    if (frame->f_lasti < 0) {
+        return -1;
+    }
+    return frame->f_lasti * 2;
+#else
+    return frame->f_lasti;
+#endif
 }
 #endif
 
@@ -210,7 +250,7 @@ _PyFrame_GetBackBorrow(PyFrameObject *frame)
 PYCAPI_COMPAT_STATIC_INLINE(PyInterpreterState *)
 PyThreadState_GetInterpreter(PyThreadState *tstate)
 {
-    assert(tstate != PYCAPI_COMPAT_NULL);
+    assert(tstate != _Py_NULL);
     return tstate->interp;
 }
 #endif
@@ -221,8 +261,8 @@ PyThreadState_GetInterpreter(PyThreadState *tstate)
 PYCAPI_COMPAT_STATIC_INLINE(PyFrameObject*)
 PyThreadState_GetFrame(PyThreadState *tstate)
 {
-    assert(tstate != PYCAPI_COMPAT_NULL);
-    return PYCAPI_COMPAT_CAST(PyFrameObject *, Py_XNewRef(tstate->frame));
+    assert(tstate != _Py_NULL);
+    return _Py_CAST(PyFrameObject *, Py_XNewRef(tstate->frame));
 }
 #endif
 
@@ -230,8 +270,9 @@ PyThreadState_GetFrame(PyThreadState *tstate)
 PYCAPI_COMPAT_STATIC_INLINE(PyFrameObject*)
 _PyThreadState_GetFrameBorrow(PyThreadState *tstate)
 {
-    return PYCAPI_COMPAT_CAST(PyFrameObject*,
-                              _Py_XStealRef(PyThreadState_GetFrame(tstate)));
+    PyFrameObject *frame = PyThreadState_GetFrame(tstate);
+    Py_XDECREF(frame);
+    return frame;
 }
 #endif
 
@@ -245,11 +286,11 @@ PyInterpreterState_Get(void)
     PyInterpreterState *interp;
 
     tstate = PyThreadState_GET();
-    if (tstate == PYCAPI_COMPAT_NULL) {
+    if (tstate == _Py_NULL) {
         Py_FatalError("GIL released (tstate is NULL)");
     }
     interp = tstate->interp;
-    if (interp == PYCAPI_COMPAT_NULL) {
+    if (interp == _Py_NULL) {
         Py_FatalError("no current interpreter");
     }
     return interp;
@@ -262,7 +303,7 @@ PyInterpreterState_Get(void)
 PYCAPI_COMPAT_STATIC_INLINE(uint64_t)
 PyThreadState_GetID(PyThreadState *tstate)
 {
-    assert(tstate != PYCAPI_COMPAT_NULL);
+    assert(tstate != _Py_NULL);
     return tstate->id;
 }
 #endif
@@ -286,8 +327,8 @@ PyThreadState_EnterTracing(PyThreadState *tstate)
 PYCAPI_COMPAT_STATIC_INLINE(void)
 PyThreadState_LeaveTracing(PyThreadState *tstate)
 {
-    int use_tracing = (tstate->c_tracefunc != PYCAPI_COMPAT_NULL
-                       || tstate->c_profilefunc != PYCAPI_COMPAT_NULL);
+    int use_tracing = (tstate->c_tracefunc != _Py_NULL
+                       || tstate->c_profilefunc != _Py_NULL);
     tstate->tracing--;
 #if PY_VERSION_HEX >= 0x030A00A1
     tstate->cframe->use_tracing = use_tracing;
@@ -322,11 +363,11 @@ PyObject_CallOneArg(PyObject *func, PyObject *arg)
 // bpo-1635741 added PyModule_AddObjectRef() to Python 3.10.0a3
 #if PY_VERSION_HEX < 0x030A00A3
 PYCAPI_COMPAT_STATIC_INLINE(int)
-PyModule_AddObjectRef(PyObject *mod, const char *name, PyObject *value)
+PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value)
 {
     int res;
     Py_XINCREF(value);
-    res = PyModule_AddObject(mod, name, value);
+    res = PyModule_AddObject(module, name, value);
     if (res < 0) {
         Py_XDECREF(value);
     }
@@ -338,7 +379,7 @@ PyModule_AddObjectRef(PyObject *mod, const char *name, PyObject *value)
 // bpo-40024 added PyModule_AddType() to Python 3.9.0a5
 #if PY_VERSION_HEX < 0x030900A5
 PYCAPI_COMPAT_STATIC_INLINE(int)
-PyModule_AddType(PyObject *mod, PyTypeObject *type)
+PyModule_AddType(PyObject *module, PyTypeObject *type)
 {
     const char *name, *dot;
 
@@ -348,13 +389,13 @@ PyModule_AddType(PyObject *mod, PyTypeObject *type)
 
     // inline _PyType_Name()
     name = type->tp_name;
-    assert(name != PYCAPI_COMPAT_NULL);
+    assert(name != _Py_NULL);
     dot = strrchr(name, '.');
-    if (dot != PYCAPI_COMPAT_NULL) {
+    if (dot != _Py_NULL) {
         name = dot + 1;
     }
 
-    return PyModule_AddObjectRef(mod, name, _PyObject_CAST(type));
+    return PyModule_AddObjectRef(module, name, _PyObject_CAST(type));
 }
 #endif
 
@@ -375,7 +416,7 @@ PyObject_GC_IsTracked(PyObject* obj)
 PYCAPI_COMPAT_STATIC_INLINE(int)
 PyObject_GC_IsFinalized(PyObject *obj)
 {
-    PyGC_Head *gc = PYCAPI_COMPAT_CAST(PyGC_Head *, obj) - 1;
+    PyGC_Head *gc = _Py_CAST(PyGC_Head*, obj) - 1;
     return (PyObject_IS_GC(obj) && _PyGCHead_FINALIZED(gc));
 }
 #endif
@@ -384,10 +425,59 @@ PyObject_GC_IsFinalized(PyObject *obj)
 // bpo-39573 added Py_IS_TYPE() to Python 3.9.0a4
 #if PY_VERSION_HEX < 0x030900A4 && !defined(Py_IS_TYPE)
 PYCAPI_COMPAT_STATIC_INLINE(int)
-_Py_IS_TYPE(const PyObject *ob, const PyTypeObject *type) {
-    return ob->ob_type == type;
+_Py_IS_TYPE(PyObject *ob, PyTypeObject *type) {
+    return Py_TYPE(ob) == type;
 }
-#define Py_IS_TYPE(ob, type) _Py_IS_TYPE(_PyObject_CAST_CONST(ob), type)
+#define Py_IS_TYPE(ob, type) _Py_IS_TYPE(_PyObject_CAST(ob), type)
+#endif
+
+
+// bpo-46906 added PyFloat_Pack2() and PyFloat_Unpack2() to Python 3.11a7.
+// bpo-11734 added _PyFloat_Pack2() and _PyFloat_Unpack2() to Python 3.6.0b1.
+// Python 3.11a2 moved _PyFloat_Pack2() and _PyFloat_Unpack2() to the internal
+// C API: Python 3.11a2-3.11a6 versions are not supported.
+#if 0x030600B1 <= PY_VERSION_HEX && PY_VERSION_HEX <= 0x030B00A1 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(int)
+PyFloat_Pack2(double x, char *p, int le)
+{ return _PyFloat_Pack2(x, (unsigned char*)p, le); }
+
+PYCAPI_COMPAT_STATIC_INLINE(double)
+PyFloat_Unpack2(const char *p, int le)
+{ return _PyFloat_Unpack2((const unsigned char *)p, le); }
+#endif
+
+
+// bpo-46906 added PyFloat_Pack4(), PyFloat_Pack8(), PyFloat_Unpack4() and
+// PyFloat_Unpack8() to Python 3.11a7.
+// Python 3.11a2 moved _PyFloat_Pack4(), _PyFloat_Pack8(), _PyFloat_Unpack4()
+// and _PyFloat_Unpack8() to the internal C API: Python 3.11a2-3.11a6 versions
+// are not supported.
+#if PY_VERSION_HEX <= 0x030B00A1 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(int)
+PyFloat_Pack4(double x, char *p, int le)
+{ return _PyFloat_Pack4(x, (unsigned char*)p, le); }
+
+PYCAPI_COMPAT_STATIC_INLINE(int)
+PyFloat_Pack8(double x, char *p, int le)
+{ return _PyFloat_Pack8(x, (unsigned char*)p, le); }
+
+PYCAPI_COMPAT_STATIC_INLINE(double)
+PyFloat_Unpack4(const char *p, int le)
+{ return _PyFloat_Unpack4((const unsigned char *)p, le); }
+
+PYCAPI_COMPAT_STATIC_INLINE(double)
+PyFloat_Unpack8(const char *p, int le)
+{ return _PyFloat_Unpack8((const unsigned char *)p, le); }
+#endif
+
+
+// gh-92154 added PyCode_GetCode() to Python 3.11.0b1
+#if PY_VERSION_HEX < 0x030B00B1 && !defined(PYPY_VERSION)
+PYCAPI_COMPAT_STATIC_INLINE(PyObject*)
+PyCode_GetCode(PyCodeObject *code)
+{
+    return Py_NewRef(code->co_code);
+}
 #endif
 
 

@@ -65,7 +65,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     fixed = [python3_path, '-m', 'mypy']
     env = os.environ.copy()
     env.pop('COLUMNS', None)
+    extra_path = os.path.join(os.path.abspath(test_temp_dir), 'pypath')
     env['PYTHONPATH'] = PREFIX
+    if os.path.isdir(extra_path):
+        env['PYTHONPATH'] += os.pathsep + extra_path
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,

@@ -161,6 +161,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 return repl
             elif isinstance(repl, TypeVarTupleType):
                 return [UnpackType(typ=repl)]
+            elif isinstance(repl, UnpackType):
+                return [repl]
             elif isinstance(repl, UninhabitedType):
                 return None
             else:

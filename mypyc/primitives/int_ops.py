@@ -9,10 +9,11 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 """
 
 from typing import Dict, NamedTuple
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ComparisonOp
+from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_ALWAYS, ComparisonOp
 from mypyc.ir.rtypes import (
     int_rprimitive, bool_rprimitive, float_rprimitive, object_rprimitive,
-    str_rprimitive, bit_rprimitive, RType
+    str_rprimitive, bit_rprimitive, int64_rprimitive, int32_rprimitive, void_rtype, RType,
+    c_pyssize_t_rprimitive
 )
 from mypyc.primitives.registry import (
     load_address_op, unary_op, CFunctionDescription, function_op, binary_op, custom_op
@@ -165,3 +166,59 @@ int_comparison_op_mapping: Dict[str, IntComparisonOpDescription] = {
     '>': IntComparisonOpDescription(ComparisonOp.SGT, int_less_than_, False, True),
     '>=': IntComparisonOpDescription(ComparisonOp.SGE, int_less_than_, True, False),
 }
+
+int64_divide_op = custom_op(
+    arg_types=[int64_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyInt64_Divide',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int64_mod_op = custom_op(
+    arg_types=[int64_rprimitive, int64_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyInt64_Remainder',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_divide_op = custom_op(
+    arg_types=[int32_rprimitive, int32_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name='CPyInt32_Divide',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_mod_op = custom_op(
+    arg_types=[int32_rprimitive, int32_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name='CPyInt32_Remainder',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+# Convert tagged int (as PyObject *) to i64
+int_to_int64_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int64_rprimitive,
+    c_function_name='CPyLong_AsInt64',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+ssize_t_to_int_op = custom_op(
+    arg_types=[c_pyssize_t_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyTagged_FromSsize_t',
+    error_kind=ERR_MAGIC)
+
+int64_to_int_op = custom_op(
+    arg_types=[int64_rprimitive],
+    return_type=int_rprimitive,
+    c_function_name='CPyTagged_FromInt64',
+    error_kind=ERR_MAGIC)
+
+# Convert tagged int (as PyObject *) to i32
+int_to_int32_op = custom_op(
+    arg_types=[object_rprimitive],
+    return_type=int32_rprimitive,
+    c_function_name='CPyLong_AsInt32',
+    error_kind=ERR_MAGIC_OVERLAPPING)
+
+int32_overflow = custom_op(
+    arg_types=[],
+    return_type=void_rtype,
+    c_function_name='CPyInt32_Overflow',
+    error_kind=ERR_ALWAYS)

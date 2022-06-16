@@ -9,7 +9,7 @@ from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.ir.ops import (
     BasicBlock, Goto, Return, Integer, Assign, AssignMulti, IncRef, DecRef, Branch,
     Call, Unbox, Box, TupleGet, GetAttr, SetAttr, Op, Value, CallC, IntOp, LoadMem,
-    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable
+    GetElementPtr, LoadAddress, ComparisonOp, SetMem, Register, Unreachable, Cast, Extend
 )
 from mypyc.ir.rtypes import (
     RTuple, RInstance, RType, RArray, int_rprimitive, bool_rprimitive, list_rprimitive,
@@ -31,6 +31,7 @@ from mypyc.primitives.dict_ops import (
 from mypyc.primitives.int_ops import int_neg_op
 from mypyc.subtype import is_subtype
 from mypyc.namegen import NameGenerator
+from mypyc.common import PLATFORM_SIZE
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):
@@ -258,11 +259,11 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                list_set_item_op.is_borrowed, list_set_item_op.error_kind, 55),
                          """cpy_r_r0 = CPyList_SetItem(cpy_r_l, cpy_r_n, cpy_r_o);""")
 
-    def test_box(self) -> None:
+    def test_box_int(self) -> None:
         self.assert_emit(Box(self.n),
                          """cpy_r_r0 = CPyTagged_StealAsObject(cpy_r_n);""")
 
-    def test_unbox(self) -> None:
+    def test_unbox_int(self) -> None:
         self.assert_emit(Unbox(self.m, int_rprimitive, 55),
                          """if (likely(PyLong_Check(cpy_r_m)))
                                 cpy_r_r0 = CPyTagged_FromObject(cpy_r_m);
@@ -270,6 +271,14 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                                 CPy_TypeError("int", cpy_r_m); cpy_r_r0 = CPY_INT_TAG;
                             }
                          """)
+
+    def test_box_i64(self) -> None:
+        self.assert_emit(Box(self.i64),
+                         """cpy_r_r0 = PyLong_FromLongLong(cpy_r_i64);""")
+
+    def test_unbox_i64(self) -> None:
+        self.assert_emit(Unbox(self.o, int64_rprimitive, 55),
+                         """cpy_r_r0 = CPyLong_AsInt64(cpy_r_o);""")
 
     def test_list_append(self) -> None:
         self.assert_emit(CallC(list_append_op.c_function_name, [self.l, self.o],
@@ -312,7 +321,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             CPyTagged_INCREF(cpy_r_r0);
             goto CPyL9;
             """,
-            next_branch=branch)
+            next_branch=branch,
+            skip_next=True,
+        )
 
     def test_set_attr(self) -> None:
         self.assert_emit(
@@ -321,6 +332,13 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
                    CPyTagged_DECREF(((mod___AObject *)cpy_r_r)->_y);
                }
                ((mod___AObject *)cpy_r_r)->_y = cpy_r_m;
+               cpy_r_r0 = 1;
+            """)
+
+    def test_set_attr_non_refcounted(self) -> None:
+        self.assert_emit(
+            SetAttr(self.r, 'x', self.b, 1),
+            """((mod___AObject *)cpy_r_r)->_x = cpy_r_b;
                cpy_r_r0 = 1;
             """)
 
@@ -373,7 +391,9 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.LEFT_SHIFT, 1),
                          """cpy_r_r0 = cpy_r_s1 << cpy_r_s2;""")
         self.assert_emit(IntOp(short_int_rprimitive, self.s1, self.s2, IntOp.RIGHT_SHIFT, 1),
-                         """cpy_r_r0 = cpy_r_s1 >> cpy_r_s2;""")
+                         """cpy_r_r0 = (Py_ssize_t)cpy_r_s1 >> (Py_ssize_t)cpy_r_s2;""")
+        self.assert_emit(IntOp(short_int_rprimitive, self.i64, self.i64_1, IntOp.RIGHT_SHIFT, 1),
+                         """cpy_r_r0 = cpy_r_i64 >> cpy_r_i64_1;""")
 
     def test_comparison_op(self) -> None:
         # signed
@@ -429,7 +449,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
     def test_long_unsigned(self) -> None:
         a = Register(int64_rprimitive, 'a')
         self.assert_emit(Assign(a, Integer(1 << 31, int64_rprimitive)),
-                         """cpy_r_a = 2147483648ULL;""")
+                         """cpy_r_a = 2147483648LL;""")
         self.assert_emit(Assign(a, Integer((1 << 31) - 1, int64_rprimitive)),
                          """cpy_r_a = 2147483647;""")
 
@@ -440,13 +460,127 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.assert_emit(Assign(a, Integer(-(1 << 31), int64_rprimitive)),
                          """cpy_r_a = -2147483648LL;""")
 
+    def test_cast_and_branch_merge(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+if (likely(PyDict_Check(cpy_r_r)))
+    cpy_r_r0 = cpy_r_r;
+else {
+    CPy_TypeErrorTraceback("prog.py", "foobar", 123, CPyStatic_prog___globals, "dict", cpy_r_r);
+    goto CPyL8;
+}
+""",
+            next_block=next_block,
+            next_branch=branch,
+            skip_next=True,
+        )
+
+    def test_cast_and_branch_no_merge_1(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        branch = Branch(op, BasicBlock(8), BasicBlock(9), Branch.IS_ERROR)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=BasicBlock(10),
+            next_branch=branch,
+            skip_next=False,
+        )
+
+    def test_cast_and_branch_no_merge_2(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        branch.negated = True
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
+    def test_cast_and_branch_no_merge_3(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.BOOL)
+        branch.traceback_entry = ('foobar', 123)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
+    def test_cast_and_branch_no_merge_4(self) -> None:
+        op = Cast(self.r, dict_rprimitive, 1)
+        next_block = BasicBlock(9)
+        branch = Branch(op, BasicBlock(8), next_block, Branch.IS_ERROR)
+        self.assert_emit(
+            op,
+            """\
+            if (likely(PyDict_Check(cpy_r_r)))
+                cpy_r_r0 = cpy_r_r;
+            else {
+                CPy_TypeError("dict", cpy_r_r);
+                cpy_r_r0 = NULL;
+            }
+            """,
+            next_block=next_block,
+            next_branch=branch,
+        )
+
+    def test_extend(self) -> None:
+        a = Register(int32_rprimitive, 'a')
+        self.assert_emit(Extend(a, int64_rprimitive, signed=True),
+                         """cpy_r_r0 = cpy_r_a;""")
+        self.assert_emit(Extend(a, int64_rprimitive, signed=False),
+                         """cpy_r_r0 = (uint32_t)cpy_r_a;""")
+        if PLATFORM_SIZE == 4:
+            self.assert_emit(Extend(self.n, int64_rprimitive, signed=True),
+                             """cpy_r_r0 = (Py_ssize_t)cpy_r_n;""")
+            self.assert_emit(Extend(self.n, int64_rprimitive, signed=False),
+                             """cpy_r_r0 = cpy_r_n;""")
+        if PLATFORM_SIZE == 8:
+            self.assert_emit(Extend(a, int_rprimitive, signed=True),
+                             """cpy_r_r0 = cpy_r_a;""")
+            self.assert_emit(Extend(a, int_rprimitive, signed=False),
+                             """cpy_r_r0 = (uint32_t)cpy_r_a;""")
+
     def assert_emit(self,
                     op: Op,
                     expected: str,
                     next_block: Optional[BasicBlock] = None,
                     *,
                     rare: bool = False,
-                    next_branch: Optional[Branch] = None) -> None:
+                    next_branch: Optional[Branch] = None,
+                    skip_next: bool = False) -> None:
         block = BasicBlock(0)
         block.ops.append(op)
         value_names = generate_names_for_ir(self.registers, [block])
@@ -476,6 +610,10 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         expected_lines = [line.strip(' ') for line in expected_lines]
         assert_string_arrays_equal(expected_lines, actual_lines,
                                    msg='Generated code unexpected')
+        if skip_next:
+            assert visitor.op_index == 1
+        else:
+            assert visitor.op_index == 0
 
     def assert_emit_binary_op(self,
                               op: str,

@@ -9,10 +9,14 @@ import copy
 import enum
 import importlib
 import inspect
+import os
 import re
 import sys
 import types
+import typing
+import typing_extensions
 import warnings
+from contextlib import redirect_stdout, redirect_stderr
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
@@ -23,10 +27,11 @@ import mypy.build
 import mypy.modulefinder
 import mypy.state
 import mypy.types
+import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, plural_s, is_dunder
 
 
 class Missing:
@@ -48,6 +53,10 @@ def _style(message: str, **kwargs: Any) -> str:
     """Wrapper around mypy.util for fancy formatting."""
     kwargs.setdefault("color", "none")
     return _formatter.style(message, **kwargs)
+
+
+class StubtestFailure(Exception):
+    pass
 
 
 class Error:
@@ -160,19 +169,20 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        yield Error([module_name], "failed to find stubs", MISSING, None)
+        yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc="N/A")
         return
 
     try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            runtime = importlib.import_module(module_name)
-            # Also run the equivalent of `from module import *`
-            # This could have the additional effect of loading not-yet-loaded submodules
-            # mentioned in __all__
-            __import__(module_name, fromlist=["*"])
+        with open(os.devnull, "w") as devnull:
+            with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
+                warnings.simplefilter("ignore")
+                runtime = importlib.import_module(module_name)
+                # Also run the equivalent of `from module import *`
+                # This could have the additional effect of loading not-yet-loaded submodules
+                # mentioned in __all__
+                __import__(module_name, fromlist=["*"])
     except Exception as e:
-        yield Error([module_name], f"failed to import: {e}", stub, MISSING)
+        yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
     with warnings.catch_warnings():
@@ -419,6 +429,8 @@ def _verify_arg_default_value(
                 and stub_type is not None
                 # Avoid false positives for marker objects
                 and type(runtime_arg.default) != object
+                # And ellipsis
+                and runtime_arg.default is not ...
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
@@ -864,8 +876,32 @@ def verify_overloadedfuncdef(
 def verify_typevarexpr(
     stub: nodes.TypeVarExpr, runtime: MaybeMissing[Any], object_path: List[str]
 ) -> Iterator[Error]:
-    if False:
-        yield None
+    if isinstance(runtime, Missing):
+        # We seem to insert these typevars into NamedTuple stubs, but they
+        # don't exist at runtime. Just ignore!
+        if stub.name == "_NT":
+            return
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+    if not isinstance(runtime, TypeVar):
+        yield Error(object_path, "is not a TypeVar", stub, runtime)
+        return
+
+
+@verify.register(nodes.ParamSpecExpr)
+def verify_paramspecexpr(
+    stub: nodes.ParamSpecExpr, runtime: MaybeMissing[Any], object_path: List[str]
+) -> Iterator[Error]:
+    if isinstance(runtime, Missing):
+        yield Error(object_path, "is not present at runtime", stub, runtime)
+        return
+    maybe_paramspec_types = (
+        getattr(typing, "ParamSpec", None), getattr(typing_extensions, "ParamSpec", None)
+    )
+    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    if not paramspec_types or not isinstance(runtime, paramspec_types):
+        yield Error(object_path, "is not a ParamSpec", stub, runtime)
+        return
 
 
 def _verify_readonly_property(stub: nodes.Decorator, runtime: Any) -> Iterator[str]:
@@ -915,7 +951,11 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
         ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
             return func
         if decorator.fullname == "builtins.classmethod":
-            assert func.arguments[0].variable.name in ("cls", "metacls")
+            if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
+                raise StubtestFailure(
+                    f"unexpected class argument name {func.arguments[0].variable.name!r} "
+                    f"in {dec.fullname}"
+                )
             # FuncItem is written so that copy.copy() actually works, even when compiled
             ret = copy.copy(func)
             # Remove the cls argument, since it's not present in inspect.signature of classmethods
@@ -1245,26 +1285,16 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
             sources.extend(found_sources)
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
 
-    try:
-        res = mypy.build.build(sources=sources, options=options)
-    except mypy.errors.CompileError as e:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to failed mypy compile:\n",
-            str(e),
-        ]
-        print("".join(output))
-        raise RuntimeError from e
-    if res.errors:
-        output = [
-            _style("error: ", color="red", bold=True),
-            "not checking stubs due to mypy build errors:\n",
-        ]
-        print("".join(output) + "\n".join(res.errors))
-        raise RuntimeError
+    if sources:
+        try:
+            res = mypy.build.build(sources=sources, options=options)
+        except mypy.errors.CompileError as e:
+            raise StubtestFailure(f"failed mypy compile:\n{e}") from e
+        if res.errors:
+            raise StubtestFailure("mypy build errors:\n" + "\n".join(res.errors))
 
-    global _all_stubs
-    _all_stubs = res.files
+        global _all_stubs
+        _all_stubs = res.files
 
     return all_modules
 
@@ -1326,7 +1356,21 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
                 yield entry
 
 
-def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) -> int:
+class _Arguments:
+    modules: List[str]
+    concise: bool
+    ignore_missing_stub: bool
+    ignore_positional_only: bool
+    allowlist: List[str]
+    generate_allowlist: bool
+    ignore_unused_allowlist: bool
+    mypy_config_file: str
+    custom_typeshed_dir: str
+    check_typeshed: bool
+    version: str
+
+
+def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     """This is stubtest! It's time to test the stubs!"""
     # Load the allowlist. This is a series of strings corresponding to Error.object_desc
     # Values in the dict will store whether we used the allowlist entry or not.
@@ -1342,13 +1386,23 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
 
     modules = args.modules
     if args.check_typeshed:
-        assert not args.modules, "Cannot pass both --check-typeshed and a list of modules"
+        if args.modules:
+            print(
+                _style("error:", color="red", bold=True),
+                "cannot pass both --check-typeshed and a list of modules",
+            )
+            return 1
         modules = get_typeshed_stdlib_modules(args.custom_typeshed_dir)
         # typeshed added a stub for __main__, but that causes stubtest to check itself
         annoying_modules = {"antigravity", "this", "__main__"}
         modules = [m for m in modules if m not in annoying_modules]
 
-    assert modules, "No modules to check"
+    if not modules:
+        print(
+            _style("error:", color="red", bold=True),
+            "no modules to check",
+        )
+        return 1
 
     options = Options()
     options.incremental = False
@@ -1363,10 +1417,15 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
 
     try:
         modules = build_stubs(modules, options, find_submodules=not args.check_typeshed)
-    except RuntimeError:
+    except StubtestFailure as stubtest_failure:
+        print(
+            _style("error:", color="red", bold=True),
+            f"not checking stubs due to {stubtest_failure}",
+        )
         return 1
 
     exit_code = 0
+    error_count = 0
     for module in modules:
         for error in test_module(module):
             # Filter errors
@@ -1392,6 +1451,7 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
                 generated_allowlist.add(error.object_desc)
                 continue
             print(error.get_description(concise=args.concise))
+            error_count += 1
 
     # Print unused allowlist entries
     if not args.ignore_unused_allowlist:
@@ -1400,6 +1460,7 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
             # This lets us allowlist errors that don't manifest at all on some systems
             if not allowlist[w] and not allowlist_regexes[w].fullmatch(""):
                 exit_code = 1
+                error_count += 1
                 print(f"note: unused allowlist entry {w}")
 
     # Print the generated allowlist
@@ -1407,11 +1468,27 @@ def test_stubs(args: argparse.Namespace, use_builtins_fixtures: bool = False) ->
         for e in sorted(generated_allowlist):
             print(e)
         exit_code = 0
+    elif not args.concise:
+        if error_count:
+            print(
+                _style(
+                    f"Found {error_count} error{plural_s(error_count)}"
+                    f" (checked {len(modules)} module{plural_s(modules)})",
+                    color="red", bold=True
+                )
+            )
+        else:
+            print(
+                _style(
+                    f"Success: no issues found in {len(modules)} module{plural_s(modules)}",
+                    color="green", bold=True
+                )
+            )
 
     return exit_code
 
 
-def parse_options(args: List[str]) -> argparse.Namespace:
+def parse_options(args: List[str]) -> _Arguments:
     parser = argparse.ArgumentParser(
         description="Compares stubs to objects introspected from the runtime."
     )
@@ -1469,8 +1546,11 @@ def parse_options(args: List[str]) -> argparse.Namespace:
     parser.add_argument(
         "--check-typeshed", action="store_true", help="Check all stdlib modules in typeshed"
     )
+    parser.add_argument(
+        "--version", action="version", version="%(prog)s " + mypy.version.__version__
+    )
 
-    return parser.parse_args(args)
+    return parser.parse_args(args, namespace=_Arguments())
 
 
 def main() -> int:

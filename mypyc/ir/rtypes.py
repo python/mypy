@@ -45,11 +45,21 @@ class RType:
     is_unboxed = False
     # This is the C undefined value for this type. It's used for initialization
     # if there's no value yet, and for function return value on error/exception.
+    #
+    # TODO: This shouldn't be specific to C or a string
     c_undefined: str
     # If unboxed: does the unboxed version use reference counting?
     is_refcounted = True
     # C type; use Emitter.ctype() to access
     _ctype: str
+    # If True, error/undefined value overlaps with a valid value. To
+    # detect an exception, PyErr_Occurred() must be used in addition
+    # to checking for error value as the return value of a function.
+    #
+    # For example, no i64 value can be reserved for error value, so we
+    # pick an arbitrary value (e.g. -113) to signal error, but this is
+    # also a valid non-error value.
+    error_overlap = False
 
     @abstractmethod
     def accept(self, visitor: 'RTypeVisitor[T]') -> T:
@@ -173,29 +183,40 @@ class RPrimitive(RType):
 
     def __init__(self,
                  name: str,
+                 *,
                  is_unboxed: bool,
                  is_refcounted: bool,
+                 is_native_int: bool = False,
+                 is_signed: bool = False,
                  ctype: str = 'PyObject *',
-                 size: int = PLATFORM_SIZE) -> None:
+                 size: int = PLATFORM_SIZE,
+                 error_overlap: bool = False) -> None:
         RPrimitive.primitive_map[name] = self
 
         self.name = name
         self.is_unboxed = is_unboxed
-        self._ctype = ctype
         self.is_refcounted = is_refcounted
+        self.is_native_int = is_native_int
+        self.is_signed = is_signed
+        self._ctype = ctype
         self.size = size
-        # TODO: For low-level integers, they actually don't have undefined values
-        #       we need to figure out some way to represent here.
+        self.error_overlap = error_overlap
         if ctype == 'CPyTagged':
             self.c_undefined = 'CPY_INT_TAG'
-        elif ctype in ('int32_t', 'int64_t', 'CPyPtr', 'uint32_t', 'uint64_t'):
+        elif ctype in ('int32_t', 'int64_t'):
+            # This is basically an arbitrary value that is pretty
+            # unlikely to overlap with a real value.
+            self.c_undefined = '-113'
+        elif ctype in ('CPyPtr', 'uint32_t', 'uint64_t'):
+            # TODO: For low-level integers, we need to invent an overlapping
+            #       error value, similar to int64_t above.
             self.c_undefined = '0'
         elif ctype == 'PyObject *':
             # Boxed types use the null pointer as the error value.
             self.c_undefined = 'NULL'
         elif ctype == 'char':
             self.c_undefined = '2'
-        elif ctype == 'PyObject **':
+        elif ctype in ('PyObject **', 'void *'):
             self.c_undefined = 'NULL'
         else:
             assert False, 'Unrecognized ctype: %r' % ctype
@@ -265,16 +286,42 @@ short_int_rprimitive: Final = RPrimitive(
 # Low level integer types (correspond to C integer types)
 
 int32_rprimitive: Final = RPrimitive(
-    "int32", is_unboxed=True, is_refcounted=False, ctype="int32_t", size=4
+    "int32",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int32_t",
+    size=4,
+    error_overlap=True,
 )
 int64_rprimitive: Final = RPrimitive(
-    "int64", is_unboxed=True, is_refcounted=False, ctype="int64_t", size=8
+    "int64",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=True,
+    ctype="int64_t",
+    size=8,
+    error_overlap=True,
 )
 uint32_rprimitive: Final = RPrimitive(
-    "uint32", is_unboxed=True, is_refcounted=False, ctype="uint32_t", size=4
+    "uint32",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint32_t",
+    size=4,
 )
 uint64_rprimitive: Final = RPrimitive(
-    "uint64", is_unboxed=True, is_refcounted=False, ctype="uint64_t", size=8
+    "uint64",
+    is_unboxed=True,
+    is_refcounted=False,
+    is_native_int=True,
+    is_signed=False,
+    ctype="uint64_t",
+    size=8,
 )
 
 # The C 'int' type
@@ -282,15 +329,33 @@ c_int_rprimitive = int32_rprimitive
 
 if IS_32_BIT_PLATFORM:
     c_size_t_rprimitive = uint32_rprimitive
-    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                                        ctype='int32_t', size=4)
+    c_pyssize_t_rprimitive = RPrimitive(
+        'native_int',
+        is_unboxed=True,
+        is_refcounted=False,
+        is_native_int=True,
+        is_signed=True,
+        ctype='int32_t',
+        size=4,
+    )
 else:
     c_size_t_rprimitive = uint64_rprimitive
-    c_pyssize_t_rprimitive = RPrimitive('native_int', is_unboxed=True, is_refcounted=False,
-                                        ctype='int64_t', size=8)
+    c_pyssize_t_rprimitive = RPrimitive(
+        'native_int',
+        is_unboxed=True,
+        is_refcounted=False,
+        is_native_int=True,
+        is_signed=True,
+        ctype='int64_t',
+        size=8,
+    )
 
-# Low level pointer, represented as integer in C backends
+# Untyped pointer, represented as integer in the C backend
 pointer_rprimitive: Final = RPrimitive("ptr", is_unboxed=True, is_refcounted=False, ctype="CPyPtr")
+
+# Untyped pointer, represented as void * in the C backend
+c_pointer_rprimitive: Final = RPrimitive("c_ptr", is_unboxed=False, is_refcounted=False,
+                                         ctype="void *")
 
 # Floats are represent as 'float' PyObject * values. (In the future
 # we'll likely switch to a more efficient, unboxed representation.)
@@ -359,6 +424,10 @@ def is_int32_rprimitive(rtype: RType) -> bool:
 def is_int64_rprimitive(rtype: RType) -> bool:
     return (rtype is int64_rprimitive or
             (rtype is c_pyssize_t_rprimitive and rtype._ctype == 'int64_t'))
+
+
+def is_fixed_width_rtype(rtype: RType) -> bool:
+    return is_int32_rprimitive(rtype) or is_int64_rprimitive(rtype)
 
 
 def is_uint32_rprimitive(rtype: RType) -> bool:
@@ -445,6 +514,10 @@ class TupleNameVisitor(RTypeVisitor[str]):
             return 'I'
         elif t._ctype == 'char':
             return 'C'
+        elif t._ctype == 'int64_t':
+            return '8'  # "8 byte integer"
+        elif t._ctype == 'int32_t':
+            return '4'  # "4 byte integer"
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
         return 'O'
 

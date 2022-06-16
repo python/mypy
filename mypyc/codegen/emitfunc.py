@@ -6,13 +6,14 @@ from typing_extensions import Final
 from mypyc.common import (
     REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX,
 )
-from mypyc.codegen.emit import Emitter
+from mypyc.codegen.emit import Emitter, TracebackAndGotoHandler, DEBUG_ERRORS
 from mypyc.ir.ops import (
     Op, OpVisitor, Goto, Branch, Return, Assign, Integer, LoadErrorValue, GetAttr, SetAttr,
     LoadStatic, InitStatic, TupleGet, TupleSet, Call, IncRef, DecRef, Box, Cast, Unbox,
     BasicBlock, Value, MethodCall, Unreachable, NAMESPACE_STATIC, NAMESPACE_TYPE, NAMESPACE_MODULE,
     RaiseStandardError, CallC, LoadGlobal, Truncate, IntOp, LoadMem, GetElementPtr,
-    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, ERR_FALSE
+    LoadAddress, ComparisonOp, SetMem, Register, LoadLiteral, AssignMulti, KeepAlive, Extend,
+    ERR_FALSE
 )
 from mypyc.ir.rtypes import (
     RType, RTuple, RArray, is_tagged, is_int32_rprimitive, is_int64_rprimitive, RStruct,
@@ -22,10 +23,6 @@ from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETH
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.analysis.blockfreq import frequently_executed_blocks
-
-# Whether to insert debug asserts for all error handling, to quickly
-# catch errors propagating without exceptions set.
-DEBUG_ERRORS = False
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:
@@ -214,6 +211,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # clang whines about self assignment (which we might generate
         # for some casts), so don't emit it.
         if dest != src:
+            # We sometimes assign from an integer prepresentation of a pointer
+            # to a real pointer, and C compilers insist on a cast.
+            if op.src.type.is_unboxed and not op.dest.type.is_unboxed:
+                src = f'(void *){src}'
             self.emit_line(f'{dest} = {src};')
 
     def visit_assign_multi(self, op: AssignMulti) -> None:
@@ -322,7 +323,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
                             and branch.traceback_entry is not None
                             and not branch.negated):
                         # Generate code for the following branch here to avoid
-                        # redundant branches in the generate code.
+                        # redundant branches in the generated code.
                         self.emit_attribute_error(branch, cl.name, op.attr)
                         self.emit_line('goto %s;' % self.label(branch.true))
                         merged_branch = branch
@@ -377,12 +378,13 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         else:
             # ...and struct access for normal attributes.
             attr_expr = self.get_attr_expr(obj, op, decl_cl)
-            if not op.is_init:
+            if not op.is_init and attr_rtype.is_refcounted:
+                # This is not an initalization (where we know that the attribute was
+                # previously undefined), so decref the old value.
                 always_defined = cl.is_always_defined(op.attr)
                 if not always_defined:
                     self.emitter.emit_undefined_attr_check(attr_rtype, attr_expr, '!=')
-                if attr_rtype.is_refcounted:
-                    self.emitter.emit_dec_ref(attr_expr, attr_rtype)
+                self.emitter.emit_dec_ref(attr_expr, attr_rtype)
                 if not always_defined:
                     self.emitter.emit_line('}')
             # This steals the reference to src, so we don't need to increment the arg
@@ -485,8 +487,24 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         self.emitter.emit_box(self.reg(op.src), self.reg(op), op.src.type, can_borrow=True)
 
     def visit_cast(self, op: Cast) -> None:
+        branch = self.next_branch()
+        handler = None
+        if branch is not None:
+            if (branch.value is op
+                    and branch.op == Branch.IS_ERROR
+                    and branch.traceback_entry is not None
+                    and not branch.negated
+                    and branch.false is self.next_block):
+                # Generate code also for the following branch here to avoid
+                # redundant branches in the generated code.
+                handler = TracebackAndGotoHandler(self.label(branch.true),
+                                                  self.source_path,
+                                                  self.module_name,
+                                                  branch.traceback_entry)
+                self.op_index += 1
+
         self.emitter.emit_cast(self.reg(op.src), self.reg(op), op.type,
-                               src_type=op.src.type)
+                               src_type=op.src.type, error=handler)
 
     def visit_unbox(self, op: Unbox) -> None:
         self.emitter.emit_unbox(self.reg(op.src), self.reg(op), op.type)
@@ -525,6 +543,15 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         # for C backend the generated code are straight assignments
         self.emit_line(f"{dest} = {value};")
 
+    def visit_extend(self, op: Extend) -> None:
+        dest = self.reg(op)
+        value = self.reg(op.src)
+        if op.signed:
+            src_cast = self.emit_signed_int_cast(op.src.type)
+        else:
+            src_cast = self.emit_unsigned_int_cast(op.src.type)
+        self.emit_line("{} = {}{};".format(dest, src_cast, value))
+
     def visit_load_global(self, op: LoadGlobal) -> None:
         dest = self.reg(op)
         ann = ''
@@ -538,6 +565,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
         dest = self.reg(op)
         lhs = self.reg(op.lhs)
         rhs = self.reg(op.rhs)
+        if op.op == IntOp.RIGHT_SHIFT:
+            # Signed right shift
+            lhs = self.emit_signed_int_cast(op.lhs.type) + lhs
+            rhs = self.emit_signed_int_cast(op.rhs.type) + rhs
         self.emit_line(f'{dest} = {lhs} {op.op_str[op.op]} {rhs};')
 
     def visit_comparison_op(self, op: ComparisonOp) -> None:
@@ -611,7 +642,10 @@ class FunctionEmitterVisitor(OpVisitor[None]):
             s = str(val)
             if val >= (1 << 31):
                 # Avoid overflowing signed 32-bit int
-                s += 'ULL'
+                if val >= (1 << 63):
+                    s += 'ULL'
+                else:
+                    s += 'LL'
             elif val == -(1 << 63):
                 # Avoid overflowing C integer literal
                 s = '(-9223372036854775807LL - 1)'
@@ -647,14 +681,7 @@ class FunctionEmitterVisitor(OpVisitor[None]):
 
     def emit_traceback(self, op: Branch) -> None:
         if op.traceback_entry is not None:
-            globals_static = self.emitter.static_name('globals', self.module_name)
-            self.emit_line('CPy_AddTraceback("%s", "%s", %d, %s);' % (
-                self.source_path.replace("\\", "\\\\"),
-                op.traceback_entry[0],
-                op.traceback_entry[1],
-                globals_static))
-            if DEBUG_ERRORS:
-                self.emit_line('assert(PyErr_Occurred() != NULL && "failure w/o err!");')
+            self.emitter.emit_traceback(self.source_path, self.module_name, op.traceback_entry)
 
     def emit_attribute_error(self, op: Branch, class_name: str, attr: str) -> None:
         assert op.traceback_entry is not None

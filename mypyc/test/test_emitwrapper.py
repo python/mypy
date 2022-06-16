@@ -22,7 +22,8 @@ class TestArgCheck(unittest.TestCase):
             'if (likely(PyList_Check(obj_x)))',
             '    arg_x = obj_x;',
             'else {',
-            '    CPy_TypeError("list", obj_x); return NULL;',
+            '    CPy_TypeError("list", obj_x);',
+            '    return NULL;',
             '}',
         ], lines)
 

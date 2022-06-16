@@ -571,6 +571,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             if not actual.values:
                 return infer_constraints(template, actual.upper_bound, self.direction)
             return []
+        elif isinstance(actual, ParamSpecType):
+            return infer_constraints(template, actual.upper_bound, self.direction)
         else:
             return []
 
@@ -700,20 +702,46 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
             isinstance(actual, Instance)
             and actual.type.fullname == "builtins.tuple"
         )
-        if len(template.items) == 1:
-            item = get_proper_type(template.items[0])
-            if isinstance(item, UnpackType):
-                unpacked_type = get_proper_type(item.type)
-                if isinstance(unpacked_type, TypeVarTupleType):
-                    if (
-                        isinstance(actual, (TupleType, AnyType))
-                        or is_varlength_tuple
-                    ):
-                        return [Constraint(
-                            type_var=unpacked_type.id,
-                            op=self.direction,
-                            target=actual,
-                        )]
+        unpack_index = find_unpack_in_tuple(template)
+
+        if unpack_index is not None:
+            unpack_item = get_proper_type(template.items[unpack_index])
+            assert isinstance(unpack_item, UnpackType)
+
+            unpacked_type = get_proper_type(unpack_item.type)
+            if isinstance(unpacked_type, TypeVarTupleType):
+                if is_varlength_tuple:
+                    # This case is only valid when the unpack is the only
+                    # item in the tuple.
+                    #
+                    # TODO: We should support this in the case that all the items
+                    # in the tuple besides the unpack have the same type as the
+                    # varlength tuple's type. E.g. Tuple[int, ...] should be valid
+                    # where we expect Tuple[int, Unpack[Ts]], but not for Tuple[str, Unpack[Ts]].
+                    assert len(template.items) == 1
+
+                if (
+                    isinstance(actual, (TupleType, AnyType))
+                    or is_varlength_tuple
+                ):
+                    modified_actual = actual
+                    if isinstance(actual, TupleType):
+                        # Exclude the items from before and after the unpack index.
+                        head = unpack_index
+                        tail = len(template.items) - unpack_index - 1
+                        if tail:
+                            modified_actual = actual.copy_modified(
+                                items=actual.items[head:-tail],
+                            )
+                        else:
+                            modified_actual = actual.copy_modified(
+                                items=actual.items[head:],
+                            )
+                    return [Constraint(
+                        type_var=unpacked_type.id,
+                        op=self.direction,
+                        target=modified_actual,
+                    )]
 
         if isinstance(actual, TupleType) and len(actual.items) == len(template.items):
             res: List[Constraint] = []
@@ -826,3 +854,18 @@ def find_matching_overload_items(overloaded: Overloaded,
         # it maintains backward compatibility.
         res = items[:]
     return res
+
+
+def find_unpack_in_tuple(t: TupleType) -> Optional[int]:
+    unpack_index: Optional[int] = None
+    for i, item in enumerate(t.items):
+        proper_item = get_proper_type(item)
+        if isinstance(proper_item, UnpackType):
+            # We cannot fail here, so we must check this in an earlier
+            # semanal phase.
+            # Funky code here avoids mypyc narrowing the type of unpack_index.
+            old_index = unpack_index
+            assert old_index is None
+            # Don't return so that we can also sanity check there is only one.
+            unpack_index = i
+    return unpack_index

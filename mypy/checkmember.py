@@ -171,7 +171,38 @@ def _analyze_member_access(name: str,
         return AnyType(TypeOfAny.from_error)
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
-    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context, mx.module_symbol_table)
+    return report_missing_attribute(mx.original_type, typ, name, mx)
+
+
+def may_be_awaitable_attribute(
+    name: str,
+    typ: Type,
+    mx: MemberContext,
+    override_info: Optional[TypeInfo] = None
+) -> bool:
+    """Check if the given type has the attribute when awaited."""
+    if mx.chk.checking_missing_await:
+        # Avoid infinite recursion.
+        return False
+    with mx.chk.checking_await_set(), mx.msg.filter_errors() as local_errors:
+        aw_type = mx.chk.get_precise_awaitable_type(typ, local_errors)
+        if aw_type is None:
+            return False
+        _ = _analyze_member_access(name, aw_type, mx, override_info)
+        return not local_errors.has_new_errors()
+
+
+def report_missing_attribute(
+    original_type: Type,
+    typ: Type,
+    name: str,
+    mx: MemberContext,
+    override_info: Optional[TypeInfo] = None
+) -> Type:
+    res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
+    if may_be_awaitable_attribute(name, typ, mx, override_info):
+        mx.msg.possible_missing_await(mx.context)
+    return res_type
 
 
 # The several functions that follow implement analyze_member_access for various
@@ -438,9 +469,7 @@ def analyze_member_var_access(name: str,
     else:
         if mx.chk and mx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return mx.msg.has_no_attr(
-            mx.original_type, itype, name, mx.context, mx.module_symbol_table
-        )
+        return report_missing_attribute(mx.original_type, itype, name, mx)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -851,9 +880,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         ) -> Optional[Type]:
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
-        return mx.msg.has_no_attr(
-            mx.original_type, itype, name, mx.context, mx.module_symbol_table
-        )
+        return report_missing_attribute(mx.original_type, itype, name, mx)
     # For other names surrendered by underscores, we don't make them Enum members
     if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
         return None

@@ -1220,3 +1220,18 @@ def sub(s: str, f: Callable[[str], str]) -> str: ...
 def sub(s: bytes, f: Callable[[bytes], bytes]) -> bytes: ...
 def sub(s, f):
     return f(s)
+
+[case testContextManagerSpecialCase]
+from typing import Generator, Callable, Iterator
+from contextlib import contextmanager
+
+@contextmanager
+def f() -> Iterator[None]:
+    yield
+
+def g() -> None:
+    a = ['']
+    with f():
+        a.pop()
+
+g()
