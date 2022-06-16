@@ -2937,9 +2937,30 @@
       },
       {
         "code": "no-any-expr",
+        "column": 40,
+        "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
+        "offset": 0,
+        "target": "mypy.checkexpr.ExpressionChecker.visit_call_expr_inner"
+      },
+      {
+        "code": "no-any-expr",
+        "column": 42,
+        "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
+        "offset": 11,
+        "target": "mypy.checkexpr.ExpressionChecker.visit_call_expr_inner"
+      },
+      {
+        "code": "no-any-expr",
+        "column": 42,
+        "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
+        "offset": 0,
+        "target": "mypy.checkexpr.ExpressionChecker.visit_call_expr_inner"
+      },
+      {
+        "code": "no-any-expr",
         "column": 35,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 88,
+        "offset": 115,
         "target": "mypy.checkexpr.ExpressionChecker.method_fullname"
       },
       {
@@ -7162,7 +7183,7 @@
         "code": "unreachable",
         "column": 16,
         "message": "Statement is unreachable",
-        "offset": 861,
+        "offset": 870,
         "target": "mypy.errors.Errors.render_messages"
       },
       {
@@ -11800,7 +11821,7 @@
         "code": "no-any-expr",
         "column": 7,
         "message": "Expression has type \"Any\"",
-        "offset": 9,
+        "offset": 10,
         "target": "mypy.main.process_options"
       },
       {
@@ -12947,7 +12968,7 @@
         "code": "no-any-expr",
         "column": 41,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 260,
+        "offset": 262,
         "target": "mypy.messages.MessageBuilder.has_no_attr"
       },
       {
@@ -12993,17 +13014,10 @@
         "target": "mypy.messages.MessageBuilder.unsupported_operand_types"
       },
       {
-        "code": "ignore-without-code",
-        "column": -1,
-        "message": "\"type: ignore\" comment without error code (consider \"type: ignore[attr-defined]\" instead)",
-        "offset": 27,
-        "target": null
-      },
-      {
         "code": "no-any-expr",
         "column": 36,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 223,
+        "offset": 255,
         "target": "mypy.messages.MessageBuilder.incompatible_argument_note"
       },
       {
@@ -22635,6 +22649,13 @@
         "target": "mypy.test.data.split_test_cases"
       },
       {
+        "code": null,
+        "column": 14,
+        "message": "Error code \"no-any-expr\" not covered by \"type: ignore\" comment",
+        "offset": 0,
+        "target": null
+      },
+      {
         "code": "no-any-expr",
         "column": 38,
         "message": "Expression type contains \"Any\" (has type \"str | Any\")",
@@ -22864,14 +22885,14 @@
         "code": "no-any-expr",
         "column": 12,
         "message": "Expression type contains \"Any\" (has type \"set[Any (from unimported type)]\")",
-        "offset": 22,
+        "offset": 17,
         "target": "mypy.test.helpers.parse_options"
       },
       {
         "code": "no-any-expr",
         "column": 7,
         "message": "Expression has type \"Untyped\"",
-        "offset": 7,
+        "offset": 11,
         "target": "mypy.test.helpers.parse_options"
       },
       {
@@ -25201,7 +25222,7 @@
         "code": "no-any-expr",
         "column": 15,
         "message": "Expression type contains \"Any\" (has type \"dict[str, Any]\")",
-        "offset": 98,
+        "offset": 101,
         "target": "mypy.types.UninhabitedType.serialize"
       },
       {

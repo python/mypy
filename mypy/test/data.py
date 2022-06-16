@@ -614,7 +614,7 @@ def split_test_cases(parent: 'DataFileCollector', suite: 'DataSuite',
                 name, parent.name, line_no,
             ))
         platform = platform_flag[1:] if platform_flag else None
-        yield DataDrivenTestCase.from_parent(
+        yield DataDrivenTestCase.from_parent(  # type: ignore[unused-ignore, no-untyped-call]
             parent=parent,
             suite=suite,
             file=file,

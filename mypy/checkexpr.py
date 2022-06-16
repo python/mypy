@@ -361,16 +361,42 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             elif has_untyped_type(callee_type):
                 # Get module of the function, to get its settings
                 #  This is fairly sus, and I'm sure there are cases where it gets
-                #   the wrong module.
+                #   the wrong module. We should instead set it in CallableType
                 if isinstance(e.callee, MemberExpr):
                     if e.callee.kind is None:
                         # class, kinda hacky
-                        it = self.chk._type_maps[0][e.callee.expr]
-                        assert isinstance(it, CallableType)
-                        assert isinstance(it.ret_type, Instance)
-                        callee_module = it.ret_type.type.module_name
+                        it = get_proper_type(self.chk._type_maps[0][e.callee.expr])
+                        if isinstance(it, CallableType):
+                            # callable class reference
+                            ret_type_ = get_proper_type(it.ret_type)
+                            if isinstance(ret_type_, TupleType):
+                                callee_module = ret_type_.partial_fallback.type.module_name
+                            elif isinstance(ret_type_, Instance):
+                                callee_module = ret_type_.type.module_name
+                            else:
+                                callee_module = None
+                        elif isinstance(it, TypeType):
+                            # type reference
+                            if isinstance(it.item, TupleType):
+                                callee_module = it.item.partial_fallback.type.module_name
+                            elif isinstance(it.item, Instance):
+                                callee_module = it.item.type.module_name
+                            elif isinstance(it.item, UnionType):
+                                # TODO: have to figure out which part of the union has the Untyped
+                                callee_module = self.chk.tree.name
+                            else:
+                                callee_module = None
+                        elif isinstance(it, Instance):
+                            # instance reference
+                            callee_module = it.type.module_name
+                        elif isinstance(it, UnionType):
+                            # TODO: have to figure out which part of the union has the Untyped
+                            callee_module = self.chk.tree.name
+                        else:
+                            callee_module = None
                     else:
                         # module
+                        assert isinstance(e.callee.expr, RefExpr)
                         callee_module = e.callee.expr.fullname
                 elif isinstance(e.callee, NameExpr):
                     assert e.callee.fullname
