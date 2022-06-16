@@ -603,7 +603,7 @@ class BuildManager:
                                    or options.use_fine_grained_cache)
                               and not has_reporters)
         self.fscache = fscache
-        
+
         self.find_module_cache = FindModuleCache(self.search_paths, self.fscache, self.options,
                                                  source_set=self.source_set)
 
