@@ -4461,10 +4461,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # Defined through self.x assignment
                 implicit_name = True
                 implicit_node = node
-        # 3. Local (function) scopes
-        for table in reversed(self.locals):
-            if table is not None and name in table:
-                return table[name]
+        # 3. Local (function) scopes (if within function definition)
+        if self.is_func_scope():
+            for table in reversed(self.locals):
+                if table is not None and name in table:
+                    return table[name]
         # 4. Current file global scope
         if name in self.globals:
             return self.globals[name]
