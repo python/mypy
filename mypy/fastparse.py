@@ -931,6 +931,16 @@ class ASTConverter:
                        line: int,
                        no_type_check: bool = False,
                        ) -> List[Argument]:
+                           
+        ### arguments = (arg* posonlyargs, arg* args, arg? vararg, arg* kwonlyargs,
+        ### expr* kw_defaults, arg? kwarg, expr* defaults)
+                           
+        trace = 'ekr_' in repr(args.args)
+        if trace:
+            trace_tag = 'ASTConverter.transform_args'
+            print(f"{trace_tag} {args.args}")
+            print('')
+            
         new_args = []
         names: List[ast3.arg] = []
         posonlyargs = getattr(args, "posonlyargs", cast(List[ast3.arg], []))
@@ -988,6 +998,14 @@ class ASTConverter:
                 arg_type = self.translate_type_comment(arg, type_comment)
         if argument_elide_name(arg.arg):
             pos_only = True
+            
+        ### arg = (identifier arg, expr? annotation, string? type_comment)
+            
+        trace = 'ekr_' in arg.arg
+        if trace:
+            trace_tag = 'ASTConverter.make_argument'
+            print(f"{trace_tag} {arg.arg}")
+            print('')
 
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 

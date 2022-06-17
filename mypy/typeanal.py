@@ -666,9 +666,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ### Called by Sa.analyze_func_def
         ### t.definition is a FuncDef.
 
-        trace = False ### t.definition and t.definition._name.startswith('ekr_f')
+        trace = t.definition and t.definition._name.startswith('ekr_')
         trace_tag = 'TA.visit_callable_type:'
-        ###
         if t.definition:
             arguments = t.definition.arguments
             initializers = [z.initializer for z in arguments]
