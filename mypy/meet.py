@@ -90,6 +90,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if declared.type.alt_promote:
             # Special case: low-level integer type can't be narrowed
             return declared
+        if (isinstance(narrowed, Instance)
+                and narrowed.type.alt_promote
+                and narrowed.type.alt_promote is declared.type):
+            # Special case: 'int' can't be narrowed down to a native int type such as
+            # i64, since they have different runtime representations.
+            return declared
         return meet_types(declared, narrowed)
     elif isinstance(declared, (TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
