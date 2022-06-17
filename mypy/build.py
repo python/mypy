@@ -3179,7 +3179,12 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
     stale = scc
-    ### print('process_stale_scc: scc', scc)  ###
+    if 1:  ###
+        print(f"process_stale_scc: includes ekr_test: {'ekr_test' in scc} len(scc): {len(scc)}\n")
+        if 0: ### Experimental: fails in semantic_analyze_target
+            if 'ekr_test' not in scc:
+                return
+
     for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
