@@ -375,6 +375,25 @@ def test_mixed_arithmetic_and_bitwise_ops() -> None:
     with assertRaises(OverflowError):
         assert int_too_small & i64_3
 
+def test_for_loop() -> None:
+    n: i64 = 0
+    for i in range(i64(5 + int())):
+        n += i
+    assert n == 10
+    n = 0
+    for i in range(i64(5)):
+        n += i
+    assert n == 10
+    n = 0
+    for i in range(i64(2 + int()), 5 + int()):
+        n += i
+    assert n == 9
+    n = 0
+    for i in range(2, i64(5 + int())):
+        n += i
+    assert n == 9
+    assert sum([x * x for x in range(i64(4 + int()))]) == 1 + 4 + 9
+
 [case testI64ErrorValuesAndUndefined]
 from typing import Any
 import sys
