@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column', 'end_line', "end_column")
+    __slots__ = ('line', 'column', 'end_line', 'end_column')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
