@@ -711,8 +711,7 @@ class FuncItem(FuncBase):
                  end_column: Optional[int] = None) -> None:
         super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
-            arg.set_line(
-                self.line, self.column, self.end_line, end_column)
+            arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
