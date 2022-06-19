@@ -1744,6 +1744,11 @@ def foo(value):
 @attr.s
 class Bar:
     field = attr.ib(default=None, converter=foo)
+
+reveal_type(Bar)  # N: Revealed type is "def (field: Any =) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.field)  # N: Revealed type is "Any"
+
 [builtins fixtures/tuple.pyi]
 
 [case testAttrsLambdaConverter]
@@ -1752,6 +1757,11 @@ import attr
 @attr.s
 class Bar:
     name: str = attr.ib(converter=lambda s: s.lower())
+
+reveal_type(Bar)  # N: Revealed type is "def (name: Any) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.name)  # N: Revealed type is "builtins.str"
+
 [builtins fixtures/tuple.pyi]
 
 [case testAttrsNestedClass]
