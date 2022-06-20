@@ -192,8 +192,6 @@ def _build(sources: List[BuildSource],
         reports = Reports(data_dir, options.report_dirs)
 
     source_set = BuildSourceSet(sources)
-    ### print('_build: source_set.source_modules', source_set.source_modules)
-    ### print('_build: source_set.source_paths', source_set.source_paths)
     cached_read = fscache.read
     errors = Errors(options.show_error_context,
                     options.show_column_numbers,
@@ -2673,15 +2671,9 @@ def dispatch(sources: List[BuildSource],
              stdout: TextIO,
              ) -> Graph:
     log_configuration(manager, sources)
-    
-    ### print('dispatch: sources', sources)  ### Only one file.
 
     t0 = time.time()
     graph = load_graph(sources, manager)
-    
-    if 0:  ###
-        import pprint
-        print('dispatch: graph', pprint.pformat(graph))  ### Many modules.
 
     # This is a kind of unfortunate hack to work around some of fine-grained's
     # fragility: if we have loaded less than 50% of the specified files from
@@ -2899,9 +2891,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
         #   (since direct dependencies reflect the imports found in the source)
         #   but A's cached *indirect* dependency on C is wrong.
         dependencies = [dep for dep in st.dependencies if st.priorities.get(dep) != PRI_INDIRECT]
-        
-        ### print('load_graph: dependencies:', dependencies)
-
         if not manager.use_fine_grained_cache():
             # TODO: Ideally we could skip here modules that appeared in st.suppressed
             # because they are not in build with `follow-imports=skip`.
@@ -2958,8 +2947,6 @@ def load_graph(sources: List[BuildSource], manager: BuildManager,
                         seen_files[newst_path] = newst
 
                     assert newst.id not in graph, newst.id
-                    ### ancestor_s = st.path.replace('c:\\repos\\ekr-mypy\\mypy\\','')
-                    ### print(f"load_graph: NEW dependency: {dep:>25} from {ancestor_s}")
                     graph[newst.id] = newst
                     new.append(newst)
             if dep in graph and dep in st.suppressed_set:
@@ -3178,14 +3165,7 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
-    trace = False  ###
     stale = scc
-    if trace:  ###
-        print(f"process_stale_scc: includes ekr_test: {'ekr_test' in scc} len(scc): {len(scc)}\n")
-        if 0: ### Experimental: fails in semantic_analyze_target
-            if 'ekr_test' not in scc:
-                return
-
     for id in stale:
         # We may already have parsed the module, or not.
         # If the former, parse_file() is a no-op.
