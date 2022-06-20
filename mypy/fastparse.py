@@ -785,7 +785,7 @@ class ASTConverter:
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
         
-        if n.name.startswith('ekr_'):  ###
+        if False and n.name.startswith('ekr_'):  ###
             print('')
             print('ASTConverter.do_func_def', n.name)
         
@@ -996,7 +996,7 @@ class ASTConverter:
 
     def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
                       no_type_check: bool, pos_only: bool = False) -> Argument:
-        trace = 'ekr_' in arg.arg
+        trace = 'ekr_' in arg.arg  ###
         trace_tag = 'ASTConverter.make_argument'
         if no_type_check:
             arg_type = None
@@ -1008,7 +1008,7 @@ class ASTConverter:
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
-            elif isinstance(default, ast3.Constant):  ### New, experimental.
+            elif isinstance(default, ast3.Constant):  # #12352.
                 trace = True
                 arg_class = default.value.__class__.__name__
                 if arg_class in ('bool', 'bytes', 'float', 'int', 'str'):
@@ -1017,12 +1017,6 @@ class ASTConverter:
                 arg_type = self.translate_type_comment(arg, type_comment)
         if argument_elide_name(arg.arg):
             pos_only = True
-            
-        ###
-        # ast.arg: A single argument in a list.
-        # arg.arg: argument name
-        # arg.annotation, annotation, such as a Str or Name node.
-        # arg.type_comment: optional type comment.
 
         if trace:
             if isinstance(default, ast3.Constant) and not annotation:
