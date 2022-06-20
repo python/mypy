@@ -1,15 +1,16 @@
 """Stand-alone test file for issue #12352"""
 
-# def ekr_f_annotated(ekr_a: str) -> None:
-    # pass
+def ekr_f_annotated(ekr_a: str) -> None:
+    pass
     
 # Passes with legacy mypy.
-# def ekr_f_annotated_initialized(ekr_a: str="abc") -> None:
-    # pass
+def ekr_f_annotated_initialized(ekr_a: str="abc") -> None:
+    pass
 
 # Fails with legacy mypy.
 # Change this case!
-def ekr_f_not_annotated(ekr_a="abc") -> None:
+def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True, ekr_b=b's' ) -> None:
+### def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True) -> None:
     pass
     
 # Later

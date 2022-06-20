@@ -666,7 +666,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         ### Called by Sa.analyze_func_def
         ### t.definition is a FuncDef.
 
-        trace = t.definition and t.definition._name.startswith('ekr_')
+        trace = False and t.definition and t.definition._name.startswith('ekr_')
         trace_tag = 'TA.visit_callable_type:'
         if t.definition:
             arguments = t.definition.arguments
@@ -733,14 +733,15 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         assert initializer
                         if trace:
                             print(f"{trace_tag} {'***** TO DO':>18}:")
-                        initializer_s = f"Initializer {i}"
-                        print(f"{trace_tag} {initializer_s:>18}: {initializer}")
+                            initializer_s = f"Initializer {i}"
+                            print(f"{trace_tag} {initializer_s:>18}: {initializer}")
                         # Call the *global* expr_to_unanalyzed_type. SA is not available.
                         from mypy.exprtotype import expr_to_unanalyzed_type
                         new_type = expr_to_unanalyzed_type(initializer)
                         ### import pdb ; pdb.set_trace()  ###
                         assert isinstance(new_type, UnboundType), repr(new_type)
-                        print(f"{trace_tag} {'new type':>18}: {new_type.__class__.__name__} {new_type}")
+                        if trace:
+                            print(f"{trace_tag} {'new type':>18}: {new_type.__class__.__name__} {new_type}")
                         ### Experimental.
                             # arguments = t.definition.arguments
                             # annotations = [z.type_annotation for z in arguments]
@@ -748,7 +749,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         arg_types[i] = new_type
                             # t.arg_types[i] = new_type
                             # t.definition.arguments = arguments
-                        print(f"{trace_tag} {'NEW RET':>18}: {t.__class__.__name__} {t}")
+                        if trace: ###
+                            print(f"{trace_tag} {'NEW RET':>18}: {t.__class__.__name__} {t}")
                         return t  ### Hack!
 
             ret = t.copy_modified(arg_types=arg_types,

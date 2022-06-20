@@ -617,7 +617,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             
         trace_tag = 'SA.visit_func_def:'
         module_name = self.cur_mod_id
-        trace = module_name.startswith('ekr')
+        trace = False and module_name.startswith('ekr')
         if trace:  ###
             print(f"{trace_tag} {defn._name}")  # defn.fullname exists only on the second call.
             print(defn)
@@ -655,7 +655,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
         trace_tag = 'SA.analyze_func_def:'
         module_name = self.cur_mod_id
-        trace = module_name.startswith('ekr')
+        trace = False and module_name.startswith('ekr')
         if trace:
             # ast = self.modules.get(module_name)
             initializers_s = ','.join(str(z.initializer) for z in defn.arguments)

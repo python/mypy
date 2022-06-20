@@ -3178,8 +3178,9 @@ def process_stale_scc(graph: Graph, scc: List[str], manager: BuildManager) -> No
 
     Exception: If quick_and_dirty is set, use the cache for fresh modules.
     """
+    trace = False  ###
     stale = scc
-    if 1:  ###
+    if trace:  ###
         print(f"process_stale_scc: includes ekr_test: {'ekr_test' in scc} len(scc): {len(scc)}\n")
         if 0: ### Experimental: fails in semantic_analyze_target
             if 'ekr_test' not in scc:

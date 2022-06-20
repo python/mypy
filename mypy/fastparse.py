@@ -785,9 +785,9 @@ class ASTConverter:
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
         
-        if n.name.startswith('ekr_'):
-            print('ASTConverter.do_func_def', n.name)  ###
+        if n.name.startswith('ekr_'):  ###
             print('')
+            print('ASTConverter.do_func_def', n.name)
         
         self.class_and_function_stack.append('F')
         no_type_check = bool(n.decorator_list and
@@ -932,14 +932,26 @@ class ASTConverter:
                        no_type_check: bool = False,
                        ) -> List[Argument]:
                            
-        ### arguments = (arg* posonlyargs, arg* args, arg? vararg, arg* kwonlyargs,
-        ### expr* kw_defaults, arg? kwarg, expr* defaults)
+        ### arguments = (
+        #   arg* posonlyargs, arg* args, arg? vararg, arg* kwonlyargs,
+        #   expr* kw_defaults, arg? kwarg, expr* defaults
+        #  )
+        
+        # ast.arg: A single argument in a list.
+        # arg.arg: argument name
+        # arg.annotation, annotation, such as a Str or Name node.
+        # arg.type_comment: optional type comment.
                            
-        trace = 'ekr_' in repr(args.args)
+        trace = False and any('ekr_' in z.arg for z in args.args)
         if trace:
+            import ast  # assumes python 3.8+
             trace_tag = 'ASTConverter.transform_args'
-            print(f"{trace_tag} {args.args}")
-            print('')
+            if any(z.annotation for z in args.args):
+                print(trace_tag)
+                for z in args.args:
+                    if z.annotation:
+                        ann_s = f"ast.Name: {z.annotation.id}" if isinstance(z.annotation, ast.Name) else z.annotation.__class__.__name__
+                        print(f"  {z.arg} annotation: {ann_s}")
             
         new_args = []
         names: List[ast3.arg] = []
@@ -984,6 +996,8 @@ class ASTConverter:
 
     def make_argument(self, arg: ast3.arg, default: Optional[ast3.expr], kind: ArgKind,
                       no_type_check: bool, pos_only: bool = False) -> Argument:
+        trace = 'ekr_' in arg.arg
+        trace_tag = 'ASTConverter.make_argument'
         if no_type_check:
             arg_type = None
         else:
@@ -994,18 +1008,28 @@ class ASTConverter:
             arg_type = None
             if annotation is not None:
                 arg_type = TypeConverter(self.errors, line=arg.lineno).visit(annotation)
+            elif isinstance(default, ast3.Constant):  ### New, experimental.
+                trace = True
+                arg_class = default.value.__class__.__name__
+                if arg_class in ('bool', 'bytes', 'float', 'int', 'str'):
+                    arg_type = UnboundType(arg_class)
             else:
                 arg_type = self.translate_type_comment(arg, type_comment)
         if argument_elide_name(arg.arg):
             pos_only = True
             
-        ### arg = (identifier arg, expr? annotation, string? type_comment)
-            
-        trace = 'ekr_' in arg.arg
+        ###
+        # ast.arg: A single argument in a list.
+        # arg.arg: argument name
+        # arg.annotation, annotation, such as a Str or Name node.
+        # arg.type_comment: optional type comment.
+
         if trace:
-            trace_tag = 'ASTConverter.make_argument'
-            print(f"{trace_tag} {arg.arg}")
-            print('')
+            if isinstance(default, ast3.Constant) and not annotation:
+                print(f"{trace_tag} {arg.arg:>7}: annotate using {arg_type!s:16} = ast.Constant({default.value})")
+            else:
+                ann_s = f"ast.Name({annotation.id})" if isinstance(annotation, ast3.Name) else repr(annotation)
+                print(f"{trace_tag} {arg.arg:>7}: annotation: {ann_s} default: {default.__class__.__name__}")
 
         return Argument(Var(arg.arg), arg_type, self.visit(default), kind, pos_only)
 
@@ -1895,6 +1919,8 @@ class TypeConverter:
         # an attribute access with a `# type: ignore` because it would be
         # unused on < 3.8.
         kind: str = getattr(n, "kind")  # noqa
+        
+        ### print('TypeConverter.visit_Str', kind, n)  ###
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
