@@ -784,11 +784,7 @@ class ASTConverter:
     def do_func_def(self, n: Union[ast3.FunctionDef, ast3.AsyncFunctionDef],
                     is_coroutine: bool = False) -> Union[FuncDef, Decorator]:
         """Helper shared between visit_FunctionDef and visit_AsyncFunctionDef."""
-        
-        if False and n.name.startswith('ekr_'):  ###
-            print('')
-            print('ASTConverter.do_func_def', n.name)
-        
+
         self.class_and_function_stack.append('F')
         no_type_check = bool(n.decorator_list and
                              any(is_no_type_check_decorator(d) for d in n.decorator_list))
@@ -1018,7 +1014,7 @@ class ASTConverter:
         if argument_elide_name(arg.arg):
             pos_only = True
 
-        if trace:
+        if False and trace:
             if isinstance(default, ast3.Constant) and not annotation:
                 print(f"{trace_tag} {arg.arg:>7}: annotate using {arg_type!s:16} = ast.Constant({default.value})")
             else:
@@ -1809,7 +1805,6 @@ class TypeConverter:
         return None
 
     def visit_Name(self, n: Name) -> Type:
-        ### print('visit_Name', n, n.id)   ###
         return UnboundType(n.id, line=self.line, column=self.convert_column(n.col_offset))
 
     def visit_BinOp(self, n: ast3.BinOp) -> Type:
@@ -1828,7 +1823,6 @@ class TypeConverter:
         if isinstance(n.value, bool):
             return RawExpressionType(n.value, 'builtins.bool', line=self.line)
         else:
-            ### print('visit_NameConstant', n, n.value)
             return UnboundType(str(n.value), line=self.line, column=n.col_offset)
 
     # Only for 3.8 and newer
@@ -1838,7 +1832,6 @@ class TypeConverter:
             # None is a type.
             return UnboundType('None', line=self.line)
         if isinstance(val, str):
-            ### print('visit_Constant', n, val)   ###
             # Parse forward reference.
             if (n.kind and 'u' in n.kind) or self.assume_str_is_unicode:
                 return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
@@ -1913,8 +1906,6 @@ class TypeConverter:
         # an attribute access with a `# type: ignore` because it would be
         # unused on < 3.8.
         kind: str = getattr(n, "kind")  # noqa
-        
-        ### print('TypeConverter.visit_Str', kind, n)  ###
 
         if 'u' in kind or self.assume_str_is_unicode:
             return parse_type_string(n.s, 'builtins.unicode', self.line, n.col_offset,
