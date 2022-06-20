@@ -10,12 +10,11 @@ def ekr_f_annotated_initialized(ekr_a: str="abc") -> None:
 # Fails with legacy mypy.
 # Change this case!
 def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True, ekr_b=b's' ) -> None:
-### def ekr_f_not_annotated(ekr_a="abc", i=1, f=0.1, aBool=True) -> None:
     pass
     
 # Later
-# def ekr_f_not_annotated2(b, ekr_a="abc") -> None:
-    # pass
+def ekr_f_not_annotated2(b: int, ekr_a="abc") -> None:
+    pass
     
 # a: str="abc"
 # b="xyz"
