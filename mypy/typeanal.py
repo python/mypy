@@ -658,42 +658,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
     def visit_parameters(self, t: Parameters) -> Type:
         raise NotImplementedError("ParamSpec literals cannot have unbound TypeVars")
 
-    ekr_call_set = set()
-
     def visit_callable_type(self, t: CallableType, nested: bool = True) -> Type:
         # Every Callable can bind its own type variables, if they're not in the outer scope
-        
-        ### Called by Sa.analyze_func_def
-        ### t.definition is a FuncDef.
-
-        trace = False and t.definition and t.definition._name.startswith('ekr_')
-        trace_tag = 'TA.visit_callable_type:'
-        if t.definition:
-            arguments = t.definition.arguments
-            initializers = [z.initializer for z in arguments]
-            annotations = [z.type_annotation for z in arguments]
-            assert len(t.arg_names) == len(initializers), (t.arg_names, initializers)
-        else:
-            arguments = []
-            initializers = []
-            annotations = []
-        # Supposedly t.definition is only for traces???
-        if trace and t.definition:
-            # t.definition is either None or is a FuncDef!
-            arguments_s = [z.variable.name for z in arguments]  # A list of Argument objects.
-            initializers_s = [str(z) for z in initializers]
-            annotations_s = [f"{z.__class__.__name__} = {z}" for z in annotations]
-            # print(f"{trace_tag} t.definition: {t.definition}") # Prints parse tree.
-            print(f"{trace_tag}                  t: {t.__class__.__name__} {t}")
-            print(f"{trace_tag} t.definition._name: {t.definition._name}")
-            print(f"{trace_tag}          arguments: {arguments_s}")
-            print(f"{trace_tag}        annotations: {annotations_s}")
-            print(f"{trace_tag}       initializers: {initializers_s}")
-            print(f"{trace_tag}        t.arg_kinds: {t.arg_kinds}")
-            print(f"{trace_tag}        t.arg_names: {t.arg_names}")
-            print(f"{trace_tag}        t.arg_types: {t.arg_types}")
-            print(f"{trace_tag}        t.variables: {t.variables}")
-
         with self.tvar_scope_frame():
             if self.defining_alias:
                 variables = t.variables
@@ -708,51 +674,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 ]
             else:
                 arg_types = self.anal_array(t.arg_types, nested=nested)
-                
-            if initializers:  ###
-                n_args = len(t.arg_kinds)
-                assert len(t.arg_names) == n_args, (n_args, t.arg_names, t.arg_kinds)
-                for i, arg_name in enumerate(t.arg_names):
-                    arg_type = t.arg_types[i]
-                    arg_kind = t.arg_kinds[i]
-                    initializer = initializers[i]
-                    annotation = annotations[i]
-                    # Only initialized args will have arg_kind == ArgKind.ARG_OPT
-                    if trace:
-                        arg_s = f"arg {i}"
-                        arg_type_s = f"arg type {i}"
-                        annotation_s = f"Annotation {i}"
-                        print(f"{trace_tag} {arg_s:>18}: kind: {arg_kind} name: {arg_name}")
-                        print(f"{trace_tag} {arg_type_s:>18}: {arg_type.__class__.__name__} {arg_type}")
-                        print(f"{trace_tag} {annotation_s:>18}: {annotation.__class__.__name__} {annotation}")
-                    
-                    if arg_kind == ArgKind.ARG_OPT and not annotation:
-                        ###
-                        ### Create an annotation in the FuncDef (t.definition.arguments)
-                        ###
-                        assert initializer
-                        if trace:
-                            print(f"{trace_tag} {'***** TO DO':>18}:")
-                            initializer_s = f"Initializer {i}"
-                            print(f"{trace_tag} {initializer_s:>18}: {initializer}")
-                        # Call the *global* expr_to_unanalyzed_type. SA is not available.
-                        from mypy.exprtotype import expr_to_unanalyzed_type
-                        new_type = expr_to_unanalyzed_type(initializer)
-                        ### import pdb ; pdb.set_trace()  ###
-                        assert isinstance(new_type, UnboundType), repr(new_type)
-                        if trace:
-                            print(f"{trace_tag} {'new type':>18}: {new_type.__class__.__name__} {new_type}")
-                        ### Experimental.
-                            # arguments = t.definition.arguments
-                            # annotations = [z.type_annotation for z in arguments]
-                        t.definition.arguments[i].type_annotation = new_type
-                        arg_types[i] = new_type
-                            # t.arg_types[i] = new_type
-                            # t.definition.arguments = arguments
-                        if trace: ###
-                            print(f"{trace_tag} {'NEW RET':>18}: {t.__class__.__name__} {t}")
-                        return t  ### Hack!
-
             ret = t.copy_modified(arg_types=arg_types,
                                   ret_type=self.anal_type(t.ret_type, nested=nested),
                                   # If the fallback isn't filled in yet,
@@ -762,11 +683,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                                   variables=self.anal_var_defs(variables),
                                   type_guard=special,
                                   )
-                                  
-            assert isinstance(ret, CallableType), ret.__class__.__name__ ###
-            if trace:  ###
-                print(f"{trace_tag} {'ret':>18}: {ret}")
-                print('')
         return ret
 
     def anal_type_guard(self, t: Type) -> Optional[Type]:

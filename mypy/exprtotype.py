@@ -136,7 +136,6 @@ def expr_to_unanalyzed_type(expr: Expression,
                          for t in expr.items],
                         line=expr.line, column=expr.column)
     elif isinstance(expr, StrExpr):
-        ### print('expr_to_unanalyzed_type', expr.value)  ###
         return parse_type_string(expr.value, 'builtins.str', expr.line, expr.column,
                                  assume_str_is_unicode=expr.from_python_3)
     elif isinstance(expr, BytesExpr):

@@ -2595,7 +2595,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         self.any_as_dots = False
 
     def visit_unbound_type(self, t: UnboundType) -> str:
-        s = t.name + '? (unbound)'
+        s = t.name + '?'
         if t.args:
             s += f'[{self.list_str(t.args)}]'
         return s
@@ -2631,7 +2631,6 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             return f"<Deleted '{t.source}'>"
 
     def visit_instance(self, t: Instance) -> str:
-
         if t.last_known_value and not t.args:
             # Instances with a literal fallback should never be generic. If they are,
             # something went wrong so we fall back to showing the full Instance repr.
@@ -2700,8 +2699,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
             s += r
 
             if t.arg_kinds[i].is_optional():
-                ### s += ' ='
-                s += ' <OPT1>'
+                s += ' ='
 
         return f'[{s}]'
 
@@ -2738,8 +2736,7 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
                 s += name + ': '
             s += t.arg_types[i].accept(self)
             if t.arg_kinds[i].is_optional():
-                ### s += ' ='
-                s += ' <OPT2>'
+                s += ' ='
 
         if param_spec is not None:
             n = param_spec.name

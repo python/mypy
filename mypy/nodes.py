@@ -740,10 +740,6 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
 
-        if False and name.startswith('ekr_'):  ###
-            print('FuncDef.__init__', name, self)  # call repr(self) *last*.
-            print('')
-            ### import pdb ; pdb.set_trace()  ### FuncDef.__init__
     @property
     def name(self) -> str:
         return self._name

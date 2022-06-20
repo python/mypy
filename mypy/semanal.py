@@ -609,21 +609,6 @@ class SemanticAnalyzer(NodeVisitor[None],
     #
 
     def visit_func_def(self, defn: FuncDef) -> None:
-        
-        ###
-        # semantic_analysis_for_scc calls this *twice* for top-level functions:
-        # process_top_levels(graph, scc, patches)
-        # process_functions(graph, scc, patches)
-            
-        trace_tag = 'SA.visit_func_def:'
-        module_name = self.cur_mod_id
-        trace = False and module_name.startswith('ekr')
-        if trace:  ###
-            print(f"{trace_tag} {defn._name}")  # defn.fullname exists only on the second call.
-            print(defn)
-            print('')
-            ### import pdb ; pdb.set_trace(header=trace_tag)  ### SA.visit_func_def
-
         self.statement = defn
 
         # Visit default values because they may contain assignment expressions.
@@ -652,25 +637,8 @@ class SemanticAnalyzer(NodeVisitor[None],
             self.analyze_func_def(defn)
 
     def analyze_func_def(self, defn: FuncDef) -> None:
-
-        trace_tag = 'SA.analyze_func_def:'
-        module_name = self.cur_mod_id
-        trace = False and module_name.startswith('ekr')
-        if trace:
-            # ast = self.modules.get(module_name)
-            initializers_s = ','.join(str(z.initializer) for z in defn.arguments)
-            print(
-                # f"{trace_tag}            defn: {defn.__class__.__name__}\n"
-                f"{trace_tag}  defn._fullname: {defn._fullname}\n"
-                f"{trace_tag}       arguments: {defn.arguments}\n"
-                f"{trace_tag}    initializers: {initializers_s}\n"
-                f"{trace_tag}            defn: {defn.__class__.__name__} {defn}\n"
-                # f"{trace_tag} self.cur_mod_id: {module_name}\n"
-                # f"{trace_tag}  AST (MypyFile): {ast.__class__.__name__}\n"
-            )
-
         self.function_stack.append(defn)
-        
+
         if defn.type:
             assert isinstance(defn.type, CallableType)
             self.update_function_type_variables(defn.type, defn)
@@ -697,8 +665,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                 tag = self.track_incomplete_refs()
                 result = analyzer.visit_callable_type(defn.type, nested=False)
                 # Don't store not ready types (including placeholders).
-                if False and trace:
-                    import pdb ; pdb.set_trace()  ###
                 if self.found_incomplete_ref(tag) or has_placeholder(result):
                     self.defer(defn)
                     return
@@ -2568,42 +2534,6 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def process_type_annotation(self, s: AssignmentStmt) -> None:
         """Analyze type annotation or infer simple literal type."""
-        def callers(n: int=4) -> str:
-            """
-            Return a string containing a comma-separated list of the callers
-            of the function that called g.callerList.
-            """
-            i, result = 2, []
-            while True:
-                s = callerName(n=i)
-                if s:
-                    result.append(s)
-                if not s or len(result) >= n:
-                    break
-                i += 1
-            return ', '.join(reversed(result))
-
-        def callerName(n: int) -> str:
-            """Get the function name from the call stack."""
-            import sys
-            try:
-                f1 = sys._getframe(n)
-                code1 = f1.f_code
-                return code1.co_name
-            except Exception:
-                return ''
-        if 1:
-            trace = False
-        else:
-            trace_tag = 'SA.process_type_annotation'
-            module_name = self.cur_mod_id
-            trace = module_name.startswith('ekr')  ###
-        
-        if trace:
-            # s.type: UnboundType for annotated assignments, else None.
-            # print(f"{trace_tag}      s: {s}")
-            print(f"{trace_tag} s.type: {s.type.__class__.__name__} {s.type}")
-
         if s.type:
             lvalue = s.lvalues[-1]
             allow_tuple_literal = isinstance(lvalue, TupleExpr)
@@ -2612,12 +2542,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             if analyzed is None or has_placeholder(analyzed):
                 return
             s.type = analyzed
-            if trace:
-                print(
-                    # An ast.NameExpr node.
-                    f"{trace_tag} Adjust: lvalue {lvalue.__class__.__name__} => "
-                    # an Instance, a subclass of ProperType and Type.
-                    f"{analyzed.__class__.__name__} = {analyzed}")
             if (self.type and self.type.is_protocol and isinstance(lvalue, NameExpr) and
                     isinstance(s.rvalue, TempNode) and s.rvalue.no_rhs):
                 if isinstance(lvalue.node, Var):
@@ -2634,9 +2558,6 @@ class SemanticAnalyzer(NodeVisitor[None],
             # Store type into nodes.
             for lvalue in s.lvalues:
                 self.store_declared_types(lvalue, s.type)
-                
-        if trace:
-            print('')  ###
 
     def is_annotated_protocol_member(self, s: AssignmentStmt) -> bool:
         """Check whether a protocol member is annotated.
@@ -4762,16 +4683,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         return None
 
     def lookup_fully_qualified(self, fullname: str) -> SymbolTableNode:
-        
-        trace_tag = 'lookup_fully_qualified'
-        module_name = self.cur_mod_id
-        trace = module_name.startswith('ekr')  ###
         ret = self.lookup_fully_qualified_or_none(fullname)
-        if False and trace:
-            print('')
-            print(f"{trace_tag} {fullname} => {ret}")
-            print('')
-
         assert ret is not None, fullname
         return ret
 
