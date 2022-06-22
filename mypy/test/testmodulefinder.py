@@ -5,7 +5,6 @@ from mypy.modulefinder import (
     FindModuleCache,
     SearchPaths,
     ModuleNotFoundReason,
-    expand_site_packages
 )
 
 from mypy.test.helpers import Suite, assert_equal
@@ -149,12 +148,17 @@ class ModuleFinderSitePackagesSuite(Suite):
             "modulefinder-site-packages",
         ))
 
-        egg_dirs, site_packages = expand_site_packages([self.package_dir])
+        package_paths = (
+            os.path.join(self.package_dir, "baz"),
+            os.path.join(self.package_dir, "..", "not-a-directory"),
+            os.path.join(self.package_dir, "..", "modulefinder-src"),
+            self.package_dir,
+        )
 
         self.search_paths = SearchPaths(
             python_path=(),
             mypy_path=(os.path.join(data_path, "pkg1"),),
-            package_path=tuple(egg_dirs + site_packages),
+            package_path=tuple(package_paths),
             typeshed_path=(),
         )
         options = Options()

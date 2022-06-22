@@ -14,6 +14,7 @@ from mypy.typeanal import (
     make_optional_type,
 )
 from mypy.semanal_enum import ENUM_BASES
+from mypy.traverser import has_await_expression
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, NoneType, TypeVarType,
     TupleType, TypedDictType, Instance, ErasedType, UnionType,
@@ -69,7 +70,7 @@ from mypy.typeops import (
     try_expanding_sum_type_to_union, tuple_fallback, make_simplified_union,
     true_only, false_only, erase_to_union_or_bound, function_type,
     callable_type, try_getting_str_literals, custom_special_method,
-    is_literal_type_like,
+    is_literal_type_like, simple_literal_type,
 )
 from mypy.message_registry import ErrorMessage
 import mypy.errorcodes as codes
@@ -177,6 +178,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     # Type context for type inference
     type_context: List[Optional[Type]]
 
+    # cache resolved types in some cases
+    resolved_type: Dict[Expression, ProperType]
+
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
@@ -196,6 +200,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # multiassign_from_union, or maybe even combine the two?
         self.type_overrides: Dict[Expression, Type] = {}
         self.strfrm_checker = StringFormatterChecker(self, self.chk, self.msg)
+
+        self.resolved_type = {}
+
+    def reset(self) -> None:
+        self.resolved_type = {}
 
     def visit_name_expr(self, e: NameExpr) -> Type:
         """Type check a name expression.
@@ -1564,6 +1573,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                                   outer_context=outer_context)
             self.msg.incompatible_argument_note(original_caller_type, callee_type, context,
                                                 code=code)
+            self.chk.check_possible_missing_await(caller_type, callee_type, context)
 
     def check_overload_call(self,
                             callee: Overloaded,
@@ -2577,13 +2587,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif (is_subtype(right_type, left_type)
                 and isinstance(left_type, Instance)
                 and isinstance(right_type, Instance)
+                and left_type.type.alt_promote is not right_type.type
                 and lookup_definer(left_type, op_name) != lookup_definer(right_type, rev_op_name)):
-            # When we do "A() + B()" where B is a subclass of B, we'll actually try calling
+            # When we do "A() + B()" where B is a subclass of A, we'll actually try calling
             # B's __radd__ method first, but ONLY if B explicitly defines or overrides the
             # __radd__ method.
             #
             # This mechanism lets subclasses "refine" the expected outcome of the operation, even
             # if they're located on the RHS.
+            #
+            # As a special case, the alt_promote check makes sure that we don't use the
+            # __radd__ method of int if the LHS is a native int type.
 
             variants_raw = [
                 (right_op, right_type, left_expr),
@@ -3269,13 +3283,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_list_expr(self, e: ListExpr) -> Type:
         """Type check a list expression [...]."""
-        return self.check_lst_expr(e.items, 'builtins.list', '<list>', e)
+        return self.check_lst_expr(e, 'builtins.list', '<list>')
 
     def visit_set_expr(self, e: SetExpr) -> Type:
-        return self.check_lst_expr(e.items, 'builtins.set', '<set>', e)
+        return self.check_lst_expr(e, 'builtins.set', '<set>')
 
     def fast_container_type(
-            self, items: List[Expression], container_fullname: str
+            self, e: Union[ListExpr, SetExpr, TupleExpr], container_fullname: str
     ) -> Optional[Type]:
         """
         Fast path to determine the type of a list or set literal,
@@ -3290,21 +3304,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ctx = self.type_context[-1]
         if ctx:
             return None
+        rt = self.resolved_type.get(e, None)
+        if rt is not None:
+            return rt if isinstance(rt, Instance) else None
         values: List[Type] = []
-        for item in items:
+        for item in e.items:
             if isinstance(item, StarExpr):
                 # fallback to slow path
+                self.resolved_type[e] = NoneType()
                 return None
             values.append(self.accept(item))
         vt = join.join_type_list(values)
         if not allow_fast_container_literal(vt):
+            self.resolved_type[e] = NoneType()
             return None
-        return self.chk.named_generic_type(container_fullname, [vt])
+        ct = self.chk.named_generic_type(container_fullname, [vt])
+        self.resolved_type[e] = ct
+        return ct
 
-    def check_lst_expr(self, items: List[Expression], fullname: str,
-                       tag: str, context: Context) -> Type:
+    def check_lst_expr(self, e: Union[ListExpr, SetExpr, TupleExpr], fullname: str,
+                       tag: str) -> Type:
         # fast path
-        t = self.fast_container_type(items, fullname)
+        t = self.fast_container_type(e, fullname)
         if t:
             return t
 
@@ -3323,10 +3344,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             variables=[tv])
         out = self.check_call(constructor,
                               [(i.expr if isinstance(i, StarExpr) else i)
-                               for i in items],
+                               for i in e.items],
                               [(nodes.ARG_STAR if isinstance(i, StarExpr) else nodes.ARG_POS)
-                               for i in items],
-                              context)[0]
+                               for i in e.items],
+                              e)[0]
         return remove_instance_last_known_values(out)
 
     def visit_tuple_expr(self, e: TupleExpr) -> Type:
@@ -3376,7 +3397,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     # A star expression that's not a Tuple.
                     # Treat the whole thing as a variable-length tuple.
-                    return self.check_lst_expr(e.items, 'builtins.tuple', '<tuple>', e)
+                    return self.check_lst_expr(e, 'builtins.tuple', '<tuple>')
             else:
                 if not type_context_items or j >= len(type_context_items):
                     tt = self.accept(item)
@@ -3402,6 +3423,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ctx = self.type_context[-1]
         if ctx:
             return None
+        rt = self.resolved_type.get(e, None)
+        if rt is not None:
+            return rt if isinstance(rt, Instance) else None
         keys: List[Type] = []
         values: List[Type] = []
         stargs: Optional[Tuple[Type, Type]] = None
@@ -3415,6 +3439,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ):
                     stargs = (st.args[0], st.args[1])
                 else:
+                    self.resolved_type[e] = NoneType()
                     return None
             else:
                 keys.append(self.accept(key))
@@ -3422,10 +3447,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         kt = join.join_type_list(keys)
         vt = join.join_type_list(values)
         if not (allow_fast_container_literal(kt) and allow_fast_container_literal(vt)):
+            self.resolved_type[e] = NoneType()
             return None
         if stargs and (stargs[0] != kt or stargs[1] != vt):
+            self.resolved_type[e] = NoneType()
             return None
-        return self.chk.named_generic_type('builtins.dict', [kt, vt])
+        dt = self.chk.named_generic_type('builtins.dict', [kt, vt])
+        self.resolved_type[e] = dt
+        return dt
 
     def visit_dict_expr(self, e: DictExpr) -> Type:
         """Type check a dict expression.
@@ -3775,8 +3804,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_generator_expr(self, e: GeneratorExpr) -> Type:
         # If any of the comprehensions use async for, the expression will return an async generator
-        # object
-        if any(e.is_async):
+        # object, or if the left-side expression uses await.
+        if any(e.is_async) or has_await_expression(e.left_expr):
             typ = 'typing.AsyncGenerator'
             # received type is always None in async generator expressions
             additional_args: List[Type] = [NoneType()]
@@ -3874,26 +3903,43 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if_type = self.analyze_cond_branch(if_map, e.if_expr, context=ctx,
                                            allow_none_return=allow_none_return)
 
+        # we want to keep the narrowest value of if_type for union'ing the branches
+        # however, it would be silly to pass a literal as a type context. Pass the
+        # underlying fallback type instead.
+        if_type_fallback = simple_literal_type(get_proper_type(if_type)) or if_type
+
         # Analyze the right branch using full type context and store the type
         full_context_else_type = self.analyze_cond_branch(else_map, e.else_expr, context=ctx,
                                                           allow_none_return=allow_none_return)
+
         if not mypy.checker.is_valid_inferred_type(if_type):
             # Analyze the right branch disregarding the left branch.
             else_type = full_context_else_type
+            # we want to keep the narrowest value of else_type for union'ing the branches
+            # however, it would be silly to pass a literal as a type context. Pass the
+            # underlying fallback type instead.
+            else_type_fallback = simple_literal_type(get_proper_type(else_type)) or else_type
 
             # If it would make a difference, re-analyze the left
             # branch using the right branch's type as context.
-            if ctx is None or not is_equivalent(else_type, ctx):
+            if ctx is None or not is_equivalent(else_type_fallback, ctx):
                 # TODO: If it's possible that the previous analysis of
                 # the left branch produced errors that are avoided
                 # using this context, suppress those errors.
-                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type,
+                if_type = self.analyze_cond_branch(if_map, e.if_expr, context=else_type_fallback,
                                                    allow_none_return=allow_none_return)
 
+        elif if_type_fallback == ctx:
+            # There is no point re-running the analysis if if_type is equal to ctx.
+            # That would  be an exact duplicate of the work we just did.
+            # This optimization is particularly important to avoid exponential blowup with nested
+            # if/else expressions: https://github.com/python/mypy/issues/9591
+            # TODO: would checking for is_proper_subtype also work and cover more cases?
+            else_type = full_context_else_type
         else:
             # Analyze the right branch in the context of the left
             # branch's type.
-            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type,
+            else_type = self.analyze_cond_branch(else_map, e.else_expr, context=if_type_fallback,
                                                  allow_none_return=allow_none_return)
 
         # Only create a union type if the type context is a union, to be mostly
@@ -3947,6 +3993,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typ = self.visit_yield_from_expr(node, allow_none_return=True)
             elif allow_none_return and isinstance(node, ConditionalExpr):
                 typ = self.visit_conditional_expr(node, allow_none_return=True)
+            elif allow_none_return and isinstance(node, AwaitExpr):
+                typ = self.visit_await_expr(node, allow_none_return=True)
             else:
                 typ = node.accept(self)
         except Exception as err:
@@ -4059,17 +4107,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                                    'actual type', 'expected type')
         return self.chk.get_generator_receive_type(return_type, False)
 
-    def visit_await_expr(self, e: AwaitExpr) -> Type:
+    def visit_await_expr(self, e: AwaitExpr, allow_none_return: bool = False) -> Type:
         expected_type = self.type_context[-1]
         if expected_type is not None:
             expected_type = self.chk.named_generic_type('typing.Awaitable', [expected_type])
         actual_type = get_proper_type(self.accept(e.expr, expected_type))
         if isinstance(actual_type, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=actual_type)
-        return self.check_awaitable_expr(actual_type, e,
-                                         message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
+        ret = self.check_awaitable_expr(actual_type, e,
+                                        message_registry.INCOMPATIBLE_TYPES_IN_AWAIT)
+        if not allow_none_return and isinstance(get_proper_type(ret), NoneType):
+            self.chk.msg.does_not_return_value(None, e)
+        return ret
 
-    def check_awaitable_expr(self, t: Type, ctx: Context, msg: Union[str, ErrorMessage]) -> Type:
+    def check_awaitable_expr(
+            self, t: Type, ctx: Context, msg: Union[str, ErrorMessage], ignore_binder: bool = False
+    ) -> Type:
         """Check the argument to `await` and extract the type of value.
 
         Also used by `async for` and `async with`.
@@ -4081,7 +4134,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             generator = self.check_method_call_by_name('__await__', t, [], [], ctx)[0]
             ret_type = self.chk.get_generator_return_type(generator, False)
             ret_type = get_proper_type(ret_type)
-            if isinstance(ret_type, UninhabitedType) and not ret_type.ambiguous:
+            if (
+                not ignore_binder
+                and isinstance(ret_type, UninhabitedType)
+                and not ret_type.ambiguous
+            ):
                 self.chk.binder.unreachable()
             return ret_type
 

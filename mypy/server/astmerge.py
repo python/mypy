@@ -307,7 +307,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             return
         self.fixup_type(info.declared_metaclass)
         self.fixup_type(info.metaclass_type)
-        self.fixup_type(info._promote)
+        for target in info._promote:
+            self.fixup_type(target)
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
         info.defn.info = self.fixup(info)

@@ -42,7 +42,7 @@ from mypy.subtypes import (
 )
 from mypy.sametypes import is_same_type
 from mypy.typeops import separate_union_literals
-from mypy.util import unmangle
+from mypy.util import unmangle, plural_s
 from mypy.errorcodes import ErrorCode
 from mypy import message_registry, errorcodes as codes
 
@@ -806,6 +806,9 @@ class MessageBuilder:
     def type_not_iterable(self, type: Type, context: Context) -> None:
         self.fail(f'{format_type(type)} object is not iterable', context)
 
+    def possible_missing_await(self, context: Context) -> None:
+        self.note('Maybe you forgot to use "await"?', context)
+
     def incompatible_operator_assignment(self, op: str,
                                          context: Context) -> None:
         self.fail(f'Result type of {op} incompatible in assignment',
@@ -944,7 +947,7 @@ class MessageBuilder:
             self.fail('Cannot infer function type argument', context)
 
     def invalid_var_arg(self, typ: Type, context: Context) -> None:
-        self.fail('List or tuple expected as variable arguments', context)
+        self.fail('List or tuple expected as variadic arguments', context)
 
     def invalid_keyword_var_arg(self, typ: Type, is_mapping: bool, context: Context) -> None:
         typ = get_proper_type(typ)
@@ -2108,14 +2111,6 @@ def strip_quotes(s: str) -> str:
     s = re.sub('^"', '', s)
     s = re.sub('"$', '', s)
     return s
-
-
-def plural_s(s: Union[int, Sequence[Any]]) -> str:
-    count = s if isinstance(s, int) else len(s)
-    if count > 1:
-        return 's'
-    else:
-        return ''
 
 
 def format_string_list(lst: List[str]) -> str:

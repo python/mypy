@@ -7,7 +7,7 @@ from mypyc.ir.ops import (
     InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast,
     Box, Unbox, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp,
     LoadMem, SetMem, GetElementPtr, LoadAddress, KeepAlive, Register, Integer,
-    BaseAssign
+    BaseAssign, Extend
 )
 from mypyc.ir.rtypes import (
     RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray,
@@ -324,6 +324,9 @@ class OpChecker(OpVisitor[None]):
         pass
 
     def visit_truncate(self, op: Truncate) -> None:
+        pass
+
+    def visit_extend(self, op: Extend) -> None:
         pass
 
     def visit_load_global(self, op: LoadGlobal) -> None:

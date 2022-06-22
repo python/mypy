@@ -2566,7 +2566,7 @@ class TypeInfo(SymbolNode):
         'deletable_attributes', 'slots', 'assuming', 'assuming_proper',
         'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
         'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
-        'is_newtype', 'is_intersection', 'metadata',
+        'is_newtype', 'is_intersection', 'metadata', 'alt_promote',
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2658,7 +2658,17 @@ class TypeInfo(SymbolNode):
     # even though it's not a subclass in Python.  The non-standard
     # `@_promote` decorator introduces this, and there are also
     # several builtin examples, in particular `int` -> `float`.
-    _promote: Optional["mypy.types.Type"]
+    _promote: List["mypy.types.Type"]
+
+    # This is used for promoting native integer types such as 'i64' to
+    # 'int'. (_promote is used for the other direction.) This only
+    # supports one-step promotions (e.g., i64 -> int, not
+    # i64 -> int -> float, and this isn't used to promote in joins.
+    #
+    # This results in some unintuitive results, such as that even
+    # though i64 is compatible with int and int is compatible with
+    # float, i64 is *not* compatible with float.
+    alt_promote: Optional["TypeInfo"]
 
     # Representation of a Tuple[...] base class, if the class has any
     # (e.g., for named tuples). If this is not None, the actual Type
@@ -2718,7 +2728,8 @@ class TypeInfo(SymbolNode):
         self.is_final = False
         self.is_enum = False
         self.fallback_to_any = False
-        self._promote = None
+        self._promote = []
+        self.alt_promote = None
         self.tuple_type = None
         self.is_named_tuple = False
         self.typeddict_type = None
@@ -2897,7 +2908,7 @@ class TypeInfo(SymbolNode):
                 'has_param_spec_type': self.has_param_spec_type,
                 'bases': [b.serialize() for b in self.bases],
                 'mro': [c.fullname for c in self.mro],
-                '_promote': None if self._promote is None else self._promote.serialize(),
+                '_promote': [p.serialize() for p in self._promote],
                 'declared_metaclass': (None if self.declared_metaclass is None
                                        else self.declared_metaclass.serialize()),
                 'metaclass_type':
@@ -2924,8 +2935,7 @@ class TypeInfo(SymbolNode):
         ti.type_vars = data['type_vars']
         ti.has_param_spec_type = data['has_param_spec_type']
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data['bases']]
-        ti._promote = (None if data['_promote'] is None
-                       else mypy.types.deserialize_type(data['_promote']))
+        ti._promote = [mypy.types.deserialize_type(p) for p in data['_promote']]
         ti.declared_metaclass = (None if data['declared_metaclass'] is None
                                  else mypy.types.Instance.deserialize(data['declared_metaclass']))
         ti.metaclass_type = (None if data['metaclass_type'] is None

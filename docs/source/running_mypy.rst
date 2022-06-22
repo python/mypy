@@ -516,6 +516,7 @@ same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
 
+
 Other advice and best practices
 *******************************
 

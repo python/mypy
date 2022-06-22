@@ -7,7 +7,7 @@
 
 void CPy_Raise(PyObject *exc) {
     if (PyObject_IsInstance(exc, (PyObject *)&PyType_Type)) {
-        PyObject *obj = PyObject_CallFunctionObjArgs(exc, NULL);
+        PyObject *obj = PyObject_CallNoArgs(exc);
         if (!obj)
             return;
         PyErr_SetObject(exc, obj);
@@ -75,7 +75,7 @@ void CPy_RestoreExcInfo(tuple_T3OOO info) {
 }
 
 bool CPy_ExceptionMatches(PyObject *type) {
-    return PyErr_GivenExceptionMatches(CPy_ExcState()->exc_type, type);
+    return PyErr_GivenExceptionMatches((PyObject *)Py_TYPE(CPy_ExcState()->exc_value), type);
 }
 
 PyObject *CPy_GetExcValue(void) {
@@ -189,6 +189,13 @@ void CPy_TypeError(const char *expected, PyObject *value) {
     }
 }
 
+// The PyFrameObject type definition (struct _frame) has been moved
+// to the internal C API: to the pycore_frame.h header file.
+// https://github.com/python/cpython/pull/31530
+#if PY_VERSION_HEX >= 0x030b00a6
+#include "internal/pycore_frame.h"
+#endif
+
 // This function is basically exactly the same with _PyTraceback_Add
 // which is available in all the versions we support.
 // We're continuing to use this because we'll probably optimize this later.
@@ -224,6 +231,13 @@ void CPy_AddTraceback(const char *filename, const char *funcname, int line, PyOb
 
 error:
     _PyErr_ChainExceptions(exc, val, tb);
+}
+
+CPy_NOINLINE
+void CPy_TypeErrorTraceback(const char *filename, const char *funcname, int line,
+                            PyObject *globals, const char *expected, PyObject *value) {
+    CPy_TypeError(expected, value);
+    CPy_AddTraceback(filename, funcname, line, globals);
 }
 
 void CPy_AttributeError(const char *filename, const char *funcname, const char *classname,

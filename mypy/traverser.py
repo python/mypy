@@ -18,6 +18,7 @@ from mypy.nodes import (
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
+    Expression,
 )
 
 
@@ -394,6 +395,21 @@ class YieldSeeker(FuncCollectorBase):
 def has_yield_expression(fdef: FuncBase) -> bool:
     seeker = YieldSeeker()
     fdef.accept(seeker)
+    return seeker.found
+
+
+class AwaitSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.found = False
+
+    def visit_await_expr(self, o: AwaitExpr) -> None:
+        self.found = True
+
+
+def has_await_expression(expr: Expression) -> bool:
+    seeker = AwaitSeeker()
+    expr.accept(seeker)
     return seeker.found
 
 

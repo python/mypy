@@ -48,7 +48,8 @@ class NodeFixer(NodeVisitor[None]):
                 for base in info.bases:
                     base.accept(self.type_fixer)
             if info._promote:
-                info._promote.accept(self.type_fixer)
+                for p in info._promote:
+                    p.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
             if info.typeddict_type:

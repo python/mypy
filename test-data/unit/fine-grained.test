@@ -9734,6 +9734,7 @@ class C:
 [out]
 ==
 main:5: error: Unsupported left operand type for + ("str")
+
 [case testNoneAttribute]
 from typing import Generic, TypeVar
 
@@ -9757,5 +9758,32 @@ class ExampleClass(Generic[T]):
         self
     ) -> None:
         self.example_attribute = None
+[out]
+==
+
+[case testDataclassCheckTypeVarBoundsInReprocess]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Protocol, Dict, TypeVar, Generic
+from m import x
+
+class DataclassProtocol(Protocol):
+    __dataclass_fields__: Dict
+
+T = TypeVar("T", bound=DataclassProtocol)
+
+@dataclass
+class MyDataclass:
+    x: int = 1
+
+class MyGeneric(Generic[T]): ...
+class MyClass(MyGeneric[MyDataclass]):  ...
+
+[file m.py]
+x: int
+[file m.py.2]
+x: str
+
+[builtins fixtures/dataclasses.pyi]
 [out]
 ==
