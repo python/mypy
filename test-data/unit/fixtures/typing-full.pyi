@@ -11,6 +11,7 @@ from abc import abstractmethod, ABCMeta
 class GenericMeta(type): pass
 
 def cast(t, o): ...
+def assert_type(o, t): ...
 overload = 0
 Any = 0
 Union = 0
@@ -30,6 +31,7 @@ Literal = 0
 TypedDict = 0
 NoReturn = 0
 NewType = 0
+Self = 0
 
 T = TypeVar('T')
 T_co = TypeVar('T_co', covariant=True)

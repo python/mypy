@@ -145,7 +145,7 @@ class Register(Value):
         return False
 
     def __repr__(self) -> str:
-        return '<Register %r at %s>' % (self.name, hex(id(self)))
+        return f'<Register {self.name!r} at {hex(id(self))}>'
 
 
 class Integer(Value):
@@ -279,7 +279,7 @@ class ControlOp(Op):
 
     def set_target(self, i: int, new: BasicBlock) -> None:
         """Update a basic block target."""
-        raise AssertionError("Invalid set_target({}, {})".format(self, i))
+        raise AssertionError(f"Invalid set_target({self}, {i})")
 
 
 class Goto(ControlOp):
@@ -474,7 +474,7 @@ class DecRef(RegisterOp):
         self.is_xdec = is_xdec
 
     def __repr__(self) -> str:
-        return '<%sDecRef %r>' % ('X' if self.is_xdec else '', self.src)
+        return '<{}DecRef {!r}>'.format('X' if self.is_xdec else '', self.src)
 
     def sources(self) -> List[Value]:
         return [self.src]
@@ -599,13 +599,14 @@ class GetAttr(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, obj: Value, attr: str, line: int) -> None:
+    def __init__(self, obj: Value, attr: str, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.obj = obj
         self.attr = attr
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = obj.type.attr_type(attr)
+        self.is_borrowed = borrow
 
     def sources(self) -> List[Value]:
         return [self.obj]
@@ -630,6 +631,14 @@ class SetAttr(RegisterOp):
         assert isinstance(obj.type, RInstance), 'Attribute access not supported: %s' % obj.type
         self.class_type = obj.type
         self.type = bool_rprimitive
+        # If True, we can safely assume that the attribute is previously undefined
+        # and we don't use a setter
+        self.is_init = False
+
+    def mark_as_initializer(self) -> None:
+        self.is_init = True
+        self.error_kind = ERR_NEVER
+        self.type = void_rtype
 
     def sources(self) -> List[Value]:
         return [self.obj, self.src]
@@ -766,15 +775,18 @@ class Cast(RegisterOp):
 
     error_kind = ERR_MAGIC
 
-    def __init__(self, src: Value, typ: RType, line: int) -> None:
+    def __init__(self, src: Value, typ: RType, line: int, *, borrow: bool = False) -> None:
         super().__init__(line)
         self.src = src
         self.type = typ
+        self.is_borrowed = borrow
 
     def sources(self) -> List[Value]:
         return [self.src]
 
     def stolen(self) -> List[Value]:
+        if self.is_borrowed:
+            return []
         return [self.src]
 
     def accept(self, visitor: 'OpVisitor[T]') -> T:

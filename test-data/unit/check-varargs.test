@@ -123,7 +123,7 @@ T4 = TypeVar('T4')
 def f(a: T1, b: T2, c: T3, d: T4) -> Tuple[T1, T2, T3, T4]: ...
 x: Tuple[int, str]
 y: Tuple[float, bool]
-reveal_type(f(*x, *y)) # N: Revealed type is "Tuple[builtins.int*, builtins.str*, builtins.float*, builtins.bool*]"
+reveal_type(f(*x, *y)) # N: Revealed type is "Tuple[builtins.int, builtins.str, builtins.float, builtins.bool]"
 [builtins fixtures/list.pyi]
 
 [case testCallVarargsFunctionWithIterableAndPositional]

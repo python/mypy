@@ -1,5 +1,7 @@
 from typing import Any, TypeVar
 
+__all__ = ["Error", "copy", "deepcopy"]
+
 _T = TypeVar("_T")
 
 # None in CPython but non-None in Jython

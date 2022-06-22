@@ -38,6 +38,7 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         options = parse_options(src, testcase, 1)
         options.use_builtins_fixtures = True
         options.semantic_analysis_only = True
+        options.enable_incomplete_features = True
         options.show_traceback = True
         result = build.build(sources=[BuildSource('main', None, src)],
                              options=options,
@@ -54,8 +55,10 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
             # path.
             # TODO the test is not reliable
             if (not f.path.endswith((os.sep + 'builtins.pyi',
+                                     'typing_extensions.pyi',
                                      'typing.pyi',
-                                     'abc.pyi'))
+                                     'abc.pyi',
+                                     'sys.pyi'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
@@ -69,5 +72,4 @@ def test_transform(testcase: DataDrivenTestCase) -> None:
         a = normalize_error_messages(a)
     assert_string_arrays_equal(
         testcase.output, a,
-        'Invalid semantic analyzer output ({}, line {})'.format(testcase.file,
-                                                                testcase.line))
+        f'Invalid semantic analyzer output ({testcase.file}, line {testcase.line})')

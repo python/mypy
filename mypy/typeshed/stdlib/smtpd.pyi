@@ -1,10 +1,17 @@
 import asynchat
 import asyncore
 import socket
+import sys
 from collections import defaultdict
-from typing import Any, Type
+from typing import Any
+from typing_extensions import TypeAlias
 
-_Address = tuple[str, int]  # (host, port)
+if sys.version_info >= (3, 11):
+    __all__ = ["SMTPChannel", "SMTPServer", "DebuggingServer", "PureProxy"]
+else:
+    __all__ = ["SMTPChannel", "SMTPServer", "DebuggingServer", "PureProxy", "MailmanProxy"]
+
+_Address: TypeAlias = tuple[str, int]  # (host, port)
 
 class SMTPChannel(asynchat.async_chat):
     COMMAND: int
@@ -56,7 +63,7 @@ class SMTPChannel(asynchat.async_chat):
     def smtp_EXPN(self, arg: str) -> None: ...
 
 class SMTPServer(asyncore.dispatcher):
-    channel_class: Type[SMTPChannel]
+    channel_class: type[SMTPChannel]
 
     data_size_limit: int
     enable_SMTPUTF8: bool
@@ -79,5 +86,6 @@ class DebuggingServer(SMTPServer): ...
 class PureProxy(SMTPServer):
     def process_message(self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str) -> str | None: ...  # type: ignore[override]
 
-class MailmanProxy(PureProxy):
-    def process_message(self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str) -> str | None: ...  # type: ignore[override]
+if sys.version_info < (3, 11):
+    class MailmanProxy(PureProxy):
+        def process_message(self, peer: _Address, mailfrom: str, rcpttos: list[str], data: bytes | str) -> str | None: ...  # type: ignore[override]

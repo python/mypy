@@ -11,7 +11,7 @@ from mypy.nodes import (
     ConditionalExpr, ComparisonExpr, IntExpr, FloatExpr, ComplexExpr, StrExpr,
     BytesExpr, EllipsisExpr, ListExpr, TupleExpr, DictExpr, SetExpr, ListComprehension,
     SetComprehension, DictionaryComprehension, SliceExpr, GeneratorExpr, CastExpr, StarExpr,
-    AssignmentExpr,
+    AssignmentExpr, AssertTypeExpr,
     Var, RefExpr, MypyFile, TypeInfo, TypeApplication, LDEF, ARG_POS
 )
 from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
@@ -21,7 +21,8 @@ from mypyc.ir.ops import (
     Value, Register, TupleGet, TupleSet, BasicBlock, Assign, LoadAddress, RaiseStandardError
 )
 from mypyc.ir.rtypes import (
-    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive
+    RTuple, object_rprimitive, is_none_rprimitive, int_rprimitive, is_int_rprimitive,
+    is_list_rprimitive
 )
 from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.irbuild.format_str_tokenizer import (
@@ -130,8 +131,10 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
     if isinstance(expr.node, MypyFile) and expr.node.fullname in builder.imports:
         return builder.load_module(expr.node.fullname)
 
-    obj = builder.accept(expr.expr)
+    can_borrow = builder.is_native_attr_ref(expr)
+    obj = builder.accept(expr.expr, can_borrow=can_borrow)
     rtype = builder.node_type(expr)
+
     # Special case: for named tuples transform attribute access to faster index access.
     typ = get_proper_type(builder.types.get(expr.expr))
     if isinstance(typ, TupleType) and typ.partial_fallback.type.is_named_tuple:
@@ -142,7 +145,8 @@ def transform_member_expr(builder: IRBuilder, expr: MemberExpr) -> Value:
 
     check_instance_attribute_access_through_class(builder, expr, typ)
 
-    return builder.builder.get_attr(obj, expr.name, rtype, expr.line)
+    borrow = can_borrow and builder.can_borrow
+    return builder.builder.get_attr(obj, expr.name, rtype, expr.line, borrow=borrow)
 
 
 def check_instance_attribute_access_through_class(builder: IRBuilder,
@@ -203,6 +207,9 @@ def transform_super_expr(builder: IRBuilder, o: SuperExpr) -> Value:
 def transform_call_expr(builder: IRBuilder, expr: CallExpr) -> Value:
     if isinstance(expr.analyzed, CastExpr):
         return translate_cast_expr(builder, expr.analyzed)
+    elif isinstance(expr.analyzed, AssertTypeExpr):
+        # Compile to a no-op.
+        return builder.accept(expr.analyzed.expr)
 
     callee = expr.callee
     if isinstance(callee, IndexExpr) and isinstance(callee.analyzed, TypeApplication):
@@ -403,8 +410,12 @@ def transform_op_expr(builder: IRBuilder, expr: OpExpr) -> Value:
 
 
 def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
-    base = builder.accept(expr.base)
     index = expr.index
+    base_type = builder.node_type(expr.base)
+    is_list = is_list_rprimitive(base_type)
+    can_borrow_base = is_list and is_borrow_friendly_expr(builder, index)
+
+    base = builder.accept(expr.base, can_borrow=can_borrow_base)
 
     if isinstance(base.type, RTuple) and isinstance(index, IntExpr):
         return builder.add(TupleGet(base, index.value, expr.line))
@@ -414,9 +425,29 @@ def transform_index_expr(builder: IRBuilder, expr: IndexExpr) -> Value:
         if value:
             return value
 
-    index_reg = builder.accept(expr.index)
+    index_reg = builder.accept(expr.index, can_borrow=is_list)
     return builder.gen_method_call(
         base, '__getitem__', [index_reg], builder.node_type(expr), expr.line)
+
+
+def is_borrow_friendly_expr(builder: IRBuilder, expr: Expression) -> bool:
+    """Can the result of the expression borrowed temporarily?
+
+    Borrowing means keeping a reference without incrementing the reference count.
+    """
+    if isinstance(expr, (IntExpr, FloatExpr, StrExpr, BytesExpr)):
+        # Literals are immportal and can always be borrowed
+        return True
+    if isinstance(expr, (UnaryExpr, OpExpr)) and constant_fold_expr(builder, expr) is not None:
+        # Literal expressions are similar to literals
+        return True
+    if isinstance(expr, NameExpr):
+        if isinstance(expr.node, Var) and expr.kind == LDEF:
+            # Local variable reference can be borrowed
+            return True
+    if isinstance(expr, MemberExpr) and builder.is_native_attr_ref(expr):
+        return True
+    return False
 
 
 def try_constant_fold(builder: IRBuilder, expr: Expression) -> Optional[Value]:
@@ -498,7 +529,8 @@ def transform_conditional_expr(builder: IRBuilder, expr: ConditionalExpr) -> Val
 def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
     # x in (...)/[...]
     # x not in (...)/[...]
-    if (e.operators[0] in ['in', 'not in']
+    first_op = e.operators[0]
+    if (first_op in ['in', 'not in']
             and len(e.operators) == 1
             and isinstance(e.operands[1], (TupleExpr, ListExpr))):
         items = e.operands[1].items
@@ -545,6 +577,12 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             else:
                 return builder.true()
 
+    if first_op in ('is', 'is not') and len(e.operators) == 1:
+        right = e.operands[1]
+        if isinstance(right, NameExpr) and right.fullname == 'builtins.None':
+            # Special case 'is None' / 'is not None'.
+            return translate_is_none(builder, e.operands[0], negated=first_op != 'is')
+
     # TODO: Don't produce an expression when used in conditional context
     # All of the trickiness here is due to support for chained conditionals
     # (`e1 < e2 > e3`, etc). `e1 < e2 > e3` is approximately equivalent to
@@ -567,6 +605,11 @@ def transform_comparison_expr(builder: IRBuilder, e: ComparisonExpr) -> Value:
             e.line)
 
     return go(0, builder.accept(e.operands[0]))
+
+
+def translate_is_none(builder: IRBuilder, expr: Expression, negated: bool) -> Value:
+    v = builder.accept(expr, can_borrow=True)
+    return builder.binary_op(v, builder.none_object(), 'is not' if negated else 'is', expr.line)
 
 
 def transform_basic_comparison(builder: IRBuilder,

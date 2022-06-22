@@ -4,7 +4,8 @@ from mypy.types import (
     Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
     CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
     DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, ParamSpecType, SelfType
+    get_proper_type, get_proper_types, TypeAliasType, ParamSpecType, Parameters, UnpackType,
+    TypeVarTupleType, SelfType,
 )
 from mypy.nodes import ARG_STAR, ARG_STAR2
 
@@ -60,6 +61,15 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return self.visit_instance(t.instance)
 
     def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        raise RuntimeError("Parameters should have been bound to a class")
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:

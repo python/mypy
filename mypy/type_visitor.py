@@ -11,19 +11,21 @@ The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from mypy.backports import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
+from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional,\
+    Set, Sequence
 from mypy_extensions import trait, mypyc_attr
 
 T = TypeVar('T')
 
 from mypy.types import (
     Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawExpressionType, Instance, NoneType, TypeType,
+    Parameters, RawExpressionType, Instance, NoneType, TypeType,
     UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
     UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, ParamSpecType, SelfType, get_proper_type
+    PlaceholderType, TypeAliasType, ParamSpecType, UnpackType, TypeVarTupleType,
+    get_proper_type, SelfType,
 )
 
 
@@ -71,6 +73,14 @@ class TypeVisitor(Generic[T]):
         pass
 
     @abstractmethod
+    def visit_parameters(self, t: Parameters) -> T:
+        pass
+
+    @abstractmethod
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
+        pass
+
+    @abstractmethod
     def visit_instance(self, t: Instance) -> T:
         pass
 
@@ -108,6 +118,10 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_unpack_type(self, t: UnpackType) -> T:
         pass
 
 
@@ -192,8 +206,17 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         return t
 
+    def visit_parameters(self, t: Parameters) -> Type:
+        return t.copy_modified(arg_types=self.translate_types(t.arg_types))
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        return t
+
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
+
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        return t.type.accept(self)
 
     def visit_callable_type(self, t: CallableType) -> Type:
         return t.copy_modified(arg_types=self.translate_types(t.arg_types),
@@ -310,6 +333,15 @@ class TypeQuery(SyntheticTypeVisitor[T]):
     def visit_param_spec(self, t: ParamSpecType) -> T:
         return self.strategy([])
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
+        return self.strategy([])
+
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        return self.query_types([t.type])
+
+    def visit_parameters(self, t: Parameters) -> T:
+        return self.query_types(t.arg_types)
+
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])
 
@@ -372,11 +404,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.strategy(res)
 
 
-TypeT = TypeVar("TypeT", bound=Type)
-
-
 class SelfTypeVisitor(TypeVisitor[Any]):
-    def __init__(self, self_type: Instance) -> None:
+    def __init__(self, self_type: Type) -> None:
         # NOTE this visitor will mutate `func`
         self.self_type = self_type
 
@@ -407,45 +436,54 @@ class SelfTypeVisitor(TypeVisitor[Any]):
     def visit_param_spec(self, t: ParamSpecType) -> None:
         pass
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
+        pass
+
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        pass
+
+    def visit_parameters(self, t: Parameters) -> T:
+        pass
+
     def visit_instance(self, t: Instance) -> None:
-        t.args = self.replace(t.args)
+        t.args = tuple(self.replace_types(t.args))
 
     def visit_callable_type(self, t: CallableType) -> None:
-        t.arg_types = self.replace(t.arg_types)
-        t.ret_type, = self.replace([t.ret_type])
+        t.arg_types = self.replace_types(t.arg_types)
+        t.ret_type = self.replace_type(t.ret_type)
 
     def visit_overloaded(self, t: Overloaded) -> None:
         for item in t.items:
             item.accept(self)
 
     def visit_tuple_type(self, t: TupleType) -> None:
-        t.items = self.replace(t.items)
+        t.items = self.replace_types(t.items)
 
     def visit_typeddict_type(self, t: TypedDictType) -> None:
-        for key, value in zip(t.items, self.replace(t.items.values())):
+        for key, value in zip(t.items, self.replace_types(t.items.values())):
             t.items[key] = value
 
     def visit_literal_type(self, t: LiteralType) -> None:
         pass
 
     def visit_union_type(self, t: UnionType) -> None:
-        t.items = self.replace(t.items)
+        t.items = self.replace_types(t.items)
 
     def visit_partial_type(self, t: PartialType) -> None:
         pass
 
     def visit_type_type(self, t: TypeType) -> None:
-        t.item, = self.replace([t.item])
+        t.item = get_proper_type(self.replace_type(t.item))
 
     def visit_type_alias_type(self, t: TypeAliasType) -> None:
         pass  # TODO this is probably invalid
 
-    def replace(self, types: Iterable[TypeT]) -> List[TypeT]:
-        ret: List[TypeT] = []
-        for type in types:
-            if isinstance(type, SelfType):
-                type = self.self_type
-            else:
-                type.accept(self)
-            ret.append(type)  # type: ignore  # not sure if this is actually unsafe
-        return ret
+    def replace_types(self, types: Iterable[Type]) -> List[Type]:
+        return [self.replace_type(typ) for typ in types]
+
+    def replace_type(self, typ: Type) -> Type:
+        if isinstance(typ, SelfType):  # type: ignore
+            typ = self.self_type
+        else:
+            typ.accept(self)
+        return typ

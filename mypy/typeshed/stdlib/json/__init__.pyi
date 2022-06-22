@@ -1,8 +1,11 @@
 from _typeshed import SupportsRead
-from typing import IO, Any, Callable, Type
+from collections.abc import Callable
+from typing import IO, Any
 
 from .decoder import JSONDecodeError as JSONDecodeError, JSONDecoder as JSONDecoder
 from .encoder import JSONEncoder as JSONEncoder
+
+__all__ = ["dump", "dumps", "load", "loads", "JSONDecoder", "JSONDecodeError", "JSONEncoder"]
 
 def dumps(
     obj: Any,
@@ -11,7 +14,7 @@ def dumps(
     ensure_ascii: bool = ...,
     check_circular: bool = ...,
     allow_nan: bool = ...,
-    cls: Type[JSONEncoder] | None = ...,
+    cls: type[JSONEncoder] | None = ...,
     indent: None | int | str = ...,
     separators: tuple[str, str] | None = ...,
     default: Callable[[Any], Any] | None = ...,
@@ -26,7 +29,7 @@ def dump(
     ensure_ascii: bool = ...,
     check_circular: bool = ...,
     allow_nan: bool = ...,
-    cls: Type[JSONEncoder] | None = ...,
+    cls: type[JSONEncoder] | None = ...,
     indent: None | int | str = ...,
     separators: tuple[str, str] | None = ...,
     default: Callable[[Any], Any] | None = ...,
@@ -36,7 +39,7 @@ def dump(
 def loads(
     s: str | bytes,
     *,
-    cls: Type[JSONDecoder] | None = ...,
+    cls: type[JSONDecoder] | None = ...,
     object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
     parse_float: Callable[[str], Any] | None = ...,
     parse_int: Callable[[str], Any] | None = ...,
@@ -47,7 +50,7 @@ def loads(
 def load(
     fp: SupportsRead[str | bytes],
     *,
-    cls: Type[JSONDecoder] | None = ...,
+    cls: type[JSONDecoder] | None = ...,
     object_hook: Callable[[dict[Any, Any]], Any] | None = ...,
     parse_float: Callable[[str], Any] | None = ...,
     parse_int: Callable[[str], Any] | None = ...,
