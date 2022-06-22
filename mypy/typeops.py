@@ -5,30 +5,29 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
       since these may assume that MROs are ready.
 """
 
-from typing import cast, Optional, List, Sequence, Set, Iterable, TypeVar, Dict, Tuple, Any, Union
-from typing_extensions import Type as TypingType
 import itertools
 import sys
+from typing import (Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple,
+                    TypeVar, Union, cast)
 
-from mypy.types import (
-    TupleType, Instance, FunctionLike, Type, CallableType, TypeVarLikeType, Overloaded,
-    TypeVarType, UninhabitedType, FormalArgument, UnionType, NoneType,
-    AnyType, TypeOfAny, TypeType, ProperType, LiteralType, get_proper_type, get_proper_types,
-    TypeAliasType, TypeQuery, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
-    ENUM_REMOVED_PROPS,
-)
-from mypy.nodes import (
-    FuncBase, FuncItem, FuncDef, OverloadedFuncDef, TypeInfo, ARG_STAR, ARG_STAR2, ARG_POS,
-    Expression, StrExpr, Var, Decorator, SYMBOL_FUNCBASE_TYPES
-)
-from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance, expand_type
+from typing_extensions import Type as TypingType
+
 from mypy.copytype import copy_type
-
-from mypy.typevars import fill_typevars
-from mypy.type_visitor import SelfTypeVisitor
-
+from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import (ARG_POS, ARG_STAR, ARG_STAR2, SYMBOL_FUNCBASE_TYPES,
+                        Decorator, Expression, FuncBase, FuncDef, FuncItem,
+                        OverloadedFuncDef, StrExpr, TypeInfo, Var)
 from mypy.state import state
+from mypy.type_visitor import SelfTypeVisitor
+from mypy.types import (ENUM_REMOVED_PROPS, AnyType, CallableType,
+                        FormalArgument, FunctionLike, Instance, LiteralType,
+                        NoneType, Overloaded, Parameters, ParamSpecType,
+                        ProperType, TupleType, Type, TypeAliasType, TypeOfAny,
+                        TypeQuery, TypeType, TypeVarLikeType, TypeVarTupleType,
+                        TypeVarType, UninhabitedType, UnionType, UnpackType,
+                        get_proper_type, get_proper_types)
+from mypy.typevars import fill_typevars
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
@@ -276,6 +275,8 @@ def bind_self(method: F, original_type: Optional[Type] = None, is_classmethod: b
                              ret_type=ret_type,
                              bound_args=[original_type])
     if original_type:
+        if isinstance(original_type, TypeType):
+            original_type = original_type.item
         res.accept(SelfTypeVisitor(original_type))
     return cast(F, res)
 

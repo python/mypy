@@ -406,7 +406,6 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
 class SelfTypeVisitor(TypeVisitor[Any]):
     def __init__(self, self_type: Type) -> None:
-        # NOTE this visitor will mutate `func`
         self.self_type = self_type
 
     def visit_unbound_type(self, t: UnboundType) -> None:
