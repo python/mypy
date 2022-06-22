@@ -120,11 +120,8 @@ class BuildSource:
         self.base_dir = base_dir  # Directory where the package is rooted (e.g. 'xxx/yyy')
 
     def __repr__(self) -> str:
-        return 'BuildSource(path={!r}, module={!r}, has_text={}, base_dir={!r})'.format(
-            self.path,
-            self.module,
-            self.text is not None,
-            self.base_dir)
+        return f'BuildSource(path={self.path!r}, module={self.module!r}, ' \
+               f'has_text={self.text is not None}, base_dir={self.base_dir!r})'
 
 
 class BuildSourceSet:
@@ -696,8 +693,7 @@ def default_lib_path(data_dir: str,
         mypy_extensions_dir = os.path.join(custom_typeshed_dir, "stubs", "mypy-extensions")
         versions_file = os.path.join(typeshed_dir, "VERSIONS")
         if not os.path.isdir(typeshed_dir) or not os.path.isfile(versions_file):
-            print("error: --custom-typeshed-dir does not point to a valid typeshed ({})".format(
-                custom_typeshed_dir))
+            print(f"error: --custom-typeshed-dir does not point to a valid typeshed ({custom_typeshed_dir})")
             sys.exit(2)
     else:
         auto = os.path.join(data_dir, 'stubs-auto')
@@ -719,9 +715,9 @@ def default_lib_path(data_dir: str,
     if sys.platform != 'win32':
         path.append('/usr/local/lib/mypy')
     if not path:
-        print("Could not resolve typeshed subdirectories. Your mypy install is broken.\n"
-              "Python executable is located at {}.\nMypy located at {}".format(
-                  sys.executable, data_dir), file=sys.stderr)
+        print(f"Could not resolve typeshed subdirectories. Your mypy install is broken.\n"
+              f"Python executable is located at {sys.executable}.\nMypy located at {data_dir}",
+              file=sys.stderr)
         sys.exit(1)
     return path
 

@@ -228,7 +228,7 @@ def analyze_instance_member_access(name: str,
     if (state.find_occurrences and
             info.name == state.find_occurrences[0] and
             name == state.find_occurrences[1]):
-        mx.msg.note("Occurrence of '{}.{}'".format(*state.find_occurrences), mx.context)
+        mx.msg.note(f"Occurrence of '{state.find_occurrences[0]}.{state.find_occurrences[1]}'", mx.context)
 
     # Look up the member. First look up the method dictionary.
     method = info.get_method(name)
@@ -733,7 +733,7 @@ def analyze_class_attribute_access(itype: Instance,
     if override_info:
         info = override_info
 
-    fullname = '{}.{}'.format(info.fullname, name)
+    fullname = f'{info.fullname}.{name}'
     hook = mx.chk.plugin.get_class_attribute_hook(fullname)
 
     node = info.get(name)

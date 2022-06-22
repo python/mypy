@@ -66,9 +66,9 @@ class Reports:
             pass
         reporter_cls, needs_lxml = reporter_classes[report_type]
         if needs_lxml and not LXML_INSTALLED:
-            print(('You must install the lxml package before you can run mypy'
-                   ' with `--{}-report`.\n'
-                   'You can do this with `python3 -m pip install lxml`.').format(report_type),
+            print(f'You must install the lxml package before you can run mypy'
+                  f' with `--{report_type}-report`.\n'
+                  f'You can do this with `python3 -m pip install lxml`.',
                   file=sys.stderr)
             raise ImportError
         reporter = reporter_cls(self, report_dir)

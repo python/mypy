@@ -778,17 +778,17 @@ class Errors:
                     if e.type is None:
                         result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                     else:
-                        result.append((file, -1, -1, 'note', 'In class "{}":'.format(
-                            e.type), e.allow_dups, None))
+                        result.append((file, -1, -1, 'note', f'In class "{e.type}":',
+                                       e.allow_dups, None))
                 else:
                     if e.type is None:
                         result.append((file, -1, -1, 'note',
-                                       'In function "{}":'.format(
-                                           e.function_or_member), e.allow_dups, None))
+                                       f'In function "{e.function_or_member}":',
+                                       e.allow_dups, None))
                     else:
                         result.append((file, -1, -1, 'note',
-                                       'In member "{}" of class "{}":'.format(
-                                           e.function_or_member, e.type), e.allow_dups, None))
+                                       f'In member "{e.function_or_member}" of class "{e.type}":',
+                                       e.allow_dups, None))
             elif e.type != prev_type:
                 if e.type is None:
                     result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
@@ -962,8 +962,8 @@ def report_internal_error(err: Exception,
         raise err
     if not options.show_traceback:
         if not options.pdb:
-            print('{}: note: please use --show-traceback to print a traceback '
-                  'when reporting a bug'.format(prefix),
+            print(f'{prefix}: note: please use --show-traceback to print a traceback '
+                  'when reporting a bug',
                   file=stderr)
     else:
         tb = traceback.extract_stack()[:-2]

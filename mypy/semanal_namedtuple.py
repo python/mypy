@@ -136,8 +136,8 @@ class NamedTupleAnalyzer:
                     types.append(analyzed)
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith('_'):
-                    self.fail('NamedTuple field name cannot start with an underscore: {}'
-                              .format(name), stmt)
+                    self.fail(f'NamedTuple field name cannot start with an underscore: {name}',
+                        stmt)
                 if stmt.type is None or hasattr(stmt, 'new_syntax') and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
                 elif isinstance(stmt.rvalue, TempNode):
@@ -221,10 +221,7 @@ class NamedTupleAnalyzer:
             #     and they will be stored in the same namespace (see below).
             name += '@' + str(call.line)
         if len(defaults) > 0:
-            default_items = {
-                arg_name: default
-                for arg_name, default in zip(items[-len(defaults):], defaults)
-            }
+            default_items = dict(zip(items[-len(defaults):], defaults))
         else:
             default_items = {}
         info = self.build_namedtuple_typeinfo(name, items, types, default_items, node.line)
@@ -292,7 +289,7 @@ class NamedTupleAnalyzer:
                     else:
                         self.fail(
                             "List or tuple literal expected as the defaults argument to "
-                            "{}()".format(type_name),
+                            f"{type_name}()",
                             arg
                         )
                     break
@@ -312,9 +309,7 @@ class NamedTupleAnalyzer:
                 items = str_expr.value.replace(',', ' ').split()
             else:
                 self.fail(
-                    'List or tuple literal expected as the second argument to "{}()"'.format(
-                        type_name,
-                    ),
+                    f'List or tuple literal expected as the second argument to "{type_name}()"',
                     call,
                 )
                 return None

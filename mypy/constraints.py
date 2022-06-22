@@ -269,7 +269,7 @@ def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> L
                 else:
                     merged_option = None
                 merged_options.append(merged_option)
-            return any_constraints([option for option in merged_options], eager)
+            return any_constraints(merged_options, eager)
     # Otherwise, there are either no valid options or multiple, inconsistent valid
     # options. Give up and deduce nothing.
     return []
@@ -474,7 +474,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes
@@ -513,7 +513,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             from_concat = bool(prefix.arg_types) or suffix.from_concatenate
                             suffix = suffix.copy_modified(from_concatenate=from_concat)
 
-                        if isinstance(suffix, Parameters) or isinstance(suffix, CallableType):
+                        if isinstance(suffix, (Parameters, CallableType)):
                             # no such thing as variance for ParamSpecs
                             # TODO: is there a case I am missing?
                             # TODO: constraints between prefixes

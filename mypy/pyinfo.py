@@ -1,4 +1,3 @@
-from __future__ import print_function
 """Utilities to find the site and prefix information of a Python executable, which may be Python 2.
 
 This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
@@ -6,6 +5,7 @@ Python being executed, this module should not use *any* dependencies outside of 
 library found in Python 2. This file is run each mypy run, so it should be kept as fast as
 possible.
 """
+from __future__ import print_function
 import os
 import sys
 import sysconfig

@@ -225,8 +225,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     tvar_def.upper_bound, line=t.line, column=t.column,
                 )
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None and self.defining_alias:
-                self.fail('Can\'t use bound type variable "{}"'
-                          ' to define generic alias'.format(t.name), t)
+                self.fail(f'Can\'t use bound type variable "{t.name}" '
+                          f'to define generic alias', t)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarExpr) and tvar_def is not None:
                 assert isinstance(tvar_def, TypeVarType)
@@ -240,8 +240,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if isinstance(sym.node, TypeVarTupleExpr) and (
                 tvar_def is not None and self.defining_alias
             ):
-                self.fail('Can\'t use bound type variable "{}"'
-                          ' to define generic alias'.format(t.name), t)
+                self.fail(f'Can\'t use bound type variable "{t.name}" '
+                          f'to define generic alias', t)
                 return AnyType(TypeOfAny.from_error)
             if isinstance(sym.node, TypeVarTupleExpr):
                 if tvar_def is None:
@@ -337,7 +337,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """
         if fullname == 'builtins.None':
             return NoneType()
-        elif fullname == 'typing.Any' or fullname == 'builtins.Any':
+        elif fullname in {'typing.Any', 'builtins.Any'}:
             return AnyType(TypeOfAny.explicit)
         elif fullname in FINAL_TYPE_NAMES:
             self.fail("Final can be only used as an outermost qualifier"
@@ -476,9 +476,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             first_arg = get_proper_type(instance.args[0])
 
             # TODO: can I use tuple syntax to isinstance multiple in 3.6?
-            if not (len(instance.args) == 1 and (isinstance(first_arg, Parameters) or
-                                                 isinstance(first_arg, ParamSpecType) or
-                                                 isinstance(first_arg, AnyType))):
+            if len(instance.args) != 1 or not isinstance(first_arg, (Parameters, ParamSpecType, AnyType)):
                 args = instance.args
                 instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
 
@@ -585,10 +583,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         elif unbound_tvar:
             message = 'Type variable "{}" is unbound'
             short = name.split('.')[-1]
-            notes.append(('(Hint: Use "Generic[{}]" or "Protocol[{}]" base class'
-                          ' to bind "{}" inside a class)').format(short, short, short))
-            notes.append('(Hint: Use "{}" in function signature to bind "{}"'
-                         ' inside a function)'.format(short, short))
+            notes.append(f'(Hint: Use "Generic[{short}]" or "Protocol[{short}]" base class '
+                         f'to bind "{short}" inside a class)')
+            notes.append(f'(Hint: Use "{short}" in function signature to bind "{short}" '
+                         f'inside a function)')
         else:
             message = 'Cannot interpret reference "{}" as a type'
         self.fail(message.format(name), t, code=codes.VALID_TYPE)
@@ -986,8 +984,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind.is_star():
-                        self.fail("{} arguments should not have names".format(
-                            arg.constructor), arg)
+                        self.fail(f'{arg.constructor} arguments should not have names', arg)
                         return None
             else:
                 args.append(arg)
@@ -1191,8 +1188,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             else:
                 self.fail(f'Invalid location for ParamSpec "{analyzed.name}"', t)
                 self.note(
-                    'You can use ParamSpec as the first argument to Callable, e.g., '
-                    "'Callable[{}, int]'".format(analyzed.name),
+                    f'You can use ParamSpec as the first argument to Callable, e.g., '
+                    f'"Callable[{analyzed.name}, int]"',
                     t
                 )
         return analyzed
@@ -1377,8 +1374,7 @@ def expand_type_alias(node: TypeAlias, args: List[Type],
         tp.column = ctx.column
         return tp
     if act_len != exp_len:
-        fail('Bad number of arguments for type alias, expected: %s, given: %s'
-             % (exp_len, act_len), ctx)
+        fail(f'Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}', ctx)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None

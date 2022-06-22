@@ -173,7 +173,7 @@ def test_module(module_name: str) -> Iterator[Error]:
         return
 
     try:
-        with open(os.devnull, "w") as devnull:
+        with open(os.devnull, "wt") as devnull:
             with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
                 warnings.simplefilter("ignore")
                 runtime = importlib.import_module(module_name)
@@ -398,9 +398,7 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        'stub argument "{}" differs from runtime argument "{}"'.format(
-            stub_arg.variable.name, runtime_arg.name
-        )
+        f'stub argument "{stub_arg.variable.name}" differs from runtime argument "{runtime_arg.name}"'
     )
 
 
@@ -411,9 +409,7 @@ def _verify_arg_default_value(
     if runtime_arg.default != inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
-                'runtime argument "{}" has a default value but stub argument does not'.format(
-                    runtime_arg.name
-                )
+                f'runtime argument "{runtime_arg.name}" has a default value but stub argument does not'
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
@@ -428,23 +424,19 @@ def _verify_arg_default_value(
                 runtime_type is not None
                 and stub_type is not None
                 # Avoid false positives for marker objects
-                and type(runtime_arg.default) != object
+                and type(runtime_arg.default) is not object
                 # And ellipsis
                 and runtime_arg.default is not ...
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    'runtime argument "{}" has a default value of type {}, '
-                    "which is incompatible with stub argument type {}".format(
-                        runtime_arg.name, runtime_type, stub_type
-                    )
+                    f'runtime argument "{runtime_arg.name}" has a default value of type {runtime_type}, '
+                    f'which is incompatible with stub argument type {stub_type}'
                 )
     else:
         if stub_arg.kind.is_optional():
             yield (
-                'stub argument "{}" has a default value but runtime argument does not'.format(
-                    stub_arg.variable.name
-                )
+                f'stub argument "{stub_arg.variable.name}" has a default value but runtime argument does not'
             )
 
 
@@ -635,10 +627,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional-only '
-                '(rename with a leading double underscore, i.e. "__{}")'.format(
-                    stub_arg.variable.name, runtime_arg.name
-                )
+                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -646,8 +636,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional or keyword '
-                "(remove leading double underscore)".format(stub_arg.variable.name)
+                f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
+                f'(remove leading double underscore)'
             )
 
     # Check unmatched positional args
@@ -898,7 +888,7 @@ def verify_paramspecexpr(
     maybe_paramspec_types = (
         getattr(typing, "ParamSpec", None), getattr(typing_extensions, "ParamSpec", None)
     )
-    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    paramspec_types = tuple(t for t in maybe_paramspec_types if t is not None)
     if not paramspec_types or not isinstance(runtime, paramspec_types):
         yield Error(object_path, "is not a ParamSpec", stub, runtime)
         return
@@ -1099,8 +1089,8 @@ def is_probably_private(name: str) -> bool:
 
 def is_probably_a_function(runtime: Any) -> bool:
     return (
-        isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType))
-        or isinstance(runtime, (types.MethodType, types.BuiltinMethodType))
+        isinstance(runtime, (types.FunctionType, types.BuiltinFunctionType,
+                             types.MethodType, types.BuiltinMethodType))
         or (inspect.ismethoddescriptor(runtime) and callable(runtime))
     )
 
@@ -1349,7 +1339,7 @@ def get_allowlist_entries(allowlist_file: str) -> Iterator[str]:
         except ValueError:
             return s.strip()
 
-    with open(allowlist_file) as f:
+    with open(allowlist_file, 'rt') as f:
         for line in f.readlines():
             entry = strip_comments(line)
             if entry:

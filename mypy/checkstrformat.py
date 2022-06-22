@@ -327,8 +327,8 @@ class StringFormatterChecker:
                 if (not custom_special_method(actual_type, '__format__', check_all=True) or
                         spec.conversion):
                     # TODO: add support for some custom specs like datetime?
-                    self.msg.fail('Unrecognized format'
-                                  ' specification "{}"'.format(spec.format_spec[1:]),
+                    self.msg.fail(f'Unrecognized format '
+                                  f'specification "{spec.format_spec[1:]}"',
                                   call, code=codes.STRING_FORMATTING)
                     continue
             # Adjust expected and actual types.
@@ -345,8 +345,8 @@ class StringFormatterChecker:
             if spec.conversion is not None:
                 # If the explicit conversion is given, then explicit conversion is called _first_.
                 if spec.conversion[1] not in 'rsa':
-                    self.msg.fail('Invalid conversion type "{}",'
-                                  ' must be one of "r", "s" or "a"'.format(spec.conversion[1]),
+                    self.msg.fail(f'Invalid conversion type "{spec.conversion[1]}",'
+                                  f'must be one of "r", "s" or "a"',
                                   call, code=codes.STRING_FORMATTING)
                 actual_type = self.named_type('builtins.str')
 
@@ -406,15 +406,15 @@ class StringFormatterChecker:
             if key.isdecimal():
                 expr = self.get_expr_by_position(int(key), call)
                 if not expr:
-                    self.msg.fail('Cannot find replacement for positional'
-                                  ' format specifier {}'.format(key), call,
+                    self.msg.fail(f'Cannot find replacement for positional '
+                                  f'format specifier {key}', call,
                                   code=codes.STRING_FORMATTING)
                     expr = TempNode(AnyType(TypeOfAny.from_error))
             else:
                 expr = self.get_expr_by_name(key, call)
                 if not expr:
-                    self.msg.fail('Cannot find replacement for named'
-                                  ' format specifier "{}"'.format(key), call,
+                    self.msg.fail(f'Cannot find replacement for named '
+                                  f'format specifier "{key}"', call,
                                   code=codes.STRING_FORMATTING)
                     expr = TempNode(AnyType(TypeOfAny.from_error))
             result.append(expr)
@@ -553,8 +553,8 @@ class StringFormatterChecker:
             '{[id]:d} -> {[name]}'.format(u)
         """
         if not isinstance(temp_ast, (MemberExpr, IndexExpr)):
-            self.msg.fail('Only index and member expressions are allowed in'
-                          ' format field accessors; got "{}"'.format(spec.field),
+            self.msg.fail(f'Only index and member expressions are allowed in '
+                          f'format field accessors; got "{spec.field}"',
                           ctx, code=codes.STRING_FORMATTING)
             return False
         if isinstance(temp_ast, MemberExpr):
@@ -564,8 +564,8 @@ class StringFormatterChecker:
             if not isinstance(temp_ast.index, (NameExpr, IntExpr)):
                 assert spec.key, "Call this method only after auto-generating keys!"
                 assert spec.field
-                self.msg.fail('Invalid index expression in format field'
-                              ' accessor "{}"'.format(spec.field[len(spec.key):]), ctx,
+                self.msg.fail(f'Invalid index expression in format field '
+                              f'accessor "{spec.field[len(spec.key):]}"', ctx,
                               code=codes.STRING_FORMATTING)
                 return False
             if isinstance(temp_ast.index, NameExpr):

@@ -258,7 +258,7 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
-    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref')
+    __slots__ = ('alias', 'args', 'type_ref')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
@@ -1433,7 +1433,7 @@ class Parameters(ProperType):
                      tuple(self.arg_names), tuple(self.arg_kinds)))
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, Parameters) or isinstance(other, CallableType):
+        if isinstance(other, (Parameters, CallableType)):
             return (
                 self.arg_types == other.arg_types and
                 self.arg_names == other.arg_names and
@@ -1838,7 +1838,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    __slots__ = ('_items', 'fallback')
+    __slots__ = ('_items',)
 
     _items: List[CallableType]  # Must not be empty
 
@@ -2818,8 +2818,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if t.type is None:
             return '<partial None>'
         else:
-            return '<partial {}[{}]>'.format(t.type.name,
-                                             ', '.join(['?'] * len(t.type.type_vars)))
+            args = ', '.join(['?'] * len(t.type.type_vars))
+            return f'<partial {t.type.name}[{args}]>'
 
     def visit_ellipsis_type(self, t: EllipsisType) -> str:
         return '...'
@@ -2894,7 +2894,7 @@ def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
 
 class InstantiateAliasVisitor(TypeTranslator):
     def __init__(self, vars: List[str], subs: List[Type]) -> None:
-        self.replacements = {v: s for (v, s) in zip(vars, subs)}
+        self.replacements = dict(zip(vars, subs))
 
     def visit_type_alias_type(self, typ: TypeAliasType) -> Type:
         return typ.copy_modified(args=[t.accept(self) for t in typ.args])

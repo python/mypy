@@ -30,7 +30,6 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
     def read(self, name: str) -> str:
@@ -38,7 +37,6 @@ class MetadataStore:
 
         Raises FileNotFound if the entry does not exist.
         """
-        pass
 
     @abstractmethod
     def write(self, name: str, data: str, mtime: Optional[float] = None) -> bool:
@@ -53,7 +51,6 @@ class MetadataStore:
     @abstractmethod
     def remove(self, name: str) -> None:
         """Delete a metadata entry"""
-        pass
 
     @abstractmethod
     def commit(self) -> None:
@@ -63,7 +60,6 @@ class MetadataStore:
         there is no guarantee that changes are not made until it is
         called.
         """
-        pass
 
     @abstractmethod
     def list_all(self) -> Iterable[str]: ...

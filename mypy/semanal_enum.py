@@ -118,7 +118,7 @@ class EnumCallAnalyzer:
         Return a tuple of fields, values, was there an error.
         """
         args = call.args
-        if not all([arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds]):
+        if not all(arg_kind in [ARG_POS, ARG_NAMED] for arg_kind in call.arg_kinds):
             return self.fail_enum_call_arg(f"Unexpected arguments to {class_name}()", call)
         if len(args) < 2:
             return self.fail_enum_call_arg(f"Too few arguments for {class_name}()", call)
@@ -164,9 +164,7 @@ class EnumCallAnalyzer:
                     values.append(value)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() with tuple or list expects strings or (name, value) pairs" %
-                    class_name,
-                    call)
+                    f"{class_name}() with tuple or list expects strings or (name, value) pairs", call)
         elif isinstance(names, DictExpr):
             for key, value in names.items:
                 if not isinstance(key, (StrExpr, UnicodeExpr)):
@@ -188,15 +186,11 @@ class EnumCallAnalyzer:
                     items.append(field)
             else:
                 return self.fail_enum_call_arg(
-                    "%s() expects a string, tuple, list or dict literal as the second argument" %
-                    class_name,
-                    call)
+                    f"{class_name}() expects a string, tuple, list or dict literal as the second argument", call)
         else:
             # TODO: Allow dict(x=1, y=2) as a substitute for {'x': 1, 'y': 2}?
             return self.fail_enum_call_arg(
-                "%s() expects a string, tuple, list or dict literal as the second argument" %
-                class_name,
-                call)
+                "{class_name}() expects a string, tuple, list or dict literal as the second argument", call)
         if len(items) == 0:
             return self.fail_enum_call_arg(f"{class_name}() needs at least one item", call)
         if not values:

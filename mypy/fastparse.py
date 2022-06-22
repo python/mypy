@@ -446,8 +446,7 @@ class ASTConverter:
         op_name = ASTConverter.op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown operator ' + str(type(op)))
-        else:
-            return op_name
+        return op_name
 
     comp_op_map: Final[Dict[typing.Type[AST], str]] = {
         ast3.Gt: '>',
@@ -466,8 +465,7 @@ class ASTConverter:
         op_name = ASTConverter.comp_op_map.get(type(op))
         if op_name is None:
             raise RuntimeError('Unknown comparison operator ' + str(type(op)))
-        else:
-            return op_name
+        return op_name
 
     def as_block(self, stmts: List[ast3.stmt], lineno: int) -> Optional[Block]:
         b = None
@@ -1717,7 +1715,7 @@ class TypeConverter:
         if not isinstance(self.parent(), ast3.List):
             note = None
             if constructor:
-                note = "Suggestion: use {0}[...] instead of {0}(...)".format(constructor)
+                note = f"Suggestion: use {constructor}[...] instead of {constructor}(...)"
             return self.invalid_type(e, note=note)
         if not constructor:
             self.fail("Expected arg constructor name", e.lineno, e.col_offset)
@@ -1739,13 +1737,13 @@ class TypeConverter:
             value = k.value
             if k.arg == "name":
                 if name is not None:
-                    self.fail('"{}" gets multiple values for keyword argument "name"'.format(
-                        constructor), f.lineno, f.col_offset)
+                    self.fail(f'"{constructor}" gets multiple values for keyword argument "name"',
+                              f.lineno, f.col_offset)
                 name = self._extract_argument_name(value)
             elif k.arg == "type":
                 if typ is not default_type:
-                    self.fail('"{}" gets multiple values for keyword argument "type"'.format(
-                        constructor), f.lineno, f.col_offset)
+                    self.fail(f'"{constructor}" gets multiple values for keyword argument "type"',
+                              f.lineno, f.col_offset)
                 converted = self.visit(value)
                 assert converted is not None
                 typ = converted
@@ -1763,8 +1761,7 @@ class TypeConverter:
             return n.s.strip()
         elif isinstance(n, NameConstant) and str(n.value) == 'None':
             return None
-        self.fail('Expected string literal for argument name, got {}'.format(
-            type(n).__name__), self.line, 0)
+        self.fail(f'Expected string literal for argument name, got {type(n).__name__}', self.line, 0)
         return None
 
     def visit_Name(self, n: Name) -> Type:

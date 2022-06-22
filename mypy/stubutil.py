@@ -82,8 +82,8 @@ def find_module_path_and_all_py2(module: str,
     Raise CantImport if the module can't be imported, or exit if it's a C extension module.
     """
     cmd_template = f'{interpreter} -c "%s"'
-    code = ("import importlib, json; mod = importlib.import_module('%s'); "
-            "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))") % module
+    code = (f"import importlib, json; mod = importlib.import_module('{module}'); "
+            f"print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))")
     try:
         output_bytes = subprocess.check_output(cmd_template % code, shell=True)
     except subprocess.CalledProcessError as e:
@@ -94,8 +94,7 @@ def find_module_path_and_all_py2(module: str,
     output = output_bytes.decode('ascii').strip().splitlines()
     module_path = output[0]
     if not module_path.endswith(('.py', '.pyc', '.pyo')):
-        raise SystemExit('%s looks like a C module; they are not supported for Python 2' %
-                         module)
+        raise SystemExit(f'{module} looks like a C module; they are not supported for Python 2')
     if module_path.endswith(('.pyc', '.pyo')):
         module_path = module_path[:-1]
     module_all = json.loads(output[1])
@@ -172,9 +171,8 @@ def generate_guarded(mod: str, target: str,
     except Exception as e:
         if not ignore_errors:
             raise e
-        else:
-            # --ignore-errors was passed
-            print("Stub generation failed for", mod, file=sys.stderr)
+        # --ignore-errors was passed
+        print("Stub generation failed for", mod, file=sys.stderr)
     else:
         if verbose:
             print(f'Created {target}')

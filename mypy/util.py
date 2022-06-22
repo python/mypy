@@ -360,7 +360,7 @@ def get_class_descriptors(cls: 'Type[object]') -> Sequence[str]:
         members = inspect.getmembers(
             cls,
             lambda o: inspect.isgetsetdescriptor(o) or inspect.ismemberdescriptor(o))
-        fields_cache[cls] = [x for x, y in members if x != '__weakref__' and x != '__dict__']
+        fields_cache[cls] = [x for x, y in members if x not in {'__weakref__', '__dict__'}]
     return fields_cache[cls]
 
 
@@ -432,8 +432,8 @@ def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
     if sys.version_info[:2] < (3, 6):
-        sys.exit("Running {name} with Python 3.5 or lower is not supported; "
-                 "please upgrade to 3.6 or newer".format(name=program))
+        sys.exit(f"Running {program} with Python 3.5 or lower is not supported; "
+                 f"please upgrade to 3.6 or newer")
 
 
 def count_stats(messages: List[str]) -> Tuple[int, int, int]:

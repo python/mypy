@@ -117,9 +117,7 @@ class StatisticsVisitor(TraverserVisitor):
             self.line = o.line
             if len(o.expanded) > 1 and o.expanded != [o] * len(o.expanded):
                 if o in o.expanded:
-                    print('{}:{}: ERROR: cycle in function expansion; skipping'.format(
-                        self.filename,
-                        o.get_line()))
+                    print(f'{self.filename}:{o.get_line()}: ERROR: cycle in function expansion; skipping')
                     return
                 for defn in o.expanded:
                     self.visit_func_def(cast(FuncDef, defn))
@@ -337,12 +335,12 @@ class StatisticsVisitor(TraverserVisitor):
             return
 
         if isinstance(t, AnyType):
-            self.log('  !! Any type around line %d' % self.line)
+            self.log(f'  !! Any type around line {self.line}')
             self.num_any_exprs += 1
             self.record_line(self.line, TYPE_ANY)
         elif ((not self.all_nodes and is_imprecise(t)) or
               (self.all_nodes and is_imprecise2(t))):
-            self.log('  !! Imprecise type around line %d' % self.line)
+            self.log(f'  !! Imprecise type around line {self.line}')
             self.num_imprecise_exprs += 1
             self.record_line(self.line, TYPE_IMPRECISE)
         else:

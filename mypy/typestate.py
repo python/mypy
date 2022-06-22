@@ -144,7 +144,7 @@ class TypeState:
             # These are unlikely to match, due to the large space of
             # possible values.  Avoid uselessly increasing cache sizes.
             return
-        cache = TypeState._subtype_caches.setdefault(right.type, dict())
+        cache = TypeState._subtype_caches.setdefault(right.type, {})
         cache.setdefault(kind, set()).add((left, right))
 
     @staticmethod

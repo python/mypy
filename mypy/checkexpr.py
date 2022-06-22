@@ -151,7 +151,7 @@ def extract_refexpr_names(expr: RefExpr) -> Set[str]:
                 # Everything else (that is not a silenced import within a class)
                 output.add(expr.fullname.rsplit('.', 1)[0])
             break
-        elif isinstance(expr, MemberExpr):
+        if isinstance(expr, MemberExpr):
             if isinstance(expr.expr, RefExpr):
                 expr = expr.expr
             else:
@@ -508,7 +508,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                              arg_names: Sequence[Optional[str]],
                              args: List[Expression],
                              context: Context) -> Type:
-        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
+        if len(args) >= 1 and all(ak == ARG_NAMED for ak in arg_kinds):
             # ex: Point(x=42, y=1337)
             assert all(arg_name is not None for arg_name in arg_names)
             item_names = cast(List[str], arg_names)
@@ -579,7 +579,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(self, callee: TypedDictType,
                                          kwargs: 'OrderedDict[str, Expression]',
                                          context: Context) -> Type:
-        if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
+        if not callee.required_keys <= kwargs.keys() <= callee.items.keys():
             expected_keys = [key for key in callee.items.keys()
                              if key in callee.required_keys or key in kwargs.keys()]
             actual_keys = kwargs.keys()
@@ -1695,8 +1695,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         def has_shape(typ: Type) -> bool:
             typ = get_proper_type(typ)
-            return (isinstance(typ, TupleType) or isinstance(typ, TypedDictType)
-                    or (isinstance(typ, Instance) and typ.type.is_named_tuple))
+            return (isinstance(typ, (TupleType, TypedDictType))
+                    or isinstance(typ, Instance) and typ.type.is_named_tuple)
 
         matches: List[CallableType] = []
         star_matches: List[CallableType] = []
@@ -1956,7 +1956,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             for i, (new_kind, target_kind) in enumerate(zip(new_kinds, target.arg_kinds)):
                 if new_kind == target_kind:
                     continue
-                elif new_kind.is_positional() and target_kind.is_positional():
+                if new_kind.is_positional() and target_kind.is_positional():
                     new_kinds[i] = ARG_POS
                 else:
                     too_complex = True
@@ -2703,9 +2703,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left_variants = [base_type]
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
-                left_variants = [item for item in
-                                 flatten_nested_unions(base_type.relevant_items(),
-                                                       handle_type_alias_type=True)]
+                left_variants = flatten_nested_unions(base_type.relevant_items(),
+                                                      handle_type_alias_type=True)
             right_type = self.accept(arg)
 
             # Step 1: We first try leaving the right arguments alone and destructure
@@ -4026,11 +4025,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def is_valid_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a *args argument?"""
         typ = get_proper_type(typ)
-        return (isinstance(typ, TupleType) or
+        return (isinstance(typ, (TupleType, AnyType, ParamSpecType)) or
                 is_subtype(typ, self.chk.named_generic_type('typing.Iterable',
-                                                            [AnyType(TypeOfAny.special_form)])) or
-                isinstance(typ, AnyType) or
-                isinstance(typ, ParamSpecType))
+                                                            [AnyType(TypeOfAny.special_form)])))
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""

@@ -57,8 +57,7 @@ def map_actuals_to_formals(actual_kinds: List[nodes.ArgKind],
                 while fi < nformals:
                     if formal_kinds[fi].is_named(star=True):
                         break
-                    else:
-                        formal_to_actual[fi].append(ai)
+                    formal_to_actual[fi].append(ai)
                     if formal_kinds[fi] == nodes.ARG_STAR:
                         break
                     fi += 1

@@ -36,10 +36,7 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
                 f"Python 2.{minor} is not supported (must be 2.7)")
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
-            msg = "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(
-                minor,
-                *defaults.PYTHON3_VERSION_MIN
-            )
+            msg = f"Python 3.{minor} is not supported (must be {defaults.PYTHON3_VERSION_MIN[0]}.{defaults.PYTHON3_VERSION_MIN[1]} or higher)"
 
             if isinstance(v, float):
                 msg += ". You may need to put quotes around your Python version"
@@ -108,10 +105,8 @@ def split_and_match_files(paths: str) -> List[str]:
 def check_follow_imports(choice: str) -> str:
     choices = ['normal', 'silent', 'skip', 'error']
     if choice not in choices:
-        raise argparse.ArgumentTypeError(
-            "invalid choice '{}' (choose from {})".format(
-                choice,
-                ', '.join(f"'{x}'" for x in choices)))
+        choices_s = ', '.join(f"'{x}'" for x in choices)
+        raise argparse.ArgumentTypeError(f"invalid choice '{choice}' (choose from {choices_s})")
     return choice
 
 
@@ -250,9 +245,8 @@ def parse_config_file(options: Options, set_strict_flags: Callable[[], None],
 
                 if (any(c in glob for c in '?[]!') or
                         any('*' in x and x != '*' for x in glob.split('.'))):
-                    print("%sPatterns must be fully-qualified module names, optionally "
-                          "with '*' in some components (e.g spam.*.eggs.*)"
-                          % prefix,
+                    print(f"{prefix}Patterns must be fully-qualified module names, optionally "
+                          f"with '*' in some components (e.g spam.*.eggs.*)",
                           file=stderr)
                 else:
                     options.per_module_options[glob] = updates
@@ -335,10 +329,10 @@ def destructure_overrides(toml_data: Dict[str, Any]) -> Dict[str, Any]:
                 for new_key, new_value in module_overrides.items():
                     if (new_key in result[old_config_name] and
                             result[old_config_name][new_key] != new_value):
-                        raise ConfigTOMLValueError("toml config file contains "
-                                         "[[tool.mypy.overrides]] sections with conflicting "
-                                         "values. Module '%s' has two different values for '%s'"
-                                         % (module, new_key))
+                        raise ConfigTOMLValueError(
+                            f"toml config file contains "
+                            f"[[tool.mypy.overrides]] sections with conflicting "
+                            f"values. Module '{module}' has two different values for '{new_key}'")
                     result[old_config_name][new_key] = new_value
 
     del result['mypy']['overrides']
@@ -429,16 +423,16 @@ def parse_section(prefix: str, template: Options,
                 set_strict_flags()
             continue
         if key == 'silent_imports':
-            print("%ssilent_imports has been replaced by "
-                  "ignore_missing_imports=True; follow_imports=skip" % prefix, file=stderr)
+            print(f"{prefix}silent_imports has been replaced by "
+                  "ignore_missing_imports=True; follow_imports=skip", file=stderr)
             if v:
                 if 'ignore_missing_imports' not in results:
                     results['ignore_missing_imports'] = True
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'skip'
         if key == 'almost_silent':
-            print("%salmost_silent has been replaced by "
-                  "follow_imports=error" % prefix, file=stderr)
+            print(f"{prefix}almost_silent has been replaced by "
+                  "follow_imports=error", file=stderr)
             if v:
                 if 'follow_imports' not in results:
                     results['follow_imports'] = 'error'

@@ -500,8 +500,8 @@ class SuggestionEngine:
         if ':' in key:
             if key.count(':') > 1:
                 raise SuggestionFailure(
-                    'Malformed location for function: {}. Must be either'
-                    ' package.module.Class.method or path/to/file.py:line'.format(key))
+                    f'Malformed location for function: {key}. Must be either'
+                    f' package.module.Class.method or path/to/file.py:line')
             file, line = key.split(':')
             if not line.isdigit():
                 raise SuggestionFailure(f'Line number must be a number. Got {line}')
@@ -541,20 +541,17 @@ class SuggestionEngine:
         components = tail.split('.')
         for i, component in enumerate(components[:-1]):
             if component not in names:
-                raise SuggestionFailure("Unknown class %s.%s" %
-                                        (modname, '.'.join(components[:i + 1])))
+                raise SuggestionFailure(f"Unknown class {modname}.{'.'.join(components[:i + 1])}")
             node: Optional[SymbolNode] = names[component].node
             if not isinstance(node, TypeInfo):
-                raise SuggestionFailure("Object %s.%s is not a class" %
-                                        (modname, '.'.join(components[:i + 1])))
+                raise SuggestionFailure(f"Object {modname}.{'.'.join(components[:i + 1])} is not a class")
             names = node.names
 
         # Look for the actual function/method
         funcname = components[-1]
         if funcname not in names:
             key = modname + '.' + tail
-            raise SuggestionFailure("Unknown %s %s" %
-                                    ("method" if len(components) > 1 else "function", key))
+            raise SuggestionFailure(f'Unknown {"method" if len(components) > 1 else "function"} {key}')
         return names[funcname].node
 
     def find_node_by_file_and_line(self, file: str, line: int) -> Tuple[str, SymbolNode]:
@@ -781,8 +778,7 @@ class TypeFormatter(TypeStrVisitor):
         s = t.type.fullname or t.type.name or None
         if s is None:
             return '<???>'
-        if s in reverse_builtin_aliases:
-            s = reverse_builtin_aliases[s]
+        s = reverse_builtin_aliases.get(s, s)
 
         mod_obj = split_target(self.graph, s)
         assert mod_obj

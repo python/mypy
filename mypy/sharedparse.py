@@ -1,7 +1,7 @@
+"""Shared logic between our three mypy parser files."""
+
 from typing import Optional
 from typing_extensions import Final
-
-"""Shared logic between our three mypy parser files."""
 
 
 _NON_BINARY_MAGIC_METHODS: Final = {

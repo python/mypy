@@ -1,7 +1,7 @@
 from typing import Dict, Iterable, List, Optional, Set, Union
 
 from mypy.types import TypeVisitor
-import mypy.types as types
+from mypy import types
 from mypy.util import split_module_names
 
 

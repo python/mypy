@@ -114,7 +114,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
                 arg_names=t.prefix.arg_names + repl.prefix.arg_names,
             ))
-        elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
+        elif isinstance(repl, (Parameters, CallableType)):
             # if the paramspec is *P.args or **P.kwargs:
             if t.flavor != ParamSpecFlavor.BARE:
                 assert isinstance(repl, CallableType), "Should not be able to get here."
@@ -184,7 +184,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # must expand both of them with all the argument types,
             # kinds and names in the replacement. The return type in
             # the replacement is ignored.
-            if isinstance(repl, CallableType) or isinstance(repl, Parameters):
+            if isinstance(repl, (CallableType, Parameters)):
                 # Substitute *args: P.args, **kwargs: P.kwargs
                 prefix = param_spec.prefix
                 # we need to expand the types in the prefix, so might as well

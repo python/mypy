@@ -88,7 +88,7 @@ def generate_stub_for_c_module(module_name: str,
     for line in functions:
         output.append(line)
     output = add_typing_import(output)
-    with open(target, 'w') as file:
+    with open(target, 'wt') as file:
         for line in output:
             file.write(f'{line}\n')
 
@@ -97,7 +97,7 @@ def add_typing_import(output: List[str]) -> List[str]:
     """Add typing imports for collections/types that occur in the generated stub."""
     names = []
     for name in _DEFAULT_TYPING_IMPORTS:
-        if any(re.search(r'\b%s\b' % name, line) for line in output):
+        if any(re.search(rf'\b{name}\b', line) for line in output):
             names.append(name)
     if names:
         return [f"from typing import {', '.join(names)}", ''] + output
@@ -219,11 +219,8 @@ def generate_c_function_stub(module: ModuleType,
 
             if is_overloaded:
                 output.append('@overload')
-            output.append('def {function}({args}) -> {ret}: ...'.format(
-                function=name,
-                args=", ".join(sig),
-                ret=strip_or_import(signature.ret_type, module, imports)
-            ))
+            ret_type = strip_or_import(signature.ret_type, module, imports)
+            output.append(f'def {name}({", ".join(sig)}) -> {ret_type}: ...')
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
@@ -370,8 +367,7 @@ def generate_c_type_stub(module: ModuleType,
         if is_skipped_attribute(attr):
             continue
         if attr not in done:
-            static_properties.append('{}: ClassVar[{}] = ...'.format(
-                attr, strip_or_import(get_type_fullname(type(value)), module, imports)))
+            static_properties.append(f'{attr}: ClassVar[{strip_or_import(get_type_fullname(type(value)), module, imports)}] = ...')
     all_bases = type.mro(obj)
     if all_bases[-1] is object:
         # TODO: Is this always object?
@@ -388,13 +384,14 @@ def generate_c_type_stub(module: ModuleType,
         if not any(issubclass(b, base) for b in bases):
             bases.append(base)
     if bases:
-        bases_str = '(%s)' % ', '.join(
+        bases_str = ', '.join(
             strip_or_import(
                 get_type_fullname(base),
                 module,
                 imports
             ) for base in bases
         )
+        bases_str = f'({bases_str})'
     else:
         bases_str = ''
     if types or static_properties or rw_properties or methods or ro_properties:

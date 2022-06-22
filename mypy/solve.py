@@ -56,7 +56,7 @@ def solve_constraints(vars: List[TypeVarId], constraints: List[Constraint],
             assert isinstance(source_any, AnyType)
             res.append(AnyType(TypeOfAny.from_another_any, source_any=source_any))
             continue
-        elif bottom is None:
+        if bottom is None:
             if top:
                 candidate = top
             else:

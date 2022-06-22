@@ -173,7 +173,7 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
     # Special case the promotions between 'int' and native integer types.
     # These have promotions going both ways, such as from 'int' to 'i64'
     # and 'i64' to 'int', for convenience.
-    if defn.fullname == 'mypy_extensions.i64' or defn.fullname == 'mypy_extensions.i32':
+    if defn.fullname in {'mypy_extensions.i64', 'mypy_extensions.i32'}:
         int_sym = builtin_names['int']
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))

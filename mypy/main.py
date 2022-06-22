@@ -39,8 +39,7 @@ def stat_proxy(path: str) -> os.stat_result:
         print(f"stat({path!r}) -> {err}")
         raise
     else:
-        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
-              (path, st.st_mode, st.st_mtime, st.st_size))
+        print(f"stat({path}) -> (st_mode={st.st_mode:o}, st_mtime={st.st_mtime:f.0}, st_size={st.st_size})")
         return st
 
 
@@ -264,8 +263,8 @@ def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise PythonExecutableInferenceError(
-            'failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version)
+            f'failed to find a Python executable matching version {python_version},'
+            f'perhaps try --python-executable, or --no-site-packages?'
         ) from e
 
 
@@ -742,8 +741,8 @@ def process_options(args: List[str],
         help="Disable module cache (inverse: --incremental)")
     incremental_group.add_argument(
         '--cache-dir', action='store', metavar='DIR',
-        help="Store module cache info in the given folder in incremental mode "
-             "(defaults to '{}')".format(defaults.CACHE_DIR))
+        help=f"Store module cache info in the given folder in incremental mode "
+             f"(defaults to '{defaults.CACHE_DIR}')")
     add_invertible_flag('--sqlite-cache', default=False,
                         help="Use a sqlite database to store the cache",
                         group=incremental_group)
@@ -1126,11 +1125,9 @@ def process_cache_map(parser: argparse.ArgumentParser,
         if not source.endswith('.py') and not source.endswith('.pyi'):
             parser.error(f"Invalid --cache-map source {source} (triple[0] must be *.py[i])")
         if not meta_file.endswith('.meta.json'):
-            parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
-                         meta_file)
+            parser.error(f"Invalid --cache-map meta_file {meta_file} (triple[1] must be *.meta.json)")
         if not data_file.endswith('.data.json'):
-            parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
-                         data_file)
+            parser.error(f"Invalid --cache-map data_file {data_file} (triple[2] must be *.data.json)")
         options.cache_map[source] = (meta_file, data_file)
 
 

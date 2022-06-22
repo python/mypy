@@ -42,8 +42,7 @@ class ArgSig:
         self.default = default
 
     def __repr__(self) -> str:
-        return "ArgSig(name={}, type={}, default={})".format(repr(self.name), repr(self.type),
-                                                            repr(self.default))
+        return f"ArgSig(name={self.name!r}, type={self.type!r}, default={self.default!r})"
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, ArgSig):

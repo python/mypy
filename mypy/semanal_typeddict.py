@@ -20,9 +20,7 @@ from mypy.messages import MessageBuilder
 from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
 
-TPDICT_CLASS_ERROR: Final = (
-    "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
-)
+TPDICT_CLASS_ERROR: Final = 'Invalid statement in TypedDict definition; expected "field_name: field_type"'
 
 
 class TypedDictAnalyzer:
@@ -103,8 +101,7 @@ class TypedDictAnalyzer:
                 valid_items = base_items.copy()
                 for key in base_items:
                     if key in keys:
-                        self.fail('Overwriting TypedDict field "{}" while merging'
-                                  .format(key), defn)
+                        self.fail(f'Overwriting TypedDict field "{key}" while merging', defn)
                 keys.extend(valid_items.keys())
                 types.extend(valid_items.values())
                 required_keys.update(base_typed_dict.required_keys)
@@ -153,8 +150,7 @@ class TypedDictAnalyzer:
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail('Overwriting TypedDict field "{}" while extending'
-                              .format(name), stmt)
+                    self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue
@@ -233,8 +229,8 @@ class TypedDictAnalyzer:
         else:
             if var_name is not None and name != var_name:
                 self.fail(
-                    'First argument "{}" to TypedDict() does not match variable name "{}"'.format(
-                        name, var_name), node, code=codes.NAME_MATCH)
+                    f'First argument "{name}" to TypedDict() does not match variable name "{var_name}"',
+                    node, code=codes.NAME_MATCH)
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += '@' + str(call.line)

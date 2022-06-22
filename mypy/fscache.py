@@ -127,8 +127,7 @@ class FileSystemCache:
                     # A package root itself is never a package.
                     ok = False
                     break
-                else:
-                    ok = True
+                ok = True
         return ok
 
     def _fake_init(self, path: str) -> os.stat_result:

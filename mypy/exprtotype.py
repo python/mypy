@@ -97,7 +97,7 @@ def expr_to_unanalyzed_type(expr: Expression,
             if isinstance(c, NameExpr):
                 names.append(c.name)
                 break
-            elif isinstance(c, MemberExpr):
+            if isinstance(c, MemberExpr):
                 names.append(c.name)
                 c = c.expr
             else:
@@ -116,7 +116,7 @@ def expr_to_unanalyzed_type(expr: Expression,
                         raise TypeTranslationError()
                     name = _extract_argument_name(arg)
                     continue
-                elif expr.arg_names[i] == "type":
+                if expr.arg_names[i] == "type":
                     if typ is not default_type:
                         # Two types
                         raise TypeTranslationError()

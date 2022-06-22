@@ -32,7 +32,6 @@ else:
 
 class IPCException(Exception):
     """Exception for IPC issues."""
-    pass
 
 
 class IPCBase:
@@ -70,10 +69,10 @@ class IPCBase:
                 if err == 0:
                     # we are done!
                     break
-                elif err == _winapi.ERROR_MORE_DATA:
+                if err == _winapi.ERROR_MORE_DATA:
                     # read again
                     continue
-                elif err == _winapi.ERROR_OPERATION_ABORTED:
+                if err == _winapi.ERROR_OPERATION_ABORTED:
                     raise IPCException("ReadFile operation aborted.")
         else:
             while True:
@@ -133,8 +132,7 @@ class IPCClient(IPCBase):
             except OSError as e:
                 if e.winerror == _winapi.ERROR_SEM_TIMEOUT:
                     raise IPCException("Timed out waiting for connection.") from e
-                else:
-                    raise
+                raise
             try:
                 self.connection = _winapi.CreateFile(
                     self.name,
@@ -148,8 +146,7 @@ class IPCClient(IPCBase):
             except OSError as e:
                 if e.winerror == _winapi.ERROR_PIPE_BUSY:
                     raise IPCException("The connection is busy.") from e
-                else:
-                    raise
+                raise
             _winapi.SetNamedPipeHandleState(self.connection,
                                             _winapi.PIPE_READMODE_MESSAGE,
                                             None,

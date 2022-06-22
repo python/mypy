@@ -114,8 +114,7 @@ def _is_subtype(left: Type, right: Type,
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if (isinstance(right, AnyType) or isinstance(right, UnboundType)
-            or isinstance(right, ErasedType)):
+    if isinstance(right, (AnyType, UnboundType, ErasedType)):
         return True
     elif isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
@@ -362,7 +361,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
-        if isinstance(right, Parameters) or isinstance(right, CallableType):
+        if isinstance(right, (Parameters, CallableType)):
             return are_parameters_compatible(
                 left, right,
                 is_compat=self._is_subtype,
@@ -1497,7 +1496,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
 
     def visit_parameters(self, left: Parameters) -> bool:
         right = self.right
-        if isinstance(right, Parameters) or isinstance(right, CallableType):
+        if isinstance(right, (Parameters, CallableType)):
             return are_parameters_compatible(left, right, is_compat=self._is_proper_subtype)
         else:
             return False

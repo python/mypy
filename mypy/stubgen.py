@@ -806,8 +806,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
               expr.name in ('abstractmethod', 'abstractproperty')):
             if expr.name == 'abstractproperty':
                 self.import_tracker.require_name(expr.expr.name)
-                self.add_decorator('%s' % ('property'))
-                self.add_decorator('{}.{}'.format(expr.expr.name, 'abstractmethod'))
+                self.add_decorator('property')
+                self.add_decorator(f'{expr.expr.name}.abstractmethod')
             else:
                 self.import_tracker.require_name(expr.expr.name)
                 self.add_decorator(f'{expr.expr.name}.{expr.name}')
@@ -820,8 +820,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                      self.import_tracker.reverse_alias.get(expr.expr.expr.name) ==
                         'asyncio')):
                 self.add_coroutine_decorator(context.func,
-                                             '%s.coroutines.coroutine' %
-                                             (expr.expr.expr.name,),
+                                             f'{expr.expr.expr.name}.coroutines.coroutine',
                                              expr.expr.expr.name)
             elif (isinstance(expr.expr, NameExpr) and
                   (expr.expr.name in ('asyncio', 'types') or
@@ -918,7 +917,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                     not o.unanalyzed_type and self.is_alias_expression(o.rvalue)):
                 self.process_typealias(lvalue, o.rvalue)
                 continue
-            if isinstance(lvalue, TupleExpr) or isinstance(lvalue, ListExpr):
+            if isinstance(lvalue, (TupleExpr, ListExpr)):
                 items = lvalue.items
                 if isinstance(o.unanalyzed_type, TupleType):  # type: ignore
                     annotations: Iterable[Optional[Type]] = o.unanalyzed_type.items
@@ -1545,7 +1544,7 @@ def generate_stub_from_ast(mod: StubSource,
     subdir = os.path.dirname(target)
     if subdir and not os.path.isdir(subdir):
         os.makedirs(subdir)
-    with open(target, 'w') as file:
+    with open(target, 'wt') as file:
         file.write(''.join(gen.output()))
 
 
@@ -1558,7 +1557,7 @@ def collect_docs_signatures(doc_dir: str) -> Tuple[Dict[str, str], Dict[str, str
     all_sigs: List[Sig] = []
     all_class_sigs: List[Sig] = []
     for path in glob.glob(f'{doc_dir}/*.rst'):
-        with open(path) as f:
+        with open(path, 'rt') as f:
             loc_sigs, loc_class_sigs = parse_all_signatures(f.readlines())
         all_sigs += loc_sigs
         all_class_sigs += loc_class_sigs
@@ -1608,7 +1607,7 @@ def generate_stubs(options: Options) -> None:
             generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs)
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
-        print('Processed %d modules' % num_modules)
+        print(f'Processed {num_modules} modules')
         if len(files) == 1:
             print(f'Generated {files[0]}')
         else:

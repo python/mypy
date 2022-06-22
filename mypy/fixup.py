@@ -286,10 +286,8 @@ def lookup_fully_qualified_typeinfo(modules: Dict[str, MypyFile], name: str, *,
         return node
     else:
         # Looks like a missing TypeInfo during an initial daemon load, put something there
-        assert allow_missing, "Should never get here in normal mode," \
-                              " got {}:{} instead of TypeInfo".format(type(node).__name__,
-                                                                      node.fullname if node
-                                                                      else '')
+        assert allow_missing, f"Should never get here in normal mode, " \
+                              f"got {type(node).__name__}:{node.fullname if node else ''} instead of TypeInfo"
         return missing_info(modules)
 
 

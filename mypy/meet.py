@@ -405,7 +405,7 @@ def is_overlapping_types(left: Type,
     # Note: it's unclear however, whether returning False is the right thing
     # to do when inferring reachability -- see  https://github.com/python/mypy/issues/5529
 
-    assert type(left) != type(right)
+    assert type(left) is not type(right)
     return False
 
 
@@ -554,7 +554,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
 
     def visit_parameters(self, t: Parameters) -> ProperType:
         # TODO: is this the right variance?
-        if isinstance(self.s, Parameters) or isinstance(self.s, CallableType):
+        if isinstance(self.s, (Parameters, CallableType)):
             if len(t.arg_types) != len(self.s.arg_types):
                 return self.default(self.s)
             return t.copy_modified(
