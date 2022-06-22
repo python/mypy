@@ -1047,6 +1047,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             d.accept(self)
         removed: List[int] = []
         no_type_check = False
+        could_be_decorated_property = False
         for i, d in enumerate(dec.decorators):
             # A bunch of decorators are special cased here.
             if refers_to_fullname(d, 'abc.abstractmethod'):
@@ -1094,6 +1095,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                     removed.append(i)
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
+            elif not dec.var.is_property:
+                could_be_decorated_property = True
         for i in reversed(removed):
             del dec.decorators[i]
         if (not dec.is_overload or dec.var.is_property) and self.type:
@@ -1101,7 +1104,7 @@ class SemanticAnalyzer(NodeVisitor[None],
             dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
-        if dec.decorators and dec.var.is_property:
+        if could_be_decorated_property and dec.decorators and dec.var.is_property:
             self.fail('Decorated property not supported', dec)
         if dec.func.is_abstract and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
