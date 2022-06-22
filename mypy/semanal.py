@@ -846,6 +846,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                         # that.
                         non_overload_indexes.append(i)
                 else:
+                    if item.var.is_property:
+                        self.fail("Decorated property not supported", item)
                     item.func.is_overload = True
                     types.append(callable)
             elif isinstance(item, FuncDef):

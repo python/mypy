@@ -1231,7 +1231,7 @@ from typing import overload
 class A:
     @overload  # E: An overloaded function outside a stub file must have an implementation
     def f(self) -> int: pass
-    @property
+    @property  # E: Decorated property not supported
     @overload
     def f(self) -> int: pass
 [builtins fixtures/property.pyi]
