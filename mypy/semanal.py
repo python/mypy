@@ -957,7 +957,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
-                if len(item.decorators) == 1:
+                if len(item.decorators) >= 1:
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):
                         if node.name == 'setter':
@@ -965,8 +965,8 @@ class SemanticAnalyzer(NodeVisitor[None],
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.is_abstract = first_item.func.is_abstract
-                else:
-                    self.fail("Decorated property not supported", item)
+                    else:
+                        self.fail("Decorated property not supported", item)
                 item.func.accept(self)
             else:
                 self.fail(f'Unexpected definition for property "{first_item.func.name}"',

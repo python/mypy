@@ -1250,6 +1250,22 @@ class A:
 [builtins fixtures/property.pyi]
 [out]
 
+[case testDecoratedPropertySetter]
+import typing
+def dec(f): pass
+class A:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @f.setter
+    @dec
+    def f(self, v: int) -> None: pass
+    @dec # E: Decorated property not supported
+    @f.setter
+    def f(self, v: int) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
 [case testImportTwoModulesWithSameNameInFunction]
 import typing
 def f() -> None:
