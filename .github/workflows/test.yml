@@ -94,8 +94,8 @@ jobs:
 
     name: ${{ matrix.name }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
@@ -123,8 +123,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Test suite with Python nightly
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.11-dev'
     - name: Install tox
