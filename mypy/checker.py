@@ -1600,7 +1600,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         original_type = NoneType()
                 else:
-                    assert False, str(base_attr.node)
+                    # Will always fail to typecheck below, since we know the node is a method
+                    original_type = NoneType()
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_class_or_static = original_node.is_class or original_node.is_static
             elif isinstance(original_node, Decorator):
