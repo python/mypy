@@ -1243,7 +1243,7 @@ L1:
 L2:
     return 0
 
-[case testMultiplyListByI64]
+[case testMultiplyListByI64_64bit]
 from mypy_extensions import i64
 from typing import List
 
