@@ -1929,6 +1929,28 @@ from package import mod as mod
 from package import mod as internal_detail
 [builtins fixtures/module.pyi]
 
+[case testNoReExportUnrelatedModule]
+from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+
+[file mod1/__init__.pyi]
+[file mod1/unrelated.pyi]
+x: int
+
+[file mod2.pyi]
+from mod1 import unrelated
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedSiblingPrefix]
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+
+[file pkg/__init__.pyi]
+[file pkg/unrelated.pyi]
+x: int
+
+[file pkg/unrel.pyi]
+from pkg import unrelated
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
