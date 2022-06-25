@@ -879,7 +879,7 @@ class Out(NamedTuple):
     x: In
     y: Other
 
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other, fallback=__main__.In], __main__.Other, fallback=__main__.Out]"
+reveal_type(o)  # N: Revealed type is "__main__.Out"
 reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other, fallback=__main__.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.Other"
@@ -916,7 +916,7 @@ from typing import NamedTuple
 o: C.Out
 i: C.In
 
-reveal_type(o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In], __main__.C.Other, fallback=__main__.C.Out]"
+reveal_type(o)  # N: Revealed type is "__main__.C.Out"
 reveal_type(o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.C.Other, fallback=__main__.C.In]"
 reveal_type(o.y)  # N: Revealed type is "__main__.C.Other"
 reveal_type(o.x.t)  # N: Revealed type is "__main__.C.Other"
@@ -951,9 +951,9 @@ class C:
 from typing import NamedTuple
 
 c = C()
-reveal_type(c.o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15], __main__.Other@18, fallback=__main__.C.Out@11]"
-reveal_type(c.o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]"
-reveal_type(c.o.method())  # N: Revealed type is "Tuple[builtins.str, __main__.Other@18, fallback=__main__.C.In@15]"
+reveal_type(c.o)  # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.Other@18, fallback=__main__.In@15], __main__.Other@18, fallback=__main__.Out@11]"
+reveal_type(c.o.x)  # N: Revealed type is "Tuple[builtins.str, __main__.Other@18, fallback=__main__.In@15]"
+reveal_type(c.o.method())  # N: Revealed type is "Tuple[builtins.str, __main__.Other@18, fallback=__main__.In@15]"
 
 class C:
     def get_tuple(self) -> None:

@@ -1214,22 +1214,22 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.is_named_tuple:
-            # Don't reprocess everything. We just need to process methods defined
-            # in the named tuple class body.
-            is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
-        else:
-            is_named_tuple, info = self.named_tuple_analyzer.analyze_namedtuple_classdef(
-                defn, self.is_stub_file, self.is_func_scope())
+        if self.named_tuple_analyzer.is_incomplete_namedtuple_classdef(defn):
+            self.prepare_class_def(defn)
+
+        is_named_tuple, complete = self.named_tuple_analyzer.analyze_namedtuple_classdef(
+            defn, self.is_stub_file, self.is_func_scope())
+
         if is_named_tuple:
-            if info is None:
+            if not complete:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info)
+                self.prepare_class_def(defn)
                 with self.scope.class_scope(defn.info):
-                    with self.named_tuple_analyzer.save_namedtuple_body(info):
+                    with self.named_tuple_analyzer.save_namedtuple_body(defn.info):
                         self.analyze_class_body_common(defn)
             return True
+
         return False
 
     def apply_class_plugin_hooks(self, defn: ClassDef) -> None:
@@ -1462,10 +1462,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                 info._fullname = self.qualified_name(defn.name)
             else:
                 info._fullname = info.name
+
         local_name = defn.name
         if '@' in local_name:
             local_name = local_name.split('@')[0]
-        self.add_symbol(local_name, defn.info, defn)
+
+        # Add symbol, unless in func scope and intermediate completion of named tuple class
+        if not (self.is_nested_within_func_scope()
+                and self.named_tuple_analyzer.is_incomplete_namedtuple_classdef(defn)):
+            self.add_symbol(local_name, defn.info, defn)
+
         if self.is_nested_within_func_scope():
             # We need to preserve local classes, let's store them
             # in globals under mangled unique names

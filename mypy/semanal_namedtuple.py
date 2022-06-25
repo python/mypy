@@ -55,34 +55,40 @@ class NamedTupleAnalyzer:
 
     def analyze_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool,
                                     is_func_scope: bool
-                                    ) -> Tuple[bool, Optional[TypeInfo]]:
+                                    ) -> Tuple[bool, bool]:
         """Analyze if given class definition can be a named tuple definition.
 
         Return a tuple where first item indicates whether this can possibly be a named tuple,
-        and the second item is the corresponding TypeInfo (may be None if not ready and should be
-        deferred).
+        and the second item indicates whether definition is complete or requires another pass.
         """
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname == 'typing.NamedTuple':
-                    result = self.check_namedtuple_classdef(defn, is_stub_file)
-                    if result is None:
-                        # This is a valid named tuple, but some types are incomplete.
-                        return True, None
-                    items, types, default_items = result
-                    if is_func_scope and '@' not in defn.name:
-                        defn.name += '@' + str(defn.line)
-                    info = self.build_namedtuple_typeinfo(
-                        defn.name, items, types, default_items, defn.line)
-                    defn.info = info
-                    defn.analyzed = NamedTupleExpr(info, is_typed=True)
-                    defn.analyzed.line = defn.line
-                    defn.analyzed.column = defn.column
-                    # All done: this is a valid named tuple with all types known.
-                    return True, info
-        # This can't be a valid named tuple.
-        return False, None
+                    break
+        else:
+            # This can't be a valid named tuple.
+            return False, False
+
+        if not defn.info:
+            defn.info = self._basic_namedtuple_typeinfo(defn.name, defn.line)
+        result = self.check_namedtuple_classdef(defn, is_stub_file)
+        if result is None:
+            # This is a valid named tuple, but some types are incomplete.
+            return True, False
+
+        items, types, default_items = result
+        if is_func_scope and '@' not in defn.name:
+            defn.name += '@' + str(defn.line)
+        self._complete_namedtuple_typeinfo(defn.info, items, types, default_items)
+        defn.analyzed = NamedTupleExpr(defn.info, is_typed=True)
+        defn.analyzed.line = defn.line
+        defn.analyzed.column = defn.column
+        # All done: this is a valid named tuple with all types known.
+        return True, True
+
+    def is_incomplete_namedtuple_classdef(self, defn: ClassDef) -> bool:
+        return bool(defn.info) and defn.info.is_named_tuple and defn.info.tuple_type is None
 
     def check_namedtuple_classdef(self, defn: ClassDef, is_stub_file: bool
                                   ) -> Optional[Tuple[List[str],
@@ -392,28 +398,30 @@ class NamedTupleAnalyzer:
                                   types: List[Type],
                                   default_items: Mapping[str, Expression],
                                   line: int) -> TypeInfo:
-        strtype = self.api.named_type('builtins.str')
-        implicit_any = AnyType(TypeOfAny.special_form)
-        basetuple_type = self.api.named_type('builtins.tuple', [implicit_any])
-        dictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                   or self.api.named_type('builtins.object'))
-        # Actual signature should return OrderedDict[str, Union[types]]
-        ordereddictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
-                          or self.api.named_type('builtins.object'))
-        fallback = self.api.named_type('builtins.tuple', [implicit_any])
-        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
-        # but it can't be expressed. 'new' and 'len' should be callable types.
-        iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
-        function_type = self.api.named_type('builtins.function')
+        info = self._basic_namedtuple_typeinfo(name, line)
+        self._complete_namedtuple_typeinfo(info, items, types, default_items)
+        return info
 
-        literals: List[Type] = [LiteralType(item, strtype) for item in items]
-        match_args_type = TupleType(literals, basetuple_type)
+    def _basic_namedtuple_typeinfo(self,
+                                  name: str,
+                                  line: int) -> TypeInfo:
+        implicit_any = AnyType(TypeOfAny.special_form)
+        fallback = self.api.named_type('builtins.tuple', [implicit_any])
 
         info = self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
-        tuple_base = TupleType(types, fallback)
-        info.tuple_type = tuple_base
         info.line = line
+
+        return info
+
+    def _complete_namedtuple_typeinfo(self,
+                                  info: TypeInfo,
+                                  items: List[str],
+                                  types: List[Type],
+                                  default_items: Mapping[str, Expression]):
+        tuple_base = TupleType(types, info.bases[0])
+        info.tuple_type = tuple_base
+
         # For use by mypyc.
         info.metadata['namedtuple'] = {'fields': items.copy()}
 
@@ -440,7 +448,23 @@ class NamedTupleAnalyzer:
         # are analyzed).
         vars = [Var(item, typ) for item, typ in zip(items, types)]
 
+        strtype = self.api.named_type('builtins.str')
+        implicit_any = AnyType(TypeOfAny.special_form)
+        basetuple_type = self.api.named_type('builtins.tuple', [implicit_any])
+        dictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
+                   or self.api.named_type('builtins.object'))
+        # Actual signature should return OrderedDict[str, Union[types]]
+        ordereddictype = (self.api.named_type_or_none('builtins.dict', [strtype, implicit_any])
+                          or self.api.named_type('builtins.object'))
         tuple_of_strings = TupleType([strtype for _ in items], basetuple_type)
+        literals: List[Type] = [LiteralType(item, strtype) for item in items]
+        match_args_type = TupleType(literals, basetuple_type)
+
+        # Note: actual signature should accept an invariant version of Iterable[UnionType[types]].
+        # but it can't be expressed. 'new' and 'len' should be callable types.
+        iterable_type = self.api.named_type_or_none('typing.Iterable', [implicit_any])
+        function_type = self.api.named_type('builtins.function')
+
         add_field(Var('_fields', tuple_of_strings), is_initialized_in_class=True)
         add_field(Var('_field_types', dictype), is_initialized_in_class=True)
         add_field(Var('_field_defaults', dictype), is_initialized_in_class=True)
@@ -477,7 +501,7 @@ class NamedTupleAnalyzer:
             func.is_class = is_classmethod
             func.type = set_callable_name(signature, func)
             func._fullname = info.fullname + '.' + funcname
-            func.line = line
+            func.line = info.line
             if is_classmethod:
                 v = Var(funcname, func.type)
                 v.is_classmethod = True
@@ -485,7 +509,7 @@ class NamedTupleAnalyzer:
                 v._fullname = func._fullname
                 func.is_decorated = True
                 dec = Decorator(func, [NameExpr('classmethod')], v)
-                dec.line = line
+                dec.line = info.line
                 sym = SymbolTableNode(MDEF, dec)
             else:
                 sym = SymbolTableNode(MDEF, func)
@@ -513,7 +537,6 @@ class NamedTupleAnalyzer:
         self_tvar_expr = TypeVarExpr(SELF_TVAR_NAME, info.fullname + '.' + SELF_TVAR_NAME,
                                      [], info.tuple_type)
         info.names[SELF_TVAR_NAME] = SymbolTableNode(MDEF, self_tvar_expr)
-        return info
 
     @contextmanager
     def save_namedtuple_body(self, named_tuple_info: TypeInfo) -> Iterator[None]:

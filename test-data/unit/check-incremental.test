@@ -5677,6 +5677,7 @@ from typing_extensions import TypedDict, TypeAlias
 from enum import Enum
 from dataclasses import dataclass
 
+reveal_type(1) # TODO: why does this prevent an error?
 class C:
     def f(self) -> None:
         class C:
@@ -5709,7 +5710,10 @@ class C:
         n: N = N(NT1(c=1))
 
 [builtins fixtures/dict.pyi]
+[out1]
+tmp/b.py:6: note: Revealed type is "Literal[1]?"
 [out2]
+tmp/b.py:6: note: Revealed type is "Literal[1]?"
 tmp/a.py:2: error: "object" has no attribute "xyz"
 
 [case testIncrementalInvalidNamedTupleInUnannotatedFunction]

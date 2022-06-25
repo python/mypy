@@ -630,13 +630,13 @@ tmp/b.py:7: note: Revealed type is "Tuple[Any, fallback=a.N]"
 
 from typing import NamedTuple
 class MyNamedTuple(NamedTuple):
-    parent: 'MyNamedTuple' # E: Cannot resolve name "MyNamedTuple" (possible cyclic definition)
+    parent: 'MyNamedTuple'
 
 def bar(nt: MyNamedTuple) -> MyNamedTuple:
     return nt
 
 x: MyNamedTuple
-reveal_type(x.parent) # N: Revealed type is "Any"
+reveal_type(x.parent) # N: Revealed type is "__main__.MyNamedTuple"
 [builtins fixtures/tuple.pyi]
 
 -- Some crazy self-referential named tuples and types dicts
@@ -682,14 +682,14 @@ from typing import Tuple, NamedTuple
 
 A = NamedTuple('A', [
         ('x', str),
-        ('y', Tuple['B', ...]), # E: Cannot resolve name "B" (possible cyclic definition)
+        ('y', Tuple['B', ...]),
     ])
 class B(NamedTuple):
     x: A
     y: int
 
 n: A
-reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ...], fallback=__main__.A]"
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[__main__.B, ...], fallback=__main__.A]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT3]
@@ -697,7 +697,7 @@ reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Any, ..
 from typing import NamedTuple, Tuple
 
 class B(NamedTuple):
-    x: Tuple[A, int] # E: Cannot resolve name "A" (possible cyclic definition)
+    x: Tuple[A, int]
     y: int
 
 A = NamedTuple('A', [
@@ -706,10 +706,10 @@ A = NamedTuple('A', [
     ])
 n: B
 m: A
-reveal_type(n.x) # N: Revealed type is "Tuple[Any, builtins.int]"
+reveal_type(n.x) # N: Revealed type is "Tuple[Tuple[builtins.str, __main__.B, fallback=__main__.A], builtins.int]"
 reveal_type(m[0]) # N: Revealed type is "builtins.str"
 lst = [m, n]
-reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
+reveal_type(lst[0]) # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT4]
@@ -717,7 +717,7 @@ reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.objec
 from typing import NamedTuple
 
 class B(NamedTuple):
-    x: A # E: Cannot resolve name "A" (possible cyclic definition)
+    x: A
     y: int
 
 class A(NamedTuple):
@@ -725,7 +725,7 @@ class A(NamedTuple):
     y: B
 
 n: A
-reveal_type(n.y[0]) # N: Revealed type is "Any"
+reveal_type(n.y[0]) # N: Revealed type is "builtins.object"
 [builtins fixtures/tuple.pyi]
 
 [case testSelfRefNT5]
@@ -795,13 +795,13 @@ tp = NamedTuple('tp', [('x', int)])
 from typing import List, NamedTuple
 
 class Command(NamedTuple):
-    subcommands: List['Command'] # E: Cannot resolve name "Command" (possible cyclic definition)
+    subcommands: List['Command']
 
 class HelpCommand(Command):
     pass
 
 hc = HelpCommand(subcommands=[])
-reveal_type(hc)  # N: Revealed type is "Tuple[builtins.list[Any], fallback=__main__.HelpCommand]"
+reveal_type(hc)  # N: Revealed type is "Tuple[builtins.list[__main__.Command], fallback=__main__.HelpCommand]"
 [builtins fixtures/list.pyi]
 [out]
 
