@@ -258,7 +258,7 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
-    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref')
+    __slots__ = ('alias', 'args', 'type_ref')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
@@ -1838,7 +1838,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    __slots__ = ('_items', 'fallback')
+    __slots__ = ('_items',)
 
     _items: List[CallableType]  # Must not be empty
 
