@@ -23,17 +23,19 @@ if TYPE_CHECKING:
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column', 'end_line')
+    __slots__ = ('line', 'column', 'end_line', 'end_column')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
         self.end_line: Optional[int] = None
+        self.end_column: Optional[int] = None
 
     def set_line(self,
                  target: Union['Context', int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -44,12 +46,16 @@ class Context:
             self.line = target.line
             self.column = target.column
             self.end_line = target.end_line
+            self.end_column = target.end_column
 
         if column is not None:
             self.column = column
 
         if end_line is not None:
             self.end_line = end_line
+
+        if end_column is not None:
+            self.end_column = end_column
 
     def get_line(self) -> int:
         """Don't use. Use x.line."""
@@ -631,13 +637,16 @@ class Argument(Node):
     def set_line(self,
                  target: Union[Context, int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
-        super().set_line(target, column, end_line)
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line, end_column)
 
         if self.initializer and self.initializer.line < 0:
-            self.initializer.set_line(self.line, self.column, self.end_line)
+            self.initializer.set_line(
+                self.line, self.column, self.end_line, self.end_column)
 
-        self.variable.set_line(self.line, self.column, self.end_line)
+        self.variable.set_line(
+            self.line, self.column, self.end_line, self.end_column)
 
 
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
@@ -698,10 +707,11 @@ class FuncItem(FuncBase):
     def set_line(self,
                  target: Union[Context, int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
-        super().set_line(target, column, end_line)
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
-            arg.set_line(self.line, self.column, self.end_line)
+            arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
