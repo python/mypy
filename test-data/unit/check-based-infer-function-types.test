@@ -369,3 +369,9 @@ class B(A):
 b: B
 reveal_type(b.foo)  # N: Revealed type is "def () -> int"
 reveal_type(b.bar)  # N: Revealed type is "def (i: int) -> int"
+
+
+[case testUntypedInit]
+# flags: --allow-untyped-defs
+class A:
+    def __init__(self, foo): ...

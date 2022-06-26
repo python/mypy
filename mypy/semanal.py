@@ -661,21 +661,23 @@ class SemanticAnalyzer(NodeVisitor[None],
                         defn.arg_kinds,
                         defn.arg_names,
                         NoneType(),
-                        self.named_type('builtins.function'))
+                        self.named_type('builtins.function'),
+                        implicit=True,)
             if defn.name == "__new__" and self.options.infer_function_types:
                 if defn.type:
                     assert isinstance(defn.type, CallableType)
                     if isinstance(get_proper_type(defn.type.ret_type), (AnyType, NoneType)):
                         self_type = fill_typevars_with_any(defn.info)
                         defn.type = defn.type.copy_modified(ret_type=self_type)
-                elif self.options.disallow_untyped_defs:
+                elif self.options.infer_function_types:
                     self_type = fill_typevars_with_any(defn.info)
                     defn.type = CallableType(
                         [UntypedType() for _ in defn.arg_kinds],
                         defn.arg_kinds,
                         defn.arg_names,
                         self_type,
-                        self.named_type('builtins.function'))
+                        self.named_type('builtins.function'),
+                        implicit=True,)
             self.prepare_method_signature(defn, self.type)
 
         # Analyze function signature

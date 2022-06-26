@@ -3736,7 +3736,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if isinstance(return_type, UninhabitedType):
                 self.fail(message_registry.NO_RETURN_EXPECTED, s)
                 return
-
+            # We pretend the return type is Any here so that we don't report errors in partially
+            #  inferred functions
+            if defn.is_dynamic() and not self.options.check_untyped_defs:
+                return_type = AnyType(TypeOfAny.unannotated)
             if s.expr:
                 is_lambda = isinstance(self.scope.top_function(), LambdaExpr)
                 declared_none_return = isinstance(return_type, NoneType)
