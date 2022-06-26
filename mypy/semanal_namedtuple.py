@@ -418,7 +418,7 @@ class NamedTupleAnalyzer:
                                   info: TypeInfo,
                                   items: List[str],
                                   types: List[Type],
-                                  default_items: Mapping[str, Expression]):
+                                  default_items: Mapping[str, Expression]) -> None:
         tuple_base = TupleType(types, info.bases[0])
         info.tuple_type = tuple_base
 
