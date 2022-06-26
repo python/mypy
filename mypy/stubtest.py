@@ -55,6 +55,12 @@ def _style(message: str, **kwargs: Any) -> str:
     return _formatter.style(message, **kwargs)
 
 
+def _truncate(message: str, length: int) -> str:
+    if len(message) > length:
+        return message[:length - 3] + "..."
+    return message
+
+
 class StubtestFailure(Exception):
     pass
 
@@ -86,7 +92,7 @@ class Error:
         self.stub_object = stub_object
         self.runtime_object = runtime_object
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
-        self.runtime_desc = runtime_desc or str(runtime_object)
+        self.runtime_desc = runtime_desc or _truncate(repr(runtime_object), 100)
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
