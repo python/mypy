@@ -2802,73 +2802,73 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_callable_type(self, t: CallableType) -> str:
-        param_spec = t.param_spec()
-        if param_spec is not None:
-            num_skip = 2
-        else:
-            num_skip = 0
-
-        s = ''
-        bare_asterisk = False
-
-        for i in range(len(t.arg_types) - num_skip):
-            if s != '':
-                s += ', '
-            if t.arg_kinds[i].is_named() and not bare_asterisk:
-                s += '*, '
-                bare_asterisk = True
-            if t.arg_kinds[i] == ARG_STAR:
-                s += '*'
-            if t.arg_kinds[i] == ARG_STAR2:
-                s += '**'
-            name = t.arg_names[i]
-            if name:
-                s += name + ': '
-            with self.own_type_vars(t.variables):
-                s += t.arg_types[i].accept(self)
-            if t.arg_kinds[i].is_optional():
-                s += ' ='
-
-        if param_spec is not None:
-            n = param_spec.name
-            if s:
-                s += ', '
-            s += f'*{n}.args, **{n}.kwargs'
-
-        s = f'({s})'
-
-        if not isinstance(get_proper_type(t.ret_type), NoneType):
-            if t.type_guard is not None:
-                s += f' -> TypeGuard[{t.type_guard.accept(self)}]'
+        with self.own_type_vars(t.variables):
+            param_spec = t.param_spec()
+            if param_spec is not None:
+                num_skip = 2
             else:
-                s += f' -> {t.ret_type.accept(self)}'
+                num_skip = 0
 
-        if t.variables:
-            vs = []
-            for var in t.variables:
-                if isinstance(var, TypeVarType):
-                    # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
-                    if (
-                        mypy.options._based
-                        and var.scopename and t.name
-                        and var.scopename != t.name.split(" ")[0]
-                    ):
-                        name = f"{var.name} (from {var.scopename})"
-                    else:
-                        name = var.name
-                    if var.values:
-                        vals = f"({', '.join(val.accept(self) for val in var.values)})"
-                        vs.append(f'{name} in {vals}')
-                    elif not is_named_instance(var.upper_bound, 'builtins.object'):
-                        vs.append(f'{name} <: {var.upper_bound.accept(self)}')
-                    else:
-                        vs.append(name)
+            s = ''
+            bare_asterisk = False
+
+            for i in range(len(t.arg_types) - num_skip):
+                if s != '':
+                    s += ', '
+                if t.arg_kinds[i].is_named() and not bare_asterisk:
+                    s += '*, '
+                    bare_asterisk = True
+                if t.arg_kinds[i] == ARG_STAR:
+                    s += '*'
+                if t.arg_kinds[i] == ARG_STAR2:
+                    s += '**'
+                name = t.arg_names[i]
+                if name:
+                    s += name + ': '
+                s += t.arg_types[i].accept(self)
+                if t.arg_kinds[i].is_optional():
+                    s += ' ='
+
+            if param_spec is not None:
+                n = param_spec.name
+                if s:
+                    s += ', '
+                s += f'*{n}.args, **{n}.kwargs'
+
+            s = f'({s})'
+
+            if not isinstance(get_proper_type(t.ret_type), NoneType):
+                if t.type_guard is not None:
+                    s += f' -> TypeGuard[{t.type_guard.accept(self)}]'
                 else:
-                    # For other TypeVarLikeTypes, just use the name
-                    vs.append(var.name)
-            s = f"[{', '.join(vs)}] {s}"
+                    s += f' -> {t.ret_type.accept(self)}'
 
-        return f'def {s}'
+            if t.variables:
+                vs = []
+                for var in t.variables:
+                    if isinstance(var, TypeVarType):
+                        # We reimplement TypeVarType.__repr__ here in order to support id_mapper.
+                        if (
+                            mypy.options._based
+                            and var.scopename and t.name
+                            and var.scopename != t.name.split(" ")[0]
+                        ):
+                            name = f"{var.name} (from {var.scopename})"
+                        else:
+                            name = var.name
+                        if var.values:
+                            vals = f"({', '.join(val.accept(self) for val in var.values)})"
+                            vs.append(f'{name} in {vals}')
+                        elif not is_named_instance(var.upper_bound, 'builtins.object'):
+                            vs.append(f'{name} <: {var.upper_bound.accept(self)}')
+                        else:
+                            vs.append(name)
+                    else:
+                        # For other TypeVarLikeTypes, just use the name
+                        vs.append(var.name)
+                s = f"[{', '.join(vs)}] {s}"
+
+            return f'def {s}'
 
     def visit_overloaded(self, t: Overloaded) -> str:
         a = []
