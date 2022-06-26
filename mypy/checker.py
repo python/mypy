@@ -3528,7 +3528,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     ):
                         self.msg.untyped_name_usage(rvalue.name, rvalue)
                     elif self.options.disallow_any_expr and isinstance(rvalue_type, AnyType):
-                        self.msg.disallowed_any_type(rvalue_type, rvalue)
+                        # TODO: this could probably be extracted to a common call
+                        if self.options.ignore_any_from_error and (
+                            rvalue_type.type_of_any == TypeOfAny.from_error
+                            or rvalue_type.type_of_any == TypeOfAny.from_another_any
+                            and rvalue_type.source_any
+                            and rvalue_type.source_any.type_of_any == TypeOfAny.from_error
+                        ):
+                            pass
+                        else:
+                            self.msg.disallowed_any_type(rvalue_type, rvalue)
             return rvalue_type
 
     def check_member_assignment(self, instance_type: Type, attribute_type: Type,
