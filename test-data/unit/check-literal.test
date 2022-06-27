@@ -2530,13 +2530,13 @@ def force2(x: Literal["foo"]) -> None: pass
 def force3(x: Literal[True]) -> None: pass
 def force4(x: Literal[None]) -> None: pass
 
-reveal_type(var1)            # N: Revealed type is "builtins.int"
-reveal_type(var2)            # N: Revealed type is "builtins.str"
-reveal_type(var3)            # N: Revealed type is "builtins.bool"
+reveal_type(var1)            # N: Revealed type is "Literal[1]?"
+reveal_type(var2)            # N: Revealed type is "Literal['foo']?"
+reveal_type(var3)            # N: Revealed type is "Literal[True]?"
 reveal_type(var4)            # N: Revealed type is "None"
-force1(var1)                 # E: Argument 1 to "force1" has incompatible type "int"; expected "Literal[1]"
-force2(var2)                 # E: Argument 1 to "force2" has incompatible type "str"; expected "Literal['foo']"
-force3(var3)                 # E: Argument 1 to "force3" has incompatible type "bool"; expected "Literal[True]"
+force1(var1)
+force2(var2)
+force3(var3)
 force4(var4)
 
 reveal_type(Foo.classvar1)   # N: Revealed type is "builtins.int"

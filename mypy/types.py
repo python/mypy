@@ -1181,8 +1181,9 @@ class Instance(ProperType):
         if not isinstance(other, Instance):
             return NotImplemented
         return (self.type == other.type
-                and self.args == other.args
-                and self.last_known_value == other.last_known_value)
+                and self.args == other.args)
+        # TODO: last_known_value is not set correctly at initializations of Literal type
+        # and self.last_known_value == other.last_known_value)
 
     def serialize(self) -> Union[JsonDict, str]:
         assert self.type is not None

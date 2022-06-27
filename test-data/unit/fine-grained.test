@@ -8789,7 +8789,7 @@ qux: Final[int] = 4
 ==
 main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
 ==
-main:4: error: Argument 1 to "expect_3" has incompatible type "int"; expected "Literal[3]"
+main:4: error: Argument 1 to "expect_3" has incompatible type "Literal[4]"; expected "Literal[3]"
 
 [case testLiteralFineGrainedStringConversionPython3]
 from mod1 import foo
