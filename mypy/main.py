@@ -816,6 +816,10 @@ def process_options(args: List[str],
                         help=("Install stubs without asking for confirmation and hide " +
                               "errors, with --install-types"),
                         group=other_group, inverse="--interactive")
+    add_invertible_flag('--allow-empty-dir', default=False, strict_flag=False,
+                        help=("Do not stop when a directory does not contain any python files " +
+                              "when searching for source."),
+                        group=other_group, inverse="--disallow-empty-dir")
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)

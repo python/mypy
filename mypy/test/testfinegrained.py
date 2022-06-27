@@ -290,10 +290,10 @@ class FineGrainedSuite(DataSuite):
             return create_source_list(paths, options)
         else:
             base = BuildSource(os.path.join(test_temp_dir, 'main'), '__main__', None)
+            options_allow_empty_dir = options.apply_changes(changes={'allow_empty_dir': True})
             # Use expand_dir instead of create_source_list to avoid complaints
             # when there aren't any .py files in an increment
-            return [base] + create_source_list([test_temp_dir], options,
-                                               allow_empty_dir=True)
+            return [base] + create_source_list([test_temp_dir], options_allow_empty_dir)
 
     def maybe_suggest(self, step: int, server: Server, src: str, tmp_dir: str) -> List[str]:
         output: List[str] = []

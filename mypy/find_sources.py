@@ -18,8 +18,7 @@ class InvalidSourceList(Exception):
 
 
 def create_source_list(paths: Sequence[str], options: Options,
-                       fscache: Optional[FileSystemCache] = None,
-                       allow_empty_dir: bool = False) -> List[BuildSource]:
+                       fscache: Optional[FileSystemCache] = None) -> List[BuildSource]:
     """From a list of source files/directories, makes a list of BuildSources.
 
     Raises InvalidSourceList on errors.
@@ -36,7 +35,7 @@ def create_source_list(paths: Sequence[str], options: Options,
             sources.append(BuildSource(path, name, None, base_dir))
         elif fscache.isdir(path):
             sub_sources = finder.find_sources_in_dir(path)
-            if not sub_sources and not allow_empty_dir:
+            if not sub_sources and not options.allow_empty_dir:
                 raise InvalidSourceList(
                     f"There are no .py[i] files in directory '{path}'"
                 )

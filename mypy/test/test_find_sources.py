@@ -377,3 +377,17 @@ class SourceFinderSuite(unittest.TestCase):
             }
             fscache = FakeFSCache(files)
             assert len(find_sources(["."], options, fscache)) == len(files)
+
+    def test_find_sources_allow_empty_dir(self) -> None:
+        options = Options()
+
+        files = {
+            "/scripts/a.sh",
+        }
+        fscache = FakeFSCache(files)
+        # default options.allow_empty_dir is False
+        with pytest.raises(InvalidSourceList):
+            find_sources(["/scripts"], options, fscache)
+
+        options.allow_empty_dir = True
+        assert len(find_sources(["/scripts"], options, fscache)) == 0
