@@ -117,6 +117,7 @@ def is_c_method(obj: object) -> bool:
 
 def is_c_classmethod(obj: object) -> bool:
     return inspect.isbuiltin(obj) or type(obj).__name__ in ('classmethod',
+                                                            'staticmethod',
                                                             'classmethod_descriptor')
 
 
@@ -353,7 +354,9 @@ def generate_c_type_stub(module: ModuleType,
                     self_var = 'cls'
                 else:
                     self_var = 'self'
-                generate_c_function_stub(module, attr, value, methods, imports=imports,
+
+                direct_value = getattr(obj, attr)
+                generate_c_function_stub(module, attr, direct_value, methods, imports=imports,
                                          self_var=self_var, sigs=sigs, class_name=class_name,
                                          class_sigs=class_sigs)
         elif is_c_property(value):
