@@ -286,7 +286,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 if self.is_literal_context() and var_type.last_known_value is not None:
                     return var_type.last_known_value
                 if var.name in {'True', 'False'}:
-                    return self.infer_literal_expr_type(var.name == 'True', 'builtins.bool')
+                    return self.infer_literal_expr_type(var.name == 'True',
+                                                        'builtins.bool', context)
             return var.type
         else:
             if not var.is_ready and self.chk.in_checked_function():
@@ -2114,7 +2115,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def is_literal_context(self) -> bool:
         return is_literal_type_like(self.type_context[-1])
 
-    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str) -> Type:
+    def infer_literal_expr_type(self, value: LiteralValue, fallback_name: str,
+                                context: Context) -> Type:
         """Analyzes the given literal expression and determines if we should be
         inferring an Instance type, a Literal[...] type, or an Instance that
         remembers the original literal. We...
@@ -2132,15 +2134,13 @@ class ExpressionChecker(ExpressionVisitor[Type]):
            the comments in Instance's constructor for more details.
         """
         typ = self.named_type(fallback_name)
+        typ.set_line(context)
+        literal_typ = LiteralType(value=value, fallback=typ,
+                                  line=context.line, column=context.column)
         if self.is_literal_context():
-            return LiteralType(value=value, fallback=typ)
+            return literal_typ
         else:
-            return typ.copy_modified(last_known_value=LiteralType(
-                value=value,
-                fallback=typ,
-                line=typ.line,
-                column=typ.column,
-            ))
+            return typ.copy_modified(last_known_value=literal_typ)
 
     def concat_tuples(self, left: TupleType, right: TupleType) -> TupleType:
         """Concatenate two fixed length tuples."""
@@ -2149,19 +2149,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_int_expr(self, e: IntExpr) -> Type:
         """Type check an integer literal (trivial)."""
-        return self.infer_literal_expr_type(e.value, 'builtins.int')
+        return self.infer_literal_expr_type(e.value, 'builtins.int', e)
 
     def visit_str_expr(self, e: StrExpr) -> Type:
         """Type check a string literal (trivial)."""
-        return self.infer_literal_expr_type(e.value, 'builtins.str')
+        return self.infer_literal_expr_type(e.value, 'builtins.str', e)
 
     def visit_bytes_expr(self, e: BytesExpr) -> Type:
         """Type check a bytes literal (trivial)."""
-        return self.infer_literal_expr_type(e.value, 'builtins.bytes')
+        return self.infer_literal_expr_type(e.value, 'builtins.bytes', e)
 
     def visit_unicode_expr(self, e: UnicodeExpr) -> Type:
         """Type check a unicode literal (trivial)."""
-        return self.infer_literal_expr_type(e.value, 'builtins.unicode')
+        return self.infer_literal_expr_type(e.value, 'builtins.unicode', e)
 
     def visit_float_expr(self, e: FloatExpr) -> Type:
         """Type check a float literal (trivial)."""
