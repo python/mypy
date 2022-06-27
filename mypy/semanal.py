@@ -719,7 +719,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                     self_type = proper_leading_type.item
                 else:
                     self_type = proper_leading_type
-                fullname = None
+                fullname: Optional[str] = None
                 # bind any SelfTypes
                 for idx, arg in enumerate(func.type.arg_types):
                     if self.is_self_type(arg):
