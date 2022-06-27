@@ -649,7 +649,7 @@ FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
 class FuncItem(FuncBase):
     """Base class for nodes usable as overloaded function items."""
 
-    __slots__ = ('arguments',  # Note that can be None if deserialized (type is a lie!)
+    __slots__ = ('arguments',  # Note that can be unset if deserialized (type is a lie!)
                  'arg_names',  # Names of arguments
                  'arg_kinds',  # Kinds of arguments
                  'min_args',  # Minimum number of arguments
