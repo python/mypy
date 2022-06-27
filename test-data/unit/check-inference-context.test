@@ -617,7 +617,7 @@ class B: pass
 
 [case testInferLambdaTypeUsingContext]
 x : str = (lambda x: x + 1)(1)  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
-reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is "builtins.int"
+reveal_type((lambda x, y: x + y)(1, 2))  # N: Revealed type is "Literal[3]?"
 (lambda x, y: x + y)(1, "")  # E: Unsupported operand types for + ("int" and "str")
 (lambda *, x, y: x + y)(x=1, y="")  # E: Unsupported operand types for + ("int" and "str")
 reveal_type((lambda s, i: s)(i=0, s='x')) # N: Revealed type is "Literal['x']?"

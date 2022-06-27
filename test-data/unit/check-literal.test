@@ -1745,19 +1745,19 @@ c: Literal[4]
 d: Literal['foo']
 e: str
 
-reveal_type(a + a)      # N: Revealed type is "builtins.int"
+reveal_type(a + a)      # N: Revealed type is "Literal[6]?"
 reveal_type(a + b)      # N: Revealed type is "builtins.int"
 reveal_type(b + a)      # N: Revealed type is "builtins.int"
-reveal_type(a + 1)      # N: Revealed type is "builtins.int"
-reveal_type(1 + a)      # N: Revealed type is "builtins.int"
-reveal_type(a + c)      # N: Revealed type is "builtins.int"
-reveal_type(c + a)      # N: Revealed type is "builtins.int"
+reveal_type(a + 1)      # N: Revealed type is "Literal[4]?"
+reveal_type(1 + a)      # N: Revealed type is "Literal[4]?"
+reveal_type(a + c)      # N: Revealed type is "Literal[7]?"
+reveal_type(c + a)      # N: Revealed type is "Literal[7]?"
 
-reveal_type(d + d)      # N: Revealed type is "builtins.str"
+reveal_type(d + d)      # N: Revealed type is "Literal['foofoo']?"
 reveal_type(d + e)      # N: Revealed type is "builtins.str"
 reveal_type(e + d)      # N: Revealed type is "builtins.str"
-reveal_type(d + 'foo')  # N: Revealed type is "builtins.str"
-reveal_type('foo' + d)  # N: Revealed type is "builtins.str"
+reveal_type(d + 'foo')  # N: Revealed type is "Literal['foofoo']?"
+reveal_type('foo' + d)  # N: Revealed type is "Literal['foofoo']?"
 
 reveal_type(a.__add__(b))  # N: Revealed type is "builtins.int"
 reveal_type(b.__add__(a))  # N: Revealed type is "builtins.int"
@@ -3346,3 +3346,167 @@ def incorrect_return2() -> Union[Tuple[Literal[True], int], Tuple[Literal[False]
     else:
         return (bool(), 'oops')  # E: Incompatible return value type (got "Tuple[bool, str]", expected "Union[Tuple[Literal[True], int], Tuple[Literal[False], str]]")
 [builtins fixtures/bool.pyi]
+
+
+# Literal math
+# ============
+
+[case testLiteralIntMath]
+from typing_extensions import Literal, Final
+
+reveal_type(1 + 2)  # N: Revealed type is "Literal[3]?"
+reveal_type(2 + 1)  # N: Revealed type is "Literal[3]?"
+
+reveal_type(2 // 2)  # N: Revealed type is "Literal[1]?"
+reveal_type(5 // 2)  # N: Revealed type is "Literal[2]?"
+
+reveal_type(1 + 2 + 3)  # N: Revealed type is "Literal[6]?"
+reveal_type(2 + 2 * 2)  # N: Revealed type is "Literal[6]?"
+reveal_type(2 * 2 + 2)  # N: Revealed type is "Literal[6]?"
+reveal_type(100 - 2 + 1)  # N: Revealed type is "Literal[99]?"
+
+a: Literal[3]
+b: Literal[4]
+c: Final = 5
+
+reveal_type(a + b)   # N: Revealed type is "Literal[7]?"
+reveal_type(a + 1 + b + 1)   # N: Revealed type is "Literal[9]?"
+reveal_type(1 + a + 1 + b)   # N: Revealed type is "Literal[9]?"
+reveal_type(a + c)  # N: Revealed type is "Literal[8]?"
+reveal_type(c + a)  # N: Revealed type is "Literal[8]?"
+reveal_type(c + c)  # N: Revealed type is "Literal[10]?"
+
+i: int
+
+reveal_type(a + i)   # N: Revealed type is "builtins.int"
+reveal_type(i + a)   # N: Revealed type is "builtins.int"
+reveal_type(i * 2)   # N: Revealed type is "builtins.int"
+reveal_type(2 * i)   # N: Revealed type is "builtins.int"
+reveal_type(i // 2)   # N: Revealed type is "builtins.int"
+reveal_type(2 // i)   # N: Revealed type is "builtins.int"
+reveal_type(i - 2)   # N: Revealed type is "builtins.int"
+reveal_type(2 - i)   # N: Revealed type is "builtins.int"
+reveal_type(i - c)   # N: Revealed type is "builtins.int"
+
+# Corner cases:
+
+reveal_type(9223372036854775807 + 9223372036854775807)  # N: Revealed type is "Literal[18446744073709551614]?"
+reveal_type(9223372036854775807 * 9223372036854775807)  # N: Revealed type is "Literal[85070591730234615847396907784232501249]?"
+
+reveal_type(1 // 0)  # N: Revealed type is "builtins.int"
+reveal_type(1 + 0)  # N: Revealed type is "Literal[1]?"
+[builtins fixtures/primitives.pyi]
+
+
+[case testLiteralStrMath]
+from typing_extensions import Literal, Final
+
+reveal_type('a' + 'b')  # N: Revealed type is "Literal['ab']?"
+reveal_type('b' + 'a')  # N: Revealed type is "Literal['ba']?"
+
+a: Literal['a']
+b: Literal['b']
+c: Final = 'c'
+
+reveal_type(a + '!')  # N: Revealed type is "Literal['a!']?"
+reveal_type('!' + a)  # N: Revealed type is "Literal['!a']?"
+reveal_type(a + b + c)  # N: Revealed type is "Literal['abc']?"
+reveal_type(c + b + a)  # N: Revealed type is "Literal['cba']?"
+reveal_type(a + '!' + b + '?' + c)  # N: Revealed type is "Literal['a!b?c']?"
+reveal_type(c + '1' + a + '2' + b)  # N: Revealed type is "Literal['c1a2b']?"
+
+s: str
+
+reveal_type(s + 'a')  # N: Revealed type is "builtins.str"
+reveal_type('a' + s)  # N: Revealed type is "builtins.str"
+reveal_type(s + a)  # N: Revealed type is "builtins.str"
+reveal_type(a + s)  # N: Revealed type is "builtins.str"
+reveal_type(s + c)  # N: Revealed type is "builtins.str"
+reveal_type(c + s)  # N: Revealed type is "builtins.str"
+
+# Corner cases:
+
+reveal_type('a' + '')  # N: Revealed type is "Literal['a']?"
+reveal_type(a + '')  # N: Revealed type is "Literal['a']?"
+reveal_type('' + '')  # N: Revealed type is "Literal['']?"
+[builtins fixtures/primitives.pyi]
+
+
+[case testLiteralBytesMath]
+from typing_extensions import Literal, Final
+
+reveal_type(b'a' + b'b')  # N: Revealed type is "Literal[b'ab']?"
+reveal_type(b'b' + b'a')  # N: Revealed type is "Literal[b'ba']?"
+
+a: Literal[b'a']
+b: Literal[b'b']
+c: Final = b'c'
+
+reveal_type(a + b'!')  # N: Revealed type is "Literal[b'a!']?"
+reveal_type(b'!' + a)  # N: Revealed type is "Literal[b'!a']?"
+reveal_type(a + b + c)  # N: Revealed type is "Literal[b'abc']?"
+reveal_type(c + b + a)  # N: Revealed type is "Literal[b'cba']?"
+reveal_type(a + b'!' + b + b'?' + c)  # N: Revealed type is "Literal[b'a!b?c']?"
+reveal_type(c + b'1' + a + b'2' + b)  # N: Revealed type is "Literal[b'c1a2b']?"
+
+s: bytes
+
+reveal_type(s + b'a')  # N: Revealed type is "builtins.bytes"
+reveal_type(b'a' + s)  # N: Revealed type is "builtins.bytes"
+reveal_type(s + a)  # N: Revealed type is "builtins.bytes"
+reveal_type(a + s)  # N: Revealed type is "builtins.bytes"
+reveal_type(s + c)  # N: Revealed type is "builtins.bytes"
+reveal_type(c + s)  # N: Revealed type is "builtins.bytes"
+
+# Corner cases:
+
+reveal_type(b'a' + b'')  # N: Revealed type is "Literal[b'a']?"
+reveal_type(a + b'')  # N: Revealed type is "Literal[b'a']?"
+reveal_type(b'' + b'')  # N: Revealed type is "Literal[b'']?"
+[builtins fixtures/primitives.pyi]
+
+
+[case testLiteralBoolMath]
+from typing_extensions import Literal, Final
+
+reveal_type(True or False)  # N: Revealed type is "Literal[True]?"
+reveal_type(False or True)  # N: Revealed type is "Literal[True]"
+reveal_type(True or True)  # N: Revealed type is "Literal[True]?"
+reveal_type(False or False)  # N: Revealed type is "Literal[False]"
+
+reveal_type(True and False)  # N: Revealed type is "Literal[False]"
+reveal_type(False and True)  # N: Revealed type is "Literal[False]?"
+reveal_type(True and True)  # N: Revealed type is "Literal[True]"
+reveal_type(False and False)  # N: Revealed type is "Literal[False]?"
+
+reveal_type(True and False and True)  # N: Revealed type is "Literal[False]"
+reveal_type(True or False or False)  # N: Revealed type is "Literal[True]?"
+
+t: Literal[True]
+f: Literal[False]
+c: Final = True
+
+reveal_type(t or False)  # N: Revealed type is "Literal[True]"
+reveal_type(False or t)  # N: Revealed type is "Literal[True]"
+reveal_type(t or f)  # N: Revealed type is "Literal[True]"
+reveal_type(t and c)  # N: Revealed type is "Literal[True]"
+
+b: bool
+
+reveal_type(True or b)  # N: Revealed type is "Literal[True]?"
+reveal_type(b and True)  # N: Revealed type is "builtins.bool"
+reveal_type(b and False)  # N: Revealed type is "Literal[False]"
+[builtins fixtures/primitives.pyi]
+
+
+[case testLiteralMathLoopContext]
+def func1(loop_count: int):
+    x = 1
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+    x = x + 1
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+    for _ in [1, 2, 3]:
+        x = x + 1
+        reveal_type(x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/primitives.pyi]

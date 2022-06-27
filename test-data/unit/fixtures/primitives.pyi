@@ -18,6 +18,8 @@ class int:
     def __init__(self, x: object = ..., base: int = ...) -> None: pass
     def __add__(self, i: int) -> int: pass
     def __rmul__(self, x: int) -> int: pass
+    def __sub__(self, x: int) -> int: pass
+    def __floordiv__(self, x: int) -> int: pass
 class float:
     def __float__(self) -> float: pass
 class complex: pass
@@ -29,6 +31,7 @@ class str(Sequence[str]):
     def __getitem__(self, item: int) -> str: pass
     def format(self, *args, **kwargs) -> str: pass
 class bytes(Sequence[int]):
+    def __add__(self, s: bytes) -> bytes: pass
     def __iter__(self) -> Iterator[int]: pass
     def __contains__(self, other: object) -> bool: pass
     def __getitem__(self, item: int) -> int: pass

@@ -36,7 +36,7 @@ from mypy.nodes import (
     ParamSpecExpr, TypeVarTupleExpr,
     ArgKind, ARG_POS, ARG_NAMED, ARG_STAR, ARG_STAR2, LITERAL_TYPE, REVEAL_TYPE,
 )
-from mypy.literals import literal
+from mypy.literals import literal, try_literal_math
 from mypy import nodes
 from mypy import operators
 import mypy.checker
@@ -2556,6 +2556,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(right_type, AnyType):
             any_type = AnyType(TypeOfAny.from_another_any, source_any=right_type)
             return any_type, any_type
+
+        # STEP 0:
+        # We support `Literal` type math. For example, we want to reveal `1 + 3`
+        # as `Literal[4]`. So, we check if we have literal expressions first.
+        # We consider this to be the fast path, we move on if it is not a literal.
+        # But, operations on literal types are not processed further.
+
+        if isinstance(context, OpExpr) and isinstance(left_type, (LiteralType, Instance)):
+            fallback_left_type = (
+                left_type.fallback
+                if isinstance(left_type, LiteralType)
+                else left_type
+            )
+            literal_result = try_literal_math(
+                context.op,
+                left_expr, left_type,
+                right_expr, right_type,
+                fallback=fallback_left_type,
+            )
+            if literal_result is not None:
+                return literal_result, literal_result
 
         # STEP 1:
         # We start by getting the __op__ and __rop__ methods, if they exist.

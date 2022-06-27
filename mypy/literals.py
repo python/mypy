@@ -1,6 +1,8 @@
+import operator
 from typing import Optional, Union, Any, Tuple, Iterable
 from typing_extensions import Final
 
+from mypy.types import Type, LiteralType, Instance, LiteralValue, get_proper_type
 from mypy.nodes import (
     Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
     LITERAL_NO, NameExpr, LITERAL_TYPE, IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr,
@@ -253,3 +255,66 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
 
 
 _hasher: Final = _Hasher()
+
+
+_SUPPORTED_LITERAL_OPERATIONS: Final = {
+    int: ('+', '-', '*', '//'),  # `/` returns `float`
+    str: ('+',),
+    bool: ('and', 'or'),
+}
+_OP_FUNCTIONS: Final = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '//': operator.floordiv,
+    'and': operator.and_,
+    'or': operator.or_,
+}
+
+
+def try_literal_math(
+    op: str,
+    left_expr: Expression, left_type: Type,
+    right_expr: Expression, right_type: Type,
+    *,
+    fallback: Instance,
+) -> Optional[Instance]:
+    left_literal = _get_literal_value(left_expr, left_type)
+    if left_literal is None:
+        return None
+    right_literal = _get_literal_value(right_expr, right_type)
+    if right_literal is None:
+        return None
+
+    lit_type = type(left_literal)
+    if (lit_type != type(right_literal)
+            or lit_type not in _SUPPORTED_LITERAL_OPERATIONS
+            or op not in _SUPPORTED_LITERAL_OPERATIONS[lit_type]):
+        return None
+
+    op_method = _OP_FUNCTIONS[op]
+    try:
+        new_value = op_method(left_literal, right_literal)
+    except Exception:  # We catch any possible problem: overflow, type error, etc.
+        return None
+    else:
+        return fallback.copy_modified(last_known_value=LiteralType(
+            new_value,
+            fallback=fallback,
+        ))
+
+
+def _get_literal_value(expr: Expression, typ: Type) -> Optional[LiteralValue]:
+    # We can work with a literal type:
+    typ = get_proper_type(typ)
+    if isinstance(typ, LiteralType):
+        return typ.value
+    elif isinstance(typ, Instance) and typ.last_known_value:
+        return typ.last_known_value.value
+
+    # Or a literal node (`True` / `False` are already `Literal[True] | [False]`):
+    if isinstance(expr, (IntExpr, StrExpr)):
+        return expr.value
+
+    # It is not a literal:
+    return None
