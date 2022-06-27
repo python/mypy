@@ -1,5 +1,5 @@
 # builtins stub used in boolean-related test cases.
-from typing import Generic, TypeVar
+from typing import Generic, TypeVar, Union
 T = TypeVar('T')
 
 class object:
@@ -7,7 +7,8 @@ class object:
     def __eq__(self, other: object) -> bool: pass
     def __ne__(self, other: object) -> bool: pass
 
-class type: pass
+class type:
+    def __init__(self, obj: Union[object, None]) -> None: pass
 class tuple(Generic[T]): pass
 class function: pass
 class int: pass

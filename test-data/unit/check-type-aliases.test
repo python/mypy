@@ -313,6 +313,45 @@ x = y  # E: Incompatible types in assignment (expression has type "Optional[int]
 y = z
 [builtins fixtures/bool.pyi]
 
+[case testTypeNoneAliases]
+from typing import Type
+
+a = type(None)
+b: Type[None]
+c: Type[None] = type(None)
+d: None
+e = None
+
+reveal_type(a)  # N: Revealed type is "Type[None]"
+reveal_type(b)  # N: Revealed type is "Type[None]"
+reveal_type(c)  # N: Revealed type is "Type[None]"
+reveal_type(d)  # N: Revealed type is "None"
+reveal_type(e)  # N: Revealed type is "None"
+
+reveal_type(type(None))  # N: Revealed type is "Type[None]"
+reveal_type(None)        # N: Revealed type is "None"
+[builtins fixtures/bool.pyi]
+
+[case testTypeNoneAliasesStrict]
+# flags: --strict-optional
+from typing import Type
+
+a = type(None)
+b: Type[None]
+c: Type[None] = type(None)
+d: None
+e = None
+
+reveal_type(a)  # N: Revealed type is "Type[None]"
+reveal_type(b)  # N: Revealed type is "Type[None]"
+reveal_type(c)  # N: Revealed type is "Type[None]"
+reveal_type(d)  # N: Revealed type is "None"
+reveal_type(e)  # N: Revealed type is "None"
+
+reveal_type(type(None))  # N: Revealed type is "Type[None]"
+reveal_type(None)        # N: Revealed type is "None"
+[builtins fixtures/bool.pyi]
+
 [case testAliasToTupleAndCallable]
 from typing import Callable, Tuple
 C = Callable
