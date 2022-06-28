@@ -2755,7 +2755,7 @@
         "code": "no-any-expr",
         "column": 48,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 141,
+        "offset": 150,
         "target": "mypy.checker.TypeChecker.check_member_assignment"
       },
       {
@@ -2776,7 +2776,7 @@
         "code": "no-any-expr",
         "column": 40,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 621,
+        "offset": 624,
         "target": "mypy.checker.TypeChecker.visit_decorator"
       },
       {
@@ -16002,7 +16002,7 @@
         "code": "no-any-expr",
         "column": 49,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 12,
+        "offset": 13,
         "target": "mypy.semanal.SemanticAnalyzer.analyze_func_def"
       },
       {
@@ -16016,7 +16016,7 @@
         "code": "no-any-expr",
         "column": 45,
         "message": "Expression type contains \"Any\" (has type \"type[CallableType]\")",
-        "offset": 18,
+        "offset": 19,
         "target": "mypy.semanal.SemanticAnalyzer.analyze_func_def"
       },
       {
