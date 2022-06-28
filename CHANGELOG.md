@@ -1,6 +1,8 @@
 # Basedmypy Changelog
 
 ## [Unreleased]
+
+## [1.4.0]
 ### Added
 - `ignore_any_from_errors` option to suppress `no-any-expr` messages from other errors
 - Function types are inferred from Overloads, overrides and default values. (no overrides for now sorry)
@@ -10,6 +12,8 @@
 - Added a dependency on `basedtyping`
 ### Enhancements
 - Render types a lot better in output messages
+### Fixes
+- `types.NoneType` now works as a value of `type[None]`
 
 ## [1.3.0]
 ### Added
