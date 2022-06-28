@@ -3101,7 +3101,7 @@ class TypeAlias(SymbolNode):
         within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive', 'eager')
+                 '_is_recursive', 'eager')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
@@ -3209,7 +3209,7 @@ class PlaceholderNode(SymbolNode):
     something that can support general recursive types.
     """
 
-    __slots__ = ('_fullname', 'node', 'line', 'becomes_typeinfo')
+    __slots__ = ('_fullname', 'node', 'becomes_typeinfo')
 
     def __init__(self, fullname: str, node: Node, line: int, *,
                  becomes_typeinfo: bool = False) -> None:
