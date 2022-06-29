@@ -187,7 +187,10 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc=module_name)
+        runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
+        yield Error(
+            [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
+        )
         return
 
     try:
