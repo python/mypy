@@ -10,6 +10,7 @@ import enum
 import importlib
 import inspect
 import os
+import pkgutil
 import re
 import sys
 import types
@@ -164,6 +165,17 @@ class Error:
 # Core logic
 # ====================
 
+def silent_import_module(module_name: str) -> types.ModuleType:
+    with open(os.devnull, "w") as devnull:
+        with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
+            warnings.simplefilter("ignore")
+            runtime = importlib.import_module(module_name)
+            # Also run the equivalent of `from module import *`
+            # This could have the additional effect of loading not-yet-loaded submodules
+            # mentioned in __all__
+            __import__(module_name, fromlist=["*"])
+    return runtime
+
 
 def test_module(module_name: str) -> Iterator[Error]:
     """Tests a given module's stub against introspecting it at runtime.
@@ -175,18 +187,14 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc="N/A")
+        runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
+        yield Error(
+            [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
+        )
         return
 
     try:
-        with open(os.devnull, "w") as devnull:
-            with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
-                warnings.simplefilter("ignore")
-                runtime = importlib.import_module(module_name)
-                # Also run the equivalent of `from module import *`
-                # This could have the additional effect of loading not-yet-loaded submodules
-                # mentioned in __all__
-                __import__(module_name, fromlist=["*"])
+        runtime = silent_import_module(module_name)
     except Exception as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
@@ -1289,7 +1297,18 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
         else:
             found_sources = find_module_cache.find_modules_recursive(module)
             sources.extend(found_sources)
+            # find submodules via mypy
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
+            # find submodules via pkgutil
+            try:
+                runtime = silent_import_module(module)
+                all_modules.extend(
+                    m.name
+                    for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
+                    if m.name not in all_modules
+                )
+            except Exception:
+                pass
 
     if sources:
         try:
