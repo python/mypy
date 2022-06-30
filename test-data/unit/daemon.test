@@ -611,3 +611,23 @@ from foo.empty import *
 if False:
     a = 1
 a
+
+[case testDaemonQuiet]
+$ dmypy run --quiet -- foo.py --follow-imports error
+Success: no issues found in 1 source file
+$ {python} -c "print('[mypy]')" >mypy.ini
+$ {python} -c "print('disallow_untyped_defs = True')" >>mypy.ini
+$ dmypy run --quiet -- foo.py --follow-imports error
+Success: no issues found in 1 source file
+$ dmypy stop --quiet
+$ dmypy start --quiet
+$ dmypy restart --quiet
+$ dmypy kill --quiet
+$ dmypy kill -q
+Daemon has died
+== Return code: 2
+$ dmypy stop -q
+Daemon has died
+== Return code: 2
+[file foo.py]
+pass
