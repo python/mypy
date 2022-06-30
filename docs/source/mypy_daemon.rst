@@ -158,6 +158,11 @@ Additional daemon flags
    up future calls to ``dmypy inspect`` (but uses more memory). Only valid for
    ``check``, ``recheck``, and ``run`` command.
 
+.. option:: --quiet
+
+   Suppress output for daemon status updates. This is only available for the
+   for the ``run``, ``start``, ``restart``, ``stop`` , and ``kill`` commands.
+
 Static inference of annotations
 *******************************
 
