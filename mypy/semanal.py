@@ -713,6 +713,16 @@ class SemanticAnalyzer(NodeVisitor[None],
                 assert isinstance(func.type, CallableType)
                 leading_type = func.type.arg_types[0]
                 proper_leading_type = get_proper_type(leading_type)
+                if self.is_self_type(proper_leading_type):  # method[[Self, ...], Self] case
+                    proper_leading_type = func.type.arg_types[0] = self.named_type(info.fullname)
+                elif isinstance(proper_leading_type, UnboundType):  # classmethod[[type[Self], ...], Self] case
+                    node = self.lookup(proper_leading_type.name, func)
+                    if (
+                        node is not None
+                        and node.fullname in {"typing.Type", "builtins.type"}
+                        and self.is_self_type(proper_leading_type.args[0])
+                    ):
+                        proper_leading_type = func.type.arg_types[0] = self.class_type(self.named_type(info.fullname))
                 if not isinstance(proper_leading_type, (Instance, TypeType)):
                     return
                 if isinstance(proper_leading_type, TypeType):
@@ -734,10 +744,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             )  # we replace them here for them
                             continue
                         if fullname is None:
-                            aname = getattr(arg, 'name', 'EEEK')
-                            if aname == 'EEEK':
-                                self.fail("Oh no {} has no name".format(arg), func)
-                            table_node = self.lookup_qualified(aname, arg)
+                            table_node = self.lookup_qualified(arg.name, arg)
                             assert isinstance(table_node, SymbolTableNode) and table_node.node
                             fullname = table_node.node.fullname
                         assert isinstance(self_type, Instance)
@@ -745,10 +752,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
                 if self.is_self_type(func.type.ret_type):
                     if fullname is None:
-                        tname = getattr(func.type.ret_type, 'name', 'ARGH')
-                        if tname == 'ARGH':
-                            self.fail("Oh no {} has no name".format(func.type.ret_type), func)
-                        table_node = self.lookup_qualified(tname, func.type.ret_type)
+                        table_node = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type)
                         assert isinstance(table_node, SymbolTableNode) and table_node.node
                         fullname = table_node.node.fullname
                     if func.is_static:
