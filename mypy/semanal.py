@@ -49,88 +49,88 @@ Some important properties:
 """
 
 from contextlib import contextmanager
+from typing import (Any, Callable, Dict, Iterable, Iterator, List, Optional,
+                    Set, Tuple, TypeVar, Union, cast)
 
-from typing import (
-    Any, List, Dict, Set, Tuple, cast, TypeVar, Union, Optional, Callable, Iterator, Iterable
-)
-from typing_extensions import Final, TypeAlias as _TypeAlias
+from typing_extensions import Final
+from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.nodes import (
-    AssertTypeExpr, MypyFile, TypeInfo, Node, AssignmentStmt, FuncDef, OverloadedFuncDef,
-    ClassDef, Var, GDEF, FuncItem, Import, Expression, Lvalue,
-    ImportFrom, ImportAll, Block, LDEF, NameExpr, MemberExpr,
-    IndexExpr, TupleExpr, ListExpr, ExpressionStmt, ReturnStmt,
-    RaiseStmt, AssertStmt, OperatorAssignmentStmt, WhileStmt,
-    ForStmt, BreakStmt, ContinueStmt, IfStmt, TryStmt, WithStmt, DelStmt,
-    GlobalDecl, SuperExpr, DictExpr, CallExpr, RefExpr, OpExpr, UnaryExpr,
-    SliceExpr, CastExpr, RevealExpr, TypeApplication, Context, SymbolTable,
-    SymbolTableNode, ListComprehension, GeneratorExpr,
-    LambdaExpr, MDEF, Decorator, SetExpr, TypeVarExpr,
-    StrExpr, BytesExpr, PrintStmt, ConditionalExpr, PromoteExpr,
-    ComparisonExpr, StarExpr, ArgKind, ARG_POS, ARG_NAMED, type_aliases,
-    YieldFromExpr, NamedTupleExpr, NonlocalDecl, SymbolNode,
-    SetComprehension, DictionaryComprehension, TypeAlias, TypeAliasExpr,
-    YieldExpr, ExecStmt, BackquoteExpr, ImportBase, AwaitExpr,
-    IntExpr, FloatExpr, UnicodeExpr, TempNode, OverloadPart,
-    PlaceholderNode, COVARIANT, CONTRAVARIANT, INVARIANT,
-    get_nongen_builtins, get_member_expr_fullname, REVEAL_TYPE,
-    REVEAL_LOCALS, is_final_node, TypedDictExpr, type_aliases_source_versions,
-    typing_extensions_aliases,
-    EnumCallExpr, RUNTIME_PROTOCOL_DECOS, FakeExpression, Statement, AssignmentExpr,
-    ParamSpecExpr, EllipsisExpr, TypeVarLikeExpr, implicit_module_attrs,
-    MatchStmt, FuncBase, TypeVarTupleExpr
-)
-from mypy.patterns import (
-    AsPattern, OrPattern, ValuePattern, SequencePattern,
-    StarredPattern, MappingPattern, ClassPattern,
-)
-from mypy.tvar_scope import TypeVarLikeScope
-from mypy.typevars import fill_typevars
-from mypy.visitor import NodeVisitor
-from mypy.errors import Errors, report_internal_error
-from mypy.messages import (
-    best_matches, MessageBuilder, pretty_seq, SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS
-)
+from mypy import errorcodes as codes
+from mypy import message_registry
 from mypy.errorcodes import ErrorCode
-from mypy import message_registry, errorcodes as codes
-from mypy.types import (
-    NEVER_NAMES, FunctionLike, UnboundType, TypeVarType, TupleType, UnionType, StarType,
-    CallableType, Overloaded, Instance, Type, AnyType, LiteralType, LiteralValue,
-    TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
-    get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
-    PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance, SelfType, SELF_TYPE_NAMES,
-)
-from mypy.typeops import function_type, get_type_vars
-from mypy.type_visitor import TypeQuery
-from mypy.typeanal import (
-    TypeAnalyser, analyze_type_alias, no_subscript_builtin_alias,
-    TypeVarLikeQuery, TypeVarLikeList, remove_dups, has_any_from_unimported_type,
-    check_for_explicit_any, type_constructors, fix_instance_types
-)
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.errors import Errors, report_internal_error
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import (SUGGESTED_TEST_FIXTURES, TYPES_FOR_UNIMPORTED_HINTS,
+                           MessageBuilder, best_matches, pretty_seq)
+from mypy.mro import MroError, calculate_mro
+from mypy.nodes import (ARG_NAMED, ARG_POS, CONTRAVARIANT, COVARIANT, GDEF,
+                        INVARIANT, LDEF, MDEF, REVEAL_LOCALS, REVEAL_TYPE,
+                        RUNTIME_PROTOCOL_DECOS, ArgKind, AssertStmt,
+                        AssertTypeExpr, AssignmentExpr, AssignmentStmt,
+                        AwaitExpr, BackquoteExpr, Block, BreakStmt, BytesExpr,
+                        CallExpr, CastExpr, ClassDef, ComparisonExpr,
+                        ConditionalExpr, Context, ContinueStmt, Decorator,
+                        DelStmt, DictExpr, DictionaryComprehension,
+                        EllipsisExpr, EnumCallExpr, ExecStmt, Expression,
+                        ExpressionStmt, FakeExpression, FloatExpr, ForStmt,
+                        FuncBase, FuncDef, FuncItem, GeneratorExpr, GlobalDecl,
+                        IfStmt, Import, ImportAll, ImportBase, ImportFrom,
+                        IndexExpr, IntExpr, LambdaExpr, ListComprehension,
+                        ListExpr, Lvalue, MatchStmt, MemberExpr, MypyFile,
+                        NamedTupleExpr, NameExpr, Node, NonlocalDecl,
+                        OperatorAssignmentStmt, OpExpr, OverloadedFuncDef,
+                        OverloadPart, ParamSpecExpr, PlaceholderNode,
+                        PrintStmt, PromoteExpr, RaiseStmt, RefExpr, ReturnStmt,
+                        RevealExpr, SetComprehension, SetExpr, SliceExpr,
+                        StarExpr, Statement, StrExpr, SuperExpr, SymbolNode,
+                        SymbolTable, SymbolTableNode, TempNode, TryStmt,
+                        TupleExpr, TypeAlias, TypeAliasExpr, TypeApplication,
+                        TypedDictExpr, TypeInfo, TypeVarExpr, TypeVarLikeExpr,
+                        TypeVarTupleExpr, UnaryExpr, UnicodeExpr, Var,
+                        WhileStmt, WithStmt, YieldExpr, YieldFromExpr,
+                        get_member_expr_fullname, get_nongen_builtins,
+                        implicit_module_attrs, is_final_node, type_aliases,
+                        type_aliases_source_versions,
+                        typing_extensions_aliases)
 from mypy.options import Options
-from mypy.plugin import (
-    Plugin, ClassDefContext, SemanticAnalyzerPluginInterface,
-    DynamicClassDefContext
-)
-from mypy.util import (
-    correct_relative_import, unmangle, module_prefix, is_typeshed_file, unnamed_function,
-    is_dunder,
-)
+from mypy.patterns import (AsPattern, ClassPattern, MappingPattern, OrPattern,
+                           SequencePattern, StarredPattern, ValuePattern)
+from mypy.plugin import (ClassDefContext, DynamicClassDefContext, Plugin,
+                         SemanticAnalyzerPluginInterface)
+from mypy.reachability import (ALWAYS_FALSE, ALWAYS_TRUE, MYPY_FALSE,
+                               MYPY_TRUE, infer_condition_value,
+                               infer_reachability_of_if_statement,
+                               infer_reachability_of_match_statement)
 from mypy.scope import Scope
-from mypy.semanal_shared import (
-    SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
-)
-from mypy.semanal_namedtuple import NamedTupleAnalyzer
-from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.semanal_enum import EnumCallAnalyzer
+from mypy.semanal_namedtuple import NamedTupleAnalyzer
 from mypy.semanal_newtype import NewTypeAnalyzer
-from mypy.reachability import (
-    infer_reachability_of_if_statement, infer_reachability_of_match_statement,
-    infer_condition_value, ALWAYS_FALSE, ALWAYS_TRUE, MYPY_TRUE, MYPY_FALSE
-)
-from mypy.mro import calculate_mro, MroError
+from mypy.semanal_shared import (PRIORITY_FALLBACKS, SemanticAnalyzerInterface,
+                                 calculate_tuple_fallback, set_callable_name)
+from mypy.semanal_typeddict import TypedDictAnalyzer
+from mypy.tvar_scope import TypeVarLikeScope
+from mypy.type_visitor import TypeQuery
+from mypy.typeanal import (TypeAnalyser, TypeVarLikeList, TypeVarLikeQuery,
+                           analyze_type_alias, check_for_explicit_any,
+                           fix_instance_types, has_any_from_unimported_type,
+                           no_subscript_builtin_alias, remove_dups,
+                           type_constructors)
+from mypy.typeops import function_type, get_type_vars
+from mypy.types import (ASSERT_TYPE_NAMES, FINAL_DECORATOR_NAMES,
+                        FINAL_TYPE_NAMES, NEVER_NAMES, OVERLOAD_NAMES,
+                        PROTOCOL_NAMES, REVEAL_TYPE_NAMES, SELF_TYPE_NAMES,
+                        TPDICT_NAMES, TYPE_ALIAS_NAMES, AnyType, CallableType,
+                        FunctionLike, Instance, LiteralType, LiteralValue,
+                        NoneType, Overloaded, Parameters, ParamSpecType,
+                        PlaceholderType, ProperType, SelfType, StarType,
+                        TupleType, Type, TypeAliasType, TypeOfAny,
+                        TypeTranslator, TypeType, TypeVarLikeType, TypeVarType,
+                        UnboundType, UnionType, get_proper_type,
+                        get_proper_types, is_named_instance)
+from mypy.typevars import fill_typevars
+from mypy.util import (correct_relative_import, is_dunder, is_typeshed_file,
+                       module_prefix, unmangle, unnamed_function)
+from mypy.visitor import NodeVisitor
 
 T = TypeVar('T')
 
@@ -715,14 +715,18 @@ class SemanticAnalyzer(NodeVisitor[None],
                 proper_leading_type = get_proper_type(leading_type)
                 if self.is_self_type(proper_leading_type):  # method[[Self, ...], Self] case
                     proper_leading_type = func.type.arg_types[0] = self.named_type(info.fullname)
-                elif isinstance(proper_leading_type, UnboundType):  # classmethod[[type[Self], ...], Self] case
+                elif isinstance(proper_leading_type, UnboundType):
+                    # classmethod[[type[Self], ...], Self] case
                     node = self.lookup(proper_leading_type.name, func)
                     if (
                         node is not None
                         and node.fullname in {"typing.Type", "builtins.type"}
+                        and proper_leading_type.args
                         and self.is_self_type(proper_leading_type.args[0])
                     ):
-                        proper_leading_type = func.type.arg_types[0] = self.class_type(self.named_type(info.fullname))
+                        proper_leading_type = func.type.arg_types[0] = get_proper_type(
+                            self.class_type(self.named_type(info.fullname
+                        )))
                 if not isinstance(proper_leading_type, (Instance, TypeType)):
                     return
                 if isinstance(proper_leading_type, TypeType):
@@ -744,6 +748,7 @@ class SemanticAnalyzer(NodeVisitor[None],
                             )  # we replace them here for them
                             continue
                         if fullname is None:
+                            assert isinstance(arg, UnboundType)
                             table_node = self.lookup_qualified(arg.name, arg)
                             assert isinstance(table_node, SymbolTableNode) and table_node.node
                             fullname = table_node.node.fullname
@@ -752,6 +757,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
                 if self.is_self_type(func.type.ret_type):
                     if fullname is None:
+                        assert isinstance(func.type.ret_type, UnboundType)
                         table_node = self.lookup_qualified(func.type.ret_type.name, func.type.ret_type)
                         assert isinstance(table_node, SymbolTableNode) and table_node.node
                         fullname = table_node.node.fullname
