@@ -73,8 +73,6 @@ class Person5:
     friends: Set[str] = field(default_factory=set)
     parents: FrozenSet[str] = frozenset()
 
-[typing fixtures/typing-full.pyi]
-
 [file other.py]
 from native import Person1, Person1b, Person2, Person3, Person4, Person5, testBool
 i1 = Person1(age = 5, name = 'robot')

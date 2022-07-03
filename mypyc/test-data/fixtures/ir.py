@@ -3,7 +3,7 @@
 
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence, FrozenSet, AbstractSet
+    overload, Mapping, Union, Callable, Sequence, FrozenSet
 )
 
 T = TypeVar('T')
@@ -211,13 +211,13 @@ class set(Generic[T]):
     def clear(self) -> None: pass
     def pop(self) -> T: pass
     def update(self, x: Iterable[S]) -> None: pass
-    def __or__(self, s: AbstractSet[S]) -> Set[Union[T, S]]: ...
+    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
 
 class frozenset(Generic[T]):
     def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
     def __iter__(self) -> Iterator[T]: pass
     def __len__(self) -> int: pass
-    def __or__(self, s: AbstractSet[S]) -> FrozenSet[Union[T, S]]: ...
+    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
 
 class slice: pass
 
