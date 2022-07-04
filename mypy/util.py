@@ -734,11 +734,10 @@ class FancyFormatter:
         blockers: bool = False, use_color: bool = True, new_errors: int = -1
     ) -> str:
         """Format a short summary in case of errors."""
-        msg = (
-            f'Found {n_errors} error{plural_s(n_errors)} {{}}in {n_files} file{plural_s(n_files)}'
-        )
+        msg = f'Found {n_errors} error{plural_s(n_errors)} '
         if new_errors:
-            msg.format(f'({new_errors} new error{plural_s(new_errors)}) ')
+            msg += f'({new_errors} new error{plural_s(new_errors)}) '
+        msg += f'in {n_files} file{plural_s(n_files)}'
         if blockers:
             msg += ' (errors prevented further checking)'
         else:

@@ -18,13 +18,17 @@ from mypy.subtypes import (
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
 from mypy.state import state
-
+import mypy.options
 
 class InstanceJoiner:
     def __init__(self) -> None:
         self.seen_instances: List[Tuple[Instance, Instance]] = []
 
-    def join_instances(self, t: Instance, s: Instance) -> ProperType:
+    def join_instances(
+        self, t: Instance, s: Instance, unionize: Optional[bool] = False
+    ) -> ProperType:
+        if not mypy.options._based:
+            unionize = False
         if (t, s) in self.seen_instances or (s, t) in self.seen_instances:
             return object_from_instance(t)
 
@@ -74,17 +78,19 @@ class InstanceJoiner:
                 args.append(new_type)
             result: ProperType = Instance(t.type, args)
         elif t.type.bases and is_subtype(t, s, ignore_type_params=True):
-            result = self.join_instances_via_supertype(t, s)
+            result = self.join_instances_via_supertype(t, s, unionize=unionize)
         else:
             # Now t is not a subtype of s, and t != s. Now s could be a subtype
             # of t; alternatively, we need to find a common supertype. This works
             # in of the both cases.
-            result = self.join_instances_via_supertype(s, t)
+            result = self.join_instances_via_supertype(s, t, unionize=unionize)
 
         self.seen_instances.pop()
         return result
 
-    def join_instances_via_supertype(self, t: Instance, s: Instance) -> ProperType:
+    def join_instances_via_supertype(
+        self, t: Instance, s: Instance, unionize: bool = False
+    ) -> ProperType:
         # Give preference to joins via duck typing relationship, so that
         # join(int, float) == float, for example.
         for p in t.type._promote:
@@ -94,20 +100,28 @@ class InstanceJoiner:
             if is_subtype(p, t):
                 return join_types(t, p, self)
 
-        # Compute the "best" supertype of t when joined with s.
-        # The definition of "best" may evolve; for now it is the one with
-        # the longest MRO.  Ties are broken by using the earlier base.
-        best: Optional[ProperType] = None
-        for base in t.type.bases:
-            mapped = map_instance_to_supertype(t, base.type)
-            res = self.join_instances(mapped, s)
-            if best is None or is_better(res, best):
-                best = res
-        assert best is not None
+        if unionize:
+            if is_subtype(t, s):
+                best = s
+            elif is_subtype(s, t):
+                best = t
+            else:
+                best = UnionType([t, s])
+        else:
+            # Compute the "best" supertype of t when joined with s.
+            # The definition of "best" may evolve; for now it is the one with
+            # the longest MRO.  Ties are broken by using the earlier base.
+            best: Optional[ProperType] = None
+            for base in t.type.bases:
+                mapped = map_instance_to_supertype(t, base.type)
+                res = self.join_instances(mapped, s)
+                if best is None or is_better(res, best):
+                    best = res
+            assert best is not None
         for promote in t.type._promote:
             promote = get_proper_type(promote)
             if isinstance(promote, Instance):
-                res = self.join_instances(promote, s)
+                res = self.join_instances(promote, s, unionize=unionize)
                 if is_better(res, best):
                     best = res
         return best
@@ -279,7 +293,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, Instance):
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
-            nominal = self.instance_joiner.join_instances(t, self.s)
+            nominal = self.instance_joiner.join_instances(t, self.s, unionize=True)
             structural: Optional[Instance] = None
             if t.type.is_protocol and is_protocol_implementation(self.s, t):
                 structural = t
@@ -402,7 +416,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
                 self.instance_joiner = InstanceJoiner()
             fallback = self.instance_joiner.join_instances(mypy.typeops.tuple_fallback(self.s),
                                                        mypy.typeops.tuple_fallback(t))
-            assert isinstance(fallback, Instance)
+            assert isinstance(fallback, (Instance, UnionType))
             if self.s.length() == t.length():
                 items: List[Type] = []
                 for i in range(t.length()):
