@@ -844,8 +844,7 @@ class ASTConverter:
             op = '+'
         elif isinstance(n.op, ast27.USub):
             op = '-'
-
-        if op is None:
+        else:
             raise RuntimeError('cannot translate UnaryOp ' + str(type(n.op)))
 
         e = UnaryExpr(op, self.visit(n.operand))
