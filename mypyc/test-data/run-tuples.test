@@ -99,68 +99,44 @@ assert f(Sub(3, 2)) == 3
 [case testNamedTupleClassSyntax]
 from typing import Dict, List, NamedTuple, Optional, Tuple, Union
 
-class FileData(NamedTuple):
-    st_mtime: float
-    st_size: int
-    hash: str
-
-class SearchPaths(NamedTuple):
-    python_path: Tuple[str, ...]
-    mypy_path: Tuple[str, ...]
-    package_path: Tuple[str, ...]
-    typeshed_path: Tuple[str, ...]
-
 class ClassIR: pass
 
 class FuncIR: pass
 
-class VTableMethod(NamedTuple):
-    cls: 'ClassIR'
-    name: str
-    method: FuncIR
-    shadow_method: Optional[FuncIR]
-
-class DeserMaps(NamedTuple):
-    classes: Dict[str, 'ClassIR']
-    functions: Dict[str, 'FuncIR']
-
 StealsDescription = Union[bool, List[bool]]
 
-class RType: pass
-
-class CFunctionDescription(NamedTuple):
-    name: str
-    arg_types: List[RType]
-    return_type: RType
-    var_arg_type: Optional[RType]
-    truncated_type: Optional[RType]
-    c_function_name: str
-    error_kind: int
-    steals: StealsDescription
+class Record(NamedTuple):
+    st_mtime: float
+    st_size: int
     is_borrowed: bool
+    hash: str
+    python_path: Tuple[str, ...]
+    type: 'ClassIR'
+    method: FuncIR
+    shadow_method: Optional[FuncIR]
+    classes: Dict[str, 'ClassIR']
+    steals: StealsDescription
     ordering: Optional[List[int]]
-    extra_int_constants: List[Tuple[int, RType]]
-    priority: int
-
-class IntComparisonOpDescription(NamedTuple):
-    binary_op_variant: int
-    c_func_description: CFunctionDescription
-    c_func_negated: bool
-    c_func_swap_operands: bool
-
-class LoadAddressDescription(NamedTuple):
-    name: str
-    type: RType
-    src: str
+    extra_int_constants: List[Tuple[int]]
 
 [file driver.py]
-from native import FileData, SearchPaths, DeserMaps, LoadAddressDescription, RType
+from typing import Optional
+from native import ClassIR, FuncIR, Record
 
-assert FileData.__annotations__ == {'st_mtime': float, 'st_size': int, 'hash': str}
-assert SearchPaths.__annotations__ == {'python_path': tuple, 'mypy_path': tuple,
-                                           'package_path': tuple, 'typeshed_path': tuple}
-assert DeserMaps.__annotations__ == {'classes': dict, 'functions': dict}
-assert LoadAddressDescription.__annotations__ == {'name': str, 'type': RType, 'src': str}
+assert Record.__annotations__ == {
+    'st_mtime': float,
+    'st_size': int,
+    'is_borrowed': bool,
+    'hash': str,
+    'python_path': tuple,
+    'type': ClassIR,
+    'method': FuncIR,
+    'shadow_method': type,
+    'classes': dict,
+    'steals': type,
+    'ordering': type,
+    'extra_int_constants': list,
+}, Record.__annotations__
 
 [case testTupleOps]
 from typing import Tuple, List, Any, Optional
