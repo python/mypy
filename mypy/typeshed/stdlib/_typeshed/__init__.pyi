@@ -10,8 +10,8 @@ import sys
 from collections.abc import Awaitable, Container, Iterable, Set as AbstractSet
 from os import PathLike
 from types import TracebackType
-from typing import Any, Generic, Protocol, TypeVar, Union
-from typing_extensions import Final, Literal, TypeAlias, final
+from typing import Any, AnyStr, Generic, Protocol, TypeVar, Union
+from typing_extensions import Final, Literal, LiteralString, TypeAlias, final
 
 _KT = TypeVar("_KT")
 _KT_co = TypeVar("_KT_co", covariant=True)
@@ -25,6 +25,9 @@ _T_contra = TypeVar("_T_contra", contravariant=True)
 # Use for "self" annotations:
 #   def __enter__(self: Self) -> Self: ...
 Self = TypeVar("Self")  # noqa: Y001
+
+# covariant version of typing.AnyStr, useful for protocols
+AnyStr_co = TypeVar("AnyStr_co", str, bytes, covariant=True)  # noqa: Y001
 
 # For partially known annotations. Usually, fields where type annotations
 # haven't been added are left unannotated, but in some situations this
@@ -66,8 +69,14 @@ SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichC
 
 # Dunder protocols
 
-class SupportsAdd(Protocol):
-    def __add__(self, __x: Any) -> Any: ...
+class SupportsAdd(Protocol[_T_contra, _T_co]):
+    def __add__(self, __x: _T_contra) -> _T_co: ...
+
+class SupportsRAdd(Protocol[_T_contra, _T_co]):
+    def __radd__(self, __x: _T_contra) -> _T_co: ...
+
+class SupportsSub(Protocol[_T_contra, _T_co]):
+    def __sub__(self, __x: _T_contra) -> _T_co: ...
 
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
@@ -112,9 +121,9 @@ class SupportsItemAccess(SupportsGetItem[_KT_contra, _VT], Protocol[_KT_contra, 
     def __setitem__(self, __k: _KT_contra, __v: _VT) -> None: ...
     def __delitem__(self, __v: _KT_contra) -> None: ...
 
-# These aliases are simple strings in Python 2.
 StrPath: TypeAlias = str | PathLike[str]  # stable
 BytesPath: TypeAlias = bytes | PathLike[bytes]  # stable
+GenericPath: TypeAlias = AnyStr | PathLike[AnyStr]
 StrOrBytesPath: TypeAlias = str | bytes | PathLike[str] | PathLike[bytes]  # stable
 
 OpenTextModeUpdating: TypeAlias = Literal[
@@ -248,3 +257,6 @@ class structseq(Generic[_T_co]):
     # but only has any meaning if you supply it a dict where the keys are strings.
     # https://github.com/python/typeshed/pull/6560#discussion_r767149830
     def __new__(cls: type[Self], sequence: Iterable[_T_co], dict: dict[str, Any] = ...) -> Self: ...
+
+# Superset of typing.AnyStr that also inclues LiteralString
+AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001

@@ -8,86 +8,49 @@ from typing_extensions import Literal, TypeAlias
 if sys.version_info >= (3, 9):
     from types import GenericAlias
 
+__all__ = [
+    "Popen",
+    "PIPE",
+    "STDOUT",
+    "call",
+    "check_call",
+    "getstatusoutput",
+    "getoutput",
+    "check_output",
+    "run",
+    "CalledProcessError",
+    "DEVNULL",
+    "SubprocessError",
+    "TimeoutExpired",
+    "CompletedProcess",
+]
+
 if sys.platform == "win32":
+    __all__ += [
+        "CREATE_NEW_CONSOLE",
+        "CREATE_NEW_PROCESS_GROUP",
+        "STARTF_USESHOWWINDOW",
+        "STARTF_USESTDHANDLES",
+        "STARTUPINFO",
+        "STD_ERROR_HANDLE",
+        "STD_INPUT_HANDLE",
+        "STD_OUTPUT_HANDLE",
+        "SW_HIDE",
+    ]
+
     if sys.version_info >= (3, 7):
-        __all__ = [
-            "Popen",
-            "PIPE",
-            "STDOUT",
-            "call",
-            "check_call",
-            "getstatusoutput",
-            "getoutput",
-            "check_output",
-            "run",
-            "CalledProcessError",
-            "DEVNULL",
-            "SubprocessError",
-            "TimeoutExpired",
-            "CompletedProcess",
-            "CREATE_NEW_CONSOLE",
-            "CREATE_NEW_PROCESS_GROUP",
-            "STD_INPUT_HANDLE",
-            "STD_OUTPUT_HANDLE",
-            "STD_ERROR_HANDLE",
-            "SW_HIDE",
-            "STARTF_USESTDHANDLES",
-            "STARTF_USESHOWWINDOW",
-            "STARTUPINFO",
+        __all__ += [
             "ABOVE_NORMAL_PRIORITY_CLASS",
             "BELOW_NORMAL_PRIORITY_CLASS",
+            "CREATE_BREAKAWAY_FROM_JOB",
+            "CREATE_DEFAULT_ERROR_MODE",
+            "CREATE_NO_WINDOW",
+            "DETACHED_PROCESS",
             "HIGH_PRIORITY_CLASS",
             "IDLE_PRIORITY_CLASS",
             "NORMAL_PRIORITY_CLASS",
             "REALTIME_PRIORITY_CLASS",
-            "CREATE_NO_WINDOW",
-            "DETACHED_PROCESS",
-            "CREATE_DEFAULT_ERROR_MODE",
-            "CREATE_BREAKAWAY_FROM_JOB",
         ]
-    else:
-        __all__ = [
-            "Popen",
-            "PIPE",
-            "STDOUT",
-            "call",
-            "check_call",
-            "getstatusoutput",
-            "getoutput",
-            "check_output",
-            "run",
-            "CalledProcessError",
-            "DEVNULL",
-            "SubprocessError",
-            "TimeoutExpired",
-            "CompletedProcess",
-            "CREATE_NEW_CONSOLE",
-            "CREATE_NEW_PROCESS_GROUP",
-            "STD_INPUT_HANDLE",
-            "STD_OUTPUT_HANDLE",
-            "STD_ERROR_HANDLE",
-            "SW_HIDE",
-            "STARTF_USESTDHANDLES",
-            "STARTF_USESHOWWINDOW",
-            "STARTUPINFO",
-        ]
-else:
-    __all__ = [
-        "Popen",
-        "PIPE",
-        "STDOUT",
-        "call",
-        "check_call",
-        "getstatusoutput",
-        "getoutput",
-        "check_output",
-        "run",
-        "CalledProcessError",
-        "DEVNULL",
-        "SubprocessError",
-        "TimeoutExpired",
-        "CompletedProcess",
-    ]
 
 # We prefer to annotate inputs to methods (eg subprocess.check_call) with these
 # union types.
@@ -444,49 +407,99 @@ else:
     ) -> CompletedProcess[Any]: ...
 
 # Same args as Popen.__init__
-def call(
-    args: _CMD,
-    bufsize: int = ...,
-    executable: StrOrBytesPath | None = ...,
-    stdin: _FILE = ...,
-    stdout: _FILE = ...,
-    stderr: _FILE = ...,
-    preexec_fn: Callable[[], Any] | None = ...,
-    close_fds: bool = ...,
-    shell: bool = ...,
-    cwd: StrOrBytesPath | None = ...,
-    env: _ENV | None = ...,
-    universal_newlines: bool = ...,
-    startupinfo: Any = ...,
-    creationflags: int = ...,
-    restore_signals: bool = ...,
-    start_new_session: bool = ...,
-    pass_fds: Any = ...,
-    *,
-    timeout: float | None = ...,
-) -> int: ...
+if sys.version_info >= (3, 7):
+    def call(
+        args: _CMD,
+        bufsize: int = ...,
+        executable: StrOrBytesPath | None = ...,
+        stdin: _FILE = ...,
+        stdout: _FILE = ...,
+        stderr: _FILE = ...,
+        preexec_fn: Callable[[], Any] | None = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: StrOrBytesPath | None = ...,
+        env: _ENV | None = ...,
+        universal_newlines: bool = ...,
+        startupinfo: Any = ...,
+        creationflags: int = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Any = ...,
+        *,
+        timeout: float | None = ...,
+        text: bool | None = ...,
+    ) -> int: ...
+
+else:
+    def call(
+        args: _CMD,
+        bufsize: int = ...,
+        executable: StrOrBytesPath | None = ...,
+        stdin: _FILE = ...,
+        stdout: _FILE = ...,
+        stderr: _FILE = ...,
+        preexec_fn: Callable[[], Any] | None = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: StrOrBytesPath | None = ...,
+        env: _ENV | None = ...,
+        universal_newlines: bool = ...,
+        startupinfo: Any = ...,
+        creationflags: int = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Any = ...,
+        *,
+        timeout: float | None = ...,
+    ) -> int: ...
 
 # Same args as Popen.__init__
-def check_call(
-    args: _CMD,
-    bufsize: int = ...,
-    executable: StrOrBytesPath = ...,
-    stdin: _FILE = ...,
-    stdout: _FILE = ...,
-    stderr: _FILE = ...,
-    preexec_fn: Callable[[], Any] | None = ...,
-    close_fds: bool = ...,
-    shell: bool = ...,
-    cwd: StrOrBytesPath | None = ...,
-    env: _ENV | None = ...,
-    universal_newlines: bool = ...,
-    startupinfo: Any = ...,
-    creationflags: int = ...,
-    restore_signals: bool = ...,
-    start_new_session: bool = ...,
-    pass_fds: Any = ...,
-    timeout: float | None = ...,
-) -> int: ...
+if sys.version_info >= (3, 7):
+    def check_call(
+        args: _CMD,
+        bufsize: int = ...,
+        executable: StrOrBytesPath = ...,
+        stdin: _FILE = ...,
+        stdout: _FILE = ...,
+        stderr: _FILE = ...,
+        preexec_fn: Callable[[], Any] | None = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: StrOrBytesPath | None = ...,
+        env: _ENV | None = ...,
+        universal_newlines: bool = ...,
+        startupinfo: Any = ...,
+        creationflags: int = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Any = ...,
+        timeout: float | None = ...,
+        *,
+        text: bool | None = ...,
+    ) -> int: ...
+
+else:
+    def check_call(
+        args: _CMD,
+        bufsize: int = ...,
+        executable: StrOrBytesPath = ...,
+        stdin: _FILE = ...,
+        stdout: _FILE = ...,
+        stderr: _FILE = ...,
+        preexec_fn: Callable[[], Any] | None = ...,
+        close_fds: bool = ...,
+        shell: bool = ...,
+        cwd: StrOrBytesPath | None = ...,
+        env: _ENV | None = ...,
+        universal_newlines: bool = ...,
+        startupinfo: Any = ...,
+        creationflags: int = ...,
+        restore_signals: bool = ...,
+        start_new_session: bool = ...,
+        pass_fds: Any = ...,
+        timeout: float | None = ...,
+    ) -> int: ...
 
 if sys.version_info >= (3, 7):
     # 3.7 added text
@@ -1652,8 +1665,13 @@ class Popen(Generic[AnyStr]):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 # The result really is always a str.
-def getstatusoutput(cmd: _TXT) -> tuple[int, str]: ...
-def getoutput(cmd: _TXT) -> str: ...
+if sys.version_info >= (3, 11):
+    def getstatusoutput(cmd: _TXT, *, encoding: str | None = ..., errors: str | None = ...) -> tuple[int, str]: ...
+    def getoutput(cmd: _TXT, *, encoding: str | None = ..., errors: str | None = ...) -> str: ...
+
+else:
+    def getstatusoutput(cmd: _TXT) -> tuple[int, str]: ...
+    def getoutput(cmd: _TXT) -> str: ...
 
 if sys.version_info >= (3, 8):
     def list2cmdline(seq: Iterable[StrOrBytesPath]) -> str: ...  # undocumented

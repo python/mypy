@@ -10,56 +10,32 @@ _TF: TypeAlias = Callable[[FrameType, str, Any], Callable[..., Any] | None]
 _PF: TypeAlias = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
+__all__ = [
+    "get_ident",
+    "active_count",
+    "Condition",
+    "current_thread",
+    "enumerate",
+    "main_thread",
+    "TIMEOUT_MAX",
+    "Event",
+    "Lock",
+    "RLock",
+    "Semaphore",
+    "BoundedSemaphore",
+    "Thread",
+    "Barrier",
+    "BrokenBarrierError",
+    "Timer",
+    "ThreadError",
+    "setprofile",
+    "settrace",
+    "local",
+    "stack_size",
+]
+
 if sys.version_info >= (3, 8):
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-        "excepthook",
-        "ExceptHookArgs",
-    ]
-else:
-    __all__ = [
-        "get_ident",
-        "active_count",
-        "Condition",
-        "current_thread",
-        "enumerate",
-        "main_thread",
-        "TIMEOUT_MAX",
-        "Event",
-        "Lock",
-        "RLock",
-        "Semaphore",
-        "BoundedSemaphore",
-        "Thread",
-        "Barrier",
-        "BrokenBarrierError",
-        "Timer",
-        "ThreadError",
-        "setprofile",
-        "settrace",
-        "local",
-        "stack_size",
-    ]
+    __all__ += ["ExceptHookArgs", "excepthook"]
 
 def active_count() -> int: ...
 def current_thread() -> Thread: ...

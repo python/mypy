@@ -21,30 +21,18 @@ if sys.version_info >= (3, 7):
 
 all_feature_names: list[str]  # undocumented
 
+__all__ = [
+    "all_feature_names",
+    "absolute_import",
+    "division",
+    "generators",
+    "nested_scopes",
+    "print_function",
+    "unicode_literals",
+    "with_statement",
+    "barry_as_FLUFL",
+    "generator_stop",
+]
+
 if sys.version_info >= (3, 7):
-    __all__ = [
-        "all_feature_names",
-        "absolute_import",
-        "division",
-        "generators",
-        "nested_scopes",
-        "print_function",
-        "unicode_literals",
-        "with_statement",
-        "barry_as_FLUFL",
-        "generator_stop",
-        "annotations",
-    ]
-else:
-    __all__ = [
-        "all_feature_names",
-        "absolute_import",
-        "division",
-        "generators",
-        "nested_scopes",
-        "print_function",
-        "unicode_literals",
-        "with_statement",
-        "barry_as_FLUFL",
-        "generator_stop",
-    ]
+    __all__ += ["annotations"]

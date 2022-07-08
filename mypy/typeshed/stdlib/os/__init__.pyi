@@ -1,7 +1,9 @@
 import sys
 from _typeshed import (
+    AnyStr_co,
     BytesPath,
     FileDescriptorLike,
+    GenericPath,
     OpenBinaryMode,
     OpenBinaryModeReading,
     OpenBinaryModeUpdating,
@@ -32,7 +34,6 @@ path = _path
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
 _T2 = TypeVar("_T2")
-_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
 
 # ----- os variables -----
 
@@ -356,9 +357,9 @@ class stat_result(structseq[float], tuple[int, int, int, int, int, int, int, flo
     # See https://github.com/python/typeshed/pull/6560#issuecomment-991253327
 
 @runtime_checkable
-class PathLike(Protocol[_AnyStr_co]):
+class PathLike(Protocol[AnyStr_co]):
     @abstractmethod
-    def __fspath__(self) -> _AnyStr_co: ...
+    def __fspath__(self) -> AnyStr_co: ...
 
 @overload
 def listdir(path: StrPath | None = ...) -> list[str]: ...
@@ -726,7 +727,7 @@ if sys.platform != "win32":
     def makedev(__major: int, __minor: int) -> int: ...
     def pathconf(path: _FdOrAnyPath, name: str | int) -> int: ...  # Unix only
 
-def readlink(path: AnyStr | PathLike[AnyStr], *, dir_fd: int | None = ...) -> AnyStr: ...
+def readlink(path: GenericPath[AnyStr], *, dir_fd: int | None = ...) -> AnyStr: ...
 def remove(path: StrOrBytesPath, *, dir_fd: int | None = ...) -> None: ...
 def removedirs(name: StrOrBytesPath) -> None: ...
 def rename(src: StrOrBytesPath, dst: StrOrBytesPath, *, src_dir_fd: int | None = ..., dst_dir_fd: int | None = ...) -> None: ...
@@ -747,7 +748,7 @@ if sys.version_info >= (3, 7):
     def scandir(path: int) -> _ScandirIterator[str]: ...
 
 @overload
-def scandir(path: AnyStr | PathLike[AnyStr]) -> _ScandirIterator[AnyStr]: ...
+def scandir(path: GenericPath[AnyStr]) -> _ScandirIterator[AnyStr]: ...
 def stat(path: _FdOrAnyPath, *, dir_fd: int | None = ..., follow_symlinks: bool = ...) -> stat_result: ...
 
 if sys.version_info < (3, 7):
@@ -778,7 +779,7 @@ def utime(
 _OnError: TypeAlias = Callable[[OSError], Any]
 
 def walk(
-    top: AnyStr | PathLike[AnyStr], topdown: bool = ..., onerror: _OnError | None = ..., followlinks: bool = ...
+    top: GenericPath[AnyStr], topdown: bool = ..., onerror: _OnError | None = ..., followlinks: bool = ...
 ) -> Iterator[tuple[AnyStr, list[AnyStr], list[AnyStr]]]: ...
 
 if sys.platform != "win32":

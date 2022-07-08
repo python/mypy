@@ -415,6 +415,8 @@ class Tuple(expr):
         __match_args__ = ("elts", "ctx")
     elts: list[expr]
     ctx: expr_context
+    if sys.version_info >= (3, 9):
+        dims: list[expr]
 
 class expr_context(AST): ...
 

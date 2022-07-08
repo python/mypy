@@ -53,7 +53,13 @@ class _ResultItem:
     work_id: int
     exception: Exception
     result: Any
-    def __init__(self, work_id: int, exception: Exception | None = ..., result: Any | None = ...) -> None: ...
+    if sys.version_info >= (3, 11):
+        exit_pid: int | None
+        def __init__(
+            self, work_id: int, exception: Exception | None = ..., result: Any | None = ..., exit_pid: int | None = ...
+        ) -> None: ...
+    else:
+        def __init__(self, work_id: int, exception: Exception | None = ..., result: Any | None = ...) -> None: ...
 
 class _CallItem:
     work_id: int
@@ -86,11 +92,31 @@ if sys.version_info >= (3, 7):
 
 def _get_chunks(*iterables: Any, chunksize: int) -> Generator[tuple[Any, ...], None, None]: ...
 def _process_chunk(fn: Callable[..., Any], chunk: tuple[Any, None, None]) -> Generator[Any, None, None]: ...
-def _sendback_result(
-    result_queue: SimpleQueue[_WorkItem[Any]], work_id: int, result: Any | None = ..., exception: Exception | None = ...
-) -> None: ...
 
-if sys.version_info >= (3, 7):
+if sys.version_info >= (3, 11):
+    def _sendback_result(
+        result_queue: SimpleQueue[_WorkItem[Any]],
+        work_id: int,
+        result: Any | None = ...,
+        exception: Exception | None = ...,
+        exit_pid: int | None = ...,
+    ) -> None: ...
+
+else:
+    def _sendback_result(
+        result_queue: SimpleQueue[_WorkItem[Any]], work_id: int, result: Any | None = ..., exception: Exception | None = ...
+    ) -> None: ...
+
+if sys.version_info >= (3, 11):
+    def _process_worker(
+        call_queue: Queue[_CallItem],
+        result_queue: SimpleQueue[_ResultItem],
+        initializer: Callable[..., None] | None,
+        initargs: tuple[Any, ...],
+        max_tasks: int | None = ...,
+    ) -> None: ...
+
+elif sys.version_info >= (3, 7):
     def _process_worker(
         call_queue: Queue[_CallItem],
         result_queue: SimpleQueue[_ResultItem],
@@ -153,7 +179,17 @@ class ProcessPoolExecutor(Executor):
     _executor_manager_thread_wakeup: _ThreadWakeup
     _result_queue: SimpleQueue[Any]
     _work_ids: Queue[Any]
-    if sys.version_info >= (3, 7):
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            max_workers: int | None = ...,
+            mp_context: BaseContext | None = ...,
+            initializer: Callable[..., None] | None = ...,
+            initargs: tuple[Any, ...] = ...,
+            *,
+            max_tasks_per_child: int | None = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 7):
         def __init__(
             self,
             max_workers: int | None = ...,
