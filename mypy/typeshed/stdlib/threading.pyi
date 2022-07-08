@@ -1,13 +1,9 @@
 import sys
+from _typeshed import ProfileFunction, TraceFunction
 from collections.abc import Callable, Iterable, Mapping
-from types import FrameType, TracebackType
+from types import TracebackType
 from typing import Any, TypeVar
-from typing_extensions import TypeAlias
 
-# TODO recursive type
-_TF: TypeAlias = Callable[[FrameType, str, Any], Callable[..., Any] | None]
-
-_PF: TypeAlias = Callable[[FrameType, str, Any], None]
 _T = TypeVar("_T")
 
 __all__ = [
@@ -40,7 +36,7 @@ if sys.version_info >= (3, 8):
 if sys.version_info >= (3, 10):
     __all__ += ["getprofile", "gettrace"]
 
-_profile_hook: _PF | None
+_profile_hook: ProfileFunction | None
 
 def active_count() -> int: ...
 def activeCount() -> int: ...  # deprecated alias for active_count()
@@ -53,12 +49,12 @@ def main_thread() -> Thread: ...
 if sys.version_info >= (3, 8):
     from _thread import get_native_id as get_native_id
 
-def settrace(func: _TF) -> None: ...
-def setprofile(func: _PF | None) -> None: ...
+def settrace(func: TraceFunction) -> None: ...
+def setprofile(func: ProfileFunction | None) -> None: ...
 
 if sys.version_info >= (3, 10):
-    def gettrace() -> _TF | None: ...
-    def getprofile() -> _PF | None: ...
+    def gettrace() -> TraceFunction | None: ...
+    def getprofile() -> ProfileFunction | None: ...
 
 def stack_size(size: int = ...) -> int: ...
 

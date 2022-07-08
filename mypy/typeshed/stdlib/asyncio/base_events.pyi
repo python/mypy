@@ -1,7 +1,7 @@
 import ssl
 import sys
 from _typeshed import FileDescriptorLike, WriteableBuffer
-from asyncio.events import AbstractEventLoop, AbstractServer, Handle, TimerHandle
+from asyncio.events import AbstractEventLoop, AbstractServer, Handle, TimerHandle, _TaskFactory
 from asyncio.futures import Future
 from asyncio.protocols import BaseProtocol
 from asyncio.tasks import Task
@@ -107,8 +107,8 @@ class BaseEventLoop(AbstractEventLoop):
     else:
         def create_task(self, coro: Coroutine[Any, Any, _T] | Generator[Any, None, _T]) -> Task[_T]: ...
 
-    def set_task_factory(self, factory: Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]] | None) -> None: ...
-    def get_task_factory(self) -> Callable[[AbstractEventLoop, Generator[Any, None, _T]], Future[_T]] | None: ...
+    def set_task_factory(self, factory: _TaskFactory | None) -> None: ...
+    def get_task_factory(self) -> _TaskFactory | None: ...
     # Methods for interacting with threads
     if sys.version_info >= (3, 7):
         def call_soon_threadsafe(self, callback: Callable[..., Any], *args: Any, context: Context | None = ...) -> Handle: ...

@@ -190,7 +190,9 @@ def wstring_at(address: _CVoidConstPLike, size: int = ...) -> str: ...
 
 class _SimpleCData(Generic[_T], _CData):
     value: _T
-    def __init__(self, value: _T = ...) -> None: ...
+    # The TypeVar can be unsolved here,
+    # but we can't use overloads without creating many, many mypy false-positive errors
+    def __init__(self, value: _T = ...) -> None: ...  # type: ignore
 
 class c_byte(_SimpleCData[int]): ...
 

@@ -65,8 +65,6 @@ __version__: str
 
 FILTER_DIR: Any
 
-class _slotted: ...
-
 class _SentinelObject:
     name: Any
     def __init__(self, name: Any) -> None: ...

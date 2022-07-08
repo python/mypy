@@ -583,7 +583,7 @@ if sys.version_info >= (3, 7):
         name: str,
         bases: Iterable[object] = ...,
         kwds: dict[str, Any] | None = ...,
-        exec_body: Callable[[dict[str, Any]], None] | None = ...,
+        exec_body: Callable[[dict[str, Any]], object] | None = ...,
     ) -> type: ...
     def resolve_bases(bases: Iterable[object]) -> tuple[Any, ...]: ...
 
@@ -592,7 +592,7 @@ else:
         name: str,
         bases: tuple[type, ...] = ...,
         kwds: dict[str, Any] | None = ...,
-        exec_body: Callable[[dict[str, Any]], None] | None = ...,
+        exec_body: Callable[[dict[str, Any]], object] | None = ...,
     ) -> type: ...
 
 def prepare_class(
