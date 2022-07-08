@@ -1579,7 +1579,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
             original_node = base_attr.node
-            if original_type is None:
+            # `original_type` can be partial if (e.g.) it is originally an
+            # instance variable from an `__init__` block that becomes deferred.
+            if original_type is None or isinstance(original_type, PartialType):
                 if self.pass_num < self.last_pass:
                     # If there are passes left, defer this node until next pass,
                     # otherwise try reconstructing the method type from available information.

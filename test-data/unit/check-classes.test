@@ -151,6 +151,24 @@ class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
 
 
+[case testOverridePartialAttributeWithMethod]
+# This was crashing: https://github.com/python/mypy/issues/11686.
+class Base:
+    def __init__(self, arg: int):
+        self.partial_type = []  # E: Need type annotation for "partial_type" (hint: "partial_type: List[<type>] = ...")
+        self.force_deferral = []
+
+    # Force inference of the `force_deferral` attribute in `__init__` to be
+    # deferred to a later pass by providing a definition in another context,
+    # which means `partial_type` remains only partially inferred.
+    force_deferral = []  # E: Need type annotation for "force_deferral" (hint: "force_deferral: List[<type>] = ...")
+
+
+class Derived(Base):
+    def partial_type(self) -> int:  # E: Signature of "partial_type" incompatible with supertype "Base"
+        ...
+
+
 -- Attributes
 -- ----------
 
