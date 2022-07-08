@@ -78,6 +78,9 @@ class SupportsRAdd(Protocol[_T_contra, _T_co]):
 class SupportsSub(Protocol[_T_contra, _T_co]):
     def __sub__(self, __x: _T_contra) -> _T_co: ...
 
+class SupportsRSub(Protocol[_T_contra, _T_co]):
+    def __rsub__(self, __x: _T_contra) -> _T_co: ...
+
 class SupportsDivMod(Protocol[_T_contra, _T_co]):
     def __divmod__(self, __other: _T_contra) -> _T_co: ...
 
