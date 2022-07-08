@@ -1965,14 +1965,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def check_enum_bases(self, defn: ClassDef) -> None:
+        """
+        Non-enum mixins cannot appear after enum bases; this is disallowed at runtime:
+
+            class Foo: ...
+            class Bar(enum.Enum, Foo): ...
+
+        But any number of enum mixins can appear in a class definition
+        (even if multiple enum bases define __new__). So this is fine:
+
+            class Foo(enum.Enum):
+                def __new__(cls, val): ...
+            class Bar(enum.Enum):
+                def __new__(cls, val): ...
+            class Baz(int, Foo, Bar, enum.Flag): ...
+        """
         enum_base: Optional[Instance] = None
         for base in defn.info.bases:
             if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
-            elif enum_base is not None:
+            elif enum_base is not None and not base.type.is_enum:
                 self.fail(
-                    f'No base classes are allowed after "{enum_base}"',
+                    f'No non-enum mixin classes are allowed after "{enum_base}"',
                     defn,
                 )
                 break
