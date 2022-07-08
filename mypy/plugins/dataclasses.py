@@ -230,7 +230,8 @@ class DataclassTransformer:
         if (decorator_arguments['match_args'] and
                 ('__match_args__' not in info.names or
                  info.names['__match_args__'].plugin_generated) and
-                attributes):
+                attributes and
+                py_version >= (3, 10)):
             str_type = ctx.api.named_type("builtins.str")
             literals: List[Type] = [LiteralType(attr.name, str_type)
                         for attr in attributes if attr.is_in_init]
