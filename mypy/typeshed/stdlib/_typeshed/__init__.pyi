@@ -7,9 +7,9 @@ import ctypes
 import mmap
 import pickle
 import sys
-from collections.abc import Awaitable, Container, Iterable, Set as AbstractSet
+from collections.abc import Awaitable, Callable, Container, Iterable, Set as AbstractSet
 from os import PathLike
-from types import TracebackType
+from types import FrameType, TracebackType
 from typing import Any, AnyStr, Generic, Protocol, TypeVar, Union
 from typing_extensions import Final, Literal, LiteralString, TypeAlias, final
 
@@ -50,21 +50,23 @@ class SupportsAnext(Protocol[_T_co]):
 
 # Comparison protocols
 
-class SupportsDunderLT(Protocol):
-    def __lt__(self, __other: Any) -> bool: ...
+class SupportsDunderLT(Protocol[_T_contra]):
+    def __lt__(self, __other: _T_contra) -> bool: ...
 
-class SupportsDunderGT(Protocol):
-    def __gt__(self, __other: Any) -> bool: ...
+class SupportsDunderGT(Protocol[_T_contra]):
+    def __gt__(self, __other: _T_contra) -> bool: ...
 
-class SupportsDunderLE(Protocol):
-    def __le__(self, __other: Any) -> bool: ...
+class SupportsDunderLE(Protocol[_T_contra]):
+    def __le__(self, __other: _T_contra) -> bool: ...
 
-class SupportsDunderGE(Protocol):
-    def __ge__(self, __other: Any) -> bool: ...
+class SupportsDunderGE(Protocol[_T_contra]):
+    def __ge__(self, __other: _T_contra) -> bool: ...
 
-class SupportsAllComparisons(SupportsDunderLT, SupportsDunderGT, SupportsDunderLE, SupportsDunderGE, Protocol): ...
+class SupportsAllComparisons(
+    SupportsDunderLT[Any], SupportsDunderGT[Any], SupportsDunderLE[Any], SupportsDunderGE[Any], Protocol
+): ...
 
-SupportsRichComparison: TypeAlias = SupportsDunderLT | SupportsDunderGT
+SupportsRichComparison: TypeAlias = SupportsDunderLT[Any] | SupportsDunderGT[Any]
 SupportsRichComparisonT = TypeVar("SupportsRichComparisonT", bound=SupportsRichComparison)  # noqa: Y001
 
 # Dunder protocols
@@ -263,3 +265,10 @@ class structseq(Generic[_T_co]):
 
 # Superset of typing.AnyStr that also inclues LiteralString
 AnyOrLiteralStr = TypeVar("AnyOrLiteralStr", str, bytes, LiteralString)  # noqa: Y001
+
+# Objects suitable to be passed to sys.setprofile, threading.setprofile, and similar
+ProfileFunction: TypeAlias = Callable[[FrameType, str, Any], object]
+
+# Objects suitable to be passed to sys.settrace, threading.settrace, and similar
+# TODO: Ideally this would be a recursive type alias
+TraceFunction: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]

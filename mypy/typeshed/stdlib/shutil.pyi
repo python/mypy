@@ -67,7 +67,7 @@ if sys.version_info >= (3, 8):
         dst: StrPath,
         symlinks: bool = ...,
         ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = ...,
-        copy_function: Callable[[str, str], None] = ...,
+        copy_function: Callable[[str, str], object] = ...,
         ignore_dangling_symlinks: bool = ...,
         dirs_exist_ok: bool = ...,
     ) -> _PathReturn: ...
@@ -78,7 +78,7 @@ else:
         dst: StrPath,
         symlinks: bool = ...,
         ignore: None | Callable[[str, list[str]], Iterable[str]] | Callable[[StrPath, list[str]], Iterable[str]] = ...,
-        copy_function: Callable[[str, str], None] = ...,
+        copy_function: Callable[[str, str], object] = ...,
         ignore_dangling_symlinks: bool = ...,
     ) -> _PathReturn: ...
 
@@ -94,7 +94,7 @@ if sys.version_info >= (3, 11):
 else:
     def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
 
-_CopyFn: TypeAlias = Callable[[str, str], None] | Callable[[StrPath, StrPath], None]
+_CopyFn: TypeAlias = Callable[[str, str], object] | Callable[[StrPath, StrPath], object]
 
 # N.B. shutil.move appears to take bytes arguments, however,
 # this does not work when dst is (or is within) an existing directory.

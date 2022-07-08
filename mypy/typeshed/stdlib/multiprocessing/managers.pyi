@@ -148,7 +148,7 @@ class BaseManager:
 
     def get_server(self) -> Server: ...
     def connect(self) -> None: ...
-    def start(self, initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
+    def start(self, initializer: Callable[..., object] | None = ..., initargs: Iterable[Any] = ...) -> None: ...
     def shutdown(self) -> None: ...  # only available after start() was called
     def join(self, timeout: float | None = ...) -> None: ...  # undocumented
     @property
@@ -157,7 +157,7 @@ class BaseManager:
     def register(
         cls,
         typeid: str,
-        callable: Callable[..., Any] | None = ...,
+        callable: Callable[..., object] | None = ...,
         proxytype: Any = ...,
         exposed: Sequence[str] | None = ...,
         method_to_typeid: Mapping[str, str] | None = ...,

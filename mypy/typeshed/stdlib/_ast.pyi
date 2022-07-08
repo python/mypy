@@ -7,7 +7,7 @@ if sys.version_info >= (3, 8):
     PyCF_TYPE_COMMENTS: Literal[4096]
     PyCF_ALLOW_TOP_LEVEL_AWAIT: Literal[8192]
 
-_identifier: TypeAlias = str
+_Identifier: TypeAlias = str
 
 class AST:
     if sys.version_info >= (3, 10):
@@ -61,7 +61,7 @@ class stmt(AST): ...
 class FunctionDef(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "args", "body", "decorator_list", "returns", "type_comment")
-    name: _identifier
+    name: _Identifier
     args: arguments
     body: list[stmt]
     decorator_list: list[expr]
@@ -70,7 +70,7 @@ class FunctionDef(stmt):
 class AsyncFunctionDef(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "args", "body", "decorator_list", "returns", "type_comment")
-    name: _identifier
+    name: _Identifier
     args: arguments
     body: list[stmt]
     decorator_list: list[expr]
@@ -79,7 +79,7 @@ class AsyncFunctionDef(stmt):
 class ClassDef(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "bases", "keywords", "body", "decorator_list")
-    name: _identifier
+    name: _Identifier
     bases: list[expr]
     keywords: list[keyword]
     body: list[stmt]
@@ -194,19 +194,19 @@ class Import(stmt):
 class ImportFrom(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("module", "names", "level")
-    module: _identifier | None
+    module: _Identifier | None
     names: list[alias]
     level: int
 
 class Global(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("names",)
-    names: list[_identifier]
+    names: list[_Identifier]
 
 class Nonlocal(stmt):
     if sys.version_info >= (3, 10):
         __match_args__ = ("names",)
-    names: list[_identifier]
+    names: list[_Identifier]
 
 class Expr(stmt):
     if sys.version_info >= (3, 10):
@@ -362,16 +362,16 @@ class Attribute(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("value", "attr", "ctx")
     value: expr
-    attr: _identifier
+    attr: _Identifier
     ctx: expr_context
 
 if sys.version_info >= (3, 9):
-    _SliceT: TypeAlias = expr
+    _Slice: TypeAlias = expr
 else:
     class slice(AST): ...
-    _SliceT: TypeAlias = slice
+    _Slice: TypeAlias = slice
 
-class Slice(_SliceT):
+class Slice(_Slice):
     if sys.version_info >= (3, 10):
         __match_args__ = ("lower", "upper", "step")
     lower: expr | None
@@ -389,7 +389,7 @@ class Subscript(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("value", "slice", "ctx")
     value: expr
-    slice: _SliceT
+    slice: _Slice
     ctx: expr_context
 
 class Starred(expr):
@@ -401,7 +401,7 @@ class Starred(expr):
 class Name(expr):
     if sys.version_info >= (3, 10):
         __match_args__ = ("id", "ctx")
-    id: _identifier
+    id: _Identifier
     ctx: expr_context
 
 class List(expr):
@@ -479,7 +479,7 @@ class ExceptHandler(excepthandler):
     if sys.version_info >= (3, 10):
         __match_args__ = ("type", "name", "body")
     type: expr | None
-    name: _identifier | None
+    name: _Identifier | None
     body: list[stmt]
 
 class arguments(AST):
@@ -497,20 +497,20 @@ class arguments(AST):
 class arg(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("arg", "annotation", "type_comment")
-    arg: _identifier
+    arg: _Identifier
     annotation: expr | None
 
 class keyword(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("arg", "value")
-    arg: _identifier | None
+    arg: _Identifier | None
     value: expr
 
 class alias(AST):
     if sys.version_info >= (3, 10):
         __match_args__ = ("name", "asname")
-    name: _identifier
-    asname: _identifier | None
+    name: _Identifier
+    asname: _Identifier | None
 
 class withitem(AST):
     if sys.version_info >= (3, 10):
@@ -526,11 +526,11 @@ if sys.version_info >= (3, 10):
 
     class pattern(AST): ...
     # Without the alias, Pyright complains variables named pattern are recursively defined
-    _pattern: TypeAlias = pattern
+    _Pattern: TypeAlias = pattern
 
     class match_case(AST):
         __match_args__ = ("pattern", "guard", "body")
-        pattern: _pattern
+        pattern: _Pattern
         guard: expr | None
         body: list[stmt]
 
@@ -548,25 +548,25 @@ if sys.version_info >= (3, 10):
 
     class MatchStar(pattern):
         __match_args__ = ("name",)
-        name: _identifier | None
+        name: _Identifier | None
 
     class MatchMapping(pattern):
         __match_args__ = ("keys", "patterns", "rest")
         keys: list[expr]
         patterns: list[pattern]
-        rest: _identifier | None
+        rest: _Identifier | None
 
     class MatchClass(pattern):
         __match_args__ = ("cls", "patterns", "kwd_attrs", "kwd_patterns")
         cls: expr
         patterns: list[pattern]
-        kwd_attrs: list[_identifier]
+        kwd_attrs: list[_Identifier]
         kwd_patterns: list[pattern]
 
     class MatchAs(pattern):
         __match_args__ = ("pattern", "name")
-        pattern: _pattern | None
-        name: _identifier | None
+        pattern: _Pattern | None
+        name: _Identifier | None
 
     class MatchOr(pattern):
         __match_args__ = ("patterns",)

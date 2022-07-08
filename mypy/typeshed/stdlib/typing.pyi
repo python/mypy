@@ -115,6 +115,9 @@ if sys.version_info >= (3, 11):
         "reveal_type",
     ]
 
+# This itself is only available during type checking
+def type_check_only(func_or_cls: _F) -> _F: ...
+
 Any = object()
 
 @_final
@@ -391,6 +394,7 @@ class Coroutine(Awaitable[_V_co], Generic[_T_co, _T_contra, _V_co]):
 
 # NOTE: This type does not exist in typing.py or PEP 484 but mypy needs it to exist.
 # The parameters correspond to Generator, but the 4th is the original type.
+@type_check_only
 class AwaitableGenerator(
     Awaitable[_V_co], Generator[_T_co, _T_contra, _V_co], Generic[_T_co, _T_contra, _V_co, _S], metaclass=ABCMeta
 ): ...
@@ -914,9 +918,6 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def values(self) -> ValuesView[object]: ...
     def __or__(self: TypeshedSelf, __value: TypeshedSelf) -> TypeshedSelf: ...
     def __ior__(self: TypeshedSelf, __value: TypeshedSelf) -> TypeshedSelf: ...
-
-# This itself is only available during type checking
-def type_check_only(func_or_cls: _F) -> _F: ...
 
 if sys.version_info >= (3, 7):
     @_final

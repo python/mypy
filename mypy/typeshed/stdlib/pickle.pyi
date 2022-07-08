@@ -145,7 +145,7 @@ class PickleError(Exception): ...
 class PicklingError(PickleError): ...
 class UnpicklingError(PickleError): ...
 
-_reducedtype: TypeAlias = Union[
+_ReducedType: TypeAlias = Union[
     str,
     tuple[Callable[..., Any], tuple[Any, ...]],
     tuple[Callable[..., Any], tuple[Any, ...], Any],
@@ -155,7 +155,7 @@ _reducedtype: TypeAlias = Union[
 
 class Pickler:
     fast: bool
-    dispatch_table: Mapping[type, Callable[[Any], _reducedtype]]
+    dispatch_table: Mapping[type, Callable[[Any], _ReducedType]]
     bin: bool  # undocumented
     dispatch: ClassVar[dict[type, Callable[[Unpickler, Any], None]]]  # undocumented, _Pickler only
 

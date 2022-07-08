@@ -33,34 +33,35 @@ else:
     _WRAPPED: Literal["WRAPPED"]
     _SHUTDOWN: Literal["SHUTDOWN"]
 
-class _SSLPipe:
+if sys.version_info < (3, 11):
+    class _SSLPipe:
 
-    max_size: ClassVar[int]
+        max_size: ClassVar[int]
 
-    _context: ssl.SSLContext
-    _server_side: bool
-    _server_hostname: str | None
-    _state: str
-    _incoming: ssl.MemoryBIO
-    _outgoing: ssl.MemoryBIO
-    _sslobj: ssl.SSLObject | None
-    _need_ssldata: bool
-    _handshake_cb: Callable[[BaseException | None], None] | None
-    _shutdown_cb: Callable[[], None] | None
-    def __init__(self, context: ssl.SSLContext, server_side: bool, server_hostname: str | None = ...) -> None: ...
-    @property
-    def context(self) -> ssl.SSLContext: ...
-    @property
-    def ssl_object(self) -> ssl.SSLObject | None: ...
-    @property
-    def need_ssldata(self) -> bool: ...
-    @property
-    def wrapped(self) -> bool: ...
-    def do_handshake(self, callback: Callable[[BaseException | None], None] | None = ...) -> list[bytes]: ...
-    def shutdown(self, callback: Callable[[], None] | None = ...) -> list[bytes]: ...
-    def feed_eof(self) -> None: ...
-    def feed_ssldata(self, data: bytes, only_handshake: bool = ...) -> tuple[list[bytes], list[bytes]]: ...
-    def feed_appdata(self, data: bytes, offset: int = ...) -> tuple[list[bytes], int]: ...
+        _context: ssl.SSLContext
+        _server_side: bool
+        _server_hostname: str | None
+        _state: str
+        _incoming: ssl.MemoryBIO
+        _outgoing: ssl.MemoryBIO
+        _sslobj: ssl.SSLObject | None
+        _need_ssldata: bool
+        _handshake_cb: Callable[[BaseException | None], None] | None
+        _shutdown_cb: Callable[[], None] | None
+        def __init__(self, context: ssl.SSLContext, server_side: bool, server_hostname: str | None = ...) -> None: ...
+        @property
+        def context(self) -> ssl.SSLContext: ...
+        @property
+        def ssl_object(self) -> ssl.SSLObject | None: ...
+        @property
+        def need_ssldata(self) -> bool: ...
+        @property
+        def wrapped(self) -> bool: ...
+        def do_handshake(self, callback: Callable[[BaseException | None], None] | None = ...) -> list[bytes]: ...
+        def shutdown(self, callback: Callable[[], None] | None = ...) -> list[bytes]: ...
+        def feed_eof(self) -> None: ...
+        def feed_ssldata(self, data: bytes, only_handshake: bool = ...) -> tuple[list[bytes], list[bytes]]: ...
+        def feed_appdata(self, data: bytes, offset: int = ...) -> tuple[list[bytes], int]: ...
 
 class _SSLProtocolTransport(transports._FlowControlMixin, transports.Transport):
 
@@ -101,9 +102,6 @@ else:
     _SSLProtocolBase: TypeAlias = protocols.Protocol
 
 class SSLProtocol(_SSLProtocolBase):
-    if sys.version_info >= (3, 11):
-        max_size: ClassVar[int]
-
     _server_side: bool
     _server_hostname: str | None
     _sslcontext: ssl.SSLContext
@@ -113,15 +111,19 @@ class SSLProtocol(_SSLProtocolBase):
     _waiter: futures.Future[Any]
     _loop: events.AbstractEventLoop
     _app_transport: _SSLProtocolTransport
-    _sslpipe: _SSLPipe | None
-    _session_established: bool
-    _in_handshake: bool
-    _in_shutdown: bool
     _transport: transports.BaseTransport | None
-    _call_connection_made: bool
     _ssl_handshake_timeout: int | None
     _app_protocol: protocols.BaseProtocol
     _app_protocol_is_buffer: bool
+
+    if sys.version_info >= (3, 11):
+        max_size: ClassVar[int]
+    else:
+        _sslpipe: _SSLPipe | None
+        _session_established: bool
+        _call_connection_made: bool
+        _in_handshake: bool
+        _in_shutdown: bool
 
     if sys.version_info >= (3, 11):
         def __init__(
