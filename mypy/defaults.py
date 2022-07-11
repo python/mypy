@@ -3,7 +3,7 @@ import os
 from typing_extensions import Final
 
 PYTHON2_VERSION: Final = (2, 7)
-PYTHON3_VERSION: Final = (3, 6)
+PYTHON3_VERSION: Final = (3, 7)
 PYTHON3_VERSION_MIN: Final = (3, 4)
 CACHE_DIR: Final = ".mypy_cache"
 CONFIG_FILE: Final = ["mypy.ini", ".mypy.ini"]
