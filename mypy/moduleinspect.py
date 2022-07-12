@@ -157,7 +157,7 @@ class ModuleInspect:
 
         Return the value read from the queue, or None if the process unexpectedly died.
         """
-        max_iter = 100
+        max_iter = 600
         n = 0
         while True:
             if n == max_iter:
