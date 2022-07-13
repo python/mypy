@@ -44,6 +44,7 @@ class _SpecialForm:
 Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
 Protocol: _SpecialForm = ...
+Union: _SpecialForm = ...
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -706,7 +707,7 @@ class StubtestUnit(unittest.TestCase):
                 def f(self) -> None: ...
             class Y: ...
             """,
-            error="Y.f",
+            error="Y",
         )
         yield Case(
             stub="""
@@ -728,6 +729,105 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error=None
         )
+        yield Case(
+            stub="""
+            from typing import Tuple
+            D = tuple[str, str]
+            E = Tuple[int, int, int]
+            F = Tuple[str, int]
+            """,
+            runtime="""
+            from typing import List, Tuple
+            D = Tuple[str, str]
+            E = Tuple[int, int, int]
+            F = List[str]
+            """,
+            error="F"
+        )
+        yield Case(
+            stub="""
+            from typing import Union
+            G = str | int
+            H = Union[str, bool]
+            I = str | int
+            """,
+            runtime="""
+            from typing import Union
+            G = Union[str, int]
+            H = Union[str, bool]
+            I = str
+            """,
+            error="I"
+        )
+        yield Case(
+            stub="""
+            import typing
+            from collections.abc import Iterable
+            from typing import Dict
+            K = dict[str, str]
+            L = Dict[int, int]
+            M = Dict[str, int]
+            KK = Iterable[str]
+            LL = typing.Iterable[str]
+            """,
+            runtime="""
+            from typing import Iterable, Dict, List
+            K = Dict[str, str]
+            L = Dict[int, int]
+            M = List[int]
+            KK = Iterable[str]
+            LL = Iterable[str]
+            """,
+            error="M"
+        )
+        yield Case(stub="MM = list[str]", runtime="['foo', 'bar']", error="MM")
+        yield Case(
+            stub="""
+            import collections.abc
+            from typing import Callable
+            N = Callable[[str], bool]
+            O = collections.abc.Callable[[int], str]
+            P = Callable[[str], bool]
+            """,
+            runtime="""
+            from typing import Callable
+            N = Callable[[str], bool]
+            O = Callable[[int], str]
+            P = int
+            """,
+            error="P"
+        )
+        if sys.version_info >= (3, 10):
+            yield Case(
+                stub="""
+                import collections.abc
+                from typing import Callable, Dict, Iterable, Tuple, Union
+                Q = Dict[str, str]
+                R = dict[int, int]
+                S = Tuple[int, int]
+                T = tuple[str, str]
+                U = int | str
+                V = Union[int, str]
+                W = Callable[[str], bool]
+                Z = collections.abc.Callable[[str], bool]
+                QQ = Iterable[str]
+                RR = collections.abc.Iterable[str]
+                """,
+                runtime="""
+                from collections.abc import Callable, Iterable
+                Q = dict[str, str]
+                R = dict[int, int]
+                S = tuple[int, int]
+                T = tuple[str, str]
+                U = int | str
+                V = int | str
+                W = Callable[[str], bool]
+                Z = Callable[[str], bool]
+                QQ = Iterable[str]
+                RR = Iterable[str]
+                """,
+                error=None
+            )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:

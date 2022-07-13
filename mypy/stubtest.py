@@ -5,6 +5,7 @@ Verify that various things in stubs are consistent with how things behave at run
 """
 
 import argparse
+import collections.abc
 import copy
 import enum
 import importlib
@@ -22,7 +23,7 @@ from functools import singledispatch
 from pathlib import Path
 from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 
-from typing_extensions import Type
+from typing_extensions import Type, get_origin
 
 import mypy.build
 import mypy.modulefinder
@@ -1017,15 +1018,34 @@ def verify_typealias(
         )
         return
     if isinstance(stub_target, mypy.types.Instance):
-        yield from verify(stub_target.type, runtime, object_path)
+        runtime_type = get_origin(runtime) or runtime
+        if not isinstance(runtime_type, type):
+            yield Error(object_path, "is inconsistent: runtime is not a type", stub, runtime)
+            return
+        # Don't test the fullname,
+        # stubs can sometimes be in different modules to the runtime for various reasons
+        # (e.g. we want compatibility between collections.abc and typing, etc.)
+        try:
+            runtime_name = runtime_type.__name__
+        except AttributeError:
+            return
+        stub_name = stub_target.type.name
+        if runtime_name != stub_name:
+            msg = (
+                f"is inconsistent: runtime is an alias for {runtime_name} "
+                f"but stub is an alias for {stub_name}"
+            )
+            yield Error(object_path, msg, stub, runtime)
         return
     if isinstance(stub_target, mypy.types.UnionType):
+        if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
+            return
         if not getattr(runtime, "__origin__", None) is Union:
             yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
         # could check Union contents here...
         return
     if isinstance(stub_target, mypy.types.TupleType):
-        if tuple not in getattr(runtime, "__mro__", ()):
+        if tuple not in getattr(runtime, "__mro__", getattr(get_origin(runtime), "__mro__", ())):
             yield Error(
                 object_path, "is not a subclass of tuple", stub, runtime,
                 stub_desc=str(stub_target)
@@ -1034,6 +1054,14 @@ def verify_typealias(
         return
     if isinstance(stub_target, mypy.types.AnyType):
         return
+    if isinstance(stub_target, mypy.types.CallableType):
+        callables = {typing.Callable, collections.abc.Callable}
+        if runtime in callables or get_origin(runtime) in callables:
+            return
+        yield Error(
+            object_path, "is not a type alias for Callable", stub, runtime,
+            stub_desc=str(stub_target)
+        )
     yield Error(
         object_path, "is not a recognised type alias", stub, runtime, stub_desc=str(stub_target)
     )
