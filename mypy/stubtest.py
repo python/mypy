@@ -1020,7 +1020,10 @@ def verify_typealias(
     if isinstance(stub_target, mypy.types.Instance):
         runtime_type = get_origin(runtime) or runtime
         if not isinstance(runtime_type, type):
-            yield Error(object_path, "is inconsistent: runtime is not a type", stub, runtime)
+            yield Error(
+                object_path, "is inconsistent: runtime is not a type", stub, runtime,
+                stub_desc=str(stub_target)
+            )
             return
         # Don't test the fullname,
         # stubs can sometimes be in different modules to the runtime for various reasons
@@ -1035,7 +1038,7 @@ def verify_typealias(
                 f"is inconsistent: runtime is an alias for {runtime_name} "
                 f"but stub is an alias for {stub_name}"
             )
-            yield Error(object_path, msg, stub, runtime)
+            yield Error(object_path, msg, stub, runtime, stub_desc=str(stub_target))
         return
     if isinstance(stub_target, mypy.types.UnionType):
         if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
