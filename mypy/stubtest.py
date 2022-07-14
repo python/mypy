@@ -1022,7 +1022,7 @@ def verify_typealias(
         if not isinstance(runtime_type, type):
             yield Error(
                 object_path, "is inconsistent: runtime is not a type", stub, runtime,
-                stub_desc=str(stub_target)
+                stub_desc=f"Type alias for: {stub_target}"
             )
             return
         # Don't test the fullname,
@@ -1038,7 +1038,9 @@ def verify_typealias(
                 f"is inconsistent: runtime is an alias for {runtime_name} "
                 f"but stub is an alias for {stub_name}"
             )
-            yield Error(object_path, msg, stub, runtime, stub_desc=str(stub_target))
+            yield Error(
+                object_path, msg, stub, runtime, stub_desc=f"Type alias for: {stub_target}"
+            )
         return
     if isinstance(stub_target, mypy.types.UnionType):
         if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
@@ -1051,7 +1053,7 @@ def verify_typealias(
         if tuple not in getattr(runtime, "__mro__", getattr(get_origin(runtime), "__mro__", ())):
             yield Error(
                 object_path, "is not a subclass of tuple", stub, runtime,
-                stub_desc=str(stub_target)
+                stub_desc=f"Type alias for: {stub_target}"
             )
         # could check Tuple contents here...
         return
@@ -1063,10 +1065,11 @@ def verify_typealias(
             return
         yield Error(
             object_path, "is not a type alias for Callable", stub, runtime,
-            stub_desc=str(stub_target)
+            stub_desc=f"Type alias for: {stub_target}"
         )
     yield Error(
-        object_path, "is not a recognised type alias", stub, runtime, stub_desc=str(stub_target)
+        object_path, "is not a recognised type alias", stub, runtime,
+        stub_desc=f"Type alias for: {stub_target}"
     )
 
 
