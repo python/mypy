@@ -38,7 +38,7 @@ from mypy.types import (
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
-    OVERLOAD_NAMES, UnboundType
+    OVERLOAD_NAMES, UnboundType, SelfType
 )
 from mypy.sametypes import is_same_type
 from mypy.messages import (
@@ -1148,7 +1148,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 'but must return a subtype of'
             )
         elif not isinstance(get_proper_type(bound_type.ret_type),
-                          (AnyType, Instance, TupleType)):
+                          (AnyType, Instance, TupleType, SelfType)):
             self.fail(
                 message_registry.NON_INSTANCE_NEW_TYPE.format(
                     format_type(bound_type.ret_type)),

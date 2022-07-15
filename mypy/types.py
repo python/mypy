@@ -116,6 +116,12 @@ ANNOTATED_TYPE_NAMES: Final = (
     'typing_extensions.Annotated',
 )
 
+# Supported Self type names.
+SELF_TYPE_NAMES: Final = (
+    'typing.Self',
+    'typing_extensions.Self'
+)
+
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
     'builtins.tuple',
@@ -546,6 +552,44 @@ class TypeVarType(TypeVarLikeType):
             [deserialize_type(v) for v in data['values']],
             deserialize_type(data['upper_bound']),
             data['variance'],
+        )
+
+
+class SelfType(TypeVarType):
+    __slots__ = ()
+    upper_bound: 'Instance'
+
+    def __init__(self, fullname: str, upper_bound: 'Instance', line: int = -1, column: int = -1) -> None:
+        super().__init__(
+            "Self", fullname, -1, [], upper_bound, line=line, column=column
+        )
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        from mypy.subtypes import SubtypeVisitor
+        if isinstance(visitor, (TypeStrVisitor, SubtypeVisitor)):
+            return visitor.visit_self_type(self)
+        return super().accept(visitor)
+
+    def __hash__(self) -> int:
+        return hash(self.upper_bound)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SelfType):
+            return NotImplemented
+        return self.upper_bound == other.upper_bound
+
+    def serialize(self) -> JsonDict:
+        return {'.class': 'SelfType',
+                'fullname': self.fullname,
+                'upper_bound': self.upper_bound.serialize(),
+                }
+
+    @classmethod
+    def deserialize(cls, data: JsonDict) -> 'SelfType':
+        assert data['.class'] == 'SelfType'
+        return SelfType(
+            data['fullname'],
+            deserialize_type(data['upper_bound']),
         )
 
 
@@ -2658,6 +2702,9 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         if self.id_mapper and t.upper_bound:
             s += f'(upper_bound={t.upper_bound.accept(self)})'
         return s
+
+    def visit_self_type(self, t: SelfType) -> str:
+        return f"Self@{t.upper_bound.accept(self)}"
 
     def visit_param_spec(self, t: ParamSpecType) -> str:
         # prefixes are displayed as Concatenate
