@@ -712,7 +712,6 @@ class SemanticAnalyzer(NodeVisitor[None],
 
                 leading_type = func.type.arg_types[0]
                 proper_leading_type = get_proper_type(leading_type)
-                print("proper leading type is", proper_leading_type, func)
                 if isinstance(proper_leading_type, Instance):  # method[[Self, ...], Self] case
                     proper_leading_type = self_type_type = SelfType("Self", proper_leading_type)
                     func.type = replace_implicit_first_type(func.type, proper_leading_type)
