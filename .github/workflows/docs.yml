@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: '3.7'
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.24.5
+        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
       - name: Setup tox environment
         run: tox -e ${{ env.TOXENV }} --notest
       - name: Test
