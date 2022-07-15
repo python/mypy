@@ -24,9 +24,6 @@ import os
 import subprocess
 from typing import Dict
 
-# Clang package we use on Linux
-LLVM_URL = "https://github.com/mypyc/mypy_mypyc-wheels/releases/download/llvm/llvm-centos-5.tar.gz"
-
 # Mypy repository root
 ROOT_DIR = os.path.dirname(os.path.dirname(__file__))
 
@@ -38,7 +35,7 @@ def create_environ(python_version: str) -> Dict[str, str]:
     env["CIBW_BUILD"] = f"cp{python_version}-*"
 
     # Don't build 32-bit wheels
-    env["CIBW_SKIP"] = "*-manylinux_i686 *-win32 *-musllinux_*"
+    env["CIBW_SKIP"] = "*-manylinux_i686 *-musllinux_i686 *-win32"
 
     # Apple Silicon support
     # When cross-compiling on Intel, it is not possible to test arm64 and
@@ -52,30 +49,24 @@ def create_environ(python_version: str) -> Dict[str, str]:
     # mypy's isolated builds don't specify the requirements mypyc needs, so install
     # requirements and don't use isolated builds. we need to use build-requirements.txt
     # with recent mypy commits to get stub packages needed for compilation.
-    env[
-        "CIBW_BEFORE_BUILD"
-    ] = """
-      pip install -r {package}/build-requirements.txt
-    """.replace(
-        "\n", " "
-    )
+    env["CIBW_BEFORE_BUILD"] = "pip install -r {package}/build-requirements.txt"
 
-    # download a copy of clang to use to compile on linux. this was probably built in 2018,
-    # speeds up compilation 2x
-    env["CIBW_BEFORE_BUILD_LINUX"] = (
-        """
-      (cd / && curl -L %s | tar xzf -) &&
-      pip install -r {package}/build-requirements.txt
-    """.replace(
-            "\n", " "
-        )
-        % LLVM_URL
-    )
+    # install clang using available package manager. platform-specific configuration overrides is only possible with
+    # pyproject.toml. once project fully transitions, properly adjust cibuildwheel configuration to each platform.
+    # https://cibuildwheel.readthedocs.io/en/stable/options/#overrides
+    env[
+        "CIBW_BEFORE_ALL_LINUX"
+    ] = "command -v yum && yum install -y llvm-toolset-7.0 || apk add --no-cache clang"
 
     # the double negative is counterintuitive, https://github.com/pypa/pip/issues/5735
+    # add llvm paths to environment to eliminate scl usage (like manylinux image does for gcc toolset).
+    # specifying redhat paths for musllinux shouldn't harm but is not desired (see overrides-related comment above).
     env["CIBW_ENVIRONMENT"] = "MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=3 PIP_NO_BUILD_ISOLATION=no"
     env["CIBW_ENVIRONMENT_LINUX"] = (
-        "MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=3 PIP_NO_BUILD_ISOLATION=no " + "CC=/opt/llvm/bin/clang"
+        "MYPY_USE_MYPYC=1 MYPYC_OPT_LEVEL=3 PIP_NO_BUILD_ISOLATION=no "
+        + "PATH=$PATH:/opt/rh/llvm-toolset-7.0/root/usr/bin "
+        + "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/rh/llvm-toolset-7.0/root/usr/lib64 "
+        + "CC=clang"
     )
     env[
         "CIBW_ENVIRONMENT_WINDOWS"
