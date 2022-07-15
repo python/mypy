@@ -1017,15 +1017,15 @@ def verify_typealias(
             stub_desc=f"Type alias for: {stub_target}"
         )
         return
+    runtime_type = get_origin(runtime) or runtime
     if isinstance(stub_target, mypy.types.Instance):
-        runtime_type = get_origin(runtime) or runtime
         if not isinstance(runtime_type, type):
             yield Error(
                 object_path, "is inconsistent: runtime is not a type", stub, runtime,
                 stub_desc=f"Type alias for: {stub_target}"
             )
             return
-        # Don't test the fullname,
+        # Don't test the fullname;
         # stubs can sometimes be in different modules to the runtime for various reasons
         # (e.g. we want compatibility between collections.abc and typing, etc.)
         try:
@@ -1043,14 +1043,14 @@ def verify_typealias(
             )
         return
     if isinstance(stub_target, mypy.types.UnionType):
+        # could check Union contents here...
         if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
             return
-        if not getattr(runtime, "__origin__", None) is Union:
+        if runtime_type is not Union:
             yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
-        # could check Union contents here...
         return
     if isinstance(stub_target, mypy.types.TupleType):
-        if tuple not in getattr(runtime, "__mro__", getattr(get_origin(runtime), "__mro__", ())):
+        if tuple not in getattr(runtime_type, "__mro__", ()):
             yield Error(
                 object_path, "is not a subclass of tuple", stub, runtime,
                 stub_desc=f"Type alias for: {stub_target}"
@@ -1060,13 +1060,12 @@ def verify_typealias(
     if isinstance(stub_target, mypy.types.AnyType):
         return
     if isinstance(stub_target, mypy.types.CallableType):
-        callables = {typing.Callable, collections.abc.Callable}
-        if runtime in callables or get_origin(runtime) in callables:
-            return
-        yield Error(
-            object_path, "is not a type alias for Callable", stub, runtime,
-            stub_desc=f"Type alias for: {stub_target}"
-        )
+        if runtime_type is not collections.abc.Callable:
+            yield Error(
+                object_path, "is not a type alias for Callable", stub, runtime,
+                stub_desc=f"Type alias for: {stub_target}"
+            )
+        return
     yield Error(
         object_path, "is not a recognised type alias", stub, runtime,
         stub_desc=f"Type alias for: {stub_target}"
