@@ -7,7 +7,7 @@ from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
-    ENUM_REMOVED_PROPS
+    SelfType, ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -500,6 +500,8 @@ def analyze_descriptor_access(descriptor_type: Type,
             analyze_descriptor_access(typ, mx)
             for typ in descriptor_type.items
         ])
+    elif isinstance(descriptor_type, SelfType):
+        return instance_type
     elif not isinstance(descriptor_type, Instance):
         return descriptor_type
 
@@ -802,7 +804,9 @@ def analyze_class_attribute_access(itype: Instance,
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             if isinstance(t, TypeVarType) or has_type_vars(t):
                 # Exception: access on Type[...], including first argument of class methods is OK.
-                if not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
+                if isinstance(t, SelfType):
+                    return mx.named_type(info.fullname)
+                elif not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
                         message = message_registry.GENERIC_CLASS_VAR_ACCESS
                     else:

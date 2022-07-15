@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TypeVarTupleType,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TypeVarTupleType, SelfType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -265,6 +265,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TupleType) and mypy.typeops.tuple_fallback(right).type.is_enum:
             return self._is_subtype(left, mypy.typeops.tuple_fallback(right))
+        if isinstance(right, SelfType):
+            return self._is_subtype(left, right.upper_bound)
         if isinstance(right, Instance):
             if TypeState.is_cached_subtype_check(self._subtype_kind, left, right):
                 return True
@@ -335,6 +337,12 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 mypy.typeops.make_simplified_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
+
+    def visit_self_type(self, left: SelfType) -> bool:
+        right = self.right
+        if isinstance(self.right, SelfType):
+            right = self.right.upper_bound
+        return self._is_subtype(left.upper_bound, right)
 
     def visit_param_spec(self, left: ParamSpecType) -> bool:
         right = self.right

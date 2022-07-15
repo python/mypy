@@ -18,7 +18,7 @@ from mypy.types import (
     PlaceholderType, Overloaded, get_proper_type, TypeAliasType, RequiredType,
     TypeVarLikeType, ParamSpecType, ParamSpecFlavor, UnpackType, TypeVarTupleType,
     callable_with_ellipsis, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES,
-    LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES,
+    LITERAL_TYPE_NAMES, ANNOTATED_TYPE_NAMES, SelfType, SELF_TYPE_NAMES,
 )
 
 from mypy.nodes import (
@@ -428,6 +428,17 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 self.fail("NotRequired[] must have exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
             return RequiredType(self.anal_type(t.args[0]), required=False)
+        elif fullname in SELF_TYPE_NAMES:
+            from mypy.semanal import SemanticAnalyzer  # circular import
+
+            if not isinstance(self.api, SemanticAnalyzer):
+                self.fail("Self is unbound", t)
+                return AnyType(TypeOfAny.from_error)
+            if not isinstance(self.api.type, TypeInfo):
+                self.fail("Self is not enclosed in a class", t)
+                return AnyType(TypeOfAny.from_error)
+            bound = self.named_type(self.api.type.fullname)
+            return SelfType(fullname, bound, line=t.line, column=t.column)
         elif self.anal_type_guard_arg(t, fullname) is not None:
             # In most contexts, TypeGuard[...] acts as an alias for bool (ignoring its args)
             return self.named_type('builtins.bool')

@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance, SelfType, SELF_TYPE_NAMES,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -697,19 +697,84 @@ class SemanticAnalyzer(NodeVisitor[None],
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
         # Only non-static methods are special.
-        functype = func.type
         if not func.is_static:
             if func.name in ['__init_subclass__', '__class_getitem__']:
                 func.is_class = True
             if not func.arguments:
                 self.fail('Method must have at least one argument', func)
-            elif isinstance(functype, CallableType):
-                self_type = get_proper_type(functype.arg_types[0])
-                if isinstance(self_type, AnyType):
+            elif isinstance(func.type, CallableType):
+                self_type = get_proper_type(func.type.arg_types[0])
+                if isinstance(self_type, AnyType) and not self_type.type_of_any == TypeOfAny.explicit:
                     leading_type: Type = fill_typevars(info)
                     if func.is_class or func.name == '__new__':
                         leading_type = self.class_type(leading_type)
-                    func.type = replace_implicit_first_type(functype, leading_type)
+                    func.type = replace_implicit_first_type(func.type, leading_type)
+
+                leading_type = func.type.arg_types[0]
+                proper_leading_type = get_proper_type(leading_type)
+                if isinstance(proper_leading_type, Instance):  # method[[Self, ...], Self] case
+                    proper_leading_type = self_type_type = SelfType("Self", proper_leading_type)
+                    func.type = replace_implicit_first_type(func.type, self_type_type)
+                elif (
+                    isinstance(proper_leading_type, TypeType) and isinstance(proper_leading_type.item, Instance)
+                ):  # classmethod[[type[Self], ...], Self] case
+                    self_type_type = SelfType("Self", proper_leading_type.item)
+                    proper_leading_type = self.class_type(self_type_type)
+                    func.type = replace_implicit_first_type(func.type, self_type_type)
+                elif self.is_self_type(proper_leading_type):
+                    node = self.lookup(proper_leading_type.name, func)
+                    proper_leading_type = self_type_type = SelfType("Self", self.named_type(info.fullname))
+                    func.type = replace_implicit_first_type(func.type, self_type_type)
+                elif isinstance(proper_leading_type, UnboundType):
+                    # classmethod[[type[Self], ...], Self] case
+                    node = self.lookup(proper_leading_type.name, func)
+                    if (
+                        node is not None
+                        and node.fullname in {"typing.Type", "builtins.type"}
+                        and proper_leading_type.args
+                        and self.is_self_type(proper_leading_type.args[0])
+                    ):
+                        self_type_type = SelfType("Self", self.named_type(info.fullname))
+                        proper_leading_type = self.class_type(self_type_type)
+                        func.type = replace_implicit_first_type(func.type, self_type_type)
+
+                    # bind any SelfTypes in args and return types
+                for idx, arg in enumerate(func.type.arg_types):
+                    if self.is_self_type(arg):
+                        if func.is_static:
+                            self.fail(
+                                "Self-type annotations of staticmethods are not supported, "
+                                "please replace the type with {}".format(self_type.type.name),
+                                func
+                            )
+                            func.type.arg_types[idx] = self.named_type(
+                                self_type.type.name
+                            )  # we replace them here for them
+                            continue
+                        if self_type_type.fullname == self_type_type.name:
+                            assert isinstance(arg, UnboundType)
+                            table_node = self.lookup(arg.name, func)
+                            assert isinstance(table_node, SymbolTableNode) and table_node.node
+                            self_type_type.fullname = table_node.node.fullname
+                        func.type.arg_types[idx] = self_type_type
+
+                if self.is_self_type(func.type.ret_type):
+                    if self_type_type.fullname == self_type_type.name:
+                        assert isinstance(func.type.ret_type, UnboundType)
+                        table_node = self.lookup_qualified(
+                            func.type.ret_type.name, func.type.ret_type
+                        )
+                        assert isinstance(table_node, SymbolTableNode) and table_node.node
+                        self_type_type.fullname = table_node.node.fullname
+                    if func.is_static:
+                        self.fail(
+                            "Self-type annotations of staticmethods are not supported, "
+                            "please replace the type with {}".format(self_type.type.name),
+                            func,
+                        )
+                        func.type.ret_type = self.named_type(self_type.type.name)
+                        return
+                    func.type.ret_type = self_type_type
 
     def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
         """If 'new' conditionally redefine 'previous', set 'previous' as original
@@ -3434,9 +3499,10 @@ class SemanticAnalyzer(NodeVisitor[None],
             analyzed = self.anal_type(s.type)
             if analyzed is not None and get_type_vars(analyzed):
                 # This means that we have a type var defined inside of a ClassVar.
-                # This is not allowed by PEP526.
+                # This is not allowed by PEP526. (Unless it's a SelfType, which is fine)
                 # See https://github.com/python/mypy/issues/11538
-                self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
+                if not (s.type.args and self.is_self_type(s.type.args[0])):
+                    self.fail(message_registry.CLASS_VAR_WITH_TYPEVARS, s)
         elif not isinstance(lvalue, MemberExpr) or self.is_self_member_ref(lvalue):
             # In case of member access, report error only when assigning to self
             # Other kinds of member assignments should be already reported
@@ -3457,6 +3523,14 @@ class SemanticAnalyzer(NodeVisitor[None],
         if not sym or not sym.node:
             return False
         return sym.node.fullname in FINAL_TYPE_NAMES
+
+    def is_self_type(self, typ: Optional[Type]) -> bool:
+        if not isinstance(typ, UnboundType):
+            return False
+        sym = self.lookup_qualified(typ.name, typ)
+        if not sym or not sym.node:
+            return False
+        return sym.node.fullname in SELF_TYPE_NAMES
 
     def fail_invalid_classvar(self, context: Context) -> None:
         self.fail(message_registry.CLASS_VAR_OUTSIDE_OF_CLASS, context)
@@ -5534,7 +5608,10 @@ def has_placeholder(typ: Type) -> bool:
     return typ.accept(HasPlaceholders())
 
 
-def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:
+FunctionLikeT = TypeVar("FunctionLikeT", bound=FunctionLike)
+
+
+def replace_implicit_first_type(sig: FunctionLikeT, new: Type) -> FunctionLikeT:
     if isinstance(sig, CallableType):
         if len(sig.arg_types) == 0:
             return sig
