@@ -28,6 +28,8 @@ legacy_bundled_packages = {
     'backports_abc': StubInfo('types-backports_abc'),
     'bleach': StubInfo('types-bleach'),
     'boto': StubInfo('types-boto'),
+    'boto3': StubInfo('types-boto3', py_version=3),
+    'botocore': StubInfo('types-botocore', py_version=3),
     'cachetools': StubInfo('types-cachetools'),
     'chardet': StubInfo('types-chardet'),
     'click_spinner': StubInfo('types-click-spinner'),
