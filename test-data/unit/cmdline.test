@@ -431,9 +431,9 @@ main.py:4: note: Revealed type is "Any"
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
 [file main.py]
-from a import x
+from a import x  # Error reported here
 reveal_type(x)  # Expect Any
-import a  # Error reported here
+import a
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
 \[mypy]
@@ -441,9 +441,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
+main.py:1: error: Import of "a" ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
-main.py:3: error: Import of "a" ignored
-main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
