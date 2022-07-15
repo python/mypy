@@ -1,13 +1,12 @@
 from contextlib import contextmanager
 import filelock
 import os
-import pytest
 import re
 import subprocess
 from subprocess import PIPE
 import sys
 import tempfile
-from typing import Tuple, List, Generator
+from typing import Tuple, List, Iterator
 
 import mypy.api
 from mypy.test.config import package_path, pip_lock, pip_timeout
