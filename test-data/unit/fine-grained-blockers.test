@@ -31,7 +31,7 @@ main:2: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testParseErrorShowSource]
-# flags: --pretty --show-error-codes --python-version=3.8
+# flags: --pretty --show-error-codes
 import a
 a.f()
 [file a.py]

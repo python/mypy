@@ -1112,7 +1112,7 @@ mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --pretty --python-version=3.8 some_file.py
+# cmd: mypy --pretty some_file.py
 [file some_file.py]
 from typing import Union
 
