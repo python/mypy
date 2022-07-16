@@ -31,7 +31,6 @@ import pytest
 
 # List of files that contain test case descriptions.
 # Includes all check-* files with the .test extension in the test-data/unit directory
-# "check-*.test"
 typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
