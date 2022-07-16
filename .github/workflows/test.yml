@@ -64,9 +64,9 @@ jobs:
           toxenv: py
           tox_extra_args: "-n 2"
         - name: mypyc runtime tests with py36-macos
-          python: '3.6'
+          python: '3.10'
           arch: x64
-          os: macos-latest
+          os: macos-12
           toxenv: py
           tox_extra_args: "-n 2 mypyc/test/test_run.py mypyc/test/test_external.py"
         - name: mypyc runtime tests with py36-debug-build-ubuntu
