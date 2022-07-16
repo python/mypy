@@ -522,10 +522,6 @@ class MessageBuilder:
                 expected_type = callee.arg_types[-1]
             arg_type_str, expected_type_str = format_type_distinctly(
                 arg_type, expected_type, bare=True)
-            if arg_kind == ARG_STAR:
-                arg_type_str = '*' + arg_type_str
-            elif arg_kind == ARG_STAR2:
-                arg_type_str = '**' + arg_type_str
 
             # For function calls with keyword arguments, display the argument name rather than the
             # number.
@@ -551,8 +547,15 @@ class MessageBuilder:
                     outer_context.index.value, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             else:
-                msg = 'Argument {} {}has incompatible type {}; expected {}'.format(
-                    arg_label, target, quote_type_string(arg_type_str),
+                if arg_kind == ARG_STAR:
+                    star_prefix = "*"
+                elif arg_kind == ARG_STAR2:
+                    star_prefix = "**"
+                else:
+                    star_prefix = ""
+
+                msg = '{}Argument {} {}has incompatible type {}; expected {}'.format(
+                    star_prefix, arg_label, target, quote_type_string(arg_type_str),
                     quote_type_string(expected_type_str))
             object_type = get_proper_type(object_type)
             if isinstance(object_type, TypedDictType):

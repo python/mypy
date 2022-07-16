@@ -7376,7 +7376,7 @@ def t() -> Tuple[str]: pass
 [builtins fixtures/set.pyi]
 [out]
 ==
-main:5: error: Argument 2 to <set> has incompatible type "*Tuple[str]"; expected "int"
+main:5: error: *Argument 2 to <set> has incompatible type "Tuple[str]"; expected "int"
 
 [case testUnpackInExpression3-only_when_nocache]
 from typing import Dict

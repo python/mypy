@@ -70,9 +70,9 @@ def f(*x: int) -> None: pass
 def g(**x: int) -> None: pass
 
 a = ['']
-f(*a)  # E:4: Argument 1 to "f" has incompatible type "*List[str]"; expected "int"
+f(*a)  # E:4: *Argument 1 to "f" has incompatible type "List[str]"; expected "int"
 b = {'x': 'y'}
-g(**b) # E:5: Argument 1 to "g" has incompatible type "**Dict[str, str]"; expected "int"
+g(**b) # E:5: **Argument 1 to "g" has incompatible type "Dict[str, str]"; expected "int"
 [builtins fixtures/dict.pyi]
 
 [case testColumnsMultipleStatementsPerLine]
