@@ -136,6 +136,7 @@ def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignm
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
+    builder.flush_keep_alives()
 
 
 def transform_import(builder: IRBuilder, node: Import) -> None:
