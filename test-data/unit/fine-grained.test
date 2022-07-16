@@ -82,7 +82,7 @@ class A:
 main:4: error: Missing positional argument "a" in call to "g" of "A"
 
 [case testReprocessMethodShowSource]
-# flags: --pretty --show-error-codes
+# flags: --pretty --show-error-codes --python-version=3.8
 import m
 class B:
     def f(self, a: m.A) -> None:
@@ -97,7 +97,7 @@ class A:
 ==
 main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
             a.g() # E
-            ^
+            ^~~~~
 
 [case testFunctionMissingModuleAttribute]
 import m

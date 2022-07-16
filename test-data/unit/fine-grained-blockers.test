@@ -31,7 +31,7 @@ main:2: error: Missing positional argument "x" in call to "f"
 ==
 
 [case testParseErrorShowSource]
-# flags: --pretty --show-error-codes
+# flags: --pretty --show-error-codes --python-version=3.8
 import a
 a.f()
 [file a.py]
@@ -50,7 +50,7 @@ a.py:1: error: invalid syntax  [syntax]
 ==
 main:3: error: Missing positional argument "x" in call to "f"  [call-arg]
     a.f()
-    ^
+    ^~~~~
 ==
 [out version>=3.10]
 ==
