@@ -422,7 +422,16 @@ def f(x: T) -> T:
 def f() -> int:
     return  # E:5: Return value expected
 
-[case testEndPositions]
+[case testCheckEndColumnPositions]
 # flags: --show-error-end
 x: int = "no way"
+
+def g() -> int: ...
+def f(x: str) -> None: ...
+f(g(
+))
+x[0]
 [out]
+main:2:10:2:17: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+main:6:3:7:1: error: Argument 1 to "f" has incompatible type "int"; expected "str"
+main:8:1:8:4: error: Value of type "int" is not indexable
