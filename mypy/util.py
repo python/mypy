@@ -8,6 +8,12 @@ import re
 import shutil
 import sys
 import time
+
+try:
+    from importlib import resources as importlib_resources  # type: ignore[attr-defined]
+except ImportError:  # <python3.7
+    import importlib_resources  # type: ignore
+
 from typing import (
     IO,
     Callable,
@@ -35,6 +41,13 @@ except ImportError:
     CURSES_ENABLED = False
 
 T = TypeVar("T")
+
+with importlib_resources.path(
+    "mypy",  # mypy-c doesn't support __package__
+    "py.typed",  # a marker file for type information, we assume typeshed to live in the same dir
+) as _resource:
+    TYPESHED_DIR: Final = str(_resource.parent / "typeshed")
+
 
 ENCODING_RE: Final = re.compile(rb"([ \t\v]*#.*(\r\n?|\n))??[ \t\v]*#.*coding[:=][ \t]*([-\w.]+)")
 
@@ -772,15 +785,17 @@ class FancyFormatter:
 
 
 def is_typeshed_file(file: str) -> bool:
-    # gross, but no other clear way to tell
-    return "typeshed" in os.path.abspath(file).split(os.sep)
+    try:
+        return os.path.commonpath((TYPESHED_DIR, os.path.abspath(file))) == TYPESHED_DIR
+    except ValueError:  # Different drives on Windows
+        return False
 
 
 def is_stub_package_file(file: str) -> bool:
     # Use hacky heuristics to check whether file is part of a PEP 561 stub package.
     if not file.endswith(".pyi"):
         return False
-    return any(component.endswith("-stubs") for component in os.path.abspath(file).split(os.sep))
+    return any(component.endswith("-stubs") for component in os.path.split(os.path.abspath(file)))
 
 
 def unnamed_function(name: Optional[str]) -> bool:

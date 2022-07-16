@@ -657,6 +657,33 @@ class BuildManager:
         self.find_module_cache = FindModuleCache(
             self.search_paths, self.fscache, self.options, source_set=self.source_set
         )
+        for module in CORE_BUILTIN_MODULES:
+            if options.use_builtins_fixtures:
+                continue
+            if module == "_importlib_modulespec":
+                continue
+            path = self.find_module_cache.find_module(module)
+            if not isinstance(path, str):
+                raise CompileError(
+                    [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
+                )
+            if is_typeshed_file(path):
+                continue
+            if is_stub_package_file(path):
+                continue
+            if options.custom_typeshed_dir is not None:
+                # Check if module lives under custom_typeshed_dir subtree
+                custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+                if os.path.commonpath((path, custom_typeshed_dir)) == custom_typeshed_dir:
+                    continue
+
+            raise CompileError(
+                [
+                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
+                    f'note: A user-defined top-level module with name "{module}" is not supported',
+                ]
+            )
+
         self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
@@ -2583,19 +2610,6 @@ def find_module_and_diagnose(
                 if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = "silent"
-        if (
-            id in CORE_BUILTIN_MODULES
-            and not is_typeshed_file(result)
-            and not is_stub_package_file(result)
-            and not options.use_builtins_fixtures
-            and not options.custom_typeshed_dir
-        ):
-            raise CompileError(
-                [
-                    f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
-                    f'note: A user-defined top-level module with name "{id}" is not supported',
-                ]
-            )
         return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a
