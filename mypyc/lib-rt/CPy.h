@@ -610,6 +610,8 @@ PyObject *CPyImport_ImportFrom(PyObject *module, PyObject *package_name,
 
 PyObject *CPySingledispatch_RegisterFunction(PyObject *singledispatch_func, PyObject *cls,
                                              PyObject *func);
+
+void CPy_Trace(PyObject *module, PyObject *func, PyObject *line, PyObject *opname);
 #ifdef __cplusplus
 }
 #endif

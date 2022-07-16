@@ -4,7 +4,7 @@ from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
 from mypyc.ir.rtypes import (
     bool_rprimitive, object_rprimitive, str_rprimitive, object_pointer_rprimitive,
     int_rprimitive, dict_rprimitive, c_int_rprimitive, bit_rprimitive, c_pyssize_t_rprimitive,
-    list_rprimitive,
+    list_rprimitive, void_rtype
 )
 from mypyc.primitives.registry import (
     function_op, custom_op, load_address_op, ERR_NEG_INT
@@ -222,4 +222,12 @@ register_function = custom_op(
     return_type=object_rprimitive,
     c_function_name='CPySingledispatch_RegisterFunction',
     error_kind=ERR_MAGIC,
+)
+
+# Used for tracing the op being executed
+trace_op = custom_op(
+    arg_types=[str_rprimitive, str_rprimitive, object_rprimitive, str_rprimitive],
+    return_type=void_rtype,
+    c_function_name='CPy_Trace',
+    error_kind=ERR_NEVER,
 )

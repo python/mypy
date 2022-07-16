@@ -22,7 +22,7 @@ from mypy.checkexpr import map_actuals_to_formals
 from mypyc.ir.ops import (
     BasicBlock, Op, Integer, Value, Register, Assign, Branch, Goto, Call, Box, Unbox, Cast,
     GetAttr, LoadStatic, MethodCall, CallC, Truncate, LoadLiteral, AssignMulti,
-    RaiseStandardError, Unreachable, LoadErrorValue,
+    RaiseStandardError, Unreachable, LoadErrorValue, SetAttr,
     NAMESPACE_TYPE, NAMESPACE_MODULE, NAMESPACE_STATIC, IntOp, GetElementPtr,
     LoadMem, ComparisonOp, LoadAddress, TupleGet, KeepAlive, ERR_NEVER, ERR_FALSE, SetMem
 )
@@ -62,7 +62,7 @@ from mypyc.primitives.generic_ops import (
     generic_len_op, generic_ssize_t_len_op
 )
 from mypyc.primitives.misc_ops import (
-    none_object_op, fast_isinstance_op, bool_op
+    none_object_op, fast_isinstance_op, bool_op, trace_op
 )
 from mypyc.primitives.int_ops import int_comparison_op_mapping
 from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
@@ -90,15 +90,20 @@ LIST_BUILDING_EXPANSION_THRESHOLD = 10
 # From CPython
 PY_VECTORCALL_ARGUMENTS_OFFSET: Final = 1 << (PLATFORM_SIZE * 8 - 1)
 
+# If True, print information about ops being executed to stdout
+TRACING: Final = False
+
 
 class LowLevelIRBuilder:
     def __init__(
         self,
         current_module: str,
+        current_function: str,
         mapper: Mapper,
         options: CompilerOptions,
     ) -> None:
         self.current_module = current_module
+        self.current_function = current_function
         self.mapper = mapper
         self.options = options
         self.args: List[Register] = []
@@ -114,6 +119,7 @@ class LowLevelIRBuilder:
     def add(self, op: Op) -> Value:
         """Add an op."""
         assert not self.blocks[-1].terminated, "Can't add to finished block"
+        self.trace(op)
         self.blocks[-1].ops.append(op)
         return op
 
@@ -813,6 +819,10 @@ class LowLevelIRBuilder:
         else:
             return Integer(value)
 
+    def load_int_object(self, value: int) -> Value:
+        """Load an int as a PyObject * (Python integer)."""
+        return self.add(LoadLiteral(value, object_rprimitive))
+
     def load_float(self, value: float) -> Value:
         """Load a float literal value."""
         return self.add(LoadLiteral(value, float_rprimitive))
@@ -1447,6 +1457,20 @@ class LowLevelIRBuilder:
         """
         return self.call_c(new_tuple_with_length_op, [length], line)
 
+    # Debugging helpers
+
+    def trace(self, op: Op) -> None:
+        """Print debugging tracing information to stdout (disabled by default)."""
+        if TRACING and op.line >= 0:
+            func = self.current_function
+            if func == '<top level>':
+                func = ''
+            self.call_c(trace_op, [self.load_str(self.current_module),
+                                   self.load_str(func),
+                                   self.load_int_object(op.line),
+                                   self.load_str(trace_op_description(op))],
+                        -1)
+
     # Internal helpers
 
     def decompose_union_helper(self,
@@ -1613,3 +1637,17 @@ def num_positional_args(arg_values: List[Value], arg_kinds: Optional[List[ArgKin
         if kind == ARG_POS:
             num_pos += 1
     return num_pos
+
+
+def trace_op_description(op: Op) -> str:
+    """Return a simple description of an Op usable for tracing execution."""
+    s = type(op).__name__
+    if isinstance(op, CallC):
+        return f"{s}({op.function_name})"
+    if isinstance(op, (GetAttr, SetAttr)):
+        return f"{s}({op.attr})"
+    if isinstance(op, Call):
+        return f"{s}({op.fn.name})"
+    if isinstance(op, MethodCall):
+        return f"{s}({op.method})"
+    return s
