@@ -595,3 +595,15 @@ class C:
         self.foo.flag = True
         yield
         self.foo.flag = False
+
+[case testGeneratorEarlyReturnWithBorrows]
+from typing import Iterator
+class Bar:
+    bar = 0
+class Foo:
+    bar = Bar()
+    def f(self) -> Iterator[int]:
+        if self:
+            self.bar.bar += 1
+            return
+        yield 0
