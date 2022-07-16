@@ -1058,13 +1058,14 @@ def verify_typealias(
             )
         # could check Tuple contents here...
         return
-    if isinstance(stub_target, mypy.types.AnyType):
-        return
     if isinstance(stub_target, mypy.types.CallableType):
         if runtime_origin is not collections.abc.Callable:
             yield Error(
                 object_path, "is not a type alias for Callable", stub, runtime, stub_desc=stub_desc
             )
+        # could check Callable contents here...
+        return
+    if isinstance(stub_target, mypy.types.AnyType):
         return
     yield Error(object_path, "is not a recognised type alias", stub, runtime, stub_desc=stub_desc)
 
