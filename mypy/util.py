@@ -648,7 +648,9 @@ class FancyFormatter:
                 # TODO: detecting source code highlights through an indent can be surprising.
                 # Restore original error message and error location.
                 error = error[DEFAULT_SOURCE_OFFSET:]
-                column = messages[i+1].index('^') - DEFAULT_SOURCE_OFFSET
+                marker_column = messages[i+1].index('^')
+                column = marker_column - DEFAULT_SOURCE_OFFSET
+                marker = messages[i+1][marker_column:messages[i+1].rindex('~')+1]
 
                 # Let source have some space also on the right side, plus 6
                 # to accommodate ... on each side.
@@ -657,7 +659,10 @@ class FancyFormatter:
 
                 new_messages[i] = ' ' * DEFAULT_SOURCE_OFFSET + source_line
                 # Also adjust the error marker position.
-                new_messages[i+1] = ' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + '^'
+                new_marker_line = ' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + marker
+                if len(new_marker_line) > len(new_messages[i]):
+                    new_marker_line = new_marker_line[:len(new_messages[i]) - 3] + '...'
+                new_messages[i+1] = new_marker_line
         return new_messages
 
     def colorize(self, error: str) -> str:

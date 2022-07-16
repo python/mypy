@@ -421,3 +421,8 @@ def f(x: T) -> T:
 [case testColumnReturnValueExpected]
 def f() -> int:
     return  # E:5: Return value expected
+
+[case testEndPositions]
+# flags: --show-error-end
+x: int = "no way"
+[out]

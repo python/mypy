@@ -160,7 +160,9 @@ class MessageBuilder:
                            context.get_column() if context else -1,
                            msg, severity=severity, file=file, offset=offset,
                            origin_line=origin.get_line() if origin else None,
-                           end_line=end_line, code=code, allow_dups=allow_dups)
+                           end_line=end_line,
+                           end_column=context.end_column if context else -1,
+                           code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
