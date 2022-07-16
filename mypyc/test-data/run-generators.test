@@ -607,3 +607,27 @@ class Foo:
             self.bar.bar += 1
             return
         yield 0
+
+[case testBorrowingInGeneratorInTupleAssignment]
+from typing import Iterator
+
+class Foo:
+    flag1: bool
+    flag2: bool
+
+class C:
+    foo: Foo
+
+    def genf(self) -> Iterator[None]:
+        self.foo.flag1, self.foo.flag2 = True, True
+        yield
+        self.foo.flag1, self.foo.flag2 = False, False
+
+def test_generator() -> None:
+    c = C()
+    c.foo = Foo()
+    gen = c.genf()
+    next(gen)
+    assert c.foo.flag1 == c.foo.flag2 == True
+    assert list(gen) == []
+    assert c.foo.flag1 == c.foo.flag2 == False
