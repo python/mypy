@@ -1043,11 +1043,14 @@ def verify_typealias(
             )
         return
     if isinstance(stub_target, mypy.types.UnionType):
-        # could check Union contents here...
         if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
             return
-        if runtime_type is not Union:
+        # complain if runtime is not a Union or UnionType
+        if runtime_type is not Union and (
+            not (sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType))
+        ):
             yield Error(object_path, "is not a Union", stub, runtime, stub_desc=str(stub_target))
+        # could check Union contents here...
         return
     if isinstance(stub_target, mypy.types.TupleType):
         if tuple not in getattr(runtime_type, "__mro__", ()):
