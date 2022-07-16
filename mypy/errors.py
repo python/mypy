@@ -392,7 +392,7 @@ class Errors:
         if column is None:
             column = -1
         if end_column is None:
-            end_column = column
+            end_column = column + 1
 
         if file is None:
             file = self.file
