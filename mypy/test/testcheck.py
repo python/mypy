@@ -1,7 +1,6 @@
 """Type checker test cases"""
 
 import os
-import pathlib
 import re
 import sys
 
@@ -18,6 +17,7 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, assert_module_equivalence,
     update_testcase_output, parse_options,
     assert_target_equivalence, check_test_output_files, perform_file_operations,
+    find_test_files,
 )
 from mypy.errors import CompileError
 from mypy.semanal_main import core_modules
@@ -31,7 +31,8 @@ import pytest
 
 # List of files that contain test case descriptions.
 # Includes all check-* files with the .test extension in the test-data/unit directory
-typecheck_files = [str(x.name) for x in (pathlib.Path("./test-data/unit").rglob("check-*.test"))]
+# "check-*.test"
+typecheck_files = find_test_files(pattern="check-*.test")
 
 # Tests that use Python 3.8-only AST features (like expression-scoped ignores):
 if sys.version_info < (3, 8):

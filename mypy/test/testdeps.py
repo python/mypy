@@ -14,7 +14,7 @@ from mypy.options import Options
 from mypy.server.deps import get_dependencies
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
+from mypy.test.helpers import assert_string_arrays_equal, parse_options, find_test_files
 from mypy.types import Type
 from mypy.typestate import TypeState
 
@@ -23,14 +23,7 @@ dumped_modules = ['__main__', 'pkg', 'pkg.mod']
 
 
 class GetDependenciesSuite(DataSuite):
-    files = [
-        'deps.test',
-        'deps-types.test',
-        'deps-generics.test',
-        'deps-expressions.test',
-        'deps-statements.test',
-        'deps-classes.test',
-    ]
+    files = find_test_files(pattern="deps*.test")
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)

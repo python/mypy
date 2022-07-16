@@ -27,7 +27,7 @@ from mypy.test.data import (
 )
 from mypy.test.helpers import (
     assert_string_arrays_equal, parse_options, assert_module_equivalence,
-    assert_target_equivalence, perform_file_operations,
+    assert_target_equivalence, perform_file_operations, find_test_files,
 )
 from mypy.server.mergecheck import check_consistency
 from mypy.dmypy_util import DEFAULT_STATUS_FILE
@@ -42,15 +42,9 @@ CHECK_CONSISTENCY = False
 
 
 class FineGrainedSuite(DataSuite):
-    files = [
-        'fine-grained.test',
-        'fine-grained-cycles.test',
-        'fine-grained-blockers.test',
-        'fine-grained-modules.test',
-        'fine-grained-follow-imports.test',
-        'fine-grained-suggest.test',
-        'fine-grained-attr.test',
-    ]
+    files = find_test_files(
+        pattern="fine-grained*.test", exclude=["fine-grained-cache-incremental.test"]
+    )
 
     # Whether to use the fine-grained cache in the testing. This is overridden
     # by a trivial subclass to produce a suite that uses the cache.
