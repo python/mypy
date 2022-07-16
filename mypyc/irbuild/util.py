@@ -1,10 +1,10 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Dict, Any, Union, Optional
+from typing import Dict, Any, List, NamedTuple, Tuple, Union, Optional
 
 from mypy.nodes import (
     ClassDef, FuncDef, Decorator, OverloadedFuncDef, StrExpr, CallExpr, RefExpr, Expression,
-    IntExpr, FloatExpr, Var, NameExpr, TupleExpr, UnaryExpr, BytesExpr,
+    IntExpr, FloatExpr, TypeInfo, Var, NameExpr, TupleExpr, UnaryExpr, BytesExpr,
     ArgKind, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_OPT, GDEF,
 )
 
@@ -154,3 +154,14 @@ def is_constant(e: Expression) -> bool:
             or (isinstance(e, RefExpr) and e.kind == GDEF
                 and (e.fullname in ('builtins.True', 'builtins.False', 'builtins.None')
                      or (isinstance(e.node, Var) and e.node.is_final))))
+
+
+# Type definitions used in singledispatch.py, which are moved here to avoid an import cycle between
+# function.py and builder.py
+
+RegisterImplInfo = Tuple[TypeInfo, FuncDef]
+
+
+class SingledispatchInfo(NamedTuple):
+    singledispatch_impls: Dict[FuncDef, List[RegisterImplInfo]]
+    decorators_to_remove: Dict[FuncDef, List[int]]

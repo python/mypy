@@ -12,7 +12,6 @@ functions are transformed in mypyc.irbuild.function.
 """
 from contextlib import contextmanager
 
-from mypyc.irbuild.prepare import RegisterImplInfo
 from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
 from typing_extensions import overload, Final
 from mypy.backports import OrderedDict
@@ -65,6 +64,8 @@ from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.ll_builder import LowLevelIRBuilder
 from mypyc.irbuild.util import is_constant
+
+from mypyc.irbuild.util import RegisterImplInfo
 
 
 # These int binary operations can borrow their operands safely, since the
