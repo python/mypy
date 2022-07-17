@@ -100,7 +100,7 @@ from typing import TypeVar
 
 T = TypeVar('T')
 
-def f() -> T: # raise error
+def f() -> T: # E: A function returning TypeVar should receive at least one argument containing the same Typevar
     ...
 
 f()
