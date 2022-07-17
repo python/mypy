@@ -927,7 +927,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if typ.ret_type not in arg_type_visitor.arg_types:
                         self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type)
 
-
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
                     if defn.is_async_generator:
