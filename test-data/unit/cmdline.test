@@ -1166,10 +1166,24 @@ some_file.py:1: error: invalid syntax  [syntax]
 [file tabs.py]
 def test_tabs() -> str:
 	return None
+def test_between(x: str) -> None: ...
+test_between(1	+	1)
 [out]
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^
+[out version>=3.8]
+tabs.py:2: error: Incompatible return value type (got "None", expected "str")
+            return None
+                   ^~~~
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1   +       1)
+                 ^~~~~~~~~~~~~~
 
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd

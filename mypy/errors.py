@@ -123,7 +123,7 @@ class ErrorInfo:
 
 
 # Type used internally to represent errors:
-#   (path, line, column, severity, message, allow_dups, code)
+#   (path, line, column, end_line, end_column, severity, message, allow_dups, code)
 ErrorTuple = Tuple[Optional[str],
                    int,
                    int,
@@ -392,7 +392,10 @@ class Errors:
         if column is None:
             column = -1
         if end_column is None:
-            end_column = column + 1
+            if column == -1:
+                end_column = -1
+            else:
+                end_column = column + 1
 
         if file is None:
             file = self.file
@@ -713,6 +716,7 @@ class Errors:
 
                     # Shifts column after tab expansion
                     column = len(source_line[:column].expandtabs())
+                    end_column = len(source_line[:end_column].expandtabs())
 
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
