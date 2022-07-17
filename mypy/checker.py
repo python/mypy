@@ -12,6 +12,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
+from mypy.errorcodes import TYPE_VAR
 from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -1071,7 +1072,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             argtype.accept(arg_type_visitor)
 
         if typ.ret_type not in arg_type_visitor.arg_types and typ.ret_type in typ.variables:
-            self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type)
+            self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
