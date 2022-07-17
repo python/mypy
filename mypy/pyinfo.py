@@ -10,9 +10,6 @@ import os
 import sys
 import sysconfig
 
-if __name__ == '__main__':
-    sys.path = sys.path[1:]  # we don't want to pick up mypy.types
-
 MYPY = False
 if MYPY:
     from typing import List
@@ -29,10 +26,17 @@ def getsearchdirs():
     )
     stdlib = sysconfig.get_path("stdlib")
     stdlib_ext = os.path.join(stdlib, "lib-dynload")
-    cwd = os.path.abspath(os.getcwd())
-    excludes = set([cwd, stdlib_zip, stdlib, stdlib_ext])
+    excludes = set([stdlib_zip, stdlib, stdlib_ext])
 
-    abs_sys_path = (os.path.abspath(p) for p in sys.path)
+    # Drop the first entry of sys.path
+    # - If pyinfo.py is executed as a script (in a subprocess), this is the directory
+    #   containing pyinfo.py
+    # - Otherwise, if mypy launched via console script, this is the directory of the script
+    # - Otherwise, if mypy launched via python -m mypy, this is the current directory
+    # In all cases, this is safe to drop
+    # Note that mypy adds the cwd to SearchPaths.python_path, so we still find things on the
+    # cwd consistently (the return value here sets SearchPaths.package_path)
+    abs_sys_path = (os.path.abspath(p) for p in sys.path[1:])
     return [p for p in abs_sys_path if p not in excludes]
 
 
