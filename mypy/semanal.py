@@ -712,18 +712,17 @@ class SemanticAnalyzer(NodeVisitor[None],
 
                 leading_type = func.type.arg_types[0]
                 proper_leading_type = get_proper_type(leading_type)
-                if isinstance(proper_leading_type, Instance):  # method[[Self, ...], Self] case
+                if isinstance(proper_leading_type, Instance):  # method[[Instance, ...], Any] case
                     proper_leading_type = self_type_type = SelfType("Self", proper_leading_type)
-                    func.type = replace_implicit_first_type(func.type, proper_leading_type)
+                    func.type.variables = [self_type_type, *func.type.variables]
                 elif (
                     isinstance(proper_leading_type, TypeType) and isinstance(proper_leading_type.item, Instance)
-                ):  # classmethod[[type[Self], ...], Self] case
+                ):  # classmethod[[type[Instance], ...], Any] case
                     self_type_type = SelfType("Self", proper_leading_type.item)
                     proper_leading_type = self.class_type(self_type_type)
-                    func.type = replace_implicit_first_type(func.type, proper_leading_type)
-                elif self.is_self_type(proper_leading_type):
+                    func.type.variables = [self_type_type, *func.type.variables]
+                elif self.is_self_type(proper_leading_type):  # method[[Self, ...], Self] case
                     proper_leading_type = self_type_type = SelfType("Self", self.named_type(info.fullname))
-                    func.type = replace_implicit_first_type(func.type, proper_leading_type)
                 elif isinstance(proper_leading_type, UnboundType):
                     # classmethod[[type[Self], ...], Self] case
                     node = self.lookup(proper_leading_type.name, func)
@@ -735,21 +734,15 @@ class SemanticAnalyzer(NodeVisitor[None],
                     ):
                         self_type_type = SelfType("Self", self.named_type(info.fullname))
                         proper_leading_type = self.class_type(self_type_type)
-                        func.type = replace_implicit_first_type(func.type, proper_leading_type)
+                    else:
+                        return
+                else:
+                    return
+                func.type = replace_implicit_first_type(func.type, proper_leading_type)
 
-                    # bind any SelfTypes in args and return types
+                # bind any SelfTypes in args and return types
                 for idx, arg in enumerate(func.type.arg_types):
                     if self.is_self_type(arg):
-                        if func.is_static:
-                            self.fail(
-                                "Self-type annotations of staticmethods are not supported, "
-                                "please replace the type with {}".format(self_type.type.name),
-                                func
-                            )
-                            func.type.arg_types[idx] = self.named_type(
-                                self_type.type.name
-                            )  # we replace them here for them
-                            continue
                         if self_type_type.fullname == self_type_type.name:
                             assert isinstance(arg, UnboundType)
                             table_node = self.lookup(arg.name, func)
@@ -765,14 +758,6 @@ class SemanticAnalyzer(NodeVisitor[None],
                         )
                         assert isinstance(table_node, SymbolTableNode) and table_node.node
                         self_type_type.fullname = table_node.node.fullname
-                    if func.is_static:
-                        self.fail(
-                            "Self-type annotations of staticmethods are not supported, "
-                            "please replace the type with {}".format(self_type.type.name),
-                            func,
-                        )
-                        func.type.ret_type = self.named_type(self_type.type.name)
-                        return
                     func.type.ret_type = self_type_type
 
     def set_original_def(self, previous: Optional[Node], new: Union[FuncDef, Decorator]) -> bool:
@@ -5607,7 +5592,7 @@ def has_placeholder(typ: Type) -> bool:
     return typ.accept(HasPlaceholders())
 
 
-FunctionLikeT = TypeVar("FunctionLikeT", bound=FunctionLike)
+FunctionLikeT = TypeVar("FunctionLikeT", CallableType, Overloaded)
 
 
 def replace_implicit_first_type(sig: FunctionLikeT, new: Type) -> FunctionLikeT:

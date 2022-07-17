@@ -1143,11 +1143,16 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         """Find the type variables of the function type and bind them in our tvar_scope"""
         if fun_type.variables:
             for var in fun_type.variables:
-                var_node = self.lookup_qualified(var.name, defn)
-                assert var_node, "Binding for function type variable not found within function"
-                var_expr = var_node.node
-                assert isinstance(var_expr, TypeVarLikeExpr)
-                self.tvar_scope.bind_new(var.name, var_expr)
+                if not isinstance(var, SelfType):
+                    var_node = self.lookup_qualified(var.name, defn)
+                    assert var_node, "Binding for function type variable not found within function"
+                    var_expr = var_node.node
+                    # if isinstance(var_expr, Var) and var_expr.fullname in SELF_TYPE_NAMES:
+                    #     var_expr = TypeVarExpr("Self", var_expr.fullname, [], var.upper_bound)
+                    assert isinstance(var_expr, TypeVarLikeExpr)
+                    self.tvar_scope.bind_new(var.name, var_expr)
+                else:
+                    self.tvar_scope.bind_existing(var)
             return fun_type.variables
         typevars = self.infer_type_variables(fun_type)
         # Do not define a new type variable if already defined in scope.
@@ -1209,7 +1214,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return analyzed
 
     def anal_var_def(self, var_def: TypeVarLikeType) -> TypeVarLikeType:
-        if isinstance(var_def, TypeVarType):
+        if isinstance(var_def, TypeVarType) and not isinstance(var_def, SelfType):
             return TypeVarType(
                 var_def.name,
                 var_def.fullname,

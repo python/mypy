@@ -500,7 +500,7 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Type that refers to a type variable."""
 
-    __slots__ = ('values', 'variance')
+    __slots__ = ('values', 'variance', 'stack')
 
     values: List[Type]  # Value restriction, empty list if no restriction
     variance: int
@@ -512,6 +512,7 @@ class TypeVarType(TypeVarLikeType):
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
         self.variance = variance
+        self.stack = inspect.stack()
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarType') -> 'TypeVarType':
@@ -555,20 +556,25 @@ class TypeVarType(TypeVarLikeType):
         )
 
 
+SELF_ID = TypeVarId(0.5)  # type: ignore
+# this is a hack cause I need a way to represent a number that's constant and can't be +ve or -ve
+# and using TypeVarId.new() would quickly hit a huge number which is harder to read.
+
+
 class SelfType(TypeVarType):
     __slots__ = ()
     upper_bound: 'Instance'
 
     def __init__(self, fullname: str, upper_bound: 'Instance', line: int = -1, column: int = -1) -> None:
         super().__init__(
-            "Self", fullname, -1, [], upper_bound, line=line, column=column
+            "Self",
+            fullname,
+            SELF_ID,
+            [],
+            upper_bound,
+            line=line,
+            column=column,
         )
-
-    def accept(self, visitor: 'TypeVisitor[T]') -> T:
-        from mypy.subtypes import SubtypeVisitor
-        if isinstance(visitor, (TypeStrVisitor, SubtypeVisitor)):
-            return visitor.visit_self_type(self)
-        return super().accept(visitor)
 
     def __hash__(self) -> int:
         return hash(self.upper_bound)
@@ -1119,6 +1125,7 @@ class DeletedType(ProperType):
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
 NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
+import inspect
 
 
 class Instance(ProperType):
@@ -1152,12 +1159,13 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value', '_hash')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value', '_hash', 'stack')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, *,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
+        # self.stack = inspect.stack()
         self.type = typ
         self.args = tuple(args)
         self.type_ref: Optional[str] = None
@@ -1516,6 +1524,7 @@ class CallableType(FunctionLike):
                  'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
                  'from_concatenate',  # whether this callable is from a concatenate object
                                       # (this is used for error messages)
+                                      'stack',
                  )
 
     def __init__(self,
@@ -1539,6 +1548,7 @@ class CallableType(FunctionLike):
                  type_guard: Optional[Type] = None,
                  from_concatenate: bool = False
                  ) -> None:
+        self.stack = inspect.stack()
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
@@ -2614,12 +2624,10 @@ def get_proper_types(it: Iterable[Optional[Type]]
 # to make it easier to gradually get modules working with mypyc.
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
-from mypy.type_visitor import (  # noqa
-    TypeVisitor as TypeVisitor,
-    SyntheticTypeVisitor as SyntheticTypeVisitor,
-    TypeTranslator as TypeTranslator,
-    TypeQuery as TypeQuery,
-)
+from mypy.type_visitor import SyntheticTypeVisitor as SyntheticTypeVisitor
+from mypy.type_visitor import TypeQuery as TypeQuery
+from mypy.type_visitor import TypeTranslator as TypeTranslator
+from mypy.type_visitor import TypeVisitor as TypeVisitor  # noqa
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -2693,6 +2701,8 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return s
 
     def visit_type_var(self, t: TypeVarType) -> str:
+        if isinstance(t, SelfType):
+            return self.visit_self_type(t)
         if t.name is None:
             # Anonymous type variable type (only numeric id).
             s = f'`{t.id}'
