@@ -499,7 +499,7 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
 
 def find_test_files(pattern: str, exclude: Optional[List[str]] = None) -> List[str]:
     return [
-        str(x.name)
-        for x in (pathlib.Path("./test-data/unit").rglob(pattern))
-        if str(x.name) not in (exclude or [])
+        path.name
+        for path in (pathlib.Path("./test-data/unit").rglob(pattern))
+        if path.name not in (exclude or [])
     ]
