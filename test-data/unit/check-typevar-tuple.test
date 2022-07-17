@@ -100,10 +100,18 @@ from typing import TypeVar
 
 T = TypeVar('T')
 
-def f() -> T: # no error
-    return 0
+def f() -> T: # raise error
+    ...
 
-if f():
-    print() # Statement is unreachable
-else:
-    print() # Statement is unreachable
+f()
+
+
+[case testUnboundIterableOfTypeVars]
+from typing import Iterable, TypeVar
+
+T = TypeVar('T')
+
+def f() -> Iterable[T]: # no error
+    ...
+
+f()
