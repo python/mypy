@@ -500,7 +500,7 @@ class TypeVarLikeType(ProperType):
 class TypeVarType(TypeVarLikeType):
     """Type that refers to a type variable."""
 
-    __slots__ = ('values', 'variance', 'stack')
+    __slots__ = ('values', 'variance')
 
     values: List[Type]  # Value restriction, empty list if no restriction
     variance: int
@@ -512,7 +512,6 @@ class TypeVarType(TypeVarLikeType):
         assert values is not None, "No restrictions must be represented by empty list"
         self.values = values
         self.variance = variance
-        self.stack = inspect.stack()
 
     @staticmethod
     def new_unification_variable(old: 'TypeVarType') -> 'TypeVarType':
@@ -1159,13 +1158,12 @@ class Instance(ProperType):
 
     """
 
-    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value', '_hash', 'stack')
+    __slots__ = ('type', 'args', 'invalid', 'type_ref', 'last_known_value', '_hash')
 
     def __init__(self, typ: mypy.nodes.TypeInfo, args: Sequence[Type],
                  line: int = -1, column: int = -1, *,
                  last_known_value: Optional['LiteralType'] = None) -> None:
         super().__init__(line, column)
-        # self.stack = inspect.stack()
         self.type = typ
         self.args = tuple(args)
         self.type_ref: Optional[str] = None
@@ -1524,7 +1522,6 @@ class CallableType(FunctionLike):
                  'type_guard',  # T, if -> TypeGuard[T] (ret_type is bool in this case).
                  'from_concatenate',  # whether this callable is from a concatenate object
                                       # (this is used for error messages)
-                                      'stack',
                  )
 
     def __init__(self,
@@ -1548,7 +1545,6 @@ class CallableType(FunctionLike):
                  type_guard: Optional[Type] = None,
                  from_concatenate: bool = False
                  ) -> None:
-        self.stack = inspect.stack()
         super().__init__(line, column)
         assert len(arg_types) == len(arg_kinds) == len(arg_names)
         if variables is None:
