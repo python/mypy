@@ -304,10 +304,7 @@ class TypeCheckSuite(DataSuite):
         return hits
 
     def find_module_files(self, manager: build.BuildManager) -> Dict[str, str]:
-        modules = {}
-        for id, module in manager.modules.items():
-            modules[id] = module.path
-        return modules
+        return {id: module.path for id, module in manager.modules.items()}
 
     def find_missing_cache_files(self, modules: Dict[str, str],
                                  manager: build.BuildManager) -> Set[str]:
