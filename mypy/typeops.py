@@ -732,8 +732,8 @@ def is_singleton_type(typ: Type) -> bool:
     'is_singleton_type(t)' returns True if and only if the expression 'a is b' is
     always true.
 
-    Currently, this returns True when given NoneTypes, enum LiteralTypes and
-    enum types with a single value.
+    Currently, this returns True when given NoneTypes, enum LiteralTypes,
+    enum types with a single value and ... (Ellipses).
 
     Note that other kinds of LiteralTypes cannot count as singleton types. For
     example, suppose we do 'a = 100000 + 1' and 'b = 100001'. It is not guaranteed
@@ -742,12 +742,14 @@ def is_singleton_type(typ: Type) -> bool:
     """
     typ = get_proper_type(typ)
     # TODO:
-    # Also make this return True if the type corresponds to ... (ellipsis) or NotImplemented?
+    # Also make this return True if the type corresponds to NotImplemented?
     return (
             isinstance(typ, NoneType)
             or (isinstance(typ, LiteralType)
                 and (typ.is_enum_literal() or isinstance(typ.value, bool)))
-            or (isinstance(typ, Instance) and typ.type.is_enum and len(get_enum_values(typ)) == 1)
+            or (isinstance(typ, Instance) and (
+                typ.type.is_enum and len(get_enum_values(typ)) == 1
+                or typ.type.fullname == 'builtins.ellipsis'))
     )
 
 
