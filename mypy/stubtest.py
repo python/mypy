@@ -13,6 +13,7 @@ import os
 import pkgutil
 import re
 import sys
+import traceback
 import types
 import typing
 import typing_extensions
@@ -201,7 +202,21 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        yield from verify(stub, runtime, [module_name])
+        try:
+            yield from verify(stub, runtime, [module_name])
+        except Exception as e:
+            bottom_frame = list(traceback.walk_tb(e.__traceback__))[-1][0]
+            bottom_module = bottom_frame.f_globals.get("__name__", "")
+            if bottom_module == "__main__" or "mypy" in bottom_module:
+                raise
+            yield Error(
+                [module_name],
+                f"encountered unexpected error, {type(e).__name__}: {e}",
+                stub,
+                runtime,
+                stub_desc="N/A",
+                runtime_desc=traceback.format_exc().strip(),
+            )
 
 
 @singledispatch
