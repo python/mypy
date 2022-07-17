@@ -5310,7 +5310,7 @@ class fakeint:
 U = TypeVar('U')
 V = TypeVar('V')
 W = TypeVar('W')
-def compose(f: Callable[[U], V], g: Callable[[W], U]) -> Callable[[W], V]: # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def compose(f: Callable[[U], V], g: Callable[[W], U]) -> Callable[[W], V]:
     return lambda x: f(g(x))
 
 ID = NewType("ID", fakeint)

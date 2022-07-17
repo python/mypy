@@ -477,7 +477,7 @@ R = TypeVar("R")
 class Request:
     ...
 
-def with_request(f: Callable[Concatenate[Request, P], R]) -> Callable[P, R]: # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+def with_request(f: Callable[Concatenate[Request, P], R]) -> Callable[P, R]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> R:
         return f(Request(), *args, **kwargs)
     return inner
