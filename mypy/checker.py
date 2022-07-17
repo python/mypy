@@ -919,14 +919,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if typ.ret_type.variance == CONTRAVARIANT:
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
-
-                    arg_type_visitor = CollectArgTypes()
-                    for argtype in typ.arg_types:
-                        argtype.accept(arg_type_visitor)
-
-                    if typ.ret_type not in arg_type_visitor.arg_types:
-                        self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type)
-
+                    self.check_unbound_return_typevar(typ)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
@@ -1070,6 +1063,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_unbound_return_typevar(self, typ: CallableType) -> None:
+        """Fails when the return typevar is not defined in arguments."""
+        arg_type_visitor = CollectArgTypes()
+        for argtype in typ.arg_types:
+            argtype.accept(arg_type_visitor)
+
+        if typ.ret_type not in arg_type_visitor.arg_types and typ.ret_type in typ.variables:
+            self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type)
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
@@ -5874,7 +5876,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 class CollectArgTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
     def __init__(self) -> None:
-        self.arg_types: Set[Instance] = set()
+        self.arg_types: Set[TypeVarType] = set()
 
     def visit_type_var(self, t: TypeVarType) -> None:
         self.arg_types.add(t)
