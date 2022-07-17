@@ -209,7 +209,7 @@ def test_module(module_name: str) -> Iterator[Error]:
             bottom_module = bottom_frame.f_globals.get("__name__", "")
             # Pass on any errors originating from stubtest or mypy
             # These can occur expectedly, e.g. StubtestFailure
-            if bottom_module == "__main__" or "mypy" in bottom_module:
+            if bottom_module == "__main__" or bottom_module.split(".")[0] == "mypy":
                 raise
             yield Error(
                 [module_name],
