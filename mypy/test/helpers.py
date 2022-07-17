@@ -1,11 +1,12 @@
 import os
+import pathlib
 import re
 import sys
 import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern, Optional
 
 from mypy import defaults
 import mypy.api as api
@@ -494,3 +495,11 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result
+
+
+def find_test_files(pattern: str, exclude: Optional[List[str]] = None) -> List[str]:
+    return [
+        path.name
+        for path in (pathlib.Path("./test-data/unit").rglob(pattern))
+        if path.name not in (exclude or [])
+    ]

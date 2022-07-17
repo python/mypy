@@ -9,7 +9,8 @@ from mypy import build
 from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.helpers import (
-    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion, parse_options
+    assert_string_arrays_equal, normalize_error_messages, testfile_pyversion, parse_options,
+    find_test_files,
 )
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
@@ -21,26 +22,19 @@ from mypy.options import Options
 # Semantic analyzer test cases: dump parse tree
 
 # Semantic analysis test case description files.
-semanal_files = [
-    'semanal-basic.test',
-    'semanal-expressions.test',
-    'semanal-classes.test',
-    'semanal-types.test',
-    'semanal-typealiases.test',
-    'semanal-modules.test',
-    'semanal-statements.test',
-    'semanal-abstractclasses.test',
-    'semanal-namedtuple.test',
-    'semanal-typeddict.test',
-    'semenal-literal.test',
-    'semanal-classvar.test',
-    'semanal-python2.test',
-    'semanal-lambda.test',
-]
+semanal_files = find_test_files(
+    pattern="semanal-*.test",
+    exclude=[
+        "semanal-errors-python310.test",
+        "semanal-errors.test",
+        "semanal-typeinfo.test",
+        "semanal-symtable.test",
+    ],
+)
 
 
-if sys.version_info >= (3, 10):
-    semanal_files.append('semanal-python310.test')
+if sys.version_info < (3, 10):
+    semanal_files.remove('semanal-python310.test')
 
 
 def get_semanal_options(program_text: str, testcase: DataDrivenTestCase) -> Options:
