@@ -719,11 +719,6 @@ def is_literal_type_like(t: Optional[Type]) -> bool:
         return False
 
 
-def get_enum_values(typ: Instance) -> List[str]:
-    """Return the list of values for an Enum."""
-    return [name for name, sym in typ.type.names.items() if isinstance(sym.node, Var)]
-
-
 def is_singleton_type(typ: Type) -> bool:
     """Returns 'true' if this type is a "singleton type" -- if there exists
     exactly only one runtime value associated with this type.
@@ -741,16 +736,7 @@ def is_singleton_type(typ: Type) -> bool:
     constructing two distinct instances of 100001.
     """
     typ = get_proper_type(typ)
-    # TODO:
-    # Also make this return True if the type corresponds to NotImplemented?
-    return (
-            isinstance(typ, NoneType)
-            or (isinstance(typ, LiteralType)
-                and (typ.is_enum_literal() or isinstance(typ.value, bool)))
-            or (isinstance(typ, Instance) and (
-                typ.type.is_enum and len(get_enum_values(typ)) == 1
-                or typ.type.fullname == 'builtins.ellipsis'))
-    )
+    return typ.is_singleton_type()
 
 
 def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperType:
@@ -827,7 +813,7 @@ def try_contracting_literals_in_union(types: Sequence[Type]) -> List[ProperType]
             fullname = typ.fallback.type.fullname
             if typ.fallback.type.is_enum or isinstance(typ.value, bool):
                 if fullname not in sum_types:
-                    sum_types[fullname] = (set(get_enum_values(typ.fallback))
+                    sum_types[fullname] = (set(typ.fallback.get_enum_values())
                                            if typ.fallback.type.is_enum
                                            else {True, False},
                                            [])
@@ -855,7 +841,7 @@ def coerce_to_literal(typ: Type) -> Type:
         if typ.last_known_value:
             return typ.last_known_value
         elif typ.type.is_enum:
-            enum_values = get_enum_values(typ)
+            enum_values = typ.get_enum_values()
             if len(enum_values) == 1:
                 return LiteralType(value=enum_values[0], fallback=typ)
     return original_type
