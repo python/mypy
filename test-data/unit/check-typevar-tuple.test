@@ -94,3 +94,16 @@ reveal_type(g(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, b
 reveal_type(h(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
 
+
+[case testUnboundTypeVar]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f() -> T: # no error
+    return 0
+
+if f():
+    print() # Statement is unreachable
+else:
+    print() # Statement is unreachable

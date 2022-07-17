@@ -919,6 +919,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
 
+                    if not any([isinstance(argtype, TypeVarType) for argtype in typ.arg_types]):
+                        self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
+                                  typ.ret_type)
+
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
                     if defn.is_async_generator:
