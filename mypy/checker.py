@@ -40,6 +40,7 @@ from mypy.types import (
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
     OVERLOAD_NAMES, UnboundType
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -919,7 +920,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
 
-                    if not any([isinstance(argtype, TypeVarType) for argtype in typ.arg_types]):
+                    arg_type_visitor = CollectArgTypes()
+                    for argtype in typ.arg_types:
+                        argtype.accept(arg_type_visitor)
+
+                    if typ.ret_type not in arg_type_visitor.arg_types:
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
 
@@ -5864,6 +5869,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return (member_type.is_enum_literal()
                 and member_type.fallback.type == parent_type.type_object())
+
+
+class CollectArgTypes(TypeTraverserVisitor):
+    """Collects the non-nested argument types in a set."""
+    def __init__(self) -> None:
+        self.arg_types: Set[Instance] = set()
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.arg_types.add(t)
 
 
 @overload
