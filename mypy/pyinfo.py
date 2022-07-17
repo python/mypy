@@ -33,10 +33,15 @@ def getsearchdirs():
     #   containing pyinfo.py
     # - Otherwise, if mypy launched via console script, this is the directory of the script
     # - Otherwise, if mypy launched via python -m mypy, this is the current directory
-    # In all cases, this is safe to drop
+    # In all these cases, it is desirable to drop the first entry
     # Note that mypy adds the cwd to SearchPaths.python_path, so we still find things on the
     # cwd consistently (the return value here sets SearchPaths.package_path)
-    abs_sys_path = (os.path.abspath(p) for p in sys.path[1:])
+
+    # Python 3.11 adds a "safe_path" flag wherein Python won't automatically prepend
+    # anything to sys.path. In this case, the first entry of sys.path is no longer special.
+    offset = 0 if sys.version_info >= (3, 11) and sys.flags.safe_path else 1
+
+    abs_sys_path = (os.path.abspath(p) for p in sys.path[offset:])
     return [p for p in abs_sys_path if p not in excludes]
 
 
