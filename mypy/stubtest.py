@@ -207,6 +207,8 @@ def test_module(module_name: str) -> Iterator[Error]:
         except Exception as e:
             bottom_frame = list(traceback.walk_tb(e.__traceback__))[-1][0]
             bottom_module = bottom_frame.f_globals.get("__name__", "")
+            # Pass on any errors originating from stubtest or mypy
+            # These can occur expectedly, e.g. StubtestFailure
             if bottom_module == "__main__" or "mypy" in bottom_module:
                 raise
             yield Error(
@@ -215,7 +217,12 @@ def test_module(module_name: str) -> Iterator[Error]:
                 stub,
                 runtime,
                 stub_desc="N/A",
-                runtime_desc=traceback.format_exc().strip(),
+                runtime_desc=(
+                    "This is most likely the fault of something very dynamic in your library. "
+                    "It's also possible this is a bug in stubtest.\nIf in doubt, please "
+                    "open an issue at https://github.com/python/mypy\n\n"
+                    + traceback.format_exc().strip()
+                ),
             )
 
 
