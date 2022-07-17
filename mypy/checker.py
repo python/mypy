@@ -925,8 +925,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         argtype.accept(arg_type_visitor)
 
                     if typ.ret_type not in arg_type_visitor.arg_types:
-                        self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
-                                  typ.ret_type)
+                        self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type)
+
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
