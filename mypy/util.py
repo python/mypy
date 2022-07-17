@@ -665,7 +665,7 @@ class FancyFormatter:
                 new_messages[i] = ' ' * DEFAULT_SOURCE_OFFSET + source_line
                 # Also adjust the error marker position and trim error marker is needed.
                 new_marker_line = ' ' * (DEFAULT_SOURCE_OFFSET + column - offset) + marker
-                if len(new_marker_line) > len(new_messages[i]):
+                if len(new_marker_line) > len(new_messages[i]) and len(marker) > 3:
                     new_marker_line = new_marker_line[:len(new_messages[i]) - 3] + '...'
                 new_messages[i+1] = new_marker_line
         return new_messages
