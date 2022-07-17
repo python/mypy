@@ -106,6 +106,18 @@ def f() -> T: # E: A function returning TypeVar should receive at least one argu
 f()
 
 
+[case testInnerFunctionTypeVar]
+
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def g(a: T) -> T:
+    def f() -> T:
+        ...
+    return f()
+
+
 [case testUnboundIterableOfTypeVars]
 from typing import Iterable, TypeVar
 
