@@ -5873,7 +5873,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 class CollectArgTypes(TypeTraverserVisitor):
     """Collects the non-nested argument types in a set."""
     def __init__(self) -> None:
-        self.arg_types: Set[Instance] = set()
+        self.arg_types: Set[TypeVarType] = set()
 
     def visit_type_var(self, t: TypeVarType) -> None:
         self.arg_types.add(t)

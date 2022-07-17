@@ -111,7 +111,7 @@ from typing import Iterable, TypeVar
 
 T = TypeVar('T')
 
-def f() -> Iterable[T]: # no error
+def f() -> Iterable[T]:
     ...
 
 f()
@@ -121,7 +121,7 @@ from typing import TypeVar
 
 T = TypeVar('T')
 
-def f(a: T, b: T) -> T: # raise error
+def f(a: T, b: T, c: int) -> T:
     ...
 
 
@@ -130,8 +130,8 @@ from typing import Callable, Union, TypeVar
 
 T = TypeVar('T')
 
-def f(a: Union[int, T], b: str) -> T: # raise error
+def f(a: Union[int, T], b: str) -> T:
     ...
 
-def g(a: Callable[..., T], b: str) -> T: # raise error
+def g(a: Callable[..., T], b: str) -> T:
     ...
