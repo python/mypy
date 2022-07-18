@@ -1,4 +1,4 @@
-g"""Tests for the mypy parser."""
+"""Tests for the mypy parser."""
 
 import sys
 
