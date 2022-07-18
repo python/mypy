@@ -244,7 +244,7 @@ IGNORE
 
 [case testIgnoreWholeModule5]
 # type: ignore
-import Missing
+import MISSING
 
 [case testDontIgnoreWholeModule1]
 if True:

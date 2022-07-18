@@ -267,7 +267,7 @@ main:2: error: Invalid "type: ignore" comment  [syntax]
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
-main:6: error: Invalid "type: ignore" comment  [syntax
+main:6: error: Invalid "type: ignore" comment  [syntax]
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
