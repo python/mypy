@@ -611,6 +611,9 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 \[mypy]
 python_version = 2.7
 [out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<=0.971 if you need to check Python 2 code.
 
 [case testPythonVersionAccepted34]
 # cmd: mypy -c pass
