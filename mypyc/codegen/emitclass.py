@@ -325,7 +325,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         if not fields.get('tp_vectorcall'):
             # This is just a placeholder to please CPython. It will be
             # overriden during setup.
-            fields['tp_call'] = 'PyVectorcall_Call'        
+            fields['tp_call'] = 'PyVectorcall_Call'
     fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")

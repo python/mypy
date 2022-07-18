@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOXENV: docs
+      TOX_SKIP_MISSING_INTERPRETERS: False
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2

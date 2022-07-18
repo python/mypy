@@ -93,6 +93,8 @@ jobs:
           toxenv: lint
 
     name: ${{ matrix.name }}
+    env:
+      TOX_SKIP_MISSING_INTERPRETERS: False
     steps:
     - uses: actions/checkout@v2
     - uses: actions/setup-python@v2
