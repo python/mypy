@@ -57,3 +57,4 @@ def h(a: List[Union[Callable[..., T]]]) -> T:
 
 def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
     ...
+[builtins fixtures/tuple.pyi]
