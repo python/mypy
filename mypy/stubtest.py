@@ -1051,8 +1051,6 @@ def verify_typealias(
         yield from verify(stub_target.type, runtime_origin, object_path)
         return
     if isinstance(stub_target, mypy.types.UnionType):
-        if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):
-            return
         # complain if runtime is not a Union or UnionType
         if runtime_origin is not Union and (
             not (sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType))
