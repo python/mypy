@@ -1033,9 +1033,9 @@ def verify_typealias(
             runtime_name = runtime_origin.__qualname__
         except AttributeError:
             runtime_name = getattr(runtime_origin, "__name__", MISSING)
-        if not isinstance(runtime_name, Missing):
+        if isinstance(runtime_name, str):
             runtime_module: MaybeMissing[str] = getattr(runtime_origin, "__module__", MISSING)
-            if not isinstance(runtime_module, Missing):
+            if isinstance(runtime_module, str):
                 if runtime_module == "collections.abc" or (
                     runtime_module == "re" and runtime_name in {"Match", "Pattern"}
                 ):

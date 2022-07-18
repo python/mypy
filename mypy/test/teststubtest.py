@@ -784,7 +784,7 @@ class StubtestUnit(unittest.TestCase):
             from typing import Generic, TypeVar
             _T = TypeVar("_T")
             class _Spam(Generic[_T]):
-                def foo(self): ...
+                def foo(self) -> None: ...
             IntFood = _Spam[int]
             """,
             runtime="""
@@ -850,13 +850,30 @@ class StubtestUnit(unittest.TestCase):
         )
         yield Case(
             stub="""
-            class Baz: ...
+            class Baz:
+                def fizz(self) -> None: ...
             BazAlias = Baz
             """,
             runtime="""
-            class Baz: ...
+            class Baz:
+                def fizz(self): pass
             BazAlias = Baz
             Baz.__name__ = Baz.__qualname__ = Baz.__module__ = "New"
+            """,
+            error=None
+        )
+        yield Case(
+            stub="""
+            class FooBar:
+                __module__: None  # type: ignore
+                def fizz(self) -> None: ...
+            FooBarAlias = FooBar
+            """,
+            runtime="""
+            class FooBar:
+                def fizz(self): pass
+            FooBarAlias = FooBar
+            FooBar.__module__ = None
             """,
             error=None
         )
