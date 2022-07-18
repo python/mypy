@@ -15,6 +15,6 @@ pytest-forked>=1.3.0,<2.0.0
 pytest-cov>=2.10.0,<3.0.0
 py>=1.5.2
 typed_ast>=1.5.4,<2; python_version>='3.8'
-virtualenv>=20.6.0
 setuptools!=50
+six
 importlib-metadata>=4.6.1,<5.0.0
