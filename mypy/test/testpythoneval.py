@@ -18,8 +18,6 @@ from subprocess import PIPE
 import sys
 from tempfile import TemporaryDirectory
 
-import pytest
-
 from typing import List
 
 from mypy.defaults import PYTHON3_VERSION
