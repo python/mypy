@@ -1026,20 +1026,29 @@ def verify_typealias(
                 stub_desc=stub_desc,
             )
             return
-        # Don't test the fullname;
-        # stubs can sometimes be in different modules to the runtime for various reasons
-        # (e.g. we want compatibility between collections.abc and typing, etc.)
+
+        # Do our best to figure out the fullname of the runtime object...
+        runtime_name: Union[str, Missing]
         try:
-            runtime_name = runtime_origin.__name__
+            runtime_name = runtime_origin.__qualname__
         except AttributeError:
-            return
-        stub_name = stub_target.type.name
-        if runtime_name != stub_name:
-            msg = (
-                f"is inconsistent, runtime is an alias for {runtime_name} "
-                f"but stub is an alias for {stub_name}"
-            )
-            yield Error(object_path, msg, stub, runtime, stub_desc=stub_desc)
+            runtime_name = getattr(runtime_origin, "__name__", MISSING)
+        if not isinstance(runtime_name, Missing):
+            runtime_module: Union[str, Missing] = getattr(runtime_origin, "__module__", MISSING)
+            if not isinstance(runtime_module, Missing):
+                if runtime_module == "collections.abc" or (
+                    runtime_module == "re" and runtime_name in {"Match", "Pattern"}
+                ):
+                    runtime_module = "typing"
+                runtime_fullname = f"{runtime_module}.{runtime_name}"
+                if re.match(fr"_?{stub_target.type.fullname}", runtime_fullname):
+                    # Okay, we're probably fine.
+                    return
+
+        # Okay, either we couldn't construct a fullname
+        # or the fullname of the stub didn't match the fullname of the runtime.
+        # Fallback to a full structural check of the runtime vis-a-vis the stub.
+        yield from verify(stub_target.type, runtime_origin, object_path)
         return
     if isinstance(stub_target, mypy.types.UnionType):
         if sys.version_info >= (3, 10) and isinstance(runtime, types.UnionType):

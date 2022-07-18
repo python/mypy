@@ -62,6 +62,7 @@ _R = TypeVar("_R", covariant=True)
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
+class Match(Generic[_T]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 def overload(func: _T) -> _T: ...
@@ -707,7 +708,7 @@ class StubtestUnit(unittest.TestCase):
                 def f(self) -> None: ...
             class Y: ...
             """,
-            error="Y",
+            error="Y.f",
         )
         yield Case(
             stub="""
@@ -766,7 +767,6 @@ class StubtestUnit(unittest.TestCase):
             from typing import Dict
             K = dict[str, str]
             L = Dict[int, int]
-            M = Dict[str, int]
             KK = Iterable[str]
             LL = typing.Iterable[str]
             """,
@@ -774,13 +774,29 @@ class StubtestUnit(unittest.TestCase):
             from typing import Iterable, Dict, List
             K = Dict[str, str]
             L = Dict[int, int]
-            M = List[int]
             KK = Iterable[str]
             LL = Iterable[str]
             """,
-            error="M"
+            error=None
         )
-        yield Case(stub="MM = list[str]", runtime="['foo', 'bar']", error="MM")
+        yield Case(
+            stub="""
+            from typing import Generic, TypeVar
+            _T = TypeVar("_T")
+            class _Spam(Generic[_T]):
+                def foo(self): ...
+            IntFood = _Spam[int]
+            """,
+            runtime="""
+            from typing import Generic, TypeVar
+            _T = TypeVar("_T")
+            class _Bacon(Generic[_T]):
+                def foo(self, arg): pass
+            IntFood = _Bacon[int]
+            """,
+            error="IntFood.foo"
+        )
+        yield Case(stub="StrList = list[str]", runtime="StrList = ['foo', 'bar']", error="StrList")
         yield Case(
             stub="""
             import collections.abc
@@ -797,11 +813,59 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="P"
         )
+        yield Case(
+            stub="""
+            class Foo:
+                class Bar: ...
+            BarAlias = Foo.Bar
+            """,
+            runtime="""
+            class Foo:
+                class Bar: pass
+            BarAlias = Foo.Bar
+            """,
+            error=None
+        )
+        yield Case(
+            stub="""
+            from io import StringIO
+            StringIOAlias = StringIO
+            """,
+            runtime="""
+            from _io import StringIO
+            StringIOAlias = StringIO
+            """,
+            error=None
+        )
+        yield Case(
+            stub="""
+            from typing import Match
+            M = Match[str]
+            """,
+            runtime="""
+            from typing import Match
+            M = Match[str]
+            """,
+            error=None
+        )
+        yield Case(
+            stub="""
+            class Baz: ...
+            BazAlias = Baz
+            """,
+            runtime="""
+            class Baz: ...
+            BazAlias = Baz
+            Baz.__name__ = Baz.__qualname__ = Baz.__module__ = "New"
+            """,
+            error=None
+        )
         if sys.version_info >= (3, 10):
             yield Case(
                 stub="""
                 import collections.abc
-                from typing import Callable, Dict, Iterable, Tuple, Union
+                import re
+                from typing import Callable, Dict, Match, Iterable, Tuple, Union
                 Q = Dict[str, str]
                 R = dict[int, int]
                 S = Tuple[int, int]
@@ -812,9 +876,12 @@ class StubtestUnit(unittest.TestCase):
                 Z = collections.abc.Callable[[str], bool]
                 QQ = Iterable[str]
                 RR = collections.abc.Iterable[str]
+                MM = Match[str]
+                MMM = re.Match[str]
                 """,
                 runtime="""
                 from collections.abc import Callable, Iterable
+                from re import Match
                 Q = dict[str, str]
                 R = dict[int, int]
                 S = tuple[int, int]
@@ -825,6 +892,8 @@ class StubtestUnit(unittest.TestCase):
                 Z = Callable[[str], bool]
                 QQ = Iterable[str]
                 RR = Iterable[str]
+                MM = Match[str]
+                MMM = Match[str]
                 """,
                 error=None
             )
