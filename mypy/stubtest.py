@@ -1028,13 +1028,13 @@ def verify_typealias(
             return
 
         # Do our best to figure out the fullname of the runtime object...
-        runtime_name: Union[str, Missing]
+        runtime_name: MaybeMissing[str]
         try:
             runtime_name = runtime_origin.__qualname__
         except AttributeError:
             runtime_name = getattr(runtime_origin, "__name__", MISSING)
         if not isinstance(runtime_name, Missing):
-            runtime_module: Union[str, Missing] = getattr(runtime_origin, "__module__", MISSING)
+            runtime_module: MaybeMissing[str] = getattr(runtime_origin, "__module__", MISSING)
             if not isinstance(runtime_module, Missing):
                 if runtime_module == "collections.abc" or (
                     runtime_module == "re" and runtime_name in {"Match", "Pattern"}
