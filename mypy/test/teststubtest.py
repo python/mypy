@@ -1041,8 +1041,7 @@ class StubtestUnit(unittest.TestCase):
             class X(Protocol):
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
-            # TODO: this should not be an error, #12820
-            error="X.__init__"
+            error=None
         )
 
     @collect_cases

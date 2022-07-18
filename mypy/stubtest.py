@@ -344,6 +344,9 @@ def verify_typeinfo(
         for m in cast(Any, vars)(runtime)
         if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
+    # Special-case the __init__ method for Protocols
+    if stub.is_protocol:
+        to_check.discard("__init__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
