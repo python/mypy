@@ -22,8 +22,7 @@ class TransformSuite(DataSuite):
              'semanal-types.test',
              'semanal-modules.test',
              'semanal-statements.test',
-             'semanal-abstractclasses.test',
-             'semanal-python2.test']
+             'semanal-abstractclasses.test']
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
