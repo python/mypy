@@ -1041,7 +1041,7 @@ def verify_typealias(
                 ):
                     runtime_module = "typing"
                 runtime_fullname = f"{runtime_module}.{runtime_name}"
-                if re.match(fr"_?{stub_target.type.fullname}", runtime_fullname):
+                if re.match(fr"_?{re.escape(stub_target.type.fullname)}", runtime_fullname):
                     # Okay, we're probably fine.
                     return
 
