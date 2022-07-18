@@ -1027,6 +1027,7 @@ def verify_typealias(
             )
             return
 
+        stub_origin = stub_target.type
         # Do our best to figure out the fullname of the runtime object...
         runtime_name: MaybeMissing[str]
         try:
@@ -1041,14 +1042,14 @@ def verify_typealias(
                 ):
                     runtime_module = "typing"
                 runtime_fullname = f"{runtime_module}.{runtime_name}"
-                if re.match(fr"_?{re.escape(stub_target.type.fullname)}", runtime_fullname):
+                if re.match(fr"_?{re.escape(stub_origin.fullname)}", runtime_fullname):
                     # Okay, we're probably fine.
                     return
 
         # Okay, either we couldn't construct a fullname
         # or the fullname of the stub didn't match the fullname of the runtime.
         # Fallback to a full structural check of the runtime vis-a-vis the stub.
-        yield from verify(stub_target.type, runtime_origin, object_path)
+        yield from verify(stub_origin, runtime_origin, object_path)
         return
     if isinstance(stub_target, mypy.types.UnionType):
         # complain if runtime is not a Union or UnionType
