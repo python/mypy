@@ -99,6 +99,7 @@ typecheck_files = [
     'check-annotated.test',
     'check-parameter-specification.test',
     'check-typevar-tuple.test',
+    'check-typevar-unbound.test',
     'check-generic-alias.test',
     'check-typeguard.test',
     'check-functools.test',
