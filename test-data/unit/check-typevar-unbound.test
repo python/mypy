@@ -42,7 +42,7 @@ def f(a: T, b: T, c: int) -> T:
 
 
 [case testNestedBoundTypeVar]
-from typing import Callable, Union, TypeVar
+from typing import Callable, List, Union, Tuple, TypeVar
 
 T = TypeVar('T')
 
@@ -50,4 +50,10 @@ def f(a: Union[int, T], b: str) -> T:
     ...
 
 def g(a: Callable[..., T], b: str) -> T:
+    ...
+
+def h(a: List[Union[Callable[..., T]]]) -> T:
+    ...
+
+def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
     ...
