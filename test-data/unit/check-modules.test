@@ -423,20 +423,6 @@ __all__ = [1, 2, 3]
 [out]
 main:2: error: Type of __all__ must be "Sequence[str]", not "List[int]"
 
-[case testAllMustBeSequenceStr_python2]
-import typing
-__all__ = [1, 2, 3]
-[builtins_py2 fixtures/module_all_python2.pyi]
-[out]
-main:2: error: Type of __all__ must be "Sequence[unicode]", not "List[int]"
-
-[case testAllUnicodeSequenceOK_python2]
-import typing
-__all__ = [u'a', u'b', u'c']
-[builtins_py2 fixtures/module_all_python2.pyi]
-
-[out]
-
 [case testUnderscoreExportedValuesInImportAll]
 import typing
 from m import *
@@ -1304,27 +1290,6 @@ class Sub(x.Base):
     fattr = 0.0
     sattr = ''
     battr = b''
-[out]
-
-[case testImportCycleStability6_python2]
-import y
-[file x.py]
-class Base:
-    pass
-def foo():
-    # type: () -> None
-    import y
-    i = y.Sub.iattr  # type: int
-    f = y.Sub.fattr  # type: float
-    s = y.Sub.sattr  # type: str
-    u = y.Sub.uattr  # type: unicode
-[file y.py]
-import x
-class Sub(x.Base):
-    iattr = 0
-    fattr = 0.0
-    sattr = ''
-    uattr = u''
 [out]
 
 -- This case tests module-level variables.
@@ -2956,28 +2921,6 @@ __all__ = ['C']
 [file m4.pyi]
 class C: pass
 [builtins fixtures/list.pyi]
-
-[case testMypyPathAndPython2Dir_python2]
-# flags: --config-file tmp/mypy.ini
-from m import f
-from mm import g
-f(1)
-f('x')  # E: Argument 1 to "f" has incompatible type "str"; expected "int"
-g()
-g(1)  # E: Too many arguments for "g"
-
-[file xx/@python2/m.pyi]
-def f(x: int) -> None: ...
-
-[file xx/m.pyi]
-def f(x: str) -> None: ...
-
-[file xx/mm.pyi]
-def g() -> None: ...
-
-[file mypy.ini]
-\[mypy]
-mypy_path = tmp/xx
 
 [case testMypyPathAndPython2Dir]
 # flags: --config-file tmp/mypy.ini
