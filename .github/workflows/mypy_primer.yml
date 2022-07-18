@@ -42,7 +42,7 @@ jobs:
           echo "new commit"
           git rev-list --format=%s --max-count=1 $GITHUB_SHA
 
-          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/master)
+          MERGE_BASE=$(git merge-base $GITHUB_SHA origin/${{ github.base_ref }})
           git checkout -b base_commit $MERGE_BASE
           echo "base commit"
           git rev-list --format=%s --max-count=1 base_commit
