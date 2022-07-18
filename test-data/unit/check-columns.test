@@ -170,22 +170,6 @@ z: Iterable[bad] # E:13: Variable "__main__.bad" is not valid as a type \
 h: bad[int] # E:4: Variable "__main__.bad" is not valid as a type \
             # N:4: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-[case testColumnInvalidType_python2]
-
-from typing import Iterable
-
-bad = 0
-
-if int():
-    def g(x): # E:5: Variable "__main__.bad" is not valid as a type \
-              # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-        # type: (bad) -> None
-        y = 0  # type: bad  # E:9: Variable "__main__.bad" is not valid as a type \
-                            # N:9: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
-    z = ()  # type: Iterable[bad] # E:5: Variable "__main__.bad" is not valid as a type \
-                                  # N:5: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
 [case testColumnFunctionMissingTypeAnnotation]
 # flags: --disallow-untyped-defs
 if int():
@@ -215,14 +199,6 @@ def g(x):
 def f(x, y): pass
 (f()) # E:2: Missing positional arguments "x", "y" in call to "f"
 (f(y=1)) # E:2: Missing positional argument "x" in call to "f"
-
-[case testColumnTooFewSuperArgs_python2]
-class A:
-    def f(self):
-        pass
-class B(A):
-    def f(self):   # type: () -> None
-        super().f()  # E:9: Too few arguments for "super"
 
 [case testColumnListOrDictItemHasIncompatibleType]
 from typing import List, Dict
@@ -316,12 +292,6 @@ if int():
         # type: (int) -> None
         pass
 
-[case testColumnTypeSignatureHasTooFewArguments_python2]
-if int():
-    def f(x, y): # E:5: Type signature has too few arguments
-        # type: (int) -> None
-        pass
-
 [case testColumnRevealedType]
 if int():
     reveal_type(1) # N:17: Revealed type is "Literal[1]?"
@@ -372,22 +342,6 @@ class B(A):
     @property  # E:6: Read-only property cannot override read-write property
     def x(self) -> int: pass
 [builtins fixtures/property.pyi]
-
-[case testColumnProperty_python2]
-class A:
-    @property
-    def x(self): # type: () -> int
-        pass
-
-    @x.setter
-    def x(self, x): # type: (int) -> None
-        pass
-
-class B(A):
-    @property  # E:5: Read-only property cannot override read-write property
-    def x(self): # type: () -> int
-        pass
-[builtins_py2 fixtures/property_py2.pyi]
 
 [case testColumnOverloaded]
 from typing import overload, Any

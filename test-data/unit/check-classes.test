@@ -5042,16 +5042,6 @@ reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 reveal_type(type(B).x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testSixMetaclass_python2]
-import six
-class M(type):
-    x = 5
-class A(six.with_metaclass(M)): pass
-@six.add_metaclass(M)
-class B: pass
-reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
-reveal_type(type(B).x)  # N: Revealed type is "builtins.int"
-
 [case testFromSixMetaclass]
 from six import with_metaclass, add_metaclass
 class M(type):
@@ -5194,13 +5184,6 @@ class M(type):
 class A(future.utils.with_metaclass(M)): pass
 reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-
-[case testFutureMetaclass_python2]
-import future.utils
-class M(type):
-    x = 5
-class A(future.utils.with_metaclass(M)): pass
-reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 
 [case testFromFutureMetaclass]
 from future.utils import with_metaclass
