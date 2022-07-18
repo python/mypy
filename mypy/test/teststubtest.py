@@ -771,7 +771,7 @@ class StubtestUnit(unittest.TestCase):
             LL = typing.Iterable[str]
             """,
             runtime="""
-            from typing import Iterable, Dict, List
+            from typing import Iterable, Dict
             K = Dict[str, str]
             L = Dict[int, int]
             KK = Iterable[str]
