@@ -1067,12 +1067,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
     def check_unbound_return_typevar(self, typ: CallableType) -> None:
         """Fails when the return typevar is not defined in arguments."""
-        arg_type_visitor = CollectArgTypes()
-        for argtype in typ.arg_types:
-            argtype.accept(arg_type_visitor)
+        if (typ.ret_type in typ.variables):
+            arg_type_visitor = CollectArgTypes()
+            for argtype in typ.arg_types:
+                argtype.accept(arg_type_visitor)
 
-        if typ.ret_type not in arg_type_visitor.arg_types and typ.ret_type in typ.variables:
-            self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
+            if typ.ret_type not in arg_type_visitor.arg_types:
+                self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
