@@ -14,6 +14,15 @@ MYPY = False
 if MYPY:
     from typing import List
 
+if __name__ == '__main__':
+    # HACK: We don't want to pick up mypy.types as the top-level types
+    #       module. This could happen if this file is run as a script.
+    #       This workaround fixes it.
+    old_sys_path = sys.path
+    sys.path = sys.path[1:]
+    import types  # noqa
+    sys.path = old_sys_path
+
 
 def getsearchdirs():
     # type: () -> List[str]
