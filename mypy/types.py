@@ -240,6 +240,9 @@ class Type(mypy.nodes.Context):
     def deserialize(cls, data: JsonDict) -> 'Type':
         raise NotImplementedError(f'Cannot deserialize {cls.__name__} instance')
 
+    def is_singleton_type(self) -> bool:
+        return False
+
 
 class TypeAliasType(Type):
     """A type alias to another type.
@@ -1027,6 +1030,9 @@ class NoneType(ProperType):
         assert data['.class'] == 'NoneType'
         return NoneType()
 
+    def is_singleton_type(self) -> bool:
+        return True
+
 
 # NoneType used to be called NoneTyp so to avoid needlessly breaking
 # external plugins we keep that alias here.
@@ -1230,6 +1236,21 @@ class Instance(ProperType):
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
+
+    def is_singleton_type(self) -> bool:
+        # TODO:
+        # Also make this return True if the type corresponds to NotImplemented?
+        return (
+            self.type.is_enum and len(self.get_enum_values()) == 1
+            or self.type.fullname == 'builtins.ellipsis'
+        )
+
+    def get_enum_values(self) -> List[str]:
+        """Return the list of values for an Enum."""
+        return [
+            name for name, sym in self.type.names.items()
+            if isinstance(sym.node, mypy.nodes.Var)
+        ]
 
 
 class FunctionLike(ProperType):
@@ -2267,6 +2288,9 @@ class LiteralType(ProperType):
             value=data['value'],
             fallback=Instance.deserialize(data['fallback']),
         )
+
+    def is_singleton_type(self) -> bool:
+        return self.is_enum_literal() or isinstance(self.value, bool)
 
 
 class StarType(ProperType):
