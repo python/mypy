@@ -30,38 +30,6 @@ def f(x):  # E: Invalid type comment or annotation
   # type: (a + b) -> None
   pass
 
-[case testFastParseInvalidTypes2]
-# flags: --py2
-# All of these should not crash
-from typing import Callable, Tuple, Iterable
-
-x = None # type: Tuple[int, str].x # E: Invalid type comment or annotation
-a = None # type: Iterable[x].x # E: Invalid type comment or annotation
-b = None # type: Tuple[x][x] # E: Invalid type comment or annotation
-c = None # type: Iterable[x][x] # E: Invalid type comment or annotation
-d = None # type: Callable[..., int][x] # E: Invalid type comment or annotation
-e = None # type: Callable[..., int].x # E: Invalid type comment or annotation
-
-def f1(x): # E: Invalid type comment or annotation
-    # type: (Tuple[int, str].x) -> None
-    pass
-def f2(x): # E: Invalid type comment or annotation
-    # type: (Iterable[x].x) -> None
-    pass
-def f3(x): # E: Invalid type comment or annotation
-    # type: (Tuple[x][x]) -> None
-    pass
-def f4(x): # E: Invalid type comment or annotation
-    # type: (Iterable[x][x]) -> None
-    pass
-def f5(x): # E: Invalid type comment or annotation
-    # type: (Callable[..., int][x]) -> None
-    pass
-def f6(x): # E: Invalid type comment or annotation
-    # type: (Callable[..., int].x) -> None
-    pass
-
-
 [case testFastParseInvalidTypes3]
 # flags: --python-version 3.6
 # All of these should not crash
@@ -460,10 +428,6 @@ class Bla:
 def call() -> str: pass
 
 [builtins fixtures/module.pyi]
-
-[case testNoCrashOnImportFromStarPython2]
-# flags: --py2
-from . import * # E: No parent module -- cannot perform relative import
 
 [case testSpuriousTrailingComma_python2]
 from typing import Optional

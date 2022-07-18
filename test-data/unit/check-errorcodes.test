@@ -236,10 +236,6 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
-[case testErrorCodeIgnoreWithNote_python2]
-import nostub  # type: ignore[import]
-from defusedxml import xyz  # type: ignore[import]
-
 [case testErrorCodeBadIgnore]
 import nostub # type: ignore xyz  # E: Invalid "type: ignore" comment  [syntax]
 import nostub # type: ignore[  # E: Invalid "type: ignore" comment  [syntax]
@@ -271,23 +267,7 @@ main:2: error: Invalid "type: ignore" comment  [syntax]
 main:3: error: Invalid "type: ignore" comment  [syntax]
 main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
-main:6: error: Invalid "type: ignore" comment  [syntax]
-
-[case testErrorCodeBadIgnore_python2]
-import nostub # type: ignore xyz
-import nostub # type: ignore[xyz  # Comment [x]
-import nostub # type: ignore[xyz][xyz]
-x = 0  # type: ignore[
-def f(x,  # type: int  # type: ignore[
-      ):
-    # type: (...) -> None
-    pass
-[out]
-main:1: error: Invalid "type: ignore" comment  [syntax]
-main:2: error: Invalid "type: ignore" comment  [syntax]
-main:3: error: Invalid "type: ignore" comment  [syntax]
-main:4: error: Invalid "type: ignore" comment  [syntax]
-main:5: error: Invalid "type: ignore" comment  [syntax]
+main:6: error: Invalid "type: ignore" comment  [syntax
 
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
@@ -301,14 +281,6 @@ g()  # E: Missing named argument "x" for "g"  [call-arg]
 def h(x: int, y: int, z: int) -> None: pass
 h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
 h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
-
-[case testErrorCodeSuperArgs_python2]
-class A:
-    def f(self):
-        pass
-class B(A):
-    def f(self):  # type: () -> None
-        super().f()  # E: Too few arguments for "super"  [call-arg]
 
 [case testErrorCodeArgType]
 def f(x: int) -> None: pass

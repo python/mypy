@@ -4557,22 +4557,6 @@ x: Optional[C]
 reveal_type(rp(x))  # N: Revealed type is "__main__.C"
 [out]
 
-[case testOptionalIsNotAUnionIfNoStrictOverloadStr]
-# flags: -2 --no-strict-optional
-
-from typing import Optional
-from m import relpath
-a = '' # type: Optional[str]
-reveal_type(relpath(a))  # N: Revealed type is "builtins.str"
-
-[file m.pyi]
-from typing import overload
-@overload
-def relpath(path: str) -> str: ...
-@overload
-def relpath(path: unicode) -> unicode: ...
-[out]
-
 [case testUnionMathTrickyOverload1]
 from typing import Union, overload
 
