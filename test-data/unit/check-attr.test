@@ -35,7 +35,7 @@ A(1, 2, 3, 4)  # E: Argument 2 to "A" has incompatible type "int"; expected "Lis
 A(1, [2], '3', 4, 5)  # E: Too many arguments for "A"
 [builtins fixtures/list.pyi]
 
-[case testAttrsPython2Annotations]
+[case testAttrsTypeComments]
 import attr
 from typing import List, ClassVar
 @attr.s
@@ -1032,28 +1032,6 @@ class C:
 reveal_type(C)  # N: Revealed type is "def (a: builtins.int, b: builtins.int) -> __main__.C"
 [builtins fixtures/bool.pyi]
 
-[case testAttrsNewStyleClassPy2]
-# flags: --py2
-import attr
-@attr.s
-class Good(object):
-    pass
-@attr.s
-class Bad:  # E: attrs only works with new-style classes
-    pass
-@attr.s
-class SubclassOfBad(Bad):
-    pass
-[builtins_py2 fixtures/bool.pyi]
-
-[case testAttrsAutoAttribsPy2]
-# flags: --py2
-import attr
-@attr.s(auto_attribs=True)  # E: auto_attribs is not supported in Python 2
-class A(object):
-    x = attr.ib()
-[builtins_py2 fixtures/bool.pyi]
-
 [case testAttrsFrozenSubclass]
 import attr
 
@@ -1290,17 +1268,6 @@ class C:
     b = attr.ib(15)
 
 [builtins fixtures/attr.pyi]
-
-[case testAttrsKwOnlyPy2]
-# flags: --py2
-import attr
-@attr.s(kw_only=True)  # E: kw_only is not supported in Python 2
-class A(object):
-    x = attr.ib()
-@attr.s
-class B(object):
-    x = attr.ib(kw_only=True)  # E: kw_only is not supported in Python 2
-[builtins_py2 fixtures/bool.pyi]
 
 [case testAttrsDisallowUntypedWorksForward]
 # flags: --disallow-untyped-defs
