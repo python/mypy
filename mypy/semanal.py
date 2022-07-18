@@ -3807,7 +3807,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
         self.statement = d
-        if not self.is_func_scope():
+        if self.is_module_scope():
             self.fail("nonlocal declaration not allowed at module level", d)
         else:
             for name in d.names:
