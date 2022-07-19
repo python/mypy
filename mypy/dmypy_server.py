@@ -23,6 +23,7 @@ import mypy.build
 import mypy.errors
 import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.messages import format_type
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
@@ -31,6 +32,7 @@ from mypy.fswatcher import FileSystemWatcher, FileData
 from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
+from mypy.traverser import find_by_location
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
@@ -832,6 +834,35 @@ class Server:
                 changed.append((s.module, s.path))
 
         return changed, removed
+
+    def parse_location(self, location: str) -> Tuple[str, int, int, int, int]:
+        if location.count(':') != 4:
+            raise ValueError("Format should be file:line:column:end_line:end:end_column")
+        parts = location.split(":")
+        module = parts[0]
+        line, column, end_line, end_column = [int(p) for p in parts[1:]]
+        return module, line, column, end_line, end_column
+
+    def cmd_get_type(self, location: str) -> Dict[str, object]:
+        try:
+            module, line, column, end_line, end_column = self.parse_location(location)
+        except ValueError as err:
+            return {'error': str(err)}
+
+        tree = self.fine_grained_manager.manager.modules.get(module)
+        if tree is None:
+            return {"err": f"Unknown module {module}"}
+        try:
+            expression = find_by_location(tree, line, column, end_line, end_column)
+        except ValueError as err:
+            return {'error': str(err)}
+
+        if expression is None:
+            span = ':'.join(map(str, [line, column, end_line, end_column]))
+            return {"err": f"Can't find expression at span {span}"}
+        type = self.fine_grained_manager.manager.all_types[expression]
+        type_str = format_type(type)
+        return {'out': type_str, 'err': "", 'status': 0}
 
     def cmd_suggest(self,
                     function: str,
