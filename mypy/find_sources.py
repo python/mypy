@@ -44,7 +44,30 @@ def create_source_list(paths: Sequence[str], options: Options,
         else:
             mod = os.path.basename(path) if options.scripts_are_modules else None
             sources.append(BuildSource(path, mod, None))
-    return sources
+
+    filtered_sources: List[BuildSource] = \
+        list(filter(lambda source:
+                    source.path is None
+                    or (not matches_exclude(
+                        source.path, finder.exclude, finder.fscache, finder.verbosity >= 2)),
+                    sources))
+
+    unsupported_files: List[BuildSource] = \
+        list(filter(lambda source:
+                    source.path is not None
+                    and not source.path.endswith(PY_EXTENSIONS),
+             sources))
+
+    if unsupported_files:
+        unsupported_text = "Unsupported file type(s) where found in the source tree. "
+        unsupported_text += "This can lead to an error (only .py and .pyi are supported):"
+        print(unsupported_text)
+        for file in unsupported_files:
+            print(file.path)
+        print("Use --exclude or add exclude to the config file. More information is here: "
+        "https://mypy.readthedocs.io/en/stable/config_file.html?highlight=exclude#confval-exclude")
+
+    return filtered_sources
 
 
 def keyfunc(name: str) -> Tuple[bool, int, str]:
