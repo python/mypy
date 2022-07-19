@@ -3,6 +3,7 @@
 from typing import Dict, List, Set, Tuple, Optional
 from typing_extensions import Final
 
+from mypy import message_registry
 from mypy.nodes import (
     ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_POS, ARG_STAR, ARG_STAR2, MDEF,
     Argument, AssignmentStmt, CallExpr,  TypeAlias,  Context, Expression, JsonDict,
@@ -11,7 +12,8 @@ from mypy.nodes import (
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type, add_attribute_to_class,
+    add_method, _get_decorator_bool_argument, deserialize_and_fixup_type,
+    _has_decorator_argument, add_attribute_to_class,
 )
 from mypy.typeops import map_type_from_supertype
 from mypy.types import (
@@ -30,7 +32,6 @@ dataclass_makers: Final = {
 field_makers: Final = {
     'dataclasses.field',
 }
-
 
 SELF_TVAR_NAME: Final = "_DT"
 
@@ -138,10 +139,14 @@ class DataclassTransformer:
             'eq': _get_decorator_bool_argument(self._ctx, 'eq', True),
             'order': _get_decorator_bool_argument(self._ctx, 'order', False),
             'frozen': _get_decorator_bool_argument(self._ctx, 'frozen', False),
-            'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
             'match_args': _get_decorator_bool_argument(self._ctx, 'match_args', True),
+            'unsafe_hash': _get_decorator_bool_argument(self._ctx, 'unsafe_hash', False),
         }
         py_version = self._ctx.api.options.python_version
+        if py_version >= (3, 10):
+            decorator_arguments.update({
+                'slots': _get_decorator_bool_argument(self._ctx, 'slots', False),
+            })
 
         # If there are no attributes, it may be that the semantic analyzer has not
         # processed them yet. In order to work around this, we can simply skip generating
@@ -222,8 +227,8 @@ class DataclassTransformer:
         else:
             self._propertize_callables(attributes)
 
-        if decorator_arguments['slots']:
-            self.add_slots(info, attributes, correct_version=py_version >= (3, 10))
+        self.add_slots(info, decorator_arguments, attributes, current_version=py_version)
+        self.add_hash(info, decorator_arguments)
 
         self.reset_init_only_vars(info, attributes)
 
@@ -249,18 +254,20 @@ class DataclassTransformer:
 
     def add_slots(self,
                   info: TypeInfo,
+                  decorator_arguments: Dict[str, bool],
                   attributes: List[DataclassAttribute],
                   *,
-                  correct_version: bool) -> None:
-        if not correct_version:
+                  current_version: Tuple[int, ...]) -> None:
+        if _has_decorator_argument(self._ctx, 'slots') and current_version < (3, 10):
             # This means that version is lower than `3.10`,
             # it is just a non-existent argument for `dataclass` function.
             self._ctx.api.fail(
-                'Keyword argument "slots" for "dataclass" '
-                'is only valid in Python 3.10 and higher',
+                message_registry.DATACLASS_VERSION_DEPENDENT_KEYWORD.format('slots', '3.10'),
                 self._ctx.reason,
             )
             return
+        if not decorator_arguments.get('slots'):
+            return  # `slots` is not provided, skip.
 
         generated_slots = {attr.name for attr in attributes}
         if ((info.slots is not None and info.slots != generated_slots)
@@ -270,14 +277,71 @@ class DataclassTransformer:
             # And `@dataclass(slots=True)` is used.
             # In runtime this raises a type error.
             self._ctx.api.fail(
-                '"{}" both defines "__slots__" and is used with "slots=True"'.format(
-                    self._ctx.cls.name,
-                ),
+                message_registry.DATACLASS_TWO_KINDS_OF_SLOTS.format(self._ctx.cls.name),
                 self._ctx.cls,
             )
             return
 
         info.slots = generated_slots
+
+    def add_hash(self,
+                 info: TypeInfo,
+                 decorator_arguments: Dict[str, bool]) -> None:
+        unsafe_hash = decorator_arguments.get('unsafe_hash', False)
+        eq = decorator_arguments['eq']
+        frozen = decorator_arguments['frozen']
+
+        existing_hash = info.names.get('__hash__')
+        existing = existing_hash and not existing_hash.plugin_generated
+
+        # https://github.com/python/cpython/blob/24af9a40a8f85af813ea89998aa4e931fcc78cd9/Lib/dataclasses.py#L846
+        if ((not unsafe_hash and not eq and not frozen)
+                or (not unsafe_hash and not eq and frozen)):
+            # "No __eq__, use the base class __hash__"
+            # It will use the base's class `__hash__` method by default.
+            # Nothing to do here.
+            pass
+        elif not unsafe_hash and eq and not frozen:
+            # "the default, not hashable"
+            # In this case, we just add `__hash__: None` to the body of the class
+            if not existing:
+                add_attribute_to_class(
+                    self._ctx.api,
+                    self._ctx.cls,
+                    name='__hash__',
+                    typ=NoneType(),
+                )
+        elif not unsafe_hash and eq and frozen:
+            # "Frozen, so hashable, allows override"
+            # In this case we never raise an error, even if superclass definition
+            # is incompatible.
+            if not existing:
+                add_method(
+                    self._ctx,
+                    name='__hash__',
+                    args=[],
+                    return_type=self._ctx.api.named_type('builtins.int'),
+                )
+        else:
+            # "Has no __eq__, but hashable" or
+            # "Not frozen, but hashable" or
+            # "Frozen, so hashable"
+            if existing:
+                # When class already has `__hash__` defined, we do not allow
+                # to override it. So, raise an error and do nothing.
+                self._ctx.api.fail(
+                    message_registry.DATACLASS_HASH_OVERRIDE.format(self._ctx.cls.name),
+                    self._ctx.cls,
+                )
+                return
+
+            # This means that class does not have `__hash__`, but we can add it.
+            add_method(
+                self._ctx,
+                name='__hash__',
+                args=[],
+                return_type=self._ctx.api.named_type('builtins.int'),
+            )
 
     def reset_init_only_vars(self, info: TypeInfo, attributes: List[DataclassAttribute]) -> None:
         """Remove init-only vars from the class and reset init var declarations."""
@@ -325,6 +389,12 @@ class DataclassTransformer:
             # don't have to worry about it.
             lhs = stmt.lvalues[0]
             if not isinstance(lhs, NameExpr):
+                continue
+            if lhs.name == '__hash__':
+                # Special case, annotation like `__hash__: None` is fine
+                # It is not a field, it is:
+                # <slot wrapper '__hash__' of 'object' objects>
+                # https://github.com/python/mypy/issues/11495
                 continue
 
             sym = cls.info.names.get(lhs.name)
