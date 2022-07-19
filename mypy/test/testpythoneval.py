@@ -55,12 +55,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         '--no-silence-site-packages',
         '--no-error-summary',
     ]
-    py2 = testcase.name.lower().endswith('python2')
-    if py2:
-        raise ValueError(testcase.name)
-    else:
-        interpreter = python3_path
-        mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
+    interpreter = python3_path
+    mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
     m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
     if m:
