@@ -7,7 +7,8 @@ from mypy.types import (
     Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
     TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
     PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType
+    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
+    UnpackType, TypeVarTupleType,
 )
 from mypy.maptype import map_instance_to_supertype
 from mypy.subtypes import (
@@ -16,7 +17,7 @@ from mypy.subtypes import (
 )
 from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
-from mypy import state
+from mypy.state import state
 
 
 class InstanceJoiner:
@@ -86,10 +87,13 @@ class InstanceJoiner:
     def join_instances_via_supertype(self, t: Instance, s: Instance) -> ProperType:
         # Give preference to joins via duck typing relationship, so that
         # join(int, float) == float, for example.
-        if t.type._promote and is_subtype(t.type._promote, s):
-            return join_types(t.type._promote, s, self)
-        elif s.type._promote and is_subtype(s.type._promote, t):
-            return join_types(t, s.type._promote, self)
+        for p in t.type._promote:
+            if is_subtype(p, s):
+                return join_types(p, s, self)
+        for p in s.type._promote:
+            if is_subtype(p, t):
+                return join_types(t, p, self)
+
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
@@ -100,11 +104,12 @@ class InstanceJoiner:
             if best is None or is_better(res, best):
                 best = res
         assert best is not None
-        promote = get_proper_type(t.type._promote)
-        if isinstance(promote, Instance):
-            res = self.join_instances(promote, s)
-            if is_better(res, best):
-                best = res
+        for promote in t.type._promote:
+            promote = get_proper_type(promote)
+            if isinstance(promote, Instance):
+                res = self.join_instances(promote, s)
+                if is_better(res, best):
+                    best = res
         return best
 
 
@@ -255,6 +260,20 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if self.s == t:
             return t
         return self.default(self.s)
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        if self.s == t:
+            return t
+        return self.default(self.s)
+
+    def visit_unpack_type(self, t: UnpackType) -> UnpackType:
+        raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        if self.s == t:
+            return t
+        else:
+            return self.default(self.s)
 
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
@@ -436,7 +455,7 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)

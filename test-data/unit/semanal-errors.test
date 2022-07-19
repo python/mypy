@@ -293,8 +293,8 @@ from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m.n"
-main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
+main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testErrorInImportedModule]
 import m
@@ -839,6 +839,15 @@ cast(str, *None) # E: "cast" must be called with 2 positional arguments
 cast(str, target=None) # E: "cast" must be called with 2 positional arguments
 [out]
 
+[case testInvalidAssertType]
+from typing import assert_type
+assert_type(1, type=int) # E: "assert_type" must be called with 2 positional arguments
+assert_type(1, *int) # E: "assert_type" must be called with 2 positional arguments
+assert_type() # E: "assert_type" expects 2 arguments
+assert_type(1, int, "hello") # E: "assert_type" expects 2 arguments
+assert_type(int, 1)  # E: Invalid type: try using Literal[1] instead?
+assert_type(1, int[int])  # E: "int" expects no type arguments, but 1 given
+
 [case testInvalidAnyCall]
 from typing import Any
 Any(str, None)  # E: Any(...) is no longer supported. Use cast(Any, ...) instead
@@ -858,7 +867,8 @@ x = None # type: Callable[int, str]
 y = None # type: Callable[int]
 z = None # type: Callable[int, int, int]
 [out]
-main:2: error: The first argument to Callable must be a list of types or "..."
+main:2: error: The first argument to Callable must be a list of types, parameter specification, or "..."
+main:2: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas
 main:3: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 main:4: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 
@@ -1081,7 +1091,7 @@ x = TypeVar('x') # E: Cannot redefine "x" as a type variable
 
 [case testTypevarWithType]
 from typing import TypeVar
-x = TypeVar('x') # type: int # E: Cannot declare the type of a type variable
+x = TypeVar('x') # type: int # E: Cannot declare the type of a TypeVar or similar construct
 [out]
 
 [case testRedefineTypevar]
@@ -1432,7 +1442,7 @@ from typing_extensions import ParamSpec
 
 TParams = ParamSpec('TParams')
 TP = ParamSpec('?')  # E: String argument 1 "?" to ParamSpec(...) does not match variable name "TP"
-TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specification
+TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
 
 [out]
 
@@ -1442,3 +1452,25 @@ TP2: int = ParamSpec('TP2')  # E: Cannot declare the type of a parameter specifi
 from typing_extensions import Annotated
 # Next line should not crash:
 class A(Annotated): pass  # E: Annotated[...] must have exactly one type argument and at least one annotation
+
+[case testInvalidUnpackTypes]
+from typing_extensions import Unpack
+from typing import Tuple
+
+heterogenous_tuple: Tuple[Unpack[Tuple[int, str]]]
+homogenous_tuple: Tuple[Unpack[Tuple[int, ...]]]
+bad: Tuple[Unpack[int]]  # E: builtins.int cannot be unpacked (must be tuple or TypeVarTuple)
+[builtins fixtures/tuple.pyi]
+
+[case testTypeVarTuple]
+from typing_extensions import TypeVarTuple, Unpack
+
+TVariadic = TypeVarTuple('TVariadic')
+TP = TypeVarTuple('?')  # E: String argument 1 "?" to TypeVarTuple(...) does not match variable name "TP"
+TP2: int = TypeVarTuple('TP2')  # E: Cannot declare the type of a TypeVar or similar construct
+TP3 = TypeVarTuple()  # E: Too few arguments for TypeVarTuple()
+TP4 = TypeVarTuple('TP4', 'TP4')  # E: Only the first argument to TypeVarTuple has defined semantics
+TP5 = TypeVarTuple(t='TP5')  # E: TypeVarTuple() expects a string literal as first argument
+
+x: TVariadic  # E: TypeVarTuple "TVariadic" is unbound
+y: Unpack[TVariadic]  # E: TypeVarTuple "TVariadic" is unbound

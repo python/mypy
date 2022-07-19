@@ -1,5 +1,19 @@
 from typing import IO, Any, overload
 
+__all__ = [
+    "get_config_h_filename",
+    "get_config_var",
+    "get_config_vars",
+    "get_makefile_filename",
+    "get_path",
+    "get_path_names",
+    "get_paths",
+    "get_platform",
+    "get_python_version",
+    "get_scheme_names",
+    "parse_config_h",
+]
+
 def get_config_var(name: str) -> str | None: ...
 @overload
 def get_config_vars() -> dict[str, Any]: ...

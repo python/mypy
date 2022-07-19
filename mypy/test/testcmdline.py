@@ -18,6 +18,13 @@ from mypy.test.helpers import (
     assert_string_arrays_equal, normalize_error_messages, check_test_output_files
 )
 
+try:
+    import lxml  # type: ignore
+except ImportError:
+    lxml = None
+
+import pytest
+
 # Path to Python 3 interpreter
 python3_path = sys.executable
 
@@ -35,6 +42,8 @@ class PythonCmdlineSuite(DataSuite):
     native_sep = True
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if lxml is None and os.path.basename(testcase.file) == 'reports.test':
+            pytest.skip("Cannot import lxml. Is it installed?")
         for step in [1] + sorted(testcase.output2):
             test_python_cmdline(testcase, step)
 
@@ -46,7 +55,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     program_path = os.path.join(test_temp_dir, program)
     with open(program_path, 'w', encoding='utf8') as file:
         for s in testcase.input:
-            file.write('{}\n'.format(s))
+            file.write(f'{s}\n')
     args = parse_args(testcase.input[0])
     custom_cwd = parse_cwd(testcase.input[1]) if len(testcase.input) > 1 else None
     args.append('--show-traceback')
@@ -56,7 +65,10 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
     fixed = [python3_path, '-m', 'mypy']
     env = os.environ.copy()
     env.pop('COLUMNS', None)
+    extra_path = os.path.join(os.path.abspath(test_temp_dir), 'pypath')
     env['PYTHONPATH'] = PREFIX
+    if os.path.isdir(extra_path):
+        env['PYTHONPATH'] += os.pathsep + extra_path
     process = subprocess.Popen(fixed + args,
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
@@ -94,7 +106,7 @@ def test_python_cmdline(testcase: DataDrivenTestCase, step: int) -> None:
             out = normalize_error_messages(err + out)
         obvious_result = 1 if out else 0
         if obvious_result != result:
-            out.append('== Return code: {}'.format(result))
+            out.append(f'== Return code: {result}')
         expected_out = testcase.output if step == 1 else testcase.output2[step]
         # Strip "tmp/" out of the test so that # E: works...
         expected_out = [s.replace("tmp" + os.sep, "") for s in expected_out]

@@ -188,10 +188,10 @@ class SubtypingSuite(Suite):
     #  * generic function types
 
     def assert_subtype(self, s: Type, t: Type) -> None:
-        assert is_subtype(s, t), '{} not subtype of {}'.format(s, t)
+        assert is_subtype(s, t), f'{s} not subtype of {t}'
 
     def assert_not_subtype(self, s: Type, t: Type) -> None:
-        assert not is_subtype(s, t), '{} subtype of {}'.format(s, t)
+        assert not is_subtype(s, t), f'{s} subtype of {t}'
 
     def assert_strict_subtype(self, s: Type, t: Type) -> None:
         self.assert_subtype(s, t)

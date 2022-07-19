@@ -1445,7 +1445,7 @@ def deco(f: Callable[[T], int]) -> Callable[[T], int]:
     a.x
     return f
 [out]
-tmp/a.py:6: note: Revealed type is "def (builtins.str*) -> builtins.int"
+tmp/a.py:6: note: Revealed type is "def (builtins.str) -> builtins.int"
 
 [case testDeferredClassContext]
 class A:
@@ -1549,9 +1549,9 @@ second = XT[str]()
 last = XT[G]()
 
 reveal_type(notes) # N: Revealed type is "y.G[y.G[builtins.int]]"
-reveal_type(another) # N: Revealed type is "y.G[y.G*[builtins.int]]"
-reveal_type(second) # N: Revealed type is "y.G[builtins.str*]"
-reveal_type(last) # N: Revealed type is "y.G[y.G*[Any]]"
+reveal_type(another) # N: Revealed type is "y.G[y.G[builtins.int]]"
+reveal_type(second) # N: Revealed type is "y.G[builtins.str]"
+reveal_type(last) # N: Revealed type is "y.G[y.G[Any]]"
 
 [file y.py]
 from typing import Generic, TypeVar
@@ -1929,6 +1929,28 @@ from package import mod as mod
 from package import mod as internal_detail
 [builtins fixtures/module.pyi]
 
+[case testNoReExportUnrelatedModule]
+from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+
+[file mod1/__init__.pyi]
+[file mod1/unrelated.pyi]
+x: int
+
+[file mod2.pyi]
+from mod1 import unrelated
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedSiblingPrefix]
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+
+[file pkg/__init__.pyi]
+[file pkg/unrelated.pyi]
+x: int
+
+[file pkg/unrel.pyi]
+from pkg import unrelated
+[builtins fixtures/module.pyi]
+
 [case testNoReExportChildStubs]
 import mod
 from mod import C, D  # E: Module "mod" has no attribute "C"
@@ -1962,7 +1984,7 @@ x = 42
 [case testModuleAliasToQualifiedImport]
 import package.module
 alias = package.module
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 [file package/__init__.py]
 
 [file package/module.py]
@@ -1975,7 +1997,7 @@ def whatever(x: T) -> T: pass
 import mod
 import othermod
 alias = mod.submod
-reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str*"
+reveal_type(alias.whatever('/'))  # N: Revealed type is "builtins.str"
 if int():
     alias = othermod  # E: Cannot assign multiple modules to name "alias" without explicit "types.ModuleType" annotation
 [file mod.py]
@@ -3190,3 +3212,35 @@ from dir1 import *
 from .test2 import *
 [file dir1/test2.py]
 from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
+
+[case testIncompatibleOverrideFromCachedModuleIncremental]
+import b
+[file a.py]
+class Foo:
+    def frobnicate(self, *args, **kwargs): pass
+[file b.py]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self) -> None: pass
+[file b.py.2]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass
+[file b.py.3]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[out1]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self) -> None
+[out2]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None

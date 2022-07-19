@@ -20,7 +20,7 @@ from mypyc.ir.ops import (
     Assign, Unreachable, RaiseStandardError, LoadErrorValue, BasicBlock, TupleGet, Value, Register,
     Branch, NO_TRACEBACK_LINE_NO
 )
-from mypyc.ir.rtypes import RInstance, exc_rtuple
+from mypyc.ir.rtypes import RInstance, exc_rtuple, is_tagged
 from mypyc.primitives.generic_ops import py_delattr_op
 from mypyc.primitives.misc_ops import type_op, import_from_op
 from mypyc.primitives.exc_ops import (
@@ -35,7 +35,8 @@ from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl, FinallyNonlocalControl, TryFinallyNonlocalControl
 )
 from mypyc.irbuild.for_helpers import for_loop_helper
-from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.ast_helpers import process_conditional, is_borrow_friendly_expr
 
 GenFunc = Callable[[], None]
 
@@ -58,8 +59,10 @@ def transform_expression_stmt(builder: IRBuilder, stmt: ExpressionStmt) -> None:
     if isinstance(stmt.expr, StrExpr):
         # Docstring. Ignore
         return
-    # ExpressionStmts do not need to be coerced like other Expressions.
+    # ExpressionStmts do not need to be coerced like other Expressions, so we shouldn't
+    # call builder.accept here.
     stmt.expr.accept(builder.visitor)
+    builder.flush_keep_alives()
 
 
 def transform_return_stmt(builder: IRBuilder, stmt: ReturnStmt) -> None:
@@ -98,6 +101,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
         for (left, temp) in zip(first_lvalue.items, temps):
             assignment_target = builder.get_assignment_target(left)
             builder.assign(assignment_target, temp, stmt.line)
+        builder.flush_keep_alives()
         return
 
     line = stmt.rvalue.line
@@ -107,6 +111,7 @@ def transform_assignment_stmt(builder: IRBuilder, stmt: AssignmentStmt) -> None:
     for lvalue in lvalues:
         target = builder.get_assignment_target(lvalue)
         builder.assign(target, rvalue_reg, line)
+        builder.flush_keep_alives()
 
 
 def is_simple_lvalue(expr: Expression) -> bool:
@@ -116,15 +121,23 @@ def is_simple_lvalue(expr: Expression) -> bool:
 def transform_operator_assignment_stmt(builder: IRBuilder, stmt: OperatorAssignmentStmt) -> None:
     """Operator assignment statement such as x += 1"""
     builder.disallow_class_assignments([stmt.lvalue], stmt.line)
+    if (is_tagged(builder.node_type(stmt.lvalue))
+            and is_tagged(builder.node_type(stmt.rvalue))
+            and stmt.op in int_borrow_friendly_op):
+        can_borrow = (is_borrow_friendly_expr(builder, stmt.rvalue)
+                      and is_borrow_friendly_expr(builder, stmt.lvalue))
+    else:
+        can_borrow = False
     target = builder.get_assignment_target(stmt.lvalue)
-    target_value = builder.read(target, stmt.line)
-    rreg = builder.accept(stmt.rvalue)
+    target_value = builder.read(target, stmt.line, can_borrow=can_borrow)
+    rreg = builder.accept(stmt.rvalue, can_borrow=can_borrow)
     # the Python parser strips the '=' from operator assignment statements, so re-add it
     op = stmt.op + '='
     res = builder.binary_op(target_value, rreg, op, stmt.line)
     # usually operator assignments are done in-place
     # but when target doesn't support that we need to manually assign
     builder.assign(target, res, res.line)
+    builder.flush_keep_alives()
 
 
 def transform_import(builder: IRBuilder, node: Import) -> None:
@@ -204,7 +217,7 @@ def transform_if_stmt(builder: IRBuilder, stmt: IfStmt) -> None:
     # If statements are normalized
     assert len(stmt.expr) == 1
 
-    builder.process_conditional(stmt.expr[0], if_body, else_body)
+    process_conditional(builder, stmt.expr[0], if_body, else_body)
     builder.activate_block(if_body)
     builder.accept(stmt.body[0])
     builder.goto(next)
@@ -223,7 +236,7 @@ def transform_while_stmt(builder: IRBuilder, s: WhileStmt) -> None:
 
     # Split block so that we get a handle to the top of the loop.
     builder.goto_and_activate(top)
-    builder.process_conditional(s.expr, body, normal_loop_exit)
+    process_conditional(builder, s.expr, body, normal_loop_exit)
 
     builder.activate_block(body)
     builder.accept(s.body)
@@ -666,7 +679,7 @@ def transform_del_item(builder: IRBuilder, target: AssignmentTarget, line: int) 
         if isinstance(target.obj_type, RInstance):
             cl = target.obj_type.class_ir
             if not cl.is_deletable(target.attr):
-                builder.error('"{}" cannot be deleted'.format(target.attr), line)
+                builder.error(f'"{target.attr}" cannot be deleted', line)
                 builder.note(
                     'Using "__deletable__ = ' +
                     '[\'<attr>\']" in the class body enables "del obj.<attr>"', line)

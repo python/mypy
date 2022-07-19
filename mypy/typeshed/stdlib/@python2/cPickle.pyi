@@ -1,7 +1,7 @@
-from typing import IO, Any, List
+from typing import IO, Any
 
 HIGHEST_PROTOCOL: int
-compatible_formats: List[str]
+compatible_formats: list[str]
 format_version: str
 
 class Pickler:

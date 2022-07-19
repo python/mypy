@@ -1,4 +1,5 @@
-from typing import Any, Callable, Iterator, Pattern
+from collections.abc import Callable, Iterator
+from typing import Any, Pattern
 
 ESCAPE: Pattern[str]
 ESCAPE_ASCII: Pattern[str]

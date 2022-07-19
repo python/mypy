@@ -68,7 +68,7 @@ bar = IdList([UserId(2)])
 baz = foo + bar
 reveal_type(foo)  # N: Revealed type is "__main__.IdList"
 reveal_type(bar)  # N: Revealed type is "__main__.IdList"
-reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId*]"
+reveal_type(baz)  # N: Revealed type is "builtins.list[__main__.UserId]"
 
 [builtins fixtures/list.pyi]
 [out]
@@ -96,7 +96,7 @@ Derived2(Base('a'))
 Derived3(Base(1))
 Derived3(Base('a'))
 
-reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str*"
+reveal_type(Derived1(Base('a')).getter())  # N: Revealed type is "builtins.str"
 reveal_type(Derived3(Base('a')).getter())  # N: Revealed type is "Any"
 [out]
 

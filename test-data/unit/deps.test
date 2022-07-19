@@ -872,6 +872,8 @@ c.y  # type: ignore
 <b.c.y> -> m
 <b.c> -> m
 <b> -> m
+<types.ModuleType.__await__> -> <types.ModuleType>
+<types.ModuleType> -> typing.Awaitable
 
 [case testIgnoredMissingInstanceAttribute]
 from a import C
@@ -879,10 +881,11 @@ C().x  # type: ignore
 [file a.py]
 class C: pass
 [out]
+<a.C.__await__> -> <a.C>
 <a.C.__init__> -> m
 <a.C.__new__> -> m
 <a.C.x> -> m
-<a.C> -> m
+<a.C> -> m, typing.Awaitable
 <a> -> m
 
 [case testIgnoredMissingClassAttribute]
@@ -1417,7 +1420,7 @@ class D(C):
 <m.C> -> m, m.C, m.D
 <m.D> -> m.D
 
-[case testDataclassDeps]
+[case testDataclassDepsOldVersion]
 # flags: --python-version 3.7
 from dataclasses import dataclass
 
@@ -1436,6 +1439,36 @@ class B(A):
 <m.A.(abstract)> -> <m.B.__init__>, m
 <m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__hash__> -> <m.B.__hash__>
+<m.A.__init__> -> <m.B.__init__>, m.B.__init__
+<m.A.__new__> -> <m.B.__new__>
+<m.A.x> -> <m.B.x>
+<m.A.y> -> <m.B.y>
+<m.A> -> m, m.A, m.B
+<m.A[wildcard]> -> m
+<m.B.y> -> m
+<m.B> -> m.B
+<m.Z> -> m
+<dataclasses.dataclass> -> m
+<dataclasses> -> m
+
+[case testDataclassDeps]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+Z = int
+
+@dataclass
+class A:
+    x: Z
+
+@dataclass
+class B(A):
+    y: int
+[builtins fixtures/dataclasses.pyi]
+
+[out]
+<m.A.(abstract)> -> <m.B.__init__>, m
+<m.A.__dataclass_fields__> -> <m.B.__dataclass_fields__>
 <m.A.__init__> -> <m.B.__init__>, m.B.__init__
 <m.A.__match_args__> -> <m.B.__match_args__>
 <m.A.__new__> -> <m.B.__new__>

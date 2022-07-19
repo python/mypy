@@ -1120,3 +1120,40 @@ def bar1(c: C1) -> None:
         reveal_type(c)  # N: Revealed type is "Tuple[builtins.int, fallback=__main__.C1]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testInvalidNamedTupleWithinFunction]
+from collections import namedtuple
+
+def f(fields) -> None:
+    TupleType = namedtuple("TupleType", fields) \
+        # E: List or tuple literal expected as the second argument to "namedtuple()"
+    class InheritFromTuple(TupleType):
+        pass
+    t: TupleType
+    it: InheritFromTuple
+    NT2 = namedtuple("bad", "x") # E: First argument to namedtuple() should be "NT2", not "bad"
+    nt2: NT2 = NT2(x=1)
+[builtins fixtures/tuple.pyi]
+
+[case testNamedTupleHasMatchArgs]
+# flags: --python-version 3.10
+from typing import NamedTuple
+class One(NamedTuple):
+    bar: int
+    baz: str
+o: One
+reveal_type(o.__match_args__)  # N: Revealed type is "Tuple[Literal['bar'], Literal['baz']]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleHasNoMatchArgsOldVersion]
+# flags: --python-version 3.9
+from typing import NamedTuple
+class One(NamedTuple):
+    bar: int
+    baz: str
+o: One
+reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

@@ -126,9 +126,7 @@ class Literals:
            ...
         """
         values = self.tuple_literals
-        value_by_index = {}
-        for value, index in values.items():
-            value_by_index[index] = value
+        value_by_index = {index: value for value, index in values.items()}
         result = []
         num = len(values)
         result.append(str(num))
@@ -142,9 +140,7 @@ class Literals:
 
 
 def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
-    value_by_index = {}
-    for value, index in values.items():
-        value_by_index[index] = value
+    value_by_index = {index: value for value, index in values.items()}
     result = []
     line: List[bytes] = []
     line_len = 0
@@ -165,9 +161,7 @@ def _encode_str_values(values: Dict[str, int]) -> List[bytes]:
 
 
 def _encode_bytes_values(values: Dict[bytes, int]) -> List[bytes]:
-    value_by_index = {}
-    for value, index in values.items():
-        value_by_index[index] = value
+    value_by_index = {index: value for value, index in values.items()}
     result = []
     line: List[bytes] = []
     line_len = 0
@@ -212,9 +206,7 @@ def _encode_int_values(values: Dict[int, int]) -> List[bytes]:
 
     Values are stored in base 10 and separated by 0 bytes.
     """
-    value_by_index = {}
-    for value, index in values.items():
-        value_by_index[index] = value
+    value_by_index = {index: value for value, index in values.items()}
     result = []
     line: List[bytes] = []
     line_len = 0
@@ -248,9 +240,7 @@ def _encode_float_values(values: Dict[float, int]) -> List[str]:
 
     The result contains the number of values followed by individual values.
     """
-    value_by_index = {}
-    for value, index in values.items():
-        value_by_index[index] = value
+    value_by_index = {index: value for value, index in values.items()}
     result = []
     num = len(values)
     result.append(str(num))
@@ -266,9 +256,7 @@ def _encode_complex_values(values: Dict[complex, int]) -> List[str]:
     The result contains the number of values followed by pairs of doubles
     representing complex numbers.
     """
-    value_by_index = {}
-    for value, index in values.items():
-        value_by_index[index] = value
+    value_by_index = {index: value for value, index in values.items()}
     result = []
     num = len(values)
     result.append(str(num))

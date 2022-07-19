@@ -6,13 +6,13 @@ from mypy.types import (
     TupleType, TypedDictType, ErasedType, UnionType, PartialType, DeletedType,
     UninhabitedType, TypeType, TypeOfAny, Overloaded, FunctionLike, LiteralType,
     ProperType, get_proper_type, get_proper_types, TypeAliasType, TypeGuardedType,
-    ParamSpecType
+    ParamSpecType, Parameters, UnpackType, TypeVarTupleType, TypeVarLikeType
 )
 from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
-from mypy import state
+from mypy.state import state
 from mypy import join
 
 # TODO Describe this module.
@@ -64,6 +64,8 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
     if isinstance(declared, UnionType):
         return make_simplified_union([narrow_declared_type(x, narrowed)
                                       for x in declared.relevant_items()])
+    if is_enum_overlapping_union(declared, narrowed):
+        return narrowed
     elif not is_overlapping_types(declared, narrowed,
                                   prohibit_none_typevar_overlap=True):
         if state.strict_optional:
@@ -84,7 +86,12 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
           and narrowed.type.is_metaclass()):
         # We'd need intersection types, so give up.
         return declared
-    elif isinstance(declared, (Instance, TupleType, TypeType, LiteralType)):
+    elif isinstance(declared, Instance):
+        if declared.type.alt_promote:
+            # Special case: low-level integer type can't be narrowed
+            return declared
+        return meet_types(declared, narrowed)
+    elif isinstance(declared, (TupleType, TypeType, LiteralType)):
         return meet_types(declared, narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
@@ -110,8 +117,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
     If this function receives any other type, we return a list containing just that
     original type. (E.g. pretend the type was contained within a singleton union).
 
-    The only exception is regular TypeVars: we return a list containing that TypeVar's
-    upper bound.
+    The only current exceptions are regular TypeVars and ParamSpecs. For these "TypeVarLike"s,
+    we return a list containing that TypeVarLike's upper bound.
 
     This function is useful primarily when checking to see if two types are overlapping:
     the algorithm to check if two unions are overlapping is fundamentally the same as
@@ -127,6 +134,8 @@ def get_possible_variants(typ: Type) -> List[Type]:
             return typ.values
         else:
             return [typ.upper_bound]
+    elif isinstance(typ, ParamSpecType):
+        return [typ.upper_bound]
     elif isinstance(typ, UnionType):
         return list(typ.items)
     elif isinstance(typ, Overloaded):
@@ -135,6 +144,22 @@ def get_possible_variants(typ: Type) -> List[Type]:
         return list(typ.items)
     else:
         return [typ]
+
+
+def is_enum_overlapping_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is an Enum, and y is an Union with at least one Literal from x"""
+    return (
+        isinstance(x, Instance) and x.type.is_enum and
+        isinstance(y, UnionType) and
+        any(isinstance(p, LiteralType) and x.type == p.fallback.type
+            for p in (get_proper_type(z) for z in y.relevant_items()))
+    )
+
+
+def is_literal_in_union(x: ProperType, y: ProperType) -> bool:
+    """Return True if x is a Literal and y is an Union that includes x"""
+    return (isinstance(x, LiteralType) and isinstance(y, UnionType) and
+            any(x == get_proper_type(z) for z in y.items))
 
 
 def is_overlapping_types(left: Type,
@@ -198,6 +223,18 @@ def is_overlapping_types(left: Type,
     #
     # These checks will also handle the NoneType and UninhabitedType cases for us.
 
+    # enums are sometimes expanded into an Union of Literals
+    # when that happens we want to make sure we treat the two as overlapping
+    # and crucially, we want to do that *fast* in case the enum is large
+    # so we do it before expanding variants below to avoid O(n**2) behavior
+    if (
+        is_enum_overlapping_union(left, right)
+        or is_enum_overlapping_union(right, left)
+        or is_literal_in_union(left, right)
+        or is_literal_in_union(right, left)
+    ):
+        return True
+
     if (is_proper_subtype(left, right, ignore_promotions=ignore_promotions)
             or is_proper_subtype(right, left, ignore_promotions=ignore_promotions)):
         return True
@@ -209,36 +246,36 @@ def is_overlapping_types(left: Type,
     right_possible = get_possible_variants(right)
 
     # We start by checking multi-variant types like Unions first. We also perform
-    # the same logic if either type happens to be a TypeVar.
+    # the same logic if either type happens to be a TypeVar/ParamSpec/TypeVarTuple.
     #
-    # Handling the TypeVars now lets us simulate having them bind to the corresponding
+    # Handling the TypeVarLikes now lets us simulate having them bind to the corresponding
     # type -- if we deferred these checks, the "return-early" logic of the other
     # checks will prevent us from detecting certain overlaps.
     #
-    # If both types are singleton variants (and are not TypeVars), we've hit the base case:
+    # If both types are singleton variants (and are not TypeVarLikes), we've hit the base case:
     # we skip these checks to avoid infinitely recursing.
 
-    def is_none_typevar_overlap(t1: Type, t2: Type) -> bool:
+    def is_none_typevarlike_overlap(t1: Type, t2: Type) -> bool:
         t1, t2 = get_proper_types((t1, t2))
-        return isinstance(t1, NoneType) and isinstance(t2, TypeVarType)
+        return isinstance(t1, NoneType) and isinstance(t2, TypeVarLikeType)
 
     if prohibit_none_typevar_overlap:
-        if is_none_typevar_overlap(left, right) or is_none_typevar_overlap(right, left):
+        if is_none_typevarlike_overlap(left, right) or is_none_typevarlike_overlap(right, left):
             return False
 
     if (len(left_possible) > 1 or len(right_possible) > 1
-            or isinstance(left, TypeVarType) or isinstance(right, TypeVarType)):
+            or isinstance(left, TypeVarLikeType) or isinstance(right, TypeVarLikeType)):
         for l in left_possible:
             for r in right_possible:
                 if _is_overlapping_types(l, r):
                     return True
         return False
 
-    # Now that we've finished handling TypeVars, we're free to end early
+    # Now that we've finished handling TypeVarLikes, we're free to end early
     # if one one of the types is None and we're running in strict-optional mode.
     # (None only overlaps with None in strict-optional mode).
     #
-    # We must perform this check after the TypeVar checks because
+    # We must perform this check after the TypeVarLike checks because
     # a TypeVar could be bound to None, for example.
 
     if state.strict_optional and isinstance(left, NoneType) != isinstance(right, NoneType):
@@ -414,8 +451,8 @@ def are_tuples_overlapping(left: Type, right: Type, *,
     left, right = get_proper_types((left, right))
     left = adjust_tuple(left, right) or left
     right = adjust_tuple(right, left) or right
-    assert isinstance(left, TupleType), 'Type {} is not a tuple'.format(left)
-    assert isinstance(right, TupleType), 'Type {} is not a tuple'.format(right)
+    assert isinstance(left, TupleType), f'Type {left} is not a tuple'
+    assert isinstance(right, TupleType), f'Type {right} is not a tuple'
     if len(left.items) != len(right.items):
         return False
     return all(is_overlapping_types(l, r,
@@ -506,6 +543,26 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
         else:
             return self.default(self.s)
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        if self.s == t:
+            return self.s
+        else:
+            return self.default(self.s)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
+        raise NotImplementedError
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        # TODO: is this the right variance?
+        if isinstance(self.s, Parameters) or isinstance(self.s, CallableType):
+            if len(t.arg_types) != len(self.s.arg_types):
+                return self.default(self.s)
+            return t.copy_modified(
+                arg_types=[meet_types(s_a, t_a) for s_a, t_a in zip(self.s.arg_types, t.arg_types)]
+            )
+        else:
+            return self.default(self.s)
+
     def visit_instance(self, t: Instance) -> ProperType:
         if isinstance(self.s, Instance):
             if t.type == self.s.type:
@@ -524,6 +581,12 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     else:
                         return NoneType()
             else:
+                alt_promote = t.type.alt_promote
+                if alt_promote and alt_promote is self.s.type:
+                    return t
+                alt_promote = self.s.type.alt_promote
+                if alt_promote and alt_promote is t.type:
+                    return self.s
                 if is_subtype(t, self.s):
                     return t
                 elif is_subtype(self.s, t):
@@ -662,7 +725,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def meet(self, s: Type, t: Type) -> ProperType:
         return meet_types(s, t)

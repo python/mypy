@@ -12,19 +12,20 @@ import sys
 
 
 class ModuleProperties:
+    # Note that all __init__ args must have default values
     def __init__(self,
-                 name: str,
-                 file: Optional[str],
-                 path: Optional[List[str]],
-                 all: Optional[List[str]],
-                 is_c_module: bool,
-                 subpackages: List[str]) -> None:
+                 name: str = "",
+                 file: Optional[str] = None,
+                 path: Optional[List[str]] = None,
+                 all: Optional[List[str]] = None,
+                 is_c_module: bool = False,
+                 subpackages: Optional[List[str]] = None) -> None:
         self.name = name  # __name__ attribute
         self.file = file  # __file__ attribute
         self.path = path  # __path__ attribute
         self.all = all  # __all__ attribute
         self.is_c_module = is_c_module
-        self.subpackages = subpackages
+        self.subpackages = subpackages or []
 
 
 def is_c_module(module: ModuleType) -> bool:
@@ -138,7 +139,7 @@ class ModuleInspect:
         if res is None:
             # The process died; recover and report error.
             self._start()
-            raise InspectError('Process died when importing %r' % package_id)
+            raise InspectError(f'Process died when importing {package_id!r}')
         if isinstance(res, str):
             # Error importing module
             if self.counter > 0:
@@ -156,7 +157,7 @@ class ModuleInspect:
 
         Return the value read from the queue, or None if the process unexpectedly died.
         """
-        max_iter = 100
+        max_iter = 600
         n = 0
         while True:
             if n == max_iter:

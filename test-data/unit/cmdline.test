@@ -335,11 +335,11 @@ file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int
 \[mypy-x]
 ignore_errors = True
 [file x.py]
-"" + 0
+x: str = 5
 [file y.py]
-"" + 0
+x: str = 5
 [out]
-y.py:1: error: Unsupported operand types for + ("str" and "int")
+y.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testConfigFollowImportsNormal]
 # cmd: mypy main.py
@@ -360,6 +360,32 @@ x = 0
 x += ''  # Error reported here
 [out]
 a.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:3: error: Unsupported operand types for + ("int" and "str")
+main.py:6: error: Unsupported operand types for + ("int" and "str")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
+
+[case testConfigFollowImportsSysPath]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+x + ''  # E
+import a
+a.x + 0
+a.x + ''  # E
+a.y  # E
+a + 0  # E
+[file mypy.ini]
+\[mypy]
+follow_imports = normal
+no_silence_site_packages = True
+[file pypath/a/__init__.py]
+x = 0
+x += ''  # Error reported here
+[file pypath/a/py.typed]
+[out]
+pypath/a/__init__.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
@@ -415,9 +441,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
-main.py:1: error: Import of "a" ignored
-main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
+main.py:3: error: Import of "a" ignored
+main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
@@ -561,6 +587,15 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "a"
 
+[case testPythonVersionWrongFormatPyProjectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.10
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+== Return code: 0
+
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -635,10 +670,10 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**0) # N: Revealed type is "Literal[1]"
 reveal_type(a**1) # N: Revealed type is "builtins.int"
 reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "Literal[1]"
 reveal_type(a**-1) # N: Revealed type is "builtins.float"
 reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
 reveal_type(a**b) # N: Revealed type is "Any"
@@ -805,19 +840,19 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 x = 0  # type: str
 [file pkg/a1/b/f.py]
 from pkg.a1.b.c.d.e import x
-x + 1
+x()
 
 [file pkg/a2/__init__.py]
 [file pkg/a2/b/c/d/e.py]
 x = 0  # type: str
 [file pkg/a2/b/f.py]
 from pkg.a2.b.c.d.e import x
-x + 1
+x()
 [out]
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
-pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/f.py:2: error: "str" not callable
+pkg/a1/b/f.py:2: error: "str" not callable
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
@@ -1249,6 +1284,10 @@ Found 1 error in 1 file (errors prevented further checking)
 pkg/x.py:1: error: invalid syntax. Perhaps you forgot a comma?
 Found 1 error in 1 file (errors prevented further checking)
 == Return code: 2
+[out version>=3.10.3]
+pkg/x.py:1: error: invalid syntax
+Found 1 error in 1 file (errors prevented further checking)
+== Return code: 2
 
 [case testCmdlinePackageAndFile]
 # cmd: mypy -p pkg file
@@ -1369,3 +1408,20 @@ exclude = (?x)(
 1()
 [out]
 c/cpkg.py:1: error: "int" not callable
+
+
+[case testCmdlineTimingStats]
+# cmd: mypy --timing-stats timing.txt .
+[file b/__init__.py]
+[file b/c.py]
+class C: pass
+[outfile-re timing.txt]
+.*
+b \d+
+b\.c \d+
+.*
+
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass

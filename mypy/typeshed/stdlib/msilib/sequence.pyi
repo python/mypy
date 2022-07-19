@@ -1,9 +1,9 @@
 import sys
-from typing import Optional
+from typing_extensions import TypeAlias
 
 if sys.platform == "win32":
 
-    _SequenceType = list[tuple[str, Optional[str], int]]
+    _SequenceType: TypeAlias = list[tuple[str, str | None, int]]
 
     AdminExecuteSequence: _SequenceType
     AdminUISequence: _SequenceType

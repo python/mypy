@@ -495,6 +495,19 @@ reveal_type(A.foo("foo"))  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
+[case testClassmethodShadowingFieldDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+# This used to crash -- see #6217
+@dataclass
+class Foo:
+    bar: str
+    @classmethod  # E: Name "bar" already defined on line 7
+    def bar(cls) -> "Foo":
+        return cls('asdf')
+[builtins fixtures/dataclasses.pyi]
+
 [case testDataclassesClassVars]
 # flags: --python-version 3.7
 from dataclasses import dataclass
@@ -511,6 +524,34 @@ application = Application("example")
 application.COUNTER = 1  # E: Cannot assign to class variable "COUNTER" via instance
 Application.COUNTER = 1
 
+[builtins fixtures/dataclasses.pyi]
+
+[case testTypeAliasInDataclassDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Callable
+from typing_extensions import TypeAlias
+
+@dataclass
+class Foo:
+    x: int
+
+@dataclass
+class One:
+    S: TypeAlias = Foo  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+a = One()
+reveal_type(a.S)  # N: Revealed type is "def (x: builtins.int) -> __main__.Foo"
+a.S()  # E: Missing positional argument "x" in call to "Foo"
+reveal_type(a.S(5))  # N: Revealed type is "__main__.Foo"
+
+@dataclass
+class Two:
+    S: TypeAlias = Callable[[int], str]  # E: Type aliases inside dataclass definitions are not supported at runtime
+
+c = Two()
+x = c.S  # E: Member "S" is not assignable
+reveal_type(x)  # N: Revealed type is "Any"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassOrdering]
@@ -608,10 +649,10 @@ class A(Generic[T]):
 reveal_type(A)  # N: Revealed type is "def [T] (x: T`1, y: T`1, z: builtins.list[T`1]) -> __main__.A[T`1]"
 A(1, 2, ["a", "b"])  # E: Cannot infer type argument 1 of "A"
 a = A(1, 2, [1, 2])
-reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int*]"
-reveal_type(a.x)  # N: Revealed type is "builtins.int*"
-reveal_type(a.y)  # N: Revealed type is "builtins.int*"
-reveal_type(a.z)  # N: Revealed type is "builtins.list[builtins.int*]"
+reveal_type(a)  # N: Revealed type is "__main__.A[builtins.int]"
+reveal_type(a.x)  # N: Revealed type is "builtins.int"
+reveal_type(a.y)  # N: Revealed type is "builtins.int"
+reveal_type(a.z)  # N: Revealed type is "builtins.list[builtins.int]"
 s: str = a.bar()  # E: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [builtins fixtures/dataclasses.pyi]
@@ -656,12 +697,12 @@ class Sub(Base[S]):
     pass
 
 sub_int = Sub[int](attr=1)
-reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int*]"
-reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int*"
+reveal_type(sub_int)  # N: Revealed type is "__main__.Sub[builtins.int]"
+reveal_type(sub_int.attr)  # N: Revealed type is "builtins.int"
 
 sub_str = Sub[str](attr='ok')
-reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str*]"
-reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub_str)  # N: Revealed type is "__main__.Sub[builtins.str]"
+reveal_type(sub_str.attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -686,9 +727,9 @@ class Sub(Base[int, str, float]):
 
 sub = Sub(one=1, two='ok', three=3.14)
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.one)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.two)  # N: Revealed type is "builtins.str*"
-reveal_type(sub.three)  # N: Revealed type is "builtins.float*"
+reveal_type(sub.one)  # N: Revealed type is "builtins.int"
+reveal_type(sub.two)  # N: Revealed type is "builtins.str"
+reveal_type(sub.three)  # N: Revealed type is "builtins.float"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -715,8 +756,8 @@ class Sub(Middle[str]):
 
 sub = Sub(base_attr=1, middle_attr='ok')
 reveal_type(sub)  # N: Revealed type is "__main__.Sub"
-reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int*"
-reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str*"
+reveal_type(sub.base_attr)  # N: Revealed type is "builtins.int"
+reveal_type(sub.middle_attr)  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/dataclasses.pyi]
 
@@ -739,7 +780,7 @@ class A(Generic[T]):
   @classmethod
   def other(cls, x: T) -> A[T]: ...
 
-reveal_type(A(0).other)  # N: Revealed type is "def (x: builtins.int*) -> __main__.A[builtins.int*]"
+reveal_type(A(0).other)  # N: Revealed type is "def (x: builtins.int) -> __main__.A[builtins.int]"
 [builtins fixtures/dataclasses.pyi]
 
 [case testDataclassesForwardRefs]
@@ -1207,7 +1248,7 @@ class A2:
 from dataclasses import dataclass
 
 @dataclass
-class A:  # E: Name "x" already defined (possibly by an import)
+class A:
     x: int = 0
     x: int = 0  # E: Name "x" already defined on line 7
 
@@ -1702,4 +1743,261 @@ class C:  # Cannot overwrite attribute "__hash__" in class "C"
     x: str
 
 def f(): pass
+
+[case testDataclassesCallableFrozen]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any, Callable
+@dataclass(frozen=True)
+class A:
+    a: Callable[..., None]
+
+def func() -> None:
+    pass
+
+reveal_type(A.a)  # N: Revealed type is "def (*Any, **Any)"
+A(a=func).a()
+A(a=func).a = func  # E: Property "a" defined in "A" is read-only
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInFunctionDoesNotCrash]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+def foo():
+    @dataclass
+    class Foo:
+        foo: int
+        # This used to crash (see #8703)
+        # The return type of __call__ here needs to be something undefined
+        # In order to trigger the crash that existed prior to #12762
+        def __call__(self) -> asdf: ...  # E: Name "asdf" is not defined
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassesMultipleInheritanceWithNonDataclass]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+
+@dataclass
+class A:
+    prop_a: str
+
+@dataclass
+class B:
+    prop_b: bool
+
+class Derived(A, B):
+    pass
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritance2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List
+
+T = TypeVar("T")
+S = TypeVar("S")
+
+@dataclass
+class Parent(Generic[T]):
+    f: Callable[[T], Any]
+
+@dataclass
+class Child(Parent[T]): ...
+
+class A: ...
+def func(obj: A) -> bool: ...
+
+reveal_type(Child[A](func).f)  # N: Revealed type is "def (__main__.A) -> Any"
+
+@dataclass
+class Parent2(Generic[T]):
+    a: List[T]
+
+@dataclass
+class Child2(Generic[T, S], Parent2[S]):
+    b: List[T]
+
+reveal_type(Child2([A()], [1]).a)  # N: Revealed type is "builtins.list[__main__.A]"
+reveal_type(Child2[int, A]([A()], [1]).b)  # N: Revealed type is "builtins.list[builtins.int]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInheritOptionalType]
+# flags: --python-version 3.7 --strict-optional
+from dataclasses import dataclass
+from typing import Any, Callable, Generic, TypeVar, List, Optional
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: Optional[str]
+@dataclass
+class Child(Parent):
+    y: Optional[int]
+Child(x=1, y=1)  # E: Argument "x" to "Child" has incompatible type "int"; expected "Optional[str]"
+Child(x='', y='')  # E: Argument "y" to "Child" has incompatible type "str"; expected "Optional[int]"
+Child(x='', y=1)
+Child(x=None, y=None)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase1]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar, List
+
+T = TypeVar("T")
+
+@dataclass
+class Parent(Generic[T]):
+    x: List[T]
+
+@dataclass
+class Child1(Parent["Child2"]): ...
+
+@dataclass
+class Child2(Parent["Child1"]): ...
+
+def f(c: Child2) -> None:
+    reveal_type(Child1([c]).x)  # N: Revealed type is "builtins.list[__main__.Child2]"
+
+def g(c: Child1) -> None:
+    reveal_type(Child2([c]).x)  # N: Revealed type is "builtins.list[__main__.Child1]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericInheritanceSpecialCase2]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+# A subclass might be analyzed before base in import cycles.  They are
+# defined here in reversed order to simulate this.
+
+@dataclass
+class Child1(Parent["Child2"]):
+    x: int
+
+@dataclass
+class Child2(Parent["Child1"]):
+    y: int
+
+@dataclass
+class Parent(Generic[T]):
+    key: str
+
+Child1(x=1, key='')
+Child2(y=1, key='')
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericWithBound]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="C")
+
+@dataclass
+class C(Generic[T]):
+    x: int
+
+c: C[C]
+d: C[str]  # E: Type argument "str" of "C" must be a subtype of "C[Any]"
+C(x=2)
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassGenericBoundToInvalidTypeVarDoesNotCrash]
+# flags: --python-version 3.7
+import dataclasses
+from typing import Generic, TypeVar
+
+T = TypeVar("T", bound="NotDefined")  # E: Name "NotDefined" is not defined
+
+@dataclasses.dataclass
+class C(Generic[T]):
+    x: float
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassInitVarCannotBeSet]
+# flags: --python-version 3.7
+from dataclasses import dataclass, InitVar
+
+@dataclass
+class C:
+    x: InitVar[int] = 0
+    y: InitVar[str] = ''
+
+    def f(self) -> None:
+        # This works at runtime, but it seems like an abuse of the InitVar
+        # feature and thus we don't support it
+        self.x = 1  # E: "C" has no attribute "x"
+        self.y: str = 'x'  # E: "C" has no attribute "y"
+
+c = C()
+c2 = C(x=1)
+c.x  # E: "C" has no attribute "x"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassCheckTypeVarBounds]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+from typing import Protocol, Dict, TypeVar, Generic
+
+class DataclassProtocol(Protocol):
+    __dataclass_fields__: Dict
+
+T = TypeVar("T", bound=DataclassProtocol)
+
+@dataclass
+class MyDataclass:
+    x: int = 1
+
+class MyGeneric(Generic[T]): ...
+class MyClass(MyGeneric[MyDataclass]): ...
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithMatchArgs]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+@dataclass
+class One:
+    bar: int
+    baz: str
+o: One
+reveal_type(o.__match_args__)  # N: Revealed type is "Tuple[Literal['bar'], Literal['baz']]"
+@dataclass(match_args=True)
+class Two:
+    bar: int
+t: Two
+reveal_type(t.__match_args__)  # N: Revealed type is "Tuple[Literal['bar']]"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithoutMatchArgs]
+# flags: --python-version 3.10
+from dataclasses import dataclass
+@dataclass(match_args=False)
+class One:
+    bar: int
+    baz: str
+o: One
+reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassWithMatchArgsOldVersion]
+# flags: --python-version 3.9
+from dataclasses import dataclass
+@dataclass(match_args=True)
+class One:
+    bar: int
+o: One
+reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
+@dataclass
+class Two:
+    bar: int
+t: Two
+reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
+                               # N: Revealed type is "Any"
 [builtins fixtures/dataclasses.pyi]

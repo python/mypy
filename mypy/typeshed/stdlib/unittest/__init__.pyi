@@ -1,5 +1,4 @@
 import sys
-from unittest.async_case import *
 
 from .case import (
     FunctionTestCase as FunctionTestCase,
@@ -29,6 +28,41 @@ from .signals import (
 from .suite import BaseTestSuite as BaseTestSuite, TestSuite as TestSuite
 
 if sys.version_info >= (3, 8):
+    from unittest.async_case import *
+
     from .case import addModuleCleanup as addModuleCleanup
+
+if sys.version_info >= (3, 11):
+    from .case import doModuleCleanups as doModuleCleanups, enterModuleContext as enterModuleContext
+
+__all__ = [
+    "TestResult",
+    "TestCase",
+    "TestSuite",
+    "TextTestRunner",
+    "TestLoader",
+    "FunctionTestCase",
+    "main",
+    "defaultTestLoader",
+    "SkipTest",
+    "skip",
+    "skipIf",
+    "skipUnless",
+    "expectedFailure",
+    "TextTestResult",
+    "installHandler",
+    "registerResult",
+    "removeResult",
+    "removeHandler",
+    "getTestCaseNames",
+    "makeSuite",
+    "findTestCases",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["addModuleCleanup", "IsolatedAsyncioTestCase"]
+
+if sys.version_info >= (3, 11):
+    __all__ += ["enterModuleContext", "doModuleCleanups"]
 
 def load_tests(loader: TestLoader, tests: TestSuite, pattern: str | None) -> TestSuite: ...

@@ -1,5 +1,81 @@
 import sys
 
+__all__ = [
+    "AMPER",
+    "AMPEREQUAL",
+    "AT",
+    "ATEQUAL",
+    "CIRCUMFLEX",
+    "CIRCUMFLEXEQUAL",
+    "COLON",
+    "COMMA",
+    "DEDENT",
+    "DOT",
+    "DOUBLESLASH",
+    "DOUBLESLASHEQUAL",
+    "DOUBLESTAR",
+    "DOUBLESTAREQUAL",
+    "ELLIPSIS",
+    "ENDMARKER",
+    "EQEQUAL",
+    "EQUAL",
+    "ERRORTOKEN",
+    "GREATER",
+    "GREATEREQUAL",
+    "INDENT",
+    "ISEOF",
+    "ISNONTERMINAL",
+    "ISTERMINAL",
+    "LBRACE",
+    "LEFTSHIFT",
+    "LEFTSHIFTEQUAL",
+    "LESS",
+    "LESSEQUAL",
+    "LPAR",
+    "LSQB",
+    "MINEQUAL",
+    "MINUS",
+    "NAME",
+    "NEWLINE",
+    "NOTEQUAL",
+    "NT_OFFSET",
+    "NUMBER",
+    "N_TOKENS",
+    "OP",
+    "PERCENT",
+    "PERCENTEQUAL",
+    "PLUS",
+    "PLUSEQUAL",
+    "RARROW",
+    "RBRACE",
+    "RIGHTSHIFT",
+    "RIGHTSHIFTEQUAL",
+    "RPAR",
+    "RSQB",
+    "SEMI",
+    "SLASH",
+    "SLASHEQUAL",
+    "STAR",
+    "STAREQUAL",
+    "STRING",
+    "TILDE",
+    "VBAR",
+    "VBAREQUAL",
+    "tok_name",
+]
+
+if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
+    __all__ += ["ASYNC", "AWAIT"]
+
+if sys.version_info >= (3, 7):
+    __all__ += ["ENCODING", "NL", "COMMENT"]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["COLONEQUAL", "TYPE_COMMENT", "TYPE_IGNORE"]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["SOFT_KEYWORD"]
+
 ENDMARKER: int
 NAME: int
 NUMBER: int

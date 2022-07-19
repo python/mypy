@@ -11,3 +11,6 @@ class ModuleType:
 if sys.version_info >= (3, 10):
     class Union:
         def __or__(self, x) -> Union: ...
+
+    class NoneType:
+        ...

@@ -105,6 +105,9 @@ class LowLevelIRBuilder:
         self.blocks: List[BasicBlock] = []
         # Stack of except handler entry blocks
         self.error_handlers: List[Optional[BasicBlock]] = [None]
+        # Values that we need to keep alive as long as we have borrowed
+        # temporaries. Use flush_keep_alives() to mark the end of the live range.
+        self.keep_alives: List[Value] = []
 
     # Basic operations
 
@@ -145,21 +148,32 @@ class LowLevelIRBuilder:
         """
         return self.args[0]
 
+    def flush_keep_alives(self) -> None:
+        if self.keep_alives:
+            self.add(KeepAlive(self.keep_alives[:]))
+            self.keep_alives = []
+
     # Type conversions
 
     def box(self, src: Value) -> Value:
         if src.type.is_unboxed:
+            if isinstance(src, Integer) and is_tagged(src.type):
+                return self.add(LoadLiteral(src.value >> 1, rtype=object_rprimitive))
             return self.add(Box(src))
         else:
             return src
 
-    def unbox_or_cast(self, src: Value, target_type: RType, line: int) -> Value:
+    def unbox_or_cast(self, src: Value, target_type: RType, line: int, *,
+                      can_borrow: bool = False) -> Value:
         if target_type.is_unboxed:
             return self.add(Unbox(src, target_type, line))
         else:
-            return self.add(Cast(src, target_type, line))
+            if can_borrow:
+                self.keep_alives.append(src)
+            return self.add(Cast(src, target_type, line, borrow=can_borrow))
 
-    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False) -> Value:
+    def coerce(self, src: Value, target_type: RType, line: int, force: bool = False, *,
+               can_borrow: bool = False) -> Value:
         """Generate a coercion/cast from one type to other (only if needed).
 
         For example, int -> object boxes the source int; int -> int emits nothing;
@@ -180,7 +194,7 @@ class LowLevelIRBuilder:
             return self.unbox_or_cast(tmp, target_type, line)
         if ((not src.type.is_unboxed and target_type.is_unboxed)
                 or not is_subtype(src.type, target_type)):
-            return self.unbox_or_cast(src, target_type, line)
+            return self.unbox_or_cast(src, target_type, line, can_borrow=can_borrow)
         elif force:
             tmp = Register(target_type)
             self.add(Assign(tmp, src))
@@ -217,11 +231,14 @@ class LowLevelIRBuilder:
 
     # Attribute access
 
-    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int) -> Value:
+    def get_attr(self, obj: Value, attr: str, result_type: RType, line: int, *,
+                 borrow: bool = False) -> Value:
         """Get a native or Python attribute of an object."""
         if (isinstance(obj.type, RInstance) and obj.type.class_ir.is_ext_class
                 and obj.type.class_ir.has_attr(attr)):
-            return self.add(GetAttr(obj, attr, line))
+            if borrow:
+                self.keep_alives.append(obj)
+            return self.add(GetAttr(obj, attr, line, borrow=borrow))
         elif isinstance(obj.type, RUnion):
             return self.union_get_attr(obj, obj.type, attr, result_type, line)
         else:
@@ -708,7 +725,8 @@ class LowLevelIRBuilder:
                         result_type: Optional[RType],
                         line: int,
                         arg_kinds: Optional[List[ArgKind]] = None,
-                        arg_names: Optional[List[Optional[str]]] = None) -> Value:
+                        arg_names: Optional[List[Optional[str]]] = None,
+                        can_borrow: bool = False) -> Value:
         """Generate either a native or Python method call."""
         # If we have *args, then fallback to Python method call.
         if arg_kinds is not None and any(kind.is_star() for kind in arg_kinds):
@@ -742,7 +760,8 @@ class LowLevelIRBuilder:
 
         # Try to do a special-cased method call
         if not arg_kinds or arg_kinds == [ARG_POS] * len(arg_values):
-            target = self.translate_special_method_call(base, name, arg_values, result_type, line)
+            target = self.translate_special_method_call(
+                base, name, arg_values, result_type, line, can_borrow=can_borrow)
             if target:
                 return target
 
@@ -819,7 +838,7 @@ class LowLevelIRBuilder:
                             line: int = -1,
                             error_msg: Optional[str] = None) -> Value:
         if error_msg is None:
-            error_msg = 'name "{}" is not defined'.format(identifier)
+            error_msg = f'name "{identifier}" is not defined'
         ok_block, error_block = BasicBlock(), BasicBlock()
         value = self.add(LoadStatic(typ, identifier, module_name, namespace, line=line))
         self.add(Branch(value, error_block, ok_block, Branch.IS_ERROR, rare=True))
@@ -836,7 +855,7 @@ class LowLevelIRBuilder:
 
     def get_native_type(self, cls: ClassIR) -> Value:
         """Load native type object."""
-        fullname = '%s.%s' % (cls.module_name, cls.name)
+        fullname = f'{cls.module_name}.{cls.name}'
         return self.load_native_type_object(fullname)
 
     def load_native_type_object(self, fullname: str) -> Value:
@@ -951,12 +970,14 @@ class LowLevelIRBuilder:
                            is_short_int_rprimitive(rhs.type)))):
             # We can skip the tag check
             check = self.comparison_op(lhs, rhs, int_comparison_op_mapping[op][0], line)
+            self.flush_keep_alives()
             self.add(Branch(check, true, false, Branch.BOOL))
             return
         op_type, c_func_desc, negate_result, swap_op = int_comparison_op_mapping[op]
         int_block, short_int_block = BasicBlock(), BasicBlock()
         check_lhs = self.check_tagged_short_int(lhs, line, negated=True)
         if is_eq or is_short_int_rprimitive(rhs.type):
+            self.flush_keep_alives()
             self.add(Branch(check_lhs, int_block, short_int_block, Branch.BOOL))
         else:
             # For non-equality logical ops (less/greater than, etc.), need to check both sides
@@ -964,6 +985,7 @@ class LowLevelIRBuilder:
             self.add(Branch(check_lhs, int_block, rhs_block, Branch.BOOL))
             self.activate_block(rhs_block)
             check_rhs = self.check_tagged_short_int(rhs, line, negated=True)
+            self.flush_keep_alives()
             self.add(Branch(check_rhs, int_block, short_int_block, Branch.BOOL))
         # Arbitrary integers (slow path)
         self.activate_block(int_block)
@@ -975,6 +997,7 @@ class LowLevelIRBuilder:
         if negate_result:
             self.add(Branch(call, false, true, Branch.BOOL))
         else:
+            self.flush_keep_alives()
             self.add(Branch(call, true, false, Branch.BOOL))
         # Short integers (fast path)
         self.activate_block(short_int_block)
@@ -1296,6 +1319,13 @@ class LowLevelIRBuilder:
             error_kind = ERR_NEVER
         target = self.add(CallC(desc.c_function_name, coerced, desc.return_type, desc.steals,
                                 desc.is_borrowed, error_kind, line, var_arg_idx))
+        if desc.is_borrowed:
+            # If the result is borrowed, force the arguments to be
+            # kept alive afterwards, as otherwise the result might be
+            # immediately freed, at the risk of a dangling pointer.
+            for arg in coerced:
+                if not isinstance(arg, (Integer, LoadLiteral)):
+                    self.keep_alives.append(arg)
         if desc.error_kind == ERR_NEG_INT:
             comp = ComparisonOp(target,
                                 Integer(0, desc.return_type, line),
@@ -1307,7 +1337,7 @@ class LowLevelIRBuilder:
         if desc.truncated_type is None:
             result = target
         else:
-            truncate = self.add(Truncate(target, desc.return_type, desc.truncated_type))
+            truncate = self.add(Truncate(target, desc.truncated_type))
             result = truncate
         if result_type and not is_runtime_subtype(result.type, result_type):
             if is_none_rprimitive(result_type):
@@ -1315,22 +1345,24 @@ class LowLevelIRBuilder:
                 # and so we can't just coerce it.
                 result = self.none()
             else:
-                result = self.coerce(target, result_type, line)
+                result = self.coerce(target, result_type, line, can_borrow=desc.is_borrowed)
         return result
 
     def matching_call_c(self,
                         candidates: List[CFunctionDescription],
                         args: List[Value],
                         line: int,
-                        result_type: Optional[RType] = None) -> Optional[Value]:
+                        result_type: Optional[RType] = None,
+                        can_borrow: bool = False) -> Optional[Value]:
         matching: Optional[CFunctionDescription] = None
         for desc in candidates:
             if len(desc.arg_types) != len(args):
                 continue
-            if all(is_subtype(actual.type, formal)
-                   for actual, formal in zip(args, desc.arg_types)):
+            if (all(is_subtype(actual.type, formal)
+                    for actual, formal in zip(args, desc.arg_types)) and
+                    (not desc.is_borrowed or can_borrow)):
                 if matching:
-                    assert matching.priority != desc.priority, 'Ambiguous:\n1) %s\n2) %s' % (
+                    assert matching.priority != desc.priority, 'Ambiguous:\n1) {}\n2) {}'.format(
                         matching, desc)
                     if desc.priority > matching.priority:
                         matching = desc
@@ -1483,7 +1515,8 @@ class LowLevelIRBuilder:
                                       name: str,
                                       args: List[Value],
                                       result_type: Optional[RType],
-                                      line: int) -> Optional[Value]:
+                                      line: int,
+                                      can_borrow: bool = False) -> Optional[Value]:
         """Translate a method call which is handled nongenerically.
 
         These are special in the sense that we have code generated specifically for them.
@@ -1494,7 +1527,7 @@ class LowLevelIRBuilder:
         """
         call_c_ops_candidates = method_call_ops.get(name, [])
         call_c_op = self.matching_call_c(call_c_ops_candidates, [base_reg] + args,
-                                         line, result_type)
+                                         line, result_type, can_borrow=can_borrow)
         return call_c_op
 
     def translate_eq_cmp(self,

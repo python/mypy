@@ -72,25 +72,6 @@ reveal_type(a)
 [out]
 testStubPrecedence.py:5: note: Revealed type is "builtins.list[builtins.str]"
 
-[case testTypedPkgStubs_python2]
-# pkgs: typedpkg-stubs
-from typedpkg.sample import ex
-from typedpkg import dne
-a = ex([''])
-reveal_type(a)
-[out]
-testTypedPkgStubs_python2.py:3: error: Module "typedpkg" has no attribute "dne"
-testTypedPkgStubs_python2.py:5: note: Revealed type is "builtins.list[builtins.str]"
-
-[case testTypedPkgSimple_python2]
-# pkgs: typedpkg
-from typedpkg.sample import ex
-from typedpkg import dne
-a = ex([''])
-reveal_type(a)
-[out]
-testTypedPkgSimple_python2.py:5: note: Revealed type is "builtins.tuple[builtins.str, ...]"
-
 [case testTypedPkgSimpleEgg]
 # pkgs: typedpkg; no-pip
 from typedpkg.sample import ex
@@ -222,3 +203,13 @@ b.bf(1)
 [out]
 testNamespacePkgWStubsWithNamespacePackagesFlag.py:7: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
 testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" has incompatible type "int"; expected "bool"
+
+
+[case testTypedPkgNamespaceRegFromImportTwiceMissing]
+# pkgs: typedpkg_ns_a
+from typedpkg_ns import b  # type: ignore
+from typedpkg_ns import a
+-- dummy should trigger a second iteration
+[file dummy.py.2]
+[out]
+[out2]

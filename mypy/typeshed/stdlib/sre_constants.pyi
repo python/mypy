@@ -1,4 +1,5 @@
 import sys
+from _typeshed import Self
 from typing import Any
 
 MAXGROUPS: int
@@ -15,7 +16,7 @@ class error(Exception):
 
 class _NamedIntConstant(int):
     name: Any
-    def __new__(cls, value: int, name: str) -> _NamedIntConstant: ...
+    def __new__(cls: type[Self], value: int, name: str) -> Self: ...
 
 MAXREPEAT: _NamedIntConstant
 OPCODES: list[_NamedIntConstant]
@@ -54,7 +55,8 @@ ASSERT: _NamedIntConstant
 ASSERT_NOT: _NamedIntConstant
 AT: _NamedIntConstant
 BRANCH: _NamedIntConstant
-CALL: _NamedIntConstant
+if sys.version_info < (3, 11):
+    CALL: _NamedIntConstant
 CATEGORY: _NamedIntConstant
 CHARSET: _NamedIntConstant
 BIGCHARSET: _NamedIntConstant

@@ -105,14 +105,14 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             def report(message: str, severity: str) -> None:
                 errors.report(typ.line, typ.column, message, severity=severity)
 
-            attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
-            report("Class {} has abstract attributes {}".format(typ.fullname, attrs), 'error')
+            attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
+            report(f"Class {typ.fullname} has abstract attributes {attrs}", 'error')
             report("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
                    'note')
     if typ.is_final and abstract:
-        attrs = ", ".join('"{}"'.format(attr) for attr in sorted(abstract))
+        attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
         errors.report(typ.line, typ.column,
-                      "Final class {} has abstract attributes {}".format(typ.fullname, attrs))
+                      f"Final class {typ.fullname} has abstract attributes {attrs}")
 
 
 def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
@@ -146,20 +146,21 @@ def calculate_class_vars(info: TypeInfo) -> None:
                     node.is_classvar = True
 
 
-def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options) -> None:
+def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options,
+                       builtin_names: SymbolTable) -> None:
     """Setup extra, ad-hoc subtyping relationships between classes (promotion).
 
     This includes things like 'int' being compatible with 'float'.
     """
     defn = info.defn
-    promote_target: Optional[Type] = None
+    promote_targets: List[Type] = []
     for decorator in defn.decorators:
         if isinstance(decorator, CallExpr):
             analyzed = decorator.analyzed
             if isinstance(analyzed, PromoteExpr):
                 # _promote class decorator (undocumented feature).
-                promote_target = analyzed.type
-    if not promote_target:
+                promote_targets.append(analyzed.type)
+    if not promote_targets:
         promotions = (TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3
                       else TYPE_PROMOTIONS_PYTHON2)
         if defn.fullname in promotions:
@@ -168,5 +169,14 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
             if target_sym:
                 target_info = target_sym.node
                 assert isinstance(target_info, TypeInfo)
-                promote_target = Instance(target_info, [])
-    defn.info._promote = promote_target
+                promote_targets.append(Instance(target_info, []))
+    # Special case the promotions between 'int' and native integer types.
+    # These have promotions going both ways, such as from 'int' to 'i64'
+    # and 'i64' to 'int', for convenience.
+    if defn.fullname == 'mypy_extensions.i64' or defn.fullname == 'mypy_extensions.i32':
+        int_sym = builtin_names['int']
+        assert isinstance(int_sym.node, TypeInfo)
+        int_sym.node._promote.append(Instance(defn.info, []))
+        defn.info.alt_promote = int_sym.node
+    if promote_targets:
+        defn.info._promote.extend(promote_targets)
