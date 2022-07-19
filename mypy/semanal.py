@@ -99,7 +99,7 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, TYPED_NAMEDTUPLE_NAMES, is_named_instance,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -1529,7 +1529,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         bases = []
         for base_expr in base_type_exprs:
             if (isinstance(base_expr, RefExpr) and
-                    base_expr.fullname in ('typing.NamedTuple',) + TPDICT_NAMES):
+                    base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES):
                 # Ignore magic bases for now.
                 continue
 

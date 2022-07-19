@@ -2417,7 +2417,7 @@ class NamedTupleExpr(Expression):
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
     info: "TypeInfo"
-    is_typed: bool  # whether this class was created with typing.NamedTuple
+    is_typed: bool  # whether this class was created with typing(_extensions).NamedTuple
 
     def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
         super().__init__()

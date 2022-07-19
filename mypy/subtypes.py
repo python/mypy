@@ -8,7 +8,7 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TypeVarTupleType,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TYPED_NAMEDTUPLE_NAMES, TypeVarTupleType,
 )
 import mypy.applytype
 import mypy.constraints
@@ -286,7 +286,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # in `TypeInfo.mro`, so when `(a: NamedTuple) -> None` is used,
             # we need to check for `is_named_tuple` property
             if ((left.type.has_base(rname) or rname == 'builtins.object'
-                    or (rname == 'typing.NamedTuple'
+                    or (rname in TYPED_NAMEDTUPLE_NAMES
                         and any(l.is_named_tuple for l in left.type.mro)))
                     and not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
