@@ -1033,12 +1033,14 @@ class StubtestUnit(unittest.TestCase):
             from typing_extensions import Protocol
 
             class X(Protocol):
+                bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
             runtime="""
             from typing_extensions import Protocol
 
             class X(Protocol):
+                bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
             error=None
