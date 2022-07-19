@@ -29,7 +29,7 @@ jobs:
             const [matchArtifact] = artifacts.data.artifacts.filter((artifact) =>
               artifact.name == "mypy_primer_diffs");
 
-            const download = await github.actions.downloadArtifact({
+            const download = await github.rest.actions.downloadArtifact({
                owner: context.repo.owner,
                repo: context.repo.repo,
                artifact_id: matchArtifact.id,
