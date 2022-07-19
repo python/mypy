@@ -840,7 +840,7 @@ from typing import Any, cast
 class A:
     def __init__(self, a: 'A') -> None: pass
 a = None # type: A
-a.__init__(a)  # E: Cannot access "__init__" directly
+a.__init__(a)  # E: Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass
 (cast(Any, a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]

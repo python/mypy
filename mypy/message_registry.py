@@ -74,7 +74,10 @@ INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
 INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or None")
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
-CANNOT_ACCESS_INIT: Final = 'Cannot access "__init__" directly'
+CANNOT_ACCESS_INIT: Final = (
+    'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
+    ' an incompatible subclass'
+)
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
 INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
 BAD_CONSTRUCTOR_TYPE: Final = ErrorMessage("Unsupported decorated constructor type")
