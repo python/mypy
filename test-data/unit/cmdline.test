@@ -613,7 +613,7 @@ python_version = 2.7
 [out]
 usage: mypy [-h] [-v] [-V] [more options; see below]
             [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
-mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<=0.971 if you need to check Python 2 code.
+mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
 == Return code: 2
 
 [case testPythonVersionAccepted34]
