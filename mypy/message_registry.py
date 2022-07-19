@@ -167,6 +167,9 @@ INVALID_TYPEVAR_ARG_VALUE: Final = 'Invalid type argument value for "{}"'
 TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
+UNBOUND_TYPEVAR: Final = (
+    'A function returning TypeVar should receive at least '
+    'one argument containing the same Typevar')
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')

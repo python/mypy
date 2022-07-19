@@ -3269,10 +3269,11 @@ def new_pro(pro_c: Type[P]) -> P:
     return new_user(pro_c)
 wiz = new_pro(WizUser)
 reveal_type(wiz)
-def error(u_c: Type[U]) -> P:
+def error(u_c: Type[U]) -> P: # Error here, see below
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is "__main__.WizUser"
+main:12: error: A function returning TypeVar should receive at least one argument containing the same Typevar
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
 

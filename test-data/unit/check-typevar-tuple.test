@@ -93,4 +93,3 @@ args: Tuple[bool, int, str, int, str, object]
 reveal_type(g(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.int]"
 reveal_type(h(args))  # N: Revealed type is "Tuple[builtins.str, builtins.str, builtins.int]"
 [builtins fixtures/tuple.pyi]
-
