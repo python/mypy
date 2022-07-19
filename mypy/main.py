@@ -954,7 +954,7 @@ def process_options(args: List[str],
     if options.python_version < (3,):
         parser.error(
             "Mypy no longer supports checking Python 2 code. "
-            "Consider pinning to mypy<=0.971 if you need to check Python 2 code."
+            "Consider pinning to mypy<0.980 if you need to check Python 2 code."
         )
     try:
         infer_python_executable(options, special_opts)
