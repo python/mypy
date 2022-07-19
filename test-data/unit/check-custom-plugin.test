@@ -991,3 +991,40 @@ class Cls:
 [file mypy.ini]
 \[mypy]
 plugins=<ROOT>/test-data/unit/plugins/class_attr_hook.py
+
+[case testFunctionDecoratorPluginHookForFunction]
+# flags: --config-file tmp/mypy.ini
+
+from m import decorator
+
+@decorator
+def function(self) -> str: ...
+
+@function.setter
+def function(self, value: str) -> None: ...
+
+[file m.py]
+from typing import Callable
+def decorator(param) -> Callable[..., str]: pass
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_decorator_hook.py
+
+[case testFunctionDecoratorPluginHookForMethod]
+# flags: --config-file tmp/mypy.ini
+
+from m import decorator
+
+class A:
+    @decorator
+    def property(self) -> str: ...
+
+    @property.setter
+    def property(self, value: str) -> None: ...
+
+[file m.py]
+from typing import Callable
+def decorator(param) -> Callable[..., str]: pass
+[file mypy.ini]
+\[mypy]
+plugins=<ROOT>/test-data/unit/plugins/function_decorator_hook.py
