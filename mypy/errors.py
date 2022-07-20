@@ -686,12 +686,14 @@ class Errors:
         error_info = [info for info in error_info if not info.hidden]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
-        for file, line, column, end_line, end_column, severity, message, allow_dups, code in errors:
+        for (
+            file, line, column, end_line, end_column, severity, message, allow_dups, code
+        ) in errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = f'{file}:{line}:{1 + column}'
-                    if self.show_error_end and end_line >=0 and end_column >= 0:
+                    if self.show_error_end and end_line >= 0 and end_column >= 0:
                         srcloc += f':{end_line}:{end_column}'
                 elif line >= 0:
                     srcloc = f'{file}:{line}'
@@ -811,7 +813,8 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
+                        result.append(
+                            (file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                     else:
                         result.append((file, -1, -1, -1, -1, 'note', 'In class "{}":'.format(
                             e.type), e.allow_dups, None))
@@ -826,17 +829,20 @@ class Errors:
                                            e.function_or_member, e.type), e.allow_dups, None))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
+                    result.append(
+                        (file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                 else:
                     result.append((file, -1, -1, -1, -1, 'note',
                                    f'In class "{e.type}":', e.allow_dups, None))
 
             if isinstance(e.message, ErrorMessage):
                 result.append(
-                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message.value, e.allow_dups, e.code))
+                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message.value,
+                     e.allow_dups, e.code))
             else:
                 result.append(
-                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message, e.allow_dups, e.code))
+                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message,
+                     e.allow_dups, e.code))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
