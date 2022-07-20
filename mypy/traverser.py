@@ -316,7 +316,7 @@ class TraverserVisitor(NodeVisitor[None]):
         for p in o.patterns:
             p.accept(self)
 
-    def visit_starred_patten(self, o: StarredPattern) -> None:
+    def visit_starred_pattern(self, o: StarredPattern) -> None:
         if o.capture is not None:
             o.capture.accept(self)
 
@@ -694,11 +694,6 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_star_expr(o)
-
-    def visit_starred_patten(self, o: StarredPattern) -> None:
-        if not self.visit(o):
-            return
-        super().visit_starred_patten(o)
 
     def visit_starred_pattern(self, o: StarredPattern) -> None:
         if not self.visit(o):
