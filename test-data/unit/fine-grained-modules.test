@@ -2158,6 +2158,23 @@ main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mis
 main.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 ==
 
+[case testMissingStubAdded2]
+# flags: --follow-imports=skip
+# cmd: mypy main.py
+
+[file main.py]
+import foo  # type: ignore
+foo.x = 1
+[file foo.pyi.2]
+x = 'x'
+[file main.py.3]
+import foo
+foo.x = 'y'
+[out]
+==
+main.py:2: error: Incompatible types in assignment (expression has type "int", variable has type "str")
+==
+
 [case testDoNotFollowImportToNonStubFile]
 # flags: --follow-imports=skip
 # cmd: mypy main.py
