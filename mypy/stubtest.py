@@ -16,13 +16,13 @@ import sys
 import traceback
 import types
 import typing
-import typing_extensions
 import warnings
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 
+import typing_extensions
 from typing_extensions import Type
 
 import mypy.build
@@ -33,7 +33,7 @@ import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, plural_s, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
 
 class Missing:
@@ -59,7 +59,7 @@ def _style(message: str, **kwargs: Any) -> str:
 
 def _truncate(message: str, length: int) -> str:
     if len(message) > length:
-        return message[:length - 3] + "..."
+        return message[: length - 3] + "..."
     return message
 
 
@@ -76,7 +76,7 @@ class Error:
         runtime_object: MaybeMissing[Any],
         *,
         stub_desc: Optional[str] = None,
-        runtime_desc: Optional[str] = None
+        runtime_desc: Optional[str] = None,
     ) -> None:
         """Represents an error found by stubtest.
 
@@ -165,6 +165,7 @@ class Error:
 # ====================
 # Core logic
 # ====================
+
 
 def silent_import_module(module_name: str) -> types.ModuleType:
     with open(os.devnull, "w") as devnull:
@@ -318,8 +319,10 @@ def verify_typeinfo(
         return
 
     try:
+
         class SubClass(runtime):  # type: ignore
             pass
+
     except TypeError:
         # Enum classes are implicitly @final
         if not stub.is_final and not issubclass(runtime, enum.Enum):
@@ -423,7 +426,7 @@ def _verify_arg_name(
         return
 
     def strip_prefix(s: str, prefix: str) -> str:
-        return s[len(prefix):] if s.startswith(prefix) else s
+        return s[len(prefix) :] if s.startswith(prefix) else s
 
     if strip_prefix(stub_arg.variable.name, "__") == runtime_arg.name:
         return
@@ -701,7 +704,7 @@ def _verify_signature(
         # parameters and b) below, we don't enforce that the stub takes *args, since runtime logic
         # may prevent those arguments from actually being accepted.
         if runtime.varpos is None:
-            for stub_arg in stub.pos[len(runtime.pos):]:
+            for stub_arg in stub.pos[len(runtime.pos) :]:
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
                 # keyword-only argument
                 if stub_arg.variable.name not in runtime.kwonly:
@@ -711,7 +714,7 @@ def _verify_signature(
             if stub.varpos is not None:
                 yield f'runtime does not have *args argument "{stub.varpos.variable.name}"'
     elif len(stub.pos) < len(runtime.pos):
-        for runtime_arg in runtime.pos[len(stub.pos):]:
+        for runtime_arg in runtime.pos[len(stub.pos) :]:
             if runtime_arg.name not in stub.kwonly:
                 yield f'stub does not have argument "{runtime_arg.name}"'
             else:
@@ -783,7 +786,7 @@ def verify_funcitem(
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
         runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
-        stub_desc = f'def {stub_sig!r}'
+        stub_desc = f"def {stub_sig!r}"
     else:
         runtime_sig_desc, stub_desc = None, None
 
@@ -797,7 +800,7 @@ def verify_funcitem(
             stub,
             runtime,
             stub_desc=stub_desc,
-            runtime_desc=runtime_sig_desc
+            runtime_desc=runtime_sig_desc,
         )
 
     if not signature:
@@ -835,12 +838,7 @@ def verify_var(
         and is_read_only_property(runtime)
         and (stub.is_settable_property or not stub.is_property)
     ):
-        yield Error(
-            object_path,
-            "is read-only at runtime but not in the stub",
-            stub,
-            runtime
-        )
+        yield Error(object_path, "is read-only at runtime but not in the stub", stub, runtime)
 
     runtime_type = get_mypy_type_of_runtime_value(runtime)
     if (
@@ -858,10 +856,7 @@ def verify_var(
 
         if should_error:
             yield Error(
-                object_path,
-                f"variable differs from runtime type {runtime_type}",
-                stub,
-                runtime,
+                object_path, f"variable differs from runtime type {runtime_type}", stub, runtime
             )
 
 
@@ -876,12 +871,7 @@ def verify_overloadedfuncdef(
     if stub.is_property:
         # Any property with a setter is represented as an OverloadedFuncDef
         if is_read_only_property(runtime):
-            yield Error(
-                object_path,
-                "is read-only at runtime but not in the stub",
-                stub,
-                runtime
-            )
+            yield Error(object_path, "is read-only at runtime but not in the stub", stub, runtime)
         return
 
     if not is_probably_a_function(runtime):
@@ -940,7 +930,8 @@ def verify_paramspecexpr(
         yield Error(object_path, "is not present at runtime", stub, runtime)
         return
     maybe_paramspec_types = (
-        getattr(typing, "ParamSpec", None), getattr(typing_extensions, "ParamSpec", None)
+        getattr(typing, "ParamSpec", None),
+        getattr(typing_extensions, "ParamSpec", None),
     )
     paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
     if not paramspec_types or not isinstance(runtime, paramspec_types):
@@ -989,10 +980,10 @@ def _resolve_funcitem_from_decorator(dec: nodes.OverloadPart) -> Optional[nodes.
         if decorator.fullname is None:
             # Happens with namedtuple
             return None
-        if decorator.fullname in (
-            "builtins.staticmethod",
-            "abc.abstractmethod",
-        ) or decorator.fullname in mypy.types.OVERLOAD_NAMES:
+        if (
+            decorator.fullname in ("builtins.staticmethod", "abc.abstractmethod")
+            or decorator.fullname in mypy.types.OVERLOAD_NAMES
+        ):
             return func
         if decorator.fullname == "builtins.classmethod":
             if func.arguments[0].variable.name not in ("cls", "mcs", "metacls"):
@@ -1042,8 +1033,11 @@ def verify_typealias(
     stub_target = mypy.types.get_proper_type(stub.target)
     if isinstance(runtime, Missing):
         yield Error(
-            object_path, "is not present at runtime", stub, runtime,
-            stub_desc=f"Type alias for: {stub_target}"
+            object_path,
+            "is not present at runtime",
+            stub,
+            runtime,
+            stub_desc=f"Type alias for: {stub_target}",
         )
         return
     if isinstance(stub_target, mypy.types.Instance):
@@ -1057,8 +1051,11 @@ def verify_typealias(
     if isinstance(stub_target, mypy.types.TupleType):
         if tuple not in getattr(runtime, "__mro__", ()):
             yield Error(
-                object_path, "is not a subclass of tuple", stub, runtime,
-                stub_desc=str(stub_target)
+                object_path,
+                "is not a subclass of tuple",
+                stub,
+                runtime,
+                stub_desc=str(stub_target),
             )
         # could check Tuple contents here...
         return
@@ -1208,8 +1205,7 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
 
     if isinstance(
         runtime,
-        (types.FunctionType, types.BuiltinFunctionType,
-        types.MethodType, types.BuiltinMethodType)
+        (types.FunctionType, types.BuiltinFunctionType, types.MethodType, types.BuiltinMethodType),
     ):
         builtins = get_stub("builtins")
         assert builtins is not None
@@ -1361,8 +1357,7 @@ def get_stub(module: str) -> Optional[nodes.MypyFile]:
 
 
 def get_typeshed_stdlib_modules(
-    custom_typeshed_dir: Optional[str],
-    version_info: Optional[Tuple[int, int]] = None
+    custom_typeshed_dir: Optional[str], version_info: Optional[Tuple[int, int]] = None
 ) -> List[str]:
     """Returns a list of stdlib modules in typeshed (for current Python version)."""
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
@@ -1454,10 +1449,7 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
         modules = [m for m in modules if m not in annoying_modules]
 
     if not modules:
-        print(
-            _style("error:", color="red", bold=True),
-            "no modules to check",
-        )
+        print(_style("error:", color="red", bold=True), "no modules to check")
         return 1
 
     options = Options()
@@ -1467,8 +1459,10 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
     options.use_builtins_fixtures = use_builtins_fixtures
 
     if options.config_file:
+
         def set_strict_flags() -> None:  # not needed yet
             return
+
         parse_config_file(options, set_strict_flags, options.config_file, sys.stdout, sys.stderr)
 
     try:
@@ -1530,14 +1524,16 @@ def test_stubs(args: _Arguments, use_builtins_fixtures: bool = False) -> int:
                 _style(
                     f"Found {error_count} error{plural_s(error_count)}"
                     f" (checked {len(modules)} module{plural_s(modules)})",
-                    color="red", bold=True
+                    color="red",
+                    bold=True,
                 )
             )
         else:
             print(
                 _style(
                     f"Success: no issues found in {len(modules)} module{plural_s(modules)}",
-                    color="green", bold=True
+                    color="green",
+                    bold=True,
                 )
             )
 
@@ -1591,10 +1587,7 @@ def parse_options(args: List[str]) -> _Arguments:
     parser.add_argument(
         "--mypy-config-file",
         metavar="FILE",
-        help=(
-            "Use specified mypy config file to determine mypy plugins "
-            "and mypy path"
-        ),
+        help=("Use specified mypy config file to determine mypy plugins " "and mypy path"),
     )
     parser.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"

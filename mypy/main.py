@@ -1,31 +1,24 @@
 """Mypy type checker command line tool."""
 
 import argparse
-from gettext import gettext
 import os
 import subprocess
 import sys
 import time
+from gettext import gettext
+from typing import IO, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
 
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
-from mypy import build
-from mypy import defaults
-from mypy import state
-from mypy import util
-from mypy.modulefinder import (
-    BuildSource, FindModuleCache, SearchPaths,
-    get_search_dirs, mypy_path,
-)
-from mypy.find_sources import create_source_list, InvalidSourceList
-from mypy.fscache import FileSystemCache
-from mypy.errors import CompileError
+from mypy import build, defaults, state, util
+from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
 from mypy.errorcodes import error_codes
-from mypy.options import Options, BuildType
-from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
+from mypy.errors import CompileError
+from mypy.find_sources import InvalidSourceList, create_source_list
+from mypy.fscache import FileSystemCache
+from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
+from mypy.options import BuildType, Options
 from mypy.split_namespace import SplitNamespace
-
 from mypy.version import __version__
 
 orig_stat: Final = os.stat
@@ -39,17 +32,20 @@ def stat_proxy(path: str) -> os.stat_result:
         print(f"stat({path!r}) -> {err}")
         raise
     else:
-        print("stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)" %
-              (path, st.st_mode, st.st_mtime, st.st_size))
+        print(
+            "stat(%r) -> (st_mode=%o, st_mtime=%d, st_size=%d)"
+            % (path, st.st_mode, st.st_mtime, st.st_size)
+        )
         return st
 
 
-def main(script_path: Optional[str],
-         stdout: TextIO,
-         stderr: TextIO,
-         args: Optional[List[str]] = None,
-         clean_exit: bool = False,
-         ) -> None:
+def main(
+    script_path: Optional[str],
+    stdout: TextIO,
+    stderr: TextIO,
+    args: Optional[List[str]] = None,
+    clean_exit: bool = False,
+) -> None:
     """Main entry point to the type checker.
 
     Args:
@@ -59,16 +55,15 @@ def main(script_path: Optional[str],
         clean_exit: Don't hard kill the process on exit. This allows catching
             SystemExit.
     """
-    util.check_python_version('mypy')
+    util.check_python_version("mypy")
     t0 = time.time()
     # To log stat() calls: os.stat = stat_proxy
-    sys.setrecursionlimit(2 ** 14)
+    sys.setrecursionlimit(2**14)
     if args is None:
         args = sys.argv[1:]
 
     fscache = FileSystemCache()
-    sources, options = process_options(args, stdout=stdout, stderr=stderr,
-                                       fscache=fscache)
+    sources, options = process_options(args, stdout=stdout, stderr=stderr, fscache=fscache)
     if clean_exit:
         options.fast_exit = False
 
@@ -82,12 +77,16 @@ def main(script_path: Optional[str],
         fail("error: --non-interactive is only supported with --install-types", stderr, options)
 
     if options.install_types and not options.incremental:
-        fail("error: --install-types not supported with incremental mode disabled",
-             stderr, options)
+        fail(
+            "error: --install-types not supported with incremental mode disabled", stderr, options
+        )
 
     if options.install_types and options.python_executable is None:
-        fail("error: --install-types not supported without python executable or site packages",
-             stderr, options)
+        fail(
+            "error: --install-types not supported without python executable or site packages",
+            stderr,
+            options,
+        )
 
     if options.install_types and not sources:
         install_types(formatter, options, non_interactive=options.non_interactive)
@@ -107,6 +106,7 @@ def main(script_path: Optional[str],
 
     if MEM_PROFILE:
         from mypy.memprofile import print_memory_profile
+
         print_memory_profile()
 
     code = 0
@@ -116,13 +116,12 @@ def main(script_path: Optional[str],
         n_errors, n_notes, n_files = util.count_stats(messages)
         if n_errors:
             summary = formatter.format_error(
-                n_errors, n_files, len(sources), blockers=blockers,
-                use_color=options.color_output
+                n_errors, n_files, len(sources), blockers=blockers, use_color=options.color_output
             )
-            stdout.write(summary + '\n')
+            stdout.write(summary + "\n")
         # Only notes should also output success
         elif not messages or n_notes == len(messages):
-            stdout.write(formatter.format_success(len(sources), options.color_output) + '\n')
+            stdout.write(formatter.format_success(len(sources), options.color_output) + "\n")
         stdout.flush()
 
     if options.install_types and not options.non_interactive:
@@ -144,12 +143,14 @@ def main(script_path: Optional[str],
     list([res])
 
 
-def run_build(sources: List[BuildSource],
-              options: Options,
-              fscache: FileSystemCache,
-              t0: float,
-              stdout: TextIO,
-              stderr: TextIO) -> Tuple[Optional[build.BuildResult], List[str], bool]:
+def run_build(
+    sources: List[BuildSource],
+    options: Options,
+    fscache: FileSystemCache,
+    t0: float,
+    stdout: TextIO,
+    stderr: TextIO,
+) -> Tuple[Optional[build.BuildResult], List[str], bool]:
     formatter = util.FancyFormatter(stdout, stderr, options.show_error_codes)
 
     messages = []
@@ -175,28 +176,38 @@ def run_build(sources: List[BuildSource],
         blockers = True
         if not e.use_stdout:
             serious = True
-    if (options.warn_unused_configs
-            and options.unused_configs
-            and not options.incremental
-            and not options.non_interactive):
-        print("Warning: unused section(s) in %s: %s" %
-              (options.config_file,
-              get_config_module_names(options.config_file,
-                                      [glob for glob in options.per_module_options.keys()
-                                      if glob in options.unused_configs])),
-              file=stderr)
+    if (
+        options.warn_unused_configs
+        and options.unused_configs
+        and not options.incremental
+        and not options.non_interactive
+    ):
+        print(
+            "Warning: unused section(s) in %s: %s"
+            % (
+                options.config_file,
+                get_config_module_names(
+                    options.config_file,
+                    [
+                        glob
+                        for glob in options.per_module_options.keys()
+                        if glob in options.unused_configs
+                    ],
+                ),
+            ),
+            file=stderr,
+        )
     maybe_write_junit_xml(time.time() - t0, serious, messages, options)
     return res, messages, blockers
 
 
-def show_messages(messages: List[str],
-                  f: TextIO,
-                  formatter: util.FancyFormatter,
-                  options: Options) -> None:
+def show_messages(
+    messages: List[str], f: TextIO, formatter: util.FancyFormatter, options: Options
+) -> None:
     for msg in messages:
         if options.color_output:
             msg = formatter.colorize(msg)
-        f.write(msg + '\n')
+        f.write(msg + "\n")
     f.flush()
 
 
@@ -206,7 +217,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
         super().__init__(prog=prog, max_help_position=28)
 
     def _fill_text(self, text: str, width: int, indent: str) -> str:
-        if '\n' in text:
+        if "\n" in text:
             # Assume we want to manually format the text
             return super()._fill_text(text, width, indent)
         else:
@@ -216,10 +227,7 @@ class AugmentedHelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 
 # Define pairs of flag prefixes with inverse meaning.
-flag_prefix_pairs: Final = [
-    ('allow', 'disallow'),
-    ('show', 'hide'),
-]
+flag_prefix_pairs: Final = [("allow", "disallow"), ("show", "hide")]
 flag_prefix_map: Final[Dict[str, str]] = {}
 for a, b in flag_prefix_pairs:
     flag_prefix_map[a] = b
@@ -227,15 +235,15 @@ for a, b in flag_prefix_pairs:
 
 
 def invert_flag_name(flag: str) -> str:
-    split = flag[2:].split('-', 1)
+    split = flag[2:].split("-", 1)
     if len(split) == 2:
         prefix, rest = split
         if prefix in flag_prefix_map:
-            return f'--{flag_prefix_map[prefix]}-{rest}'
-        elif prefix == 'no':
-            return f'--{rest}'
+            return f"--{flag_prefix_map[prefix]}-{rest}"
+        elif prefix == "no":
+            return f"--{rest}"
 
-    return f'--no-{flag[2:]}'
+    return f"--no-{flag[2:]}"
 
 
 class PythonExecutableInferenceError(Exception):
@@ -243,34 +251,38 @@ class PythonExecutableInferenceError(Exception):
 
 
 def python_executable_prefix(v: str) -> List[str]:
-    if sys.platform == 'win32':
+    if sys.platform == "win32":
         # on Windows, all Python executables are named `python`. To handle this, there
         # is the `py` launcher, which can be passed a version e.g. `py -3.8`, and it will
         # execute an installed Python 3.8 interpreter. See also:
         # https://docs.python.org/3/using/windows.html#python-launcher-for-windows
-        return ['py', f'-{v}']
+        return ["py", f"-{v}"]
     else:
-        return [f'python{v}']
+        return [f"python{v}"]
 
 
 def _python_executable_from_version(python_version: Tuple[int, int]) -> str:
     if sys.version_info[:2] == python_version:
         return sys.executable
-    str_ver = '.'.join(map(str, python_version))
+    str_ver = ".".join(map(str, python_version))
     try:
-        sys_exe = subprocess.check_output(python_executable_prefix(str_ver) +
-                                          ['-c', 'import sys; print(sys.executable)'],
-                                          stderr=subprocess.STDOUT).decode().strip()
+        sys_exe = (
+            subprocess.check_output(
+                python_executable_prefix(str_ver) + ["-c", "import sys; print(sys.executable)"],
+                stderr=subprocess.STDOUT,
+            )
+            .decode()
+            .strip()
+        )
         return sys_exe
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         raise PythonExecutableInferenceError(
-            'failed to find a Python executable matching version {},'
-            ' perhaps try --python-executable, or --no-site-packages?'.format(python_version)
+            "failed to find a Python executable matching version {},"
+            " perhaps try --python-executable, or --no-site-packages?".format(python_version)
         ) from e
 
 
-def infer_python_executable(options: Options,
-                            special_opts: argparse.Namespace) -> None:
+def infer_python_executable(options: Options, special_opts: argparse.Namespace) -> None:
     """Infer the Python executable from the given version.
 
     This function mutates options based on special_opts to infer the correct Python executable
@@ -331,8 +343,8 @@ class CapturableArgumentParser(argparse.ArgumentParser):
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
-        self.stdout = kwargs.pop('stdout', sys.stdout)
-        self.stderr = kwargs.pop('stderr', sys.stderr)
+        self.stdout = kwargs.pop("stdout", sys.stdout)
+        self.stderr = kwargs.pop("stderr", sys.stderr)
         super().__init__(*args, **kwargs)
 
     # =====================
@@ -372,8 +384,8 @@ class CapturableArgumentParser(argparse.ArgumentParser):
         should either exit or raise an exception.
         """
         self.print_usage(self.stderr)
-        args = {'prog': self.prog, 'message': message}
-        self.exit(2, gettext('%(prog)s: error: %(message)s\n') % args)
+        args = {"prog": self.prog, "message": message}
+        self.exit(2, gettext("%(prog)s: error: %(message)s\n") % args)
 
 
 class CapturableVersionAction(argparse.Action):
@@ -388,42 +400,44 @@ class CapturableVersionAction(argparse.Action):
     (which does not appear to exist).
     """
 
-    def __init__(self,
-                 option_strings: Sequence[str],
-                 version: str,
-                 dest: str = argparse.SUPPRESS,
-                 default: str = argparse.SUPPRESS,
-                 help: str = "show program's version number and exit",
-                 stdout: Optional[IO[str]] = None):
+    def __init__(
+        self,
+        option_strings: Sequence[str],
+        version: str,
+        dest: str = argparse.SUPPRESS,
+        default: str = argparse.SUPPRESS,
+        help: str = "show program's version number and exit",
+        stdout: Optional[IO[str]] = None,
+    ):
         super().__init__(
-            option_strings=option_strings,
-            dest=dest,
-            default=default,
-            nargs=0,
-            help=help)
+            option_strings=option_strings, dest=dest, default=default, nargs=0, help=help
+        )
         self.version = version
         self.stdout = stdout or sys.stdout
 
-    def __call__(self,
-                 parser: argparse.ArgumentParser,
-                 namespace: argparse.Namespace,
-                 values: Union[str, Sequence[Any], None],
-                 option_string: Optional[str] = None) -> NoReturn:
+    def __call__(
+        self,
+        parser: argparse.ArgumentParser,
+        namespace: argparse.Namespace,
+        values: Union[str, Sequence[Any], None],
+        option_string: Optional[str] = None,
+    ) -> NoReturn:
         formatter = parser._get_formatter()
         formatter.add_text(self.version)
         parser._print_message(formatter.format_help(), self.stdout)
         parser.exit()
 
 
-def process_options(args: List[str],
-                    stdout: Optional[TextIO] = None,
-                    stderr: Optional[TextIO] = None,
-                    require_targets: bool = True,
-                    server_options: bool = False,
-                    fscache: Optional[FileSystemCache] = None,
-                    program: str = 'mypy',
-                    header: str = HEADER,
-                    ) -> Tuple[List[BuildSource], Options]:
+def process_options(
+    args: List[str],
+    stdout: Optional[TextIO] = None,
+    stderr: Optional[TextIO] = None,
+    require_targets: bool = True,
+    server_options: bool = False,
+    fscache: Optional[FileSystemCache] = None,
+    program: str = "mypy",
+    header: str = HEADER,
+) -> Tuple[List[BuildSource], Options]:
     """Parse command line arguments.
 
     If a FileSystemCache is passed in, and package_root options are given,
@@ -432,28 +446,31 @@ def process_options(args: List[str],
     stdout = stdout or sys.stdout
     stderr = stderr or sys.stderr
 
-    parser = CapturableArgumentParser(prog=program,
-                                      usage=header,
-                                      description=DESCRIPTION,
-                                      epilog=FOOTER,
-                                      fromfile_prefix_chars='@',
-                                      formatter_class=AugmentedHelpFormatter,
-                                      add_help=False,
-                                      stdout=stdout,
-                                      stderr=stderr)
+    parser = CapturableArgumentParser(
+        prog=program,
+        usage=header,
+        description=DESCRIPTION,
+        epilog=FOOTER,
+        fromfile_prefix_chars="@",
+        formatter_class=AugmentedHelpFormatter,
+        add_help=False,
+        stdout=stdout,
+        stderr=stderr,
+    )
 
     strict_flag_names: List[str] = []
     strict_flag_assignments: List[Tuple[str, bool]] = []
 
-    def add_invertible_flag(flag: str,
-                            *,
-                            inverse: Optional[str] = None,
-                            default: bool,
-                            dest: Optional[str] = None,
-                            help: str,
-                            strict_flag: bool = False,
-                            group: Optional[argparse._ActionsContainer] = None
-                            ) -> None:
+    def add_invertible_flag(
+        flag: str,
+        *,
+        inverse: Optional[str] = None,
+        default: bool,
+        dest: Optional[str] = None,
+        help: str,
+        strict_flag: bool = False,
+        group: Optional[argparse._ActionsContainer] = None,
+    ) -> None:
         if inverse is None:
             inverse = invert_flag_name(flag)
         if group is None:
@@ -462,15 +479,16 @@ def process_options(args: List[str],
         if help is not argparse.SUPPRESS:
             help += f" (inverse: {inverse})"
 
-        arg = group.add_argument(flag,
-                                 action='store_false' if default else 'store_true',
-                                 dest=dest,
-                                 help=help)
+        arg = group.add_argument(
+            flag, action="store_false" if default else "store_true", dest=dest, help=help
+        )
         dest = arg.dest
-        arg = group.add_argument(inverse,
-                                 action='store_true' if default else 'store_false',
-                                 dest=dest,
-                                 help=argparse.SUPPRESS)
+        arg = group.add_argument(
+            inverse,
+            action="store_true" if default else "store_false",
+            dest=dest,
+            help=argparse.SUPPRESS,
+        )
         if strict_flag:
             assert dest is not None
             strict_flag_names.append(flag)
@@ -484,172 +502,280 @@ def process_options(args: List[str],
     # Note: we have a style guide for formatting the mypy --help text. See
     # https://github.com/python/mypy/wiki/Documentation-Conventions
 
-    general_group = parser.add_argument_group(
-        title='Optional arguments')
+    general_group = parser.add_argument_group(title="Optional arguments")
     general_group.add_argument(
-        '-h', '--help', action='help',
-        help="Show this help message and exit")
+        "-h", "--help", action="help", help="Show this help message and exit"
+    )
     general_group.add_argument(
-        '-v', '--verbose', action='count', dest='verbosity',
-        help="More verbose messages")
+        "-v", "--verbose", action="count", dest="verbosity", help="More verbose messages"
+    )
 
     compilation_status = "no" if __file__.endswith(".py") else "yes"
     general_group.add_argument(
-        '-V', '--version', action=CapturableVersionAction,
-        version='%(prog)s ' + __version__ + f" (compiled: {compilation_status})",
+        "-V",
+        "--version",
+        action=CapturableVersionAction,
+        version="%(prog)s " + __version__ + f" (compiled: {compilation_status})",
         help="Show program's version number and exit",
-        stdout=stdout)
+        stdout=stdout,
+    )
 
     config_group = parser.add_argument_group(
-        title='Config file',
+        title="Config file",
         description="Use a config file instead of command line arguments. "
-                    "This is useful if you are using many flags or want "
-                    "to set different options per each module.")
+        "This is useful if you are using many flags or want "
+        "to set different options per each module.",
+    )
     config_group.add_argument(
-        '--config-file',
+        "--config-file",
         help="Configuration file, must have a [mypy] section "
-             "(defaults to {})".format(', '.join(defaults.CONFIG_FILES)))
-    add_invertible_flag('--warn-unused-configs', default=False, strict_flag=True,
-                        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
-                             "config sections",
-                        group=config_group)
+        "(defaults to {})".format(", ".join(defaults.CONFIG_FILES)),
+    )
+    add_invertible_flag(
+        "--warn-unused-configs",
+        default=False,
+        strict_flag=True,
+        help="Warn about unused '[mypy-<pattern>]' or '[[tool.mypy.overrides]]' "
+        "config sections",
+        group=config_group,
+    )
 
     imports_group = parser.add_argument_group(
-        title='Import discovery',
-        description="Configure how imports are discovered and followed.")
+        title="Import discovery", description="Configure how imports are discovered and followed."
+    )
     add_invertible_flag(
-        '--namespace-packages', default=False,
+        "--namespace-packages",
+        default=False,
         help="Support namespace packages (PEP 420, __init__.py-less)",
-        group=imports_group)
+        group=imports_group,
+    )
     imports_group.add_argument(
-        '--ignore-missing-imports', action='store_true',
-        help="Silently ignore imports of missing modules")
+        "--ignore-missing-imports",
+        action="store_true",
+        help="Silently ignore imports of missing modules",
+    )
     imports_group.add_argument(
-        '--follow-imports', choices=['normal', 'silent', 'skip', 'error'],
-        default='normal', help="How to treat imports (default normal)")
+        "--follow-imports",
+        choices=["normal", "silent", "skip", "error"],
+        default="normal",
+        help="How to treat imports (default normal)",
+    )
     imports_group.add_argument(
-        '--python-executable', action='store', metavar='EXECUTABLE',
+        "--python-executable",
+        action="store",
+        metavar="EXECUTABLE",
         help="Python executable used for finding PEP 561 compliant installed"
-             " packages and stubs",
-        dest='special-opts:python_executable')
+        " packages and stubs",
+        dest="special-opts:python_executable",
+    )
     imports_group.add_argument(
-        '--no-site-packages', action='store_true',
-        dest='special-opts:no_executable',
-        help="Do not search for installed PEP 561 compliant packages")
+        "--no-site-packages",
+        action="store_true",
+        dest="special-opts:no_executable",
+        help="Do not search for installed PEP 561 compliant packages",
+    )
     imports_group.add_argument(
-        '--no-silence-site-packages', action='store_true',
-        help="Do not silence errors in PEP 561 compliant installed packages")
+        "--no-silence-site-packages",
+        action="store_true",
+        help="Do not silence errors in PEP 561 compliant installed packages",
+    )
 
     platform_group = parser.add_argument_group(
-        title='Platform configuration',
+        title="Platform configuration",
         description="Type check code assuming it will be run under certain "
-                    "runtime conditions. By default, mypy assumes your code "
-                    "will be run using the same operating system and Python "
-                    "version you are using to run mypy itself.")
+        "runtime conditions. By default, mypy assumes your code "
+        "will be run using the same operating system and Python "
+        "version you are using to run mypy itself.",
+    )
     platform_group.add_argument(
-        '--python-version', type=parse_version, metavar='x.y',
-        help='Type check code assuming it will be running on Python x.y',
-        dest='special-opts:python_version')
+        "--python-version",
+        type=parse_version,
+        metavar="x.y",
+        help="Type check code assuming it will be running on Python x.y",
+        dest="special-opts:python_version",
+    )
     platform_group.add_argument(
-        '-2', '--py2', dest='special-opts:python_version', action='store_const',
+        "-2",
+        "--py2",
+        dest="special-opts:python_version",
+        action="store_const",
         const=defaults.PYTHON2_VERSION,
-        help="Use Python 2 mode (same as --python-version 2.7)")
+        help="Use Python 2 mode (same as --python-version 2.7)",
+    )
     platform_group.add_argument(
-        '--platform', action='store', metavar='PLATFORM',
+        "--platform",
+        action="store",
+        metavar="PLATFORM",
         help="Type check special-cased code for the given OS platform "
-             "(defaults to sys.platform)")
+        "(defaults to sys.platform)",
+    )
     platform_group.add_argument(
-        '--always-true', metavar='NAME', action='append', default=[],
-        help="Additional variable to be considered True (may be repeated)")
+        "--always-true",
+        metavar="NAME",
+        action="append",
+        default=[],
+        help="Additional variable to be considered True (may be repeated)",
+    )
     platform_group.add_argument(
-        '--always-false', metavar='NAME', action='append', default=[],
-        help="Additional variable to be considered False (may be repeated)")
+        "--always-false",
+        metavar="NAME",
+        action="append",
+        default=[],
+        help="Additional variable to be considered False (may be repeated)",
+    )
 
     disallow_any_group = parser.add_argument_group(
-        title='Disallow dynamic typing',
-        description="Disallow the use of the dynamic 'Any' type under certain conditions.")
+        title="Disallow dynamic typing",
+        description="Disallow the use of the dynamic 'Any' type under certain conditions.",
+    )
     disallow_any_group.add_argument(
-        '--disallow-any-unimported', default=False, action='store_true',
-        help="Disallow Any types resulting from unfollowed imports")
+        "--disallow-any-unimported",
+        default=False,
+        action="store_true",
+        help="Disallow Any types resulting from unfollowed imports",
+    )
     disallow_any_group.add_argument(
-        '--disallow-any-expr', default=False, action='store_true',
-        help='Disallow all expressions that have type Any')
+        "--disallow-any-expr",
+        default=False,
+        action="store_true",
+        help="Disallow all expressions that have type Any",
+    )
     disallow_any_group.add_argument(
-        '--disallow-any-decorated', default=False, action='store_true',
-        help='Disallow functions that have Any in their signature '
-             'after decorator transformation')
+        "--disallow-any-decorated",
+        default=False,
+        action="store_true",
+        help="Disallow functions that have Any in their signature "
+        "after decorator transformation",
+    )
     disallow_any_group.add_argument(
-        '--disallow-any-explicit', default=False, action='store_true',
-        help='Disallow explicit Any in type positions')
-    add_invertible_flag('--disallow-any-generics', default=False, strict_flag=True,
-                        help='Disallow usage of generic types that do not specify explicit type '
-                        'parameters', group=disallow_any_group)
-    add_invertible_flag('--disallow-subclassing-any', default=False, strict_flag=True,
-                        help="Disallow subclassing values of type 'Any' when defining classes",
-                        group=disallow_any_group)
+        "--disallow-any-explicit",
+        default=False,
+        action="store_true",
+        help="Disallow explicit Any in type positions",
+    )
+    add_invertible_flag(
+        "--disallow-any-generics",
+        default=False,
+        strict_flag=True,
+        help="Disallow usage of generic types that do not specify explicit type " "parameters",
+        group=disallow_any_group,
+    )
+    add_invertible_flag(
+        "--disallow-subclassing-any",
+        default=False,
+        strict_flag=True,
+        help="Disallow subclassing values of type 'Any' when defining classes",
+        group=disallow_any_group,
+    )
 
     untyped_group = parser.add_argument_group(
-        title='Untyped definitions and calls',
+        title="Untyped definitions and calls",
         description="Configure how untyped definitions and calls are handled. "
-                    "Note: by default, mypy ignores any untyped function definitions "
-                    "and assumes any calls to such functions have a return "
-                    "type of 'Any'.")
-    add_invertible_flag('--disallow-untyped-calls', default=False, strict_flag=True,
-                        help="Disallow calling functions without type annotations"
-                        " from functions with type annotations",
-                        group=untyped_group)
-    add_invertible_flag('--disallow-untyped-defs', default=False, strict_flag=True,
-                        help="Disallow defining functions without type annotations"
-                        " or with incomplete type annotations",
-                        group=untyped_group)
-    add_invertible_flag('--disallow-incomplete-defs', default=False, strict_flag=True,
-                        help="Disallow defining functions with incomplete type annotations",
-                        group=untyped_group)
-    add_invertible_flag('--check-untyped-defs', default=False, strict_flag=True,
-                        help="Type check the interior of functions without type annotations",
-                        group=untyped_group)
-    add_invertible_flag('--disallow-untyped-decorators', default=False, strict_flag=True,
-                        help="Disallow decorating typed functions with untyped decorators",
-                        group=untyped_group)
+        "Note: by default, mypy ignores any untyped function definitions "
+        "and assumes any calls to such functions have a return "
+        "type of 'Any'.",
+    )
+    add_invertible_flag(
+        "--disallow-untyped-calls",
+        default=False,
+        strict_flag=True,
+        help="Disallow calling functions without type annotations"
+        " from functions with type annotations",
+        group=untyped_group,
+    )
+    add_invertible_flag(
+        "--disallow-untyped-defs",
+        default=False,
+        strict_flag=True,
+        help="Disallow defining functions without type annotations"
+        " or with incomplete type annotations",
+        group=untyped_group,
+    )
+    add_invertible_flag(
+        "--disallow-incomplete-defs",
+        default=False,
+        strict_flag=True,
+        help="Disallow defining functions with incomplete type annotations",
+        group=untyped_group,
+    )
+    add_invertible_flag(
+        "--check-untyped-defs",
+        default=False,
+        strict_flag=True,
+        help="Type check the interior of functions without type annotations",
+        group=untyped_group,
+    )
+    add_invertible_flag(
+        "--disallow-untyped-decorators",
+        default=False,
+        strict_flag=True,
+        help="Disallow decorating typed functions with untyped decorators",
+        group=untyped_group,
+    )
 
     none_group = parser.add_argument_group(
-        title='None and Optional handling',
+        title="None and Optional handling",
         description="Adjust how values of type 'None' are handled. For more context on "
-                    "how mypy handles values of type 'None', see: "
-                    "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional")
-    add_invertible_flag('--no-implicit-optional', default=False, strict_flag=True,
-                        help="Don't assume arguments with default values of None are Optional",
-                        group=none_group)
+        "how mypy handles values of type 'None', see: "
+        "https://mypy.readthedocs.io/en/stable/kinds_of_types.html#no-strict-optional",
+    )
+    add_invertible_flag(
+        "--no-implicit-optional",
+        default=False,
+        strict_flag=True,
+        help="Don't assume arguments with default values of None are Optional",
+        group=none_group,
+    )
+    none_group.add_argument("--strict-optional", action="store_true", help=argparse.SUPPRESS)
     none_group.add_argument(
-        '--strict-optional', action='store_true',
-        help=argparse.SUPPRESS)
+        "--no-strict-optional",
+        action="store_false",
+        dest="strict_optional",
+        help="Disable strict Optional checks (inverse: --strict-optional)",
+    )
     none_group.add_argument(
-        '--no-strict-optional', action='store_false', dest='strict_optional',
-        help="Disable strict Optional checks (inverse: --strict-optional)")
-    none_group.add_argument(
-        '--strict-optional-whitelist', metavar='GLOB', nargs='*',
-        help=argparse.SUPPRESS)
+        "--strict-optional-whitelist", metavar="GLOB", nargs="*", help=argparse.SUPPRESS
+    )
 
     lint_group = parser.add_argument_group(
-        title='Configuring warnings',
-        description="Detect code that is sound but redundant or problematic.")
-    add_invertible_flag('--warn-redundant-casts', default=False, strict_flag=True,
-                        help="Warn about casting an expression to its inferred type",
-                        group=lint_group)
-    add_invertible_flag('--warn-unused-ignores', default=False, strict_flag=True,
-                        help="Warn about unneeded '# type: ignore' comments",
-                        group=lint_group)
-    add_invertible_flag('--no-warn-no-return', dest='warn_no_return', default=True,
-                        help="Do not warn about functions that end without returning",
-                        group=lint_group)
-    add_invertible_flag('--warn-return-any', default=False, strict_flag=True,
-                        help="Warn about returning values of type Any"
-                             " from non-Any typed functions",
-                        group=lint_group)
-    add_invertible_flag('--warn-unreachable', default=False, strict_flag=False,
-                        help="Warn about statements or expressions inferred to be"
-                             " unreachable",
-                        group=lint_group)
+        title="Configuring warnings",
+        description="Detect code that is sound but redundant or problematic.",
+    )
+    add_invertible_flag(
+        "--warn-redundant-casts",
+        default=False,
+        strict_flag=True,
+        help="Warn about casting an expression to its inferred type",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--warn-unused-ignores",
+        default=False,
+        strict_flag=True,
+        help="Warn about unneeded '# type: ignore' comments",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--no-warn-no-return",
+        dest="warn_no_return",
+        default=True,
+        help="Do not warn about functions that end without returning",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--warn-return-any",
+        default=False,
+        strict_flag=True,
+        help="Warn about returning values of type Any" " from non-Any typed functions",
+        group=lint_group,
+    )
+    add_invertible_flag(
+        "--warn-unreachable",
+        default=False,
+        strict_flag=False,
+        help="Warn about statements or expressions inferred to be" " unreachable",
+        group=lint_group,
+    )
 
     # Note: this group is intentionally added here even though we don't add
     # --strict to this group near the end.
@@ -658,237 +784,341 @@ def process_options(args: List[str],
     # but before the remaining flags.
     # We add `--strict` near the end so we don't accidentally miss any strictness
     # flags that are added after this group.
-    strictness_group = parser.add_argument_group(
-        title='Miscellaneous strictness flags')
+    strictness_group = parser.add_argument_group(title="Miscellaneous strictness flags")
 
-    add_invertible_flag('--allow-untyped-globals', default=False, strict_flag=False,
-                        help="Suppress toplevel errors caused by missing annotations",
-                        group=strictness_group)
+    add_invertible_flag(
+        "--allow-untyped-globals",
+        default=False,
+        strict_flag=False,
+        help="Suppress toplevel errors caused by missing annotations",
+        group=strictness_group,
+    )
 
-    add_invertible_flag('--allow-redefinition', default=False, strict_flag=False,
-                        help="Allow unconditional variable redefinition with a new type",
-                        group=strictness_group)
+    add_invertible_flag(
+        "--allow-redefinition",
+        default=False,
+        strict_flag=False,
+        help="Allow unconditional variable redefinition with a new type",
+        group=strictness_group,
+    )
 
-    add_invertible_flag('--no-implicit-reexport', default=True, strict_flag=True,
-                        dest='implicit_reexport',
-                        help="Treat imports as private unless aliased",
-                        group=strictness_group)
+    add_invertible_flag(
+        "--no-implicit-reexport",
+        default=True,
+        strict_flag=True,
+        dest="implicit_reexport",
+        help="Treat imports as private unless aliased",
+        group=strictness_group,
+    )
 
-    add_invertible_flag('--strict-equality', default=False, strict_flag=True,
-                        help="Prohibit equality, identity, and container checks for"
-                             " non-overlapping types",
-                        group=strictness_group)
+    add_invertible_flag(
+        "--strict-equality",
+        default=False,
+        strict_flag=True,
+        help="Prohibit equality, identity, and container checks for" " non-overlapping types",
+        group=strictness_group,
+    )
 
-    add_invertible_flag('--strict-concatenate', default=False, strict_flag=True,
-                        help="Make arguments prepended via Concatenate be truly positional-only",
-                        group=strictness_group)
+    add_invertible_flag(
+        "--strict-concatenate",
+        default=False,
+        strict_flag=True,
+        help="Make arguments prepended via Concatenate be truly positional-only",
+        group=strictness_group,
+    )
 
     strict_help = "Strict mode; enables the following flags: {}".format(
-        ", ".join(strict_flag_names))
+        ", ".join(strict_flag_names)
+    )
     strictness_group.add_argument(
-        '--strict', action='store_true', dest='special-opts:strict',
-        help=strict_help)
+        "--strict", action="store_true", dest="special-opts:strict", help=strict_help
+    )
 
     strictness_group.add_argument(
-        '--disable-error-code', metavar='NAME', action='append', default=[],
-        help="Disable a specific error code")
+        "--disable-error-code",
+        metavar="NAME",
+        action="append",
+        default=[],
+        help="Disable a specific error code",
+    )
     strictness_group.add_argument(
-        '--enable-error-code', metavar='NAME', action='append', default=[],
-        help="Enable a specific error code"
+        "--enable-error-code",
+        metavar="NAME",
+        action="append",
+        default=[],
+        help="Enable a specific error code",
     )
 
     error_group = parser.add_argument_group(
-        title='Configuring error messages',
-        description="Adjust the amount of detail shown in error messages.")
-    add_invertible_flag('--show-error-context', default=False,
-                        dest='show_error_context',
-                        help='Precede errors with "note:" messages explaining context',
-                        group=error_group)
-    add_invertible_flag('--show-column-numbers', default=False,
-                        help="Show column numbers in error messages",
-                        group=error_group)
-    add_invertible_flag('--show-error-end', default=False,
-                        help="Show end line/end column numbers in error messages."
-                             " This implies --show-column-numbers",
-                        group=error_group)
-    add_invertible_flag('--show-error-codes', default=False,
-                        help="Show error codes in error messages",
-                        group=error_group)
-    add_invertible_flag('--pretty', default=False,
-                        help="Use visually nicer output in error messages:"
-                             " Use soft word wrap, show source code snippets,"
-                             " and show error location markers",
-                        group=error_group)
-    add_invertible_flag('--no-color-output', dest='color_output', default=True,
-                        help="Do not colorize error messages",
-                        group=error_group)
-    add_invertible_flag('--no-error-summary', dest='error_summary', default=True,
-                        help="Do not show error stats summary",
-                        group=error_group)
-    add_invertible_flag('--show-absolute-path', default=False,
-                        help="Show absolute paths to files",
-                        group=error_group)
-    error_group.add_argument('--soft-error-limit', default=defaults.MANY_ERRORS_THRESHOLD,
-                             type=int, dest="many_errors_threshold", help=argparse.SUPPRESS)
+        title="Configuring error messages",
+        description="Adjust the amount of detail shown in error messages.",
+    )
+    add_invertible_flag(
+        "--show-error-context",
+        default=False,
+        dest="show_error_context",
+        help='Precede errors with "note:" messages explaining context',
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-column-numbers",
+        default=False,
+        help="Show column numbers in error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-error-end",
+        default=False,
+        help="Show end line/end column numbers in error messages."
+        " This implies --show-column-numbers",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-error-codes",
+        default=False,
+        help="Show error codes in error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--pretty",
+        default=False,
+        help="Use visually nicer output in error messages:"
+        " Use soft word wrap, show source code snippets,"
+        " and show error location markers",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--no-color-output",
+        dest="color_output",
+        default=True,
+        help="Do not colorize error messages",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--no-error-summary",
+        dest="error_summary",
+        default=True,
+        help="Do not show error stats summary",
+        group=error_group,
+    )
+    add_invertible_flag(
+        "--show-absolute-path",
+        default=False,
+        help="Show absolute paths to files",
+        group=error_group,
+    )
+    error_group.add_argument(
+        "--soft-error-limit",
+        default=defaults.MANY_ERRORS_THRESHOLD,
+        type=int,
+        dest="many_errors_threshold",
+        help=argparse.SUPPRESS,
+    )
 
     incremental_group = parser.add_argument_group(
-        title='Incremental mode',
+        title="Incremental mode",
         description="Adjust how mypy incrementally type checks and caches modules. "
-                    "Mypy caches type information about modules into a cache to "
-                    "let you speed up future invocations of mypy. Also see "
-                    "mypy's daemon mode: "
-                    "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon")
+        "Mypy caches type information about modules into a cache to "
+        "let you speed up future invocations of mypy. Also see "
+        "mypy's daemon mode: "
+        "mypy.readthedocs.io/en/stable/mypy_daemon.html#mypy-daemon",
+    )
     incremental_group.add_argument(
-        '-i', '--incremental', action='store_true',
-        help=argparse.SUPPRESS)
+        "-i", "--incremental", action="store_true", help=argparse.SUPPRESS
+    )
     incremental_group.add_argument(
-        '--no-incremental', action='store_false', dest='incremental',
-        help="Disable module cache (inverse: --incremental)")
+        "--no-incremental",
+        action="store_false",
+        dest="incremental",
+        help="Disable module cache (inverse: --incremental)",
+    )
     incremental_group.add_argument(
-        '--cache-dir', action='store', metavar='DIR',
+        "--cache-dir",
+        action="store",
+        metavar="DIR",
         help="Store module cache info in the given folder in incremental mode "
-             "(defaults to '{}')".format(defaults.CACHE_DIR))
-    add_invertible_flag('--sqlite-cache', default=False,
-                        help="Use a sqlite database to store the cache",
-                        group=incremental_group)
+        "(defaults to '{}')".format(defaults.CACHE_DIR),
+    )
+    add_invertible_flag(
+        "--sqlite-cache",
+        default=False,
+        help="Use a sqlite database to store the cache",
+        group=incremental_group,
+    )
     incremental_group.add_argument(
-        '--cache-fine-grained', action='store_true',
-        help="Include fine-grained dependency information in the cache for the mypy daemon")
+        "--cache-fine-grained",
+        action="store_true",
+        help="Include fine-grained dependency information in the cache for the mypy daemon",
+    )
     incremental_group.add_argument(
-        '--skip-version-check', action='store_true',
-        help="Allow using cache written by older mypy version")
+        "--skip-version-check",
+        action="store_true",
+        help="Allow using cache written by older mypy version",
+    )
     incremental_group.add_argument(
-        '--skip-cache-mtime-checks', action='store_true',
-        help="Skip cache internal consistency checks based on mtime")
+        "--skip-cache-mtime-checks",
+        action="store_true",
+        help="Skip cache internal consistency checks based on mtime",
+    )
 
     internals_group = parser.add_argument_group(
-        title='Advanced options',
-        description="Debug and customize mypy internals.")
+        title="Advanced options", description="Debug and customize mypy internals."
+    )
+    internals_group.add_argument("--pdb", action="store_true", help="Invoke pdb on fatal error")
     internals_group.add_argument(
-        '--pdb', action='store_true', help="Invoke pdb on fatal error")
-    internals_group.add_argument(
-        '--show-traceback', '--tb', action='store_true',
-        help="Show traceback on fatal error")
-    internals_group.add_argument(
-        '--raise-exceptions', action='store_true', help="Raise exception on fatal error"
+        "--show-traceback", "--tb", action="store_true", help="Show traceback on fatal error"
     )
     internals_group.add_argument(
-        '--custom-typing-module', metavar='MODULE', dest='custom_typing_module',
-        help="Use a custom typing module")
+        "--raise-exceptions", action="store_true", help="Raise exception on fatal error"
+    )
     internals_group.add_argument(
-        '--custom-typeshed-dir', metavar='DIR',
-        help="Use the custom typeshed in DIR")
-    add_invertible_flag('--warn-incomplete-stub', default=False,
-                        help="Warn if missing type annotation in typeshed, only relevant with"
-                             " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
-                        group=internals_group)
+        "--custom-typing-module",
+        metavar="MODULE",
+        dest="custom_typing_module",
+        help="Use a custom typing module",
+    )
     internals_group.add_argument(
-        '--shadow-file', nargs=2, metavar=('SOURCE_FILE', 'SHADOW_FILE'),
-        dest='shadow_file', action='append',
+        "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"
+    )
+    add_invertible_flag(
+        "--warn-incomplete-stub",
+        default=False,
+        help="Warn if missing type annotation in typeshed, only relevant with"
+        " --disallow-untyped-defs or --disallow-incomplete-defs enabled",
+        group=internals_group,
+    )
+    internals_group.add_argument(
+        "--shadow-file",
+        nargs=2,
+        metavar=("SOURCE_FILE", "SHADOW_FILE"),
+        dest="shadow_file",
+        action="append",
         help="When encountering SOURCE_FILE, read and type check "
-             "the contents of SHADOW_FILE instead.")
-    add_invertible_flag('--fast-exit', default=True, help=argparse.SUPPRESS,
-                        group=internals_group)
+        "the contents of SHADOW_FILE instead.",
+    )
+    add_invertible_flag("--fast-exit", default=True, help=argparse.SUPPRESS, group=internals_group)
 
     report_group = parser.add_argument_group(
-        title='Report generation',
-        description='Generate a report in the specified format.')
+        title="Report generation", description="Generate a report in the specified format."
+    )
     for report_type in sorted(defaults.REPORTER_NAMES):
-        if report_type not in {'memory-xml'}:
-            report_group.add_argument(f"--{report_type.replace('_', '-')}-report",
-                                      metavar='DIR',
-                                      dest=f'special-opts:{report_type}_report')
+        if report_type not in {"memory-xml"}:
+            report_group.add_argument(
+                f"--{report_type.replace('_', '-')}-report",
+                metavar="DIR",
+                dest=f"special-opts:{report_type}_report",
+            )
 
-    other_group = parser.add_argument_group(
-        title='Miscellaneous')
+    other_group = parser.add_argument_group(title="Miscellaneous")
+    other_group.add_argument("--quickstart-file", help=argparse.SUPPRESS)
+    other_group.add_argument("--junit-xml", help="Write junit.xml to the given file")
     other_group.add_argument(
-        '--quickstart-file', help=argparse.SUPPRESS)
+        "--find-occurrences",
+        metavar="CLASS.MEMBER",
+        dest="special-opts:find_occurrences",
+        help="Print out all usages of a class member (experimental)",
+    )
     other_group.add_argument(
-        '--junit-xml', help="Write junit.xml to the given file")
-    other_group.add_argument(
-        '--find-occurrences', metavar='CLASS.MEMBER',
-        dest='special-opts:find_occurrences',
-        help="Print out all usages of a class member (experimental)")
-    other_group.add_argument(
-        '--scripts-are-modules', action='store_true',
-        help="Script x becomes module x instead of __main__")
+        "--scripts-are-modules",
+        action="store_true",
+        help="Script x becomes module x instead of __main__",
+    )
 
-    add_invertible_flag('--install-types', default=False, strict_flag=False,
-                        help="Install detected missing library stub packages using pip",
-                        group=other_group)
-    add_invertible_flag('--non-interactive', default=False, strict_flag=False,
-                        help=("Install stubs without asking for confirmation and hide " +
-                              "errors, with --install-types"),
-                        group=other_group, inverse="--interactive")
+    add_invertible_flag(
+        "--install-types",
+        default=False,
+        strict_flag=False,
+        help="Install detected missing library stub packages using pip",
+        group=other_group,
+    )
+    add_invertible_flag(
+        "--non-interactive",
+        default=False,
+        strict_flag=False,
+        help=(
+            "Install stubs without asking for confirmation and hide "
+            + "errors, with --install-types"
+        ),
+        group=other_group,
+        inverse="--interactive",
+    )
 
     if server_options:
         # TODO: This flag is superfluous; remove after a short transition (2018-03-16)
         other_group.add_argument(
-            '--experimental', action='store_true', dest='fine_grained_incremental',
-            help="Enable fine-grained incremental mode")
+            "--experimental",
+            action="store_true",
+            dest="fine_grained_incremental",
+            help="Enable fine-grained incremental mode",
+        )
         other_group.add_argument(
-            '--use-fine-grained-cache', action='store_true',
-            help="Use the cache in fine-grained incremental mode")
+            "--use-fine-grained-cache",
+            action="store_true",
+            help="Use the cache in fine-grained incremental mode",
+        )
 
     # hidden options
     parser.add_argument(
-        '--stats', action='store_true', dest='dump_type_stats', help=argparse.SUPPRESS)
+        "--stats", action="store_true", dest="dump_type_stats", help=argparse.SUPPRESS
+    )
     parser.add_argument(
-        '--inferstats', action='store_true', dest='dump_inference_stats',
-        help=argparse.SUPPRESS)
-    parser.add_argument(
-        '--dump-build-stats', action='store_true',
-        help=argparse.SUPPRESS)
+        "--inferstats", action="store_true", dest="dump_inference_stats", help=argparse.SUPPRESS
+    )
+    parser.add_argument("--dump-build-stats", action="store_true", help=argparse.SUPPRESS)
     # dump timing  stats for each processed file into the given output file
-    parser.add_argument(
-        '--timing-stats', dest='timing_stats', help=argparse.SUPPRESS)
+    parser.add_argument("--timing-stats", dest="timing_stats", help=argparse.SUPPRESS)
     # --debug-cache will disable any cache-related compressions/optimizations,
     # which will make the cache writing process output pretty-printed JSON (which
     # is easier to debug).
-    parser.add_argument('--debug-cache', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--debug-cache", action="store_true", help=argparse.SUPPRESS)
     # --dump-deps will dump all fine-grained dependencies to stdout
-    parser.add_argument('--dump-deps', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--dump-deps", action="store_true", help=argparse.SUPPRESS)
     # --dump-graph will dump the contents of the graph of SCCs and exit.
-    parser.add_argument('--dump-graph', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--dump-graph", action="store_true", help=argparse.SUPPRESS)
     # --semantic-analysis-only does exactly that.
-    parser.add_argument('--semantic-analysis-only', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--semantic-analysis-only", action="store_true", help=argparse.SUPPRESS)
     # --local-partial-types disallows partial types spanning module top level and a function
     # (implicitly defined in fine-grained incremental mode)
-    parser.add_argument('--local-partial-types', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--local-partial-types", action="store_true", help=argparse.SUPPRESS)
     # --logical-deps adds some more dependencies that are not semantically needed, but
     # may be helpful to determine relative importance of classes and functions for overall
     # type precision in a code base. It also _removes_ some deps, so this flag should be never
     # used except for generating code stats. This also automatically enables --cache-fine-grained.
     # NOTE: This is an experimental option that may be modified or removed at any time.
-    parser.add_argument('--logical-deps', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--logical-deps", action="store_true", help=argparse.SUPPRESS)
     # --bazel changes some behaviors for use with Bazel (https://bazel.build).
-    parser.add_argument('--bazel', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument("--bazel", action="store_true", help=argparse.SUPPRESS)
     # --package-root adds a directory below which directories are considered
     # packages even without __init__.py.  May be repeated.
-    parser.add_argument('--package-root', metavar='ROOT', action='append', default=[],
-                        help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--package-root", metavar="ROOT", action="append", default=[], help=argparse.SUPPRESS
+    )
     # --cache-map FILE ... gives a mapping from source files to cache files.
     # Each triple of arguments is a source file, a cache meta file, and a cache data file.
     # Modules not mentioned in the file will go through cache_dir.
     # Must be followed by another flag or by '--' (and then only file args may follow).
-    parser.add_argument('--cache-map', nargs='+', dest='special-opts:cache_map',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('--enable-incomplete-features', action='store_true',
-                        help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--cache-map", nargs="+", dest="special-opts:cache_map", help=argparse.SUPPRESS
+    )
+    parser.add_argument(
+        "--enable-incomplete-features", action="store_true", help=argparse.SUPPRESS
+    )
 
     # options specifying code to check
     code_group = parser.add_argument_group(
         title="Running code",
         description="Specify the code you want to type check. For more details, see "
-                    "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy")
+        "mypy.readthedocs.io/en/stable/running_mypy.html#running-mypy",
+    )
     add_invertible_flag(
-        '--explicit-package-bases', default=False,
+        "--explicit-package-bases",
+        default=False,
         help="Use current directory and MYPYPATH to determine module names of files passed",
-        group=code_group)
+        group=code_group,
+    )
     add_invertible_flag(
-        '--fast-module-lookup', default=False,
-        help=argparse.SUPPRESS,
-        group=code_group)
+        "--fast-module-lookup", default=False, help=argparse.SUPPRESS, group=code_group
+    )
     code_group.add_argument(
         "--exclude",
         action="append",
@@ -898,25 +1128,40 @@ def process_options(args: List[str],
             "Regular expression to match file names, directory names or paths which mypy should "
             "ignore while recursively discovering files to check, e.g. --exclude '/setup\\.py$'. "
             "May be specified more than once, eg. --exclude a --exclude b"
-        )
+        ),
     )
     code_group.add_argument(
-        '-m', '--module', action='append', metavar='MODULE',
+        "-m",
+        "--module",
+        action="append",
+        metavar="MODULE",
         default=[],
-        dest='special-opts:modules',
-        help="Type-check module; can repeat for more modules")
+        dest="special-opts:modules",
+        help="Type-check module; can repeat for more modules",
+    )
     code_group.add_argument(
-        '-p', '--package', action='append', metavar='PACKAGE',
+        "-p",
+        "--package",
+        action="append",
+        metavar="PACKAGE",
         default=[],
-        dest='special-opts:packages',
-        help="Type-check package recursively; can be repeated")
+        dest="special-opts:packages",
+        help="Type-check package recursively; can be repeated",
+    )
     code_group.add_argument(
-        '-c', '--command', action='append', metavar='PROGRAM_TEXT',
-        dest='special-opts:command',
-        help="Type-check program passed in as string")
+        "-c",
+        "--command",
+        action="append",
+        metavar="PROGRAM_TEXT",
+        dest="special-opts:command",
+        help="Type-check program passed in as string",
+    )
     code_group.add_argument(
-        metavar='files', nargs='*', dest='special-opts:files',
-        help="Type-check given files or directories")
+        metavar="files",
+        nargs="*",
+        dest="special-opts:files",
+        help="Type-check given files or directories",
+    )
 
     # Parse arguments once into a dummy namespace so we can get the
     # filename for the config file and know if the user requested all strict options.
@@ -939,18 +1184,18 @@ def process_options(args: List[str],
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
-    if getattr(dummy, 'special-opts:strict'):  # noqa
+    if getattr(dummy, "special-opts:strict"):  # noqa
         set_strict_flags()
 
     # Override cache_dir if provided in the environment
-    environ_cache_dir = os.getenv('MYPY_CACHE_DIR', '')
+    environ_cache_dir = os.getenv("MYPY_CACHE_DIR", "")
     if environ_cache_dir.strip():
         options.cache_dir = environ_cache_dir
     options.cache_dir = os.path.expanduser(options.cache_dir)
 
     # Parse command line for real, using a split namespace.
     special_opts = argparse.Namespace()
-    parser.parse_args(args, SplitNamespace(options, special_opts, 'special-opts:'))
+    parser.parse_args(args, SplitNamespace(options, special_opts, "special-opts:"))
 
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.
@@ -975,9 +1220,14 @@ def process_options(args: List[str],
 
     # Check for invalid argument combinations.
     if require_targets:
-        code_methods = sum(bool(c) for c in [special_opts.modules + special_opts.packages,
-                                             special_opts.command,
-                                             special_opts.files])
+        code_methods = sum(
+            bool(c)
+            for c in [
+                special_opts.modules + special_opts.packages,
+                special_opts.command,
+                special_opts.files,
+            ]
+        )
         if code_methods == 0 and not options.install_types:
             parser.error("Missing target module, package, files, or command.")
         elif code_methods > 1:
@@ -991,8 +1241,10 @@ def process_options(args: List[str],
     # Check for overlapping `--always-true` and `--always-false` flags.
     overlap = set(options.always_true) & set(options.always_false)
     if overlap:
-        parser.error("You can't make a variable always true and always false (%s)" %
-                     ', '.join(sorted(overlap)))
+        parser.error(
+            "You can't make a variable always true and always false (%s)"
+            % ", ".join(sorted(overlap))
+        )
 
     # Process `--enable-error-code` and `--disable-error-code` flags
     disabled_codes = set(options.disable_error_code)
@@ -1015,7 +1267,7 @@ def process_options(args: List[str],
         # TODO: Deprecate, then kill this flag
         options.strict_optional = True
     if special_opts.find_occurrences:
-        state.find_occurrences = special_opts.find_occurrences.split('.')
+        state.find_occurrences = special_opts.find_occurrences.split(".")
         assert state.find_occurrences is not None
         if len(state.find_occurrences) < 2:
             parser.error("Can only find occurrences of class members.")
@@ -1024,8 +1276,8 @@ def process_options(args: List[str],
 
     # Set reports.
     for flag, val in vars(special_opts).items():
-        if flag.endswith('_report') and val is not None:
-            report_type = flag[:-7].replace('_', '-')
+        if flag.endswith("_report") and val is not None:
+            report_type = flag[:-7].replace("_", "-")
             report_dir = val
             options.report_dirs[report_type] = report_dir
 
@@ -1065,8 +1317,7 @@ def process_options(args: List[str],
         cache = FindModuleCache(search_paths, fscache, options)
         for p in special_opts.packages:
             if os.sep in p or os.altsep and os.altsep in p:
-                fail(f"Package name '{p}' cannot have a slash in it.",
-                     stderr, options)
+                fail(f"Package name '{p}' cannot have a slash in it.", stderr, options)
             p_targets = cache.find_modules_recursive(p)
             if not p_targets:
                 fail(f"Can't find package '{p}'", stderr, options)
@@ -1076,7 +1327,7 @@ def process_options(args: List[str],
         return targets, options
     elif special_opts.command:
         options.build_type = BuildType.PROGRAM_TEXT
-        targets = [BuildSource(None, None, '\n'.join(special_opts.command))]
+        targets = [BuildSource(None, None, "\n".join(special_opts.command))]
         return targets, options
     else:
         try:
@@ -1089,9 +1340,9 @@ def process_options(args: List[str],
         return targets, options
 
 
-def process_package_roots(fscache: Optional[FileSystemCache],
-                          parser: argparse.ArgumentParser,
-                          options: Options) -> None:
+def process_package_roots(
+    fscache: Optional[FileSystemCache], parser: argparse.ArgumentParser, options: Options
+) -> None:
     """Validate and normalize package_root."""
     if fscache is None:
         parser.error("--package-root does not work here (no fscache)")
@@ -1117,45 +1368,48 @@ def process_package_roots(fscache: Optional[FileSystemCache],
             if root.startswith(dotdotslash):
                 parser.error(f"Package root cannot be above current directory: {root!r}")
             if root in trivial_paths:
-                root = ''
+                root = ""
         package_root.append(root)
     options.package_root = package_root
     # Pass the package root on the the filesystem cache.
     fscache.set_package_root(package_root)
 
 
-def process_cache_map(parser: argparse.ArgumentParser,
-                      special_opts: argparse.Namespace,
-                      options: Options) -> None:
+def process_cache_map(
+    parser: argparse.ArgumentParser, special_opts: argparse.Namespace, options: Options
+) -> None:
     """Validate cache_map and copy into options.cache_map."""
     n = len(special_opts.cache_map)
     if n % 3 != 0:
         parser.error("--cache-map requires one or more triples (see source)")
     for i in range(0, n, 3):
-        source, meta_file, data_file = special_opts.cache_map[i:i + 3]
+        source, meta_file, data_file = special_opts.cache_map[i : i + 3]
         if source in options.cache_map:
             parser.error(f"Duplicate --cache-map source {source})")
-        if not source.endswith('.py') and not source.endswith('.pyi'):
+        if not source.endswith(".py") and not source.endswith(".pyi"):
             parser.error(f"Invalid --cache-map source {source} (triple[0] must be *.py[i])")
-        if not meta_file.endswith('.meta.json'):
-            parser.error("Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" %
-                         meta_file)
-        if not data_file.endswith('.data.json'):
-            parser.error("Invalid --cache-map data_file %s (triple[2] must be *.data.json)" %
-                         data_file)
+        if not meta_file.endswith(".meta.json"):
+            parser.error(
+                "Invalid --cache-map meta_file %s (triple[1] must be *.meta.json)" % meta_file
+            )
+        if not data_file.endswith(".data.json"):
+            parser.error(
+                "Invalid --cache-map data_file %s (triple[2] must be *.data.json)" % data_file
+            )
         options.cache_map[source] = (meta_file, data_file)
 
 
 def maybe_write_junit_xml(td: float, serious: bool, messages: List[str], options: Options) -> None:
     if options.junit_xml:
-        py_version = f'{options.python_version[0]}_{options.python_version[1]}'
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         util.write_junit_xml(
-            td, serious, messages, options.junit_xml, py_version, options.platform)
+            td, serious, messages, options.junit_xml, py_version, options.platform
+        )
 
 
 def fail(msg: str, stderr: TextIO, options: Options) -> NoReturn:
     """Fail with a serious error."""
-    stderr.write(f'{msg}\n')
+    stderr.write(f"{msg}\n")
     maybe_write_junit_xml(0.0, serious=True, messages=[msg], options=options)
     sys.exit(2)
 
@@ -1164,13 +1418,11 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
     if not os.path.isdir(cache_dir):
         if not after_run:
             sys.stderr.write(
-                "error: Can't determine which types to install with no files to check " +
-                "(and no cache from previous mypy run)\n"
+                "error: Can't determine which types to install with no files to check "
+                + "(and no cache from previous mypy run)\n"
             )
         else:
-            sys.stderr.write(
-                "error: --install-types failed (no mypy cache directory)\n"
-            )
+            sys.stderr.write("error: --install-types failed (no mypy cache directory)\n")
         sys.exit(2)
     fnam = build.missing_stubs_file(cache_dir)
     if not os.path.isfile(fnam):
@@ -1180,11 +1432,13 @@ def read_types_packages_to_install(cache_dir: str, after_run: bool) -> List[str]
         return [line.strip() for line in f.readlines()]
 
 
-def install_types(formatter: util.FancyFormatter,
-                  options: Options,
-                  *,
-                  after_run: bool = False,
-                  non_interactive: bool = False) -> bool:
+def install_types(
+    formatter: util.FancyFormatter,
+    options: Options,
+    *,
+    after_run: bool = False,
+    non_interactive: bool = False,
+) -> bool:
     """Install stub packages using pip if some missing stubs were detected."""
     packages = read_types_packages_to_install(options.cache_dir, after_run)
     if not packages:
@@ -1192,15 +1446,15 @@ def install_types(formatter: util.FancyFormatter,
         return False
     if after_run and not non_interactive:
         print()
-    print('Installing missing stub packages:')
-    assert options.python_executable, 'Python executable required to install types'
-    cmd = [options.python_executable, '-m', 'pip', 'install'] + packages
-    print(formatter.style(' '.join(cmd), 'none', bold=True))
+    print("Installing missing stub packages:")
+    assert options.python_executable, "Python executable required to install types"
+    cmd = [options.python_executable, "-m", "pip", "install"] + packages
+    print(formatter.style(" ".join(cmd), "none", bold=True))
     print()
     if not non_interactive:
-        x = input('Install? [yN] ')
-        if not x.strip() or not x.lower().startswith('y'):
-            print(formatter.style('mypy: Skipping installation', 'red', bold=True))
+        x = input("Install? [yN] ")
+        if not x.strip() or not x.lower().startswith("y"):
+            print(formatter.style("mypy: Skipping installation", "red", bold=True))
             sys.exit(2)
         print()
     subprocess.run(cmd)

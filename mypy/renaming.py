@@ -1,11 +1,31 @@
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Set
+
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Block, AssignmentStmt, NameExpr, MypyFile, FuncDef, Lvalue, ListExpr, TupleExpr,
-    WhileStmt, ForStmt, BreakStmt, ContinueStmt, TryStmt, WithStmt, MatchStmt, StarExpr,
-    ImportFrom, MemberExpr, IndexExpr, Import, ImportAll, ClassDef
+    AssignmentStmt,
+    Block,
+    BreakStmt,
+    ClassDef,
+    ContinueStmt,
+    ForStmt,
+    FuncDef,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    ListExpr,
+    Lvalue,
+    MatchStmt,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    StarExpr,
+    TryStmt,
+    TupleExpr,
+    WhileStmt,
+    WithStmt,
 )
 from mypy.patterns import AsPattern
 from mypy.traverser import TraverserVisitor
@@ -90,7 +110,7 @@ class VariableRenameVisitor(TraverserVisitor):
                 name = arg.variable.name
                 # 'self' can't be redefined since it's special as it allows definition of
                 # attributes. 'cls' can't be used to define attributes so we can ignore it.
-                can_be_redefined = name != 'self'  # TODO: Proper check
+                can_be_redefined = name != "self"  # TODO: Proper check
                 self.record_assignment(arg.variable.name, can_be_redefined)
                 self.handle_arg(name)
 
@@ -521,7 +541,7 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
         self.flush_refs()
 
     def reject_redefinition_of_vars_in_scope(self) -> None:
-        self.record_skipped('*')
+        self.record_skipped("*")
 
     def record_skipped(self, name: str) -> None:
         self.skipped[-1].add(name)
@@ -529,7 +549,7 @@ class LimitedVariableRenameVisitor(TraverserVisitor):
     def flush_refs(self) -> None:
         ref_dict = self.refs.pop()
         skipped = self.skipped.pop()
-        if '*' not in skipped:
+        if "*" not in skipped:
             for name, refs in ref_dict.items():
                 if len(refs) <= 1 or name in skipped:
                     continue
