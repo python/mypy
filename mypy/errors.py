@@ -50,6 +50,12 @@ class ErrorInfo:
     # The column number related to this error with file.
     column = 0   # -1 if unknown
 
+    # The end line number related to this error within file.
+    end_line = 0     # -1 if unknown
+
+    # The end column number related to this error with file.
+    end_column = 0   # -1 if unknown
+
     # Either 'error' or 'note'
     severity = ''
 
@@ -87,6 +93,8 @@ class ErrorInfo:
                  function_or_member: Optional[str],
                  line: int,
                  column: int,
+                 end_line: int,
+                 end_column: int,
                  severity: str,
                  message: str,
                  code: Optional[ErrorCode],
@@ -102,6 +110,8 @@ class ErrorInfo:
         self.function_or_member = function_or_member
         self.line = line
         self.column = column
+        self.end_line = end_line
+        self.end_column = end_column
         self.severity = severity
         self.message = message
         self.code = code
@@ -113,8 +123,10 @@ class ErrorInfo:
 
 
 # Type used internally to represent errors:
-#   (path, line, column, severity, message, allow_dups, code)
+#   (path, line, column, end_line, end_column, severity, message, allow_dups, code)
 ErrorTuple = Tuple[Optional[str],
+                   int,
+                   int,
                    int,
                    int,
                    str,
@@ -221,6 +233,10 @@ class Errors:
     # Set to True to show column numbers in error messages.
     show_column_numbers: bool = False
 
+    # Set to True to show end line and end column in error messages.
+    # Ths implies `show_column_numbers`.
+    show_error_end: bool = False
+
     # Set to True to show absolute file paths in error messages.
     show_absolute_path: bool = False
 
@@ -241,6 +257,7 @@ class Errors:
                  show_column_numbers: bool = False,
                  show_error_codes: bool = False,
                  pretty: bool = False,
+                 show_error_end: bool = False,
                  read_source: Optional[Callable[[str], Optional[List[str]]]] = None,
                  show_absolute_path: bool = False,
                  enabled_error_codes: Optional[Set[ErrorCode]] = None,
@@ -251,6 +268,9 @@ class Errors:
         self.show_error_codes = show_error_codes
         self.show_absolute_path = show_absolute_path
         self.pretty = pretty
+        self.show_error_end = show_error_end
+        if show_error_end:
+            assert show_column_numbers, "Inconsistent formatting, must be prevented by argparse"
         # We use fscache to read source code when showing snippets.
         self.read_source = read_source
         self.enabled_error_codes = enabled_error_codes or set()
@@ -343,7 +363,8 @@ class Errors:
                allow_dups: bool = False,
                origin_line: Optional[int] = None,
                offset: int = 0,
-               end_line: Optional[int] = None) -> None:
+               end_line: Optional[int] = None,
+               end_column: Optional[int] = None) -> None:
         """Report message at the given line using the current error context.
 
         Args:
@@ -370,6 +391,12 @@ class Errors:
 
         if column is None:
             column = -1
+        if end_column is None:
+            if column == -1:
+                end_column = -1
+            else:
+                end_column = column + 1
+
         if file is None:
             file = self.file
         if offset:
@@ -384,7 +411,7 @@ class Errors:
         code = code or (codes.MISC if not blocker else None)
 
         info = ErrorInfo(self.import_context(), file, self.current_module(), type,
-                         function, line, column, severity, message, code,
+                         function, line, column, end_line, end_column, severity, message, code,
                          blocker, only_once, allow_dups,
                          origin=(self.file, origin_line, end_line),
                          target=self.current_target())
@@ -470,7 +497,7 @@ class Errors:
                            'may be out of date')
             note = ErrorInfo(
                 info.import_ctx, info.file, info.module, info.type, info.function_or_member,
-                info.line, info.column, 'note', msg,
+                info.line, info.column, info.end_line, info.end_column, 'note', msg,
                 code=None, blocker=False, only_once=False, allow_dups=False
             )
             self._add_error_info(file, note)
@@ -500,7 +527,9 @@ class Errors:
             typ=None,
             function_or_member=None,
             line=info.line,
-            column=info.line,
+            column=info.column,
+            end_line=info.end_line,
+            end_column=info.end_column,
             severity='note',
             message=message,
             code=None,
@@ -571,7 +600,7 @@ class Errors:
                 message = f'Unused "type: ignore{unused_codes_message}" comment'
                 # Don't use report since add_error_info will ignore the error!
                 info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                                 None, line, -1, 'error', message,
+                                 None, line, -1, line, -1, 'error', message,
                                  None, False, False, False)
                 self._add_error_info(file, info)
 
@@ -606,7 +635,7 @@ class Errors:
             message = f'"type: ignore" comment without error code{codes_hint}'
             # Don't use report since add_error_info will ignore the error!
             info = ErrorInfo(self.import_context(), file, self.current_module(), None,
-                             None, line, -1, 'error', message, codes.IGNORE_WITHOUT_CODE,
+                             None, line, -1, line, -1, 'error', message, codes.IGNORE_WITHOUT_CODE,
                              False, False, False)
             self._add_error_info(file, info)
 
@@ -657,11 +686,13 @@ class Errors:
         error_info = [info for info in error_info if not info.hidden]
         errors = self.render_messages(self.sort_messages(error_info))
         errors = self.remove_duplicates(errors)
-        for file, line, column, severity, message, allow_dups, code in errors:
+        for file, line, column, end_line, end_column, severity, message, allow_dups, code in errors:
             s = ''
             if file is not None:
                 if self.show_column_numbers and line >= 0 and column >= 0:
                     srcloc = f'{file}:{line}:{1 + column}'
+                    if self.show_error_end and end_line >=0 and end_column >= 0:
+                        srcloc += f':{end_line}:{end_column}'
                 elif line >= 0:
                     srcloc = f'{file}:{line}'
                 else:
@@ -685,11 +716,15 @@ class Errors:
 
                     # Shifts column after tab expansion
                     column = len(source_line[:column].expandtabs())
+                    end_column = len(source_line[:end_column].expandtabs())
 
                     # Note, currently coloring uses the offset to detect source snippets,
                     # so these offsets should not be arbitrary.
                     a.append(' ' * DEFAULT_SOURCE_OFFSET + source_line_expanded)
-                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + '^')
+                    marker = '^'
+                    if end_line == line and end_column > column:
+                        marker = f'^{"~" * (end_column - column - 1)}'
+                    a.append(' ' * (DEFAULT_SOURCE_OFFSET + column) + marker)
         return a
 
     def file_messages(self, path: str) -> List[str]:
@@ -763,7 +798,7 @@ class Errors:
                     # Remove prefix to ignore from path (if present) to
                     # simplify path.
                     path = remove_path_prefix(path, self.ignore_prefix)
-                    result.append((None, -1, -1, 'note',
+                    result.append((None, -1, -1, -1, -1, 'note',
                                    fmt.format(path, line), e.allow_dups, None))
                     i -= 1
 
@@ -776,32 +811,32 @@ class Errors:
                     e.type != prev_type):
                 if e.function_or_member is None:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
+                        result.append((file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                     else:
-                        result.append((file, -1, -1, 'note', 'In class "{}":'.format(
+                        result.append((file, -1, -1, -1, -1, 'note', 'In class "{}":'.format(
                             e.type), e.allow_dups, None))
                 else:
                     if e.type is None:
-                        result.append((file, -1, -1, 'note',
+                        result.append((file, -1, -1, -1, -1, 'note',
                                        'In function "{}":'.format(
                                            e.function_or_member), e.allow_dups, None))
                     else:
-                        result.append((file, -1, -1, 'note',
+                        result.append((file, -1, -1, -1, -1, 'note',
                                        'In member "{}" of class "{}":'.format(
                                            e.function_or_member, e.type), e.allow_dups, None))
             elif e.type != prev_type:
                 if e.type is None:
-                    result.append((file, -1, -1, 'note', 'At top level:', e.allow_dups, None))
+                    result.append((file, -1, -1, -1, -1, 'note', 'At top level:', e.allow_dups, None))
                 else:
-                    result.append((file, -1, -1, 'note',
+                    result.append((file, -1, -1, -1, -1, 'note',
                                    f'In class "{e.type}":', e.allow_dups, None))
 
             if isinstance(e.message, ErrorMessage):
                 result.append(
-                    (file, e.line, e.column, e.severity, e.message.value, e.allow_dups, e.code))
+                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message.value, e.allow_dups, e.code))
             else:
                 result.append(
-                    (file, e.line, e.column, e.severity, e.message, e.allow_dups, e.code))
+                    (file, e.line, e.column, e.end_line, e.end_column, e.severity, e.message, e.allow_dups, e.code))
 
             prev_import_context = e.import_ctx
             prev_function_or_member = e.function_or_member
@@ -842,21 +877,21 @@ class Errors:
             conflicts_notes = False
             j = i - 1
             # Find duplicates, unless duplicates are allowed.
-            if not errors[i][5]:
+            if not errors[i][7]:
                 while j >= 0 and errors[j][0] == errors[i][0]:
-                    if errors[j][4].strip() == 'Got:':
+                    if errors[j][6].strip() == 'Got:':
                         conflicts_notes = True
                     j -= 1
                 j = i - 1
                 while (j >= 0 and errors[j][0] == errors[i][0] and
                         errors[j][1] == errors[i][1]):
-                    if (errors[j][3] == errors[i][3] and
+                    if (errors[j][5] == errors[i][5] and
                             # Allow duplicate notes in overload conflicts reporting.
-                            not ((errors[i][3] == 'note' and
-                                errors[i][4].strip() in allowed_duplicates)
-                                or (errors[i][4].strip().startswith('def ') and
+                            not ((errors[i][5] == 'note' and
+                                errors[i][6].strip() in allowed_duplicates)
+                                or (errors[i][6].strip().startswith('def ') and
                                     conflicts_notes)) and
-                            errors[j][4] == errors[i][4]):  # ignore column
+                            errors[j][6] == errors[i][6]):  # ignore column
                         dup = True
                         break
                     j -= 1

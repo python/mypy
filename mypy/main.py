@@ -707,6 +707,10 @@ def process_options(args: List[str],
     add_invertible_flag('--show-column-numbers', default=False,
                         help="Show column numbers in error messages",
                         group=error_group)
+    add_invertible_flag('--show-error-end', default=False,
+                        help="Show end line/end column numbers in error messages."
+                             " This implies --show-column-numbers",
+                        group=error_group)
     add_invertible_flag('--show-error-codes', default=False,
                         help="Show error codes in error messages",
                         group=error_group)
@@ -1035,6 +1039,10 @@ def process_options(args: List[str],
     # (because otherwise the cache is not compatible with dmypy)
     if options.cache_fine_grained:
         options.local_partial_types = True
+
+    #  Implicitly show column numbers if error location end is shown
+    if options.show_error_end:
+        options.show_column_numbers = True
 
     # Let logical_deps imply cache_fine_grained (otherwise the former is useless).
     if options.logical_deps:
