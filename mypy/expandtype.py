@@ -28,7 +28,6 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
     else:
         variables: Dict[TypeVarId, Type] = {}
         if instance.type.has_type_var_tuple_type:
-            import mypy.constraints
             assert instance.type.type_var_tuple_prefix is not None
             assert instance.type.type_var_tuple_suffix is not None
 

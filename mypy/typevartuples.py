@@ -1,8 +1,10 @@
+"""Helpers for interacting with type var tuples."""
+
 from typing import TypeVar, Optional, Tuple, Sequence
 
 from mypy.types import Instance, UnpackType, ProperType, get_proper_type, Type
 
-"""Helpers for interacting with type var tuples."""
+
 def find_unpack_in_list(items: Sequence[Type]) -> Optional[int]:
     unpack_index: Optional[int] = None
     for i, item in enumerate(items):

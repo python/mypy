@@ -8,7 +8,8 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TYPED_NAMEDTUPLE_NAMES, TypeVarTupleType, ProperType
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TYPED_NAMEDTUPLE_NAMES,
+    TypeVarTupleType, ProperType
 )
 import mypy.applytype
 import mypy.constraints

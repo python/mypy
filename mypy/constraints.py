@@ -1,6 +1,6 @@
 """Type inference constraints."""
 
-from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence, Tuple, TypeVar
+from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 
 from mypy.types import (
@@ -524,7 +524,10 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                             template_unpack.type.fullname == "builtins.tuple"
                         ):
                             # TODO: check homogenous tuple case
-                            assert NotImplementedError
+                            raise NotImplementedError
+                        elif isinstance(template_unpack, TupleType):
+                            # TODO: check tuple case
+                            raise NotImplementedError
 
                     mapped_args = mapped_prefix + mapped_suffix
                     template_args = template_prefix + template_suffix
@@ -747,7 +750,6 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
 
     def visit_tuple_type(self, template: TupleType) -> List[Constraint]:
         actual = self.actual
-        # TODO: Support other items in the tuple besides Unpack
         # TODO: Support subclasses of Tuple
         is_varlength_tuple = (
             isinstance(actual, Instance)
@@ -778,6 +780,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                     modified_actual = actual
                     if isinstance(actual, TupleType):
                         # Exclude the items from before and after the unpack index.
+                        # TODO: Support including constraints from the prefix/suffix.
                         _, actual_items, _ = split_with_prefix_and_suffix(
                             tuple(actual.items),
                             unpack_index,
