@@ -239,7 +239,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 members = self.right.type.protocol_members
                 # None is compatible with Hashable (and other similar protocols). This is
                 # slightly sloppy since we don't check the signature of "__hash__".
-                return not members or members == ["__hash__"]
+                # None is also compatible with `SupportsStr` protocol.
+                return not members or all(member in ("__hash__", "__str__") for member in members)
             return False
         else:
             return True
