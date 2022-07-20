@@ -19,8 +19,6 @@ from mypyc.ir.class_ir import ClassIR, VTableEntries
 from mypyc.sametype import is_same_type
 from mypyc.namegen import NameGenerator
 
-PY_3_11 = sys.version_info >= (3, 11)
-
 
 def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f'{NATIVE_PREFIX}{fn.cname(emitter.names)}'
@@ -261,39 +259,41 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
     if cl.has_dict:
-        if PY_3_11:
-            # In CPython 3.11, __dict__ slot is automatically set before the type. So
-            # we need to let CPython manage it.
-            flags.append('Py_TPFLAGS_MANAGED_DICT')
-            # __weakref__ lives right after the struct
-            # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
-            weak_offset = f'{base_size}'
-            emitter.emit_lines(
-                f'PyMemberDef {members_name}[] = {{',
-                f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
-                '{0}',
-                '};',
-            )
+        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
+        # __dict__ lives right after the struct and __weakref__ lives right after that
+        # TODO: They should get members in the struct instead of doing this nonsense.
+        weak_offset = f'{base_size} + sizeof(PyObject *)'
+        emitter.emit_lines(
+            f'PyMemberDef {members_name}[] = {{',
+            f'{{"__dict__", T_OBJECT_EX, {base_size}, 0, NULL}},',
+            f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
+            '{0}',
+            '};',
+        )
 
-            fields['tp_members'] = members_name
-            fields['tp_basicsize'] = f'{base_size} + sizeof(PyObject *)'
-            fields['tp_weaklistoffset'] = weak_offset
-        else:
-            # __dict__ lives right after the struct and __weakref__ lives right after that
-            # TODO: They should get members in the struct instead of doing this nonsense.
-            weak_offset = f'{base_size} + sizeof(PyObject *)'
-            emitter.emit_lines(
-                f'PyMemberDef {members_name}[] = {{',
-                f'{{"__dict__", T_OBJECT_EX, {base_size}, 0, NULL}},',
-                f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
-                '{0}',
-                '};',
-            )
+        fields['tp_members'] = members_name
+        fields['tp_basicsize'] = f'{base_size} + 2*sizeof(PyObject *)'
+        fields['tp_dictoffset'] = base_size
+        fields['tp_weaklistoffset'] = weak_offset
 
-            fields['tp_members'] = members_name
-            fields['tp_basicsize'] = f'{base_size} + 2*sizeof(PyObject *)'
-            fields['tp_dictoffset'] = base_size
-            fields['tp_weaklistoffset'] = weak_offset
+        # In CPython >=3.11, __dict__ slot is automatically set before the type. So
+        # we need to let CPython manage it.
+        emitter.emit_line('#else')
+        flags.append('Py_TPFLAGS_MANAGED_DICT')
+        # __weakref__ lives right after the struct
+        # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
+        weak_offset = f'{base_size}'
+        emitter.emit_lines(
+            f'PyMemberDef {members_name}[] = {{',
+            f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
+            '{0}',
+            '};',
+        )
+
+        fields['tp_members'] = members_name
+        fields['tp_basicsize'] = f'{base_size} + sizeof(PyObject *)'
+        fields['tp_weaklistoffset'] = weak_offset
+        emitter.emit_line('#endif')
     else:
         fields['tp_basicsize'] = base_size
 
@@ -720,22 +720,24 @@ def generate_traverse_for_class(cl: ClassIR,
             emitter.emit_gc_visit(f'self->{emitter.attr(attr)}', rtype)
     if cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
-        if PY_3_11:
-            # __dict__ lives right before the struct and __weakref__ lives right after the struct
-            emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-                object_rprimitive)
-            emitter.emit_gc_visit(
-                '*((PyObject **)((char *)self + sizeof({})))'.format(
-                    struct_name),
-                object_rprimitive)
-        else:
-            # __dict__ lives right after the struct and __weakref__ lives right after that
-            emitter.emit_gc_visit('*((PyObject **)((char *)self + sizeof({})))'.format(
-                struct_name), object_rprimitive)
-            emitter.emit_gc_visit(
-                '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
-                    struct_name),
-                object_rprimitive)
+        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
+        # __dict__ lives right after the struct and __weakref__ lives right after that
+        emitter.emit_gc_visit('*((PyObject **)((char *)self + sizeof({})))'.format(
+            struct_name), object_rprimitive)
+        emitter.emit_gc_visit(
+            '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
+                struct_name),
+            object_rprimitive)
+        emitter.emit_line('#else')
+        # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
+        # the struct
+        emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+            object_rprimitive)
+        emitter.emit_gc_visit(
+            '*((PyObject **)((char *)self + sizeof({})))'.format(
+                struct_name),
+            object_rprimitive)            
+        emitter.emit_line('#endif')
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -751,22 +753,24 @@ def generate_clear_for_class(cl: ClassIR,
             emitter.emit_gc_clear(f'self->{emitter.attr(attr)}', rtype)
     if cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
-        if PY_3_11:
-            # __dict__ lives right before the struct and __weakref__ lives right after the struct
-            emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-                object_rprimitive)
-            emitter.emit_gc_clear(
-                '*((PyObject **)((char *)self + sizeof({})))'.format(
-                    struct_name),
-                object_rprimitive)
-        else:
-            # __dict__ lives right after the struct and __weakref__ lives right after that
-            emitter.emit_gc_clear('*((PyObject **)((char *)self + sizeof({})))'.format(
-                struct_name), object_rprimitive)
-            emitter.emit_gc_clear(
-                '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
-                    struct_name),
-                object_rprimitive)
+        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
+        # __dict__ lives right after the struct and __weakref__ lives right after that
+        emitter.emit_gc_clear('*((PyObject **)((char *)self + sizeof({})))'.format(
+            struct_name), object_rprimitive)
+        emitter.emit_gc_clear(
+            '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
+                struct_name),
+            object_rprimitive)
+        emitter.emit_line('#else')
+        # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
+        # the struct
+        emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+            object_rprimitive)
+        emitter.emit_gc_clear(
+            '*((PyObject **)((char *)self + sizeof({})))'.format(
+                struct_name),
+            object_rprimitive)            
+        emitter.emit_line('#endif')
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
