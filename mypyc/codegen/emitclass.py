@@ -352,7 +352,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     for field, value in fields.items():
         emitter.emit_line(f".{field} = {value},")
     emitter.emit_lines(
-        f"tp_flags = {' | '.join(flags)}",
+        f".tp_flags = {' | '.join(flags)}",
         "#if PY_VERSION_HEX >= 0x030B0000",
         "| Py_TPFLAGS_MANAGED_DICT",
         "#endif"
