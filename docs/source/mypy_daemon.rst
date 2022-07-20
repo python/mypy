@@ -243,8 +243,37 @@ command.
 
    Set the maximum number of types to try for a function (default: ``64``).
 
-.. TODO: Add similar sections about go to definition, find usages, and
-   reveal type when added, and then move this to a separate file.
+Request type of an expression
+*****************************
+
+The daemon allows to get declared or inferred type of an expression using
+``dmypy get_type LOCATION`` command. The location of the expression should be
+specified in the format ``path/to/file.py:line:column:end_line:end_column``.
+Both line and column are 1-based. Both start and end position are inclusive.
+These rules match how mypy prints the error location in error messages.
+
+Consider this Python code snippet:
+
+.. code-block:: python
+
+   def foo(x: int, longer_name: str) -> None:
+       x
+       longer_name
+
+Here to find the type of ``x`` one needs to call ``dmypy get_type src.py:2:5:2:5``.
+While for ``longer_name`` one needs to call ``dmypy get_type src.py:3:5:3:15``.
+Please note that this command is only valid after daemon had a successful type
+check (without parse errors), so that types are populated, e.g. using
+``dmypy check``.
+
+.. option:: --verbose
+
+   Increase verbosity of types string representation (can be repeated).
+   For example, this will print fully qualified names of instance types (like
+   ``"builtins.str"``), instead of just a short name (like ``"str"``).
+
+.. TODO: Add similar sections about go to definition and find usages
+   when added, and then move this to a separate file.
 
 
 .. _watchman: https://facebook.github.io/watchman/
