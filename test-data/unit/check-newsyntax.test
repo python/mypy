@@ -156,4 +156,4 @@ reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 # flags: --python-version 3.99
 this is what future python looks like public static void main String[] args await goto exit
 [out]
-main:2: error: invalid syntax; maybe you need to use a newer version of Python to run mypy?
+main:2: error: invalid syntax; you likely need to run mypy using a newer version of Python.

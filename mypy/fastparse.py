@@ -209,7 +209,7 @@ def parse(source: Union[str, bytes],
             e.lineno = None
         message = e.msg
         if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
-            message += "; maybe you need to use a newer version of Python to run mypy?"
+            message += "; you likely need to run mypy using a newer version of Python."
         errors.report(e.lineno if e.lineno is not None else -1, e.offset, message, blocker=True,
                       code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
