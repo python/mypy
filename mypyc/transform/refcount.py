@@ -19,19 +19,30 @@ into a regular, owned reference that needs to freed before return.
 from typing import Dict, Iterable, List, Set, Tuple
 
 from mypyc.analysis.dataflow import (
-    get_cfg,
-    analyze_must_defined_regs,
-    analyze_live_regs,
+    AnalysisDict,
     analyze_borrowed_arguments,
+    analyze_live_regs,
+    analyze_must_defined_regs,
     cleanup_cfg,
-    AnalysisDict
-)
-from mypyc.ir.ops import (
-    BasicBlock, Assign, RegisterOp, DecRef, IncRef, Branch, Goto,  Op, ControlOp, Value, Register,
-    LoadAddress, Integer, KeepAlive
+    get_cfg,
 )
 from mypyc.ir.func_ir import FuncIR, all_values
-
+from mypyc.ir.ops import (
+    Assign,
+    BasicBlock,
+    Branch,
+    ControlOp,
+    DecRef,
+    Goto,
+    IncRef,
+    Integer,
+    KeepAlive,
+    LoadAddress,
+    Op,
+    Register,
+    RegisterOp,
+    Value,
+)
 
 Decs = Tuple[Tuple[Value, bool], ...]
 Incs = Tuple[Value, ...]
@@ -59,14 +70,16 @@ def insert_ref_count_opcodes(ir: FuncIR) -> None:
     cache: BlockCache = {}
     for block in ir.blocks[:]:
         if isinstance(block.ops[-1], (Branch, Goto)):
-            insert_branch_inc_and_decrefs(block,
-                                          cache,
-                                          ir.blocks,
-                                          live.before,
-                                          borrow.before,
-                                          borrow.after,
-                                          defined.after,
-                                          ordering)
+            insert_branch_inc_and_decrefs(
+                block,
+                cache,
+                ir.blocks,
+                live.before,
+                borrow.before,
+                borrow.after,
+                defined.after,
+                ordering,
+            )
         transform_block(block, live.before, live.after, borrow.before, defined.after)
 
     cleanup_cfg(ir.blocks)
@@ -76,8 +89,9 @@ def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
     return isinstance(src, Register) and src not in post_must_defined
 
 
-def maybe_append_dec_ref(ops: List[Op], dest: Value,
-                         defined: 'AnalysisDict[Value]', key: Tuple[BasicBlock, int]) -> None:
+def maybe_append_dec_ref(
+    ops: List[Op], dest: Value, defined: "AnalysisDict[Value]", key: Tuple[BasicBlock, int]
+) -> None:
     if dest.type.is_refcounted and not isinstance(dest, Integer):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
 
@@ -87,11 +101,13 @@ def maybe_append_inc_ref(ops: List[Op], dest: Value) -> None:
         ops.append(IncRef(dest))
 
 
-def transform_block(block: BasicBlock,
-                    pre_live: 'AnalysisDict[Value]',
-                    post_live: 'AnalysisDict[Value]',
-                    pre_borrow: 'AnalysisDict[Value]',
-                    post_must_defined: 'AnalysisDict[Value]') -> None:
+def transform_block(
+    block: BasicBlock,
+    pre_live: "AnalysisDict[Value]",
+    post_live: "AnalysisDict[Value]",
+    pre_borrow: "AnalysisDict[Value]",
+    post_must_defined: "AnalysisDict[Value]",
+) -> None:
     old_ops = block.ops
     ops: List[Op] = []
     for i, op in enumerate(old_ops):
@@ -108,7 +124,7 @@ def transform_block(block: BasicBlock,
                 maybe_append_inc_ref(ops, src)
                 # For assignments to registers that were already live,
                 # decref the old value.
-                if (dest not in pre_borrow[key] and dest in pre_live[key]):
+                if dest not in pre_borrow[key] and dest in pre_live[key]:
                     assert isinstance(op, Assign)
                     maybe_append_dec_ref(ops, dest, post_must_defined, key)
 
@@ -127,21 +143,25 @@ def transform_block(block: BasicBlock,
                 maybe_append_dec_ref(ops, src, post_must_defined, key)
         # Decrement the destination if it is dead after the op and
         # wasn't a borrowed RegisterOp
-        if (not dest.is_void and dest not in post_live[key]
-                and not (isinstance(op, RegisterOp) and dest.is_borrowed)):
+        if (
+            not dest.is_void
+            and dest not in post_live[key]
+            and not (isinstance(op, RegisterOp) and dest.is_borrowed)
+        ):
             maybe_append_dec_ref(ops, dest, post_must_defined, key)
     block.ops = ops
 
 
 def insert_branch_inc_and_decrefs(
-        block: BasicBlock,
-        cache: BlockCache,
-        blocks: List[BasicBlock],
-        pre_live: 'AnalysisDict[Value]',
-        pre_borrow: 'AnalysisDict[Value]',
-        post_borrow: 'AnalysisDict[Value]',
-        post_must_defined: 'AnalysisDict[Value]',
-        ordering: Dict[Value, int]) -> None:
+    block: BasicBlock,
+    cache: BlockCache,
+    blocks: List[BasicBlock],
+    pre_live: "AnalysisDict[Value]",
+    pre_borrow: "AnalysisDict[Value]",
+    post_borrow: "AnalysisDict[Value]",
+    post_must_defined: "AnalysisDict[Value]",
+    ordering: Dict[Value, int],
+) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
 
     Add dec_refs for registers that become dead after a branch.
@@ -176,46 +196,52 @@ def insert_branch_inc_and_decrefs(
             omitted = ()
 
         decs = after_branch_decrefs(
-            target, pre_live, source_defined,
-            source_borrowed, source_live_regs, ordering, omitted)
-        incs = after_branch_increfs(
-            target, pre_live, pre_borrow, source_borrowed, ordering)
+            target, pre_live, source_defined, source_borrowed, source_live_regs, ordering, omitted
+        )
+        incs = after_branch_increfs(target, pre_live, pre_borrow, source_borrowed, ordering)
         term.set_target(i, add_block(decs, incs, cache, blocks, target))
 
 
-def after_branch_decrefs(label: BasicBlock,
-                         pre_live: 'AnalysisDict[Value]',
-                         source_defined: Set[Value],
-                         source_borrowed: Set[Value],
-                         source_live_regs: Set[Value],
-                         ordering: Dict[Value, int],
-                         omitted: Iterable[Value]) -> Tuple[Tuple[Value, bool], ...]:
+def after_branch_decrefs(
+    label: BasicBlock,
+    pre_live: "AnalysisDict[Value]",
+    source_defined: Set[Value],
+    source_borrowed: Set[Value],
+    source_live_regs: Set[Value],
+    ordering: Dict[Value, int],
+    omitted: Iterable[Value],
+) -> Tuple[Tuple[Value, bool], ...]:
     target_pre_live = pre_live[label, 0]
     decref = source_live_regs - target_pre_live - source_borrowed
     if decref:
-        return tuple((reg, is_maybe_undefined(source_defined, reg))
-                     for reg in sorted(decref, key=lambda r: ordering[r])
-                     if reg.type.is_refcounted and reg not in omitted)
+        return tuple(
+            (reg, is_maybe_undefined(source_defined, reg))
+            for reg in sorted(decref, key=lambda r: ordering[r])
+            if reg.type.is_refcounted and reg not in omitted
+        )
     return ()
 
 
-def after_branch_increfs(label: BasicBlock,
-                         pre_live: 'AnalysisDict[Value]',
-                         pre_borrow: 'AnalysisDict[Value]',
-                         source_borrowed: Set[Value],
-                         ordering: Dict[Value, int]) -> Tuple[Value, ...]:
+def after_branch_increfs(
+    label: BasicBlock,
+    pre_live: "AnalysisDict[Value]",
+    pre_borrow: "AnalysisDict[Value]",
+    source_borrowed: Set[Value],
+    ordering: Dict[Value, int],
+) -> Tuple[Value, ...]:
     target_pre_live = pre_live[label, 0]
     target_borrowed = pre_borrow[label, 0]
     incref = (source_borrowed - target_borrowed) & target_pre_live
     if incref:
-        return tuple(reg
-                     for reg in sorted(incref, key=lambda r: ordering[r])
-                     if reg.type.is_refcounted)
+        return tuple(
+            reg for reg in sorted(incref, key=lambda r: ordering[r]) if reg.type.is_refcounted
+        )
     return ()
 
 
-def add_block(decs: Decs, incs: Incs, cache: BlockCache,
-              blocks: List[BasicBlock], label: BasicBlock) -> BasicBlock:
+def add_block(
+    decs: Decs, incs: Incs, cache: BlockCache, blocks: List[BasicBlock], label: BasicBlock
+) -> BasicBlock:
     if not decs and not incs:
         return label
 
@@ -247,9 +273,11 @@ def make_value_ordering(ir: FuncIR) -> Dict[Value, int]:
 
     for block in ir.blocks:
         for op in block.ops:
-            if (isinstance(op, LoadAddress)
-                    and isinstance(op.src, Register)
-                    and op.src not in result):
+            if (
+                isinstance(op, LoadAddress)
+                and isinstance(op.src, Register)
+                and op.src not in result
+            ):
                 # Taking the address of a register allows initialization.
                 result[op.src] = n
                 n += 1

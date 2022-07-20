@@ -7,6 +7,7 @@ add a method to MessageBuilder and call this instead.
 """
 
 from typing import NamedTuple, Optional
+
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -68,7 +69,7 @@ ASYNC_WITH_OUTSIDE_COROUTINE: Final = '"async with" outside async function'
 INCOMPATIBLE_TYPES_IN_YIELD: Final = ErrorMessage('Incompatible types in "yield"')
 INCOMPATIBLE_TYPES_IN_YIELD_FROM: Final = ErrorMessage('Incompatible types in "yield from"')
 INCOMPATIBLE_TYPES_IN_STR_INTERPOLATION: Final = "Incompatible types in string interpolation"
-INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage('Incompatible types in capture pattern')
+INCOMPATIBLE_TYPES_IN_CAPTURE: Final = ErrorMessage("Incompatible types in capture pattern")
 MUST_HAVE_NONE_RETURN_TYPE: Final = ErrorMessage('The return type of "{}" must be None')
 INVALID_TUPLE_INDEX_TYPE: Final = ErrorMessage("Invalid tuple index type")
 TUPLE_INDEX_OUT_OF_RANGE: Final = ErrorMessage("Tuple index out of range")
@@ -76,7 +77,7 @@ INVALID_SLICE_INDEX: Final = ErrorMessage("Slice index must be an integer or Non
 CANNOT_INFER_LAMBDA_TYPE: Final = ErrorMessage("Cannot infer type of lambda")
 CANNOT_ACCESS_INIT: Final = (
     'Accessing "__init__" on an instance is unsound, since instance.__init__ could be from'
-    ' an incompatible subclass'
+    " an incompatible subclass"
 )
 NON_INSTANCE_NEW_TYPE: Final = ErrorMessage('"__new__" must return a class instance (got {})')
 INVALID_NEW_TYPE: Final = ErrorMessage('Incompatible return type for "__new__"')
@@ -141,14 +142,13 @@ TYPE_ALWAYS_TRUE_UNIONTYPE: Final = ErrorMessage(
     code=codes.TRUTHY_BOOL,
 )
 FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
-    'Function {} could always be true in boolean context',
-    code=codes.TRUTHY_BOOL,
+    "Function {} could always be true in boolean context", code=codes.TRUTHY_BOOL
 )
-NOT_CALLABLE: Final = '{} not callable'
+NOT_CALLABLE: Final = "{} not callable"
 PYTHON2_PRINT_FILE_TYPE: Final = (
     'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
 )
-TYPE_MUST_BE_USED: Final = 'Value of type {} must be used'
+TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
 
 # Generic
 GENERIC_INSTANCE_VAR_CLASS_ACCESS: Final = (
@@ -171,8 +171,9 @@ TYPEVAR_VARIANCE_DEF: Final = 'TypeVar "{}" may only be a literal bool'
 TYPEVAR_BOUND_MUST_BE_TYPE: Final = 'TypeVar "bound" must be a type'
 TYPEVAR_UNEXPECTED_ARGUMENT: Final = 'Unexpected argument to "TypeVar()"'
 UNBOUND_TYPEVAR: Final = (
-    'A function returning TypeVar should receive at least '
-    'one argument containing the same Typevar')
+    "A function returning TypeVar should receive at least "
+    "one argument containing the same Typevar"
+)
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
@@ -230,10 +231,8 @@ CANNOT_OVERRIDE_CLASS_VAR: Final = ErrorMessage(
     'Cannot override class variable (previously declared on base class "{}") with instance '
     "variable"
 )
-CLASS_VAR_WITH_TYPEVARS: Final = 'ClassVar cannot contain type variables'
-CLASS_VAR_OUTSIDE_OF_CLASS: Final = (
-    'ClassVar can only be used for assignments in class body'
-)
+CLASS_VAR_WITH_TYPEVARS: Final = "ClassVar cannot contain type variables"
+CLASS_VAR_OUTSIDE_OF_CLASS: Final = "ClassVar can only be used for assignments in class body"
 
 # Protocol
 RUNTIME_PROTOCOL_EXPECTED: Final = ErrorMessage(

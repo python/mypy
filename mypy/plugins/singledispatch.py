@@ -1,16 +1,23 @@
+from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
+
+from typing_extensions import Final
+
 from mypy.messages import format_type
+from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var
+from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from mypy.plugins.common import add_method_to_class
-from mypy.nodes import (
-    ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, Context
-)
 from mypy.subtypes import is_subtype
 from mypy.types import (
-    AnyType, CallableType, Instance, NoneType, Overloaded, Type, TypeOfAny, get_proper_type,
-    FunctionLike
+    AnyType,
+    CallableType,
+    FunctionLike,
+    Instance,
+    NoneType,
+    Overloaded,
+    Type,
+    TypeOfAny,
+    get_proper_type,
 )
-from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
-from typing_extensions import Final
 
 
 class SingledispatchTypeVars(NamedTuple):
@@ -23,11 +30,11 @@ class RegisterCallableInfo(NamedTuple):
     singledispatch_obj: Instance
 
 
-SINGLEDISPATCH_TYPE: Final = 'functools._SingleDispatchCallable'
+SINGLEDISPATCH_TYPE: Final = "functools._SingleDispatchCallable"
 
-SINGLEDISPATCH_REGISTER_METHOD: Final = f'{SINGLEDISPATCH_TYPE}.register'
+SINGLEDISPATCH_REGISTER_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.register"
 
-SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f'{SINGLEDISPATCH_TYPE}.__call__'
+SINGLEDISPATCH_CALLABLE_CALL_METHOD: Final = f"{SINGLEDISPATCH_TYPE}.__call__"
 
 
 def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
@@ -36,7 +43,7 @@ def get_singledispatch_info(typ: Instance) -> Optional[SingledispatchTypeVars]:
     return None
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def get_first_arg(args: List[List[T]]) -> Optional[T]:
@@ -46,23 +53,24 @@ def get_first_arg(args: List[List[T]]) -> Optional[T]:
     return None
 
 
-REGISTER_RETURN_CLASS: Final = '_SingleDispatchRegisterCallable'
+REGISTER_RETURN_CLASS: Final = "_SingleDispatchRegisterCallable"
 
-REGISTER_CALLABLE_CALL_METHOD: Final = f'functools.{REGISTER_RETURN_CLASS}.__call__'
+REGISTER_CALLABLE_CALL_METHOD: Final = f"functools.{REGISTER_RETURN_CLASS}.__call__"
 
 
-def make_fake_register_class_instance(api: CheckerPluginInterface, type_args: Sequence[Type]
-                                      ) -> Instance:
+def make_fake_register_class_instance(
+    api: CheckerPluginInterface, type_args: Sequence[Type]
+) -> Instance:
     defn = ClassDef(REGISTER_RETURN_CLASS, Block([]))
-    defn.fullname = f'functools.{REGISTER_RETURN_CLASS}'
+    defn.fullname = f"functools.{REGISTER_RETURN_CLASS}"
     info = TypeInfo(SymbolTable(), defn, "functools")
-    obj_type = api.named_generic_type('builtins.object', []).type
+    obj_type = api.named_generic_type("builtins.object", []).type
     info.bases = [Instance(obj_type, [])]
     info.mro = [info, obj_type]
     defn.info = info
 
-    func_arg = Argument(Var('name'), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
-    add_method_to_class(api, defn, '__call__', [func_arg], NoneType())
+    func_arg = Argument(Var("name"), AnyType(TypeOfAny.implementation_artifact), None, ARG_POS)
+    add_method_to_class(api, defn, "__call__", [func_arg], NoneType())
 
     return Instance(info, type_args)
 
@@ -93,16 +101,14 @@ def create_singledispatch_function_callback(ctx: FunctionContext) -> Type:
 
         if len(func_type.arg_kinds) < 1:
             fail(
-                ctx,
-                'Singledispatch function requires at least one argument',
-                func_type.definition,
+                ctx, "Singledispatch function requires at least one argument", func_type.definition
             )
             return ctx.default_return_type
 
         elif not func_type.arg_kinds[0].is_positional(star=True):
             fail(
                 ctx,
-                'First argument to singledispatch function must be a positional argument',
+                "First argument to singledispatch function must be a positional argument",
                 func_type.definition,
             )
             return ctx.default_return_type
@@ -132,10 +138,7 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
         # actual type
         register_type = first_arg_type.items[0].ret_type
         type_args = RegisterCallableInfo(register_type, ctx.type)
-        register_callable = make_fake_register_class_instance(
-            ctx.api,
-            type_args
-        )
+        register_callable = make_fake_register_class_instance(ctx.api, type_args)
         return register_callable
     elif isinstance(first_arg_type, CallableType):
         # TODO: do more checking for registered functions
@@ -150,8 +153,12 @@ def singledispatch_register_callback(ctx: MethodContext) -> Type:
     return ctx.default_return_type
 
 
-def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Type,
-                      register_arg: Optional[Type] = None) -> None:
+def register_function(
+    ctx: PluginContext,
+    singledispatch_obj: Instance,
+    func: Type,
+    register_arg: Optional[Type] = None,
+) -> None:
     """Register a function"""
 
     func = get_proper_type(func)
@@ -172,9 +179,13 @@ def register_function(ctx: PluginContext, singledispatch_obj: Instance, func: Ty
     fallback_dispatch_type = fallback.arg_types[0]
     if not is_subtype(dispatch_type, fallback_dispatch_type):
 
-        fail(ctx, 'Dispatch type {} must be subtype of fallback function first argument {}'.format(
+        fail(
+            ctx,
+            "Dispatch type {} must be subtype of fallback function first argument {}".format(
                 format_type(dispatch_type), format_type(fallback_dispatch_type)
-            ), func.definition)
+            ),
+            func.definition,
+        )
         return
     return
 
