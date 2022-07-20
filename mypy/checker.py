@@ -3599,8 +3599,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         supertype=return_type,
                         context=s.expr,
                         outer_context=s,
-                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
-                        code=codes.RETURN_VALUE)
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE)
             else:
                 # Empty returns are valid in Generators with Any typed returns, but not in
                 # coroutines.
@@ -5259,6 +5258,28 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     #
     # Helpers
     #
+    @overload
+    def check_subtype(self,
+                      subtype: Type,
+                      supertype: Type,
+                      context: Context,
+                      msg: str = ...,
+                      subtype_label: Optional[str] = ...,
+                      supertype_label: Optional[str] = ...,
+                      *,
+                      code: Optional[ErrorCode] = ...,
+                      outer_context: Optional[Context] = ...) -> bool: ...
+
+    @overload
+    def check_subtype(self,
+                      subtype: Type,
+                      supertype: Type,
+                      context: Context,
+                      msg: ErrorMessage = ...,
+                      subtype_label: Optional[str] = ...,
+                      supertype_label: Optional[str] = ...,
+                      *,
+                      outer_context: Optional[Context] = ...) -> bool: ...
 
     def check_subtype(self,
                       subtype: Type,
@@ -5658,7 +5679,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
              code: Optional[ErrorCode] = None) -> None:
         """Produce an error message."""
         if isinstance(msg, ErrorMessage):
-            self.msg.fail(msg.value, context, code=msg.code)
+            self.msg.fail(msg.value, context, code=code or msg.code)
             return
         self.msg.fail(msg, context, code=code)
 
