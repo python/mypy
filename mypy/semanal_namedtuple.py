@@ -254,7 +254,7 @@ class NamedTupleAnalyzer:
                               call: CallExpr, is_typed: bool) -> None:
         self.api.add_symbol(name, info, call)
         call.analyzed = NamedTupleExpr(info, is_typed=is_typed)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
 
     def parse_namedtuple_args(self, call: CallExpr, fullname: str
                               ) -> Optional[Tuple[List[str], List[Type], List[Expression],

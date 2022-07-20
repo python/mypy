@@ -120,6 +120,13 @@ p.add_argument('--use-fixme', metavar='NAME', type=str,
 p.add_argument('--max-guesses', type=int,
                help="Set the maximum number of types to try for a function (default 64)")
 
+get_type_parser = p = subparsers.add_parser('get_type',
+    help="Get declared or inferred type of an expression")
+p.add_argument('location', metavar='LOCATION', type=str,
+               help='Location specified as path/to/file.py:line:column:end_line:end_column')
+p.add_argument('--verbose', '-v', action='count',
+               help="Increase verbosity of the type string representation (can be repeated)")
+
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
 daemon_parser = p = subparsers.add_parser('daemon', help="Run daemon in foreground")
@@ -374,6 +381,14 @@ def do_suggest(args: argparse.Namespace) -> None:
                        json=args.json, callsites=args.callsites, no_errors=args.no_errors,
                        no_any=args.no_any, flex_any=args.flex_any, try_text=args.try_text,
                        use_fixme=args.use_fixme, max_guesses=args.max_guesses)
+    check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
+
+
+@action(get_type_parser)
+def do_get_type(args: argparse.Namespace) -> None:
+    """Ask daemon to print the type of an expression."""
+    response = request(args.status_file, 'get_type', location=args.location,
+                       verbosity=args.verbose)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

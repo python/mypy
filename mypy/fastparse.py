@@ -906,11 +906,13 @@ class ASTConverter:
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
-            deco.set_line(first.lineno, first.col_offset)
+            deco.set_line(first.lineno, first.col_offset,
+                          getattr(n, "end_lineno", None), getattr(n, "end_col_offset", None))
             retval: Union[FuncDef, Decorator] = deco
         else:
             # FuncDef overrides set_line -- can't use self.set_line
-            func_def.set_line(lineno, n.col_offset)
+            func_def.set_line(lineno, n.col_offset,
+                              getattr(n, "end_lineno", None), getattr(n, "end_col_offset", None))
             retval = func_def
         self.class_and_function_stack.pop()
         return retval
@@ -1017,6 +1019,8 @@ class ASTConverter:
             cdef.line = n.lineno
             cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
         cdef.column = n.col_offset
+        cdef.end_line = getattr(n, "end_lineno", None)
+        cdef.end_column = getattr(n, "end_col_offset", None)
         self.class_and_function_stack.pop()
         return cdef
 

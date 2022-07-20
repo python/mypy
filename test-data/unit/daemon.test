@@ -295,3 +295,66 @@ from foo import foo
 def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
+
+[case testDaemonGetType]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy get_type foo:1:2:3:4
+Command "get_type" is only valid after a "check" command (that produces no parse errors)
+== Return code: 2
+$ dmypy check foo.py
+foo.py:3: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+== Return code: 1
+$ dmypy get_type foo:1
+Format should be file:line:column:end_line:end:end_column
+== Return code: 2
+$ dmypy get_type foo.py:1:2:a:b
+invalid literal for int() with base 10: 'a'
+== Return code: 2
+$ dmypy get_type foo.pyc:1:1:2:2
+Source file is not a Python file
+== Return code: 2
+$ dmypy get_type bar/baz.py:1:1:2:2
+Unknown module: baz
+== Return code: 1
+$ dmypy get_type foo.py:3:1:1:1
+"end_line" must not be before "line"
+== Return code: 2
+$ dmypy get_type foo.py:3:3:3:1
+"end_column" must be after "column"
+== Return code: 2
+$ dmypy get_type foo.py:3:10:3:17
+"str"
+$ dmypy get_type foo.py:3:10:3:17 -vv
+"builtins.str"
+$ dmypy get_type foo.py:9:9:9:11
+"int"
+$ dmypy get_type foo.py:11:1:11:3
+"Callable[[Optional[int]], None]"
+$ dmypy get_type foo.py:11:1:13:1
+"None"
+$ dmypy get_type foo.py:1:2:3:4
+Can't find expression at span 1:2:3:4
+== Return code: 1
+$ dmypy get_type foo.py:17:5:17:5
+No known type available for "NameExpr"
+== Return code: 1
+
+[file foo.py]
+from typing import Optional
+
+x: int = "no way"  # line 3
+
+def foo(arg: Optional[int] = None) -> None:
+    if arg is None:
+        arg
+    else:
+        arg  # line 9
+
+foo(
+    # multiline
+)
+
+def unreachable(x: int) -> None:
+    return
+    x  # line 17

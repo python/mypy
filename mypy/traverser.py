@@ -5,7 +5,7 @@ from mypy_extensions import mypyc_attr
 
 from mypy.patterns import (
     AsPattern, OrPattern, ValuePattern, SequencePattern, StarredPattern, MappingPattern,
-    ClassPattern
+    ClassPattern, SingletonPattern
 )
 from mypy.visitor import NodeVisitor
 from mypy.nodes import (
@@ -18,7 +18,10 @@ from mypy.nodes import (
     ConditionalExpr, TypeApplication, ExecStmt, Import, ImportFrom,
     LambdaExpr, ComparisonExpr, OverloadedFuncDef, YieldFromExpr,
     YieldExpr, StarExpr, BackquoteExpr, AwaitExpr, PrintStmt, SuperExpr, Node, REVEAL_TYPE,
-    Expression,
+    Expression, PromoteExpr, BreakStmt, BytesExpr, ComplexExpr, ContinueStmt, EllipsisExpr,
+    EnumCallExpr, FloatExpr, GlobalDecl, ImportAll, IntExpr, NamedTupleExpr, NewTypeExpr,
+    NonlocalDecl, ParamSpecExpr, PassStmt, PlaceholderNode, StrExpr, TempNode, TypeAlias,
+    TypeAliasExpr, TypeVarExpr, TypeVarTupleExpr, TypedDictExpr, UnicodeExpr, Var,
 )
 
 
@@ -352,307 +355,453 @@ class TraverserVisitor(NodeVisitor[None]):
             o.locals.accept(self)
 
 
-class ShortTraverserVisitor(TraverserVisitor):
-    def skip(self, o: Node) -> bool:
-        return False
+class ExtendedTraverserVisitor(TraverserVisitor):
+    def visit(self, o: Node) -> bool:
+        # If returns True, will continue to nested nodes.
+        return True
 
-    def visit_mypy_file(self, o: MypyFile) -> None:
-        if self.skip(o):
+    def visit__promote_expr(self, o: PromoteExpr) -> None:
+        if not self.visit(o):
             return
-        super().visit_mypy_file(o)
+        super().visit__promote_expr(o)
+
+    def visit_as_pattern(self, o: AsPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_as_pattern(o)
+
+    def visit_assert_stmt(self, o: AssertStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_assert_stmt(o)
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_assert_type_expr(o)
+
+    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_assignment_expr(o)
+
+    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_assignment_stmt(o)
+
+    def visit_await_expr(self, o: AwaitExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_await_expr(o)
+
+    def visit_backquote_expr(self, o: BackquoteExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_backquote_expr(o)
 
     def visit_block(self, block: Block) -> None:
-        if self.skip(block):
+        if not self.visit(block):
             return
         super().visit_block(block)
 
+    def visit_break_stmt(self, o: BreakStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_break_stmt(o)
+
+    def visit_bytes_expr(self, o: BytesExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_bytes_expr(o)
+
+    def visit_call_expr(self, o: CallExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_call_expr(o)
+
+    def visit_cast_expr(self, o: CastExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_cast_expr(o)
+
+    def visit_class_def(self, o: ClassDef) -> None:
+        if not self.visit(o):
+            return
+        super().visit_class_def(o)
+
+    def visit_class_pattern(self, o: ClassPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_class_pattern(o)
+
+    def visit_comparison_expr(self, o: ComparisonExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_comparison_expr(o)
+
+    def visit_complex_expr(self, o: ComplexExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_complex_expr(o)
+
+    def visit_conditional_expr(self, o: ConditionalExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_conditional_expr(o)
+
+    def visit_continue_stmt(self, o: ContinueStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_continue_stmt(o)
+
+    def visit_decorator(self, o: Decorator) -> None:
+        if not self.visit(o):
+            return
+        super().visit_decorator(o)
+
+    def visit_del_stmt(self, o: DelStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_del_stmt(o)
+
+    def visit_dict_expr(self, o: DictExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_dict_expr(o)
+
+    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
+        if not self.visit(o):
+            return
+        super().visit_dictionary_comprehension(o)
+
+    def visit_ellipsis(self, o: EllipsisExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_ellipsis(o)
+
+    def visit_enum_call_expr(self, o: EnumCallExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_enum_call_expr(o)
+
+    def visit_exec_stmt(self, o: ExecStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_exec_stmt(o)
+
+    def visit_expression_stmt(self, o: ExpressionStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_expression_stmt(o)
+
+    def visit_float_expr(self, o: FloatExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_float_expr(o)
+
+    def visit_for_stmt(self, o: ForStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_for_stmt(o)
+
     def visit_func(self, o: FuncItem) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_func(o)
 
     def visit_func_def(self, o: FuncDef) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_func_def(o)
 
-    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
-        if self.skip(o):
+    def visit_generator_expr(self, o: GeneratorExpr) -> None:
+        if not self.visit(o):
             return
-        super().visit_overloaded_func_def(o)
+        super().visit_generator_expr(o)
 
-    def visit_class_def(self, o: ClassDef) -> None:
-        if self.skip(o):
+    def visit_global_decl(self, o: GlobalDecl) -> None:
+        if not self.visit(o):
             return
-        super().visit_class_def(o)
-
-    def visit_decorator(self, o: Decorator) -> None:
-        if self.skip(o):
-            return
-        super().visit_decorator(o)
-
-    def visit_expression_stmt(self, o: ExpressionStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_expression_stmt(o)
-
-    def visit_assignment_stmt(self, o: AssignmentStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_assignment_stmt(o)
-
-    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_operator_assignment_stmt(o)
-
-    def visit_while_stmt(self, o: WhileStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_while_stmt(o)
-
-    def visit_for_stmt(self, o: ForStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_for_stmt(o)
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_return_stmt(o)
-
-    def visit_assert_stmt(self, o: AssertStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_assert_stmt(o)
-
-    def visit_del_stmt(self, o: DelStmt) -> None:
-        if self.skip(o):
-            return
-        super().visit_del_stmt(o)
+        super().visit_global_decl(o)
 
     def visit_if_stmt(self, o: IfStmt) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_if_stmt(o)
 
-    def visit_raise_stmt(self, o: RaiseStmt) -> None:
-        if self.skip(o):
+    def visit_import(self, o: Import) -> None:
+        if not self.visit(o):
             return
-        super().visit_raise_stmt(o)
+        super().visit_import(o)
 
-    def visit_try_stmt(self, o: TryStmt) -> None:
-        if self.skip(o):
+    def visit_import_all(self, o: ImportAll) -> None:
+        if not self.visit(o):
             return
-        super().visit_try_stmt(o)
+        super().visit_import_all(o)
 
-    def visit_with_stmt(self, o: WithStmt) -> None:
-        if self.skip(o):
+    def visit_import_from(self, o: ImportFrom) -> None:
+        if not self.visit(o):
             return
-        super().visit_with_stmt(o)
+        super().visit_import_from(o)
+
+    def visit_index_expr(self, o: IndexExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_index_expr(o)
+
+    def visit_int_expr(self, o: IntExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_int_expr(o)
+
+    def visit_lambda_expr(self, o: LambdaExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_lambda_expr(o)
+
+    def visit_list_comprehension(self, o: ListComprehension) -> None:
+        if not self.visit(o):
+            return
+        super().visit_list_comprehension(o)
+
+    def visit_list_expr(self, o: ListExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_list_expr(o)
+
+    def visit_mapping_pattern(self, o: MappingPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_mapping_pattern(o)
 
     def visit_match_stmt(self, o: MatchStmt) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_match_stmt(o)
 
     def visit_member_expr(self, o: MemberExpr) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_member_expr(o)
 
-    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
-        if self.skip(o):
+    def visit_mypy_file(self, o: MypyFile) -> None:
+        if not self.visit(o):
             return
-        super().visit_yield_from_expr(o)
+        super().visit_mypy_file(o)
 
-    def visit_yield_expr(self, o: YieldExpr) -> None:
-        if self.skip(o):
+    def visit_name_expr(self, o: NameExpr) -> None:
+        if not self.visit(o):
             return
-        super().visit_yield_expr(o)
+        super().visit_name_expr(o)
 
-    def visit_call_expr(self, o: CallExpr) -> None:
-        if self.skip(o):
+    def visit_namedtuple_expr(self, o: NamedTupleExpr) -> None:
+        if not self.visit(o):
             return
-        super().visit_call_expr(o)
+        super().visit_namedtuple_expr(o)
+
+    def visit_newtype_expr(self, o: NewTypeExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_newtype_expr(o)
+
+    def visit_nonlocal_decl(self, o: NonlocalDecl) -> None:
+        if not self.visit(o):
+            return
+        super().visit_nonlocal_decl(o)
 
     def visit_op_expr(self, o: OpExpr) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_op_expr(o)
 
-    def visit_comparison_expr(self, o: ComparisonExpr) -> None:
-        if self.skip(o):
+    def visit_operator_assignment_stmt(self, o: OperatorAssignmentStmt) -> None:
+        if not self.visit(o):
             return
-        super().visit_comparison_expr(o)
-
-    def visit_slice_expr(self, o: SliceExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_slice_expr(o)
-
-    def visit_cast_expr(self, o: CastExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_cast_expr(o)
-
-    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_assert_type_expr(o)
-
-    def visit_reveal_expr(self, o: RevealExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_reveal_expr(o)
-
-    def visit_assignment_expr(self, o: AssignmentExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_assignment_expr(o)
-
-    def visit_unary_expr(self, o: UnaryExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_unary_expr(o)
-
-    def visit_list_expr(self, o: ListExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_list_expr(o)
-
-    def visit_tuple_expr(self, o: TupleExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_tuple_expr(o)
-
-    def visit_dict_expr(self, o: DictExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_dict_expr(o)
-
-    def visit_set_expr(self, o: SetExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_set_expr(o)
-
-    def visit_index_expr(self, o: IndexExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_index_expr(o)
-
-    def visit_generator_expr(self, o: GeneratorExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_generator_expr(o)
-
-    def visit_dictionary_comprehension(self, o: DictionaryComprehension) -> None:
-        if self.skip(o):
-            return
-        super().visit_dictionary_comprehension(o)
-
-    def visit_list_comprehension(self, o: ListComprehension) -> None:
-        if self.skip(o):
-            return
-        super().visit_list_comprehension(o)
-
-    def visit_set_comprehension(self, o: SetComprehension) -> None:
-        if self.skip(o):
-            return
-        super().visit_set_comprehension(o)
-
-    def visit_conditional_expr(self, o: ConditionalExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_conditional_expr(o)
-
-    def visit_type_application(self, o: TypeApplication) -> None:
-        if self.skip(o):
-            return
-        super().visit_type_application(o)
-
-    def visit_lambda_expr(self, o: LambdaExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_lambda_expr(o)
-
-    def visit_star_expr(self, o: StarExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_star_expr(o)
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_backquote_expr(o)
-
-    def visit_await_expr(self, o: AwaitExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_await_expr(o)
-
-    def visit_super_expr(self, o: SuperExpr) -> None:
-        if self.skip(o):
-            return
-        super().visit_super_expr(o)
-
-    def visit_as_pattern(self, o: AsPattern) -> None:
-        if self.skip(o):
-            return
-        super().visit_as_pattern(o)
+        super().visit_operator_assignment_stmt(o)
 
     def visit_or_pattern(self, o: OrPattern) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_or_pattern(o)
 
-    def visit_value_pattern(self, o: ValuePattern) -> None:
-        if self.skip(o):
+    def visit_overloaded_func_def(self, o: OverloadedFuncDef) -> None:
+        if not self.visit(o):
             return
-        super().visit_value_pattern(o)
+        super().visit_overloaded_func_def(o)
 
-    def visit_sequence_pattern(self, o: SequencePattern) -> None:
-        if self.skip(o):
+    def visit_paramspec_expr(self, o: ParamSpecExpr) -> None:
+        if not self.visit(o):
             return
-        super().visit_sequence_pattern(o)
+        super().visit_paramspec_expr(o)
 
-    def visit_starred_patten(self, o: StarredPattern) -> None:
-        if self.skip(o):
+    def visit_pass_stmt(self, o: PassStmt) -> None:
+        if not self.visit(o):
             return
-        super().visit_starred_patten(o)
+        super().visit_pass_stmt(o)
 
-    def visit_mapping_pattern(self, o: MappingPattern) -> None:
-        if self.skip(o):
+    def visit_placeholder_node(self, o: PlaceholderNode) -> None:
+        if not self.visit(o):
             return
-        super().visit_mapping_pattern(o)
-
-    def visit_class_pattern(self, o: ClassPattern) -> None:
-        if self.skip(o):
-            return
-        super().visit_class_pattern(o)
-
-    def visit_import(self, o: Import) -> None:
-        if self.skip(o):
-            return
-        super().visit_import(o)
-
-    def visit_import_from(self, o: ImportFrom) -> None:
-        if self.skip(o):
-            return
-        super().visit_import_from(o)
+        super().visit_placeholder_node(o)
 
     def visit_print_stmt(self, o: PrintStmt) -> None:
-        if self.skip(o):
+        if not self.visit(o):
             return
         super().visit_print_stmt(o)
 
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        if self.skip(o):
+    def visit_raise_stmt(self, o: RaiseStmt) -> None:
+        if not self.visit(o):
             return
-        super().visit_exec_stmt(o)
+        super().visit_raise_stmt(o)
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_return_stmt(o)
+
+    def visit_reveal_expr(self, o: RevealExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_reveal_expr(o)
+
+    def visit_sequence_pattern(self, o: SequencePattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_sequence_pattern(o)
+
+    def visit_set_comprehension(self, o: SetComprehension) -> None:
+        if not self.visit(o):
+            return
+        super().visit_set_comprehension(o)
+
+    def visit_set_expr(self, o: SetExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_set_expr(o)
+
+    def visit_singleton_pattern(self, o: SingletonPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_singleton_pattern(o)
+
+    def visit_slice_expr(self, o: SliceExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_slice_expr(o)
+
+    def visit_star_expr(self, o: StarExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_star_expr(o)
+
+    def visit_starred_patten(self, o: StarredPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_starred_patten(o)
+
+    def visit_starred_pattern(self, o: StarredPattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_starred_pattern(o)
+
+    def visit_str_expr(self, o: StrExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_str_expr(o)
+
+    def visit_super_expr(self, o: SuperExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_super_expr(o)
+
+    def visit_temp_node(self, o: TempNode) -> None:
+        if not self.visit(o):
+            return
+        super().visit_temp_node(o)
+
+    def visit_try_stmt(self, o: TryStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_try_stmt(o)
+
+    def visit_tuple_expr(self, o: TupleExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_tuple_expr(o)
+
+    def visit_type_alias(self, o: TypeAlias) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_alias(o)
+
+    def visit_type_alias_expr(self, o: TypeAliasExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_alias_expr(o)
+
+    def visit_type_application(self, o: TypeApplication) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_application(o)
+
+    def visit_type_var_expr(self, o: TypeVarExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_var_expr(o)
+
+    def visit_type_var_tuple_expr(self, o: TypeVarTupleExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_type_var_tuple_expr(o)
+
+    def visit_typeddict_expr(self, o: TypedDictExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_typeddict_expr(o)
+
+    def visit_unary_expr(self, o: UnaryExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_unary_expr(o)
+
+    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_unicode_expr(o)
+
+    def visit_value_pattern(self, o: ValuePattern) -> None:
+        if not self.visit(o):
+            return
+        super().visit_value_pattern(o)
+
+    def visit_var(self, o: Var) -> None:
+        if not self.visit(o):
+            return
+        super().visit_var(o)
+
+    def visit_while_stmt(self, o: WhileStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_while_stmt(o)
+
+    def visit_with_stmt(self, o: WithStmt) -> None:
+        if not self.visit(o):
+            return
+        super().visit_with_stmt(o)
+
+    def visit_yield_expr(self, o: YieldExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_yield_expr(o)
+
+    def visit_yield_from_expr(self, o: YieldFromExpr) -> None:
+        if not self.visit(o):
+            return
+        super().visit_yield_from_expr(o)
 
 
-class SearchVisitor(ShortTraverserVisitor):
+class SearchVisitor(ExtendedTraverserVisitor):
     def __init__(
         self,
         line: int,
@@ -666,21 +815,24 @@ class SearchVisitor(ShortTraverserVisitor):
         self.end_column = end_column
         self.result: Optional[Expression] = None
 
-    def skip(self, o: Node) -> bool:
+    def visit(self, o: Node) -> bool:
         if o.line > self.line or o.line == self.line and o.column > self.column:
-            return True
-        if (o.end_line < self.end_line
-                or o.end_line == self.end_line and o.end_column < self.end_column):
-            return True
+            return False
+        # Unfortunately, end positions for some statements are a mess,
+        # most notably functions, so we can't optimise by skipping them.
+        if o.end_line is not None and o.end_column is not None:
+            if (o.end_line < self.end_line
+                    or o.end_line == self.end_line and o.end_column < self.end_column):
+                return False
         if (
             o.line == self.line
             and o.end_line == self.end_line
             and o.column == self.column
             and o.end_column == self.end_column
         ):
-            self.result = o
-        if self.result is not None:
-            return True
+            if isinstance(o, Expression):
+                self.result = o
+        return self.result is None
 
 
 class ReturnSeeker(TraverserVisitor):
@@ -699,7 +851,7 @@ def find_by_location(
     column: int,
     end_line: int,
     end_column: int
-) -> Optional[Expression]:
+) -> Optional[Node]:
     if end_line < line:
         raise ValueError('"end_line" must not be before "line"')
     if end_line == line and end_column <= column:

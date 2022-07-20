@@ -22,14 +22,15 @@ from typing_extensions import Final
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.find_sources import create_source_list, InvalidSourceList, SourceFinder
 from mypy.messages import format_type
+from mypy.nodes import Expression
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
+from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths, PYTHON_EXTENSIONS
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.traverser import find_by_location
@@ -843,26 +844,59 @@ class Server:
         line, column, end_line, end_column = [int(p) for p in parts[1:]]
         return module, line, column, end_line, end_column
 
-    def cmd_get_type(self, location: str) -> Dict[str, object]:
+    def cmd_get_type(self, location: str, verbosity: int = 0) -> Dict[str, object]:
+        """Get type of an expression."""
+        if sys.version_info < (3, 8):
+            return {'error': 'Python 3.8 required for "get_type" command'}
+        if not self.fine_grained_manager:
+            return {
+                'error': 'Command "get_type" is only valid after a "check" command'
+                ' (that produces no parse errors)'}
         try:
-            module, line, column, end_line, end_column = self.parse_location(location)
+            file, line, column, end_line, end_column = self.parse_location(location)
         except ValueError as err:
             return {'error': str(err)}
 
-        tree = self.fine_grained_manager.manager.modules.get(module)
-        if tree is None:
-            return {"err": f"Unknown module {module}"}
+        if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
+            return {'error': 'Source file is not a Python file'}
+
+        finder = SourceFinder(
+            self.fine_grained_manager.manager.fscache,
+            self.fine_grained_manager.manager.options)
         try:
-            expression = find_by_location(tree, line, column, end_line, end_column)
+            module, _ = finder.crawl_up(os.path.normpath(file))
+        except InvalidSourceList:
+            return {'error': 'Invalid source file name: ' + file}
+
+        state = self.fine_grained_manager.graph.get(module)
+        if state is None:
+            return {'out': f'Unknown module: {module}', 'err': '', 'status': 1}
+
+        # Force reloading to load from cache, account for any edits, etc.
+        old = self.fine_grained_manager.manager.options.export_types
+        self.fine_grained_manager.manager.options.export_types = True
+        try:
+            self.fine_grained_manager.flush_cache()
+            self.fine_grained_manager.update([(state.id, state.path)], [])
+        finally:
+            self.fine_grained_manager.manager.options.export_types = old
+        assert state.tree is not None
+
+        try:
+            expression = find_by_location(state.tree, line, column - 1, end_line, end_column)
         except ValueError as err:
             return {'error': str(err)}
 
         if expression is None:
             span = ':'.join(map(str, [line, column, end_line, end_column]))
-            return {"err": f"Can't find expression at span {span}"}
-        type = self.fine_grained_manager.manager.all_types[expression]
-        type_str = format_type(type)
-        return {'out': type_str, 'err': "", 'status': 0}
+            return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
+        expr_type = self.fine_grained_manager.manager.all_types.get(expression)
+        if expr_type is None:
+            return {'out': f'No known type available for "{type(expression).__name__}"'
+                           f' (probably unreachable)',
+                    'err': '', 'status': 1}
+        type_str = format_type(expr_type, verbosity=verbosity or 0)
+        return {'out': type_str, 'err': '', 'status': 0}
 
     def cmd_suggest(self,
                     function: str,

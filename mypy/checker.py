@@ -2884,7 +2884,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 lr_pairs = list(zip(left_lvs, left_rvs))
                 if star_lv:
                     rv_list = ListExpr(star_rvs)
-                    rv_list.set_line(rvalue.get_line())
+                    rv_list.set_line(rvalue)
                     lr_pairs.append((star_lv.expr, rv_list))
                 lr_pairs.extend(zip(right_lvs, right_rvs))
 
@@ -3057,7 +3057,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             if star_lv:
                 list_expr = ListExpr([self.temp_node(rv_type, context)
                                       for rv_type in star_rv_types])
-                list_expr.set_line(context.get_line())
+                list_expr.set_line(context)
                 self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
@@ -3629,7 +3629,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
         if_stmt = IfStmt([s.expr], [s.body], None)
-        if_stmt.set_line(s.get_line(), s.get_column())
+        if_stmt.set_line(s)
         self.accept_loop(if_stmt, s.else_body,
                          exit_condition=s.expr)
 
@@ -6130,7 +6130,7 @@ def flatten_types(t: Type) -> List[Type]:
 
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
     visitor = TypeTransformVisitor(map)
-    ret = defn.accept(visitor)
+    ret = visitor.node(defn)
     assert isinstance(ret, FuncItem)
     return ret
 
