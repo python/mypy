@@ -344,6 +344,14 @@ def verify_typeinfo(
         for m in cast(Any, vars)(runtime)
         if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
+    # Special-case the __init__ method for Protocols
+    #
+    # TODO: On Python <3.11, __init__ methods on Protocol classes
+    # are silently discarded and replaced.
+    # However, this is not the case on Python 3.11+.
+    # Ideally, we'd figure out a good way of validating Protocol __init__ methods on 3.11+.
+    if stub.is_protocol:
+        to_check.discard("__init__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -1090,6 +1098,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
     {
         # Special attributes
         "__dict__",
+        "__annotations__",
         "__text_signature__",
         "__weakref__",
         "__del__",  # Only ever called when an object is being deleted, who cares?
