@@ -913,10 +913,10 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-tmp/a/b/__init__.py:2: error: Name "c" is not defined
-tmp/a/b/__init__.py:3: error: Name "a" is not defined
 tmp/a/__init__.py:2: error: Name "b" is not defined
 tmp/a/__init__.py:3: error: Name "a" is not defined
+tmp/a/b/__init__.py:2: error: Name "c" is not defined
+tmp/a/b/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
