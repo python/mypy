@@ -2577,6 +2577,7 @@ class TypeInfo(SymbolNode):
         'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
         'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
         'is_newtype', 'is_intersection', 'metadata', 'alt_promote',
+        'has_type_var_tuple_type', 'type_var_tuple_prefix', 'type_var_tuple_suffix'
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2719,6 +2720,7 @@ class TypeInfo(SymbolNode):
         self.module_name = module_name
         self.type_vars = []
         self.has_param_spec_type = False
+        self.has_type_var_tuple_type = False
         self.bases = []
         self.mro = []
         self._mro_refs = None
@@ -2734,6 +2736,8 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self.is_protocol = False
         self.runtime_protocol = False
+        self.type_var_tuple_prefix: Optional[int] = None
+        self.type_var_tuple_suffix: Optional[int] = None
         self.add_type_vars()
         self.is_final = False
         self.is_enum = False
@@ -2749,10 +2753,18 @@ class TypeInfo(SymbolNode):
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
-            for vd in self.defn.type_vars:
+            for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):
                     self.has_param_spec_type = True
+                if isinstance(vd, mypy.types.TypeVarTupleType):
+                    assert not self.has_type_var_tuple_type
+                    self.has_type_var_tuple_type = True
+                    self.type_var_tuple_prefix = i
+                    self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
+        assert not (
+            self.has_param_spec_type and self.has_type_var_tuple_type
+        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:
