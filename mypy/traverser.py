@@ -819,7 +819,7 @@ class SearchVisitor(ExtendedTraverserVisitor):
         if o.line > self.line or o.line == self.line and o.column > self.column:
             return False
         # Unfortunately, end positions for some statements are a mess,
-        # most notably functions, so we can't optimise by skipping them.
+        # e.g. overloaded functions, so we can't optimise by skipping them.
         if o.end_line is not None and o.end_column is not None:
             if (o.end_line < self.end_line
                     or o.end_line == self.end_line and o.end_column < self.end_column):

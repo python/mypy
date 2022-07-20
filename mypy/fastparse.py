@@ -372,8 +372,8 @@ class ASTConverter:
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
-        node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
-        node.end_column = getattr(n, "end_col_offset", None) if isinstance(n, ast3.expr) else None
+        node.end_line = getattr(n, "end_lineno", None)
+        node.end_column = getattr(n, "end_col_offset", None)
 
         return node
 
