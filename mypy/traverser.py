@@ -841,7 +841,7 @@ def find_by_location(
     column: int,
     end_line: int,
     end_column: int
-) -> Optional[Node]:
+) -> Optional[Expression]:
     if end_line < line:
         raise ValueError('"end_line" must not be before "line"')
     if end_line == line and end_column <= column:

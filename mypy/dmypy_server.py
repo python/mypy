@@ -24,13 +24,14 @@ import mypy.errors
 import mypy.main
 from mypy.find_sources import create_source_list, InvalidSourceList, SourceFinder
 from mypy.messages import format_type
-from mypy.nodes import Expression
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths, PYTHON_EXTENSIONS
+from mypy.modulefinder import (
+    BuildSource, compute_search_paths, FindModuleCache, SearchPaths, PYTHON_EXTENSIONS
+)
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
 from mypy.traverser import find_by_location
@@ -877,6 +878,7 @@ class Server:
         self.fine_grained_manager.manager.options.export_types = True
         try:
             self.fine_grained_manager.flush_cache()
+            assert state.path is not None
             self.fine_grained_manager.update([(state.id, state.path)], [])
         finally:
             self.fine_grained_manager.manager.options.export_types = old
