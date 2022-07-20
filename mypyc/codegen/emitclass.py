@@ -187,7 +187,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     """
     name = cl.name
     name_prefix = cl.name_prefix(emitter.names)
-    flags = []
 
     setup_name = f'{name_prefix}_setup'
     new_name = f'{name_prefix}_new'
@@ -335,7 +334,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     generate_methods_table(cl, methods_name, emitter)
     emit_line()
 
-    flags += ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
+    flags = ['Py_TPFLAGS_DEFAULT', 'Py_TPFLAGS_HEAPTYPE', 'Py_TPFLAGS_BASETYPE']
     if generate_full:
         flags.append('Py_TPFLAGS_HAVE_GC')
     if cl.has_method('__call__') and emitter.use_vectorcall():
@@ -351,12 +350,14 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
     for field, value in fields.items():
         emitter.emit_line(f".{field} = {value},")
-    emitter.emit_lines(
-        f".tp_flags = {' | '.join(flags)}",
-        "#if PY_VERSION_HEX >= 0x030B0000",
-        "| Py_TPFLAGS_MANAGED_DICT",
-        "#endif"
-    )
+    emitter.emit_line(f".tp_flags = {' | '.join(flags)}")
+    if cl.has_dict:
+        emitter.emit_lines(
+            "#if PY_VERSION_HEX >= 0x030B0000",
+            "| Py_TPFLAGS_MANAGED_DICT",
+            "#endif",
+        )
+    emitter.emit_line(",")
     emitter.emit_line("};")
     emitter.emit_line("static PyTypeObject *{t}_template = &{t}_template_;".format(
         t=emitter.type_struct_name(cl)))
