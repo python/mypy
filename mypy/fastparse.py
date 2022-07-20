@@ -182,12 +182,12 @@ def parse(source: Union[str, bytes],
         options = Options()
     errors.set_file(fnam, module)
     is_stub_file = fnam.endswith('.pyi')
+    if is_stub_file:
+        feature_version = defaults.PYTHON3_VERSION[1]
+    else:
+        assert options.python_version[0] >= 3
+        feature_version = options.python_version[1]
     try:
-        if is_stub_file:
-            feature_version = defaults.PYTHON3_VERSION[1]
-        else:
-            assert options.python_version[0] >= 3
-            feature_version = options.python_version[1]
         # Disable deprecation warnings about \u
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -207,7 +207,10 @@ def parse(source: Union[str, bytes],
             # start of the f-string. This would be misleading, as mypy will report the error as the
             # lineno within the file.
             e.lineno = None
-        errors.report(e.lineno if e.lineno is not None else -1, e.offset, e.msg, blocker=True,
+        message = e.msg
+        if feature_version > sys.version_info.minor and message.startswith("invalid syntax"):
+            message += "; maybe you need to use a newer version of Python to run mypy?"
+        errors.report(e.lineno if e.lineno is not None else -1, e.offset, message, blocker=True,
                       code=codes.SYNTAX)
         tree = MypyFile([], [], False, {})
 
