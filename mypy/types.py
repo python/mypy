@@ -66,6 +66,11 @@ if TYPE_CHECKING:
         SyntheticTypeVisitor as SyntheticTypeVisitor,
     )
 
+TYPED_NAMEDTUPLE_NAMES: Final = (
+    "typing.NamedTuple",
+    "typing_extensions.NamedTuple"
+)
+
 # Supported names of TypedDict type constructors.
 TPDICT_NAMES: Final = (
     "typing.TypedDict",

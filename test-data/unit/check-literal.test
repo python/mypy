@@ -972,7 +972,7 @@ b: bt                           # E: Variable "__main__.bt" is not valid as a ty
 [out]
 
 [case testLiteralDisallowTypeVar]
-from typing import TypeVar
+from typing import TypeVar, Tuple
 from typing_extensions import Literal
 
 T = TypeVar('T')
@@ -980,7 +980,7 @@ T = TypeVar('T')
 at = Literal[T]  # E: Parameter 1 of Literal[...] is invalid
 a: at
 
-def foo(b: Literal[T]) -> T: pass   # E: Parameter 1 of Literal[...] is invalid
+def foo(b: Literal[T]) -> Tuple[T]: pass   # E: Parameter 1 of Literal[...] is invalid
 [builtins fixtures/tuple.pyi]
 [out]
 

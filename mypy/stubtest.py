@@ -13,6 +13,7 @@ import os
 import pkgutil
 import re
 import sys
+import traceback
 import types
 import typing
 import typing_extensions
@@ -201,7 +202,28 @@ def test_module(module_name: str) -> Iterator[Error]:
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        yield from verify(stub, runtime, [module_name])
+        try:
+            yield from verify(stub, runtime, [module_name])
+        except Exception as e:
+            bottom_frame = list(traceback.walk_tb(e.__traceback__))[-1][0]
+            bottom_module = bottom_frame.f_globals.get("__name__", "")
+            # Pass on any errors originating from stubtest or mypy
+            # These can occur expectedly, e.g. StubtestFailure
+            if bottom_module == "__main__" or bottom_module.split(".")[0] == "mypy":
+                raise
+            yield Error(
+                [module_name],
+                f"encountered unexpected error, {type(e).__name__}: {e}",
+                stub,
+                runtime,
+                stub_desc="N/A",
+                runtime_desc=(
+                    "This is most likely the fault of something very dynamic in your library. "
+                    "It's also possible this is a bug in stubtest.\nIf in doubt, please "
+                    "open an issue at https://github.com/python/mypy\n\n"
+                    + traceback.format_exc().strip()
+                ),
+            )
 
 
 @singledispatch
@@ -322,6 +344,14 @@ def verify_typeinfo(
         for m in cast(Any, vars)(runtime)
         if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
+    # Special-case the __init__ method for Protocols
+    #
+    # TODO: On Python <3.11, __init__ methods on Protocol classes
+    # are silently discarded and replaced.
+    # However, this is not the case on Python 3.11+.
+    # Ideally, we'd figure out a good way of validating Protocol __init__ methods on 3.11+.
+    if stub.is_protocol:
+        to_check.discard("__init__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -1068,6 +1098,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
     {
         # Special attributes
         "__dict__",
+        "__annotations__",
         "__text_signature__",
         "__weakref__",
         "__del__",  # Only ever called when an object is being deleted, who cares?

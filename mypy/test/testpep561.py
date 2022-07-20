@@ -1,17 +1,15 @@
 from contextlib import contextmanager
 import filelock
 import os
-import pytest
 import re
 import subprocess
 from subprocess import PIPE
 import sys
 import tempfile
-from typing import Tuple, List, Generator
+from typing import Tuple, List, Iterator
 
 import mypy.api
 from mypy.test.config import package_path, pip_lock, pip_timeout
-from mypy.util import try_find_python2_interpreter
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal, perform_file_operations
@@ -32,23 +30,19 @@ class PEP561Suite(DataSuite):
 
 
 @contextmanager
-def virtualenv(
-                python_executable: str = sys.executable
-                ) -> Generator[Tuple[str, str], None, None]:
+def virtualenv(python_executable: str = sys.executable) -> Iterator[Tuple[str, str]]:
     """Context manager that creates a virtualenv in a temporary directory
 
-    returns the path to the created Python executable"""
-    # Sadly, we need virtualenv, as the Python 3 venv module does not support creating a venv
-    # for Python 2, and Python 2 does not have its own venv.
+    Returns the path to the created Python executable
+    """
     with tempfile.TemporaryDirectory() as venv_dir:
-        proc = subprocess.run([sys.executable,
-                               '-m',
-                               'virtualenv',
-                               f'-p{python_executable}',
-                               venv_dir], cwd=os.getcwd(), stdout=PIPE, stderr=PIPE)
+        proc = subprocess.run(
+            [python_executable, '-m', 'venv', venv_dir],
+            cwd=os.getcwd(), stdout=PIPE, stderr=PIPE
+        )
         if proc.returncode != 0:
             err = proc.stdout.decode('utf-8') + proc.stderr.decode('utf-8')
-            raise Exception("Failed to create venv. Do you have virtualenv installed?\n" + err)
+            raise Exception("Failed to create venv.\n" + err)
         if sys.platform == 'win32':
             yield venv_dir, os.path.abspath(os.path.join(venv_dir, 'Scripts', 'python'))
         else:
@@ -94,12 +88,7 @@ def install_package(pkg: str,
 def test_pep561(testcase: DataDrivenTestCase) -> None:
     """Test running mypy on files that depend on PEP 561 packages."""
     assert testcase.old_cwd is not None, "test was not properly set up"
-    if 'python2' in testcase.name.lower():
-        python = try_find_python2_interpreter()
-        if python is None:
-            pytest.skip()
-    else:
-        python = sys.executable
+    python = sys.executable
 
     assert python is not None, "Should be impossible"
     pkgs, pip_args = parse_pkgs(testcase.input[0])

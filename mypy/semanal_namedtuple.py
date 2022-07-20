@@ -9,7 +9,7 @@ from typing_extensions import Final
 
 from mypy.types import (
     Type, TupleType, AnyType, TypeOfAny, CallableType, TypeType, TypeVarType,
-    UnboundType, LiteralType,
+    UnboundType, LiteralType, TYPED_NAMEDTUPLE_NAMES
 )
 from mypy.semanal_shared import (
     SemanticAnalyzerInterface, set_callable_name, calculate_tuple_fallback, PRIORITY_FALLBACKS
@@ -65,7 +65,7 @@ class NamedTupleAnalyzer:
         for base_expr in defn.base_type_exprs:
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
-                if base_expr.fullname == 'typing.NamedTuple':
+                if base_expr.fullname in TYPED_NAMEDTUPLE_NAMES:
                     result = self.check_namedtuple_classdef(defn, is_stub_file)
                     if result is None:
                         # This is a valid named tuple, but some types are incomplete.
@@ -175,7 +175,7 @@ class NamedTupleAnalyzer:
         fullname = callee.fullname
         if fullname == 'collections.namedtuple':
             is_typed = False
-        elif fullname == 'typing.NamedTuple':
+        elif fullname in TYPED_NAMEDTUPLE_NAMES:
             is_typed = True
         else:
             return None, None
@@ -270,7 +270,7 @@ class NamedTupleAnalyzer:
 
         Return None if the definition didn't typecheck.
         """
-        type_name = 'NamedTuple' if fullname == 'typing.NamedTuple' else 'namedtuple'
+        type_name = 'NamedTuple' if fullname in TYPED_NAMEDTUPLE_NAMES else 'namedtuple'
         # TODO: Share code with check_argument_count in checkexpr.py?
         args = call.args
         if len(args) < 2:
@@ -279,7 +279,7 @@ class NamedTupleAnalyzer:
         defaults: List[Expression] = []
         if len(args) > 2:
             # Typed namedtuple doesn't support additional arguments.
-            if fullname == 'typing.NamedTuple':
+            if fullname in TYPED_NAMEDTUPLE_NAMES:
                 self.fail('Too many arguments for "NamedTuple()"', call)
                 return None
             for i, arg_name in enumerate(call.arg_names[2:], 2):

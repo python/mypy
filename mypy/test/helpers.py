@@ -22,7 +22,7 @@ from mypy.options import Options
 from mypy.test.data import (
     DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
 )
-from mypy.test.config import test_temp_dir
+from mypy.test.config import test_temp_dir, test_data_prefix
 import mypy.version
 
 skip = pytest.mark.skip
@@ -500,6 +500,6 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
 def find_test_files(pattern: str, exclude: Optional[List[str]] = None) -> List[str]:
     return [
         path.name
-        for path in (pathlib.Path("./test-data/unit").rglob(pattern))
+        for path in (pathlib.Path(test_data_prefix).rglob(pattern))
         if path.name not in (exclude or [])
     ]

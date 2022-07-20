@@ -2,7 +2,7 @@ from mypy.test.helpers import Suite, skip
 from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.types import Type
+from mypy.types import Type, Instance, UnpackType
 
 
 class SubtypingSuite(Suite):
@@ -176,6 +176,46 @@ class SubtypingSuite(Suite):
 
         self.assert_strict_subtype(self.fx.callable_type(self.fx.a, self.fx.b),
                                    self.fx.callable(self.fx.a, self.fx.b))
+
+    def test_type_var_tuple(self) -> None:
+        self.assert_subtype(
+            Instance(self.fx.gvi, []),
+            Instance(self.fx.gvi, []),
+        )
+        self.assert_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+            Instance(self.fx.gvi, [self.fx.b, self.fx.a]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [self.fx.a, self.fx.b]),
+            Instance(self.fx.gvi, [self.fx.a]),
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [UnpackType(self.fx.us)]),
+        )
+
+        self.assert_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.anyt)]),
+            Instance(self.fx.gvi, [self.fx.anyt]),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, []),
+        )
+        self.assert_not_subtype(
+            Instance(self.fx.gvi, [UnpackType(self.fx.ss)]),
+            Instance(self.fx.gvi, [self.fx.anyt]),
+        )
 
     # IDEA: Maybe add these test cases (they are tested pretty well in type
     #       checker tests already):

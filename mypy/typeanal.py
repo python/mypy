@@ -482,8 +482,14 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 args = instance.args
                 instance.args = (Parameters(args, [ARG_POS] * len(args), [None] * len(args)),)
 
+        if info.has_type_var_tuple_type:
+            # - 1 to allow for the empty type var tuple case.
+            valid_arg_length = len(instance.args) >= len(info.type_vars) - 1
+        else:
+            valid_arg_length = len(instance.args) == len(info.type_vars)
+
         # Check type argument count.
-        if len(instance.args) != len(info.type_vars) and not self.defining_alias:
+        if not valid_arg_length and not self.defining_alias:
             fix_instance(instance, self.fail, self.note,
                          disallow_any=self.options.disallow_any_generics and
                          not self.is_typeshed_stub,
