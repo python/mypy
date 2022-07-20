@@ -72,7 +72,7 @@ Restarting: configuration changed
 Daemon stopped
 Daemon started
 foo.py:1: error: Function is missing a return type annotation
-    def f(): pass
+    def f():
     ^
 foo.py:1: note: Use "-> None" if function does not return a value
 Found 1 error in 1 file (checked 1 source file)
@@ -83,7 +83,8 @@ Success: no issues found in 1 source file
 $ dmypy stop
 Daemon stopped
 [file foo.py]
-def f(): pass
+def f():
+     pass
 
 [case testDaemonRunRestartPluginVersion]
 $ dmypy run -- foo.py --no-error-summary
@@ -296,7 +297,7 @@ def bar() -> None:
     x = foo('abc')  # type: str
     foo(arg='xyz')
 
-[case testDaemonGetType]
+[case testDaemonGetType_python38]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy get_type foo:1:2:3:4

@@ -845,7 +845,7 @@ class Server:
         line, column, end_line, end_column = [int(p) for p in parts[1:]]
         return module, line, column, end_line, end_column
 
-    def cmd_get_type(self, location: str, verbosity: int = 0) -> Dict[str, object]:
+    def cmd_get_type(self, location: str, verbosity: Optional[int] = 0) -> Dict[str, object]:
         """Get type of an expression."""
         if sys.version_info < (3, 8):
             return {'error': 'Python 3.8 required for "get_type" command'}

@@ -20,6 +20,8 @@ from mypy.test.config import test_temp_dir, PREFIX
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
 
+import pytest
+
 # Files containing test cases descriptions.
 daemon_files = [
     'daemon.test',
@@ -30,6 +32,8 @@ class DaemonSuite(DataSuite):
     files = daemon_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if testcase.name.endswith('_python38') and sys.version_info < (3, 8):
+            pytest.skip("Not supported on this version of Python")
         try:
             test_daemon(testcase)
         finally:
