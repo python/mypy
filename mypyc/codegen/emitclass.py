@@ -1,5 +1,4 @@
 """Code generation for native classes and related wrappers."""
-import sys
 
 from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
 
