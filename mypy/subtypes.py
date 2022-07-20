@@ -240,7 +240,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 # None is compatible with Hashable (and other similar protocols). This is
                 # slightly sloppy since we don't check the signature of "__hash__".
                 # None is also compatible with `SupportsStr` protocol.
-                return not members or all(member in supported_members for member in members)
+                return not members or all(member in ("__hash__", "__str__") for member in members)
             return False
         else:
             return True
