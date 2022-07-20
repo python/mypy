@@ -747,18 +747,20 @@ def generate_clear_for_class(cl: ClassIR,
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
             emitter.emit_gc_clear(f'self->{emitter.attr(attr)}', rtype)
+    if cl.has_dict:
+        struct_name = cl.struct_name(emitter.names)
         if PY_3_11:
             # __dict__ lives right before the struct and __weakref__ lives right after the struct
-            emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))', object_rprimitive)
-            emitter.emit_gc_visit(
+            emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))', object_rprimitive)
+            emitter.emit_gc_clear(
                 '*((PyObject **)((char *)self + sizeof({})))'.format(
                     struct_name),
                 object_rprimitive)
         else:
             # __dict__ lives right after the struct and __weakref__ lives right after that
-            emitter.emit_gc_visit('*((PyObject **)((char *)self + sizeof({})))'.format(
+            emitter.emit_gc_clear('*((PyObject **)((char *)self + sizeof({})))'.format(
                 struct_name), object_rprimitive)
-            emitter.emit_gc_visit(
+            emitter.emit_gc_clear(
                 '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
                     struct_name),
                 object_rprimitive)
