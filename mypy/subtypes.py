@@ -319,7 +319,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                             return False
                         if isinstance(unpacked_type, AnyType):
                             return True
-                        assert False
+                        if isinstance(unpacked_type, TupleType):
+                            if len(unpacked_type.items) != len(compare_to):
+                                return False
+                            for t1, t2 in zip(unpacked_type.items, compare_to):
+                                if not is_equivalent(t1, t2):
+                                    return False
+                            return True
+                        return False
 
                     # Case 1: Both are unpacks, in this case we check what is being
                     # unpacked is the same.
@@ -327,11 +334,21 @@ class SubtypeVisitor(TypeVisitor[bool]):
                         if not is_equivalent(left_unpacked, right_unpacked):
                             return False
 
-                    # Case 2: Only one of the types is an unpack.
+                    # Case 2: Only one of the types is an unpack. The equivalence
+                    # case is mostly the same but we check some additional
+                    # things when unpacking on the right.
                     elif left_unpacked is not None and right_unpacked is None:
                         if not check_mixed(left_unpacked, right_middle):
                             return False
                     elif left_unpacked is None and right_unpacked is not None:
+                        if (
+                            isinstance(right_unpacked, Instance)
+                            and right_unpacked.type.fullname == "builtins.tuple"
+                        ):
+                            return all(
+                                is_equivalent(l, right_unpacked.args[0])
+                                for l in left_middle
+                            )
                         if not check_mixed(right_unpacked, left_middle):
                             return False
 
