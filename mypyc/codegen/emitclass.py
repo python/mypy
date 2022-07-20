@@ -731,11 +731,11 @@ def generate_traverse_for_class(cl: ClassIR,
         # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
         # the struct
         emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-            object_rprimitive)
+                              object_rprimitive)
         emitter.emit_gc_visit(
             '*((PyObject **)((char *)self + sizeof({})))'.format(
                 struct_name),
-            object_rprimitive)            
+            object_rprimitive)
         emitter.emit_line('#endif')
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
@@ -764,11 +764,11 @@ def generate_clear_for_class(cl: ClassIR,
         # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
         # the struct
         emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-            object_rprimitive)
+                              object_rprimitive)
         emitter.emit_gc_clear(
             '*((PyObject **)((char *)self + sizeof({})))'.format(
                 struct_name),
-            object_rprimitive)            
+            object_rprimitive)
         emitter.emit_line('#endif')
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
