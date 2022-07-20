@@ -337,7 +337,7 @@ $ dmypy get_type foo.py:1:2:3:4
 Can't find expression at span 1:2:3:4
 == Return code: 1
 $ dmypy get_type foo.py:17:5:17:5
-No known type available for "NameExpr"
+No known type available for "NameExpr" (probably unreachable)
 == Return code: 1
 
 [file foo.py]
