@@ -278,7 +278,6 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         # In CPython >=3.11, __dict__ slot is automatically set before the type. So
         # we need to let CPython manage it.
         emitter.emit_line('#else')
-        flags.append('Py_TPFLAGS_MANAGED_DICT')
         # __weakref__ lives right after the struct
         # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
         weak_offset = f'{base_size}'
@@ -347,12 +346,17 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # This is just a placeholder to please CPython. It will be
             # overriden during setup.
             fields['tp_call'] = 'PyVectorcall_Call'
-    fields['tp_flags'] = ' | '.join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
     for field, value in fields.items():
         emitter.emit_line(f".{field} = {value},")
+    emitter.emit_lines(
+        f"tp_flags = {' | '.join(flags)}",
+        "#if PY_VERSION_HEX >= 0x030B0000",
+        "| Py_TPFLAGS_MANAGED_DICT",
+        "#endif"
+    )
     emitter.emit_line("};")
     emitter.emit_line("static PyTypeObject *{t}_template = &{t}_template_;".format(
         t=emitter.type_struct_name(cl)))
