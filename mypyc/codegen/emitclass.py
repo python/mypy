@@ -21,6 +21,7 @@ from mypyc.namegen import NameGenerator
 
 PY_3_11 = sys.version_info >= (3, 11)
 
+
 def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     return f'{NATIVE_PREFIX}{fn.cname(emitter.names)}'
 
@@ -721,7 +722,8 @@ def generate_traverse_for_class(cl: ClassIR,
         struct_name = cl.struct_name(emitter.names)
         if PY_3_11:
             # __dict__ lives right before the struct and __weakref__ lives right after the struct
-            emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))', object_rprimitive)
+            emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+                object_rprimitive)
             emitter.emit_gc_visit(
                 '*((PyObject **)((char *)self + sizeof({})))'.format(
                     struct_name),
@@ -751,7 +753,8 @@ def generate_clear_for_class(cl: ClassIR,
         struct_name = cl.struct_name(emitter.names)
         if PY_3_11:
             # __dict__ lives right before the struct and __weakref__ lives right after the struct
-            emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))', object_rprimitive)
+            emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+                object_rprimitive)
             emitter.emit_gc_clear(
                 '*((PyObject **)((char *)self + sizeof({})))'.format(
                     struct_name),
