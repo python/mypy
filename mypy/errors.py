@@ -377,7 +377,8 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             allow_dups: if True, allow duplicate copies of this message (ignored if only_once)
-            origin_span: if non-None, override current context as origin (type: ignores have effect here)
+            origin_span: if non-None, override current context as origin
+                         (type: ignores have effect here)
             end_line: if non-None, override current context as end
         """
         if self.scope:
