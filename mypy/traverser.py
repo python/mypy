@@ -1,6 +1,6 @@
 """Generic node traverser visitor"""
 
-from typing import List, Tuple, Optional
+from typing import List, Tuple
 from mypy_extensions import mypyc_attr
 
 from mypy.patterns import (

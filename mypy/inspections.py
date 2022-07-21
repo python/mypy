@@ -117,6 +117,7 @@ class InspectionEngine:
         limit: int = 0,
         include_span: bool = False,
         include_kind: bool = False,
+        include_object_attrs: bool = False,
     ) -> None:
         self.fg_manager = fg_manager
         self.finder = SourceFinder(
@@ -127,6 +128,7 @@ class InspectionEngine:
         self.limit = limit
         self.include_span = include_span
         self.include_kind = include_kind
+        self.include_object_attrs = include_object_attrs
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
         if location.count(':') not in [2, 4]:
@@ -158,12 +160,17 @@ class InspectionEngine:
                     f' (probably unreachable)', False)
 
         type_str = format_type(expr_type, verbosity=self.verbosity or 0)
-        if self.include_span:
-            type_str = f'{expression.end_line}:{expression.end_column}:{type_str}'
-            type_str = f'{expression.line}:{expression.column + 1}:{type_str}'
+        prefixes = []
         if self.include_kind:
-            type_str = f'{type(expression).__name__}:{type_str}'
-        return type_str, True
+            prefixes.append(f'{type(expression).__name__}')
+        if self.include_span:
+            prefixes.append(f'{expression.line}:{expression.column + 1}:' +
+                            f'{expression.end_line}:{expression.end_column}')
+        if prefixes:
+            prefix = ':'.join(prefixes) + ' -> '
+        else:
+            prefix = ''
+        return prefix + type_str, True
 
     def get_type_by_exact_location(
         self, tree: MypyFile, line: int, column: int, end_line: int, end_column: int

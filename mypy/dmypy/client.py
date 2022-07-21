@@ -120,23 +120,27 @@ p.add_argument('--use-fixme', metavar='NAME', type=str,
 p.add_argument('--max-guesses', type=int,
                help="Set the maximum number of types to try for a function (default 64)")
 
-get_type_parser = p = subparsers.add_parser('get_type',
-    help="Get declared or inferred type of an expression")
+inspect_parser = p = subparsers.add_parser('inspect',
+    help="Locate and statically inspect expression(s)")
 p.add_argument('location', metavar='LOCATION', type=str,
                help='Location specified as path/to/file.py:line:column[:end_line:end_column].'
                     ' If position is given (i.e. only line and column), this will return all'
                     ' enclosing expressions')
+p.add_argument('--show', metavar='INSPECTION', type=str, default='type',
+               choices=['type', 'attrs', 'definition'], help="What kind of inspection to run")
 p.add_argument('--verbose', '-v', action='count',
                help="Increase verbosity of the type string representation (can be repeated)")
 p.add_argument('--limit', metavar='NUM', type=int, default=0,
                help="Return at most NUM innermost expressions (if position is given);"
                     " 0 means no limit")
 p.add_argument('--include-span', action='store_true',
-               help='Prepend each type with the span of corresponding expression'
+               help='Prepend each inspection result with the span of corresponding expression'
                     ' (e.g. 1:2:3:4:"int")')
 p.add_argument('--include-kind', action='store_true',
-               help='Prepend each type with the kind of corresponding expression'
+               help='Prepend each inspection result with the kind of corresponding expression'
                     ' (e.g. NameExpr:"int")')
+p.add_argument('--include-object-attrs', action='store_true',
+               help='Include attributes of "object" in "attrs" inspection')
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -395,12 +399,13 @@ def do_suggest(args: argparse.Namespace) -> None:
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 
-@action(get_type_parser)
-def do_get_type(args: argparse.Namespace) -> None:
+@action(inspect_parser)
+def do_inspect(args: argparse.Namespace) -> None:
     """Ask daemon to print the type of an expression."""
-    response = request(args.status_file, 'get_type', location=args.location,
+    response = request(args.status_file, 'inspect', show=args.show, location=args.location,
                        verbosity=args.verbose, limit=args.limit,
-                       include_span=args.include_span, include_kind=args.include_kind)
+                       include_span=args.include_span, include_kind=args.include_kind,
+                       include_object_attrs=args.include_object_attrs)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

@@ -834,20 +834,22 @@ class Server:
 
         return changed, removed
 
-    def cmd_get_type(
+    def cmd_inspect(
         self,
+        show: str,
         location: str,
         verbosity: Optional[int] = 0,
         limit: int = 0,
         include_span: bool = False,
         include_kind: bool = False,
+        include_object_attrs: bool = False,
     ) -> Dict[str, object]:
-        """Get type of an expression."""
+        """Locate and inspect expression(s)."""
         if sys.version_info < (3, 8):
-            return {'error': 'Python 3.8 required for "get_type" command'}
+            return {'error': 'Python 3.8 required for "inspect" command'}
         if not self.fine_grained_manager:
             return {
-                'error': 'Command "get_type" is only valid after a "check" command'
+                'error': 'Command "inspect" is only valid after a "check" command'
                          ' (that produces no parse errors)'}
         engine = InspectionEngine(
             self.fine_grained_manager,
@@ -855,8 +857,12 @@ class Server:
             limit=limit,
             include_span=include_span,
             include_kind=include_kind,
+            include_object_attrs=include_object_attrs,
         )
-        return engine.get_type(location)
+        if show == 'type':
+            return engine.get_type(location)
+        else:
+            assert False, "Unknown inspection kind"
 
     def cmd_suggest(self,
                     function: str,
