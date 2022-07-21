@@ -481,6 +481,8 @@ class ASTConverter:
     def as_required_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
         assert stmts  # must be non-empty
         b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+        # TODO: in some call sites line is wrong (includes first line of enclosing statement)
+        # TODO: also we need to set the column, and the end position here.
         b.set_line(lineno)
         return b
 
@@ -871,6 +873,10 @@ class ASTConverter:
                                          AnyType(TypeOfAny.unannotated),
                                          _dummy_fallback)
 
+        # End position is always the same.
+        end_line = getattr(n, "end_lineno", None)
+        end_column = getattr(n, "end_col_offset", None)
+
         func_def = FuncDef(
             n.name,
             args,
@@ -889,30 +895,28 @@ class ASTConverter:
             if sys.version_info < (3, 8):
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
-                lineno += len(n.decorator_list)
-                end_lineno: Optional[int] = None
+                deco_line = lineno
+                lineno += len(n.decorator_list)  # this is only approximately true
             else:
-                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # Set deco_line to the old pre-3.8 lineno, in order to keep
                 # existing "# type: ignore" comments working:
-                end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
+                deco_line = n.decorator_list[0].lineno
 
             var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno, n.col_offset, end_lineno)
-            func_def.body.set_line(lineno)  # TODO: Why?
+            func_def.deco_line = deco_line
+            func_def.set_line(lineno, n.col_offset, end_line, end_column)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
-            deco.set_line(first.lineno, first.col_offset,
-                          getattr(n, "end_lineno", None), getattr(n, "end_col_offset", None))
+            deco.set_line(first.lineno, first.col_offset, end_line, end_column)
             retval: Union[FuncDef, Decorator] = deco
         else:
             # FuncDef overrides set_line -- can't use self.set_line
-            func_def.set_line(lineno, n.col_offset,
-                              getattr(n, "end_lineno", None), getattr(n, "end_col_offset", None))
+            func_def.set_line(lineno, n.col_offset, end_line, end_column)
             retval = func_def
         self.class_and_function_stack.pop()
         return retval
@@ -1010,14 +1014,14 @@ class ASTConverter:
                         metaclass=dict(keywords).get('metaclass'),
                         keywords=keywords)
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # Set lines to match the old mypy 0.700 lines, in order to keep
         # existing "# type: ignore" comments working:
         if sys.version_info < (3, 8):
             cdef.line = n.lineno + len(n.decorator_list)
-            cdef.end_line = n.lineno
+            cdef.deco_line = n.lineno
         else:
             cdef.line = n.lineno
-            cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
+            cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
         cdef.column = n.col_offset
         cdef.end_line = getattr(n, "end_lineno", None)
         cdef.end_column = getattr(n, "end_col_offset", None)

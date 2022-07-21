@@ -267,3 +267,10 @@ ERROR # E: Name "ERROR" is not defined
 
 def f(): ...
 ERROR # E: Name "ERROR" is not defined
+
+[case testIgnoreInsideFunctionDoesntAffectWhole]
+# flags: --disallow-untyped-defs
+
+def f():  # E: Function is missing a return type annotation
+    42 + 'no way'  # type: ignore
+    return 0

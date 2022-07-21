@@ -734,6 +734,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
                  'is_conditional',
                  'is_abstract',
                  'original_def',
+                 'deco_line',
                  )
 
     # Note that all __init__ args must have default values
@@ -750,6 +751,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -998,7 +1001,7 @@ class ClassDef(Statement):
 
     __slots__ = ('name', 'fullname', 'defs', 'type_vars', 'base_type_exprs',
                  'removed_base_type_exprs', 'info', 'metaclass', 'decorators',
-                 'keywords', 'analyzed', 'has_incompatible_baseclass')
+                 'keywords', 'analyzed', 'has_incompatible_baseclass', 'deco_line')
 
     name: str  # Name of the class without module prefix
     fullname: Bogus[str]  # Fully qualified name of the class
@@ -1035,6 +1038,8 @@ class ClassDef(Statement):
         self.keywords = OrderedDict(keywords or [])
         self.analyzed = None
         self.has_incompatible_baseclass = False
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)

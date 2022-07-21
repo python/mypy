@@ -33,7 +33,7 @@ from mypy.nodes import (
     TypeInfo, Context, MypyFile, FuncDef, reverse_builtin_aliases,
     ArgKind, ARG_POS, ARG_OPT, ARG_NAMED, ARG_NAMED_OPT, ARG_STAR, ARG_STAR2,
     ReturnStmt, NameExpr, Var, CONTRAVARIANT, COVARIANT, SymbolNode,
-    CallExpr, IndexExpr, StrExpr, SymbolTable, SYMBOL_FUNCBASE_TYPES
+    CallExpr, IndexExpr, StrExpr, SymbolTable, SYMBOL_FUNCBASE_TYPES, ClassDef, Expression
 )
 from mypy.operators import op_methods, op_methods_to_symbols
 from mypy.subtypes import (
@@ -149,18 +149,31 @@ class MessageBuilder:
                origin: Optional[Context] = None,
                offset: int = 0,
                allow_dups: bool = False) -> None:
-        """Report an error or note (unless disabled)."""
+        """Report an error or note (unless disabled).
+
+        Note that context controls where error is reported, while origin controls
+        where # type: ignore comments have effect.
+        """
+        def span_from_context(ctx: Context) -> Tuple[int, int]:
+            if isinstance(ctx, (ClassDef, FuncDef)):
+                return ctx.deco_line or ctx.line, ctx.line
+            elif not isinstance(ctx, Expression):
+                return ctx.line, ctx.line
+            else:
+                return ctx.line, ctx.end_line or ctx.line
+
+        origin_span: Optional[Tuple[int, int]]
         if origin is not None:
-            end_line = origin.end_line
+            origin_span = span_from_context(origin)
         elif context is not None:
-            end_line = context.end_line
+            origin_span = span_from_context(context)
         else:
-            end_line = None
+            origin_span = None
         self.errors.report(context.get_line() if context else -1,
                            context.get_column() if context else -1,
                            msg, severity=severity, file=file, offset=offset,
-                           origin_line=origin.get_line() if origin else None,
-                           end_line=end_line,
+                           origin_span=origin_span,
+                           end_line=context.end_line if context else -1,
                            end_column=context.end_column if context else -1,
                            code=code, allow_dups=allow_dups)
 
@@ -170,11 +183,10 @@ class MessageBuilder:
              *,
              code: Optional[ErrorCode] = None,
              file: Optional[str] = None,
-             origin: Optional[Context] = None,
              allow_dups: bool = False) -> None:
         """Report an error message (unless disabled)."""
         self.report(msg, context, 'error', code=code, file=file,
-                    origin=origin, allow_dups=allow_dups)
+                    allow_dups=allow_dups)
 
     def note(self,
              msg: str,
@@ -190,12 +202,12 @@ class MessageBuilder:
                     offset=offset, allow_dups=allow_dups, code=code)
 
     def note_multiline(self, messages: str, context: Context, file: Optional[str] = None,
-                       origin: Optional[Context] = None, offset: int = 0,
+                       offset: int = 0,
                        allow_dups: bool = False,
                        code: Optional[ErrorCode] = None) -> None:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
-            self.report(msg, context, 'note', file=file, origin=origin,
+            self.report(msg, context, 'note', file=file,
                         offset=offset, allow_dups=allow_dups, code=code)
 
     #
