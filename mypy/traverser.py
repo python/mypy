@@ -825,16 +825,6 @@ class SearchVisitor(ExtendedTraverserVisitor):
         return self.result is None
 
 
-class ReturnSeeker(TraverserVisitor):
-    def __init__(self) -> None:
-        self.found = False
-
-    def visit_return_stmt(self, o: ReturnStmt) -> None:
-        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
-            return
-        self.found = True
-
-
 def find_by_location(
     tree: MypyFile,
     line: int,
@@ -849,6 +839,50 @@ def find_by_location(
     visitor = SearchVisitor(line, column, end_line, end_column)
     tree.accept(visitor)
     return visitor.result
+
+
+class SearchAllVisitor(ExtendedTraverserVisitor):
+    def __init__(
+        self,
+        line: int,
+        column: int
+    ) -> None:
+        self.line = line
+        self.column = column
+        self.result: List[Expression] = []
+
+    def visit(self, o: Node) -> bool:
+        if o.line > self.line or o.line == self.line and o.column > self.column:
+            return False
+        # Unfortunately, end positions for some statements are a mess,
+        # e.g. overloaded functions, so we can't optimise by skipping them.
+        if o.end_line is not None and o.end_column is not None:
+            if (o.end_line < self.line
+                    or o.end_line == self.line and o.end_column < self.column):
+                return False
+        if isinstance(o, Expression):
+            self.result.append(o)
+        return True
+
+
+def find_all_by_location(
+    tree: MypyFile,
+    line: int,
+    column: int,
+) -> List[Expression]:
+    visitor = SearchAllVisitor(line, column)
+    tree.accept(visitor)
+    return list(reversed(visitor.result))
+
+
+class ReturnSeeker(TraverserVisitor):
+    def __init__(self) -> None:
+        self.found = False
+
+    def visit_return_stmt(self, o: ReturnStmt) -> None:
+        if (o.expr is None or isinstance(o.expr, NameExpr) and o.expr.name == 'None'):
+            return
+        self.found = True
 
 
 def has_return_statement(fdef: FuncBase) -> bool:

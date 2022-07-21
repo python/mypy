@@ -248,9 +248,13 @@ Request type of an expression
 
 The daemon allows to get declared or inferred type of an expression using
 ``dmypy get_type LOCATION`` command. The location of the expression should be
-specified in the format ``path/to/file.py:line:column:end_line:end_column``.
+specified in the format ``path/to/file.py:line:column[:end_line:end_column]``.
 Both line and column are 1-based. Both start and end position are inclusive.
 These rules match how mypy prints the error location in error messages.
+
+If a span is given (i.e. all 4 numbers), then only an exact match is returned.
+If only a position is given (i.e. 2 numbers, line and column), mypy will return
+all *expressions*, than include this position, starting from the innermost.
 
 Consider this Python code snippet:
 
@@ -260,8 +264,9 @@ Consider this Python code snippet:
        x
        longer_name
 
-Here to find the type of ``x`` one needs to call ``dmypy get_type src.py:2:5:2:5``.
-While for ``longer_name`` one needs to call ``dmypy get_type src.py:3:5:3:15``.
+Here to find the type of ``x`` one needs to call ``dmypy get_type src.py:2:5:2:5``
+or ``dmypy get_type src.py:2:5``. While for ``longer_name`` one needs to call
+``dmypy get_type src.py:3:5:3:15`` or, for example, ``dmypy get_type src.py:3:10``.
 Please note that this command is only valid after daemon had a successful type
 check (without parse errors), so that types are populated, e.g. using
 ``dmypy check``.

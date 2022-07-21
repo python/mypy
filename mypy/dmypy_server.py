@@ -34,7 +34,7 @@ from mypy.modulefinder import (
 )
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
-from mypy.traverser import find_by_location
+from mypy.traverser import find_by_location, find_all_by_location
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
@@ -837,13 +837,12 @@ class Server:
 
         return changed, removed
 
-    def parse_location(self, location: str) -> Tuple[str, int, int, int, int]:
-        if location.count(':') != 4:
-            raise ValueError("Format should be file:line:column:end_line:end:end_column")
+    def parse_location(self, location: str) -> Tuple[str, List[int]]:
+        if location.count(':') not in [2, 4]:
+            raise ValueError("Format should be file:line:column[:end_line:end_column]")
         parts = location.split(":")
-        module = parts[0]
-        line, column, end_line, end_column = [int(p) for p in parts[1:]]
-        return module, line, column, end_line, end_column
+        module, *rest = parts
+        return module, [int(p) for p in rest]
 
     def cmd_get_type(self, location: str, verbosity: Optional[int] = 0) -> Dict[str, object]:
         """Get type of an expression."""
@@ -854,7 +853,7 @@ class Server:
                 'error': 'Command "get_type" is only valid after a "check" command'
                 ' (that produces no parse errors)'}
         try:
-            file, line, column, end_line, end_column = self.parse_location(location)
+            file, pos = self.parse_location(location)
         except ValueError as err:
             return {'error': str(err)}
 
@@ -884,21 +883,42 @@ class Server:
             self.fine_grained_manager.manager.options.export_types = old
         assert state.tree is not None
 
-        try:
-            expression = find_by_location(state.tree, line, column - 1, end_line, end_column)
-        except ValueError as err:
-            return {'error': str(err)}
+        if len(pos) == 4:
+            line, column, end_line, end_column = pos
+            try:
+                expression = find_by_location(state.tree, line, column - 1, end_line, end_column)
+            except ValueError as err:
+                return {'error': str(err)}
 
-        if expression is None:
-            span = ':'.join(map(str, [line, column, end_line, end_column]))
-            return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
-        expr_type = self.fine_grained_manager.manager.all_types.get(expression)
-        if expr_type is None:
-            return {'out': f'No known type available for "{type(expression).__name__}"'
-                           f' (probably unreachable)',
+            if expression is None:
+                span = ':'.join(map(str, [line, column, end_line, end_column]))
+                return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
+            expr_type = self.fine_grained_manager.manager.all_types.get(expression)
+            if expr_type is None:
+                return {'out': f'No known type available for "{type(expression).__name__}"'
+                               f' (probably unreachable)',
+                        'err': '', 'status': 1}
+            type_str = format_type(expr_type, verbosity=verbosity or 0)
+            return {'out': type_str, 'err': '', 'status': 0}
+
+        # Inexact location, return all expressions
+        line, column = pos
+        expressions = find_all_by_location(state.tree, line, column - 1)
+        if not expressions:
+            position = ':'.join(map(str, [line, column]))
+            return {'out': f"Can't find any expressions at position {position}",
                     'err': '', 'status': 1}
-        type_str = format_type(expr_type, verbosity=verbosity or 0)
-        return {'out': type_str, 'err': '', 'status': 0}
+        type_strs = []
+        status = 0
+        for expression in expressions:
+            expr_type = self.fine_grained_manager.manager.all_types.get(expression)
+            if expr_type is None:
+                status = 1
+                type_strs.append(f'No known type available for "{type(expression).__name__}"'
+                                 f' (probably unreachable)')
+            else:
+                type_strs.append(format_type(expr_type, verbosity=verbosity or 0))
+        return {'out': '\n'.join(type_strs), 'err': '', 'status': status}
 
     def cmd_suggest(self,
                     function: str,
