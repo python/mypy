@@ -2,6 +2,7 @@ from mypy.test.helpers import Suite
 from mypy.test.typefixture import TypeFixture
 from mypy.constraints import infer_constraints, SUBTYPE_OF, SUPERTYPE_OF, Constraint
 
+
 class ConstraintsSuite(Suite):
     def setUp(self) -> None:
         self.fx = TypeFixture()
