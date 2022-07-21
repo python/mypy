@@ -54,6 +54,14 @@ class Constraint:
             op_str = ':>'
         return f'{self.type_var} {op_str} {self.target}'
 
+    def __hash__(self) -> int:
+        return hash((self.type_var, self.op, self.target))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Constraint):
+            return False
+        return (self.type_var, self.op, self.target) == (other.type_var, other.op, other.target)
+
 
 def infer_constraints_for_callable(
         callee: CallableType,
