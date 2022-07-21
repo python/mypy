@@ -1644,6 +1644,11 @@ var = P1 # E: Can only assign concrete classes to a variable of type "Callable[[
 var = B1 # OK
 var = C1 # OK
 
+# Self assign:
+P = P    # OK
+B = B    # OK
+C = C    # OK
+
 [case testInstantiationProtocolInTypeForClassMethods]
 from typing import Type, Protocol
 

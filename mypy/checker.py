@@ -2426,7 +2426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
-                if not self.check_concrete_only_assign(lvalue_type, rvalue_type, rvalue):
+                if not self.check_concrete_only_assign(lvalue_type, lvalue, rvalue_type, rvalue):
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
@@ -2444,8 +2444,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
 
-    def check_concrete_only_assign(self, lvalue_type: Optional[Type],
-                                   rvalue_type: Type, rvalue: Expression) -> bool:
+    def check_concrete_only_assign(self,
+                                   lvalue_type: Optional[Type],
+                                   lvalue: Expression,
+                                   rvalue_type: Type,
+                                   rvalue: Expression) -> bool:
+        if (isinstance(lvalue, NameExpr) and isinstance(rvalue, NameExpr)
+                and lvalue.node == rvalue.node):
+            # This means that we reassign abstract class to itself. Like `A = A`
+            return True
+
         rvalue_type = get_proper_type(rvalue_type)
         lvalue_type = get_proper_type(lvalue_type)
         if not (

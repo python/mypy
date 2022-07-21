@@ -277,6 +277,11 @@ var = A1 # E: Can only assign concrete classes to a variable of type "Callable[[
 var = B1 # E: Can only assign concrete classes to a variable of type "Callable[[], A]"
 var = C1 # OK
 
+# Self assign:
+A = A    # OK
+B = B    # OK
+C = C    # OK
+
 [case testInstantiationAbstractsInTypeForClassMethods]
 from typing import Type
 from abc import abstractmethod
