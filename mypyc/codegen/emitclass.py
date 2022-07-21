@@ -350,13 +350,10 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
         flags.append('Py_TPFLAGS_MANAGED_DICT')
     fields['tp_flags'] = ' | '.join(flags)
 
-
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
     for field, value in fields.items():
         emitter.emit_line(f".{field} = {value},")
-    emitter.emit_line(f".tp_flags = {' | '.join(flags)}")
-    emitter.emit_line(",")
     emitter.emit_line("};")
     emitter.emit_line("static PyTypeObject *{t}_template = &{t}_template_;".format(
         t=emitter.type_struct_name(cl)))
