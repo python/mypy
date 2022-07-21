@@ -1636,6 +1636,14 @@ var = P # E: Can only assign concrete classes to a variable of type "Callable[[]
 var = B # OK
 var = C # OK
 
+# Type aliases:
+P1 = P
+B1 = B
+C1 = C
+var = P1 # E: Can only assign concrete classes to a variable of type "Callable[[], P]"
+var = B1 # OK
+var = C1 # OK
+
 [case testInstantiationProtocolInTypeForClassMethods]
 from typing import Type, Protocol
 
