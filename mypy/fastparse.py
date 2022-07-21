@@ -481,7 +481,7 @@ class ASTConverter:
     def as_required_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
         assert stmts  # must be non-empty
         b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
-        # TODO: in some call sites line is wrong (includes first line of enclosing statement)
+        # TODO: in most call sites line is wrong (includes first line of enclosing statement)
         # TODO: also we need to set the column, and the end position here.
         b.set_line(lineno)
         return b
@@ -909,6 +909,9 @@ class ASTConverter:
             func_def.is_decorated = True
             func_def.deco_line = deco_line
             func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            # Set the line again after we updated it (to make value same in Python 3.7/3.8)
+            # Note that TODOs in as_required_block() apply here as well.
+            func_def.body.set_line(lineno)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
