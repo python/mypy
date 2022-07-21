@@ -419,14 +419,15 @@ def unreachable(x: int, y: int) -> None:
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py --export-types
-$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind
-NameExpr:9:1:9:1 -> (x, y, a, b)
+$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
+NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
 
 [file foo.py]
 class B:
     def b(self) -> int: ...
     a: int
 class C(B):
+    a: int
     y: int
     def x(self) -> int: ...
 

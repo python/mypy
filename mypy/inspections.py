@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from typing import Tuple, List, Optional, Dict, Callable
 
 from mypy.build import State
@@ -178,11 +179,13 @@ class InspectionEngine:
         if not self.include_object_attrs:
             mro = mro[:-1]
 
-        attrs = []
+        # We don't use JSON dump to be sure keys order is always preserved.
+        base_attrs = []
         for base in mro:
-            for name in sorted(base.names):
-                attrs.append(name)
-        return self.add_prefixes(f'({", ".join(attrs)})', expression), True
+            cls_name = base.name if self.verbosity < 1 else base.fullname
+            attrs = [f'"{attr}"' for attr in sorted(base.names)]
+            base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
+        return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
     def missing_type(self, expression: Expression) -> str:
         alt_suggestion = ''

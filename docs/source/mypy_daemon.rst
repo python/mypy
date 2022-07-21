@@ -289,8 +289,8 @@ since otherwise most inspections will not work without :option:`--force-reload`.
    inspections are:
       * ``type`` (default): Show the best known type of a given expression.
       * ``attrs``: Show which attributes are valid for an expression (e.g. for
-        auto-completion). Format is ``(name_1, name_2, ...)``. Names are sorted
-        by method resolution order.
+        auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
+        Names are sorted by method resolution order.
       * ``definition``: Show the definition location for a name expression or member
         expression. Format is ``path/to/file.py:line:column:Symbol``.
 
