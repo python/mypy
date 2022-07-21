@@ -5,61 +5,35 @@ from collections.abc import Callable, Iterable, MutableSequence, Sequence, Set a
 from fractions import Fraction
 from typing import Any, ClassVar, NoReturn, TypeVar
 
+__all__ = [
+    "Random",
+    "seed",
+    "random",
+    "uniform",
+    "randint",
+    "choice",
+    "sample",
+    "randrange",
+    "shuffle",
+    "normalvariate",
+    "lognormvariate",
+    "expovariate",
+    "vonmisesvariate",
+    "gammavariate",
+    "triangular",
+    "gauss",
+    "betavariate",
+    "paretovariate",
+    "weibullvariate",
+    "getstate",
+    "setstate",
+    "getrandbits",
+    "choices",
+    "SystemRandom",
+]
+
 if sys.version_info >= (3, 9):
-    __all__ = [
-        "Random",
-        "SystemRandom",
-        "betavariate",
-        "choice",
-        "choices",
-        "expovariate",
-        "gammavariate",
-        "gauss",
-        "getrandbits",
-        "getstate",
-        "lognormvariate",
-        "normalvariate",
-        "paretovariate",
-        "randbytes",
-        "randint",
-        "random",
-        "randrange",
-        "sample",
-        "seed",
-        "setstate",
-        "shuffle",
-        "triangular",
-        "uniform",
-        "vonmisesvariate",
-        "weibullvariate",
-    ]
-else:
-    __all__ = [
-        "Random",
-        "seed",
-        "random",
-        "uniform",
-        "randint",
-        "choice",
-        "sample",
-        "randrange",
-        "shuffle",
-        "normalvariate",
-        "lognormvariate",
-        "expovariate",
-        "vonmisesvariate",
-        "gammavariate",
-        "triangular",
-        "gauss",
-        "betavariate",
-        "paretovariate",
-        "weibullvariate",
-        "getstate",
-        "setstate",
-        "getrandbits",
-        "choices",
-        "SystemRandom",
-    ]
+    __all__ += ["randbytes"]
 
 _T = TypeVar("_T")
 
@@ -67,8 +41,10 @@ class Random(_random.Random):
     VERSION: ClassVar[int]
     def __init__(self, x: Any = ...) -> None: ...
     # Using other `seed` types is deprecated since 3.9 and removed in 3.11
+    # Ignore Y041, since random.seed doesn't treat int like a float subtype. Having an explicit
+    # int better documents conventional usage of random.seed.
     if sys.version_info >= (3, 9):
-        def seed(self, a: int | float | str | bytes | bytearray | None = ..., version: int = ...) -> None: ...  # type: ignore[override]
+        def seed(self, a: int | float | str | bytes | bytearray | None = ..., version: int = ...) -> None: ...  # type: ignore[override]  # noqa: Y041
     else:
         def seed(self, a: Any = ..., version: int = ...) -> None: ...
 

@@ -1,4 +1,5 @@
 import sys
+from _typeshed import Self
 from collections.abc import Callable
 from typing import Any, Generic, TypeVar, overload
 from typing_extensions import final
@@ -20,7 +21,7 @@ class ProxyType(Generic[_T]):  # "weakproxy"
 
 class ReferenceType(Generic[_T]):
     __callback__: Callable[[ReferenceType[_T]], Any]
-    def __init__(self, o: _T, callback: Callable[[ReferenceType[_T]], Any] | None = ...) -> None: ...
+    def __new__(cls: type[Self], o: _T, callback: Callable[[ReferenceType[_T]], Any] | None = ...) -> Self: ...
     def __call__(self) -> _T | None: ...
     def __hash__(self) -> int: ...
     if sys.version_info >= (3, 9):

@@ -12,6 +12,7 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
+from mypy.errorcodes import TYPE_VAR
 from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
@@ -40,6 +41,7 @@ from mypy.types import (
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
     OVERLOAD_NAMES, UnboundType, SelfType
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -918,6 +920,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if typ.ret_type.variance == CONTRAVARIANT:
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
+                    self.check_unbound_return_typevar(typ)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
@@ -1061,6 +1064,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_unbound_return_typevar(self, typ: CallableType) -> None:
+        """Fails when the return typevar is not defined in arguments."""
+        if (typ.ret_type in typ.variables):
+            arg_type_visitor = CollectArgTypes()
+            for argtype in typ.arg_types:
+                argtype.accept(arg_type_visitor)
+
+            if typ.ret_type not in arg_type_visitor.arg_types:
+                self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
@@ -1579,7 +1592,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
             original_node = base_attr.node
-            if original_type is None:
+            # `original_type` can be partial if (e.g.) it is originally an
+            # instance variable from an `__init__` block that becomes deferred.
+            if original_type is None or isinstance(original_type, PartialType):
                 if self.pass_num < self.last_pass:
                     # If there are passes left, defer this node until next pass,
                     # otherwise try reconstructing the method type from available information.
@@ -1600,7 +1615,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         original_type = NoneType()
                 else:
-                    assert False, str(base_attr.node)
+                    # Will always fail to typecheck below, since we know the node is a method
+                    original_type = NoneType()
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_class_or_static = original_node.is_class or original_node.is_static
             elif isinstance(original_node, Decorator):
@@ -1964,14 +1980,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def check_enum_bases(self, defn: ClassDef) -> None:
+        """
+        Non-enum mixins cannot appear after enum bases; this is disallowed at runtime:
+
+            class Foo: ...
+            class Bar(enum.Enum, Foo): ...
+
+        But any number of enum mixins can appear in a class definition
+        (even if multiple enum bases define __new__). So this is fine:
+
+            class Foo(enum.Enum):
+                def __new__(cls, val): ...
+            class Bar(enum.Enum):
+                def __new__(cls, val): ...
+            class Baz(int, Foo, Bar, enum.Flag): ...
+        """
         enum_base: Optional[Instance] = None
         for base in defn.info.bases:
             if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
-            elif enum_base is not None:
+            elif enum_base is not None and not base.type.is_enum:
                 self.fail(
-                    f'No base classes are allowed after "{enum_base}"',
+                    f'No non-enum mixin classes are allowed after "{enum_base}"',
                     defn,
                 )
                 break
@@ -5842,6 +5873,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return (member_type.is_enum_literal()
                 and member_type.fallback.type == parent_type.type_object())
+
+
+class CollectArgTypes(TypeTraverserVisitor):
+    """Collects the non-nested argument types in a set."""
+    def __init__(self) -> None:
+        self.arg_types: Set[TypeVarType] = set()
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.arg_types.add(t)
 
 
 @overload

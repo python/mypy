@@ -42,7 +42,7 @@ class SMTPChannel(asynchat.async_chat):
         conn: socket.socket,
         addr: Any,
         data_size_limit: int = ...,
-        map: asyncore._maptype | None = ...,
+        map: asyncore._MapType | None = ...,
         enable_SMTPUTF8: bool = ...,
         decode_data: bool = ...,
     ) -> None: ...
@@ -72,7 +72,7 @@ class SMTPServer(asyncore.dispatcher):
         localaddr: _Address,
         remoteaddr: _Address,
         data_size_limit: int = ...,
-        map: asyncore._maptype | None = ...,
+        map: asyncore._MapType | None = ...,
         enable_SMTPUTF8: bool = ...,
         decode_data: bool = ...,
     ) -> None: ...

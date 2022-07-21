@@ -1591,3 +1591,12 @@ def test_func(test_str: str) -> str:
             return "special"
         case _:
             return "other"
+
+
+[case testNoneTypeWarning]
+from types import NoneType
+
+def foo(x: NoneType): # E: NoneType should not be used as a type, please use None instead
+    reveal_type(x) # N: Revealed type is "None"
+
+[builtins fixtures/tuple.pyi]

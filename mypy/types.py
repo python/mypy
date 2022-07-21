@@ -66,6 +66,11 @@ if TYPE_CHECKING:
         SyntheticTypeVisitor as SyntheticTypeVisitor,
     )
 
+TYPED_NAMEDTUPLE_NAMES: Final = (
+    "typing.NamedTuple",
+    "typing_extensions.NamedTuple"
+)
+
 # Supported names of TypedDict type constructors.
 TPDICT_NAMES: Final = (
     "typing.TypedDict",
@@ -246,6 +251,9 @@ class Type(mypy.nodes.Context):
     def deserialize(cls, data: JsonDict) -> 'Type':
         raise NotImplementedError(f'Cannot deserialize {cls.__name__} instance')
 
+    def is_singleton_type(self) -> bool:
+        return False
+
 
 class TypeAliasType(Type):
     """A type alias to another type.
@@ -264,7 +272,7 @@ class TypeAliasType(Type):
     can be represented in a tree-like manner.
     """
 
-    __slots__ = ('alias', 'args', 'line', 'column', 'type_ref')
+    __slots__ = ('alias', 'args', 'type_ref')
 
     def __init__(self, alias: Optional[mypy.nodes.TypeAlias], args: List[Type],
                  line: int = -1, column: int = -1) -> None:
@@ -1076,6 +1084,9 @@ class NoneType(ProperType):
         assert data['.class'] == 'NoneType'
         return NoneType()
 
+    def is_singleton_type(self) -> bool:
+        return True
+
 
 # NoneType used to be called NoneTyp so to avoid needlessly breaking
 # external plugins we keep that alias here.
@@ -1280,6 +1291,21 @@ class Instance(ProperType):
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
+
+    def is_singleton_type(self) -> bool:
+        # TODO:
+        # Also make this return True if the type corresponds to NotImplemented?
+        return (
+            self.type.is_enum and len(self.get_enum_values()) == 1
+            or self.type.fullname == 'builtins.ellipsis'
+        )
+
+    def get_enum_values(self) -> List[str]:
+        """Return the list of values for an Enum."""
+        return [
+            name for name, sym in self.type.names.items()
+            if isinstance(sym.node, mypy.nodes.Var)
+        ]
 
 
 class FunctionLike(ProperType):
@@ -1574,16 +1600,15 @@ class CallableType(FunctionLike):
             # after serialization, but it is useful in error messages.
             # TODO: decide how to add more info here (file, line, column)
             # without changing interface hash.
-            self.def_extras = {
-                'first_arg': (
-                    definition.arguments[0].variable.name
-                    if (getattr(definition, 'arguments', None)
-                        and definition.arg_names
-                        and definition.info
-                        and not definition.is_static)
-                    else None
-                ),
-            }
+            first_arg: Optional[str] = None
+            if (definition.arg_names and
+                    definition.info and
+                    not definition.is_static):
+                if getattr(definition, 'arguments', None):
+                    first_arg = definition.arguments[0].variable.name
+                else:
+                    first_arg = definition.arg_names[0]
+            self.def_extras = {'first_arg': first_arg}
         else:
             self.def_extras = {}
         self.type_guard = type_guard
@@ -1888,7 +1913,7 @@ class Overloaded(FunctionLike):
     implementation.
     """
 
-    __slots__ = ('_items', 'fallback')
+    __slots__ = ('_items',)
 
     _items: List[CallableType]  # Must not be empty
 
@@ -2318,6 +2343,9 @@ class LiteralType(ProperType):
             value=data['value'],
             fallback=Instance.deserialize(data['fallback']),
         )
+
+    def is_singleton_type(self) -> bool:
+        return self.is_enum_literal() or isinstance(self.value, bool)
 
 
 class StarType(ProperType):

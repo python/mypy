@@ -23,17 +23,19 @@ if TYPE_CHECKING:
 
 class Context:
     """Base type for objects that are valid as error message locations."""
-    __slots__ = ('line', 'column', 'end_line')
+    __slots__ = ('line', 'column', 'end_line', 'end_column')
 
     def __init__(self, line: int = -1, column: int = -1) -> None:
         self.line = line
         self.column = column
         self.end_line: Optional[int] = None
+        self.end_column: Optional[int] = None
 
     def set_line(self,
                  target: Union['Context', int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
         """If target is a node, pull line (and column) information
         into this node. If column is specified, this will override any column
         information coming from a node.
@@ -44,12 +46,16 @@ class Context:
             self.line = target.line
             self.column = target.column
             self.end_line = target.end_line
+            self.end_column = target.end_column
 
         if column is not None:
             self.column = column
 
         if end_line is not None:
             self.end_line = end_line
+
+        if end_column is not None:
+            self.end_column = end_column
 
     def get_line(self) -> int:
         """Don't use. Use x.line."""
@@ -631,13 +637,16 @@ class Argument(Node):
     def set_line(self,
                  target: Union[Context, int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
-        super().set_line(target, column, end_line)
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line, end_column)
 
         if self.initializer and self.initializer.line < 0:
-            self.initializer.set_line(self.line, self.column, self.end_line)
+            self.initializer.set_line(
+                self.line, self.column, self.end_line, self.end_column)
 
-        self.variable.set_line(self.line, self.column, self.end_line)
+        self.variable.set_line(
+            self.line, self.column, self.end_line, self.end_column)
 
 
 FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
@@ -649,7 +658,7 @@ FUNCITEM_FLAGS: Final = FUNCBASE_FLAGS + [
 class FuncItem(FuncBase):
     """Base class for nodes usable as overloaded function items."""
 
-    __slots__ = ('arguments',  # Note that can be None if deserialized (type is a lie!)
+    __slots__ = ('arguments',  # Note that can be unset if deserialized (type is a lie!)
                  'arg_names',  # Names of arguments
                  'arg_kinds',  # Kinds of arguments
                  'min_args',  # Minimum number of arguments
@@ -698,10 +707,11 @@ class FuncItem(FuncBase):
     def set_line(self,
                  target: Union[Context, int],
                  column: Optional[int] = None,
-                 end_line: Optional[int] = None) -> None:
-        super().set_line(target, column, end_line)
+                 end_line: Optional[int] = None,
+                 end_column: Optional[int] = None) -> None:
+        super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
-            arg.set_line(self.line, self.column, self.end_line)
+            arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
         return self.type is None
@@ -2407,7 +2417,7 @@ class NamedTupleExpr(Expression):
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
     info: "TypeInfo"
-    is_typed: bool  # whether this class was created with typing.NamedTuple
+    is_typed: bool  # whether this class was created with typing(_extensions).NamedTuple
 
     def __init__(self, info: 'TypeInfo', is_typed: bool = False) -> None:
         super().__init__()
@@ -2567,6 +2577,7 @@ class TypeInfo(SymbolNode):
         'inferring', 'is_enum', 'fallback_to_any', 'type_vars', 'has_param_spec_type',
         'bases', '_promote', 'tuple_type', 'is_named_tuple', 'typeddict_type',
         'is_newtype', 'is_intersection', 'metadata', 'alt_promote',
+        'has_type_var_tuple_type', 'type_var_tuple_prefix', 'type_var_tuple_suffix'
     )
 
     _fullname: Bogus[str]  # Fully qualified name
@@ -2709,6 +2720,7 @@ class TypeInfo(SymbolNode):
         self.module_name = module_name
         self.type_vars = []
         self.has_param_spec_type = False
+        self.has_type_var_tuple_type = False
         self.bases = []
         self.mro = []
         self._mro_refs = None
@@ -2724,6 +2736,8 @@ class TypeInfo(SymbolNode):
         self.inferring = []
         self.is_protocol = False
         self.runtime_protocol = False
+        self.type_var_tuple_prefix: Optional[int] = None
+        self.type_var_tuple_suffix: Optional[int] = None
         self.add_type_vars()
         self.is_final = False
         self.is_enum = False
@@ -2739,10 +2753,18 @@ class TypeInfo(SymbolNode):
 
     def add_type_vars(self) -> None:
         if self.defn.type_vars:
-            for vd in self.defn.type_vars:
+            for i, vd in enumerate(self.defn.type_vars):
                 if isinstance(vd, mypy.types.ParamSpecType):
                     self.has_param_spec_type = True
+                if isinstance(vd, mypy.types.TypeVarTupleType):
+                    assert not self.has_type_var_tuple_type
+                    self.has_type_var_tuple_type = True
+                    self.type_var_tuple_prefix = i
+                    self.type_var_tuple_suffix = len(self.defn.type_vars) - i - 1
                 self.type_vars.append(vd.name)
+        assert not (
+            self.has_param_spec_type and self.has_type_var_tuple_type
+        ), "Mixing type var tuples and param specs not supported yet"
 
     @property
     def name(self) -> str:
@@ -3091,7 +3113,7 @@ class TypeAlias(SymbolNode):
         within functions that can't be looked up from the symbol table)
     """
     __slots__ = ('target', '_fullname', 'alias_tvars', 'no_args', 'normalized',
-                 'line', 'column', '_is_recursive', 'eager')
+                 '_is_recursive', 'eager')
 
     def __init__(self, target: 'mypy.types.Type', fullname: str, line: int, column: int,
                  *,
@@ -3199,7 +3221,7 @@ class PlaceholderNode(SymbolNode):
     something that can support general recursive types.
     """
 
-    __slots__ = ('_fullname', 'node', 'line', 'becomes_typeinfo')
+    __slots__ = ('_fullname', 'node', 'becomes_typeinfo')
 
     def __init__(self, fullname: str, node: Node, line: int, *,
                  becomes_typeinfo: bool = False) -> None:

@@ -275,6 +275,7 @@ class Options:
         # -- experimental options --
         self.shadow_file: Optional[List[List[str]]] = None
         self.show_column_numbers: bool = False
+        self.show_error_end: bool = False
         self.show_error_codes = False
         # Use soft word wrap and show trimmed source snippets with error location markers.
         self.pretty = False

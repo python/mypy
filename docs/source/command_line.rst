@@ -705,6 +705,14 @@ in error messages.
 
         main.py:12:9: error: Unsupported operand types for / ("int" and "str")
 
+.. option:: --show-error-end
+
+    This flag will make mypy show not just that start position where
+    an error was detected, but also the end position of the relevant expression.
+    This way various tools can easily highlight the whole error span. The format is
+    ``file:line:column:end_line:end_column``. This option implies
+    ``--show-column-numbers``.
+
 .. option:: --show-error-codes
 
     This flag will add an error code ``[<code>]`` to error messages. The error

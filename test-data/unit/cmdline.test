@@ -335,11 +335,11 @@ file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int
 \[mypy-x]
 ignore_errors = True
 [file x.py]
-"" + 0
+x: str = 5
 [file y.py]
-"" + 0
+x: str = 5
 [out]
-y.py:1: error: Unsupported operand types for + ("str" and "int")
+y.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testConfigFollowImportsNormal]
 # cmd: mypy main.py
@@ -431,9 +431,9 @@ main.py:4: note: Revealed type is "Any"
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
 [file main.py]
-from a import x
+from a import x  # Error reported here
 reveal_type(x)  # Expect Any
-import a  # Error reported here
+import a
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
 \[mypy]
@@ -441,9 +441,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
+main.py:1: error: Import of "a" ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
-main.py:3: error: Import of "a" ignored
-main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
@@ -840,19 +840,19 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 x = 0  # type: str
 [file pkg/a1/b/f.py]
 from pkg.a1.b.c.d.e import x
-x + 1
+x()
 
 [file pkg/a2/__init__.py]
 [file pkg/a2/b/c/d/e.py]
 x = 0  # type: str
 [file pkg/a2/b/f.py]
 from pkg.a2.b.c.d.e import x
-x + 1
+x()
 [out]
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
-pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/f.py:2: error: "str" not callable
+pkg/a1/b/f.py:2: error: "str" not callable
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
@@ -1112,7 +1112,7 @@ mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --pretty --python-version=3.6 some_file.py
+# cmd: mypy --pretty some_file.py
 [file some_file.py]
 from typing import Union
 
@@ -1138,7 +1138,19 @@ some_file.py:11: error: Argument 1 to "some_interesting_method" of
 "AnotherCustomClassDefinedBelow"
     ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
                                                                          ^
-
+[out version>=3.8]
+some_file.py:3: error: Unsupported operand types for + ("int" and "str")
+    42 + 'no way'
+         ^~~~~~~~
+some_file.py:11: error: Incompatible types in assignment (expression has type
+"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
+    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+some_file.py:11: error: Argument 1 to "some_interesting_method" of
+"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"AnotherCustomClassDefinedBelow"
+    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+                                                                         ^~~
 [case testShowSourceCodeSnippetsBlockingError]
 # cmd: mypy --pretty --show-error-codes some_file.py
 [file some_file.py]
@@ -1154,10 +1166,24 @@ some_file.py:1: error: invalid syntax  [syntax]
 [file tabs.py]
 def test_tabs() -> str:
 	return None
+def test_between(x: str) -> None: ...
+test_between(1	+	1)
 [out]
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^
+[out version>=3.8]
+tabs.py:2: error: Incompatible return value type (got "None", expected "str")
+            return None
+                   ^~~~
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^~~~~~~~~~~~
 
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd

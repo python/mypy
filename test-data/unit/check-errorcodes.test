@@ -335,7 +335,7 @@ z: y  # E: Variable "__main__.y" is not valid as a type  [valid-type] \
 from typing import TypeVar
 
 T = TypeVar('T')
-def f() -> T: pass
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar  [type-var]
 x = f()  # E: Need type annotation for "x"  [var-annotated]
 y = []  # E: Need type annotation for "y" (hint: "y: List[<type>] = ...")  [var-annotated]
 [builtins fixtures/list.pyi]
@@ -598,11 +598,11 @@ if int() is str():  # E: Non-overlapping identity check (left operand type: "int
 [case testErrorCodeMissingModule]
 from defusedxml import xyz  # E: Cannot find implementation or library stub for module named "defusedxml"  [import]
 from nonexistent import foobar  # E: Cannot find implementation or library stub for module named "nonexistent"  [import]
-import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import] \
-                     # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+import nonexistent2  # E: Cannot find implementation or library stub for module named "nonexistent2"  [import]
 from nonexistent3 import *  # E: Cannot find implementation or library stub for module named "nonexistent3"  [import]
 from pkg import bad  # E: Module "pkg" has no attribute "bad"  [attr-defined]
-from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import]
+from pkg.bad2 import bad3  # E: Cannot find implementation or library stub for module named "pkg.bad2"  [import] \
+                           # N: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 [file pkg/__init__.py]
 
 [case testErrorCodeAlreadyDefined]

@@ -599,6 +599,7 @@ class ASTConverter:
         cdef.line = n.lineno + len(n.decorator_list)
         cdef.column = n.col_offset
         cdef.end_line = n.lineno
+        cdef.end_column = None
         self.class_and_function_stack.pop()
         return cdef
 

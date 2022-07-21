@@ -3,6 +3,15 @@ import threading
 import weakref
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from queue import Queue as Queue
+from threading import (
+    Barrier as Barrier,
+    BoundedSemaphore as BoundedSemaphore,
+    Condition as Condition,
+    Event as Event,
+    Lock as Lock,
+    RLock as RLock,
+    Semaphore as Semaphore,
+)
 from typing import Any
 from typing_extensions import Literal
 
@@ -28,13 +37,6 @@ __all__ = [
 ]
 
 JoinableQueue = Queue
-Barrier = threading.Barrier
-BoundedSemaphore = threading.BoundedSemaphore
-Condition = threading.Condition
-Event = threading.Event
-Lock = threading.Lock
-RLock = threading.RLock
-Semaphore = threading.Semaphore
 
 class DummyProcess(threading.Thread):
     _children: weakref.WeakKeyDictionary[Any, Any]
@@ -46,7 +48,7 @@ class DummyProcess(threading.Thread):
     def __init__(
         self,
         group: Any = ...,
-        target: Callable[..., Any] | None = ...,
+        target: Callable[..., object] | None = ...,
         name: str | None = ...,
         args: Iterable[Any] = ...,
         kwargs: Mapping[str, Any] = ...,
@@ -67,8 +69,10 @@ class Value:
 
 def Array(typecode: Any, sequence: Sequence[Any], lock: Any = ...) -> array.array[Any]: ...
 def Manager() -> Any: ...
-def Pool(processes: int | None = ..., initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...) -> Any: ...
+def Pool(processes: int | None = ..., initializer: Callable[..., object] | None = ..., initargs: Iterable[Any] = ...) -> Any: ...
 def active_children() -> list[Any]: ...
-def current_process() -> threading.Thread: ...
+
+current_process = threading.current_thread
+
 def freeze_support() -> None: ...
 def shutdown() -> None: ...
