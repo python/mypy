@@ -118,6 +118,7 @@ class InspectionEngine:
         include_span: bool = False,
         include_kind: bool = False,
         include_object_attrs: bool = False,
+        force_reload: bool = False,
     ) -> None:
         self.fg_manager = fg_manager
         self.finder = SourceFinder(
@@ -129,6 +130,7 @@ class InspectionEngine:
         self.include_span = include_span
         self.include_kind = include_kind
         self.include_object_attrs = include_object_attrs
+        self.force_reload =  force_reload
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
         if location.count(':') not in [2, 4]:
@@ -156,8 +158,11 @@ class InspectionEngine:
         """
         expr_type = self.fg_manager.manager.all_types.get(expression)
         if expr_type is None:
+            alt_suggestion = ''
+            if not self.force_reload:
+                alt_suggestion = ' or try --force-reload'
             return (f'No known type available for "{type(expression).__name__}"'
-                    f' (probably unreachable)', False)
+                    f' (maybe unreachable{alt_suggestion})', False)
 
         type_str = format_type(expr_type, verbosity=self.verbosity or 0)
         prefixes = []
@@ -246,7 +251,8 @@ class InspectionEngine:
             return err_dict
 
         # Force reloading to load from cache, account for any edits, etc.
-        self.reload_module(state)
+        if not state.tree or self.force_reload:
+            self.reload_module(state)
         assert state.tree is not None
 
         if len(pos) == 4:

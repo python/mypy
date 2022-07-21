@@ -152,6 +152,12 @@ Additional daemon flags
    Write performance profiling information to ``FILE``. This is only available
    for the ``check``, ``recheck``, and ``run`` commands.
 
+.. option:: --export-types
+
+   Store all expression types in memory for future use. This is useful to speed
+   up future calls to ``dmypy inspect`` (but uses more memory). Only valid for
+   ``check``, ``recheck``, and ``run`` command.
+
 Static inference of annotations
 *******************************
 
@@ -274,6 +280,9 @@ check (without parse errors), so that types are populated, e.g. using
 ``dmypy check``. In case where multiple expressions match the provided location,
 their types are returned separated by a newline.
 
+Important note: it is recommended to check files with :option:`--export-types`
+since otherwise most inspections will not work without :option:`--force-reload`.
+
 .. option:: --show INSPECTION
 
    What kind of inspection to run for expression(s) found. Currently the supported
@@ -326,6 +335,13 @@ their types are returned separated by a newline.
 
    This will make the daemon include attributes of ``object`` (excluded by
    default) in case of an ``atts`` inspection.
+
+.. option:: --force-reload
+
+   Force re-parsing and re-type-checking file before inspection. By default
+   this is done only when needed (for example file was not loaded from cache
+   or daemon was initially run without ``--export-types`` mypy option),
+   since reloading may be slow (up to few seconds for very large files).
 
 .. TODO: Add similar sections about go to definition and find usages
    when added, and then move this to a separate file.

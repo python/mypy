@@ -75,6 +75,9 @@ p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # 
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('--perf-stats-file', help='write performance information to the given file')
 p.add_argument('files', metavar='FILE', nargs='+', help="File (or directory) to check")
+p.add_argument('--export-types', action='store_true',
+               help='Store types of all expressions in a shared location'
+                    ' (useful for inspections)')
 
 run_parser = p = subparsers.add_parser('run', formatter_class=AugmentedHelpFormatter,
                                        help="Check some files, [re]starting daemon if necessary")
@@ -85,6 +88,9 @@ p.add_argument('--timeout', metavar='TIMEOUT', type=int,
                help="Server shutdown timeout (in seconds)")
 p.add_argument('--log-file', metavar='FILE', type=str,
                help="Direct daemon stdout/stderr to FILE")
+p.add_argument('--export-types', action='store_true',
+               help='Store types of all expressions in a shared location'
+                    ' (useful for inspections)')
 p.add_argument('flags', metavar='ARG', nargs='*', type=str,
                help="Regular mypy flags and files (precede with --)")
 
@@ -94,6 +100,9 @@ p.add_argument('-v', '--verbose', action='store_true', help="Print detailed stat
 p.add_argument('-q', '--quiet', action='store_true', help=argparse.SUPPRESS)  # Deprecated
 p.add_argument('--junit-xml', help="Write junit.xml to the given file")
 p.add_argument('--perf-stats-file', help='write performance information to the given file')
+p.add_argument('--export-types', action='store_true',
+               help='Store types of all expressions in a shared location'
+                    ' (useful for inspections)')
 p.add_argument('--update', metavar='FILE', nargs='*',
                help="Files in the run to add or check again (default: all from previous run)")
 p.add_argument('--remove', metavar='FILE', nargs='*',
@@ -141,6 +150,8 @@ p.add_argument('--include-kind', action='store_true',
                     ' (e.g. NameExpr:"int")')
 p.add_argument('--include-object-attrs', action='store_true',
                help='Include attributes of "object" in "attrs" inspection')
+p.add_argument('--force-reload', action='store_true',
+               help='Re-parse and re-type-check file before inspection (may be slow)')
 
 hang_parser = p = subparsers.add_parser('hang', help="Hang for 100 seconds")
 
@@ -292,12 +303,14 @@ def do_run(args: argparse.Namespace) -> None:
         # Bad or missing status file or dead process; good to start.
         start_server(args, allow_sources=True)
     t0 = time.time()
-    response = request(args.status_file, 'run', version=__version__, args=args.flags)
+    response = request(args.status_file, 'run', version=__version__, args=args.flags,
+                       export_types=args.export_types)
     # If the daemon signals that a restart is necessary, do it
     if 'restart' in response:
         print(f"Restarting: {response['restart']}")
         restart_server(args, allow_sources=True)
-        response = request(args.status_file, 'run', version=__version__, args=args.flags)
+        response = request(args.status_file, 'run', version=__version__, args=args.flags,
+                           export_types=args.export_types)
 
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
@@ -354,7 +367,8 @@ def do_kill(args: argparse.Namespace) -> None:
 def do_check(args: argparse.Namespace) -> None:
     """Ask the daemon to check a list of files."""
     t0 = time.time()
-    response = request(args.status_file, 'check', files=args.files)
+    response = request(args.status_file, 'check', files=args.files,
+                       export_types=args.export_types)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -377,9 +391,10 @@ def do_recheck(args: argparse.Namespace) -> None:
     """
     t0 = time.time()
     if args.remove is not None or args.update is not None:
-        response = request(args.status_file, 'recheck', remove=args.remove, update=args.update)
+        response = request(args.status_file, 'recheck', export_types=args.export_types,
+                           remove=args.remove, update=args.update)
     else:
-        response = request(args.status_file, 'recheck')
+        response = request(args.status_file, 'recheck', export_types=args.export_types)
     t1 = time.time()
     response['roundtrip_time'] = t1 - t0
     check_output(response, args.verbose, args.junit_xml, args.perf_stats_file)
@@ -405,7 +420,8 @@ def do_inspect(args: argparse.Namespace) -> None:
     response = request(args.status_file, 'inspect', show=args.show, location=args.location,
                        verbosity=args.verbose, limit=args.limit,
                        include_span=args.include_span, include_kind=args.include_kind,
-                       include_object_attrs=args.include_object_attrs)
+                       include_object_attrs=args.include_object_attrs,
+                       force_reload=args.force_reload)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

@@ -296,7 +296,7 @@ class Server:
         os.unlink(self.status_file)
         return {}
 
-    def cmd_run(self, version: str, args: Sequence[str],
+    def cmd_run(self, version: str, args: Sequence[str], export_types: bool,
                 is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files, triggering a restart if needed."""
         stderr = io.StringIO()
@@ -330,20 +330,21 @@ class Server:
             return {'out': '', 'err': str(err), 'status': 2}
         except SystemExit as e:
             return {'out': stdout.getvalue(), 'err': stderr.getvalue(), 'status': e.code}
-        return self.check(sources, is_tty, terminal_width)
+        return self.check(sources, export_types, is_tty, terminal_width)
 
-    def cmd_check(self, files: Sequence[str],
+    def cmd_check(self, files: Sequence[str], export_types: bool,
                   is_tty: bool, terminal_width: int) -> Dict[str, object]:
         """Check a list of files."""
         try:
             sources = create_source_list(files, self.options, self.fscache)
         except InvalidSourceList as err:
             return {'out': '', 'err': str(err), 'status': 2}
-        return self.check(sources, is_tty, terminal_width)
+        return self.check(sources, export_types, is_tty, terminal_width)
 
     def cmd_recheck(self,
                     is_tty: bool,
                     terminal_width: int,
+                    export_types: bool,
                     remove: Optional[List[str]] = None,
                     update: Optional[List[str]] = None) -> Dict[str, object]:
         """Check the same list of files we checked most recently.
@@ -369,6 +370,7 @@ class Server:
         t1 = time.time()
         manager = self.fine_grained_manager.manager
         manager.log(f"fine-grained increment: cmd_recheck: {t1 - t0:.3f}s")
+        self.options.export_types = export_types
         if not self.following_imports():
             messages = self.fine_grained_increment(sources, remove, update)
         else:
@@ -379,13 +381,14 @@ class Server:
         self.update_stats(res)
         return res
 
-    def check(self, sources: List[BuildSource],
+    def check(self, sources: List[BuildSource], export_types: bool,
               is_tty: bool, terminal_width: int) -> Dict[str, Any]:
         """Check using fine-grained incremental mode.
 
         If is_tty is True format the output nicely with colors and summary line
         (unless disabled in self.options). Also pass the terminal_width to formatter.
         """
+        self.options.export_types = export_types
         if not self.fine_grained_manager:
             res = self.initialize_fine_grained(sources, is_tty, terminal_width)
         else:
@@ -843,6 +846,7 @@ class Server:
         include_span: bool = False,
         include_kind: bool = False,
         include_object_attrs: bool = False,
+        force_reload: bool  = False,
     ) -> Dict[str, object]:
         """Locate and inspect expression(s)."""
         if sys.version_info < (3, 8):
@@ -858,11 +862,15 @@ class Server:
             include_span=include_span,
             include_kind=include_kind,
             include_object_attrs=include_object_attrs,
+            force_reload=force_reload,
         )
         if show == 'type':
-            return engine.get_type(location)
+            result = engine.get_type(location)
         else:
             assert False, "Unknown inspection kind"
+        if 'out' in result:
+            result['out'] += '\n'
+        return result
 
     def cmd_suggest(self,
                     function: str,
