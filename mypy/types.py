@@ -1,7 +1,7 @@
 """Classes for representing mypy types."""
 
 import sys
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from typing import (
     Any, TypeVar, Dict, List, Tuple, cast, Set, Optional, Union, Iterable, NamedTuple,
@@ -207,7 +207,7 @@ def deserialize_type(data: Union[JsonDict, str]) -> 'Type':
     raise NotImplementedError(f'unexpected .class {classname}')
 
 
-class Type(mypy.nodes.Context):
+class Type(mypy.nodes.Context, ABC):
     """Abstract base class for all types."""
 
     __slots__ = ('can_be_true', 'can_be_false')
@@ -232,6 +232,7 @@ class Type(mypy.nodes.Context):
     def can_be_false_default(self) -> bool:
         return True
 
+    @abstractmethod
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         raise RuntimeError('Not implemented')
 
@@ -381,6 +382,9 @@ class TypeGuardedType(Type):
         super().__init__(line=type_guard.line, column=type_guard.column)
         self.type_guard = type_guard
 
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.type_guard.accept(visitor)
+
     def __repr__(self) -> str:
         return f"TypeGuard({self.type_guard})"
 
@@ -398,6 +402,9 @@ class RequiredType(Type):
             return f"Required[{self.item}]"
         else:
             return f"NotRequired[{self.item}]"
+
+    def accept(self, visitor: 'TypeVisitor[T]') -> T:
+        return self.item.accept(visitor)
 
     def accept(self, visitor: 'TypeVisitor[T]') -> T:
         return self.item.accept(visitor)

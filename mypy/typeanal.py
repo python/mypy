@@ -709,7 +709,12 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if len(t.args) != 1:
                 self.fail("TypeGuard must have exactly one type argument", t)
                 return AnyType(TypeOfAny.from_error)
-            return self.anal_type(t.args[0])
+            typ = self.anal_type(t.args[0])
+            if _explicit_any_rule_enabled(self.options, self.is_typeshed_stub) \
+                    and has_explicit_any(typ):
+                self.fail('Explicit "Any" is not allowed', t)
+            return typ
+
         return None
 
     def anal_star_arg_type(self, t: Type, kind: ArgKind, nested: bool) -> Type:
@@ -1494,13 +1499,16 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return []
 
 
+def _explicit_any_rule_enabled(options: Options, is_typeshed_stub: bool) -> bool:
+    return options.disallow_any_explicit and not is_typeshed_stub
+
+
 def check_for_explicit_any(typ: Optional[Type],
                            options: Options,
                            is_typeshed_stub: bool,
                            msg: MessageBuilder,
                            context: Context) -> None:
-    if (options.disallow_any_explicit and
-            not is_typeshed_stub and
+    if (_explicit_any_rule_enabled(options, is_typeshed_stub) and
             typ and
             has_explicit_any(typ)):
         msg.explicit_any(context)
