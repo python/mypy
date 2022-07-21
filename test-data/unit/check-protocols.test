@@ -1619,6 +1619,23 @@ if int():
     var_old = B # OK
     var_old = C # OK
 
+[case testInstantiationProtocolWithCallables]
+from typing import Callable, Protocol
+
+class P(Protocol):
+    def m(self) -> None: pass
+class B(P): pass
+class C:
+    def m(self) -> None:
+        pass
+
+var: Callable[[], P]
+var()   # OK
+
+var = P # E: Can only assign concrete classes to a variable of type "Callable[[], P]"
+var = B # OK
+var = C # OK
+
 [case testInstantiationProtocolInTypeForClassMethods]
 from typing import Type, Protocol
 

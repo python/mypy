@@ -2431,10 +2431,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
                         (rvalue_type.type_object().is_abstract or
                          rvalue_type.type_object().is_protocol) and
-                        isinstance(lvalue_type, TypeType) and
-                        isinstance(lvalue_type.item, Instance) and
-                        (lvalue_type.item.type.is_abstract or
-                         lvalue_type.item.type.is_protocol)):
+                        ((isinstance(lvalue_type, TypeType) and
+                          isinstance(lvalue_type.item, Instance) and
+                          (lvalue_type.item.type.is_abstract or
+                           lvalue_type.item.type.is_protocol)) or
+                         (isinstance(lvalue_type, CallableType) and
+                          isinstance(lvalue_type.ret_type, Instance) and
+                          (lvalue_type.ret_type.type.is_abstract or
+                           lvalue_type.ret_type.type.is_protocol)))):
                     self.msg.concrete_only_assign(lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
