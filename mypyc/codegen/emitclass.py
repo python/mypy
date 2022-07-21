@@ -257,40 +257,40 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
 
     # XXX: there is no reason for the __weakref__ stuff to be mixed up with __dict__
     if cl.has_dict:
-        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
-        # __dict__ lives right after the struct and __weakref__ lives right after that
-        # TODO: They should get members in the struct instead of doing this nonsense.
-        weak_offset = f'{base_size} + sizeof(PyObject *)'
-        emitter.emit_lines(
-            f'PyMemberDef {members_name}[] = {{',
-            f'{{"__dict__", T_OBJECT_EX, {base_size}, 0, NULL}},',
-            f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
-            '{0}',
-            '};',
-        )
+        # TODO: Use PY_VERSION_HEX and include patchlevel.h
+        if emitter.capi_version < (3, 11):
+            # __dict__ lives right after the struct and __weakref__ lives right after that
+            # TODO: They should get members in the struct instead of doing this nonsense.
+            weak_offset = f'{base_size} + sizeof(PyObject *)'
+            emitter.emit_lines(
+                f'PyMemberDef {members_name}[] = {{',
+                f'{{"__dict__", T_OBJECT_EX, {base_size}, 0, NULL}},',
+                f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
+                '{0}',
+                '};',
+            )
 
-        fields['tp_members'] = members_name
-        fields['tp_basicsize'] = f'{base_size} + 2*sizeof(PyObject *)'
-        fields['tp_dictoffset'] = base_size
-        fields['tp_weaklistoffset'] = weak_offset
+            fields['tp_members'] = members_name
+            fields['tp_basicsize'] = f'{base_size} + 2*sizeof(PyObject *)'
+            fields['tp_dictoffset'] = base_size
+            fields['tp_weaklistoffset'] = weak_offset
 
-        # In CPython >=3.11, __dict__ slot is automatically set before the type. So
-        # we need to let CPython manage it.
-        emitter.emit_line('#else')
-        # __weakref__ lives right after the struct
-        # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
-        weak_offset = f'{base_size}'
-        emitter.emit_lines(
-            f'PyMemberDef {members_name}[] = {{',
-            f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
-            '{0}',
-            '};',
-        )
+            # In CPython >=3.11, __dict__ slot is automatically set before the type. So
+            # we need to let CPython manage it.
+        else:
+            # __weakref__ lives right after the struct
+            # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
+            weak_offset = f'{base_size}'
+            emitter.emit_lines(
+                f'PyMemberDef {members_name}[] = {{',
+                f'{{"__weakref__", T_OBJECT_EX, {weak_offset}, 0, NULL}},',
+                '{0}',
+                '};',
+            )
 
-        fields['tp_members'] = members_name
-        fields['tp_basicsize'] = f'{base_size} + sizeof(PyObject *)'
-        fields['tp_weaklistoffset'] = weak_offset
-        emitter.emit_line('#endif')
+            fields['tp_members'] = members_name
+            fields['tp_basicsize'] = f'{base_size} + sizeof(PyObject *)'
+            fields['tp_weaklistoffset'] = weak_offset
     else:
         fields['tp_basicsize'] = base_size
 
@@ -345,18 +345,17 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # This is just a placeholder to please CPython. It will be
             # overriden during setup.
             fields['tp_call'] = 'PyVectorcall_Call'
+    # TODO: Use PY_VERSION_HEX and include patchlevel.h
+    if cl.has_dict and emitter.capi_version < (3, 11):
+        flags.append('Py_TPFLAGS_MANAGED_DICT')
+    fields['tp_flags'] = ' | '.join(flags)
+
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
     for field, value in fields.items():
         emitter.emit_line(f".{field} = {value},")
     emitter.emit_line(f".tp_flags = {' | '.join(flags)}")
-    if cl.has_dict:
-        emitter.emit_lines(
-            "#if PY_VERSION_HEX >= 0x030B0000",
-            "| Py_TPFLAGS_MANAGED_DICT",
-            "#endif",
-        )
     emitter.emit_line(",")
     emitter.emit_line("};")
     emitter.emit_line("static PyTypeObject *{t}_template = &{t}_template_;".format(
@@ -724,24 +723,24 @@ def generate_traverse_for_class(cl: ClassIR,
             emitter.emit_gc_visit(f'self->{emitter.attr(attr)}', rtype)
     if cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
-        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
-        # __dict__ lives right after the struct and __weakref__ lives right after that
-        emitter.emit_gc_visit('*((PyObject **)((char *)self + sizeof({})))'.format(
-            struct_name), object_rprimitive)
-        emitter.emit_gc_visit(
-            '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
-                struct_name),
-            object_rprimitive)
-        emitter.emit_line('#else')
-        # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
-        # the struct
-        emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-                              object_rprimitive)
-        emitter.emit_gc_visit(
-            '*((PyObject **)((char *)self + sizeof({})))'.format(
-                struct_name),
-            object_rprimitive)
-        emitter.emit_line('#endif')
+        # TODO: Use PY_VERSION_HEX and include patchlevel.h
+        if emitter.capi_version < (3, 11):
+            # __dict__ lives right after the struct and __weakref__ lives right after that
+            emitter.emit_gc_visit('*((PyObject **)((char *)self + sizeof({})))'.format(
+                struct_name), object_rprimitive)
+            emitter.emit_gc_visit(
+                '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
+                    struct_name),
+                object_rprimitive)
+        else:
+            # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
+            # the struct
+            emitter.emit_gc_visit('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+                                object_rprimitive)
+            emitter.emit_gc_visit(
+                '*((PyObject **)((char *)self + sizeof({})))'.format(
+                    struct_name),
+                object_rprimitive)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 
@@ -757,24 +756,24 @@ def generate_clear_for_class(cl: ClassIR,
             emitter.emit_gc_clear(f'self->{emitter.attr(attr)}', rtype)
     if cl.has_dict:
         struct_name = cl.struct_name(emitter.names)
-        emitter.emit_line('#if PY_VERSION_HEX < 0x030B0000')
-        # __dict__ lives right after the struct and __weakref__ lives right after that
-        emitter.emit_gc_clear('*((PyObject **)((char *)self + sizeof({})))'.format(
-            struct_name), object_rprimitive)
-        emitter.emit_gc_clear(
-            '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
-                struct_name),
-            object_rprimitive)
-        emitter.emit_line('#else')
-        # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
-        # the struct
-        emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
-                              object_rprimitive)
-        emitter.emit_gc_clear(
-            '*((PyObject **)((char *)self + sizeof({})))'.format(
-                struct_name),
-            object_rprimitive)
-        emitter.emit_line('#endif')
+        # TODO: Use PY_VERSION_HEX and include patchlevel.h
+        if emitter.capi_version < (3, 11):
+            # __dict__ lives right after the struct and __weakref__ lives right after that
+            emitter.emit_gc_clear('*((PyObject **)((char *)self + sizeof({})))'.format(
+                struct_name), object_rprimitive)
+            emitter.emit_gc_clear(
+                '*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))'.format(
+                    struct_name),
+                object_rprimitive)
+        else:
+            # In >=3.11, __dict__ lives right before the struct and __weakref__ lives right after
+            # the struct
+            emitter.emit_gc_clear('*((PyObject **)((char *)self - sizeof(PyObject *)))',
+                                object_rprimitive)
+            emitter.emit_gc_clear(
+                '*((PyObject **)((char *)self + sizeof({})))'.format(
+                    struct_name),
+                object_rprimitive)
     emitter.emit_line('return 0;')
     emitter.emit_line('}')
 

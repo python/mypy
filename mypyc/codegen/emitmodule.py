@@ -509,7 +509,6 @@ class GroupGenerator:
                 base_emitter.emit_line(f'#include "{name}"')
         base_emitter.emit_line(f'#include "__native{self.short_group_suffix}.h"')
         base_emitter.emit_line(f'#include "__native_internal{self.short_group_suffix}.h"')
-        base_emitter.emit_line('#include "patchlevel.h"')
         emitter = base_emitter
 
         self.generate_literal_tables()
