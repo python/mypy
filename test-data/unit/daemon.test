@@ -414,3 +414,21 @@ foo(a and b)  # line 7
 def unreachable(x: int, y: int) -> None:
     return
     x and y  # line 11
+
+[case testDaemonGetAttrs_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py --export-types
+$ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind
+NameExpr:9:1:9:1 -> (x, y, a, b)
+
+[file foo.py]
+class B:
+    def b(self) -> int: ...
+    a: int
+class C(B):
+    y: int
+    def x(self) -> int: ...
+
+v: C
+v  # line 9

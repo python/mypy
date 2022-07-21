@@ -866,6 +866,10 @@ class Server:
         )
         if show == 'type':
             result = engine.get_type(location)
+        elif show == 'attrs':
+            result = engine.get_attrs(location)
+        elif show == 'definition':
+            result = engine.get_definition(location)
         else:
             assert False, "Unknown inspection kind"
         if 'out' in result:

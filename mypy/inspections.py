@@ -1,5 +1,5 @@
 import os
-from typing import Tuple, List, Optional, Dict
+from typing import Tuple, List, Optional, Dict, Callable
 
 from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
@@ -8,6 +8,8 @@ from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import Expression, Node, MypyFile
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
+from mypy.typeops import tuple_fallback
+from mypy.types import get_proper_type, ProperType, Instance, TupleType, TypedDictType, FunctionLike, LiteralType
 
 
 def node_starts_after(o: Node, line: int, column: int) -> bool:
@@ -158,13 +160,38 @@ class InspectionEngine:
         """
         expr_type = self.fg_manager.manager.all_types.get(expression)
         if expr_type is None:
-            alt_suggestion = ''
-            if not self.force_reload:
-                alt_suggestion = ' or try --force-reload'
-            return (f'No known type available for "{type(expression).__name__}"'
-                    f' (maybe unreachable{alt_suggestion})', False)
+            return self.missing_type(expression), False
 
         type_str = format_type(expr_type, verbosity=self.verbosity or 0)
+        return self.add_prefixes(type_str, expression), True
+
+    def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
+        expr_type = self.fg_manager.manager.all_types.get(expression)
+        if expr_type is None:
+            return self.missing_type(expression), False
+
+        instance = get_instance_fallback(get_proper_type(expr_type))
+        if not instance:
+            return '()', True
+
+        mro = instance.type.mro
+        if not self.include_object_attrs:
+            mro = mro[:-1]
+
+        attrs = []
+        for base in mro:
+            for name in sorted(base.names):
+                attrs.append(name)
+        return self.add_prefixes(f'({", ".join(attrs)})', expression), True
+
+    def missing_type(self, expression: Expression) -> str:
+        alt_suggestion = ''
+        if not self.force_reload:
+            alt_suggestion = ' or try --force-reload'
+        return (f'No known type available for "{type(expression).__name__}"'
+                f' (maybe unreachable{alt_suggestion})')
+
+    def add_prefixes(self, result: str, expression: Expression) -> str:
         prefixes = []
         if self.include_kind:
             prefixes.append(f'{type(expression).__name__}')
@@ -175,10 +202,10 @@ class InspectionEngine:
             prefix = ':'.join(prefixes) + ' -> '
         else:
             prefix = ''
-        return prefix + type_str, True
+        return prefix + result
 
-    def get_type_by_exact_location(
-        self, tree: MypyFile, line: int, column: int, end_line: int, end_column: int
+    def run_inspection_by_exact_location(
+        self, tree: MypyFile, line: int, column: int, end_line: int, end_column: int, method: Callable[[Expression], Tuple[str, bool]]
     ) -> Dict[str, object]:
         """Get type of an expression matching a span.
 
@@ -193,10 +220,10 @@ class InspectionEngine:
             span = f'{line}:{column}:{end_line}:{end_column}'
             return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
 
-        type_str, found = self.expr_type(expression)
-        return {'out': type_str, 'err': '', 'status': 0 if found else 1}
+        inspection_str, success = method(expression)
+        return {'out': inspection_str, 'err': '', 'status': 0 if success else 1}
 
-    def get_types_by_position(self, tree: MypyFile, line: int, column: int) -> Dict[str, object]:
+    def run_inspection_by_position(self, tree: MypyFile, line: int, column: int, method: Callable[[Expression], Tuple[str, bool]]) -> Dict[str, object]:
         """Get types of all expressions enclosing a position.
 
         Types and/or errors are returned as a standard daemon response dict.
@@ -207,16 +234,16 @@ class InspectionEngine:
             return {'out': f"Can't find any expressions at position {position}",
                     'err': '', 'status': 1}
 
-        type_strs = []
+        inspection_strs = []
         status = 0
         for expression in expressions:
-            type_str, found = self.expr_type(expression)
-            if not found:
+            inspection_str, success = method(expression)
+            if not success:
                 status = 1
-            type_strs.append(type_str)
+            inspection_strs.append(inspection_str)
         if self.limit:
-            type_strs = type_strs[:self.limit]
-        return {'out': '\n'.join(type_strs), 'err': '', 'status': status}
+            inspection_strs = inspection_strs[:self.limit]
+        return {'out': '\n'.join(inspection_strs), 'err': '', 'status': status}
 
     def find_module(self, file: str) -> Tuple[Optional[State], Dict[str, object]]:
         """Find module by path, or return a suitable error message.
@@ -238,8 +265,15 @@ class InspectionEngine:
             if state is None else {}
         )
 
-    def get_type(self, location: str) -> Dict[str, object]:
-        """Top-level logic to get type of expression(s) at a location."""
+    def run_inspection(
+        self,
+        location: str,
+        method: Callable[[Expression], Tuple[str, bool]],
+    ) -> Dict[str, object]:
+        """Top-level logic to inspect expression(s) at a location.
+
+        This can be re-used by various simple inspections.
+        """
         try:
             file, pos = self.parse_location(location)
         except ValueError as err:
@@ -258,10 +292,33 @@ class InspectionEngine:
         if len(pos) == 4:
             # Full span, return an exact match only.
             line, column, end_line, end_column = pos
-            return self.get_type_by_exact_location(
-                state.tree, line, column, end_line, end_column
+            return self.run_inspection_by_exact_location(
+                state.tree, line, column, end_line, end_column, method
             )
         assert len(pos) == 2
         # Inexact location, return all expressions.
         line, column = pos
-        return self.get_types_by_position(state.tree, line, column)
+        return self.run_inspection_by_position(state.tree, line, column, method)
+
+    def get_type(self, location: str) -> Dict[str, object]:
+        """Get types of expression(s) at a location."""
+        return self.run_inspection(location, self.expr_type)
+
+    def get_attrs(self, location: str) -> Dict[str, object]:
+        """Get attributes of expression(s) at a location."""
+        return self.run_inspection(location, self.expr_attrs)
+
+
+def get_instance_fallback(typ: ProperType) -> Optional[Instance]:
+    """Returns the Instance fallback for this type if one exists or None."""
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    return None
