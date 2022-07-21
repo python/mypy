@@ -155,6 +155,12 @@ class MessageBuilder:
         where # type: ignore comments have effect.
         """
         def span_from_context(ctx: Context) -> Tuple[int, int]:
+            """This determines where a type: ignore for a given context has effect.
+
+            Current logic is a bit tricky, to keep as much backwards compatibility as
+            possible. We may reconsider this to always be a single line (or otherwise
+            simplify it) when we drop Python 3.7.
+            """
             if isinstance(ctx, (ClassDef, FuncDef)):
                 return ctx.deco_line or ctx.line, ctx.line
             elif not isinstance(ctx, Expression):
