@@ -269,13 +269,45 @@ or ``dmypy get_type src.py:2:5``. While for ``longer_name`` one needs to call
 ``dmypy get_type src.py:3:5:3:15`` or, for example, ``dmypy get_type src.py:3:10``.
 Please note that this command is only valid after daemon had a successful type
 check (without parse errors), so that types are populated, e.g. using
-``dmypy check``.
+``dmypy check``. In case where multiple expressions match the provided location,
+their types are returned separated by a newline.
 
 .. option:: --verbose
 
    Increase verbosity of types string representation (can be repeated).
    For example, this will print fully qualified names of instance types (like
    ``"builtins.str"``), instead of just a short name (like ``"str"``).
+
+.. option:: --limit NUM
+
+   If the location is given as ``line:column``, this will cause daemon to
+   return only at most ``NUM`` types of innermost expressions. Value of 0
+   means no limit (this is the default). For example, if one calls
+   ``dmypy get_type src.py:4:10 --limit=1`` with this code
+
+   .. code-block:: python
+
+      def foo(x: int) -> str: ..
+      def bar(x: str) -> None: ...
+      baz: int
+      bar(foo(baz))
+
+   This will output just one type ``"int"`` (for ``baz`` name expression).
+   While without the limit option, it would output all three types: ``"int"``,
+   ``"str"``, and ``"None"``.
+
+.. option:: --include-span
+
+   With this option on, the daemon will prepend each type returned with the
+   full span of corresponding expression, formatted as ``1:2:1:4:"int"``. This
+   may  be useful in case multiple expressions match a location.
+
+.. option:: --include-kind
+
+   With this option on, the daemon will prepend each type returned with the
+   kind of corresponding expression, formatted as ``NameExpr:"int"``. If both
+   this option and :option:`--include-span` are on, the kind will appear
+   first, for example ``NameExpr:1:2:1:4:"int"``.
 
 .. TODO: Add similar sections about go to definition and find usages
    when added, and then move this to a separate file.
