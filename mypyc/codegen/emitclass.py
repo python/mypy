@@ -346,7 +346,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             # overriden during setup.
             fields['tp_call'] = 'PyVectorcall_Call'
     # TODO: Use PY_VERSION_HEX and include patchlevel.h
-    if cl.has_dict and emitter.capi_version < (3, 11):
+    if cl.has_dict and emitter.capi_version >= (3, 11):
         flags.append('Py_TPFLAGS_MANAGED_DICT')
     fields['tp_flags'] = ' | '.join(flags)
 
