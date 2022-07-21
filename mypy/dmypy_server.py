@@ -22,19 +22,16 @@ from typing_extensions import Final
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.find_sources import create_source_list, InvalidSourceList, SourceFinder
-from mypy.messages import format_type
+from mypy.find_sources import create_source_list, InvalidSourceList
+from mypy.inspections import InspectionEngine
 from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
 from mypy.ipc import IPCServer
 from mypy.fscache import FileSystemCache
 from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import (
-    BuildSource, compute_search_paths, FindModuleCache, SearchPaths, PYTHON_EXTENSIONS
-)
+from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
 from mypy.options import Options
 from mypy.suggestions import SuggestionFailure, SuggestionEngine
-from mypy.traverser import find_by_location, find_all_by_location
 from mypy.typestate import reset_global_state
 from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
@@ -837,13 +834,6 @@ class Server:
 
         return changed, removed
 
-    def parse_location(self, location: str) -> Tuple[str, List[int]]:
-        if location.count(':') not in [2, 4]:
-            raise ValueError("Format should be file:line:column[:end_line:end_column]")
-        parts = location.split(":")
-        module, *rest = parts
-        return module, [int(p) for p in rest]
-
     def cmd_get_type(
         self,
         location: str,
@@ -858,87 +848,15 @@ class Server:
         if not self.fine_grained_manager:
             return {
                 'error': 'Command "get_type" is only valid after a "check" command'
-                ' (that produces no parse errors)'}
-        try:
-            file, pos = self.parse_location(location)
-        except ValueError as err:
-            return {'error': str(err)}
-
-        if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
-            return {'error': 'Source file is not a Python file'}
-
-        finder = SourceFinder(
-            self.fine_grained_manager.manager.fscache,
-            self.fine_grained_manager.manager.options)
-        try:
-            module, _ = finder.crawl_up(os.path.normpath(file))
-        except InvalidSourceList:
-            return {'error': 'Invalid source file name: ' + file}
-
-        state = self.fine_grained_manager.graph.get(module)
-        if state is None:
-            return {'out': f'Unknown module: {module}', 'err': '', 'status': 1}
-
-        # Force reloading to load from cache, account for any edits, etc.
-        old = self.fine_grained_manager.manager.options.export_types
-        self.fine_grained_manager.manager.options.export_types = True
-        try:
-            self.fine_grained_manager.flush_cache()
-            assert state.path is not None
-            self.fine_grained_manager.update([(state.id, state.path)], [])
-        finally:
-            self.fine_grained_manager.manager.options.export_types = old
-        assert state.tree is not None
-
-        if len(pos) == 4:
-            # Full span, return an exact match only.
-            line, column, end_line, end_column = pos
-            try:
-                expression = find_by_location(state.tree, line, column - 1, end_line, end_column)
-            except ValueError as err:
-                return {'error': str(err)}
-
-            if expression is None:
-                span = f'{line}:{column}:{end_line}:{end_column}'
-                return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
-            expr_type = self.fine_grained_manager.manager.all_types.get(expression)
-            if expr_type is None:
-                return {'out': f'No known type available for "{type(expression).__name__}"'
-                               f' (probably unreachable)',
-                        'err': '', 'status': 1}
-            type_str = format_type(expr_type, verbosity=verbosity or 0)
-            if include_span:
-                type_str = f'{line}:{column}:{end_line}:{end_column}:{type_str}'
-            if include_kind:
-                type_str = f'{type(expression).__name__}:{type_str}'
-            return {'out': type_str, 'err': '', 'status': 0}
-
-        # Inexact location, return all expressions
-        line, column = pos
-        expressions = find_all_by_location(state.tree, line, column - 1)
-        if not expressions:
-            position = f'{line}:{column}'
-            return {'out': f"Can't find any expressions at position {position}",
-                    'err': '', 'status': 1}
-        type_strs = []
-        status = 0
-        for expression in expressions:
-            expr_type = self.fine_grained_manager.manager.all_types.get(expression)
-            if expr_type is None:
-                status = 1
-                type_strs.append(f'No known type available for "{type(expression).__name__}"'
-                                 f' (probably unreachable)')
-            else:
-                type_str = format_type(expr_type, verbosity=verbosity or 0)
-                if include_span:
-                    type_str = f'{expression.end_line}:{expression.end_column}:{type_str}'
-                    type_str = f'{expression.line}:{expression.column + 1}:{type_str}'
-                if include_kind:
-                    type_str = f'{type(expression).__name__}:{type_str}'
-                type_strs.append(type_str)
-        if limit:
-            type_strs = type_strs[:limit]
-        return {'out': '\n'.join(type_strs), 'err': '', 'status': status}
+                         ' (that produces no parse errors)'}
+        engine = InspectionEngine(
+            self.fine_grained_manager,
+            verbosity=verbosity,
+            limit=limit,
+            include_span=include_span,
+            include_kind=include_kind,
+        )
+        return engine.get_type(location)
 
     def cmd_suggest(self,
                     function: str,
