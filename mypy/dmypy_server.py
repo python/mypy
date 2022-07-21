@@ -844,7 +844,14 @@ class Server:
         module, *rest = parts
         return module, [int(p) for p in rest]
 
-    def cmd_get_type(self, location: str, verbosity: Optional[int] = 0) -> Dict[str, object]:
+    def cmd_get_type(
+        self,
+        location: str,
+        verbosity: Optional[int] = 0,
+        limit: int = 0,
+        include_span: bool = False,
+        include_kind: bool = False,
+    ) -> Dict[str, object]:
         """Get type of an expression."""
         if sys.version_info < (3, 8):
             return {'error': 'Python 3.8 required for "get_type" command'}
@@ -884,6 +891,7 @@ class Server:
         assert state.tree is not None
 
         if len(pos) == 4:
+            # Full span, return an exact match only.
             line, column, end_line, end_column = pos
             try:
                 expression = find_by_location(state.tree, line, column - 1, end_line, end_column)
@@ -891,7 +899,7 @@ class Server:
                 return {'error': str(err)}
 
             if expression is None:
-                span = ':'.join(map(str, [line, column, end_line, end_column]))
+                span = f'{line}:{column}:{end_line}:{end_column}'
                 return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
             expr_type = self.fine_grained_manager.manager.all_types.get(expression)
             if expr_type is None:
@@ -899,13 +907,17 @@ class Server:
                                f' (probably unreachable)',
                         'err': '', 'status': 1}
             type_str = format_type(expr_type, verbosity=verbosity or 0)
+            if include_span:
+                type_str = f'{line}:{column}:{end_line}:{end_column}:{type_str}'
+            if include_kind:
+                type_str = f'{type(expression).__name__}:{type_str}'
             return {'out': type_str, 'err': '', 'status': 0}
 
         # Inexact location, return all expressions
         line, column = pos
         expressions = find_all_by_location(state.tree, line, column - 1)
         if not expressions:
-            position = ':'.join(map(str, [line, column]))
+            position = f'{line}:{column}'
             return {'out': f"Can't find any expressions at position {position}",
                     'err': '', 'status': 1}
         type_strs = []
@@ -917,7 +929,15 @@ class Server:
                 type_strs.append(f'No known type available for "{type(expression).__name__}"'
                                  f' (probably unreachable)')
             else:
-                type_strs.append(format_type(expr_type, verbosity=verbosity or 0))
+                type_str = format_type(expr_type, verbosity=verbosity or 0)
+                if include_span:
+                    type_str = f'{expression.end_line}:{expression.end_column}:{type_str}'
+                    type_str = f'{expression.line}:{expression.column + 1}:{type_str}'
+                if include_kind:
+                    type_str = f'{type(expression).__name__}:{type_str}'
+                type_strs.append(type_str)
+        if limit:
+            type_strs = type_strs[:limit]
         return {'out': '\n'.join(type_strs), 'err': '', 'status': status}
 
     def cmd_suggest(self,

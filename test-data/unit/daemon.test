@@ -373,14 +373,16 @@ Source file is not a Python file
 $ dmypy get_type bar/baz.py:1:2
 Unknown module: baz
 == Return code: 1
-$ dmypy get_type foo.py:7:5
-"int"
-"int"
-"None"
+$ dmypy get_type foo.py:7:5 --include-span --include-kind
+NameExpr:7:5:7:5:"int"
+OpExpr:7:5:7:11:"int"
+CallExpr:7:1:7:12:"None"
 $ dmypy get_type foo.py:7:5 -vv
 "builtins.int"
 "builtins.int"
 "None"
+$ dmypy get_type foo.py:7:5 -vv --limit=1
+"builtins.int"
 $ dmypy get_type foo.py:7:3
 "Callable[[int], None]"
 "None"
