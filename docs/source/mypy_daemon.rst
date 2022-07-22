@@ -291,7 +291,8 @@ since otherwise most inspections will not work without :option:`--force-reload`.
    * ``type`` (default): Show the best known type of a given expression.
    * ``attrs``: Show which attributes are valid for an expression (e.g. for
      auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
-     Names are sorted by method resolution order.
+     Names are sorted by method resolution order. If expression refers to a module,
+     then module attributes will be under key like ``"<full.module.name>"``.
    * ``definition`` (experimental): Show the definition location for a name
      expression or member expression. Format is ``path/to/file.py:line:column:Symbol``.
      If multiple definitions are found (e.g. for a Union attribute), they are

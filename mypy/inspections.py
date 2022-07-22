@@ -18,6 +18,7 @@ from mypy.types import (
     get_proper_type, ProperType, Instance, TupleType, TypedDictType,
     FunctionLike, LiteralType, TypeVarType, UnionType
 )
+from mypy.typevars import fill_typevars_with_any
 
 
 def node_starts_after(o: Node, line: int, column: int) -> bool:
@@ -94,6 +95,10 @@ def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optiona
     This logic mimics the one we use in fixup, so should be good enough.
     """
     head = fullname
+    # Special case: a module symbol is considered to be defined in itself, not in enclosing
+    # package, since this is what users want when clicking go to definition on a module.
+    if head in modules:
+        return modules[head]
     while True:
         if '.' not in head:
             return None
@@ -308,6 +313,14 @@ class InspectionEngine:
             result[base] = combined_attrs[base]
         return result
 
+    def _fill_from_dict(
+        self, attrs_strs: List[str], attrs_dict: Dict[TypeInfo, List[str]]
+    ) -> None:
+        for base in attrs_dict:
+            cls_name = base.name if self.verbosity < 1 else base.fullname
+            attrs = [f'"{attr}"' for attr in attrs_dict[base]]
+            attrs_strs.append(f'"{cls_name}": [{", ".join(attrs)}]')
+
     def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
         """Format attributes that are valid for a given expression.
 
@@ -320,28 +333,99 @@ class InspectionEngine:
         if expr_type is None:
             return self.missing_type(expression), False
 
-        instances = get_instance_fallback(get_proper_type(expr_type))
+        expr_type = get_proper_type(expr_type)
+        instances = get_instance_fallback(expr_type)
         if not instances:
             # Everything is an object in Python.
             instances = [self.object_type()]
 
         attrs_dict = self.collect_attrs(instances)
 
+        # Special case: modules have names apart from those from ModuleType.
+        if isinstance(expression, RefExpr) and isinstance(expression.node, MypyFile):
+            node = expression.node
+            names = sorted(node.names)
+            if '__builtins__' in names:
+                # This is just to make tests stable. No one will really need ths name.
+                names.remove('__builtins__')
+            mod_dict = {f'"<{node.fullname}>"': [f'"{name}"' for name in names]}
+        else:
+            mod_dict = {}
+
+        # Special case: for class callables, prepend with the class attributes.
+        if isinstance(expr_type, FunctionLike) and expr_type.is_type_obj():
+            template = fill_typevars_with_any(expr_type.type_object())
+            class_dict = self.collect_attrs(get_instance_fallback(template))
+        else:
+            class_dict = {}
+
         # We don't use JSON dump to be sure keys order is always preserved.
         base_attrs = []
-        for base in attrs_dict:
-            cls_name = base.name if self.verbosity < 1 else base.fullname
-            attrs = [f'"{attr}"' for attr in attrs_dict[base]]
-            base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
+        if mod_dict:
+            for mod in mod_dict:
+                base_attrs.append(f'{mod}: [{", ".join(mod_dict[mod])}]')
+        self._fill_from_dict(base_attrs, class_dict)
+        self._fill_from_dict(base_attrs, attrs_dict)
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
     def format_node(self, module: State, node: Union[FuncBase, SymbolNode]) -> str:
-        # TODO: line/column are not stored in cache for vast majority of symbol nodes.
-        # Adding them will make thing faster, but will have visible memory impact.
-        if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
-            self.reload_module(module)
-
         return f'{module.path}:{node.line}:{node.column + 1}:{node.name}'
+
+    def collect_nodes(self, expression: RefExpr) -> List[Union[FuncBase, SymbolNode]]:
+        """Collect nodes that can be referred to  by an expression.
+
+        Note: it can be more than one for example in case of a union attribute.
+        """
+        node: Optional[Union[FuncBase, SymbolNode]] = expression.node
+        nodes: List[Union[FuncBase, SymbolNode]]
+        if node is None:
+            # Tricky case: instance attribute
+            if isinstance(expression, MemberExpr) and expression.kind is None:
+                base_type = self.fg_manager.manager.all_types.get(expression.expr)
+                if base_type is None:
+                    return []
+
+                # Now we use the base type to figure out where the attribute is defined.
+                instances = get_instance_fallback(get_proper_type(base_type))
+                nodes = []
+                for instance in instances:
+                    node = find_node(expression.name, instance.type)
+                    if node:
+                        nodes.append(node)
+                if not nodes:
+                    # Still no luck, give up.
+                    return []
+            else:
+                return []
+        else:
+            # Easy case: a module-level definition
+            nodes = [node]
+        return nodes
+
+    def modules_for_nodes(
+        self,
+        nodes: List[Union[FuncBase, SymbolNode]],
+        expression: RefExpr,
+    ) -> Tuple[Dict[Union[FuncBase, SymbolNode], State], bool]:
+        """Gather modules where given nodes where defined.
+
+        Also check if they need to be refreshed (cached nodes may have
+        lines/columns missing).
+        """
+        modules = {}
+        reload_needed = False
+        for node in nodes:
+            module = find_module_by_fullname(node.fullname, self.fg_manager.graph)
+            if not module:
+                if expression.kind == LDEF and self.module:
+                    module = self.module
+                else:
+                    continue
+            modules[node] = module
+            if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
+                reload_needed |= (not module.tree or module.tree.is_cache_skeleton)
+                self.reload_module(module)
+        return modules, reload_needed
 
     def expression_def(self, expression: Expression) -> Tuple[str, bool]:
         """Find and format definition location for an expression.
@@ -353,41 +437,23 @@ class InspectionEngine:
             # If there are no suitable matches at all, we return error later.
             return '', True
 
-        node: Optional[Union[FuncBase, SymbolNode]] = expression.node
-        nodes: List[Union[FuncBase, SymbolNode]]
-        if node is None:
-            # Tricky case: instance attribute
-            if isinstance(expression, MemberExpr) and expression.kind is None:
-                base_type = self.fg_manager.manager.all_types.get(expression.expr)
-                if base_type is None:
-                    return self.missing_type(expression.expr), False
+        nodes = self.collect_nodes(expression)
 
-                # Now we use the base type to figure out where the attribute is defined.
-                instances = get_instance_fallback(get_proper_type(base_type))
-                nodes = []
-                for instance in instances:
-                    node = find_node(expression.name, instance.type)
-                    if node:
-                        nodes.append(node)
-                if not nodes:
-                    # Still no luck, give up.
-                    return self.missing_node(expression), False
-            else:
-                return self.missing_node(expression), False
-        else:
-            # Easy case: a module-level definition
-            nodes = [node]
+        if not nodes:
+            return self.missing_type(expression.expr), False
 
-        assert nodes
+        modules, reload_needed = self.modules_for_nodes(nodes, expression)
+        if reload_needed:
+            # TODO: line/column are not stored in cache for vast majority of symbol nodes.
+            # Adding them will make thing faster, but will have visible memory impact.
+            nodes = self.collect_nodes(expression)
+            modules, reload_needed = self.modules_for_nodes(nodes, expression)
+            assert not reload_needed
+
         result = []
-        for node in nodes:
-            module = find_module_by_fullname(node.fullname, self.fg_manager.graph)
-            if not module:
-                if expression.kind == LDEF and self.module:
-                    module = self.module
-                else:
-                    continue
-            result.append(self.format_node(module, node))
+        for node in modules:
+            result.append(self.format_node(modules[node], node))
+
         if not result:
             return self.missing_node(expression), False
 

@@ -313,6 +313,7 @@ class MypyFile(SymbolNode):
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
+        self.column = 0  # Dummy column
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
