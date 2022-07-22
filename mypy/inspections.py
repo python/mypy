@@ -258,16 +258,14 @@ class InspectionEngine:
             return self.missing_node(expression), False
 
         module = find_module_by_fullname(expression.node.fullname, self.fg_manager.graph)
+        if not module:
+            return self.missing_node(expression), False
         # TODO: line/column are not stored in cache for vast majority of symbol nodes.
         if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
             self.reload_module(module)
 
-        symbol = expression.node.name
-        line = expression.node.line
-        column = expression.node.column
-        if not module:
-            return self.missing_node(expression), False
-        result = f'{module.path}:{line}:{column + 1}:{symbol}'
+        node = expression.node
+        result = f'{module.path}:{node.line}:{node.column + 1}:{node.name}'
         return self.add_prefixes(result, expression), True
 
     def missing_type(self, expression: Expression) -> str:
