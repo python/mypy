@@ -1038,9 +1038,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if len(expanded) >= 2:
                         self.binder.suppress_unreachable_warnings()
                     self.accept(item.body)
-                unreachable = self.binder.is_unreachable()
+                reachable = not self.current_node_deferred and not self.binder.is_unreachable()
 
-            if self.options.warn_no_return and not unreachable:
+            if self.options.warn_no_return and reachable:
                 if (defn.is_generator or
                         is_named_instance(self.return_types[-1], 'typing.AwaitableGenerator')):
                     return_type = self.get_generator_return_type(self.return_types[-1],
