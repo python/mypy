@@ -287,13 +287,14 @@ since otherwise most inspections will not work without :option:`--force-reload`.
 
    What kind of inspection to run for expression(s) found. Currently the supported
    inspections are:
-      * ``type`` (default): Show the best known type of a given expression.
-      * ``attrs``: Show which attributes are valid for an expression (e.g. for
-        auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
-        Names are sorted by method resolution order.
-..    TODO: finish implementing this.
-..    definition: Show the definition location for a name expression or member
-..    expression. Format is path/to/file.py:line:column:Symbol.
+
+   * ``type`` (default): Show the best known type of a given expression.
+   * ``attrs``: Show which attributes are valid for an expression (e.g. for
+     auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
+     Names are sorted by method resolution order.
+..   TODO: finish implementing this.
+..   definition: Show the definition location for a name expression or member
+..   expression. Format is path/to/file.py:line:column:Symbol.
 
 .. option:: --verbose
 
@@ -344,8 +345,8 @@ since otherwise most inspections will not work without :option:`--force-reload`.
    or daemon was initially run without ``--export-types`` mypy option),
    since reloading may be slow (up to few seconds for very large files).
 
-.. TODO: Add similar sections about go to definition and find usages
-   when added, and then move this to a separate file.
+.. TODO: Add similar section about find usages when added, and then move
+   this to a separate file.
 
 
 .. _watchman: https://facebook.github.io/watchman/

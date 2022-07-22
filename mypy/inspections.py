@@ -171,7 +171,7 @@ class InspectionEngine:
         self.include_span = include_span
         self.include_kind = include_kind
         self.include_object_attrs = include_object_attrs
-        self.force_reload =  force_reload
+        self.force_reload = force_reload
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
         if location.count(':') not in [2, 4]:
@@ -201,7 +201,7 @@ class InspectionEngine:
         if expr_type is None:
             return self.missing_type(expression), False
 
-        type_str = format_type(expr_type, verbosity=self.verbosity or 0)
+        type_str = format_type(expr_type, verbosity=self.verbosity)
         return self.add_prefixes(type_str, expression), True
 
     def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
@@ -218,7 +218,7 @@ class InspectionEngine:
 
         instance = get_instance_fallback(get_proper_type(expr_type))
         if not instance:
-            return '()', True
+            return '{}', True
 
         mro = instance.type.mro
         if not self.include_object_attrs:
@@ -277,7 +277,13 @@ class InspectionEngine:
         return prefix + result
 
     def run_inspection_by_exact_location(
-        self, tree: MypyFile, line: int, column: int, end_line: int, end_column: int, method: Callable[[Expression], Tuple[str, bool]]
+        self,
+        tree: MypyFile,
+        line: int,
+        column: int,
+        end_line: int,
+        end_column: int,
+        method: Callable[[Expression], Tuple[str, bool]],
     ) -> Dict[str, object]:
         """Get type of an expression matching a span.
 
@@ -295,7 +301,13 @@ class InspectionEngine:
         inspection_str, success = method(expression)
         return {'out': inspection_str, 'err': '', 'status': 0 if success else 1}
 
-    def run_inspection_by_position(self, tree: MypyFile, line: int, column: int, method: Callable[[Expression], Tuple[str, bool]]) -> Dict[str, object]:
+    def run_inspection_by_position(
+        self,
+        tree: MypyFile,
+        line: int,
+        column: int,
+        method: Callable[[Expression], Tuple[str, bool]],
+    ) -> Dict[str, object]:
         """Get types of all expressions enclosing a position.
 
         Types and/or errors are returned as a standard daemon response dict.

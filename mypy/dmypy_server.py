@@ -841,12 +841,12 @@ class Server:
         self,
         show: str,
         location: str,
-        verbosity: Optional[int] = 0,
+        verbosity: int = 0,
         limit: int = 0,
         include_span: bool = False,
         include_kind: bool = False,
         include_object_attrs: bool = False,
-        force_reload: bool  = False,
+        force_reload: bool = False,
     ) -> Dict[str, object]:
         """Locate and inspect expression(s)."""
         if sys.version_info < (3, 8):
@@ -873,6 +873,7 @@ class Server:
         else:
             assert False, "Unknown inspection kind"
         if 'out' in result:
+            assert isinstance(result['out'], str)
             result['out'] += '\n'
         return result
 
