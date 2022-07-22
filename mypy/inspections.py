@@ -440,7 +440,7 @@ class InspectionEngine:
         nodes = self.collect_nodes(expression)
 
         if not nodes:
-            return self.missing_type(expression.expr), False
+            return self.missing_node(expression), False
 
         modules, reload_needed = self.modules_for_nodes(nodes, expression)
         if reload_needed:
