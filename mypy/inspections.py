@@ -7,8 +7,10 @@ from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
-from mypy.nodes import Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr, SymbolNode, Decorator, \
+from mypy.nodes import (
+    Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr, SymbolNode, Decorator,
     OverloadedFuncDef, Var, FuncBase
+)
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
@@ -298,6 +300,9 @@ class InspectionEngine:
         sorted_bases = sorted(combined_attrs.keys(), key=cmp_to_key(cmp_types))
         result = {}
         for base in sorted_bases:
+            if not combined_attrs[base]:
+                # Skip bases where everytihng was filtered out.
+                continue
             result[base] = combined_attrs[base]
         return result
 

@@ -1,0 +1,24 @@
+[case testInspectFallbackAttributes]
+# inspect2: --show=attrs --include-object-attrs foo.py:5:1
+# inspect2: --show=attrs foo.py:8:1
+# inspect2: --show=attrs --include-kind foo.py:10:1
+# inspect2: --show=attrs --include-kind --include-object-attrs foo.py:10:1
+import foo
+[file foo.py]
+class B: ...
+class C(B):
+    x: int
+c: C
+c  # line 5
+
+t = 42, "foo"
+t  # line 8
+
+None
+[builtins fixtures/args.pyi]
+[out]
+==
+{"C": ["x"], "object": ["__eq__", "__init__", "__ne__"]}
+{"Iterable": ["__iter__"]}
+NameExpr -> {}
+NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}

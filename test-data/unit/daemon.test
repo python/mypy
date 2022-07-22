@@ -421,15 +421,7 @@ Daemon started
 $ dmypy check foo.py bar.py --export-types
 $ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
 NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
-$ dmypy inspect foo.py:11:1 --show attrs --include-object-attrs
-{"B": ["a", "b"], "object": ["__annotations__", "__class__", "__delattr__", "__dict__", "__dir__", "__doc__", "__eq__", "__format__", "__getattribute__", "__hash__", "__init__", "__init_subclass__", "__module__", "__ne__", "__new__", "__reduce__", "__reduce_ex__", "__repr__", "__setattr__", "__sizeof__", "__str__"]}
-$ dmypy inspect foo.py:14:1 --show attrs
-{"tuple": ["__add__", "__class_getitem__", "__contains__", "__ge__", "__getitem__", "__gt__", "__iter__", "__le__", "__len__", "__lt__", "__mul__", "__new__", "__rmul__", "count", "index"], "Sequence": ["__contains__", "__getitem__", "__iter__", "__reversed__", "count", "index"], "Collection": ["__len__"], "Reversible": ["__reversed__"], "Iterable": ["__iter__"], "Container": ["__contains__"]}
-$ dmypy inspect foo.py:15:1 --show attrs --include-kind
-NameExpr -> {}
-$ dmypy inspect foo.py:15:1 --show attrs --include-object-attrs
-{"object": ["__annotations__", "__class__", "__delattr__", "__dict__", "__dir__", "__doc__", "__eq__", "__format__", "__getattribute__", "__hash__", "__init__", "__init_subclass__", "__module__", "__ne__", "__new__", "__reduce__", "__reduce_ex__", "__repr__", "__setattr__", "__sizeof__", "__str__"]}
-$ dmypy inspect foo.py:17:10 --show attrs
+$ dmypy inspect foo.py:11:10 --show attrs
 No known type available for "StrExpr" (maybe unreachable or try --force-reload)
 == Return code: 1
 $ dmypy inspect foo.py:1:1 --show attrs
@@ -451,11 +443,6 @@ class C(B):
 
 v: C
 v  # line 9
-w: B
-w
-t = 1, "foo"
-t  # line 14
-None
 if False:
     "unreachable"
 
