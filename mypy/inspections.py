@@ -353,6 +353,7 @@ class InspectionEngine:
             mod_dict = {}
 
         # Special case: for class callables, prepend with the class attributes.
+        # TODO: also handle cases when such callable appears in a union.
         if isinstance(expr_type, FunctionLike) and expr_type.is_type_obj():
             template = fill_typevars_with_any(expr_type.type_object())
             class_dict = self.collect_attrs(get_instance_fallback(template))
@@ -386,15 +387,24 @@ class InspectionEngine:
                     return []
 
                 # Now we use the base type to figure out where the attribute is defined.
-                instances = get_instance_fallback(get_proper_type(base_type))
+                base_type = get_proper_type(base_type)
+                instances = get_instance_fallback(base_type)
                 nodes = []
                 for instance in instances:
                     node = find_node(expression.name, instance.type)
                     if node:
                         nodes.append(node)
                 if not nodes:
-                    # Still no luck, give up.
-                    return []
+                    # Try checking class namespace if it attribute is on a class object.
+                    if isinstance(base_type, FunctionLike) and base_type.is_type_obj():
+                        instances = get_instance_fallback(
+                            fill_typevars_with_any(base_type.type_object())
+                        )
+                        for instance in instances:
+                            nodes.append(find_node(expression.name, instance.type))
+                    else:
+                        # Still no luck, give up.
+                        return []
             else:
                 return []
         else:

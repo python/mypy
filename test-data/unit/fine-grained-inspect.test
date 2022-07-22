@@ -97,6 +97,7 @@ def foo(x: Union[int, str]) -> None:
 ==
 bar.py:4:0:meth
 MemberExpr -> tmp/bar.py:2:5:x
+7:1:7:5 -> tmp/bar.py:6:9:y
 bar.py:9:1:test
 bar.py:8:1:var
 baz.py:3:2:foo
