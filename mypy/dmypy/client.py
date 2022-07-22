@@ -150,6 +150,9 @@ p.add_argument('--include-kind', action='store_true',
                     ' (e.g. NameExpr:"int")')
 p.add_argument('--include-object-attrs', action='store_true',
                help='Include attributes of "object" in "attrs" inspection')
+p.add_argument('--union-attrs', action='store_true',
+               help='Include attributes valid for some of possible expression types'
+                    ' (by default an intersection is returned)')
 p.add_argument('--force-reload', action='store_true',
                help='Re-parse and re-type-check file before inspection (may be slow)')
 
@@ -421,7 +424,7 @@ def do_inspect(args: argparse.Namespace) -> None:
                        verbosity=args.verbose, limit=args.limit,
                        include_span=args.include_span, include_kind=args.include_kind,
                        include_object_attrs=args.include_object_attrs,
-                       force_reload=args.force_reload)
+                       union_attrs=args.union_attrs, force_reload=args.force_reload)
     check_output(response, verbose=False, junit_xml=None, perf_stats_file=None)
 
 

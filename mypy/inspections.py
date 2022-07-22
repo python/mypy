@@ -1,5 +1,7 @@
 import os
-from typing import Tuple, List, Optional, Dict, Callable
+from collections import defaultdict
+from functools import cmp_to_key
+from typing import Tuple, List, Optional, Dict, Callable, Set
 
 from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
@@ -11,7 +13,7 @@ from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
 from mypy.types import (
     get_proper_type, ProperType, Instance, TupleType, TypedDictType,
-    FunctionLike, LiteralType
+    FunctionLike, LiteralType, TypeVarType, UnionType
 )
 
 
@@ -34,19 +36,31 @@ def expr_span(expr: Expression) -> str:
     return f'{expr.line}:{expr.column + 1}:{expr.end_line}:{expr.end_column}'
 
 
-def get_instance_fallback(typ: ProperType) -> Optional[Instance]:
+def get_instance_fallback(typ: ProperType) -> List[Instance]:
     """Returns the Instance fallback for this type if one exists or None."""
     if isinstance(typ, Instance):
-        return typ
+        return [typ]
     elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
+        return [tuple_fallback(typ)]
     elif isinstance(typ, TypedDictType):
-        return typ.fallback
+        return [typ.fallback]
     elif isinstance(typ, FunctionLike):
-        return typ.fallback
+        return [typ.fallback]
     elif isinstance(typ, LiteralType):
-        return typ.fallback
-    return None
+        return [typ.fallback]
+    elif isinstance(typ, TypeVarType):
+        if typ.values:
+            res = []
+            for t in typ.values:
+                res.extend(get_instance_fallback(get_proper_type(t)))
+            return res
+        return get_instance_fallback(get_proper_type(typ.upper_bound))
+    elif isinstance(typ, UnionType):
+        res = []
+        for t in typ.items:
+            res.extend(get_instance_fallback(get_proper_type(t)))
+        return res
+    return []
 
 
 def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optional[State]:
@@ -159,6 +173,7 @@ class InspectionEngine:
         include_span: bool = False,
         include_kind: bool = False,
         include_object_attrs: bool = False,
+        union_attrs: bool = False,
         force_reload: bool = False,
     ) -> None:
         self.fg_manager = fg_manager
@@ -171,6 +186,7 @@ class InspectionEngine:
         self.include_span = include_span
         self.include_kind = include_kind
         self.include_object_attrs = include_object_attrs
+        self.union_attrs = union_attrs
         self.force_reload = force_reload
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
@@ -204,12 +220,63 @@ class InspectionEngine:
         type_str = format_type(expr_type, verbosity=self.verbosity)
         return self.add_prefixes(type_str, expression), True
 
-    def object_type(self) -> TypeInfo:
+    def object_type(self) -> Instance:
         builtins = self.fg_manager.graph['builtins'].tree
         assert builtins is not None
         object_node = builtins.names['object'].node
         assert isinstance(object_node, TypeInfo)
-        return object_node
+        return Instance(object_node, [])
+
+    def collect_attrs(self, instances: List[Instance]) -> Dict[TypeInfo, List[str]]:
+        """Collect attributes from all union/typevar variants."""
+
+        def item_attrs(attr_dict: Dict[TypeInfo, List[str]]) -> Set[str]:
+            attrs = set()
+            for base in attr_dict:
+                attrs |= set(attr_dict[base])
+            return attrs
+
+        def cmp_types(x: TypeInfo, y: TypeInfo) -> int:
+            if x in y.mro:
+                return 1
+            if y in x.mro:
+                return -1
+            return 0
+
+        # First gather all attributes for every union variant.
+        assert instances
+        all_attrs = []
+        for instance in instances:
+            attrs = {}
+            mro = instance.type.mro
+            if not self.include_object_attrs:
+                mro = mro[:-1]
+            for base in mro:
+                attrs[base] = sorted(base.names)
+            all_attrs.append(attrs)
+
+        # Find attributes valid for all variants in a union or type variable.
+        intersection = item_attrs(all_attrs[0])
+        for item in all_attrs[1:]:
+            intersection &= item_attrs(item)
+
+        # Combine attributes from all variants into a single dict while
+        # also removing invalid attributes (unless using --union-attrs).
+        combined_attrs = defaultdict(list)
+        for item in all_attrs:
+            for base in item:
+                if base in combined_attrs:
+                    continue
+                for name in item[base]:
+                    if self.union_attrs or name in intersection:
+                        combined_attrs[base].append(name)
+
+        # Sort bases by MRO, unrelated will appear in the order they appeared as union variants.
+        sorted_bases = sorted(combined_attrs.keys(), key=cmp_to_key(cmp_types))
+        result = {}
+        for base in sorted_bases:
+            result[base] = combined_attrs[base]
+        return result
 
     def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
         """Format attributes that are valid for a given expression.
@@ -223,20 +290,18 @@ class InspectionEngine:
         if expr_type is None:
             return self.missing_type(expression), False
 
-        instance = get_instance_fallback(get_proper_type(expr_type))
-        if instance is not None:
-            mro = instance.type.mro
-        else:
+        instances = get_instance_fallback(get_proper_type(expr_type))
+        if not instances:
             # Everything is an object in Python.
-            mro = [self.object_type()]
-        if not self.include_object_attrs:
-            mro = mro[:-1]
+            instances = [self.object_type()]
+
+        attrs_dict = self.collect_attrs(instances)
 
         # We don't use JSON dump to be sure keys order is always preserved.
         base_attrs = []
-        for base in mro:
+        for base in attrs_dict:
             cls_name = base.name if self.verbosity < 1 else base.fullname
-            attrs = [f'"{attr}"' for attr in sorted(base.names)]
+            attrs = [f'"{attr}"' for attr in attrs_dict[base]]
             base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
@@ -261,6 +326,7 @@ class InspectionEngine:
         if not module:
             return self.missing_node(expression), False
         # TODO: line/column are not stored in cache for vast majority of symbol nodes.
+        # Adding them will make thing faster, but will have visible memory impact.
         if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
             self.reload_module(module)
 

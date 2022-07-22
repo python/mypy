@@ -846,6 +846,7 @@ class Server:
         include_span: bool = False,
         include_kind: bool = False,
         include_object_attrs: bool = False,
+        union_attrs: bool = False,
         force_reload: bool = False,
     ) -> Dict[str, object]:
         """Locate and inspect expression(s)."""
@@ -862,6 +863,7 @@ class Server:
             include_span=include_span,
             include_kind=include_kind,
             include_object_attrs=include_object_attrs,
+            union_attrs=union_attrs,
             force_reload=force_reload,
         )
         if show == 'type':

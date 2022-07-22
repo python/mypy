@@ -418,7 +418,7 @@ def unreachable(x: int, y: int) -> None:
 [case testDaemonGetAttrs_python38]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
-$ dmypy check foo.py --export-types
+$ dmypy check foo.py bar.py --export-types
 $ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
 NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
 $ dmypy inspect foo.py:11:1 --show attrs --include-object-attrs
@@ -435,6 +435,10 @@ No known type available for "StrExpr" (maybe unreachable or try --force-reload)
 $ dmypy inspect foo.py:1:1 --show attrs
 Can't find any expressions at position 1:1
 == Return code: 1
+$ dmypy inspect --show attrs bar.py:10:1
+{"A": ["z"], "B": ["z"]}
+$ dmypy inspect --show attrs bar.py:10:1 --union-attrs
+{"A": ["x", "z"], "B": ["y", "z"]}
 
 [file foo.py]
 class B:
@@ -454,6 +458,18 @@ t  # line 14
 None
 if False:
     "unreachable"
+
+[file bar.py]
+from typing import Union
+
+class A:
+    x: int
+    z: int
+class B:
+    y: int
+    z: int
+var: Union[A, B]
+var
 
 [case testDaemonGetDefinition_python38]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary

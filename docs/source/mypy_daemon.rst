@@ -294,7 +294,8 @@ since otherwise most inspections will not work without :option:`--force-reload`.
      Names are sorted by method resolution order.
 ..   TODO: finish implementing this.
 ..   definition: Show the definition location for a name expression or member
-..   expression. Format is path/to/file.py:line:column:Symbol.
+..   expression. Format is path/to/file.py:line:column:Symbol. If multiple definitions
+     are found (e.g. for a Union attribute), they are separated by comma.
 
 .. option:: --verbose
 
@@ -337,6 +338,29 @@ since otherwise most inspections will not work without :option:`--force-reload`.
 
    This will make the daemon include attributes of ``object`` (excluded by
    default) in case of an ``atts`` inspection.
+
+.. option:: --union-attrs
+
+   Include attributes valid for some of possible expression types (by default
+   an intersection is returned). This is useful for union types of type variables
+   with values. For example, with this code:
+
+   .. code-block:: python
+
+      from typing import Union
+
+      class A:
+          x: int
+          z: int
+      class B:
+          y: int
+          z: int
+      var: Union[A, B]
+      var
+
+   The command ``dmypy inspect --show attrs src.py:10:1`` will return
+   ``{"A": ["z"], "B": ["z"]}``, while with ``--union-attrs`` it will return
+   ``{"A": ["x", "z"], "B": ["y", "z"]}``.
 
 .. option:: --force-reload
 
