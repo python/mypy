@@ -1,13 +1,14 @@
 import os
 from collections import defaultdict
 from functools import cmp_to_key
-from typing import Tuple, List, Optional, Dict, Callable, Set
+from typing import Tuple, List, Optional, Dict, Callable, Set, Union
 
 from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
-from mypy.nodes import Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr
+from mypy.nodes import Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr, SymbolNode, Decorator, \
+    OverloadedFuncDef, Var, FuncBase
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
@@ -61,6 +62,28 @@ def get_instance_fallback(typ: ProperType) -> List[Instance]:
             res.extend(get_instance_fallback(get_proper_type(t)))
         return res
     return []
+
+
+def find_node(name: str, info: TypeInfo) -> Optional[Union[Var, FuncBase]]:
+    """Find the node defining member 'name' in given TypeInfo."""
+    # TODO: this code shares some logic with checkmember.py
+    method = info.get_method(name)
+    if method:
+        if isinstance(method, Decorator):
+            return method.var
+        if method.is_property:
+            assert isinstance(method, OverloadedFuncDef)
+            dec = method.items[0]
+            assert isinstance(dec, Decorator)
+            return dec.var
+        return method
+    else:
+        # don't have such method, maybe variable?
+        node = info.get(name)
+        v = node.node if node else None
+        if isinstance(v, Var):
+            return v
+    return None
 
 
 def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optional[State]:
@@ -305,6 +328,14 @@ class InspectionEngine:
             base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
+    def format_node(self, module: State, node: SymbolNode) -> str:
+        # TODO: line/column are not stored in cache for vast majority of symbol nodes.
+        # Adding them will make thing faster, but will have visible memory impact.
+        if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
+            self.reload_module(module)
+
+        return f'{module.path}:{node.line}:{node.column + 1}:{node.name}'
+
     def expression_def(self, expression: Expression) -> Tuple[str, bool]:
         """Find and format definition location for an expression.
 
@@ -315,24 +346,41 @@ class InspectionEngine:
             # If there are no suitable matches at all, we return error later.
             return '', True
 
-        if expression.node is None:
-            if isinstance(expression, MemberExpr) and expression.kind is None:
-                # TODO: "non-static" attributes require a lot of special logic,
-                # essentially  duplicating those in checkmember.py.
-                return "Non-static attributes are not supported yet", False
-            return self.missing_node(expression), False
-
-        module = find_module_by_fullname(expression.node.fullname, self.fg_manager.graph)
-        if not module:
-            return self.missing_node(expression), False
-        # TODO: line/column are not stored in cache for vast majority of symbol nodes.
-        # Adding them will make thing faster, but will have visible memory impact.
-        if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
-            self.reload_module(module)
-
         node = expression.node
-        result = f'{module.path}:{node.line}:{node.column + 1}:{node.name}'
-        return self.add_prefixes(result, expression), True
+        if node is None:
+            # Tricky case: instance attribute
+            if isinstance(expression, MemberExpr) and expression.kind is None:
+                base_type = self.fg_manager.manager.all_types.get(expression.expr)
+                if base_type is None:
+                    return self.missing_type(expression.expr), False
+
+                # Now we use the base type to figure out where the attribute is defined.
+                instances = get_instance_fallback(get_proper_type(base_type))
+                nodes = []
+                for instance in instances:
+                    node = find_node(expression.name, instance.type)
+                    if node:
+                        nodes.append(node)
+                if not nodes:
+                    # Still no luck, give up.
+                    return self.missing_node(expression), False
+            else:
+                return self.missing_node(expression), False
+        else:
+            # Easy case: a module-level definition
+            nodes = [node]
+
+        assert nodes
+        result = []
+        for node in nodes:
+            module = find_module_by_fullname(node.fullname, self.fg_manager.graph)
+            if not module:
+                continue
+            result.append(self.format_node(module, node))
+        if not result:
+            return self.missing_node(expression), False
+
+        return self.add_prefixes(', '.join(result), expression), True
 
     def missing_type(self, expression: Expression) -> str:
         alt_suggestion = ''

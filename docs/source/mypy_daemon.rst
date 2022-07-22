@@ -292,10 +292,10 @@ since otherwise most inspections will not work without :option:`--force-reload`.
    * ``attrs``: Show which attributes are valid for an expression (e.g. for
      auto-completion). Format is ``{"Base1": ["name_1", "name_2", ...]; "Base2": ...}``.
      Names are sorted by method resolution order.
-..   TODO: finish implementing this.
-..   definition: Show the definition location for a name expression or member
-..   expression. Format is path/to/file.py:line:column:Symbol. If multiple definitions
-     are found (e.g. for a Union attribute), they are separated by comma.
+   * ``definition`` (experimental): Show the definition location for a name
+     expression or member expression. Format is ``path/to/file.py:line:column:Symbol``.
+     If multiple definitions are found (e.g. for a Union attribute), they are
+     separated by comma.
 
 .. option:: --verbose
 

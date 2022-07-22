@@ -486,13 +486,16 @@ $ dmypy inspect foo.py:4:6 --show definition
 No name or member expressions at 4:6
 == Return code: 1
 $ dmypy inspect foo.py:7:1:7:6 --show definition
-Non-static attributes are not supported yet
-== Return code: 1
+bar/baz.py:4:5:attr
 $ dmypy inspect foo.py:10:10 --show definition --include-span
 10:1:10:12 -> bar/baz.py:6:1:test
+$ dmypy inspect foo.py:14:6 --show definition --include-span --include-kind
+Cannot find definition for "NameExpr" at 14:5:14:7
+MemberExpr:14:5:14:9 -> bar/baz.py:9:5:x, bar/baz.py:11:5:x
+== Return code: 1
 
 [file foo.py]
-from bar.baz import C
+from bar.baz import A, B, C
 C.Alias
 x  # type: ignore
 y = 42
@@ -503,6 +506,10 @@ z.attr
 import bar
 bar.baz.test()  # line 10
 
+from typing import Union
+def foo(arg: Union[A, B]) -> None:
+    arg.x
+
 [file bar/__init__.py]
 [file bar/baz.py]
 from typing import Union
@@ -511,3 +518,8 @@ class C:
     attr = 42
 
 def test() -> None: ...  # line 6
+
+class A:
+    x: int
+class B:
+    x: int
