@@ -5,7 +5,7 @@ from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
-from mypy.nodes import Expression, Node, MypyFile, RefExpr
+from mypy.nodes import Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
@@ -204,6 +204,13 @@ class InspectionEngine:
         type_str = format_type(expr_type, verbosity=self.verbosity)
         return self.add_prefixes(type_str, expression), True
 
+    def object_type(self) -> TypeInfo:
+        builtins = self.fg_manager.graph['builtins'].tree
+        assert builtins is not None
+        object_node = builtins.names['object'].node
+        assert isinstance(object_node, TypeInfo)
+        return object_node
+
     def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
         """Format attributes that are valid for a given expression.
 
@@ -217,10 +224,11 @@ class InspectionEngine:
             return self.missing_type(expression), False
 
         instance = get_instance_fallback(get_proper_type(expr_type))
-        if not instance:
-            return '{}', True
-
-        mro = instance.type.mro
+        if instance is not None:
+            mro = instance.type.mro
+        else:
+            # Everything is an object in Python.
+            mro = [self.object_type()]
         if not self.include_object_attrs:
             mro = mro[:-1]
 
@@ -241,13 +249,22 @@ class InspectionEngine:
         if not isinstance(expression, RefExpr):
             # If there are no suitable matches at all, we return error later.
             return '', True
+
         if expression.node is None:
+            if isinstance(expression, MemberExpr) and expression.kind is None:
+                # TODO: "non-static" attributes require a lot of special logic,
+                # essentially  duplicating those in checkmember.py.
+                return "Non-static attributes are not supported yet", False
             return self.missing_node(expression), False
+
+        module = find_module_by_fullname(expression.node.fullname, self.fg_manager.graph)
+        # TODO: line/column are not stored in cache for vast majority of symbol nodes.
+        if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
+            self.reload_module(module)
+
         symbol = expression.node.name
-        # TODO: these are not set for vast majority of symbol nodes.
         line = expression.node.line
         column = expression.node.column
-        module = find_module_by_fullname(expression.node.fullname, self.fg_manager.graph)
         if not module:
             return self.missing_node(expression), False
         result = f'{module.path}:{line}:{column + 1}:{symbol}'
@@ -370,7 +387,7 @@ class InspectionEngine:
             return err_dict
 
         # Force reloading to load from cache, account for any edits, etc.
-        if not state.tree or self.force_reload:
+        if not state.tree or state.tree.is_cache_skeleton or self.force_reload:
             self.reload_module(state)
         assert state.tree is not None
 

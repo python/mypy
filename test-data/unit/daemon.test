@@ -421,6 +421,20 @@ Daemon started
 $ dmypy check foo.py --export-types
 $ dmypy inspect foo.py:9:1 --show attrs --include-span --include-kind -vv
 NameExpr:9:1:9:1 -> {"foo.C": ["a", "x", "y"], "foo.B": ["a", "b"]}
+$ dmypy inspect foo.py:11:1 --show attrs --include-object-attrs
+{"B": ["a", "b"], "object": ["__annotations__", "__class__", "__delattr__", "__dict__", "__dir__", "__doc__", "__eq__", "__format__", "__getattribute__", "__hash__", "__init__", "__init_subclass__", "__module__", "__ne__", "__new__", "__reduce__", "__reduce_ex__", "__repr__", "__setattr__", "__sizeof__", "__str__"]}
+$ dmypy inspect foo.py:14:1 --show attrs
+{"tuple": ["__add__", "__class_getitem__", "__contains__", "__ge__", "__getitem__", "__gt__", "__iter__", "__le__", "__len__", "__lt__", "__mul__", "__new__", "__rmul__", "count", "index"], "Sequence": ["__contains__", "__getitem__", "__iter__", "__reversed__", "count", "index"], "Collection": ["__len__"], "Reversible": ["__reversed__"], "Iterable": ["__iter__"], "Container": ["__contains__"]}
+$ dmypy inspect foo.py:15:1 --show attrs --include-kind
+NameExpr -> {}
+$ dmypy inspect foo.py:15:1 --show attrs --include-object-attrs
+{"object": ["__annotations__", "__class__", "__delattr__", "__dict__", "__dir__", "__doc__", "__eq__", "__format__", "__getattribute__", "__hash__", "__init__", "__init_subclass__", "__module__", "__ne__", "__new__", "__reduce__", "__reduce_ex__", "__repr__", "__setattr__", "__sizeof__", "__str__"]}
+$ dmypy inspect foo.py:17:10 --show attrs
+No known type available for "StrExpr" (maybe unreachable or try --force-reload)
+== Return code: 1
+$ dmypy inspect foo.py:1:1 --show attrs
+Can't find any expressions at position 1:1
+== Return code: 1
 
 [file foo.py]
 class B:
@@ -433,20 +447,51 @@ class C(B):
 
 v: C
 v  # line 9
+w: B
+w
+t = 1, "foo"
+t  # line 14
+None
+if False:
+    "unreachable"
 
 [case testDaemonGetDefinition_python38]
 $ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
 Daemon started
 $ dmypy check foo.py bar/baz.py bar/__init__.py --export-types
+$ dmypy inspect foo.py:5:1 --show definition
+foo.py:4:1:y
 $ dmypy inspect foo.py:2:3 --show definition --include-span --include-kind -vv
 MemberExpr:2:1:2:7 -> bar/baz.py:3:5:Alias
+$ dmypy inspect foo.py:3:1 --show definition
+Cannot find definition for "NameExpr" at 3:1:3:1
+== Return code: 1
+$ dmypy inspect foo.py:4:6 --show definition
+No name or member expressions at 4:6
+== Return code: 1
+$ dmypy inspect foo.py:7:1:7:6 --show definition
+Non-static attributes are not supported yet
+== Return code: 1
+$ dmypy inspect foo.py:10:10 --show definition --include-span
+10:1:10:12 -> bar/baz.py:6:1:test
 
 [file foo.py]
 from bar.baz import C
 C.Alias
+x  # type: ignore
+y = 42
+y  # line 5
+z = C()
+z.attr
+
+import bar
+bar.baz.test()  # line 10
 
 [file bar/__init__.py]
 [file bar/baz.py]
 from typing import Union
 class C:
     Alias = Union[int, str]
+    attr = 42
+
+def test() -> None: ...  # line 6
