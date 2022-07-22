@@ -328,7 +328,7 @@ class InspectionEngine:
             base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
-    def format_node(self, module: State, node: SymbolNode) -> str:
+    def format_node(self, module: State, node: Union[FuncBase, SymbolNode]) -> str:
         # TODO: line/column are not stored in cache for vast majority of symbol nodes.
         # Adding them will make thing faster, but will have visible memory impact.
         if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
@@ -346,7 +346,8 @@ class InspectionEngine:
             # If there are no suitable matches at all, we return error later.
             return '', True
 
-        node = expression.node
+        node: Optional[Union[FuncBase, SymbolNode]] = expression.node
+        nodes: List[Union[FuncBase, SymbolNode]]
         if node is None:
             # Tricky case: instance attribute
             if isinstance(expression, MemberExpr) and expression.kind is None:
