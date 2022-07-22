@@ -1,3 +1,18 @@
+[case testInspectTypeBasic]
+
+[out]
+==
+
+[case testInspectAttrsBasic]
+
+[out]
+==
+
+[case testInspectDefBasic]
+
+[out]
+==
+
 [case testInspectFallbackAttributes]
 # inspect2: --show=attrs --include-object-attrs foo.py:5:1
 # inspect2: --show=attrs foo.py:8:1
@@ -22,3 +37,57 @@ None
 {"Iterable": ["__iter__"]}
 NameExpr -> {}
 NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}
+
+[case testInspectTypeVarBoundAttrs]
+
+[out]
+==
+
+[case testInspectTypeVarValuesAttrs]
+
+[out]
+==
+
+[case testInspectTypeVarBoundDef]
+
+[out]
+==
+
+[case testInspectTypeVarValuesDef]
+
+[out]
+==
+
+[case testInspectClassObjAttrs]
+
+[out]
+==
+
+[case testInspectClassObjDef]
+
+[out]
+==
+
+[case testInspectModuleAttrs]
+
+[out]
+==
+
+[case testInspectModuleDef]
+
+[out]
+==
+
+[case testInspectFunctionArgDef]
+# inspect2: --show=definition --include-span foo.py:4:13
+# TODO: for now all arguments have line/column set to function definition.
+import foo
+[file foo.py]
+def foo(arg: int) -> int:
+    pass
+    pass
+    return arg
+
+[out]
+==
+4:12:4:14 -> tmp/foo.py:1:1:arg

@@ -9,7 +9,7 @@ from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
     Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr, SymbolNode, Decorator,
-    OverloadedFuncDef, Var, FuncBase
+    OverloadedFuncDef, Var, FuncBase, LDEF
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
@@ -213,6 +213,8 @@ class InspectionEngine:
         self.include_object_attrs = include_object_attrs
         self.union_attrs = union_attrs
         self.force_reload = force_reload
+        # Module for which inspection was requested.
+        self.module: Optional[State] = None
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
         if location.count(':') not in [2, 4]:
@@ -381,7 +383,10 @@ class InspectionEngine:
         for node in nodes:
             module = find_module_by_fullname(node.fullname, self.fg_manager.graph)
             if not module:
-                continue
+                if expression.kind == LDEF and self.module:
+                    module = self.module
+                else:
+                    continue
             result.append(self.format_node(module, node))
         if not result:
             return self.missing_node(expression), False
@@ -479,6 +484,7 @@ class InspectionEngine:
             return None, {'error': 'Invalid source file name: ' + file}
 
         state = self.fg_manager.graph.get(module)
+        self.module = state
         return (
             state,
             {'out': f'Unknown module: {module}', 'err': '', 'status': 1}
