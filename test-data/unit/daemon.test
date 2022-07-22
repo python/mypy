@@ -433,3 +433,20 @@ class C(B):
 
 v: C
 v  # line 9
+
+[case testDaemonGetDefinition_python38]
+$ dmypy start --log-file log.txt -- --follow-imports=error --no-error-summary
+Daemon started
+$ dmypy check foo.py bar/baz.py bar/__init__.py --export-types
+$ dmypy inspect foo.py:2:3 --show definition --include-span --include-kind -vv
+MemberExpr:2:1:2:7 -> bar/baz.py:3:5:Alias
+
+[file foo.py]
+from bar.baz import C
+C.Alias
+
+[file bar/__init__.py]
+[file bar/baz.py]
+from typing import Union
+class C:
+    Alias = Union[int, str]

@@ -1,16 +1,18 @@
 import os
-from collections import defaultdict
 from typing import Tuple, List, Optional, Dict, Callable
 
 from mypy.build import State
 from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
-from mypy.nodes import Expression, Node, MypyFile
+from mypy.nodes import Expression, Node, MypyFile, RefExpr
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
-from mypy.types import get_proper_type, ProperType, Instance, TupleType, TypedDictType, FunctionLike, LiteralType
+from mypy.types import (
+    get_proper_type, ProperType, Instance, TupleType, TypedDictType,
+    FunctionLike, LiteralType
+)
 
 
 def node_starts_after(o: Node, line: int, column: int) -> bool:
@@ -25,6 +27,42 @@ def node_ends_before(o: Node, line: int, column: int) -> bool:
                 or o.end_line == line and o.end_column < column):
             return True
     return False
+
+
+def expr_span(expr: Expression) -> str:
+    """Format expression span as in mypy error messages."""
+    return f'{expr.line}:{expr.column + 1}:{expr.end_line}:{expr.end_column}'
+
+
+def get_instance_fallback(typ: ProperType) -> Optional[Instance]:
+    """Returns the Instance fallback for this type if one exists or None."""
+    if isinstance(typ, Instance):
+        return typ
+    elif isinstance(typ, TupleType):
+        return tuple_fallback(typ)
+    elif isinstance(typ, TypedDictType):
+        return typ.fallback
+    elif isinstance(typ, FunctionLike):
+        return typ.fallback
+    elif isinstance(typ, LiteralType):
+        return typ.fallback
+    return None
+
+
+def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optional[State]:
+    """Find module by a node fullname.
+
+    This logic mimics the one we use in fixup, so should be good enough.
+    """
+    head = fullname
+    while True:
+        if '.' not in head:
+            return None
+        head, tail = head.rsplit('.', maxsplit=1)
+        mod = modules.get(head)
+        if mod is not None:
+            return mod
+    return None
 
 
 class SearchVisitor(ExtendedTraverserVisitor):
@@ -116,7 +154,7 @@ class InspectionEngine:
         self,
         fg_manager: FineGrainedBuildManager,
         *,
-        verbosity: Optional[int] = 0,
+        verbosity: int = 0,
         limit: int = 0,
         include_span: bool = False,
         include_kind: bool = False,
@@ -167,6 +205,13 @@ class InspectionEngine:
         return self.add_prefixes(type_str, expression), True
 
     def expr_attrs(self, expression: Expression) -> Tuple[str, bool]:
+        """Format attributes that are valid for a given expression.
+
+        If expression type is not an Instance, try using fallback. Attributes are
+        returned as a JSON (ordered by MRO) that maps base class name to list of
+        attributes. Attributes may appear in multiple bases if overridden (we simply
+        follow usual mypy logic for creating new Vars etc).
+        """
         expr_type = self.fg_manager.manager.all_types.get(expression)
         if expr_type is None:
             return self.missing_type(expression), False
@@ -187,6 +232,27 @@ class InspectionEngine:
             base_attrs.append(f'"{cls_name}": [{", ".join(attrs)}]')
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
+    def expression_def(self, expression: Expression) -> Tuple[str, bool]:
+        """Find and format definition location for an expression.
+
+        If it is not a RefExpr, it is effectively skipped by returning an
+        empty result.
+        """
+        if not isinstance(expression, RefExpr):
+            # If there are no suitable matches at all, we return error later.
+            return '', True
+        if expression.node is None:
+            return self.missing_node(expression), False
+        symbol = expression.node.name
+        # TODO: these are not set for vast majority of symbol nodes.
+        line = expression.node.line
+        column = expression.node.column
+        module = find_module_by_fullname(expression.node.fullname, self.fg_manager.graph)
+        if not module:
+            return self.missing_node(expression), False
+        result = f'{module.path}:{line}:{column + 1}:{symbol}'
+        return self.add_prefixes(result, expression), True
+
     def missing_type(self, expression: Expression) -> str:
         alt_suggestion = ''
         if not self.force_reload:
@@ -194,13 +260,16 @@ class InspectionEngine:
         return (f'No known type available for "{type(expression).__name__}"'
                 f' (maybe unreachable{alt_suggestion})')
 
+    def missing_node(self, expression: Expression) -> str:
+        return (f'Cannot find definition for "{type(expression).__name__}"'
+                f' at {expr_span(expression)}')
+
     def add_prefixes(self, result: str, expression: Expression) -> str:
         prefixes = []
         if self.include_kind:
             prefixes.append(f'{type(expression).__name__}')
         if self.include_span:
-            prefixes.append(f'{expression.line}:{expression.column + 1}:' +
-                            f'{expression.end_line}:{expression.end_column}')
+            prefixes.append(expr_span(expression))
         if prefixes:
             prefix = ':'.join(prefixes) + ' -> '
         else:
@@ -243,7 +312,8 @@ class InspectionEngine:
             inspection_str, success = method(expression)
             if not success:
                 status = 1
-            inspection_strs.append(inspection_str)
+            if inspection_str:
+                inspection_strs.append(inspection_str)
         if self.limit:
             inspection_strs = inspection_strs[:self.limit]
         return {'out': '\n'.join(inspection_strs), 'err': '', 'status': status}
@@ -311,17 +381,12 @@ class InspectionEngine:
         """Get attributes of expression(s) at a location."""
         return self.run_inspection(location, self.expr_attrs)
 
-
-def get_instance_fallback(typ: ProperType) -> Optional[Instance]:
-    """Returns the Instance fallback for this type if one exists or None."""
-    if isinstance(typ, Instance):
-        return typ
-    elif isinstance(typ, TupleType):
-        return tuple_fallback(typ)
-    elif isinstance(typ, TypedDictType):
-        return typ.fallback
-    elif isinstance(typ, FunctionLike):
-        return typ.fallback
-    elif isinstance(typ, LiteralType):
-        return typ.fallback
-    return None
+    def get_definition(self, location: str) -> Dict[str, object]:
+        """Get symbol definitions of expression(s) at a location."""
+        result = self.run_inspection(location, self.expression_def)
+        if 'out' in result and not result['out']:
+            # None of the expressions found turns out to be a RefExpr.
+            _, location = location.split(':', maxsplit=1)
+            result['out'] = f'No name or member expressions at {location}'
+            result['status'] = 1
+        return result

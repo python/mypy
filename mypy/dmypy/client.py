@@ -137,7 +137,7 @@ p.add_argument('location', metavar='LOCATION', type=str,
                     ' enclosing expressions')
 p.add_argument('--show', metavar='INSPECTION', type=str, default='type',
                choices=['type', 'attrs', 'definition'], help="What kind of inspection to run")
-p.add_argument('--verbose', '-v', action='count',
+p.add_argument('--verbose', '-v', action='count', default=0,
                help="Increase verbosity of the type string representation (can be repeated)")
 p.add_argument('--limit', metavar='NUM', type=int, default=0,
                help="Return at most NUM innermost expressions (if position is given);"
