@@ -395,13 +395,15 @@ class InspectionEngine:
                     if node:
                         nodes.append(node)
                 if not nodes:
-                    # Try checking class namespace if it attribute is on a class object.
+                    # Try checking class namespace if attribute is on a class object.
                     if isinstance(base_type, FunctionLike) and base_type.is_type_obj():
                         instances = get_instance_fallback(
                             fill_typevars_with_any(base_type.type_object())
                         )
                         for instance in instances:
-                            nodes.append(find_node(expression.name, instance.type))
+                            node = find_node(expression.name, instance.type)
+                            if node:
+                                nodes.append(node)
                     else:
                         # Still no luck, give up.
                         return []

@@ -866,14 +866,19 @@ class Server:
             union_attrs=union_attrs,
             force_reload=force_reload,
         )
-        if show == 'type':
-            result = engine.get_type(location)
-        elif show == 'attrs':
-            result = engine.get_attrs(location)
-        elif show == 'definition':
-            result = engine.get_definition(location)
-        else:
-            assert False, "Unknown inspection kind"
+        old_inspections = self.options.inspections
+        self.options.inspections = True
+        try:
+            if show == 'type':
+                result = engine.get_type(location)
+            elif show == 'attrs':
+                result = engine.get_attrs(location)
+            elif show == 'definition':
+                result = engine.get_definition(location)
+            else:
+                assert False, "Unknown inspection kind"
+        finally:
+            self.options.inspections = old_inspections
         if 'out' in result:
             assert isinstance(result['out'], str)
             result['out'] += '\n'

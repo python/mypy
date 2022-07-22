@@ -240,6 +240,11 @@ class Options:
         # in modules being compiled. Not in the config file or command line.
         self.mypyc = False
 
+        # An internal flag to modify some type-checking logic while
+        # running inspections (e.g. don't expand function definitions).
+        # Not in the config file or command line.
+        self.inspections = False
+
         # Disable the memory optimization of freeing ASTs when
         # possible. This isn't exposed as a command line option
         # because it is intended for software integrating with

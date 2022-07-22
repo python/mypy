@@ -128,32 +128,99 @@ NameExpr -> {}
 NameExpr -> {"object": ["__eq__", "__init__", "__ne__"]}
 
 [case testInspectTypeVarBoundAttrs]
-
+# inspect2: --show=attrs foo.py:8:13
 import foo
 [file foo.py]
+from typing import TypeVar
+
+class C:
+    x: int
+
+T = TypeVar('T', bound=C)
+def foo(arg: T) -> T:
+    return arg
 [out]
 ==
+{"C": ["x"]}
 
 [case testInspectTypeVarValuesAttrs]
-
+# inspect2: --show=attrs --force-reload foo.py:13:13
+# inspect2: --show=attrs --force-reload --union-attrs foo.py:13:13
+# inspect2: --show=attrs foo.py:16:5
+# inspect2: --show=attrs --union-attrs foo.py:16:5
 import foo
 [file foo.py]
+from typing import TypeVar, Generic
+
+class A:
+    x: int
+    z: int
+
+class B:
+    y: int
+    z: int
+
+T = TypeVar('T', A, B)
+def foo(arg: T) -> T:
+    return arg
+
+class C(Generic[T]):
+    x: T
 [out]
 ==
+{"A": ["z"], "B": ["z"]}
+{"A": ["x", "z"], "B": ["y", "z"]}
+{"A": ["z"], "B": ["z"]}
+{"A": ["x", "z"], "B": ["y", "z"]}
 
 [case testInspectTypeVarBoundDef]
-
+# inspect2: --show=definition foo.py:9:13
+# inspect2: --show=definition foo.py:8:9
 import foo
 [file foo.py]
+from typing import TypeVar
+
+class C:
+    x: int
+
+T = TypeVar('T', bound=C)
+def foo(arg: T) -> T:
+    arg.x
+    return arg
 [out]
 ==
+foo.py:7:1:arg
+foo.py:4:5:x
 
 [case testInspectTypeVarValuesDef]
-
+# inspect2: --show=definition --force-reload foo.py:13:9
+# inspect2: --show=definition --force-reload foo.py:14:13
+# inspect2: --show=definition foo.py:18:7
 import foo
 [file foo.py]
+from typing import TypeVar, Generic
+
+class A:
+    x: int
+    z: int
+
+class B:
+    y: int
+    z: int
+
+T = TypeVar('T', A, B)
+def foo(arg: T) -> T:
+    arg.z
+    return arg
+
+class C(Generic[T]):
+    x: T
+    x.z
 [out]
 ==
+foo.py:5:5:z, tmp/foo.py:9:5:z
+foo.py:12:1:arg
+foo.py:5:5:z, tmp/foo.py:9:5:z
 
 [case testInspectModuleAttrs]
 # inspect2: --show=attrs foo.py:2:1
