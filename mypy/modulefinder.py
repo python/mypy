@@ -6,6 +6,8 @@ This builds on fscache.py; find_sources.py builds on top of this.
 import ast
 import collections
 import functools
+import glob
+import json
 import os
 import re
 import subprocess
@@ -748,7 +750,42 @@ def get_search_dirs(python_executable: Optional[str]) -> List[str]:
             raise CompileError(
                 [f"mypy: Invalid python executable '{python_executable}': {reason}"]
             ) from err
-    return sys_path
+    return sys_path + find_editable_dirs(sys_path)
+
+
+def find_editable_dirs(search_paths: List[str]) -> List[str]:
+    """Find directories of editable packages."""
+    editable_paths = []
+    for search_path in search_paths:
+        for meta_path in glob.glob('*.dist-info/direct_url.json', root_dir=search_path):
+            path = _parse_direct_url_file(os.path.join(search_path, meta_path))
+            if path and path not in search_path and path not in editable_paths:
+                editable_paths.append(path)
+    return editable_paths
+
+
+def _parse_direct_url_file(path: str) -> Optional[str]:
+    """Get the path of an editable package using direct_url.json.
+
+    See https://www.python.org/dev/peps/pep-0610/
+    """
+    try:
+        file = open(path, encoding="utf-8")
+    except OSError:
+        return
+    with file:
+        try:
+            direct_url = json.load(file)
+        except (ValueError, IOError):
+            return
+    try:
+        url = str(direct_url["url"]) if direct_url["dir_info"]["editable"] else ""
+    except (LookupError, TypeError):
+        return
+    if url.startswith("file://"):
+        path = url[7:]
+        # Path will already be absolute, except for those in the unit tests
+        return os.path.normpath(path)
 
 
 def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:

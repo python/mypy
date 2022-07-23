@@ -5,6 +5,7 @@ from mypy.modulefinder import (
     FindModuleCache,
     SearchPaths,
     ModuleNotFoundReason,
+    find_editable_dirs,
 )
 
 from mypy.test.helpers import Suite, assert_equal
@@ -153,12 +154,12 @@ class ModuleFinderSitePackagesSuite(Suite):
             os.path.join(self.package_dir, "..", "not-a-directory"),
             os.path.join(self.package_dir, "..", "modulefinder-src"),
             self.package_dir,
-        )
+        ) + tuple(find_editable_dirs([self.package_dir]))
 
         self.search_paths = SearchPaths(
             python_path=(),
             mypy_path=(os.path.join(data_path, "pkg1"),),
-            package_path=tuple(package_paths),
+            package_path=package_paths,
             typeshed_path=(),
         )
         options = Options()
@@ -171,6 +172,14 @@ class ModuleFinderSitePackagesSuite(Suite):
 
     def path(self, *parts: str) -> str:
         return os.path.join(self.package_dir, *parts)
+
+    def test__find_editable_dirs(self):
+        found_dirs = find_editable_dirs([self.package_dir])
+        found_dirs.sort()
+        expected = [os.path.join(*p)
+                    for p in [("test-data", "packages", "editable_pkg_typed-src"),
+                              ("test-data", "packages", "editable_pkg_untyped-src")]]
+        assert_equal(expected, found_dirs)
 
     def test__packages_with_ns(self) -> None:
         cases = [
@@ -212,6 +221,11 @@ class ModuleFinderSitePackagesSuite(Suite):
             # Top-level Python file in site-packages
             ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following direct_url.json files
+            ("editable_pkg_typed", os.path.join("test-data", "packages", "editable_pkg_typed-src",
+                                                "editable_pkg_typed", "__init__.py")),
+            ("editable_pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
             # Packages found by following .pth files
             ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
@@ -274,6 +288,11 @@ class ModuleFinderSitePackagesSuite(Suite):
             # Top-level Python file in site-packages
             ("standalone", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
             ("standalone.standalone_var", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
+
+            # Packages found by following direct_url.json files
+            ("editable_pkg_typed", os.path.join("test-data", "packages", "editable_pkg_typed-src",
+                                                "editable_pkg_typed", "__init__.py")),
+            ("editable_pkg_untyped", ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS),
 
             # Packages found by following .pth files
             ("baz_pkg", self.path("baz", "baz_pkg", "__init__.py")),
