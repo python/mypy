@@ -723,7 +723,7 @@ def default_lib_path(data_dir: str,
 
 
 @functools.lru_cache(maxsize=None)
-def get_search_dirs(python_executable: Optional[str]) -> List[str]:
+def get_search_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[str]]:
     """Find package directories for given python.
 
     This runs a subprocess call, which generates a list of the directories in sys.path.
@@ -732,15 +732,15 @@ def get_search_dirs(python_executable: Optional[str]) -> List[str]:
     """
 
     if python_executable is None:
-        return []
+        return ([], [])
     elif python_executable == sys.executable:
         # Use running Python's package dirs
-        sys_path = pyinfo.getsearchdirs()
+        sys_path, site_packages = pyinfo.getsearchdirs()
     else:
         # Use subprocess to get the package directory of given Python
         # executable
         try:
-            sys_path = ast.literal_eval(
+            sys_path, site_packages = ast.literal_eval(
                 subprocess.check_output([python_executable, pyinfo.__file__, 'getsearchdirs'],
                 stderr=subprocess.PIPE).decode())
         except OSError as err:
@@ -748,7 +748,7 @@ def get_search_dirs(python_executable: Optional[str]) -> List[str]:
             raise CompileError(
                 [f"mypy: Invalid python executable '{python_executable}': {reason}"]
             ) from err
-    return sys_path
+    return sys_path, site_packages
 
 
 def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:
@@ -837,22 +837,26 @@ def compute_search_paths(sources: List[BuildSource],
     if options.python_version[0] == 2:
         mypypath = add_py2_mypypath_entries(mypypath)
 
-    search_dirs = get_search_dirs(options.python_executable)
-    for search_dir in search_dirs:
-        assert search_dir not in lib_path
-        if (search_dir in mypypath or
-                any(p.startswith(search_dir + os.path.sep) for p in mypypath) or
-                (os.path.altsep
-                    and any(p.startswith(search_dir + os.path.altsep) for p in mypypath))):
-            print(f"{search_dir} is in the MYPYPATH. Please remove it.", file=sys.stderr)
+    sys_path, site_packages = get_search_dirs(options.python_executable)
+    # We only use site packages for this check
+    for site in site_packages:
+        assert site not in lib_path
+        if (
+            site in mypypath
+            or any(p.startswith(site + os.path.sep) for p in mypypath)
+            or (os.path.altsep and any(p.startswith(site + os.path.altsep) for p in mypypath))
+        ):
+            print(f"{site} is in the MYPYPATH. Please remove it.", file=sys.stderr)
             print("See https://mypy.readthedocs.io/en/stable/running_mypy.html"
                   "#how-mypy-handles-imports for more info", file=sys.stderr)
             sys.exit(1)
 
-    return SearchPaths(python_path=tuple(reversed(python_path)),
-                       mypy_path=tuple(mypypath),
-                       package_path=tuple(search_dirs),
-                       typeshed_path=tuple(lib_path))
+    return SearchPaths(
+        python_path=tuple(reversed(python_path)),
+        mypy_path=tuple(mypypath),
+        package_path=tuple(sys_path + site_packages),
+        typeshed_path=tuple(lib_path),
+    )
 
 
 def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersions:
