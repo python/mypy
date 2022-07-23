@@ -1061,7 +1061,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
                         else:
                             self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
-                elif not self.options.warn_no_return:
+                else:
                     # similar to code in check_return_stmt
                     self.check_subtype(
                         subtype_label='implicitly returns',
