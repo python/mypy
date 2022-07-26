@@ -1483,9 +1483,14 @@ class DynamicDef:  # E: "DynamicDef" both defines "__slots__" and is used with "
     x: int
 [builtins fixtures/dataclasses.pyi]
 
+
 [case testDataclassWithSlotsArgBefore310]
 # flags: --python-version 3.9
 from dataclasses import dataclass
+
+@dataclass()  # ok
+class Correct:
+    x: int
 
 @dataclass(slots=True)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
 class Some:
@@ -1496,6 +1501,139 @@ class Some:
 class Other:
     __slots__ = ('x',)
     x: int
+
+@dataclass(slots=False)  # E: Keyword argument "slots" for "dataclass" is only valid in Python 3.10 and higher
+class Third:
+    x: int
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassWithUnsafeHashFalse]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(unsafe_hash=False, eq=False, frozen=False)
+class FirstCase1:
+    x: int
+reveal_type(FirstCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=False)
+class FirstCase2:
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(FirstCase2(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=False)
+class FirstCase3:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(FirstCase3(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase4:
+    x: int
+reveal_type(FirstCase4(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase5:
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(FirstCase5(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=False, frozen=True)
+class FirstCase6:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(FirstCase6(1).__hash__)  # N: Revealed type is "None"
+
+
+@dataclass(unsafe_hash=False, eq=True, frozen=False)
+class SecondCase1:
+    x: int
+reveal_type(SecondCase1(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass(unsafe_hash=False, eq=True, frozen=False)
+class SecondCase2:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(SecondCase2(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass(unsafe_hash=False, eq=True, frozen=False)
+class SecondCase3:
+    x: int
+    def __hash__(self) -> int: pass  # Custom impl
+reveal_type(SecondCase3(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+
+@dataclass(unsafe_hash=False, eq=True, frozen=True)
+class ThirdCase1:
+    x: int
+reveal_type(ThirdCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=True, frozen=True)
+class ThirdCase2:
+    x: int
+    def __hash__(self) -> int: pass  # Custom impl
+reveal_type(ThirdCase2(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=False, eq=True, frozen=True)
+class ThirdCase3:
+    x: int
+    __hash__: None  # E: Incompatible types in assignment (expression has type "None", base class "object" defined the type as "Callable[[object], int]")
+reveal_type(ThirdCase3(1).__hash__)  # N: Revealed type is "None"
+[builtins fixtures/dataclasses.pyi]
+
+
+[case testDataclassWithUnsafeHashTrue]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass(unsafe_hash=True, eq=False, frozen=False)
+class FirstCase1:
+    x: int
+reveal_type(FirstCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=True, eq=False, frozen=False)
+class FirstCase2:  # E: Cannot overwrite attribute "__hash__" in class "FirstCase2"
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(FirstCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+
+@dataclass(unsafe_hash=True, eq=False, frozen=True)
+class SecondCase1:
+    x: int
+reveal_type(SecondCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=True, eq=False, frozen=True)
+class SecondCase2:  # E: Cannot overwrite attribute "__hash__" in class "SecondCase2"
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(SecondCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+
+@dataclass(unsafe_hash=True, eq=True, frozen=False)
+class ThirdCase1:
+    x: int
+reveal_type(ThirdCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=True, eq=True, frozen=False)
+class ThirdCase2:  # E: Cannot overwrite attribute "__hash__" in class "ThirdCase2"
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(ThirdCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+
+@dataclass(unsafe_hash=True, eq=True, frozen=True)
+class FourthCase1:
+    x: int
+reveal_type(FourthCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+
+@dataclass(unsafe_hash=True, eq=True, frozen=True)
+class FourthCase2:  # E: Cannot overwrite attribute "__hash__" in class "FourthCase2"
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(FourthCase1(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
 [builtins fixtures/dataclasses.pyi]
 
 
@@ -1834,4 +1972,33 @@ class Two:
 t: Two
 reveal_type(t.__match_args__)  # E: "Two" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
+[builtins fixtures/dataclasses.pyi]
+
+[case testDataclassHashDefault]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+@dataclass
+class FirstCase:
+    x: int
+reveal_type(FirstCase(1).__hash__)  # N: Revealed type is "None"
+
+@dataclass
+class SecondCase:
+    x: int
+    def __hash__(self) -> int: pass
+reveal_type(SecondCase(1).__hash__)  # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/dataclasses.pyi]
+
+[case testSemanalTwoPassesWhileHashGeneration]
+# flags: --python-version 3.7
+from dataclasses import dataclass
+
+a = f()  # Forward ref to force two semantic analysis passes
+
+@dataclass(unsafe_hash=True)  # Used to be an error here:
+class C:  # Cannot overwrite attribute "__hash__" in class "C"
+    x: str
+
+def f(): pass
 [builtins fixtures/dataclasses.pyi]
