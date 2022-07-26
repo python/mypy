@@ -552,7 +552,7 @@ Here's a complete example of a function decorator:
 
 .. code-block:: python
 
-   from typing import Any, Callable, ParamSpec, TypeVar
+   from typing import Callable, ParamSpec, TypeVar
 
    P = ParamSpec('P')
    T = TypeVar('T')
