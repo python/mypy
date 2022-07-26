@@ -732,6 +732,7 @@ def generate_traverse_for_class(cl: ClassIR,
         else:
             # In >=3.11, __dict__ is managed by CPython and __weakref__ lives right after
             # the struct
+            emitter.emit_line('_PyObject_VisitManagedDict((PyObject *)self, visit, arg);')
             emitter.emit_gc_visit(
                 '*((PyObject **)((char *)self + sizeof({})))'.format(
                     struct_name),
@@ -763,6 +764,7 @@ def generate_clear_for_class(cl: ClassIR,
         else:
             # In >=3.11, __dict__ is managed by CPython and __weakref__ lives right after
             # the struct
+            emitter.emit_line('_PyObject_ClearManagedDict((PyObject *)self);')
             emitter.emit_gc_clear(
                 '*((PyObject **)((char *)self + sizeof({})))'.format(
                     struct_name),
