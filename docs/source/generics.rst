@@ -541,9 +541,8 @@ A type variable may not have both a value restriction (see
 Declaring decorators
 ********************
 
-One common application of type variable upper bounds is in declaring a
-decorator that preserves the signature of the function it decorates,
-regardless of that signature.
+One common application of type variables along with parameter specifications
+is in declaring a decorator that preserves the signature of the function it decorates.
 
 Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
@@ -553,16 +552,17 @@ Here's a complete example of a function decorator:
 
 .. code-block:: python
 
-   from typing import Any, Callable, TypeVar, cast
+   from typing import Any, Callable, ParamSpec, TypeVar
 
-   F = TypeVar('F', bound=Callable[..., Any])
+   P = ParamSpec('P')
+   T = TypeVar('T')
 
    # A decorator that preserves the signature.
-   def my_decorator(func: F) -> F:
-       def wrapper(*args, **kwds):
+   def my_decorator(func: Callable[P, T]) -> Callable[P, T]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
            print("Calling", func)
            return func(*args, **kwds)
-       return cast(F, wrapper)
+       return wrapper
 
    # A decorated function.
    @my_decorator
@@ -576,14 +576,6 @@ Here's a complete example of a function decorator:
 From the final block we see that the signatures of the decorated
 functions ``foo()`` and ``bar()`` are the same as those of the original
 functions (before the decorator is applied).
-
-The bound on ``F`` is used so that calling the decorator on a
-non-function (e.g. ``my_decorator(1)``) will be rejected.
-
-Also note that the ``wrapper()`` function is not type-checked. Wrapper
-functions are typically small enough that this is not a big
-problem. This is also the reason for the :py:func:`~typing.cast` call in the
-``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.
 
 .. _decorator-factories:
 
