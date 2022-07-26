@@ -1939,40 +1939,6 @@ no_implicit_optional = true
 module = 'm'
 no_implicit_optional = false
 
-
-[case testNoImplicitOptionalPerModulePython2]
-# flags: --config-file tmp/mypy.ini --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file mypy.ini]
-\[mypy]
-no_implicit_optional = True
-\[mypy-m]
-no_implicit_optional = False
-
-
-[case testNoImplicitOptionalPerModulePython2PyProjectTOML]
-# flags: --config-file tmp/pyproject.toml --python-version 2.7
-import m
-
-[file m.py]
-def f(a = None):
-    # type: (str) -> int
-    return 0
-
-[file pyproject.toml]
-\[tool.mypy]
-no_implicit_optional = true
-\[[tool.mypy.overrides]]
-module = 'm'
-no_implicit_optional = false
-
-
 [case testDisableErrorCode]
 # flags: --disable-error-code attr-defined
 x = 'should be fine'

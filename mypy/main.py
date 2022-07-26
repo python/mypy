@@ -955,6 +955,11 @@ def process_options(args: List[str],
     # The python_version is either the default, which can be overridden via a config file,
     # or stored in special_opts and is passed via the command line.
     options.python_version = special_opts.python_version or options.python_version
+    if options.python_version < (3,):
+        parser.error(
+            "Mypy no longer supports checking Python 2 code. "
+            "Consider pinning to mypy<0.980 if you need to check Python 2 code."
+        )
     try:
         infer_python_executable(options, special_opts)
     except PythonExecutableInferenceError as e:
