@@ -284,7 +284,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
         from mypy.typeops import make_simplified_union  # asdf
-        return make_simplified_union(self.expand_types(t.items), t.line, t.column)
+        return make_simplified_union(self.expand_types(t.items))
 
     def visit_partial_type(self, t: PartialType) -> Type:
         return t

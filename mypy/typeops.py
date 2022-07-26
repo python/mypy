@@ -353,7 +353,6 @@ def is_simple_literal(t: ProperType) -> bool:
 
 
 def make_simplified_union(items: Sequence[Type],
-                          line: int = -1, column: int = -1,
                           *, keep_erased: bool = False,
                           contract_literals: bool = True) -> ProperType:
     """Build union type with redundant union items removed.
@@ -397,7 +396,7 @@ def make_simplified_union(items: Sequence[Type],
     if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return UnionType.make_union(simplified_set, line, column)
+    return UnionType.make_union(simplified_set)
 
 
 def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) -> List[ProperType]:
@@ -495,7 +494,7 @@ def true_only(t: Type) -> ProperType:
         # The true version of a union type is the union of the true versions of its components
         new_items = [true_only(item) for item in t.items]
         can_be_true_items = [item for item in new_items if item.can_be_true]
-        return make_simplified_union(can_be_true_items, line=t.line, column=t.column)
+        return make_simplified_union(can_be_true_items)
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
@@ -530,7 +529,7 @@ def false_only(t: Type) -> ProperType:
         # The false version of a union type is the union of the false versions of its components
         new_items = [false_only(item) for item in t.items]
         can_be_false_items = [item for item in new_items if item.can_be_false]
-        return make_simplified_union(can_be_false_items, line=t.line, column=t.column)
+        return make_simplified_union(can_be_false_items)
     else:
         ret_type = _get_type_special_method_bool_ret_type(t)
 
@@ -552,7 +551,7 @@ def true_or_false(t: Type) -> ProperType:
 
     if isinstance(t, UnionType):
         new_items = [true_or_false(item) for item in t.items]
-        return make_simplified_union(new_items, line=t.line, column=t.column)
+        return make_simplified_union(new_items)
 
     new_t = copy_type(t)
     new_t.can_be_true = new_t.can_be_true_default()

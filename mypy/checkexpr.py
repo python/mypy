@@ -1615,9 +1615,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     # a union of inferred callables because for example a call
                     # Union[int -> int, str -> str](Union[int, str]) is invalid and
                     # we don't want to introduce internal inconsistencies.
-                    unioned_result = (make_simplified_union(list(returns),
-                                                            context.line,
-                                                            context.column),
+                    unioned_result = (make_simplified_union(list(returns)),
                                       self.combine_function_signatures(inferred_types))
 
         # Step 3: We try checking each branch one-by-one.
