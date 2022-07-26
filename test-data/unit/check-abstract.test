@@ -250,6 +250,38 @@ if int():
     var_old = C # OK
 [out]
 
+[case testInstantiationAbstractsWithCallables]
+from typing import Callable, Type
+from abc import abstractmethod
+
+class A:
+    @abstractmethod
+    def m(self) -> None: pass
+class B(A): pass
+class C(B):
+    def m(self) -> None:
+        pass
+
+var: Callable[[], A]
+var()   # OK
+
+var = A # E: Can only assign concrete classes to a variable of type "Callable[[], A]"
+var = B # E: Can only assign concrete classes to a variable of type "Callable[[], A]"
+var = C # OK
+
+# Type aliases:
+A1 = A
+B1 = B
+C1 = C
+var = A1 # E: Can only assign concrete classes to a variable of type "Callable[[], A]"
+var = B1 # E: Can only assign concrete classes to a variable of type "Callable[[], A]"
+var = C1 # OK
+
+# Self assign:
+A = A    # OK
+B = B    # OK
+C = C    # OK
+
 [case testInstantiationAbstractsInTypeForClassMethods]
 from typing import Type
 from abc import abstractmethod

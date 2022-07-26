@@ -2426,16 +2426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
-                rvalue_type = get_proper_type(rvalue_type)
-                lvalue_type = get_proper_type(lvalue_type)
-                if (isinstance(rvalue_type, CallableType) and rvalue_type.is_type_obj() and
-                        (rvalue_type.type_object().is_abstract or
-                         rvalue_type.type_object().is_protocol) and
-                        isinstance(lvalue_type, TypeType) and
-                        isinstance(lvalue_type.item, Instance) and
-                        (lvalue_type.item.type.is_abstract or
-                         lvalue_type.item.type.is_protocol)):
-                    self.msg.concrete_only_assign(lvalue_type, rvalue)
+                if not self.check_concrete_only_assign(lvalue_type, lvalue, rvalue_type, rvalue):
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
@@ -2452,6 +2443,46 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     rvalue_type = remove_instance_last_known_values(rvalue_type)
                 self.infer_variable_type(inferred, lvalue, rvalue_type, rvalue)
             self.check_assignment_to_slots(lvalue)
+
+    def check_concrete_only_assign(self,
+                                   lvalue_type: Optional[Type],
+                                   lvalue: Expression,
+                                   rvalue_type: Type,
+                                   rvalue: Expression) -> bool:
+        if (isinstance(lvalue, NameExpr) and isinstance(rvalue, NameExpr)
+                and lvalue.node == rvalue.node):
+            # This means that we reassign abstract class to itself. Like `A = A`
+            return True
+
+        rvalue_type = get_proper_type(rvalue_type)
+        lvalue_type = get_proper_type(lvalue_type)
+        if not (
+            isinstance(rvalue_type, CallableType) and
+            rvalue_type.is_type_obj() and
+            (rvalue_type.type_object().is_abstract or
+                rvalue_type.type_object().is_protocol)):
+            return True
+
+        lvalue_is_a_type = (
+            isinstance(lvalue_type, TypeType) and
+            isinstance(lvalue_type.item, Instance) and
+            (lvalue_type.item.type.is_abstract or
+                lvalue_type.item.type.is_protocol)
+        )
+
+        lvalue_is_a_callable = False
+        if isinstance(lvalue_type, CallableType):
+            ret_type = get_proper_type(lvalue_type.ret_type)
+            lvalue_is_a_callable = (
+                isinstance(ret_type, Instance) and
+                (ret_type.type.is_abstract or ret_type.type.is_protocol)
+            )
+
+        if lvalue_is_a_type or lvalue_is_a_callable:
+            # `lvalue_type` here is either `TypeType` or `CallableType`:
+            self.msg.concrete_only_assign(cast(Type, lvalue_type), rvalue)
+            return False
+        return True
 
     # (type, operator) tuples for augmented assignments supported with partial types
     partial_type_augmented_ops: Final = {
