@@ -349,7 +349,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     # TODO: Use PY_VERSION_HEX and include patchlevel.h
     if cl.has_dict and emitter.capi_version >= (3, 11):
         flags.append("Py_TPFLAGS_MANAGED_DICT")
-    fields["tp_flags"] = "" | ".join(flags)
+    fields["tp_flags"] = " | ".join(flags)
 
     emitter.emit_line(f"static PyTypeObject {emitter.type_struct_name(cl)}_template_ = {{")
     emitter.emit_line("PyVarObject_HEAD_INIT(NULL, 0)")
