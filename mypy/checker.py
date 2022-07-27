@@ -1217,7 +1217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if self.options.warn_no_return and not unreachable:
+            if not unreachable and not body_is_trivial:
                 if defn.is_generator or is_named_instance(
                     self.return_types[-1], "typing.AwaitableGenerator"
                 ):
@@ -1228,17 +1228,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return_type = self.get_coroutine_return_type(self.return_types[-1])
                 else:
                     return_type = self.return_types[-1]
-
                 return_type = get_proper_type(return_type)
-                if not isinstance(return_type, (NoneType, AnyType)) and not body_is_trivial:
-                    # Control flow fell off the end of a function that was
-                    # declared to return a non-None type and is not
-                    # entirely pass/Ellipsis/raise NotImplementedError.
-                    if isinstance(return_type, UninhabitedType):
-                        # This is a NoReturn function
-                        self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
-                    else:
-                        self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+
+                if self.options.warn_no_return:
+                    if not isinstance(return_type, (NoneType, AnyType)):
+                        # Control flow fell off the end of a function that was
+                        # declared to return a non-None type and is not
+                        # entirely pass/Ellipsis/raise NotImplementedError.
+                        if isinstance(return_type, UninhabitedType):
+                            # This is a NoReturn function
+                            self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                        else:
+                            self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+                else:
+                    # similar to code in check_return_stmt
+                    self.check_subtype(
+                        subtype_label="implicitly returns",
+                        subtype=NoneType(),
+                        supertype_label="expected",
+                        supertype=return_type,
+                        context=defn,
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE,
+                    )
 
             self.return_types.pop()
 
