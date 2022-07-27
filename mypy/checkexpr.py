@@ -2591,9 +2591,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
                 if isinstance(e.left, StrExpr):
                     return self.strfrm_checker.check_str_interpolation(e.left, e.right)
-            elif pyversion[0] == 2:
-                if isinstance(e.left, (StrExpr, BytesExpr, UnicodeExpr)):
-                    return self.strfrm_checker.check_str_interpolation(e.left, e.right)
         left_type = self.accept(e.left)
 
         proper_left_type = get_proper_type(left_type)
