@@ -11,113 +11,111 @@ example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
 from contextlib import contextmanager
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 
-from mypyc.irbuild.prepare import RegisterImplInfo
-from typing import Callable, Dict, List, Tuple, Optional, Union, Sequence, Set, Any, Iterator
-from typing_extensions import overload, Final
+from typing_extensions import Final, overload
+
 from mypy.backports import OrderedDict
-
 from mypy.build import Graph
+from mypy.maptype import map_instance_to_supertype
 from mypy.nodes import (
-    MypyFile,
-    SymbolNode,
-    Statement,
-    OpExpr,
-    IntExpr,
-    NameExpr,
+    ARG_NAMED,
+    ARG_POS,
+    GDEF,
     LDEF,
-    Var,
-    UnaryExpr,
+    ArgKind,
     CallExpr,
-    IndexExpr,
+    Decorator,
     Expression,
-    MemberExpr,
-    RefExpr,
+    FuncDef,
+    IndexExpr,
+    IntExpr,
     Lvalue,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    OpExpr,
+    OverloadedFuncDef,
+    RefExpr,
+    StarExpr,
+    Statement,
+    SymbolNode,
     TupleExpr,
     TypeInfo,
-    Decorator,
-    OverloadedFuncDef,
-    StarExpr,
-    GDEF,
-    ArgKind,
-    ARG_POS,
-    ARG_NAMED,
-    FuncDef,
+    UnaryExpr,
+    Var,
 )
-from mypy.types import Type, Instance, TupleType, UninhabitedType, get_proper_type
-from mypy.maptype import map_instance_to_supertype
-from mypy.visitor import ExpressionVisitor, StatementVisitor
+from mypy.types import Instance, TupleType, Type, UninhabitedType, get_proper_type
 from mypy.util import split_target
-
-from mypyc.common import TEMP_ATTR_NAME, SELF_NAME
-from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
+from mypy.visitor import ExpressionVisitor, StatementVisitor
+from mypyc.common import SELF_NAME, TEMP_ATTR_NAME
+from mypyc.crash import catch_errors
+from mypyc.errors import Errors
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
+from mypyc.ir.func_ir import INVALID_FUNC_DEF, FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
-    BasicBlock,
-    Integer,
-    Value,
-    Register,
-    Op,
-    Assign,
-    Branch,
-    Unreachable,
-    TupleGet,
-    GetAttr,
-    SetAttr,
-    LoadStatic,
-    InitStatic,
     NAMESPACE_MODULE,
+    Assign,
+    BasicBlock,
+    Branch,
+    GetAttr,
+    InitStatic,
+    Integer,
+    LoadStatic,
+    Op,
     RaiseStandardError,
+    Register,
+    SetAttr,
+    TupleGet,
+    Unreachable,
+    Value,
 )
 from mypyc.ir.rtypes import (
-    RType,
-    RTuple,
     RInstance,
+    RTuple,
+    RType,
     c_int_rprimitive,
-    int_rprimitive,
-    dict_rprimitive,
-    none_rprimitive,
-    is_none_rprimitive,
-    object_rprimitive,
-    is_object_rprimitive,
-    str_rprimitive,
-    is_list_rprimitive,
-    is_tuple_rprimitive,
     c_pyssize_t_rprimitive,
+    dict_rprimitive,
+    int_rprimitive,
+    is_list_rprimitive,
+    is_none_rprimitive,
+    is_object_rprimitive,
+    is_tuple_rprimitive,
+    none_rprimitive,
+    object_rprimitive,
+    str_rprimitive,
 )
-from mypyc.ir.func_ir import FuncIR, INVALID_FUNC_DEF, RuntimeArg, FuncSignature, FuncDecl
-from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.registry import CFunctionDescription, function_ops
-from mypyc.primitives.list_ops import to_list, list_pop_last, list_get_item_unsafe_op
+from mypyc.irbuild.context import FuncInfo, ImplicitClass
+from mypyc.irbuild.ll_builder import LowLevelIRBuilder
+from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.nonlocalcontrol import (
+    BaseNonlocalControl,
+    GeneratorNonlocalControl,
+    LoopNonlocalControl,
+    NonlocalControl,
+)
+from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
+from mypyc.irbuild.prepare import RegisterImplInfo
+from mypyc.irbuild.targets import (
+    AssignmentTarget,
+    AssignmentTargetAttr,
+    AssignmentTargetIndex,
+    AssignmentTargetRegister,
+    AssignmentTargetTuple,
+)
+from mypyc.irbuild.util import is_constant
+from mypyc.options import CompilerOptions
 from mypyc.primitives.dict_ops import dict_get_item_op, dict_set_item_op
-from mypyc.primitives.generic_ops import py_setattr_op, iter_op, next_op
+from mypyc.primitives.generic_ops import iter_op, next_op, py_setattr_op
+from mypyc.primitives.list_ops import list_get_item_unsafe_op, list_pop_last, to_list
 from mypyc.primitives.misc_ops import (
-    import_op,
     check_unpack_count_op,
     get_module_dict_op,
     import_extra_args_op,
+    import_op,
 )
-from mypyc.crash import catch_errors
-from mypyc.options import CompilerOptions
-from mypyc.errors import Errors
-from mypyc.irbuild.nonlocalcontrol import (
-    NonlocalControl,
-    BaseNonlocalControl,
-    LoopNonlocalControl,
-    GeneratorNonlocalControl,
-)
-from mypyc.irbuild.targets import (
-    AssignmentTarget,
-    AssignmentTargetRegister,
-    AssignmentTargetIndex,
-    AssignmentTargetAttr,
-    AssignmentTargetTuple,
-)
-from mypyc.irbuild.context import FuncInfo, ImplicitClass
-from mypyc.irbuild.mapper import Mapper
-from mypyc.irbuild.ll_builder import LowLevelIRBuilder
-from mypyc.irbuild.util import is_constant
-
+from mypyc.primitives.registry import CFunctionDescription, function_ops
 
 # These int binary operations can borrow their operands safely, since the
 # primitives take this into consideration.

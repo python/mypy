@@ -1,30 +1,30 @@
 from typing import Any, cast
 
+from mypy.type_visitor import TypeVisitor
 from mypy.types import (
-    ProperType,
-    UnboundType,
     AnyType,
-    NoneType,
-    UninhabitedType,
-    ErasedType,
+    CallableType,
     DeletedType,
+    ErasedType,
     Instance,
-    TypeVarType,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
     ParamSpecType,
     PartialType,
-    CallableType,
+    ProperType,
     TupleType,
-    TypedDictType,
-    LiteralType,
-    UnionType,
-    Overloaded,
-    TypeType,
     TypeAliasType,
-    UnpackType,
-    Parameters,
+    TypedDictType,
+    TypeType,
     TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
 )
-from mypy.type_visitor import TypeVisitor
 
 
 def copy_type(t: ProperType) -> ProperType:

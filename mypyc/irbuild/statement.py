@@ -6,77 +6,76 @@ and mypyc.irbuild.builder.
 A few statements are transformed in mypyc.irbuild.function (yield, for example).
 """
 
-from typing import Optional, List, Tuple, Sequence, Callable
 import importlib.util
+from typing import Callable, List, Optional, Sequence, Tuple
 
 from mypy.nodes import (
-    Block,
-    ExpressionStmt,
-    ReturnStmt,
+    AssertStmt,
     AssignmentStmt,
-    OperatorAssignmentStmt,
-    IfStmt,
-    WhileStmt,
-    ForStmt,
+    Block,
     BreakStmt,
     ContinueStmt,
-    RaiseStmt,
-    TryStmt,
-    WithStmt,
-    AssertStmt,
     DelStmt,
     Expression,
+    ExpressionStmt,
+    ForStmt,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    ListExpr,
+    Lvalue,
+    OperatorAssignmentStmt,
+    RaiseStmt,
+    ReturnStmt,
+    StarExpr,
     StrExpr,
     TempNode,
-    Lvalue,
-    Import,
-    ImportFrom,
-    ImportAll,
+    TryStmt,
     TupleExpr,
-    ListExpr,
-    StarExpr,
+    WhileStmt,
+    WithStmt,
 )
-
 from mypyc.ir.ops import (
-    Assign,
-    Unreachable,
-    RaiseStandardError,
-    LoadErrorValue,
-    BasicBlock,
-    TupleGet,
-    Value,
-    Register,
-    Branch,
     NO_TRACEBACK_LINE_NO,
+    Assign,
+    BasicBlock,
+    Branch,
+    LoadErrorValue,
+    RaiseStandardError,
+    Register,
+    TupleGet,
+    Unreachable,
+    Value,
 )
 from mypyc.ir.rtypes import RInstance, exc_rtuple, is_tagged
-from mypyc.primitives.generic_ops import py_delattr_op
-from mypyc.primitives.misc_ops import type_op, import_from_op
-from mypyc.primitives.exc_ops import (
-    raise_exception_op,
-    reraise_exception_op,
-    error_catch_op,
-    exc_matches_op,
-    restore_exc_info_op,
-    get_exc_value_op,
-    keep_propagating_op,
-    get_exc_info_op,
-)
-from mypyc.irbuild.targets import (
-    AssignmentTarget,
-    AssignmentTargetRegister,
-    AssignmentTargetIndex,
-    AssignmentTargetAttr,
-    AssignmentTargetTuple,
-)
+from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
+from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.for_helpers import for_loop_helper
 from mypyc.irbuild.nonlocalcontrol import (
     ExceptNonlocalControl,
     FinallyNonlocalControl,
     TryFinallyNonlocalControl,
 )
-from mypyc.irbuild.for_helpers import for_loop_helper
-from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
-from mypyc.irbuild.ast_helpers import process_conditional, is_borrow_friendly_expr
+from mypyc.irbuild.targets import (
+    AssignmentTarget,
+    AssignmentTargetAttr,
+    AssignmentTargetIndex,
+    AssignmentTargetRegister,
+    AssignmentTargetTuple,
+)
+from mypyc.primitives.exc_ops import (
+    error_catch_op,
+    exc_matches_op,
+    get_exc_info_op,
+    get_exc_value_op,
+    keep_propagating_op,
+    raise_exception_op,
+    reraise_exception_op,
+    restore_exc_info_op,
+)
+from mypyc.primitives.generic_ops import py_delattr_op
+from mypyc.primitives.misc_ops import import_from_op, type_op
 
 GenFunc = Callable[[], None]
 

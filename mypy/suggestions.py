@@ -22,77 +22,75 @@ Other things:
  * No understanding of type variables at *all*
 """
 
-from typing import (
-    List,
-    Optional,
-    Tuple,
-    Dict,
-    Callable,
-    Union,
-    NamedTuple,
-    TypeVar,
-    Iterator,
-    cast,
-)
-from typing_extensions import TypedDict
-
-from mypy.state import state
-from mypy.types import (
-    Type,
-    AnyType,
-    TypeOfAny,
-    CallableType,
-    UnionType,
-    NoneType,
-    Instance,
-    TupleType,
-    TypeVarType,
-    FunctionLike,
-    UninhabitedType,
-    TypeStrVisitor,
-    TypeTranslator,
-    is_optional,
-    remove_optional,
-    ProperType,
-    get_proper_type,
-    TypedDictType,
-    TypeAliasType,
-)
-from mypy.build import State, Graph
-from mypy.nodes import (
-    ArgKind,
-    ARG_STAR,
-    ARG_STAR2,
-    FuncDef,
-    MypyFile,
-    SymbolTable,
-    Decorator,
-    RefExpr,
-    SymbolNode,
-    TypeInfo,
-    Expression,
-    ReturnStmt,
-    CallExpr,
-    reverse_builtin_aliases,
-)
-from mypy.server.update import FineGrainedBuildManager
-from mypy.util import split_target
-from mypy.find_sources import SourceFinder, InvalidSourceList
-from mypy.modulefinder import PYTHON_EXTENSIONS
-from mypy.plugin import Plugin, FunctionContext, MethodContext
-from mypy.traverser import TraverserVisitor
-from mypy.checkexpr import has_any_type, map_actuals_to_formals
-
-from mypy.join import join_type_list
-from mypy.meet import meet_type_list
-from mypy.sametypes import is_same_type
-from mypy.typeops import make_simplified_union
-
-from contextlib import contextmanager
-
 import itertools
 import json
 import os
+from contextlib import contextmanager
+from typing import (
+    Callable,
+    Dict,
+    Iterator,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
+)
+
+from typing_extensions import TypedDict
+
+from mypy.build import Graph, State
+from mypy.checkexpr import has_any_type, map_actuals_to_formals
+from mypy.find_sources import InvalidSourceList, SourceFinder
+from mypy.join import join_type_list
+from mypy.meet import meet_type_list
+from mypy.modulefinder import PYTHON_EXTENSIONS
+from mypy.nodes import (
+    ARG_STAR,
+    ARG_STAR2,
+    ArgKind,
+    CallExpr,
+    Decorator,
+    Expression,
+    FuncDef,
+    MypyFile,
+    RefExpr,
+    ReturnStmt,
+    SymbolNode,
+    SymbolTable,
+    TypeInfo,
+    reverse_builtin_aliases,
+)
+from mypy.plugin import FunctionContext, MethodContext, Plugin
+from mypy.sametypes import is_same_type
+from mypy.server.update import FineGrainedBuildManager
+from mypy.state import state
+from mypy.traverser import TraverserVisitor
+from mypy.typeops import make_simplified_union
+from mypy.types import (
+    AnyType,
+    CallableType,
+    FunctionLike,
+    Instance,
+    NoneType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeStrVisitor,
+    TypeTranslator,
+    TypeVarType,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
+    is_optional,
+    remove_optional,
+)
+from mypy.util import split_target
 
 
 class PyAnnotateSignature(TypedDict):

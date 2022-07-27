@@ -2,41 +2,41 @@
 
 from typing import Optional
 
+from mypy.fastparse import parse_type_string
 from mypy.nodes import (
-    Expression,
-    NameExpr,
-    MemberExpr,
-    IndexExpr,
-    RefExpr,
-    TupleExpr,
-    IntExpr,
-    FloatExpr,
-    UnaryExpr,
-    ComplexExpr,
-    ListExpr,
-    StrExpr,
     BytesExpr,
-    UnicodeExpr,
-    EllipsisExpr,
     CallExpr,
+    ComplexExpr,
+    EllipsisExpr,
+    Expression,
+    FloatExpr,
+    IndexExpr,
+    IntExpr,
+    ListExpr,
+    MemberExpr,
+    NameExpr,
     OpExpr,
+    RefExpr,
+    StrExpr,
+    TupleExpr,
+    UnaryExpr,
+    UnicodeExpr,
     get_member_expr_fullname,
 )
-from mypy.fastparse import parse_type_string
+from mypy.options import Options
 from mypy.types import (
-    Type,
-    UnboundType,
-    TypeList,
-    EllipsisType,
+    ANNOTATED_TYPE_NAMES,
     AnyType,
     CallableArgument,
-    TypeOfAny,
-    RawExpressionType,
+    EllipsisType,
     ProperType,
+    RawExpressionType,
+    Type,
+    TypeList,
+    TypeOfAny,
+    UnboundType,
     UnionType,
-    ANNOTATED_TYPE_NAMES,
 )
-from mypy.options import Options
 
 
 class TypeTranslationError(Exception):

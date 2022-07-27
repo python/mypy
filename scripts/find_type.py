@@ -23,12 +23,12 @@
 #
 # For an Emacs example, see misc/macs.el.
 
-from typing import List, Tuple, Optional
+import os.path
+import re
 import subprocess
 import sys
 import tempfile
-import os.path
-import re
+from typing import List, Optional, Tuple
 
 REVEAL_TYPE_START = "reveal_type("
 REVEAL_TYPE_END = ")"

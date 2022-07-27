@@ -1,4 +1,3 @@
-from mypyc.errors import Errors
 from typing import Dict, List, Set
 
 from mypy.nodes import (
@@ -7,13 +6,14 @@ from mypy.nodes import (
     FuncDef,
     FuncItem,
     LambdaExpr,
+    MemberExpr,
+    MypyFile,
     NameExpr,
     SymbolNode,
     Var,
-    MemberExpr,
-    MypyFile,
 )
 from mypy.traverser import TraverserVisitor
+from mypyc.errors import Errors
 
 
 class PreBuildVisitor(TraverserVisitor):

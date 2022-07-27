@@ -1,167 +1,162 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
-from mypy.backports import OrderedDict
-from contextlib import contextmanager
 import itertools
-from typing import cast, Dict, Set, List, Tuple, Callable, Union, Optional, Sequence, Iterator
-from typing_extensions import ClassVar, Final, overload, TypeAlias as _TypeAlias
+from contextlib import contextmanager
+from typing import Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
 
-from mypy.errors import report_internal_error, ErrorWatcher
-from mypy.typeanal import (
-    has_any_from_unimported_type,
-    check_for_explicit_any,
-    set_any_tvars,
-    expand_type_alias,
-    make_optional_type,
-)
-from mypy.semanal_enum import ENUM_BASES
-from mypy.traverser import has_await_expression
-from mypy.types import (
-    Type,
-    AnyType,
-    CallableType,
-    Overloaded,
-    NoneType,
-    TypeVarType,
-    TupleType,
-    TypedDictType,
-    Instance,
-    ErasedType,
-    UnionType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    TypeType,
-    TypeOfAny,
-    LiteralType,
-    LiteralValue,
-    is_named_instance,
-    FunctionLike,
-    ParamSpecType,
-    ParamSpecFlavor,
-    StarType,
-    is_optional,
-    remove_optional,
-    is_generic_instance,
-    get_proper_type,
-    ProperType,
-    get_proper_types,
-    flatten_nested_unions,
-    LITERAL_TYPE_NAMES,
-)
+from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias, overload
+
+import mypy.checker
+import mypy.errorcodes as codes
+from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
+from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
+from mypy.backports import OrderedDict
+from mypy.checkmember import analyze_member_access, type_object_type
+from mypy.checkstrformat import StringFormatterChecker
+from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
+from mypy.errors import ErrorWatcher, report_internal_error
+from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
+from mypy.infer import ArgumentInferContext, infer_function_type_arguments, infer_type_arguments
+from mypy.literals import literal
+from mypy.maptype import map_instance_to_supertype
+from mypy.meet import is_overlapping_types, narrow_declared_type
+from mypy.message_registry import ErrorMessage
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
-    AssertTypeExpr,
-    NameExpr,
-    RefExpr,
-    Var,
-    FuncDef,
-    OverloadedFuncDef,
-    TypeInfo,
-    CallExpr,
-    MemberExpr,
-    IntExpr,
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    FloatExpr,
-    OpExpr,
-    UnaryExpr,
-    IndexExpr,
-    CastExpr,
-    RevealExpr,
-    TypeApplication,
-    ListExpr,
-    TupleExpr,
-    DictExpr,
-    LambdaExpr,
-    SuperExpr,
-    SliceExpr,
-    Context,
-    Expression,
-    ListComprehension,
-    GeneratorExpr,
-    SetExpr,
-    MypyFile,
-    Decorator,
-    ConditionalExpr,
-    ComparisonExpr,
-    TempNode,
-    SetComprehension,
-    AssignmentExpr,
-    DictionaryComprehension,
-    ComplexExpr,
-    EllipsisExpr,
-    StarExpr,
-    AwaitExpr,
-    YieldExpr,
-    YieldFromExpr,
-    TypedDictExpr,
-    PromoteExpr,
-    NewTypeExpr,
-    NamedTupleExpr,
-    TypeVarExpr,
-    TypeAliasExpr,
-    BackquoteExpr,
-    EnumCallExpr,
-    TypeAlias,
-    SymbolNode,
-    PlaceholderNode,
-    ParamSpecExpr,
-    TypeVarTupleExpr,
-    ArgKind,
-    ARG_POS,
     ARG_NAMED,
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
     LITERAL_TYPE,
     REVEAL_TYPE,
+    ArgKind,
+    AssertTypeExpr,
+    AssignmentExpr,
+    AwaitExpr,
+    BackquoteExpr,
+    BytesExpr,
+    CallExpr,
+    CastExpr,
+    ComparisonExpr,
+    ComplexExpr,
+    ConditionalExpr,
+    Context,
+    Decorator,
+    DictExpr,
+    DictionaryComprehension,
+    EllipsisExpr,
+    EnumCallExpr,
+    Expression,
+    FloatExpr,
+    FuncDef,
+    GeneratorExpr,
+    IndexExpr,
+    IntExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    OpExpr,
+    OverloadedFuncDef,
+    ParamSpecExpr,
+    PlaceholderNode,
+    PromoteExpr,
+    RefExpr,
+    RevealExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    StrExpr,
+    SuperExpr,
+    SymbolNode,
+    TempNode,
+    TupleExpr,
+    TypeAlias,
+    TypeAliasExpr,
+    TypeApplication,
+    TypedDictExpr,
+    TypeInfo,
+    TypeVarExpr,
+    TypeVarTupleExpr,
+    UnaryExpr,
+    UnicodeExpr,
+    Var,
+    YieldExpr,
+    YieldFromExpr,
 )
-from mypy.literals import literal
-from mypy import nodes
-from mypy import operators
-import mypy.checker
-from mypy import types
-from mypy.sametypes import is_same_type
-from mypy.erasetype import replace_meta_vars, erase_type, remove_instance_last_known_values
-from mypy.maptype import map_instance_to_supertype
-from mypy.messages import MessageBuilder
-from mypy import message_registry
-from mypy.infer import ArgumentInferContext, infer_type_arguments, infer_function_type_arguments
-from mypy import join
-from mypy.meet import narrow_declared_type, is_overlapping_types
-from mypy.subtypes import is_subtype, is_proper_subtype, is_equivalent, non_method_protocol_members
-from mypy import applytype
-from mypy import erasetype
-from mypy.checkmember import analyze_member_access, type_object_type
-from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.checkstrformat import StringFormatterChecker
-from mypy.expandtype import expand_type, expand_type_by_instance, freshen_function_type_vars
-from mypy.util import split_module_names
-from mypy.typevars import fill_typevars
-from mypy.visitor import ExpressionVisitor
 from mypy.plugin import (
-    Plugin,
-    MethodContext,
-    MethodSigContext,
     FunctionContext,
     FunctionSigContext,
+    MethodContext,
+    MethodSigContext,
+    Plugin,
+)
+from mypy.sametypes import is_same_type
+from mypy.semanal_enum import ENUM_BASES
+from mypy.subtypes import is_equivalent, is_proper_subtype, is_subtype, non_method_protocol_members
+from mypy.traverser import has_await_expression
+from mypy.typeanal import (
+    check_for_explicit_any,
+    expand_type_alias,
+    has_any_from_unimported_type,
+    make_optional_type,
+    set_any_tvars,
 )
 from mypy.typeops import (
-    try_expanding_sum_type_to_union,
-    tuple_fallback,
-    make_simplified_union,
-    true_only,
-    false_only,
-    erase_to_union_or_bound,
-    function_type,
     callable_type,
-    try_getting_str_literals,
     custom_special_method,
+    erase_to_union_or_bound,
+    false_only,
+    function_type,
     is_literal_type_like,
+    make_simplified_union,
     simple_literal_type,
+    true_only,
+    try_expanding_sum_type_to_union,
+    try_getting_str_literals,
+    tuple_fallback,
 )
-from mypy.message_registry import ErrorMessage
-import mypy.errorcodes as codes
+from mypy.types import (
+    LITERAL_TYPE_NAMES,
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    LiteralValue,
+    NoneType,
+    Overloaded,
+    ParamSpecFlavor,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    StarType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarType,
+    UninhabitedType,
+    UnionType,
+    flatten_nested_unions,
+    get_proper_type,
+    get_proper_types,
+    is_generic_instance,
+    is_named_instance,
+    is_optional,
+    remove_optional,
+)
+from mypy.typevars import fill_typevars
+from mypy.util import split_module_names
+from mypy.visitor import ExpressionVisitor
 
 # Type of callback user for checking individual function arguments. See
 # check_args() below for details.

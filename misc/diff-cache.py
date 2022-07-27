@@ -9,7 +9,6 @@ import argparse
 import json
 import os
 import sys
-
 from collections import defaultdict
 from typing import Any, Dict, Optional, Set
 

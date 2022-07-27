@@ -2,22 +2,22 @@
 
 import os
 import shutil
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from mypy import build
 from mypy.build import BuildResult
-from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    Node,
+    UNBOUND_IMPORTED,
+    Expression,
     MypyFile,
+    Node,
     SymbolTable,
     SymbolTableNode,
     TypeInfo,
-    Expression,
-    Var,
     TypeVarExpr,
-    UNBOUND_IMPORTED,
+    Var,
 )
 from mypy.server.subexpr import get_subexpressions
 from mypy.server.update import FineGrainedBuildManager
@@ -25,9 +25,8 @@ from mypy.strconv import StrConv
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages, parse_options
-from mypy.types import TypeStrVisitor, Type
-from mypy.util import short_type, IdMapper
-
+from mypy.types import Type, TypeStrVisitor
+from mypy.util import IdMapper, short_type
 
 # Which data structures to dump in a test case?
 SYMTABLE = "SYMTABLE"

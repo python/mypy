@@ -8,98 +8,97 @@ with format args, should be defined as constants in mypy.message_registry.
 Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
-from contextlib import contextmanager
-
-from mypy.backports import OrderedDict
-import re
 import difflib
+import re
+from contextlib import contextmanager
 from textwrap import dedent
-
 from typing import (
-    cast,
-    List,
-    Dict,
     Any,
-    Sequence,
+    Callable,
+    Dict,
     Iterable,
     Iterator,
-    Tuple,
-    Set,
+    List,
     Optional,
+    Sequence,
+    Set,
+    Tuple,
     Union,
-    Callable,
+    cast,
 )
+
 from typing_extensions import Final
 
+from mypy import errorcodes as codes, message_registry
+from mypy.backports import OrderedDict
 from mypy.erasetype import erase_type
-from mypy.errors import Errors, ErrorWatcher, ErrorInfo
+from mypy.errorcodes import ErrorCode
+from mypy.errors import ErrorInfo, Errors, ErrorWatcher
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_NAMED_OPT,
+    ARG_OPT,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    CONTRAVARIANT,
+    COVARIANT,
+    SYMBOL_FUNCBASE_TYPES,
+    ArgKind,
+    CallExpr,
+    ClassDef,
+    Context,
+    Expression,
+    FuncDef,
+    IndexExpr,
+    MypyFile,
+    NameExpr,
+    ReturnStmt,
+    StrExpr,
+    SymbolNode,
+    SymbolTable,
+    TypeInfo,
+    Var,
+    reverse_builtin_aliases,
+)
+from mypy.operators import op_methods, op_methods_to_symbols
+from mypy.sametypes import is_same_type
+from mypy.subtypes import (
+    IS_CLASS_OR_STATIC,
+    IS_CLASSVAR,
+    IS_SETTABLE,
+    find_member,
+    get_member_flags,
+    is_subtype,
+)
+from mypy.typeops import separate_union_literals
 from mypy.types import (
-    Type,
-    CallableType,
-    Instance,
-    TypeVarType,
-    TupleType,
-    TypedDictType,
-    LiteralType,
-    UnionType,
-    NoneType,
     AnyType,
-    Overloaded,
-    FunctionLike,
+    CallableType,
     DeletedType,
-    TypeType,
-    UninhabitedType,
-    TypeOfAny,
-    UnboundType,
-    PartialType,
-    get_proper_type,
-    ProperType,
-    ParamSpecType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
     Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
     get_proper_types,
 )
 from mypy.typetraverser import TypeTraverserVisitor
-from mypy.nodes import (
-    TypeInfo,
-    Context,
-    MypyFile,
-    FuncDef,
-    reverse_builtin_aliases,
-    ArgKind,
-    ARG_POS,
-    ARG_OPT,
-    ARG_NAMED,
-    ARG_NAMED_OPT,
-    ARG_STAR,
-    ARG_STAR2,
-    ReturnStmt,
-    NameExpr,
-    Var,
-    CONTRAVARIANT,
-    COVARIANT,
-    SymbolNode,
-    CallExpr,
-    IndexExpr,
-    StrExpr,
-    SymbolTable,
-    SYMBOL_FUNCBASE_TYPES,
-    ClassDef,
-    Expression,
-)
-from mypy.operators import op_methods, op_methods_to_symbols
-from mypy.subtypes import (
-    is_subtype,
-    find_member,
-    get_member_flags,
-    IS_SETTABLE,
-    IS_CLASSVAR,
-    IS_CLASS_OR_STATIC,
-)
-from mypy.sametypes import is_same_type
-from mypy.typeops import separate_union_literals
-from mypy.util import unmangle, plural_s
-from mypy.errorcodes import ErrorCode
-from mypy import message_registry, errorcodes as codes
+from mypy.util import plural_s, unmangle
 
 TYPES_FOR_UNIMPORTED_HINTS: Final = {
     "typing.Any",

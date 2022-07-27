@@ -11,58 +11,59 @@ implementation simple.
 """
 
 import re
+from typing import Callable, Dict, List, Match, Optional, Pattern, Set, Tuple, Union, cast
 
-from typing import cast, List, Tuple, Dict, Callable, Union, Optional, Pattern, Match, Set
-from typing_extensions import Final, TYPE_CHECKING, TypeAlias as _TypeAlias
+from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
+import mypy.errorcodes as codes
 from mypy.errors import Errors
-from mypy.types import (
-    Type,
-    AnyType,
-    TupleType,
-    Instance,
-    UnionType,
-    TypeOfAny,
-    get_proper_type,
-    TypeVarType,
-    LiteralType,
-    get_proper_types,
-)
 from mypy.nodes import (
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    TupleExpr,
-    DictExpr,
-    Context,
-    Expression,
-    StarExpr,
-    CallExpr,
-    IndexExpr,
-    MemberExpr,
-    TempNode,
+    ARG_NAMED,
     ARG_POS,
     ARG_STAR,
-    ARG_NAMED,
     ARG_STAR2,
-    Node,
-    MypyFile,
+    BytesExpr,
+    CallExpr,
+    Context,
+    DictExpr,
+    Expression,
     ExpressionStmt,
-    NameExpr,
+    IndexExpr,
     IntExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    StarExpr,
+    StrExpr,
+    TempNode,
+    TupleExpr,
+    UnicodeExpr,
 )
-import mypy.errorcodes as codes
+from mypy.types import (
+    AnyType,
+    Instance,
+    LiteralType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeVarType,
+    UnionType,
+    get_proper_type,
+    get_proper_types,
+)
 
 if TYPE_CHECKING:
     # break import cycle only needed for mypy
     import mypy.checker
     import mypy.checkexpr
+
 from mypy import message_registry
-from mypy.messages import MessageBuilder
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import custom_special_method
-from mypy.subtypes import is_subtype
+from mypy.messages import MessageBuilder
 from mypy.parse import parse
+from mypy.subtypes import is_subtype
+from mypy.typeops import custom_special_method
 
 FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
 Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]

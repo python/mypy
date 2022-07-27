@@ -4,95 +4,93 @@ The top-level AST transformation logic is implemented in mypyc.irbuild.visitor
 and mypyc.irbuild.builder.
 """
 
-from typing import List, Optional, Union, Callable, cast
+from typing import Callable, List, Optional, Union, cast
 
 from mypy.nodes import (
-    Expression,
-    NameExpr,
-    MemberExpr,
-    SuperExpr,
-    CallExpr,
-    UnaryExpr,
-    OpExpr,
-    IndexExpr,
-    ConditionalExpr,
-    ComparisonExpr,
-    IntExpr,
-    FloatExpr,
-    ComplexExpr,
-    StrExpr,
-    BytesExpr,
-    EllipsisExpr,
-    ListExpr,
-    TupleExpr,
-    DictExpr,
-    SetExpr,
-    ListComprehension,
-    SetComprehension,
-    DictionaryComprehension,
-    SliceExpr,
-    GeneratorExpr,
-    CastExpr,
-    StarExpr,
-    AssignmentExpr,
-    AssertTypeExpr,
-    Var,
-    RefExpr,
-    MypyFile,
-    TypeInfo,
-    TypeApplication,
-    LDEF,
     ARG_POS,
+    LDEF,
+    AssertTypeExpr,
+    AssignmentExpr,
+    BytesExpr,
+    CallExpr,
+    CastExpr,
+    ComparisonExpr,
+    ComplexExpr,
+    ConditionalExpr,
+    DictExpr,
+    DictionaryComprehension,
+    EllipsisExpr,
+    Expression,
+    FloatExpr,
+    GeneratorExpr,
+    IndexExpr,
+    IntExpr,
+    ListComprehension,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    OpExpr,
+    RefExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    StrExpr,
+    SuperExpr,
+    TupleExpr,
+    TypeApplication,
+    TypeInfo,
+    UnaryExpr,
+    Var,
 )
-from mypy.types import TupleType, Instance, TypeType, ProperType, get_proper_type
-
+from mypy.types import Instance, ProperType, TupleType, TypeType, get_proper_type
 from mypyc.common import MAX_SHORT_INT
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
 from mypyc.ir.ops import (
-    Value,
+    Assign,
+    BasicBlock,
+    LoadAddress,
+    RaiseStandardError,
     Register,
     TupleGet,
     TupleSet,
-    BasicBlock,
-    Assign,
-    LoadAddress,
-    RaiseStandardError,
+    Value,
 )
 from mypyc.ir.rtypes import (
     RTuple,
-    object_rprimitive,
-    is_none_rprimitive,
     int_rprimitive,
     is_int_rprimitive,
     is_list_rprimitive,
+    is_none_rprimitive,
+    object_rprimitive,
 )
-from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD
-from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_printf_style,
-    join_formatted_strings,
-    convert_format_expr_to_str,
-    convert_format_expr_to_bytes,
-    join_formatted_bytes,
-)
-from mypyc.primitives.bytes_ops import bytes_slice_op
-from mypyc.primitives.registry import CFunctionDescription, builtin_names
-from mypyc.primitives.generic_ops import iter_op
-from mypyc.primitives.misc_ops import new_slice_op, ellipsis_op, type_op, get_module_dict_op
-from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
-from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
-from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op, dict_get_item_op
-from mypyc.primitives.set_ops import set_add_op, set_update_op
-from mypyc.primitives.str_ops import str_slice_op
-from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
 from mypyc.irbuild.builder import IRBuilder, int_borrow_friendly_op
+from mypyc.irbuild.constant_fold import constant_fold_expr
 from mypyc.irbuild.for_helpers import (
+    comprehension_helper,
     translate_list_comprehension,
     translate_set_comprehension,
-    comprehension_helper,
 )
-from mypyc.irbuild.constant_fold import constant_fold_expr
-from mypyc.irbuild.ast_helpers import is_borrow_friendly_expr, process_conditional
-
+from mypyc.irbuild.format_str_tokenizer import (
+    convert_format_expr_to_bytes,
+    convert_format_expr_to_str,
+    join_formatted_bytes,
+    join_formatted_strings,
+    tokenizer_printf_style,
+)
+from mypyc.irbuild.specialize import apply_function_specialization, apply_method_specialization
+from mypyc.primitives.bytes_ops import bytes_slice_op
+from mypyc.primitives.dict_ops import dict_get_item_op, dict_new_op, dict_set_item_op
+from mypyc.primitives.generic_ops import iter_op
+from mypyc.primitives.int_ops import int_comparison_op_mapping
+from mypyc.primitives.list_ops import list_append_op, list_extend_op, list_slice_op
+from mypyc.primitives.misc_ops import ellipsis_op, get_module_dict_op, new_slice_op, type_op
+from mypyc.primitives.registry import CFunctionDescription, builtin_names
+from mypyc.primitives.set_ops import set_add_op, set_update_op
+from mypyc.primitives.str_ops import str_slice_op
+from mypyc.primitives.tuple_ops import list_tuple_op, tuple_slice_op
 
 # Name and attribute references
 

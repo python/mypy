@@ -12,59 +12,58 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
-from typing import Callable, Optional, Dict, Tuple, List
+from typing import Callable, Dict, List, Optional, Tuple
 
 from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
     CallExpr,
-    RefExpr,
+    DictExpr,
+    Expression,
+    GeneratorExpr,
+    IntExpr,
+    ListExpr,
     MemberExpr,
     NameExpr,
-    TupleExpr,
-    GeneratorExpr,
-    ListExpr,
-    DictExpr,
+    RefExpr,
     StrExpr,
-    IntExpr,
-    ARG_POS,
-    ARG_NAMED,
-    Expression,
+    TupleExpr,
 )
 from mypy.types import AnyType, TypeOfAny
-
-from mypyc.ir.ops import Value, Register, BasicBlock, Integer, RaiseStandardError, Unreachable
+from mypyc.ir.ops import BasicBlock, Integer, RaiseStandardError, Register, Unreachable, Value
 from mypyc.ir.rtypes import (
-    RType,
     RTuple,
-    str_rprimitive,
-    list_rprimitive,
-    dict_rprimitive,
-    set_rprimitive,
+    RType,
     bool_rprimitive,
     c_int_rprimitive,
+    dict_rprimitive,
     is_dict_rprimitive,
     is_list_rprimitive,
+    list_rprimitive,
+    set_rprimitive,
+    str_rprimitive,
+)
+from mypyc.irbuild.builder import IRBuilder
+from mypyc.irbuild.for_helpers import (
+    comprehension_helper,
+    sequence_from_generator_preallocate_helper,
+    translate_list_comprehension,
+    translate_set_comprehension,
 )
 from mypyc.irbuild.format_str_tokenizer import (
-    tokenizer_format_call,
-    join_formatted_strings,
-    convert_format_expr_to_str,
     FormatOp,
+    convert_format_expr_to_str,
+    join_formatted_strings,
+    tokenizer_format_call,
 )
 from mypyc.primitives.dict_ops import (
-    dict_keys_op,
-    dict_values_op,
     dict_items_op,
+    dict_keys_op,
     dict_setdefault_spec_init_op,
+    dict_values_op,
 )
 from mypyc.primitives.list_ops import new_list_set_item_op
 from mypyc.primitives.tuple_ops import new_tuple_set_item_op
-from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.for_helpers import (
-    translate_list_comprehension,
-    translate_set_comprehension,
-    comprehension_helper,
-    sequence_from_generator_preallocate_helper,
-)
 
 # Specializers are attempted before compiling the arguments to the
 # function.  Specializers can return None to indicate that they failed

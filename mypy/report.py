@@ -1,28 +1,28 @@
 """Classes for producing HTML reports about imprecision."""
 
-from abc import ABCMeta, abstractmethod
 import collections
+import itertools
 import json
 import os
 import shutil
-import tokenize
-import time
 import sys
-import itertools
+import time
+import tokenize
+import typing
+from abc import ABCMeta, abstractmethod
 from operator import attrgetter
+from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple, cast
 from urllib.request import pathname2url
 
-import typing
-from typing import Any, Callable, Dict, List, Optional, Tuple, cast, Iterator
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
-from mypy.nodes import MypyFile, Expression, FuncDef
 from mypy import stats
+from mypy.defaults import REPORTER_NAMES
+from mypy.nodes import Expression, FuncDef, MypyFile
 from mypy.options import Options
 from mypy.traverser import TraverserVisitor
 from mypy.types import Type, TypeOfAny
 from mypy.version import __version__
-from mypy.defaults import REPORTER_NAMES
 
 try:
     from lxml import etree  # type: ignore

@@ -1,9 +1,9 @@
 import unittest
 from typing import List
 
-from mypyc.ir.ops import BasicBlock, Register, Op, Integer, IntOp, Unreachable, Assign
-from mypyc.ir.rtypes import int_rprimitive
+from mypyc.ir.ops import Assign, BasicBlock, Integer, IntOp, Op, Register, Unreachable
 from mypyc.ir.pprint import generate_names_for_ir
+from mypyc.ir.rtypes import int_rprimitive
 
 
 def register(name: str) -> Register:

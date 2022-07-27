@@ -1,47 +1,46 @@
 import io
 import os.path
+import re
 import shutil
 import sys
 import tempfile
-import re
 import unittest
 from types import ModuleType
+from typing import Any, List, Optional, Tuple
 
-from typing import Any, List, Tuple, Optional
-
-from mypy.test.helpers import assert_equal, assert_string_arrays_equal, local_sys_path_set
-from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.errors import CompileError
-from mypy.stubgen import (
-    generate_stubs,
-    parse_options,
-    Options,
-    collect_build_targets,
-    mypy_options,
-    is_blacklisted_path,
-    is_non_library_module,
-)
-from mypy.stubutil import walk_packages, remove_misplaced_type_comments, common_dir_prefix
-from mypy.stubgenc import (
-    generate_c_type_stub,
-    infer_method_sig,
-    generate_c_function_stub,
-    generate_c_property_stub,
-    is_c_property_readonly,
-)
+from mypy.moduleinspect import InspectError, ModuleInspect
 from mypy.stubdoc import (
-    parse_signature,
-    parse_all_signatures,
+    ArgSig,
+    FunctionSig,
     build_signature,
     find_unique_signatures,
-    infer_sig_from_docstring,
-    infer_prop_type_from_docstring,
-    FunctionSig,
-    ArgSig,
     infer_arg_sig_from_anon_docstring,
+    infer_prop_type_from_docstring,
+    infer_sig_from_docstring,
     is_valid_type,
+    parse_all_signatures,
+    parse_signature,
 )
-from mypy.moduleinspect import ModuleInspect, InspectError
+from mypy.stubgen import (
+    Options,
+    collect_build_targets,
+    generate_stubs,
+    is_blacklisted_path,
+    is_non_library_module,
+    mypy_options,
+    parse_options,
+)
+from mypy.stubgenc import (
+    generate_c_function_stub,
+    generate_c_property_stub,
+    generate_c_type_stub,
+    infer_method_sig,
+    is_c_property_readonly,
+)
+from mypy.stubutil import common_dir_prefix, remove_misplaced_type_comments, walk_packages
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.helpers import assert_equal, assert_string_arrays_equal, local_sys_path_set
 
 
 class StubgenCmdLineSuite(unittest.TestCase):

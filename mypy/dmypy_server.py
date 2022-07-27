@@ -15,26 +15,26 @@ import sys
 import time
 import traceback
 from contextlib import redirect_stderr, redirect_stdout
+from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
-from typing import AbstractSet, Any, Callable, Dict, List, Optional, Sequence, Tuple, Set
 from typing_extensions import Final
 
 import mypy.build
 import mypy.errors
 import mypy.main
-from mypy.find_sources import create_source_list, InvalidSourceList
-from mypy.inspections import InspectionEngine
-from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
 from mypy.dmypy_util import receive
-from mypy.ipc import IPCServer
+from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.fswatcher import FileSystemWatcher, FileData
-from mypy.modulefinder import BuildSource, compute_search_paths, FindModuleCache, SearchPaths
+from mypy.fswatcher import FileData, FileSystemWatcher
+from mypy.inspections import InspectionEngine
+from mypy.ipc import IPCServer
+from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, compute_search_paths
 from mypy.options import Options
-from mypy.suggestions import SuggestionFailure, SuggestionEngine
+from mypy.server.update import FineGrainedBuildManager, refresh_suppressed_submodules
+from mypy.suggestions import SuggestionEngine, SuggestionFailure
 from mypy.typestate import reset_global_state
-from mypy.version import __version__
 from mypy.util import FancyFormatter, count_stats
+from mypy.version import __version__
 
 MEM_PROFILE: Final = False  # If True, dump memory profile after initialization
 

@@ -1,10 +1,10 @@
 import argparse
 import configparser
 import glob as fileglob
-from io import StringIO
 import os
 import re
 import sys
+from io import StringIO
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -15,6 +15,7 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Iterable,
     List,
     Mapping,
     MutableMapping,
@@ -23,12 +24,12 @@ from typing import (
     TextIO,
     Tuple,
     Union,
-    Iterable,
 )
+
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import defaults
-from mypy.options import Options, PER_MODULE_OPTIONS
+from mypy.options import PER_MODULE_OPTIONS, Options
 
 _CONFIG_VALUE_TYPES: _TypeAlias = Union[
     str, bool, int, float, Dict[str, str], List[str], Tuple[int, int],

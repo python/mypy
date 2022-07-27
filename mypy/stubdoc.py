@@ -3,21 +3,21 @@
 This module provides several functions to generate better stubs using
 docstrings and Sphinx docs (.rst files).
 """
-import re
-import io
 import contextlib
+import io
+import re
 import tokenize
-
 from typing import (
-    Optional,
+    Any,
+    List,
     MutableMapping,
     MutableSequence,
-    List,
+    NamedTuple,
+    Optional,
     Sequence,
     Tuple,
-    NamedTuple,
-    Any,
 )
+
 from typing_extensions import Final
 
 # Type alias for signatures strings in format ('func_name', '(arg, opt_arg=False)').

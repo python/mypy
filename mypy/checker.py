@@ -1,223 +1,219 @@
 """Mypy type checker."""
 
-import itertools
 import fnmatch
+import itertools
 from collections import defaultdict
 from contextlib import contextmanager
-
 from typing import (
+    AbstractSet,
     Any,
+    Callable,
     Dict,
-    Set,
+    Generic,
+    Iterable,
+    Iterator,
     List,
-    cast,
+    Mapping,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
     Tuple,
     TypeVar,
     Union,
-    Optional,
-    NamedTuple,
-    Iterator,
-    Iterable,
-    Sequence,
-    Mapping,
-    Generic,
-    AbstractSet,
-    Callable,
+    cast,
     overload,
 )
+
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
+import mypy.checkexpr
+from mypy import errorcodes as codes, message_registry, nodes, operators
 from mypy.backports import nullcontext
-from mypy.errorcodes import TYPE_VAR
-from mypy.errors import Errors, report_internal_error, ErrorWatcher
-from mypy.nodes import (
-    SymbolTable,
-    Statement,
-    MypyFile,
-    Var,
-    Expression,
-    Lvalue,
-    Node,
-    OverloadedFuncDef,
-    FuncDef,
-    FuncItem,
-    FuncBase,
-    TypeInfo,
-    ClassDef,
-    Block,
-    AssignmentStmt,
-    NameExpr,
-    MemberExpr,
-    IndexExpr,
-    TupleExpr,
-    ListExpr,
-    ExpressionStmt,
-    ReturnStmt,
-    IfStmt,
-    WhileStmt,
-    OperatorAssignmentStmt,
-    WithStmt,
-    AssertStmt,
-    RaiseStmt,
-    TryStmt,
-    ForStmt,
-    DelStmt,
-    CallExpr,
-    IntExpr,
-    StrExpr,
-    UnicodeExpr,
-    OpExpr,
-    UnaryExpr,
-    LambdaExpr,
-    TempNode,
-    SymbolTableNode,
-    Context,
-    Decorator,
-    PrintStmt,
-    BreakStmt,
-    PassStmt,
-    ContinueStmt,
-    ComparisonExpr,
-    StarExpr,
-    EllipsisExpr,
-    RefExpr,
-    PromoteExpr,
-    Import,
-    ImportFrom,
-    ImportAll,
-    ImportBase,
-    TypeAlias,
-    ARG_POS,
-    ARG_STAR,
-    ARG_NAMED,
-    LITERAL_TYPE,
-    LDEF,
-    MDEF,
-    GDEF,
-    CONTRAVARIANT,
-    COVARIANT,
-    INVARIANT,
-    TypeVarExpr,
-    AssignmentExpr,
-    is_final_node,
-    MatchStmt,
+from mypy.binder import ConditionalTypeBinder, get_declaration
+from mypy.checkmember import (
+    MemberContext,
+    analyze_decorator_or_funcbase_access,
+    analyze_descriptor_access,
+    analyze_member_access,
+    type_object_type,
 )
-from mypy import nodes
-from mypy import operators
-from mypy.literals import literal, literal_hash, Key
-from mypy.typeanal import has_any_from_unimported_type, check_for_explicit_any, make_optional_type
-from mypy.types import (
-    Type,
-    AnyType,
-    CallableType,
-    FunctionLike,
-    Overloaded,
-    TupleType,
-    TypedDictType,
-    Instance,
-    NoneType,
-    strip_type,
-    TypeType,
-    TypeOfAny,
-    UnionType,
-    TypeVarId,
-    TypeVarType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    is_named_instance,
-    union_items,
-    TypeQuery,
-    LiteralType,
-    is_optional,
-    remove_optional,
-    TypeTranslator,
-    StarType,
-    get_proper_type,
-    ProperType,
-    get_proper_types,
-    is_literal_type,
-    TypeAliasType,
-    TypeGuardedType,
-    ParamSpecType,
-    OVERLOAD_NAMES,
-    UnboundType,
-)
-from mypy.typetraverser import TypeTraverserVisitor
-from mypy.sametypes import is_same_type
+from mypy.checkpattern import PatternChecker
+from mypy.constraints import SUPERTYPE_OF
+from mypy.erasetype import erase_type, erase_typevars, remove_instance_last_known_values
+from mypy.errorcodes import TYPE_VAR, UNUSED_AWAITABLE, UNUSED_COROUTINE, ErrorCode
+from mypy.errors import Errors, ErrorWatcher, report_internal_error
+from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.join import join_types
+from mypy.literals import Key, literal, literal_hash
+from mypy.maptype import map_instance_to_supertype
+from mypy.meet import is_overlapping_erased_types, is_overlapping_types
+from mypy.message_registry import ErrorMessage
 from mypy.messages import (
+    SUGGESTED_TEST_FIXTURES,
     MessageBuilder,
-    make_inferred_type_note,
     append_invariance_notes,
-    pretty_seq,
     format_type,
     format_type_bare,
     format_type_distinctly,
-    SUGGESTED_TEST_FIXTURES,
+    make_inferred_type_note,
+    pretty_seq,
 )
-import mypy.checkexpr
-from mypy.checkmember import (
-    MemberContext,
-    analyze_member_access,
-    analyze_descriptor_access,
-    type_object_type,
-    analyze_decorator_or_funcbase_access,
+from mypy.mro import MroError, calculate_mro
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
+    ARG_STAR,
+    CONTRAVARIANT,
+    COVARIANT,
+    GDEF,
+    INVARIANT,
+    LDEF,
+    LITERAL_TYPE,
+    MDEF,
+    AssertStmt,
+    AssignmentExpr,
+    AssignmentStmt,
+    Block,
+    BreakStmt,
+    CallExpr,
+    ClassDef,
+    ComparisonExpr,
+    Context,
+    ContinueStmt,
+    Decorator,
+    DelStmt,
+    EllipsisExpr,
+    Expression,
+    ExpressionStmt,
+    ForStmt,
+    FuncBase,
+    FuncDef,
+    FuncItem,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    LambdaExpr,
+    ListExpr,
+    Lvalue,
+    MatchStmt,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OperatorAssignmentStmt,
+    OpExpr,
+    OverloadedFuncDef,
+    PassStmt,
+    PrintStmt,
+    PromoteExpr,
+    RaiseStmt,
+    RefExpr,
+    ReturnStmt,
+    StarExpr,
+    Statement,
+    StrExpr,
+    SymbolTable,
+    SymbolTableNode,
+    TempNode,
+    TryStmt,
+    TupleExpr,
+    TypeAlias,
+    TypeInfo,
+    TypeVarExpr,
+    UnaryExpr,
+    UnicodeExpr,
+    Var,
+    WhileStmt,
+    WithStmt,
+    is_final_node,
 )
-from mypy.checkpattern import PatternChecker
+from mypy.options import Options
+from mypy.plugin import CheckerPluginInterface, Plugin
+from mypy.sametypes import is_same_type
+from mypy.scope import Scope
+from mypy.semanal import refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
+from mypy.sharedparse import BINARY_MAGIC_METHODS
+from mypy.state import state
+from mypy.subtypes import (
+    find_member,
+    is_callable_compatible,
+    is_equivalent,
+    is_more_precise,
+    is_proper_subtype,
+    is_subtype,
+    restrict_subtype_away,
+    unify_generic_callable,
+)
+from mypy.traverser import all_return_statements, has_return_statement
+from mypy.treetransform import TransformVisitor
+from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type, make_optional_type
 from mypy.typeops import (
-    map_type_from_supertype,
     bind_self,
-    erase_to_bound,
-    make_simplified_union,
-    erase_def_to_union_or_bound,
-    erase_to_union_or_bound,
     coerce_to_literal,
-    try_getting_str_literals_from_type,
-    try_getting_int_literals_from_type,
-    tuple_fallback,
-    is_singleton_type,
-    try_expanding_sum_type_to_union,
-    true_only,
+    custom_special_method,
+    erase_def_to_union_or_bound,
+    erase_to_bound,
+    erase_to_union_or_bound,
     false_only,
     function_type,
     get_type_vars,
-    custom_special_method,
     is_literal_type_like,
+    is_singleton_type,
+    make_simplified_union,
+    map_type_from_supertype,
+    true_only,
+    try_expanding_sum_type_to_union,
+    try_getting_int_literals_from_type,
+    try_getting_str_literals_from_type,
+    tuple_fallback,
 )
-from mypy import message_registry
-from mypy.message_registry import ErrorMessage
-from mypy.subtypes import (
-    is_subtype,
-    is_equivalent,
-    is_proper_subtype,
-    is_more_precise,
-    restrict_subtype_away,
-    is_callable_compatible,
-    unify_generic_callable,
-    find_member,
+from mypy.types import (
+    OVERLOAD_NAMES,
+    AnyType,
+    CallableType,
+    DeletedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    StarType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeGuardedType,
+    TypeOfAny,
+    TypeQuery,
+    TypeTranslator,
+    TypeType,
+    TypeVarId,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
+    get_proper_types,
+    is_literal_type,
+    is_named_instance,
+    is_optional,
+    remove_optional,
+    strip_type,
+    union_items,
 )
-from mypy.constraints import SUPERTYPE_OF
-from mypy.maptype import map_instance_to_supertype
-from mypy.typevars import fill_typevars, has_no_typevars, fill_typevars_with_any
-from mypy.semanal import set_callable_name, refers_to_fullname
-from mypy.mro import calculate_mro, MroError
-from mypy.erasetype import erase_typevars, remove_instance_last_known_values, erase_type
-from mypy.expandtype import expand_type, expand_type_by_instance
+from mypy.typetraverser import TypeTraverserVisitor
+from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
+from mypy.util import is_dunder, is_sunder, is_typeshed_file
 from mypy.visitor import NodeVisitor
-from mypy.join import join_types
-from mypy.treetransform import TransformVisitor
-from mypy.binder import ConditionalTypeBinder, get_declaration
-from mypy.meet import is_overlapping_erased_types, is_overlapping_types
-from mypy.options import Options
-from mypy.plugin import Plugin, CheckerPluginInterface
-from mypy.sharedparse import BINARY_MAGIC_METHODS
-from mypy.scope import Scope
-from mypy import errorcodes as codes
-from mypy.state import state
-from mypy.traverser import has_return_statement, all_return_statements
-from mypy.errorcodes import ErrorCode, UNUSED_AWAITABLE, UNUSED_COROUTINE
-from mypy.util import is_typeshed_file, is_dunder, is_sunder
 
 T = TypeVar("T")
 

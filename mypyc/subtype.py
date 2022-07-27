@@ -1,23 +1,23 @@
 """Subtype check for RTypes."""
 
 from mypyc.ir.rtypes import (
-    RType,
+    RArray,
     RInstance,
     RPrimitive,
+    RStruct,
     RTuple,
-    RVoid,
+    RType,
     RTypeVisitor,
     RUnion,
-    RStruct,
-    RArray,
-    is_bool_rprimitive,
-    is_int_rprimitive,
-    is_tuple_rprimitive,
-    is_short_int_rprimitive,
-    is_object_rprimitive,
+    RVoid,
     is_bit_rprimitive,
-    is_tagged,
+    is_bool_rprimitive,
     is_fixed_width_rtype,
+    is_int_rprimitive,
+    is_object_rprimitive,
+    is_short_int_rprimitive,
+    is_tagged,
+    is_tuple_rprimitive,
 )
 
 

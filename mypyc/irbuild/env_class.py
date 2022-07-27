@@ -18,14 +18,13 @@ non-locals is via an instance of an environment class. Example:
 from typing import Dict, Optional, Union
 
 from mypy.nodes import FuncDef, SymbolNode
-
-from mypyc.common import SELF_NAME, ENV_ATTR_NAME
+from mypyc.common import ENV_ATTR_NAME, SELF_NAME
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.ops import Call, GetAttr, SetAttr, Value
 from mypyc.ir.rtypes import RInstance, object_rprimitive
-from mypyc.ir.class_ir import ClassIR
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget
+from mypyc.irbuild.context import FuncInfo, GeneratorClass, ImplicitClass
 from mypyc.irbuild.targets import AssignmentTargetAttr
-from mypyc.irbuild.context import FuncInfo, ImplicitClass, GeneratorClass
 
 
 def setup_env_class(builder: IRBuilder) -> ClassIR:

@@ -2,12 +2,12 @@
 
 import functools
 import os
+from typing import List, Optional, Sequence, Set, Tuple
 
-from typing import List, Sequence, Set, Tuple, Optional
 from typing_extensions import Final
 
-from mypy.modulefinder import BuildSource, PYTHON_EXTENSIONS, mypy_path, matches_exclude
 from mypy.fscache import FileSystemCache
+from mypy.modulefinder import PYTHON_EXTENSIONS, BuildSource, matches_exclude, mypy_path
 from mypy.options import Options
 
 PY_EXTENSIONS: Final = tuple(PYTHON_EXTENSIONS)

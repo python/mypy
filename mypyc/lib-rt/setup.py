@@ -3,8 +3,8 @@
 The tests are written in C++ and use the Google Test framework.
 """
 
-from distutils.core import setup, Extension
 import sys
+from distutils.core import Extension, setup
 
 if sys.platform == "darwin":
     kwargs = {"language": "c++"}

@@ -1,8 +1,8 @@
 """Primitive float ops."""
 
 from mypyc.ir.ops import ERR_MAGIC
-from mypyc.ir.rtypes import str_rprimitive, float_rprimitive, object_rprimitive
-from mypyc.primitives.registry import load_address_op, function_op
+from mypyc.ir.rtypes import float_rprimitive, object_rprimitive, str_rprimitive
+from mypyc.primitives.registry import function_op, load_address_op
 
 # Get the 'builtins.float' type object.
 load_address_op(name="builtins.float", type=object_rprimitive, src="PyFloat_Type")

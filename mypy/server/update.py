@@ -115,47 +115,48 @@ test cases (test-data/unit/fine-grained*.test).
 import os
 import sys
 import time
-from typing import Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence, Callable
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
+
 from typing_extensions import Final
 
 from mypy.build import (
-    BuildManager,
-    State,
-    BuildResult,
-    Graph,
-    load_graph,
-    process_fresh_modules,
     DEBUG_FINE_GRAINED,
     FAKE_ROOT_MODULE,
+    BuildManager,
+    BuildResult,
+    Graph,
+    State,
+    load_graph,
+    process_fresh_modules,
 )
-from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
+from mypy.fscache import FileSystemCache
+from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    MypyFile,
-    FuncDef,
-    TypeInfo,
-    SymbolNode,
     Decorator,
-    OverloadedFuncDef,
-    SymbolTable,
+    FuncDef,
     ImportFrom,
+    MypyFile,
+    OverloadedFuncDef,
+    SymbolNode,
+    SymbolTable,
+    TypeInfo,
 )
 from mypy.options import Options
-from mypy.fscache import FileSystemCache
-from mypy.server.astdiff import snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
 from mypy.semanal_main import (
+    core_modules,
     semantic_analysis_for_scc,
     semantic_analysis_for_targets,
-    core_modules,
 )
+from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import strip_target, SavedAttributes
+from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
-from mypy.server.trigger import make_trigger, WILDCARD_TAG
-from mypy.util import module_prefix, split_target
+from mypy.server.trigger import WILDCARD_TAG, make_trigger
 from mypy.typestate import TypeState
+from mypy.util import module_prefix, split_target
 
 MAX_ITER: Final = 1000
 

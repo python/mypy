@@ -2,46 +2,45 @@
 
 from typing import Dict, Optional
 
-from mypy.nodes import FuncDef, TypeInfo, SymbolNode, RefExpr, ArgKind, ARG_STAR, ARG_STAR2, GDEF
+from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, SymbolNode, TypeInfo
 from mypy.types import (
-    Instance,
-    Type,
-    CallableType,
-    LiteralType,
-    TypedDictType,
-    UnboundType,
-    PartialType,
-    UninhabitedType,
-    Overloaded,
-    UnionType,
-    TypeType,
     AnyType,
+    CallableType,
+    Instance,
+    LiteralType,
     NoneTyp,
+    Overloaded,
+    PartialType,
     TupleType,
+    Type,
+    TypedDictType,
+    TypeType,
     TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
     get_proper_type,
 )
-
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncSignature, RuntimeArg
 from mypyc.ir.rtypes import (
+    RInstance,
+    RTuple,
     RType,
     RUnion,
-    RTuple,
-    RInstance,
-    object_rprimitive,
-    dict_rprimitive,
-    tuple_rprimitive,
-    none_rprimitive,
-    int_rprimitive,
-    float_rprimitive,
-    str_rprimitive,
     bool_rprimitive,
-    list_rprimitive,
-    set_rprimitive,
-    range_rprimitive,
     bytes_rprimitive,
+    dict_rprimitive,
+    float_rprimitive,
+    int_rprimitive,
+    list_rprimitive,
+    none_rprimitive,
+    object_rprimitive,
+    range_rprimitive,
+    set_rprimitive,
+    str_rprimitive,
+    tuple_rprimitive,
 )
-from mypyc.ir.func_ir import FuncSignature, FuncDecl, RuntimeArg
-from mypyc.ir.class_ir import ClassIR
 
 
 class Mapper:

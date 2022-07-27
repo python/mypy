@@ -31,9 +31,6 @@ To run this script starting from the commit id 2a432b:
     python3 misc/incremental_checker.py commit 2a432b
 """
 
-from typing import Any, Dict, List, Optional, Tuple
-
-from argparse import ArgumentParser, RawDescriptionHelpFormatter, Namespace
 import base64
 import json
 import os
@@ -44,7 +41,8 @@ import subprocess
 import sys
 import textwrap
 import time
-
+from argparse import ArgumentParser, Namespace, RawDescriptionHelpFormatter
+from typing import Any, Dict, List, Optional, Tuple
 
 CACHE_PATH = ".incremental_checker_cache.json"
 MYPY_REPO_URL = "https://github.com/python/mypy.git"

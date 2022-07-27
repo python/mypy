@@ -10,44 +10,43 @@ mypyc.irbuild.function.
 
 from typing import List
 
-from mypy.nodes import Var, ARG_OPT
-
-from mypyc.common import SELF_NAME, NEXT_LABEL_ATTR_NAME, ENV_ATTR_NAME
+from mypy.nodes import ARG_OPT, Var
+from mypyc.common import ENV_ATTR_NAME, NEXT_LABEL_ATTR_NAME, SELF_NAME
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
+    NO_TRACEBACK_LINE_NO,
     BasicBlock,
+    Branch,
     Call,
-    Return,
     Goto,
     Integer,
-    SetAttr,
-    Unreachable,
-    RaiseStandardError,
-    Value,
-    Register,
     MethodCall,
+    RaiseStandardError,
+    Register,
+    Return,
+    SetAttr,
     TupleSet,
-    Branch,
-    NO_TRACEBACK_LINE_NO,
+    Unreachable,
+    Value,
 )
 from mypyc.ir.rtypes import RInstance, int_rprimitive, object_rprimitive
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature, RuntimeArg
-from mypyc.ir.class_ir import ClassIR
+from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
+from mypyc.irbuild.context import FuncInfo, GeneratorClass
+from mypyc.irbuild.env_class import (
+    add_args_to_env,
+    finalize_env_class,
+    load_env_registers,
+    load_outer_env,
+)
 from mypyc.irbuild.nonlocalcontrol import ExceptNonlocalControl
 from mypyc.primitives.exc_ops import (
-    raise_exception_with_tb_op,
     error_catch_op,
     exc_matches_op,
+    raise_exception_with_tb_op,
     reraise_exception_op,
     restore_exc_info_op,
 )
-from mypyc.irbuild.env_class import (
-    add_args_to_env,
-    load_outer_env,
-    load_env_registers,
-    finalize_env_class,
-)
-from mypyc.irbuild.builder import IRBuilder, gen_arg_defaults
-from mypyc.irbuild.context import FuncInfo, GeneratorClass
 
 
 def gen_generator_func(builder: IRBuilder) -> None:

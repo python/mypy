@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import subprocess
 from subprocess import Popen
-from sys import argv, exit, executable
+from sys import argv, executable, exit
 
 # Slow test suites
 CMDLINE = "PythonCmdline"

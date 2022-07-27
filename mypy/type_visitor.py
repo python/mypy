@@ -12,42 +12,44 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
+from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, Set, TypeVar, cast
+
+from mypy_extensions import mypyc_attr, trait
+
 from mypy.backports import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
-from mypy_extensions import trait, mypyc_attr
 
 T = TypeVar("T")
 
 from mypy.types import (
-    Type,
     AnyType,
-    CallableType,
-    Overloaded,
-    TupleType,
-    TypedDictType,
-    LiteralType,
-    Parameters,
-    RawExpressionType,
-    Instance,
-    NoneType,
-    TypeType,
-    UnionType,
-    TypeVarType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    TypeVarLikeType,
-    UnboundType,
-    ErasedType,
-    StarType,
-    EllipsisType,
-    TypeList,
     CallableArgument,
-    PlaceholderType,
-    TypeAliasType,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
     ParamSpecType,
-    UnpackType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    StarType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarLikeType,
     TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
     get_proper_type,
 )
 

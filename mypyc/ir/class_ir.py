@@ -1,15 +1,13 @@
 """Intermediate representation of classes."""
 
-from typing import List, Optional, Set, Tuple, Dict, NamedTuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
 from mypy.backports import OrderedDict
-
-from mypyc.common import JsonDict
-from mypyc.ir.ops import Value, DeserMaps
-from mypyc.ir.rtypes import RType, RInstance, deserialize_type
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
+from mypyc.common import PROPSET_PREFIX, JsonDict
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.ops import DeserMaps, Value
+from mypyc.ir.rtypes import RInstance, RType, deserialize_type
 from mypyc.namegen import NameGenerator, exported_name
-from mypyc.common import PROPSET_PREFIX
-
 
 # Some notes on the vtable layout: Each concrete class has a vtable
 # that contains function pointers for its methods. So that subclasses

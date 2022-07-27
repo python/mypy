@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, Iterable, List, Optional
-from collections import Counter
-
+import json
 import os
 import os.path
-import json
+from collections import Counter
+from typing import Any, Dict, Iterable, List, Optional
 
 ROOT = ".mypy_cache/3.5"
 

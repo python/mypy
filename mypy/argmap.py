@@ -1,19 +1,19 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
-from typing import TYPE_CHECKING, List, Optional, Sequence, Callable, Set
+from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Set
 
+from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.types import (
-    Type,
-    Instance,
-    TupleType,
     AnyType,
-    TypeOfAny,
-    TypedDictType,
+    Instance,
     ParamSpecType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
     get_proper_type,
 )
-from mypy import nodes
 
 if TYPE_CHECKING:
     from mypy.infer import ArgumentInferContext

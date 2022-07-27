@@ -1,9 +1,9 @@
-from typing import Iterator
-from typing_extensions import NoReturn
-
 import sys
 import traceback
 from contextlib import contextmanager
+from typing import Iterator
+
+from typing_extensions import NoReturn
 
 
 @contextmanager

@@ -1,16 +1,16 @@
 """Utilities for type argument inference."""
 
-from typing import List, Optional, Sequence, NamedTuple
+from typing import List, NamedTuple, Optional, Sequence
 
 from mypy.constraints import (
-    infer_constraints,
-    infer_constraints_for_callable,
     SUBTYPE_OF,
     SUPERTYPE_OF,
+    infer_constraints,
+    infer_constraints_for_callable,
 )
-from mypy.types import Type, TypeVarId, CallableType, Instance
 from mypy.nodes import ArgKind
 from mypy.solve import solve_constraints
+from mypy.types import CallableType, Instance, Type, TypeVarId
 
 
 class ArgumentInferContext(NamedTuple):

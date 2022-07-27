@@ -1,38 +1,39 @@
 """Semantic analysis of TypedDict definitions."""
 
-from mypy.backports import OrderedDict
-from typing import Optional, List, Set, Tuple
+from typing import List, Optional, Set, Tuple
+
 from typing_extensions import Final
 
-from mypy.types import Type, AnyType, TypeOfAny, TypedDictType, TPDICT_NAMES, RequiredType
-from mypy.nodes import (
-    CallExpr,
-    TypedDictExpr,
-    Expression,
-    NameExpr,
-    Context,
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    ClassDef,
-    RefExpr,
-    TypeInfo,
-    AssignmentStmt,
-    PassStmt,
-    ExpressionStmt,
-    EllipsisExpr,
-    TempNode,
-    DictExpr,
-    ARG_POS,
-    ARG_NAMED,
-)
-from mypy.semanal_shared import SemanticAnalyzerInterface
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.options import Options
-from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.messages import MessageBuilder
-from mypy.errorcodes import ErrorCode
 from mypy import errorcodes as codes
+from mypy.backports import OrderedDict
+from mypy.errorcodes import ErrorCode
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import MessageBuilder
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_POS,
+    AssignmentStmt,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    Context,
+    DictExpr,
+    EllipsisExpr,
+    Expression,
+    ExpressionStmt,
+    NameExpr,
+    PassStmt,
+    RefExpr,
+    StrExpr,
+    TempNode,
+    TypedDictExpr,
+    TypeInfo,
+    UnicodeExpr,
+)
+from mypy.options import Options
+from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
+from mypy.types import TPDICT_NAMES, AnyType, RequiredType, Type, TypedDictType, TypeOfAny
 
 TPDICT_CLASS_ERROR: Final = (
     "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'

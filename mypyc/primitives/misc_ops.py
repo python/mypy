@@ -1,19 +1,19 @@
 """Miscellaneous primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
+    bit_rprimitive,
     bool_rprimitive,
+    c_int_rprimitive,
+    c_pyssize_t_rprimitive,
+    dict_rprimitive,
+    int_rprimitive,
+    list_rprimitive,
+    object_pointer_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    object_pointer_rprimitive,
-    int_rprimitive,
-    dict_rprimitive,
-    c_int_rprimitive,
-    bit_rprimitive,
-    c_pyssize_t_rprimitive,
-    list_rprimitive,
 )
-from mypyc.primitives.registry import function_op, custom_op, load_address_op, ERR_NEG_INT
+from mypyc.primitives.registry import ERR_NEG_INT, custom_op, function_op, load_address_op
 
 # Get the 'bool' type object.
 load_address_op(name="builtins.bool", type=object_rprimitive, src="PyBool_Type")

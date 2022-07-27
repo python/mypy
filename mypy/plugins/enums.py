@@ -11,14 +11,15 @@ we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
 from typing import Iterable, Optional, Sequence, TypeVar, cast
+
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.types import Type, Instance, LiteralType, CallableType, ProperType, get_proper_type
-from mypy.typeops import make_simplified_union
 from mypy.nodes import TypeInfo
-from mypy.subtypes import is_equivalent
 from mypy.semanal_enum import ENUM_BASES
+from mypy.subtypes import is_equivalent
+from mypy.typeops import make_simplified_union
+from mypy.types import CallableType, Instance, LiteralType, ProperType, Type, get_proper_type
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES

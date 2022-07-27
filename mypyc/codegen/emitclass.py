@@ -1,28 +1,27 @@
 """Code generation for native classes and related wrappers."""
 
-from typing import Optional, List, Tuple, Dict, Callable, Mapping, Set
+from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypy.backports import OrderedDict
-
-from mypyc.common import PREFIX, NATIVE_PREFIX, REG_PREFIX, use_fastcall
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
-    generate_dunder_wrapper,
-    generate_hash_wrapper,
-    generate_richcompare_wrapper,
-    generate_bool_wrapper,
-    generate_get_wrapper,
-    generate_len_wrapper,
-    generate_set_del_item_wrapper,
-    generate_contains_wrapper,
     generate_bin_op_wrapper,
+    generate_bool_wrapper,
+    generate_contains_wrapper,
+    generate_dunder_wrapper,
+    generate_get_wrapper,
+    generate_hash_wrapper,
+    generate_len_wrapper,
+    generate_richcompare_wrapper,
+    generate_set_del_item_wrapper,
 )
-from mypyc.ir.rtypes import RType, RTuple, object_rprimitive
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD
+from mypyc.common import NATIVE_PREFIX, PREFIX, REG_PREFIX, use_fastcall
 from mypyc.ir.class_ir import ClassIR, VTableEntries
-from mypyc.sametype import is_same_type
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR
+from mypyc.ir.rtypes import RTuple, RType, object_rprimitive
 from mypyc.namegen import NameGenerator
+from mypyc.sametype import is_same_type
 
 
 def native_slot(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:

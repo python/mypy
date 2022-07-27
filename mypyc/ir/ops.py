@@ -10,36 +10,36 @@ value has a type (RType). A value can hold various things, such as:
 """
 
 from abc import abstractmethod
-from typing import List, Sequence, Dict, Generic, TypeVar, Optional, NamedTuple, Tuple, Union
+from typing import Dict, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
 
-from typing_extensions import Final, TYPE_CHECKING
 from mypy_extensions import trait
+from typing_extensions import TYPE_CHECKING, Final
 
 from mypyc.ir.rtypes import (
-    RType,
+    RArray,
     RInstance,
     RTuple,
-    RArray,
+    RType,
     RVoid,
-    is_bool_rprimitive,
-    is_int_rprimitive,
-    is_short_int_rprimitive,
-    is_none_rprimitive,
-    object_rprimitive,
-    bool_rprimitive,
-    short_int_rprimitive,
-    int_rprimitive,
-    void_rtype,
-    pointer_rprimitive,
-    is_pointer_rprimitive,
     bit_rprimitive,
+    bool_rprimitive,
+    int_rprimitive,
     is_bit_rprimitive,
+    is_bool_rprimitive,
     is_fixed_width_rtype,
+    is_int_rprimitive,
+    is_none_rprimitive,
+    is_pointer_rprimitive,
+    is_short_int_rprimitive,
+    object_rprimitive,
+    pointer_rprimitive,
+    short_int_rprimitive,
+    void_rtype,
 )
 
 if TYPE_CHECKING:
     from mypyc.ir.class_ir import ClassIR  # noqa
-    from mypyc.ir.func_ir import FuncIR, FuncDecl  # noqa
+    from mypyc.ir.func_ir import FuncDecl, FuncIR  # noqa
 
 T = TypeVar("T")
 

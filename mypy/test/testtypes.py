@@ -2,37 +2,37 @@
 
 from typing import List, Tuple
 
-from mypy.test.helpers import Suite, assert_equal, assert_type, skip
 from mypy.erasetype import erase_type, remove_instance_last_known_values
 from mypy.expandtype import expand_type
-from mypy.join import join_types, join_simple
-from mypy.meet import meet_types, narrow_declared_type
-from mypy.sametypes import is_same_type
 from mypy.indirection import TypeIndirectionVisitor
+from mypy.join import join_simple, join_types
+from mypy.meet import meet_types, narrow_declared_type
+from mypy.nodes import ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.sametypes import is_same_type
+from mypy.state import state
+from mypy.subtypes import is_more_precise, is_proper_subtype, is_subtype
+from mypy.test.helpers import Suite, assert_equal, assert_type, skip
+from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
+from mypy.typeops import false_only, make_simplified_union, true_only
 from mypy.types import (
-    UnboundType,
     AnyType,
     CallableType,
-    TupleType,
-    TypeVarType,
-    Type,
     Instance,
+    LiteralType,
     NoneType,
     Overloaded,
-    TypeType,
-    UnionType,
-    UninhabitedType,
-    TypeVarId,
-    TypeOfAny,
     ProperType,
-    LiteralType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeType,
+    TypeVarId,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
     get_proper_type,
 )
-from mypy.nodes import ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, CONTRAVARIANT, INVARIANT, COVARIANT
-from mypy.subtypes import is_subtype, is_more_precise, is_proper_subtype
-from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.state import state
-from mypy.typeops import true_only, false_only, make_simplified_union
 
 
 class TypesSuite(Suite):

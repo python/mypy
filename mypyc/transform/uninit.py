@@ -2,20 +2,20 @@
 
 from typing import List
 
-from mypyc.analysis.dataflow import get_cfg, cleanup_cfg, analyze_must_defined_regs, AnalysisDict
-from mypyc.ir.ops import (
-    BasicBlock,
-    Op,
-    Branch,
-    Value,
-    RaiseStandardError,
-    Unreachable,
-    Register,
-    LoadAddress,
-    Assign,
-    LoadErrorValue,
-)
+from mypyc.analysis.dataflow import AnalysisDict, analyze_must_defined_regs, cleanup_cfg, get_cfg
 from mypyc.ir.func_ir import FuncIR, all_values
+from mypyc.ir.ops import (
+    Assign,
+    BasicBlock,
+    Branch,
+    LoadAddress,
+    LoadErrorValue,
+    Op,
+    RaiseStandardError,
+    Register,
+    Unreachable,
+    Value,
+)
 
 
 def insert_uninit_checks(ir: FuncIR) -> None:

@@ -1,33 +1,34 @@
 """Utility functions with no non-trivial dependencies."""
 
+import hashlib
+import io
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
-import hashlib
-import io
-import shutil
 import time
-
 from typing import (
-    TypeVar,
-    List,
-    Tuple,
-    Optional,
-    Dict,
-    Sequence,
-    Iterable,
-    Container,
     IO,
     Callable,
-    Union,
+    Container,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Sequence,
     Sized,
+    Tuple,
+    TypeVar,
+    Union,
 )
-from typing_extensions import Final, Type, Literal
+
+from typing_extensions import Final, Literal, Type
 
 try:
     import curses
+
     import _curses  # noqa
 
     CURSES_ENABLED = True

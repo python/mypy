@@ -1,11 +1,10 @@
 import sys
-
 from typing import Any, Callable
 
 if sys.platform == "win32":
     import ctypes
-    from ctypes.wintypes import DWORD, HANDLE
     import subprocess
+    from ctypes.wintypes import DWORD, HANDLE
 
     PROCESS_QUERY_LIMITED_INFORMATION = ctypes.c_ulong(0x1000)
 

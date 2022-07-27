@@ -1,7 +1,6 @@
-from typing import Dict, List, Union, Tuple, Any, cast
+from typing import Any, Dict, List, Tuple, Union, cast
 
 from typing_extensions import Final
-
 
 # Supported Python literal types. All tuple items must have supported
 # literal types as well, but we can't represent the type precisely.

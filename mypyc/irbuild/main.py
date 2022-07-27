@@ -20,28 +20,26 @@ For the core of the IR transform implementation, look at build_ir()
 below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
+from typing import Any, Callable, Dict, List, TypeVar, cast
+
 from mypy.backports import OrderedDict
-from typing import List, Dict, Callable, Any, TypeVar, cast
-
-from mypy.nodes import MypyFile, Expression, ClassDef
-from mypy.types import Type
-from mypy.state import state
 from mypy.build import Graph
-
+from mypy.nodes import ClassDef, Expression, MypyFile
+from mypy.state import state
+from mypy.types import Type
+from mypyc.analysis.attrdefined import analyze_always_defined_attrs
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.errors import Errors
-from mypyc.options import CompilerOptions
-from mypyc.ir.rtypes import none_rprimitive
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.ir.module_ir import ModuleIR, ModuleIRs
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
-from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
-from mypyc.irbuild.vtable import compute_vtable
-from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_impls
+from mypyc.ir.rtypes import none_rprimitive
 from mypyc.irbuild.builder import IRBuilder
-from mypyc.irbuild.visitor import IRBuilderVisitor
 from mypyc.irbuild.mapper import Mapper
-from mypyc.analysis.attrdefined import analyze_always_defined_attrs
-
+from mypyc.irbuild.prebuildvisitor import PreBuildVisitor
+from mypyc.irbuild.prepare import build_type_map, find_singledispatch_register_impls
+from mypyc.irbuild.visitor import IRBuilderVisitor
+from mypyc.irbuild.vtable import compute_vtable
+from mypyc.options import CompilerOptions
 
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...

@@ -5,26 +5,25 @@ from typing import List, Tuple
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
     RType,
-    object_rprimitive,
-    str_rprimitive,
+    bit_rprimitive,
+    bool_rprimitive,
+    bytes_rprimitive,
+    c_int_rprimitive,
+    c_pyssize_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
-    c_int_rprimitive,
+    object_rprimitive,
     pointer_rprimitive,
-    bool_rprimitive,
-    bit_rprimitive,
-    c_pyssize_t_rprimitive,
-    bytes_rprimitive,
+    str_rprimitive,
 )
 from mypyc.primitives.registry import (
-    method_op,
+    ERR_NEG_INT,
     binary_op,
+    custom_op,
     function_op,
     load_address_op,
-    custom_op,
-    ERR_NEG_INT,
+    method_op,
 )
-
 
 # Get the 'str' type object.
 load_address_op(name="builtins.str", type=object_rprimitive, src="PyUnicode_Type")

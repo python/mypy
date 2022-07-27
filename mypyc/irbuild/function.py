@@ -10,99 +10,96 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
-from typing import DefaultDict, NamedTuple, Optional, List, Sequence, Tuple, Union, Dict
+from collections import defaultdict
+from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 
 from mypy.nodes import (
-    ClassDef,
-    FuncDef,
-    OverloadedFuncDef,
-    Decorator,
-    Var,
-    YieldFromExpr,
+    ArgKind,
     AwaitExpr,
-    YieldExpr,
+    ClassDef,
+    Decorator,
+    FuncDef,
     FuncItem,
     LambdaExpr,
+    OverloadedFuncDef,
     SymbolNode,
-    ArgKind,
     TypeInfo,
+    Var,
+    YieldExpr,
+    YieldFromExpr,
 )
 from mypy.types import CallableType, get_proper_type
-
-from mypyc.ir.ops import (
-    BasicBlock,
-    Value,
-    Register,
-    Return,
-    SetAttr,
-    Integer,
-    GetAttr,
-    Branch,
-    InitStatic,
-    LoadAddress,
-    LoadLiteral,
-    Unbox,
-    Unreachable,
-)
-from mypyc.ir.rtypes import (
-    object_rprimitive,
-    RInstance,
-    object_pointer_rprimitive,
-    dict_rprimitive,
-    int_rprimitive,
-    bool_rprimitive,
-)
+from mypyc.common import LAMBDA_NAME, SELF_NAME
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
 from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_NORMAL,
+    FUNC_STATICMETHOD,
+    FuncDecl,
     FuncIR,
     FuncSignature,
     RuntimeArg,
-    FuncDecl,
-    FUNC_CLASSMETHOD,
-    FUNC_STATICMETHOD,
-    FUNC_NORMAL,
 )
-from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.generic_ops import py_setattr_op, next_raw_op, iter_op
-from mypyc.primitives.misc_ops import (
-    check_stop_op,
-    yield_from_except_op,
-    coro_op,
-    send_op,
-    register_function,
+from mypyc.ir.ops import (
+    BasicBlock,
+    Branch,
+    GetAttr,
+    InitStatic,
+    Integer,
+    LoadAddress,
+    LoadLiteral,
+    Register,
+    Return,
+    SetAttr,
+    Unbox,
+    Unreachable,
+    Value,
 )
-from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op, dict_get_method_with_none
-from mypyc.common import SELF_NAME, LAMBDA_NAME
-from mypyc.sametype import is_same_method_signature
-from mypyc.irbuild.util import is_constant
-from mypyc.irbuild.context import FuncInfo, ImplicitClass
-from mypyc.irbuild.targets import AssignmentTarget
-from mypyc.irbuild.statement import transform_try_except
+from mypyc.ir.rtypes import (
+    RInstance,
+    bool_rprimitive,
+    dict_rprimitive,
+    int_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+)
 from mypyc.irbuild.builder import IRBuilder, SymbolTarget, gen_arg_defaults
 from mypyc.irbuild.callable_class import (
-    setup_callable_class,
     add_call_to_callable_class,
     add_get_to_callable_class,
     instantiate_callable_class,
+    setup_callable_class,
 )
-from mypyc.irbuild.generator import (
-    gen_generator_func,
-    setup_env_for_generator_class,
-    create_switch_for_generator_class,
-    add_raise_exception_blocks_to_generator_class,
-    populate_switch_for_generator_class,
-    add_methods_to_generator_class,
-)
+from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.irbuild.env_class import (
-    setup_env_class,
-    load_outer_envs,
-    load_env_registers,
     finalize_env_class,
+    load_env_registers,
+    load_outer_envs,
+    setup_env_class,
     setup_func_for_recursive_call,
 )
-
+from mypyc.irbuild.generator import (
+    add_methods_to_generator_class,
+    add_raise_exception_blocks_to_generator_class,
+    create_switch_for_generator_class,
+    gen_generator_func,
+    populate_switch_for_generator_class,
+    setup_env_for_generator_class,
+)
+from mypyc.irbuild.statement import transform_try_except
+from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.irbuild.util import is_constant
+from mypyc.primitives.dict_ops import dict_get_method_with_none, dict_new_op, dict_set_item_op
+from mypyc.primitives.generic_ops import iter_op, next_raw_op, py_setattr_op
+from mypyc.primitives.misc_ops import (
+    check_stop_op,
+    coro_op,
+    register_function,
+    send_op,
+    yield_from_except_op,
+)
 from mypyc.primitives.registry import builtin_names
-from collections import defaultdict
-
+from mypyc.sametype import is_same_method_signature
 
 # Top-level transform functions
 

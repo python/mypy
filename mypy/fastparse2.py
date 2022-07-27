@@ -14,112 +14,111 @@ of redundancy is because the Python 2 AST and the Python 3 AST nodes belong to t
 different class hierarchies, which made it difficult to write a shared visitor between the
 two in a typesafe way.
 """
-from mypy.util import unnamed_function
 import sys
-import warnings
-
 import typing  # for typing.Type, which conflicts with types.Type
-from typing import Tuple, Union, TypeVar, Callable, Sequence, Optional, Any, Dict, cast, List
+import warnings
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+
 from typing_extensions import Final, Literal
 
-from mypy.sharedparse import special_function_elide_names, argument_elide_name
-from mypy.nodes import (
-    MypyFile,
-    Node,
-    ImportBase,
-    Import,
-    ImportAll,
-    ImportFrom,
-    FuncDef,
-    OverloadedFuncDef,
-    ClassDef,
-    Decorator,
-    Block,
-    Var,
-    OperatorAssignmentStmt,
-    ExpressionStmt,
-    AssignmentStmt,
-    ReturnStmt,
-    RaiseStmt,
-    AssertStmt,
-    DelStmt,
-    BreakStmt,
-    ContinueStmt,
-    PassStmt,
-    GlobalDecl,
-    WhileStmt,
-    ForStmt,
-    IfStmt,
-    TryStmt,
-    WithStmt,
-    TupleExpr,
-    GeneratorExpr,
-    ListComprehension,
-    ListExpr,
-    ConditionalExpr,
-    DictExpr,
-    SetExpr,
-    NameExpr,
-    IntExpr,
-    StrExpr,
-    UnicodeExpr,
-    FloatExpr,
-    CallExpr,
-    SuperExpr,
-    MemberExpr,
-    IndexExpr,
-    SliceExpr,
-    OpExpr,
-    UnaryExpr,
-    LambdaExpr,
-    ComparisonExpr,
-    DictionaryComprehension,
-    SetComprehension,
-    ComplexExpr,
-    EllipsisExpr,
-    YieldExpr,
-    Argument,
-    Expression,
-    Statement,
-    BackquoteExpr,
-    PrintStmt,
-    ExecStmt,
-    ArgKind,
-    ARG_POS,
-    ARG_OPT,
-    ARG_STAR,
-    ARG_NAMED,
-    ARG_STAR2,
-    OverloadPart,
-    check_arg_names,
-    FakeInfo,
-)
-from mypy.types import (
-    Type,
-    CallableType,
-    AnyType,
-    UnboundType,
-    EllipsisType,
-    TypeOfAny,
-    Instance,
-    ProperType,
-)
-from mypy import message_registry, errorcodes as codes
+from mypy import errorcodes as codes, message_registry
 from mypy.errors import Errors
 from mypy.fastparse import (
+    INVALID_TYPE_IGNORE,
+    TYPE_IGNORE_PATTERN,
     TypeConverter,
     parse_type_comment,
     parse_type_ignore_tag,
-    TYPE_IGNORE_PATTERN,
-    INVALID_TYPE_IGNORE,
+)
+from mypy.nodes import (
+    ARG_NAMED,
+    ARG_OPT,
+    ARG_POS,
+    ARG_STAR,
+    ARG_STAR2,
+    ArgKind,
+    Argument,
+    AssertStmt,
+    AssignmentStmt,
+    BackquoteExpr,
+    Block,
+    BreakStmt,
+    CallExpr,
+    ClassDef,
+    ComparisonExpr,
+    ComplexExpr,
+    ConditionalExpr,
+    ContinueStmt,
+    Decorator,
+    DelStmt,
+    DictExpr,
+    DictionaryComprehension,
+    EllipsisExpr,
+    ExecStmt,
+    Expression,
+    ExpressionStmt,
+    FakeInfo,
+    FloatExpr,
+    ForStmt,
+    FuncDef,
+    GeneratorExpr,
+    GlobalDecl,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportBase,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OperatorAssignmentStmt,
+    OpExpr,
+    OverloadedFuncDef,
+    OverloadPart,
+    PassStmt,
+    PrintStmt,
+    RaiseStmt,
+    ReturnStmt,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    Statement,
+    StrExpr,
+    SuperExpr,
+    TryStmt,
+    TupleExpr,
+    UnaryExpr,
+    UnicodeExpr,
+    Var,
+    WhileStmt,
+    WithStmt,
+    YieldExpr,
+    check_arg_names,
 )
 from mypy.options import Options
-from mypy.util import bytes_to_human_readable_repr
 from mypy.reachability import mark_block_unreachable
+from mypy.sharedparse import argument_elide_name, special_function_elide_names
+from mypy.types import (
+    AnyType,
+    CallableType,
+    EllipsisType,
+    Instance,
+    ProperType,
+    Type,
+    TypeOfAny,
+    UnboundType,
+)
+from mypy.util import bytes_to_human_readable_repr, unnamed_function
 
 try:
     from typed_ast import ast27
-    from typed_ast.ast27 import AST, Call, Name, Attribute, Tuple as ast27_Tuple
+    from typed_ast.ast27 import AST, Attribute, Call, Name, Tuple as ast27_Tuple
 
     # Import ast3 from fastparse, which has special case for Python 3.8
     from mypy.fastparse import ast3, ast3_parse

@@ -9,16 +9,15 @@ even if the test was compiled.
 from typing import Set
 
 from mypy.nodes import (
-    NameExpr,
-    TypeVarExpr,
+    AssignmentStmt,
     CallExpr,
     Expression,
-    MypyFile,
-    AssignmentStmt,
     IntExpr,
+    MypyFile,
+    NameExpr,
+    TypeVarExpr,
 )
 from mypy.traverser import TraverserVisitor
-
 from mypy.treetransform import TransformVisitor
 from mypy.types import Type
 

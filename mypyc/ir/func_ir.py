@@ -1,20 +1,20 @@
 """Intermediate representation of functions."""
 
 from typing import List, Optional, Sequence
+
 from typing_extensions import Final
 
-from mypy.nodes import FuncDef, Block, ArgKind, ARG_POS
-
+from mypy.nodes import ARG_POS, ArgKind, Block, FuncDef
 from mypyc.common import JsonDict, get_id_from_name, short_id_from_name
 from mypyc.ir.ops import (
-    DeserMaps,
-    BasicBlock,
-    Value,
-    Register,
     Assign,
     AssignMulti,
+    BasicBlock,
     ControlOp,
+    DeserMaps,
     LoadAddress,
+    Register,
+    Value,
 )
 from mypyc.ir.rtypes import RType, deserialize_type
 from mypyc.namegen import NameGenerator

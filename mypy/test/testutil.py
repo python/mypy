@@ -1,5 +1,5 @@
 import os
-from unittest import mock, TestCase
+from unittest import TestCase, mock
 
 from mypy.util import get_terminal_width
 

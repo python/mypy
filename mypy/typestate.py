@@ -3,12 +3,13 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional, List
+from typing import Dict, List, Optional, Set, Tuple
+
 from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
-from mypy.types import Instance, TypeAliasType, get_proper_type, Type
 from mypy.server.trigger import make_trigger
+from mypy.types import Instance, Type, TypeAliasType, get_proper_type
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]

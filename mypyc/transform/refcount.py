@@ -19,31 +19,30 @@ into a regular, owned reference that needs to freed before return.
 from typing import Dict, Iterable, List, Set, Tuple
 
 from mypyc.analysis.dataflow import (
-    get_cfg,
-    analyze_must_defined_regs,
-    analyze_live_regs,
-    analyze_borrowed_arguments,
-    cleanup_cfg,
     AnalysisDict,
-)
-from mypyc.ir.ops import (
-    BasicBlock,
-    Assign,
-    RegisterOp,
-    DecRef,
-    IncRef,
-    Branch,
-    Goto,
-    Op,
-    ControlOp,
-    Value,
-    Register,
-    LoadAddress,
-    Integer,
-    KeepAlive,
+    analyze_borrowed_arguments,
+    analyze_live_regs,
+    analyze_must_defined_regs,
+    cleanup_cfg,
+    get_cfg,
 )
 from mypyc.ir.func_ir import FuncIR, all_values
-
+from mypyc.ir.ops import (
+    Assign,
+    BasicBlock,
+    Branch,
+    ControlOp,
+    DecRef,
+    Goto,
+    IncRef,
+    Integer,
+    KeepAlive,
+    LoadAddress,
+    Op,
+    Register,
+    RegisterOp,
+    Value,
+)
 
 Decs = Tuple[Tuple[Value, bool], ...]
 Incs = Tuple[Value, ...]

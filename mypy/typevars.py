@@ -1,19 +1,18 @@
-from typing import Union, List
-
-from mypy.nodes import TypeInfo
+from typing import List, Union
 
 from mypy.erasetype import erase_typevars
+from mypy.nodes import TypeInfo
 from mypy.types import (
+    AnyType,
     Instance,
-    TypeVarType,
+    ParamSpecType,
     TupleType,
     Type,
     TypeOfAny,
-    AnyType,
-    ParamSpecType,
-    TypeVarTupleType,
-    UnpackType,
     TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnpackType,
 )
 
 

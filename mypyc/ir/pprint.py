@@ -1,57 +1,57 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
 from collections import defaultdict
-from typing import Any, Dict, List, Union, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple, Union
 
 from typing_extensions import Final
 
 from mypyc.common import short_name
-from mypyc.ir.ops import (
-    Goto,
-    Branch,
-    Return,
-    Unreachable,
-    Assign,
-    Integer,
-    LoadErrorValue,
-    GetAttr,
-    SetAttr,
-    LoadStatic,
-    InitStatic,
-    TupleGet,
-    TupleSet,
-    IncRef,
-    DecRef,
-    Call,
-    MethodCall,
-    Cast,
-    Box,
-    Unbox,
-    RaiseStandardError,
-    CallC,
-    Truncate,
-    LoadGlobal,
-    IntOp,
-    ComparisonOp,
-    LoadMem,
-    SetMem,
-    GetElementPtr,
-    LoadAddress,
-    Register,
-    Value,
-    OpVisitor,
-    BasicBlock,
-    ControlOp,
-    LoadLiteral,
-    AssignMulti,
-    KeepAlive,
-    Op,
-    Extend,
-    ERR_NEVER,
-)
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
-from mypyc.ir.rtypes import is_bool_rprimitive, is_int_rprimitive, RType
+from mypyc.ir.ops import (
+    ERR_NEVER,
+    Assign,
+    AssignMulti,
+    BasicBlock,
+    Box,
+    Branch,
+    Call,
+    CallC,
+    Cast,
+    ComparisonOp,
+    ControlOp,
+    DecRef,
+    Extend,
+    GetAttr,
+    GetElementPtr,
+    Goto,
+    IncRef,
+    InitStatic,
+    Integer,
+    IntOp,
+    KeepAlive,
+    LoadAddress,
+    LoadErrorValue,
+    LoadGlobal,
+    LoadLiteral,
+    LoadMem,
+    LoadStatic,
+    MethodCall,
+    Op,
+    OpVisitor,
+    RaiseStandardError,
+    Register,
+    Return,
+    SetAttr,
+    SetMem,
+    Truncate,
+    TupleGet,
+    TupleSet,
+    Unbox,
+    Unreachable,
+    Value,
+)
+from mypyc.ir.rtypes import RType, is_bool_rprimitive, is_int_rprimitive
 
 ErrorSource = Union[BasicBlock, Op]
 

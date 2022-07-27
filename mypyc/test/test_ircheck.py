@@ -1,22 +1,22 @@
 import unittest
 from typing import List, Optional
 
-from mypyc.analysis.ircheck import check_func_ir, FnError, can_coerce_to
+from mypyc.analysis.ircheck import FnError, can_coerce_to, check_func_ir
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.ops import Assign, BasicBlock, Goto, Integer, LoadLiteral, Op, Register, Return
+from mypyc.ir.pprint import format_func
 from mypyc.ir.rtypes import (
-    none_rprimitive,
-    str_rprimitive,
-    int32_rprimitive,
-    int64_rprimitive,
+    RInstance,
     RType,
     RUnion,
     bytes_rprimitive,
-    RInstance,
+    int32_rprimitive,
+    int64_rprimitive,
+    none_rprimitive,
     object_rprimitive,
+    str_rprimitive,
 )
-from mypyc.ir.ops import BasicBlock, Op, Return, Integer, Goto, Register, LoadLiteral, Assign
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
-from mypyc.ir.pprint import format_func
 
 
 def assert_has_error(fn: FuncIR, error: FnError) -> None:

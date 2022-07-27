@@ -1,32 +1,32 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
 import os
-from enum import Enum, unique
 from abc import abstractmethod
-from mypy.backports import OrderedDict
 from collections import defaultdict
+from enum import Enum, unique
 from typing import (
     Any,
-    TypeVar,
-    List,
-    Tuple,
-    cast,
-    Set,
-    Dict,
-    Union,
-    Optional,
     Callable,
-    Sequence,
+    Dict,
     Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
 )
-from typing_extensions import DefaultDict, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
+
 from mypy_extensions import trait
+from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
-from mypy.util import short_type
-from mypy.visitor import NodeVisitor, StatementVisitor, ExpressionVisitor
-
+from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
+from mypy.util import short_type
+from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
 
 if TYPE_CHECKING:
     from mypy.patterns import Pattern

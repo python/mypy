@@ -20,13 +20,14 @@ else:
     import tomli as tomllib
 
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
+
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
+from mypy import pyinfo
 from mypy.fscache import FileSystemCache
 from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.stubinfo import is_legacy_bundled_package
-from mypy import pyinfo
 
 
 # Paths to be searched in find_module().

@@ -1,14 +1,15 @@
 import os
-import pytest
 import shutil
 import tempfile
 import unittest
 from typing import List, Optional, Set, Tuple
 
+import pytest
+
 from mypy.find_sources import InvalidSourceList, SourceFinder, create_source_list
 from mypy.fscache import FileSystemCache
-from mypy.options import Options
 from mypy.modulefinder import BuildSource
+from mypy.options import Options
 
 
 class FakeFSCache(FileSystemCache):

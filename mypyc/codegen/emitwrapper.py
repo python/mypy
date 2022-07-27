@@ -10,25 +10,23 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
-from typing import List, Dict, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 
-from mypy.nodes import ArgKind, ARG_POS, ARG_OPT, ARG_NAMED_OPT, ARG_NAMED, ARG_STAR, ARG_STAR2
-from mypy.operators import op_methods_to_symbols, reverse_op_methods, reverse_op_method_names
-
-from mypyc.common import PREFIX, NATIVE_PREFIX, DUNDER_PREFIX, use_vectorcall
-from mypyc.codegen.emit import Emitter, ErrorHandler, GotoHandler, AssignHandler, ReturnHandler
+from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
+from mypy.operators import op_methods_to_symbols, reverse_op_method_names, reverse_op_methods
+from mypyc.codegen.emit import AssignHandler, Emitter, ErrorHandler, GotoHandler, ReturnHandler
+from mypyc.common import DUNDER_PREFIX, NATIVE_PREFIX, PREFIX, use_vectorcall
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR, RuntimeArg
 from mypyc.ir.rtypes import (
-    RType,
     RInstance,
-    is_object_rprimitive,
-    is_int_rprimitive,
+    RType,
     is_bool_rprimitive,
+    is_int_rprimitive,
+    is_object_rprimitive,
     object_rprimitive,
 )
-from mypyc.ir.func_ir import FuncIR, RuntimeArg, FUNC_STATICMETHOD
-from mypyc.ir.class_ir import ClassIR
 from mypyc.namegen import NameGenerator
-
 
 # Generic vectorcall wrapper functions (Python 3.7+)
 #

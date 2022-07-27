@@ -3,10 +3,10 @@ import unittest
 from mypyc.ir.rtypes import (
     RStruct,
     bool_rprimitive,
-    int64_rprimitive,
     int32_rprimitive,
-    object_rprimitive,
+    int64_rprimitive,
     int_rprimitive,
+    object_rprimitive,
 )
 from mypyc.rt_subtype import is_runtime_subtype
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import shutil
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 try:
     import click

@@ -120,34 +120,35 @@ semantic analyzer is enabled (it's always true in mypy 0.730 and later).
 """
 
 from abc import abstractmethod
-from typing import Any, Callable, List, Tuple, Optional, NamedTuple, TypeVar, Dict, Union
-from mypy_extensions import trait, mypyc_attr
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple, TypeVar, Union
 
+from mypy_extensions import mypyc_attr, trait
+
+from mypy.errorcodes import ErrorCode
+from mypy.lookup import lookup_fully_qualified
+from mypy.message_registry import ErrorMessage
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
-    Expression,
-    Context,
-    ClassDef,
-    SymbolTableNode,
-    MypyFile,
-    CallExpr,
     ArgKind,
+    CallExpr,
+    ClassDef,
+    Context,
+    Expression,
+    MypyFile,
+    SymbolTableNode,
     TypeInfo,
 )
+from mypy.options import Options
 from mypy.tvar_scope import TypeVarLikeScope
 from mypy.types import (
-    Type,
-    Instance,
     CallableType,
+    FunctionLike,
+    Instance,
+    ProperType,
+    Type,
     TypeList,
     UnboundType,
-    ProperType,
-    FunctionLike,
 )
-from mypy.messages import MessageBuilder
-from mypy.options import Options
-from mypy.lookup import lookup_fully_qualified
-from mypy.errorcodes import ErrorCode
-from mypy.message_registry import ErrorMessage
 
 
 @trait

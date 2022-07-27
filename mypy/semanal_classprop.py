@@ -3,22 +3,23 @@
 These happen after semantic analysis and before type checking.
 """
 
-from typing import List, Set, Optional
+from typing import List, Optional, Set
+
 from typing_extensions import Final
 
+from mypy.errors import Errors
 from mypy.nodes import (
+    CallExpr,
+    Decorator,
     Node,
+    OverloadedFuncDef,
+    PromoteExpr,
+    SymbolTable,
     TypeInfo,
     Var,
-    Decorator,
-    OverloadedFuncDef,
-    SymbolTable,
-    CallExpr,
-    PromoteExpr,
 )
-from mypy.types import Instance, Type
-from mypy.errors import Errors
 from mypy.options import Options
+from mypy.types import Instance, Type
 
 # Hard coded type promotions (shared between all Python versions).
 # These add extra ad-hoc edges to the subtyping relation. For example,

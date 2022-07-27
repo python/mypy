@@ -8,19 +8,19 @@ from mypy import nodes
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import format_type
 from mypy.subtypes import is_subtype
+from mypy.typeops import make_simplified_union
 from mypy.types import (
     AnyType,
     CallableType,
     Instance,
     NoneType,
+    ProperType,
     Type,
     TypeOfAny,
     UnionType,
-    union_items,
-    ProperType,
     get_proper_type,
+    union_items,
 )
-from mypy.typeops import make_simplified_union
 
 
 def _get_bytes_type(api: "mypy.plugin.CheckerPluginInterface") -> Instance:

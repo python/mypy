@@ -1,31 +1,30 @@
 """Various utilities that don't depend on other modules in mypyc.irbuild."""
 
-from typing import Dict, Any, Union, Optional
+from typing import Any, Dict, Optional, Union
 
 from mypy.nodes import (
-    ClassDef,
-    FuncDef,
-    Decorator,
-    OverloadedFuncDef,
-    StrExpr,
-    CallExpr,
-    RefExpr,
-    Expression,
-    IntExpr,
-    FloatExpr,
-    Var,
-    NameExpr,
-    TupleExpr,
-    UnaryExpr,
-    BytesExpr,
-    ArgKind,
     ARG_NAMED,
     ARG_NAMED_OPT,
-    ARG_POS,
     ARG_OPT,
+    ARG_POS,
     GDEF,
+    ArgKind,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    Decorator,
+    Expression,
+    FloatExpr,
+    FuncDef,
+    IntExpr,
+    NameExpr,
+    OverloadedFuncDef,
+    RefExpr,
+    StrExpr,
+    TupleExpr,
+    UnaryExpr,
+    Var,
 )
-
 
 DATACLASS_DECORATORS = {"dataclasses.dataclass", "attr.s", "attr.attrs"}
 

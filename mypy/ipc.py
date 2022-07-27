@@ -9,16 +9,16 @@ import os
 import shutil
 import sys
 import tempfile
-
-from typing import Optional, Callable
-from typing_extensions import Final, Type
-
 from types import TracebackType
+from typing import Callable, Optional
+
+from typing_extensions import Final, Type
 
 if sys.platform == "win32":
     # This may be private, but it is needed for IPC on Windows, and is basically stable
-    import _winapi
     import ctypes
+
+    import _winapi
 
     _IPCHandle = int
 

@@ -1,8 +1,8 @@
-from mypy.test.helpers import Suite, skip
-from mypy.nodes import CONTRAVARIANT, INVARIANT, COVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
-from mypy.test.typefixture import TypeFixture, InterfaceTypeFixture
-from mypy.types import Type, Instance, UnpackType, TupleType
+from mypy.test.helpers import Suite, skip
+from mypy.test.typefixture import InterfaceTypeFixture, TypeFixture
+from mypy.types import Instance, TupleType, Type, UnpackType
 
 
 class SubtypingSuite(Suite):

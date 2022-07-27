@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-from mypyc.ir.ops import Value, Register
-from mypyc.ir.rtypes import RType, RInstance, object_rprimitive
+from mypyc.ir.ops import Register, Value
+from mypyc.ir.rtypes import RInstance, RType, object_rprimitive
 
 
 class AssignmentTarget:

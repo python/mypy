@@ -1,39 +1,39 @@
 import os
 from collections import defaultdict
 from functools import cmp_to_key
-from typing import Tuple, List, Optional, Dict, Callable, Set, Union
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 from mypy.build import State
-from mypy.find_sources import SourceFinder, InvalidSourceList
+from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
-    Expression,
-    Node,
-    MypyFile,
-    RefExpr,
-    TypeInfo,
-    MemberExpr,
-    SymbolNode,
-    Decorator,
-    OverloadedFuncDef,
-    Var,
-    FuncBase,
     LDEF,
+    Decorator,
+    Expression,
+    FuncBase,
+    MemberExpr,
+    MypyFile,
+    Node,
+    OverloadedFuncDef,
+    RefExpr,
+    SymbolNode,
+    TypeInfo,
+    Var,
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
 from mypy.types import (
-    get_proper_type,
-    ProperType,
+    FunctionLike,
     Instance,
+    LiteralType,
+    ProperType,
     TupleType,
     TypedDictType,
-    FunctionLike,
-    LiteralType,
     TypeVarType,
     UnionType,
+    get_proper_type,
 )
 from mypy.typevars import fill_typevars_with_any
 

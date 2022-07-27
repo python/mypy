@@ -2,23 +2,23 @@
 
 from mypyc.ir.ops import ERR_MAGIC
 from mypyc.ir.rtypes import (
-    object_rprimitive,
-    bytes_rprimitive,
-    list_rprimitive,
-    dict_rprimitive,
-    str_rprimitive,
-    c_int_rprimitive,
     RUnion,
+    bytes_rprimitive,
+    c_int_rprimitive,
     c_pyssize_t_rprimitive,
+    dict_rprimitive,
     int_rprimitive,
+    list_rprimitive,
+    object_rprimitive,
+    str_rprimitive,
 )
 from mypyc.primitives.registry import (
-    load_address_op,
-    function_op,
-    method_op,
+    ERR_NEG_INT,
     binary_op,
     custom_op,
-    ERR_NEG_INT,
+    function_op,
+    load_address_op,
+    method_op,
 )
 
 # Get the 'bytes' type object.

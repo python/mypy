@@ -1,10 +1,10 @@
 """Find all objects reachable from a root object."""
 
-from collections.abc import Iterable
-import weakref
 import types
+import weakref
+from collections.abc import Iterable
+from typing import Dict, Iterator, List, Mapping, Tuple
 
-from typing import List, Dict, Iterator, Tuple, Mapping
 from typing_extensions import Final
 
 method_descriptor_type: Final = type(object.__dir__)

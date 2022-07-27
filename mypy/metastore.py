@@ -11,9 +11,9 @@ We provide two implementations.
 import binascii
 import os
 import time
-
 from abc import abstractmethod
-from typing import List, Iterable, Any, Optional
+from typing import Any, Iterable, List, Optional
+
 from typing_extensions import TYPE_CHECKING
 
 if TYPE_CHECKING:

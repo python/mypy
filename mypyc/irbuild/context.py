@@ -3,10 +3,9 @@
 from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem
-
-from mypyc.ir.ops import Value, BasicBlock
-from mypyc.ir.func_ir import INVALID_FUNC_DEF
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import INVALID_FUNC_DEF
+from mypyc.ir.ops import BasicBlock, Value
 from mypyc.irbuild.targets import AssignmentTarget
 
 

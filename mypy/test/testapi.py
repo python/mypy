@@ -1,8 +1,7 @@
-from io import StringIO
 import sys
+from io import StringIO
 
 import mypy.api
-
 from mypy.test.helpers import Suite
 
 

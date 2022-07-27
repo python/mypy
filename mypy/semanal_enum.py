@@ -3,33 +3,34 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import List, Tuple, Optional, Union, cast
+from typing import List, Optional, Tuple, Union, cast
+
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Expression,
-    Context,
-    TypeInfo,
+    ARG_NAMED,
+    ARG_POS,
+    MDEF,
     AssignmentStmt,
-    NameExpr,
     CallExpr,
+    Context,
+    DictExpr,
+    EnumCallExpr,
+    Expression,
+    ListExpr,
+    MemberExpr,
+    NameExpr,
     RefExpr,
     StrExpr,
-    UnicodeExpr,
-    TupleExpr,
-    ListExpr,
-    DictExpr,
-    Var,
     SymbolTableNode,
-    MDEF,
-    ARG_POS,
-    ARG_NAMED,
-    EnumCallExpr,
-    MemberExpr,
+    TupleExpr,
+    TypeInfo,
+    UnicodeExpr,
+    Var,
 )
-from mypy.semanal_shared import SemanticAnalyzerInterface
 from mypy.options import Options
-from mypy.types import get_proper_type, LiteralType, ENUM_REMOVED_PROPS
+from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.types import ENUM_REMOVED_PROPS, LiteralType, get_proper_type
 
 # Note: 'enum.EnumMeta' is deliberately excluded from this list. Classes that directly use
 # enum.EnumMeta do not necessarily automatically have the 'name' and 'value' attributes.

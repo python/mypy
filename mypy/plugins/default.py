@@ -1,35 +1,35 @@
 from functools import partial
-from typing import Callable, Optional, List
+from typing import Callable, List, Optional
 
 from mypy import message_registry
-from mypy.nodes import StrExpr, IntExpr, DictExpr, UnaryExpr
+from mypy.checkexpr import is_literal_type_like
+from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
-    Plugin,
+    AttributeContext,
+    ClassDefContext,
     FunctionContext,
     MethodContext,
     MethodSigContext,
-    AttributeContext,
-    ClassDefContext,
+    Plugin,
 )
 from mypy.plugins.common import try_getting_str_literals
-from mypy.types import (
-    FunctionLike,
-    Type,
-    Instance,
-    AnyType,
-    TypeOfAny,
-    CallableType,
-    NoneType,
-    TypedDictType,
-    TypeVarType,
-    TPDICT_FB_NAMES,
-    get_proper_type,
-    LiteralType,
-    TupleType,
-)
 from mypy.subtypes import is_subtype
 from mypy.typeops import make_simplified_union
-from mypy.checkexpr import is_literal_type_like
+from mypy.types import (
+    TPDICT_FB_NAMES,
+    AnyType,
+    CallableType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    TypeVarType,
+    get_proper_type,
+)
 
 
 class DefaultPlugin(Plugin):
@@ -93,8 +93,7 @@ class DefaultPlugin(Plugin):
         return None
 
     def get_attribute_hook(self, fullname: str) -> Optional[Callable[[AttributeContext], Type]]:
-        from mypy.plugins import ctypes
-        from mypy.plugins import enums
+        from mypy.plugins import ctypes, enums
 
         if fullname == "ctypes.Array.value":
             return ctypes.array_value_callback
@@ -109,8 +108,7 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], None]]:
-        from mypy.plugins import dataclasses
-        from mypy.plugins import attrs
+        from mypy.plugins import attrs, dataclasses
 
         # These dataclass and attrs hooks run in the main semantic analysis pass
         # and only tag known dataclasses/attrs classes, so that the second
@@ -131,9 +129,7 @@ class DefaultPlugin(Plugin):
     def get_class_decorator_hook_2(
         self, fullname: str
     ) -> Optional[Callable[[ClassDefContext], bool]]:
-        from mypy.plugins import dataclasses
-        from mypy.plugins import functools
-        from mypy.plugins import attrs
+        from mypy.plugins import attrs, dataclasses, functools
 
         if fullname in dataclasses.dataclass_makers:
             return dataclasses.dataclass_class_maker_callback

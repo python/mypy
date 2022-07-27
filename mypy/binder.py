@@ -1,18 +1,16 @@
-from contextlib import contextmanager
 from collections import defaultdict
+from contextlib import contextmanager
+from typing import Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
-from typing import Dict, List, Set, Iterator, Union, Optional, Tuple, cast
 from typing_extensions import DefaultDict, TypeAlias as _TypeAlias
 
-from mypy.types import Type, AnyType, PartialType, UnionType, TypeOfAny, NoneType, get_proper_type
-from mypy.subtypes import is_subtype
-from mypy.join import join_simple
-from mypy.sametypes import is_same_type
 from mypy.erasetype import remove_instance_last_known_values
-from mypy.nodes import Expression, Var, RefExpr
+from mypy.join import join_simple
 from mypy.literals import Key, literal, literal_hash, subkeys
-from mypy.nodes import IndexExpr, MemberExpr, AssignmentExpr, NameExpr
-
+from mypy.nodes import AssignmentExpr, Expression, IndexExpr, MemberExpr, NameExpr, RefExpr, Var
+from mypy.sametypes import is_same_type
+from mypy.subtypes import is_subtype
+from mypy.types import AnyType, NoneType, PartialType, Type, TypeOfAny, UnionType, get_proper_type
 
 BindableExpression: _TypeAlias = Union[IndexExpr, MemberExpr, AssignmentExpr, NameExpr]
 

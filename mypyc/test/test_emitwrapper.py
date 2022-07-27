@@ -2,10 +2,9 @@ import unittest
 from typing import List
 
 from mypy.test.helpers import assert_string_arrays_equal
-
 from mypyc.codegen.emit import Emitter, EmitterContext, ReturnHandler
 from mypyc.codegen.emitwrapper import generate_arg_check
-from mypyc.ir.rtypes import list_rprimitive, int_rprimitive
+from mypyc.ir.rtypes import int_rprimitive, list_rprimitive
 from mypyc.namegen import NameGenerator
 
 

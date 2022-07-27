@@ -1,44 +1,44 @@
-from mypy.backports import OrderedDict
-from typing import List, Optional, Tuple, Callable
+from typing import Callable, List, Optional, Tuple
 
-from mypy.types import (
-    Type,
-    AnyType,
-    TypeVisitor,
-    UnboundType,
-    NoneType,
-    TypeVarType,
-    Instance,
-    CallableType,
-    TupleType,
-    TypedDictType,
-    ErasedType,
-    UnionType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    TypeType,
-    TypeOfAny,
-    Overloaded,
-    FunctionLike,
-    LiteralType,
-    ProperType,
-    get_proper_type,
-    get_proper_types,
-    TypeAliasType,
-    TypeGuardedType,
-    ParamSpecType,
-    Parameters,
-    UnpackType,
-    TypeVarTupleType,
-    TypeVarLikeType,
-)
-from mypy.subtypes import is_equivalent, is_subtype, is_callable_compatible, is_proper_subtype
+from mypy import join
+from mypy.backports import OrderedDict
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
-from mypy.typeops import tuple_fallback, make_simplified_union, is_recursive_pair
 from mypy.state import state
-from mypy import join
+from mypy.subtypes import is_callable_compatible, is_equivalent, is_proper_subtype, is_subtype
+from mypy.typeops import is_recursive_pair, make_simplified_union, tuple_fallback
+from mypy.types import (
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeGuardedType,
+    TypeOfAny,
+    TypeType,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 # TODO Describe this module.
 

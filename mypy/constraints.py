@@ -1,56 +1,57 @@
 """Type inference constraints."""
 
 from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
+
 from typing_extensions import Final
 
+import mypy.sametypes
+import mypy.subtypes
+import mypy.typeops
+from mypy.argmap import ArgTypeExpander
+from mypy.erasetype import erase_typevars
+from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
-    CallableType,
-    Type,
-    TypeVisitor,
-    UnboundType,
+    TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
-    NoneType,
-    TypeVarType,
-    Instance,
-    TupleType,
-    TypedDictType,
-    UnionType,
-    Overloaded,
-    ErasedType,
-    PartialType,
+    CallableType,
     DeletedType,
-    UninhabitedType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeOfAny,
+    TypeQuery,
     TypeType,
     TypeVarId,
-    TypeQuery,
-    is_named_instance,
-    TypeOfAny,
-    LiteralType,
-    ProperType,
-    ParamSpecType,
-    get_proper_type,
-    TypeAliasType,
-    is_union_with_any,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
     UnpackType,
     callable_with_ellipsis,
-    Parameters,
-    TUPLE_LIKE_INSTANCE_NAMES,
-    TypeVarTupleType,
-    TypeList,
+    get_proper_type,
+    is_named_instance,
+    is_union_with_any,
 )
-from mypy.maptype import map_instance_to_supertype
-import mypy.subtypes
-import mypy.sametypes
-import mypy.typeops
-from mypy.erasetype import erase_typevars
-from mypy.nodes import COVARIANT, CONTRAVARIANT, ArgKind
-from mypy.argmap import ArgTypeExpander
 from mypy.typestate import TypeState
 from mypy.typevartuples import (
-    split_with_instance,
-    split_with_prefix_and_suffix,
     extract_unpack,
     find_unpack_in_list,
+    split_with_instance,
+    split_with_prefix_and_suffix,
 )
 
 if TYPE_CHECKING:

@@ -1,36 +1,35 @@
 """Test cases for building an C extension and running it."""
 
 import ast
+import contextlib
 import glob
 import os.path
 import re
-import subprocess
-import contextlib
 import shutil
+import subprocess
 import sys
 from typing import Any, Iterator, List, cast
 
 from mypy import build
-from mypy.test.data import DataDrivenTestCase
-from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase
 from mypy.test.helpers import assert_module_equivalence, perform_file_operations
-
-from mypyc.codegen import emitmodule
-from mypyc.options import CompilerOptions
-from mypyc.errors import Errors
 from mypyc.build import construct_groups
+from mypyc.codegen import emitmodule
+from mypyc.errors import Errors
+from mypyc.options import CompilerOptions
+from mypyc.test.test_serialization import check_serialization_roundtrip
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
     TESTUTIL_PATH,
-    use_custom_builtins,
     MypycDataSuite,
     assert_test_output,
-    show_c,
     fudge_dir_mtimes,
+    show_c,
+    use_custom_builtins,
 )
-from mypyc.test.test_serialization import check_serialization_roundtrip
 
 files = [
     "run-misc.test",

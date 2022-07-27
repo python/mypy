@@ -1,12 +1,13 @@
 """Plugin that provides support for dataclasses."""
 
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Optional, Set, Tuple
+
 from typing_extensions import Final
 
 from mypy.nodes import (
-    ARG_OPT,
     ARG_NAMED,
     ARG_NAMED_OPT,
+    ARG_OPT,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
@@ -14,41 +15,41 @@ from mypy.nodes import (
     Argument,
     AssignmentStmt,
     CallExpr,
-    TypeAlias,
     Context,
     Expression,
     JsonDict,
     NameExpr,
+    PlaceholderNode,
     RefExpr,
     SymbolTableNode,
     TempNode,
+    TypeAlias,
     TypeInfo,
-    Var,
     TypeVarExpr,
-    PlaceholderNode,
+    Var,
 )
 from mypy.plugin import ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
-    add_method,
     _get_decorator_bool_argument,
-    deserialize_and_fixup_type,
     add_attribute_to_class,
-)
-from mypy.typeops import map_type_from_supertype
-from mypy.types import (
-    Type,
-    Instance,
-    NoneType,
-    TypeVarType,
-    CallableType,
-    TupleType,
-    LiteralType,
-    get_proper_type,
-    AnyType,
-    TypeOfAny,
+    add_method,
+    deserialize_and_fixup_type,
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.state import state
+from mypy.typeops import map_type_from_supertype
+from mypy.types import (
+    AnyType,
+    CallableType,
+    Instance,
+    LiteralType,
+    NoneType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeVarType,
+    get_proper_type,
+)
 
 # The set of decorators that generate dataclasses.
 dataclass_makers: Final = {"dataclass", "dataclasses.dataclass"}

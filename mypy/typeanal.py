@@ -1,93 +1,92 @@
 """Semantic analysis of types"""
 
 import itertools
-from itertools import chain
 from contextlib import contextmanager
-from mypy.backports import OrderedDict
+from itertools import chain
+from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, TypeVar
 
-from typing import Callable, List, Optional, Set, Tuple, Iterator, TypeVar, Iterable, Sequence
 from typing_extensions import Final, Protocol
 
-from mypy.messages import MessageBuilder, quote_type_string, format_type_bare
-from mypy.options import Options
-from mypy.types import (
-    NEVER_NAMES,
-    Type,
-    UnboundType,
-    TupleType,
-    TypedDictType,
-    UnionType,
-    Instance,
-    AnyType,
-    CallableType,
-    NoneType,
-    ErasedType,
-    DeletedType,
-    TypeList,
-    TypeVarType,
-    SyntheticTypeVisitor,
-    StarType,
-    PartialType,
-    EllipsisType,
-    UninhabitedType,
-    TypeType,
-    CallableArgument,
-    Parameters,
-    TypeQuery,
-    union_items,
-    TypeOfAny,
-    LiteralType,
-    RawExpressionType,
-    PlaceholderType,
-    Overloaded,
-    get_proper_type,
-    TypeAliasType,
-    RequiredType,
-    TypeVarLikeType,
-    ParamSpecType,
-    ParamSpecFlavor,
-    UnpackType,
-    TypeVarTupleType,
-    callable_with_ellipsis,
-    TYPE_ALIAS_NAMES,
-    FINAL_TYPE_NAMES,
-    LITERAL_TYPE_NAMES,
-    ANNOTATED_TYPE_NAMES,
-)
-
+from mypy import errorcodes as codes, message_registry, nodes
+from mypy.backports import OrderedDict
+from mypy.errorcodes import ErrorCode
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import MessageBuilder, format_type_bare, quote_type_string
 from mypy.nodes import (
-    TypeInfo,
-    Context,
-    SymbolTableNode,
-    Var,
-    Expression,
-    get_nongen_builtins,
-    check_arg_names,
-    check_arg_kinds,
-    ArgKind,
-    ARG_POS,
     ARG_NAMED,
-    ARG_OPT,
     ARG_NAMED_OPT,
+    ARG_OPT,
+    ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    SYMBOL_FUNCBASE_TYPES,
+    ArgKind,
+    Context,
+    Decorator,
+    Expression,
+    MypyFile,
+    ParamSpecExpr,
+    PlaceholderNode,
+    SymbolTableNode,
+    TypeAlias,
+    TypeInfo,
     TypeVarExpr,
     TypeVarLikeExpr,
-    ParamSpecExpr,
-    TypeAlias,
-    PlaceholderNode,
-    SYMBOL_FUNCBASE_TYPES,
-    Decorator,
-    MypyFile,
     TypeVarTupleExpr,
+    Var,
+    check_arg_kinds,
+    check_arg_names,
+    get_nongen_builtins,
+)
+from mypy.options import Options
+from mypy.plugin import AnalyzeTypeContext, Plugin, TypeAnalyzerPluginInterface
+from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
+from mypy.tvar_scope import TypeVarLikeScope
+from mypy.types import (
+    ANNOTATED_TYPE_NAMES,
+    FINAL_TYPE_NAMES,
+    LITERAL_TYPE_NAMES,
+    NEVER_NAMES,
+    TYPE_ALIAS_NAMES,
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecFlavor,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    RequiredType,
+    StarType,
+    SyntheticTypeVisitor,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeOfAny,
+    TypeQuery,
+    TypeType,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    callable_with_ellipsis,
+    get_proper_type,
+    union_items,
 )
 from mypy.typetraverser import TypeTraverserVisitor
-from mypy.tvar_scope import TypeVarLikeScope
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.plugin import Plugin, TypeAnalyzerPluginInterface, AnalyzeTypeContext
-from mypy.semanal_shared import SemanticAnalyzerCoreInterface, paramspec_args, paramspec_kwargs
-from mypy.errorcodes import ErrorCode
-from mypy import nodes, message_registry, errorcodes as codes
 
 T = TypeVar("T")
 

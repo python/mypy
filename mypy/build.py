@@ -21,79 +21,79 @@ import stat
 import sys
 import time
 import types
-
 from typing import (
     AbstractSet,
     Any,
+    Callable,
     Dict,
     Iterable,
     Iterator,
     List,
-    Sequence,
     Mapping,
     NamedTuple,
     Optional,
+    Sequence,
     Set,
+    TextIO,
     Tuple,
     TypeVar,
     Union,
-    Callable,
-    TextIO,
 )
-from typing_extensions import ClassVar, NoReturn, Final, TYPE_CHECKING, TypeAlias as _TypeAlias
-from mypy_extensions import TypedDict
 
-from mypy.nodes import MypyFile, ImportBase, Import, ImportFrom, ImportAll, SymbolTable
-from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
-from mypy.semanal import SemanticAnalyzer
+from mypy_extensions import TypedDict
+from typing_extensions import TYPE_CHECKING, ClassVar, Final, NoReturn, TypeAlias as _TypeAlias
+
 import mypy.semanal_main
 from mypy.checker import TypeChecker
+from mypy.errors import CompileError, ErrorInfo, Errors, report_internal_error
 from mypy.indirection import TypeIndirectionVisitor
-from mypy.errors import Errors, CompileError, ErrorInfo, report_internal_error
+from mypy.nodes import Import, ImportAll, ImportBase, ImportFrom, MypyFile, SymbolTable
+from mypy.semanal import SemanticAnalyzer
+from mypy.semanal_pass1 import SemanticAnalyzerPreAnalysis
 from mypy.util import (
     DecodeError,
     decode_python_encoding,
-    is_sub_path,
     get_mypy_comments,
+    get_top_two_prefixes,
+    hash_digest,
+    is_stub_package_file,
+    is_sub_path,
+    is_typeshed_file,
     module_prefix,
     read_py_file,
-    hash_digest,
-    is_typeshed_file,
-    is_stub_package_file,
-    get_top_two_prefixes,
     time_ref,
     time_spent_us,
 )
 
 if TYPE_CHECKING:
     from mypy.report import Reports  # Avoid unconditional slow import
+
+from mypy import errorcodes as codes
+from mypy.config_parser import parse_mypy_comments
 from mypy.fixup import fixup_module
+from mypy.freetree import free_tree
+from mypy.fscache import FileSystemCache
+from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
     BuildSource,
     BuildSourceSet,
-    compute_search_paths,
     FindModuleCache,
-    SearchPaths,
-    ModuleSearchResult,
     ModuleNotFoundReason,
+    ModuleSearchResult,
+    SearchPaths,
+    compute_search_paths,
 )
 from mypy.nodes import Expression
 from mypy.options import Options
 from mypy.parse import parse
-from mypy.stats import dump_type_stats
-from mypy.types import Type
-from mypy.version import __version__
-from mypy.plugin import Plugin, ChainedPlugin, ReportConfigContext
+from mypy.plugin import ChainedPlugin, Plugin, ReportConfigContext
 from mypy.plugins.default import DefaultPlugin
-from mypy.fscache import FileSystemCache
-from mypy.metastore import MetadataStore, FilesystemMetadataStore, SqliteMetadataStore
+from mypy.renaming import LimitedVariableRenameVisitor, VariableRenameVisitor
+from mypy.stats import dump_type_stats
+from mypy.stubinfo import is_legacy_bundled_package, legacy_bundled_packages
+from mypy.types import Type
 from mypy.typestate import TypeState, reset_global_state
-from mypy.renaming import VariableRenameVisitor, LimitedVariableRenameVisitor
-from mypy.config_parser import parse_mypy_comments
-from mypy.freetree import free_tree
-from mypy.stubinfo import legacy_bundled_packages, is_legacy_bundled_package
-from mypy import errorcodes as codes
-
+from mypy.version import __version__
 
 # Switch to True to produce debug output related to fine-grained incremental
 # mode only that is useful during development. This produces only a subset of

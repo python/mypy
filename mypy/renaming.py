@@ -1,30 +1,31 @@
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Set
+
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Block,
     AssignmentStmt,
-    NameExpr,
-    MypyFile,
-    FuncDef,
-    Lvalue,
-    ListExpr,
-    TupleExpr,
-    WhileStmt,
-    ForStmt,
+    Block,
     BreakStmt,
+    ClassDef,
     ContinueStmt,
-    TryStmt,
-    WithStmt,
-    MatchStmt,
-    StarExpr,
-    ImportFrom,
-    MemberExpr,
-    IndexExpr,
+    ForStmt,
+    FuncDef,
     Import,
     ImportAll,
-    ClassDef,
+    ImportFrom,
+    IndexExpr,
+    ListExpr,
+    Lvalue,
+    MatchStmt,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    StarExpr,
+    TryStmt,
+    TupleExpr,
+    WhileStmt,
+    WithStmt,
 )
 from mypy.patterns import AsPattern
 from mypy.traverser import TraverserVisitor

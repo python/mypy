@@ -5,49 +5,50 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
-from typing import Union, List, Optional, Tuple, Callable
-from typing_extensions import Type, ClassVar
+from typing import Callable, List, Optional, Tuple, Union
+
+from typing_extensions import ClassVar, Type
 
 from mypy.nodes import (
-    Lvalue,
-    Expression,
-    TupleExpr,
-    CallExpr,
-    RefExpr,
-    GeneratorExpr,
     ARG_POS,
+    CallExpr,
+    Expression,
+    GeneratorExpr,
+    Lvalue,
     MemberExpr,
+    RefExpr,
+    TupleExpr,
     TypeAlias,
 )
-from mypyc.ir.ops import Value, BasicBlock, Integer, Branch, Register, TupleGet, TupleSet, IntOp
+from mypyc.ir.ops import BasicBlock, Branch, Integer, IntOp, Register, TupleGet, TupleSet, Value
 from mypyc.ir.rtypes import (
+    RTuple,
     RType,
-    is_short_int_rprimitive,
+    int_rprimitive,
+    is_dict_rprimitive,
     is_list_rprimitive,
     is_sequence_rprimitive,
-    is_tuple_rprimitive,
-    is_dict_rprimitive,
+    is_short_int_rprimitive,
     is_str_rprimitive,
-    RTuple,
+    is_tuple_rprimitive,
     short_int_rprimitive,
-    int_rprimitive,
 )
-from mypyc.primitives.registry import CFunctionDescription
-from mypyc.primitives.dict_ops import (
-    dict_next_key_op,
-    dict_next_value_op,
-    dict_next_item_op,
-    dict_check_size_op,
-    dict_key_iter_op,
-    dict_value_iter_op,
-    dict_item_iter_op,
-)
-from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
-from mypyc.primitives.set_ops import set_add_op
-from mypyc.primitives.generic_ops import iter_op, next_op
-from mypyc.primitives.exc_ops import no_err_occurred_op
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.targets import AssignmentTarget, AssignmentTargetTuple
+from mypyc.primitives.dict_ops import (
+    dict_check_size_op,
+    dict_item_iter_op,
+    dict_key_iter_op,
+    dict_next_item_op,
+    dict_next_key_op,
+    dict_next_value_op,
+    dict_value_iter_op,
+)
+from mypyc.primitives.exc_ops import no_err_occurred_op
+from mypyc.primitives.generic_ops import iter_op, next_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_unsafe_op, new_list_set_item_op
+from mypyc.primitives.registry import CFunctionDescription
+from mypyc.primitives.set_ops import set_add_op
 
 GenFunc = Callable[[], None]
 

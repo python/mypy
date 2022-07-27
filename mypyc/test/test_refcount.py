@@ -6,24 +6,23 @@ operations to IR.
 
 import os.path
 
+from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypy.errors import CompileError
-
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
-from mypyc.transform.refcount import insert_ref_count_opcodes
-from mypyc.transform.uninit import insert_uninit_checks
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
-    use_custom_builtins,
     MypycDataSuite,
-    build_ir_for_single_file,
     assert_test_output,
+    build_ir_for_single_file,
+    infer_ir_build_options_from_test_name,
     remove_comment_lines,
     replace_word_size,
-    infer_ir_build_options_from_test_name,
+    use_custom_builtins,
 )
+from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.uninit import insert_uninit_checks
 
 files = ["refcount.test"]
 

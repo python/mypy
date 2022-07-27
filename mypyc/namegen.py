@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple, Set, Optional, Iterable
+from typing import Dict, Iterable, List, Optional, Set, Tuple
 
 
 class NameGenerator:

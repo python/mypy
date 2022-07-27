@@ -2,17 +2,16 @@
 
 import os.path
 
+from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypy.errors import CompileError
-
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
-    use_custom_builtins,
     MypycDataSuite,
-    build_ir_for_single_file2,
     assert_test_output,
+    build_ir_for_single_file2,
     infer_ir_build_options_from_test_name,
+    use_custom_builtins,
 )
 
 files = ["alwaysdefined.test"]

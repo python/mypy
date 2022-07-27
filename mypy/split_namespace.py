@@ -8,8 +8,7 @@ regular namespace.
 # __getattr__/__setattr__ and has some issues with __dict__
 
 import argparse
-
-from typing import Tuple, Any
+from typing import Any, Tuple
 
 
 class SplitNamespace(argparse.Namespace):

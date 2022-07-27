@@ -1,4 +1,5 @@
 import os
+
 from mypy import git
 
 # Base version.

@@ -1,50 +1,51 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 
 from collections import defaultdict
-from typing import List, Optional, Tuple, Dict, NamedTuple, Set, Union
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
+
 from typing_extensions import Final
 
 import mypy.checker
+from mypy import message_registry
 from mypy.checkmember import analyze_member_access
 from mypy.expandtype import expand_type_by_instance
 from mypy.join import join_types
 from mypy.literals import literal_hash
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import narrow_declared_type
-from mypy import message_registry
 from mypy.messages import MessageBuilder
-from mypy.nodes import Expression, ARG_POS, TypeAlias, TypeInfo, Var, NameExpr
+from mypy.nodes import ARG_POS, Expression, NameExpr, TypeAlias, TypeInfo, Var
 from mypy.patterns import (
-    Pattern,
     AsPattern,
-    OrPattern,
-    ValuePattern,
-    SequencePattern,
-    StarredPattern,
-    MappingPattern,
     ClassPattern,
+    MappingPattern,
+    OrPattern,
+    Pattern,
+    SequencePattern,
     SingletonPattern,
+    StarredPattern,
+    ValuePattern,
 )
 from mypy.plugin import Plugin
 from mypy.subtypes import is_subtype
 from mypy.typeops import (
-    try_getting_str_literals_from_type,
-    make_simplified_union,
     coerce_to_literal,
+    make_simplified_union,
+    try_getting_str_literals_from_type,
 )
 from mypy.types import (
-    LiteralType,
-    ProperType,
     AnyType,
-    TypeOfAny,
     Instance,
-    Type,
-    UninhabitedType,
-    get_proper_type,
-    TypedDictType,
-    TupleType,
+    LiteralType,
     NoneType,
+    ProperType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    UninhabitedType,
     UnionType,
+    get_proper_type,
 )
 from mypy.typevars import fill_typevars
 from mypy.visitor import PatternVisitor

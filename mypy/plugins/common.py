@@ -1,23 +1,25 @@
 from typing import List, Optional, Union
 
+from mypy.fixup import TypeFixer
 from mypy.nodes import (
     ARG_POS,
     MDEF,
+    SYMBOL_FUNCBASE_TYPES,
     Argument,
     Block,
     CallExpr,
     ClassDef,
     Expression,
-    SYMBOL_FUNCBASE_TYPES,
     FuncDef,
+    JsonDict,
     PassStmt,
     RefExpr,
     SymbolTableNode,
     Var,
-    JsonDict,
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
-from mypy.semanal import set_callable_name, ALLOW_INCOMPATIBLE_OVERRIDE
+from mypy.semanal import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
+from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
 from mypy.types import (
     CallableType,
     Overloaded,
@@ -28,8 +30,6 @@ from mypy.types import (
 )
 from mypy.typevars import fill_typevars
 from mypy.util import get_unique_redefinition_name
-from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
-from mypy.fixup import TypeFixer
 
 
 def _get_decorator_bool_argument(ctx: ClassDefContext, name: str, default: bool) -> bool:

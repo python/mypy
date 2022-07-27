@@ -2,39 +2,38 @@
 
 import sys
 from abc import abstractmethod
-
 from typing import (
     Any,
-    TypeVar,
     Dict,
-    List,
-    Tuple,
-    cast,
-    Set,
-    Optional,
-    Union,
     Iterable,
+    List,
     NamedTuple,
+    Optional,
     Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+    Union,
+    cast,
 )
-from typing_extensions import ClassVar, Final, TYPE_CHECKING, overload, TypeAlias as _TypeAlias
 
-from mypy.backports import OrderedDict
+from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
+
 import mypy.nodes
-from mypy.state import state
+from mypy.backports import OrderedDict
+from mypy.bogus_type import Bogus
 from mypy.nodes import (
-    INVARIANT,
-    SymbolNode,
-    FuncDef,
-    FakeInfo,
-    ArgKind,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    INVARIANT,
+    ArgKind,
+    FakeInfo,
+    FuncDef,
+    SymbolNode,
 )
+from mypy.state import state
 from mypy.util import IdMapper
-from mypy.bogus_type import Bogus
-
 
 T = TypeVar("T")
 
@@ -78,8 +77,8 @@ LiteralValue: _TypeAlias = Union[int, str, bool]
 # semantic analyzer!
 if TYPE_CHECKING:
     from mypy.type_visitor import (
-        TypeVisitor as TypeVisitor,
         SyntheticTypeVisitor as SyntheticTypeVisitor,
+        TypeVisitor as TypeVisitor,
     )
 
 TYPED_NAMEDTUPLE_NAMES: Final = ("typing.NamedTuple", "typing_extensions.NamedTuple")
@@ -2757,10 +2756,10 @@ def get_proper_types(
 # Import them here, after the types are defined.
 # This is intended as a re-export also.
 from mypy.type_visitor import (  # noqa
-    TypeVisitor as TypeVisitor,
     SyntheticTypeVisitor as SyntheticTypeVisitor,
-    TypeTranslator as TypeTranslator,
     TypeQuery as TypeQuery,
+    TypeTranslator as TypeTranslator,
+    TypeVisitor as TypeVisitor,
 )
 
 

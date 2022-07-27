@@ -1,8 +1,9 @@
-from mypy.util import unnamed_function
-from typing import Dict, Any, Optional, Tuple
 import sys
+from typing import Any, Dict, Optional, Tuple
 
 from typing_extensions import Final
+
+from mypy.util import unnamed_function
 
 PREFIX: Final = "CPyPy_"  # Python wrappers
 NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.

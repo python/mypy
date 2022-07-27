@@ -12,15 +12,14 @@ import tempfile
 import unittest
 from typing import List, Tuple
 
-from mypy.modulefinder import SearchPaths
-from mypy.fscache import FileSystemCache
-from mypy.dmypy_server import filter_out_missing_top_level_packages
+import pytest
 
-from mypy.test.config import test_temp_dir, PREFIX
+from mypy.dmypy_server import filter_out_missing_top_level_packages
+from mypy.fscache import FileSystemCache
+from mypy.modulefinder import SearchPaths
+from mypy.test.config import PREFIX, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messages
-
-import pytest
 
 # Files containing test cases descriptions.
 daemon_files = ["daemon.test"]

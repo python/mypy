@@ -4,16 +4,16 @@ Note: Varying-length tuples are represented as boxed Python tuple
 objects, i.e. tuple_rprimitive (RPrimitive), not RTuple.
 """
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
 from mypyc.ir.rtypes import (
-    tuple_rprimitive,
+    bit_rprimitive,
+    c_pyssize_t_rprimitive,
     int_rprimitive,
     list_rprimitive,
     object_rprimitive,
-    c_pyssize_t_rprimitive,
-    bit_rprimitive,
+    tuple_rprimitive,
 )
-from mypyc.primitives.registry import load_address_op, method_op, function_op, custom_op
+from mypyc.primitives.registry import custom_op, function_op, load_address_op, method_op
 
 # Get the 'builtins.tuple' type object.
 load_address_op(name="builtins.tuple", type=object_rprimitive, src="PyTuple_Type")

@@ -50,50 +50,49 @@ Summary of how this works for certain kinds of differences:
   fine-grained dependencies.
 """
 
-from typing import Set, Dict, Tuple, Optional, Sequence, Union
+from typing import Dict, Optional, Sequence, Set, Tuple, Union
 
 from mypy.nodes import (
-    SymbolTable,
-    TypeInfo,
-    Var,
-    SymbolNode,
+    UNBOUND_IMPORTED,
     Decorator,
-    TypeVarExpr,
-    TypeAlias,
     FuncBase,
-    OverloadedFuncDef,
     FuncItem,
     MypyFile,
+    OverloadedFuncDef,
     ParamSpecExpr,
-    UNBOUND_IMPORTED,
+    SymbolNode,
+    SymbolTable,
+    TypeAlias,
+    TypeInfo,
+    TypeVarExpr,
+    Var,
 )
 from mypy.types import (
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    TupleType,
     Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
     TypeVisitor,
     UnboundType,
-    AnyType,
-    NoneType,
     UninhabitedType,
-    ErasedType,
-    DeletedType,
-    Instance,
-    TypeVarType,
-    CallableType,
-    TupleType,
-    TypedDictType,
     UnionType,
-    Overloaded,
-    PartialType,
-    TypeType,
-    LiteralType,
-    TypeAliasType,
-    ParamSpecType,
-    Parameters,
     UnpackType,
-    TypeVarTupleType,
 )
 from mypy.util import get_prefix
-
 
 # Snapshot representation of a symbol table node or type. The representation is
 # opaque -- the only supported operations are comparing for equality and

@@ -1,21 +1,23 @@
+from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
+
+from typing_extensions import Final
+
 from mypy.messages import format_type
+from mypy.nodes import ARG_POS, Argument, Block, ClassDef, Context, SymbolTable, TypeInfo, Var
+from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
 from mypy.plugins.common import add_method_to_class
-from mypy.nodes import ARG_POS, Argument, Block, ClassDef, SymbolTable, TypeInfo, Var, Context
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
     CallableType,
+    FunctionLike,
     Instance,
     NoneType,
     Overloaded,
     Type,
     TypeOfAny,
     get_proper_type,
-    FunctionLike,
 )
-from mypy.plugin import CheckerPluginInterface, FunctionContext, MethodContext, MethodSigContext
-from typing import List, NamedTuple, Optional, Sequence, TypeVar, Union
-from typing_extensions import Final
 
 
 class SingledispatchTypeVars(NamedTuple):

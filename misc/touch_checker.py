@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-from typing import Callable, List, Tuple, Optional
-
-import sys
 import glob
 import os
 import shutil
 import statistics
 import subprocess
+import sys
 import textwrap
 import time
+from typing import Callable, List, Optional, Tuple
 
 
 def print_offset(text: str, indent_length: int = 4) -> None:

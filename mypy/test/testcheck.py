@@ -3,27 +3,26 @@
 import os
 import re
 import sys
-
 from typing import Dict, List, Set, Tuple
 
 from mypy import build
 from mypy.build import Graph
-from mypy.modulefinder import BuildSource, SearchPaths, FindModuleCache
-from mypy.test.config import test_temp_dir, test_data_prefix
+from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths
+from mypy.semanal_main import core_modules
+from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite, FileOperation, module_from_path
 from mypy.test.helpers import (
-    assert_string_arrays_equal,
-    normalize_error_messages,
     assert_module_equivalence,
-    update_testcase_output,
-    parse_options,
+    assert_string_arrays_equal,
     assert_target_equivalence,
     check_test_output_files,
-    perform_file_operations,
     find_test_files,
+    normalize_error_messages,
+    parse_options,
+    perform_file_operations,
+    update_testcase_output,
 )
-from mypy.errors import CompileError
-from mypy.semanal_main import core_modules
 
 try:
     import lxml  # type: ignore

@@ -62,35 +62,35 @@ run this on __init__ methods, this analysis pass will be fairly quick.
 """
 
 from typing import List, Set, Tuple
+
 from typing_extensions import Final
 
-from mypyc.ir.ops import (
-    Register,
-    Assign,
-    AssignMulti,
-    SetMem,
-    SetAttr,
-    Branch,
-    Return,
-    Unreachable,
-    GetAttr,
-    Call,
-    RegisterOp,
-    BasicBlock,
-    ControlOp,
-)
-from mypyc.ir.rtypes import RInstance
-from mypyc.ir.class_ir import ClassIR
 from mypyc.analysis.dataflow import (
-    BaseAnalysisVisitor,
-    AnalysisResult,
-    get_cfg,
     CFG,
     MAYBE_ANALYSIS,
+    AnalysisResult,
+    BaseAnalysisVisitor,
+    get_cfg,
     run_analysis,
 )
 from mypyc.analysis.selfleaks import analyze_self_leaks
-
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.ops import (
+    Assign,
+    AssignMulti,
+    BasicBlock,
+    Branch,
+    Call,
+    ControlOp,
+    GetAttr,
+    Register,
+    RegisterOp,
+    Return,
+    SetAttr,
+    SetMem,
+    Unreachable,
+)
+from mypyc.ir.rtypes import RInstance
 
 # If True, print out all always-defined attributes of native classes (to aid
 # debugging and testing)

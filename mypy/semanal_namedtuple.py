@@ -4,62 +4,63 @@ This is conceptually part of mypy.semanal.
 """
 
 from contextlib import contextmanager
-from typing import Tuple, List, Dict, Mapping, Optional, Union, cast, Iterator
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple, Union, cast
+
 from typing_extensions import Final
 
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.nodes import (
+    ARG_NAMED_OPT,
+    ARG_OPT,
+    ARG_POS,
+    MDEF,
+    Argument,
+    AssignmentStmt,
+    Block,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    Context,
+    Decorator,
+    EllipsisExpr,
+    Expression,
+    ExpressionStmt,
+    FuncBase,
+    FuncDef,
+    ListExpr,
+    NamedTupleExpr,
+    NameExpr,
+    PassStmt,
+    RefExpr,
+    StrExpr,
+    SymbolTable,
+    SymbolTableNode,
+    TempNode,
+    TupleExpr,
+    TypeInfo,
+    TypeVarExpr,
+    UnicodeExpr,
+    Var,
+)
+from mypy.options import Options
+from mypy.semanal_shared import (
+    PRIORITY_FALLBACKS,
+    SemanticAnalyzerInterface,
+    calculate_tuple_fallback,
+    set_callable_name,
+)
 from mypy.types import (
-    Type,
-    TupleType,
+    TYPED_NAMEDTUPLE_NAMES,
     AnyType,
-    TypeOfAny,
     CallableType,
+    LiteralType,
+    TupleType,
+    Type,
+    TypeOfAny,
     TypeType,
     TypeVarType,
     UnboundType,
-    LiteralType,
-    TYPED_NAMEDTUPLE_NAMES,
 )
-from mypy.semanal_shared import (
-    SemanticAnalyzerInterface,
-    set_callable_name,
-    calculate_tuple_fallback,
-    PRIORITY_FALLBACKS,
-)
-from mypy.nodes import (
-    Var,
-    EllipsisExpr,
-    Argument,
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    ExpressionStmt,
-    NameExpr,
-    AssignmentStmt,
-    PassStmt,
-    Decorator,
-    FuncBase,
-    ClassDef,
-    Expression,
-    RefExpr,
-    TypeInfo,
-    NamedTupleExpr,
-    CallExpr,
-    Context,
-    TupleExpr,
-    ListExpr,
-    SymbolTableNode,
-    FuncDef,
-    Block,
-    TempNode,
-    SymbolTable,
-    TypeVarExpr,
-    ARG_POS,
-    ARG_NAMED_OPT,
-    ARG_OPT,
-    MDEF,
-)
-from mypy.options import Options
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
 from mypy.util import get_unique_redefinition_name
 
 # Matches "_prohibited" in typing.py, but adds __annotations__, which works at runtime but can't

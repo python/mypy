@@ -5,22 +5,23 @@ Model how these behave differently in different contexts.
 
 from abc import abstractmethod
 from typing import Optional, Union
+
 from typing_extensions import TYPE_CHECKING
 
 from mypyc.ir.ops import (
-    Branch,
+    NO_TRACEBACK_LINE_NO,
+    Assign,
     BasicBlock,
-    Unreachable,
-    Value,
+    Branch,
     Goto,
     Integer,
-    Assign,
     Register,
     Return,
-    NO_TRACEBACK_LINE_NO,
+    Unreachable,
+    Value,
 )
-from mypyc.primitives.exc_ops import set_stop_iteration_value, restore_exc_info_op
 from mypyc.irbuild.targets import AssignmentTarget
+from mypyc.primitives.exc_ops import restore_exc_info_op, set_stop_iteration_value
 
 if TYPE_CHECKING:
     from mypyc.irbuild.builder import IRBuilder

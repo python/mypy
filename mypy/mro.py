@@ -1,4 +1,4 @@
-from typing import Optional, Callable, List
+from typing import Callable, List, Optional
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance

@@ -2,19 +2,19 @@
 
 import os
 from collections import defaultdict
+from typing import Dict, List, Optional, Set, Tuple
 
-from typing import List, Tuple, Dict, Optional, Set
 from typing_extensions import DefaultDict
 
 from mypy import build
-from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
-from mypy.nodes import MypyFile, Expression
+from mypy.modulefinder import BuildSource
+from mypy.nodes import Expression, MypyFile
 from mypy.options import Options
 from mypy.server.deps import get_dependencies
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, parse_options, find_test_files
+from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 from mypy.types import Type
 from mypy.typestate import TypeState
 

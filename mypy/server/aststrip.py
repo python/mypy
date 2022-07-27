@@ -32,39 +32,38 @@ Notes:
 """
 
 import contextlib
-from typing import Union, Iterator, Optional, Dict, Tuple
+from typing import Dict, Iterator, Optional, Tuple, Union
 
 from mypy.backports import nullcontext
 from mypy.nodes import (
-    FuncDef,
-    NameExpr,
-    MemberExpr,
-    RefExpr,
-    MypyFile,
-    ClassDef,
-    AssignmentStmt,
-    ImportFrom,
-    CallExpr,
-    Decorator,
-    OverloadedFuncDef,
-    Node,
-    TupleExpr,
-    ListExpr,
-    SuperExpr,
-    IndexExpr,
-    ImportAll,
-    ForStmt,
-    Block,
     CLASSDEF_NO_INFO,
-    TypeInfo,
+    AssignmentStmt,
+    Block,
+    CallExpr,
+    ClassDef,
+    Decorator,
+    ForStmt,
+    FuncDef,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OverloadedFuncDef,
+    RefExpr,
     StarExpr,
-    Var,
+    SuperExpr,
     SymbolTableNode,
+    TupleExpr,
+    TypeInfo,
+    Var,
 )
 from mypy.traverser import TraverserVisitor
 from mypy.types import CallableType
 from mypy.typestate import TypeState
-
 
 SavedAttributes = Dict[Tuple[ClassDef, str], SymbolTableNode]
 

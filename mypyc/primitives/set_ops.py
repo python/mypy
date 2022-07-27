@@ -1,22 +1,21 @@
 """Primitive set (and frozenset) ops."""
 
-from mypyc.primitives.registry import (
-    load_address_op,
-    function_op,
-    method_op,
-    binary_op,
-    ERR_NEG_INT,
-)
-from mypyc.ir.ops import ERR_MAGIC, ERR_FALSE
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC
 from mypyc.ir.rtypes import (
-    object_rprimitive,
-    bool_rprimitive,
-    set_rprimitive,
-    c_int_rprimitive,
-    pointer_rprimitive,
     bit_rprimitive,
+    bool_rprimitive,
+    c_int_rprimitive,
+    object_rprimitive,
+    pointer_rprimitive,
+    set_rprimitive,
 )
-
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    binary_op,
+    function_op,
+    load_address_op,
+    method_op,
+)
 
 # Get the 'builtins.set' type object.
 load_address_op(name="builtins.set", type=object_rprimitive, src="PySet_Type")

@@ -1,12 +1,12 @@
 """Test cases for the constraint solver used in type inference."""
 
-from typing import List, Union, Tuple, Optional
+from typing import List, Optional, Tuple, Union
 
-from mypy.test.helpers import Suite, assert_equal
-from mypy.constraints import SUPERTYPE_OF, SUBTYPE_OF, Constraint
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint
 from mypy.solve import solve_constraints
+from mypy.test.helpers import Suite, assert_equal
 from mypy.test.typefixture import TypeFixture
-from mypy.types import Type, TypeVarType, TypeVarId
+from mypy.types import Type, TypeVarId, TypeVarType
 
 
 class SolveSuite(Suite):

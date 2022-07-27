@@ -1,44 +1,45 @@
 """Fix up various things after deserialization."""
 
 from typing import Any, Dict, Optional
+
 from typing_extensions import Final
 
+from mypy.lookup import lookup_fully_qualified
 from mypy.nodes import (
-    MypyFile,
-    SymbolTable,
-    TypeInfo,
-    FuncDef,
-    OverloadedFuncDef,
-    Decorator,
-    Var,
-    TypeVarExpr,
-    ClassDef,
     Block,
+    ClassDef,
+    Decorator,
+    FuncDef,
+    MypyFile,
+    OverloadedFuncDef,
+    SymbolTable,
     TypeAlias,
+    TypeInfo,
+    TypeVarExpr,
+    Var,
 )
 from mypy.types import (
+    NOT_READY,
+    AnyType,
     CallableType,
     Instance,
+    LiteralType,
     Overloaded,
+    Parameters,
+    ParamSpecType,
     TupleType,
+    TypeAliasType,
     TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarTupleType,
     TypeVarType,
+    TypeVisitor,
     UnboundType,
     UnionType,
-    TypeVisitor,
-    LiteralType,
-    TypeType,
-    NOT_READY,
-    TypeAliasType,
-    AnyType,
-    TypeOfAny,
-    ParamSpecType,
-    Parameters,
     UnpackType,
-    TypeVarTupleType,
 )
 from mypy.visitor import NodeVisitor
-from mypy.lookup import lookup_fully_qualified
 
 
 # N.B: we do a allow_missing fixup when fixing up a fine-grained

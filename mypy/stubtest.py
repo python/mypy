@@ -16,13 +16,13 @@ import sys
 import traceback
 import types
 import typing
-import typing_extensions
 import warnings
-from contextlib import redirect_stdout, redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
 from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
 
+import typing_extensions
 from typing_extensions import Type
 
 import mypy.build
@@ -33,7 +33,7 @@ import mypy.version
 from mypy import nodes
 from mypy.config_parser import parse_config_file
 from mypy.options import Options
-from mypy.util import FancyFormatter, bytes_to_human_readable_repr, plural_s, is_dunder
+from mypy.util import FancyFormatter, bytes_to_human_readable_repr, is_dunder, plural_s
 
 
 class Missing:

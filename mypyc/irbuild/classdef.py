@@ -2,66 +2,67 @@
 
 from abc import abstractmethod
 from typing import Callable, List, Optional, Set, Tuple
+
 from typing_extensions import Final
 
 from mypy.nodes import (
-    ClassDef,
-    FuncDef,
-    OverloadedFuncDef,
-    PassStmt,
     AssignmentStmt,
     CallExpr,
-    NameExpr,
-    StrExpr,
-    ExpressionStmt,
-    TempNode,
+    ClassDef,
     Decorator,
+    ExpressionStmt,
+    FuncDef,
     Lvalue,
     MemberExpr,
+    NameExpr,
+    OverloadedFuncDef,
+    PassStmt,
     RefExpr,
+    StrExpr,
+    TempNode,
     TypeInfo,
     is_class_var,
 )
-from mypy.types import Instance, get_proper_type, ENUM_REMOVED_PROPS
+from mypy.types import ENUM_REMOVED_PROPS, Instance, get_proper_type
+from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
 from mypyc.ir.ops import (
-    Value,
-    Register,
-    Call,
-    LoadErrorValue,
-    LoadStatic,
-    InitStatic,
-    TupleSet,
-    SetAttr,
-    Return,
+    NAMESPACE_TYPE,
     BasicBlock,
     Branch,
-    MethodCall,
-    NAMESPACE_TYPE,
+    Call,
+    InitStatic,
     LoadAddress,
+    LoadErrorValue,
+    LoadStatic,
+    MethodCall,
+    Register,
+    Return,
+    SetAttr,
+    TupleSet,
+    Value,
 )
 from mypyc.ir.rtypes import (
     RType,
-    object_rprimitive,
     bool_rprimitive,
     dict_rprimitive,
-    is_optional_type,
-    is_object_rprimitive,
     is_none_rprimitive,
+    is_object_rprimitive,
+    is_optional_type,
+    object_rprimitive,
 )
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
-from mypyc.ir.class_ir import ClassIR, NonExtClassInfo
-from mypyc.primitives.generic_ops import py_setattr_op, py_hasattr_op
-from mypyc.primitives.misc_ops import (
-    dataclass_sleight_of_hand,
-    pytype_from_template_op,
-    py_calc_meta_op,
-    type_object_op,
-    not_implemented_op,
-)
-from mypyc.primitives.dict_ops import dict_set_item_op, dict_new_op
-from mypyc.irbuild.util import is_dataclass_decorator, get_func_def, is_constant, dataclass_type
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.function import handle_ext_method, handle_non_ext_method, load_type
+from mypyc.irbuild.util import dataclass_type, get_func_def, is_constant, is_dataclass_decorator
+from mypyc.primitives.dict_ops import dict_new_op, dict_set_item_op
+from mypyc.primitives.generic_ops import py_hasattr_op, py_setattr_op
+from mypyc.primitives.misc_ops import (
+    dataclass_sleight_of_hand,
+    not_implemented_op,
+    py_calc_meta_op,
+    pytype_from_template_op,
+    type_object_op,
+)
 
 
 def transform_class_def(builder: IRBuilder, cdef: ClassDef) -> None:

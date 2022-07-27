@@ -1,24 +1,24 @@
-from typing import Dict, Sequence, Optional, Callable
+from typing import Callable, Dict, Optional, Sequence
 
-import mypy.subtypes
 import mypy.sametypes
+import mypy.subtypes
 from mypy.expandtype import expand_type
+from mypy.nodes import Context
 from mypy.types import (
+    AnyType,
+    CallableType,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
     Type,
     TypeVarId,
-    TypeVarType,
-    CallableType,
-    AnyType,
-    PartialType,
-    get_proper_types,
     TypeVarLikeType,
-    ProperType,
-    ParamSpecType,
-    Parameters,
-    get_proper_type,
     TypeVarTupleType,
+    TypeVarType,
+    get_proper_type,
+    get_proper_types,
 )
-from mypy.nodes import Context
 
 
 def get_target_type(

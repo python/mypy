@@ -6,11 +6,11 @@ non-local variables defined in outer scopes.
 
 from typing import List
 
-from mypyc.common import SELF_NAME, ENV_ATTR_NAME
-from mypyc.ir.ops import BasicBlock, Return, Call, SetAttr, Value, Register
-from mypyc.ir.rtypes import RInstance, object_rprimitive
-from mypyc.ir.func_ir import FuncIR, FuncSignature, RuntimeArg, FuncDecl
+from mypyc.common import ENV_ATTR_NAME, SELF_NAME
 from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
+from mypyc.ir.ops import BasicBlock, Call, Register, Return, SetAttr, Value
+from mypyc.ir.rtypes import RInstance, object_rprimitive
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.irbuild.context import FuncInfo, ImplicitClass
 from mypyc.primitives.misc_ops import method_new_op

@@ -1,54 +1,54 @@
 """Utilities for emitting C code."""
 
-from mypy.backports import OrderedDict
-from typing import List, Set, Dict, Optional, Callable, Union, Tuple
+import sys
+from typing import Callable, Dict, List, Optional, Set, Tuple, Union
+
 from typing_extensions import Final
 
-import sys
-
+from mypy.backports import OrderedDict
+from mypyc.codegen.literals import Literals
 from mypyc.common import (
-    REG_PREFIX,
     ATTR_PREFIX,
+    FAST_ISINSTANCE_MAX_SUBCLASSES,
+    NATIVE_PREFIX,
+    REG_PREFIX,
     STATIC_PREFIX,
     TYPE_PREFIX,
-    NATIVE_PREFIX,
-    FAST_ISINSTANCE_MAX_SUBCLASSES,
     use_vectorcall,
 )
+from mypyc.ir.class_ir import ClassIR, all_concrete_classes
+from mypyc.ir.func_ir import FuncDecl
 from mypyc.ir.ops import BasicBlock, Value
 from mypyc.ir.rtypes import (
-    RType,
-    RTuple,
     RInstance,
-    RUnion,
     RPrimitive,
-    is_float_rprimitive,
-    is_bool_rprimitive,
-    is_int_rprimitive,
-    is_short_int_rprimitive,
-    is_list_rprimitive,
-    is_dict_rprimitive,
-    is_set_rprimitive,
-    is_tuple_rprimitive,
-    is_none_rprimitive,
-    is_object_rprimitive,
-    object_rprimitive,
-    is_str_rprimitive,
+    RTuple,
+    RType,
+    RUnion,
     int_rprimitive,
-    is_optional_type,
-    optional_value_type,
+    is_bit_rprimitive,
+    is_bool_rprimitive,
+    is_bytes_rprimitive,
+    is_dict_rprimitive,
+    is_fixed_width_rtype,
+    is_float_rprimitive,
     is_int32_rprimitive,
     is_int64_rprimitive,
-    is_bit_rprimitive,
+    is_int_rprimitive,
+    is_list_rprimitive,
+    is_none_rprimitive,
+    is_object_rprimitive,
+    is_optional_type,
     is_range_rprimitive,
-    is_bytes_rprimitive,
-    is_fixed_width_rtype,
+    is_set_rprimitive,
+    is_short_int_rprimitive,
+    is_str_rprimitive,
+    is_tuple_rprimitive,
+    object_rprimitive,
+    optional_value_type,
 )
-from mypyc.ir.func_ir import FuncDecl
-from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.namegen import NameGenerator, exported_name
 from mypyc.sametype import is_same_type
-from mypyc.codegen.literals import Literals
 
 # Whether to insert debug asserts for all error handling, to quickly
 # catch errors propagating without exceptions set.

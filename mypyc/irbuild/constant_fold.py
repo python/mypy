@@ -4,11 +4,11 @@ For example, 3 + 5 can be constant folded into 8.
 """
 
 from typing import Optional, Union
+
 from typing_extensions import Final
 
-from mypy.nodes import Expression, IntExpr, StrExpr, OpExpr, UnaryExpr, NameExpr, MemberExpr, Var
+from mypy.nodes import Expression, IntExpr, MemberExpr, NameExpr, OpExpr, StrExpr, UnaryExpr, Var
 from mypyc.irbuild.builder import IRBuilder
-
 
 # All possible result types of constant folding
 ConstantValue = Union[int, str]

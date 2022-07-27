@@ -5,10 +5,10 @@ import unittest
 from mypyc.common import PLATFORM_SIZE
 from mypyc.ir.rtypes import (
     RArray,
-    int_rprimitive,
     bool_rprimitive,
     compute_rtype_alignment,
     compute_rtype_size,
+    int_rprimitive,
 )
 
 

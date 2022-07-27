@@ -4,10 +4,10 @@ This is tailored to mypy and knows (a little) about which list objects are
 owned by particular AST nodes, etc.
 """
 
-from collections import defaultdict
 import gc
 import sys
-from typing import List, Dict, Iterable, Tuple, cast
+from collections import defaultdict
+from typing import Dict, Iterable, List, Tuple, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type

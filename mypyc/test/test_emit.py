@@ -2,7 +2,7 @@ import unittest
 from typing import Dict
 
 from mypyc.codegen.emit import Emitter, EmitterContext
-from mypyc.ir.ops import BasicBlock, Value, Register
+from mypyc.ir.ops import BasicBlock, Register, Value
 from mypyc.ir.rtypes import int_rprimitive
 from mypyc.namegen import NameGenerator
 

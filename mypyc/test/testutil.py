@@ -5,24 +5,23 @@ import os
 import os.path
 import re
 import shutil
-from typing import List, Callable, Iterator, Optional, Tuple
+from typing import Callable, Iterator, List, Optional, Tuple
 
 from mypy import build
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy.test.data import DataSuite, DataDrivenTestCase
 from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal
-
-from mypyc.options import CompilerOptions
 from mypyc.analysis.ircheck import assert_func_ir_valid
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
+from mypyc.errors import Errors
 from mypyc.ir.func_ir import FuncIR
 from mypyc.ir.module_ir import ModuleIR
-from mypyc.errors import Errors
 from mypyc.irbuild.main import build_ir
 from mypyc.irbuild.mapper import Mapper
+from mypyc.options import CompilerOptions
 from mypyc.test.config import test_data_prefix
-from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE
 
 # The builtins stub used during icode generation test cases.
 ICODE_GEN_BUILTINS = os.path.join(test_data_prefix, "fixtures/ir.py")

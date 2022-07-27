@@ -1,18 +1,17 @@
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
 
-import sys
-import os.path
 import json
-import subprocess
+import os.path
 import re
+import subprocess
+import sys
 from contextlib import contextmanager
+from typing import Iterator, List, Optional, Tuple, Union
 
-from typing import Optional, Tuple, List, Iterator, Union
 from typing_extensions import overload
 
-from mypy.moduleinspect import ModuleInspect, InspectError
 from mypy.modulefinder import ModuleNotFoundReason
-
+from mypy.moduleinspect import InspectError, ModuleInspect
 
 # Modules that may fail when imported, or that may have side effects (fully qualified).
 NOT_IMPORTABLE_MODULES = ()

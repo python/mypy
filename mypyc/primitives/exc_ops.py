@@ -1,7 +1,7 @@
 """Exception-related primitive ops."""
 
-from mypyc.ir.ops import ERR_NEVER, ERR_FALSE, ERR_ALWAYS
-from mypyc.ir.rtypes import object_rprimitive, void_rtype, exc_rtuple, bit_rprimitive
+from mypyc.ir.ops import ERR_ALWAYS, ERR_FALSE, ERR_NEVER
+from mypyc.ir.rtypes import bit_rprimitive, exc_rtuple, object_rprimitive, void_rtype
 from mypyc.primitives.registry import custom_op
 
 # If the argument is a class, raise an instance of the class. Otherwise, assume

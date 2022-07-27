@@ -2,25 +2,23 @@
 
 import os.path
 import sys
-
 from typing import Dict, List
 
 from mypy import build
-from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
-from mypy.test.helpers import (
-    assert_string_arrays_equal,
-    normalize_error_messages,
-    testfile_pyversion,
-    parse_options,
-    find_test_files,
-)
-from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource
 from mypy.nodes import TypeInfo
 from mypy.options import Options
-
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.helpers import (
+    assert_string_arrays_equal,
+    find_test_files,
+    normalize_error_messages,
+    parse_options,
+    testfile_pyversion,
+)
 
 # Semantic analyzer test cases: dump parse tree
 

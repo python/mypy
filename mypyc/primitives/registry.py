@@ -35,7 +35,8 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
-from typing import Dict, List, Optional, NamedTuple, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
+
 from typing_extensions import Final
 
 from mypyc.ir.ops import StealsDescription
@@ -303,12 +304,13 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
+import mypyc.primitives.bytes_ops  # noqa
+import mypyc.primitives.dict_ops  # noqa
+import mypyc.primitives.float_ops  # noqa
+
 # Import various modules that set up global state.
 import mypyc.primitives.int_ops  # noqa
-import mypyc.primitives.str_ops  # noqa
-import mypyc.primitives.bytes_ops  # noqa
 import mypyc.primitives.list_ops  # noqa
-import mypyc.primitives.dict_ops  # noqa
-import mypyc.primitives.tuple_ops  # noqa
 import mypyc.primitives.misc_ops  # noqa
-import mypyc.primitives.float_ops  # noqa
+import mypyc.primitives.str_ops  # noqa
+import mypyc.primitives.tuple_ops  # noqa

@@ -1,77 +1,74 @@
 import unittest
-
 from typing import List, Optional
 
 from mypy.backports import OrderedDict
-
 from mypy.test.helpers import assert_string_arrays_equal
-
+from mypyc.codegen.emit import Emitter, EmitterContext
+from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
+from mypyc.common import PLATFORM_SIZE
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature, RuntimeArg
 from mypyc.ir.ops import (
-    BasicBlock,
-    Goto,
-    Return,
-    Integer,
     Assign,
     AssignMulti,
-    IncRef,
-    DecRef,
+    BasicBlock,
+    Box,
     Branch,
     Call,
-    Unbox,
-    Box,
-    TupleGet,
-    GetAttr,
-    SetAttr,
-    Op,
-    Value,
     CallC,
-    IntOp,
-    LoadMem,
-    GetElementPtr,
-    LoadAddress,
-    ComparisonOp,
-    SetMem,
-    Register,
-    Unreachable,
     Cast,
+    ComparisonOp,
+    DecRef,
     Extend,
+    GetAttr,
+    GetElementPtr,
+    Goto,
+    IncRef,
+    Integer,
+    IntOp,
+    LoadAddress,
+    LoadMem,
+    Op,
+    Register,
+    Return,
+    SetAttr,
+    SetMem,
+    TupleGet,
+    Unbox,
+    Unreachable,
+    Value,
 )
+from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
-    RTuple,
-    RInstance,
-    RType,
     RArray,
-    int_rprimitive,
+    RInstance,
+    RStruct,
+    RTuple,
+    RType,
     bool_rprimitive,
-    list_rprimitive,
-    dict_rprimitive,
-    object_rprimitive,
     c_int_rprimitive,
-    short_int_rprimitive,
+    dict_rprimitive,
     int32_rprimitive,
     int64_rprimitive,
-    RStruct,
+    int_rprimitive,
+    list_rprimitive,
+    object_rprimitive,
     pointer_rprimitive,
+    short_int_rprimitive,
 )
-from mypyc.ir.func_ir import FuncIR, FuncDecl, RuntimeArg, FuncSignature
-from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.irbuild.vtable import compute_vtable
-from mypyc.codegen.emit import Emitter, EmitterContext
-from mypyc.codegen.emitfunc import generate_native_function, FunctionEmitterVisitor
-from mypyc.primitives.registry import binary_ops
-from mypyc.primitives.misc_ops import none_object_op
-from mypyc.primitives.list_ops import list_get_item_op, list_set_item_op, list_append_op
+from mypyc.namegen import NameGenerator
 from mypyc.primitives.dict_ops import (
-    dict_new_op,
-    dict_update_op,
     dict_get_item_op,
+    dict_new_op,
     dict_set_item_op,
+    dict_update_op,
 )
 from mypyc.primitives.int_ops import int_neg_op
+from mypyc.primitives.list_ops import list_append_op, list_get_item_op, list_set_item_op
+from mypyc.primitives.misc_ops import none_object_op
+from mypyc.primitives.registry import binary_ops
 from mypyc.subtype import is_subtype
-from mypyc.namegen import NameGenerator
-from mypyc.common import PLATFORM_SIZE
 
 
 class TestFunctionEmitterVisitor(unittest.TestCase):

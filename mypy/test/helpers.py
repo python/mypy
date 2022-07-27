@@ -1,27 +1,25 @@
+import contextlib
 import os
 import pathlib
 import re
+import shutil
 import sys
 import time
-import shutil
-import contextlib
-
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern, Optional
-
-from mypy import defaults
-import mypy.api as api
-
-import pytest
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Pattern, Tuple, Union
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
 from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
 
+import pytest
+
+import mypy.api as api
+import mypy.version
+from mypy import defaults
 from mypy.main import process_options
 from mypy.options import Options
-from mypy.test.data import DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
-from mypy.test.config import test_temp_dir, test_data_prefix
-import mypy.version
+from mypy.test.config import test_data_prefix, test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DeleteFile, UpdateFile, fix_cobertura_filename
 
 skip = pytest.mark.skip
 

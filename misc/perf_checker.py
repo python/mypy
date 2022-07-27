@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
-from typing import Callable, List, Tuple
-
 import os
 import shutil
 import statistics
 import subprocess
 import textwrap
 import time
+from typing import Callable, List, Tuple
 
 
 class Command:

@@ -1,5 +1,5 @@
-from typing import Optional, Tuple
 import sys
+from typing import Optional, Tuple
 
 
 class CompilerOptions:

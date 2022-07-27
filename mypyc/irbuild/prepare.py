@@ -11,54 +11,53 @@ the missing bits, such as function bodies (basic blocks).
 Also build a mapping from mypy TypeInfos to ClassIR objects.
 """
 
-from typing import List, Dict, Iterable, Optional, Union, DefaultDict, NamedTuple, Tuple
+from collections import defaultdict
+from typing import DefaultDict, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 
+from mypy.build import Graph
 from mypy.nodes import (
-    ClassDef,
-    OverloadedFuncDef,
-    Var,
-    SymbolNode,
     ARG_STAR,
     ARG_STAR2,
     CallExpr,
+    ClassDef,
     Decorator,
     Expression,
     FuncDef,
     MemberExpr,
     MypyFile,
     NameExpr,
+    OverloadedFuncDef,
     RefExpr,
+    SymbolNode,
     TypeInfo,
+    Var,
 )
-from mypy.types import Type, Instance, get_proper_type
-from mypy.build import Graph
-
-from mypyc.ir.ops import DeserMaps
-from mypyc.ir.rtypes import RInstance, tuple_rprimitive, dict_rprimitive
+from mypy.semanal import refers_to_fullname
+from mypy.traverser import TraverserVisitor
+from mypy.types import Instance, Type, get_proper_type
+from mypyc.common import PROPSET_PREFIX, get_id_from_name
+from mypyc.crash import catch_errors
+from mypyc.errors import Errors
+from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import (
+    FUNC_CLASSMETHOD,
+    FUNC_NORMAL,
+    FUNC_STATICMETHOD,
     FuncDecl,
     FuncSignature,
     RuntimeArg,
-    FUNC_NORMAL,
-    FUNC_STATICMETHOD,
-    FUNC_CLASSMETHOD,
 )
-from mypyc.ir.class_ir import ClassIR
-from mypyc.common import PROPSET_PREFIX, get_id_from_name
+from mypyc.ir.ops import DeserMaps
+from mypyc.ir.rtypes import RInstance, dict_rprimitive, tuple_rprimitive
 from mypyc.irbuild.mapper import Mapper
 from mypyc.irbuild.util import (
     get_func_def,
-    is_dataclass,
-    is_trait,
-    is_extension_class,
     get_mypyc_attrs,
+    is_dataclass,
+    is_extension_class,
+    is_trait,
 )
-from mypyc.errors import Errors
 from mypyc.options import CompilerOptions
-from mypyc.crash import catch_errors
-from collections import defaultdict
-from mypy.traverser import TraverserVisitor
-from mypy.semanal import refers_to_fullname
 
 
 def build_type_map(

@@ -1,19 +1,18 @@
-from contextlib import contextmanager
-import filelock
 import os
 import re
 import subprocess
-from subprocess import PIPE
 import sys
 import tempfile
-from typing import Tuple, List, Iterator
+from contextlib import contextmanager
+from subprocess import PIPE
+from typing import Iterator, List, Tuple
+
+import filelock
 
 import mypy.api
-from mypy.test.config import package_path, pip_lock, pip_timeout
+from mypy.test.config import package_path, pip_lock, pip_timeout, test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.config import test_temp_dir
 from mypy.test.helpers import assert_string_arrays_equal, perform_file_operations
-
 
 # NOTE: options.use_builtins_fixtures should not be set in these
 # tests, otherwise mypy will ignore installed third-party packages.

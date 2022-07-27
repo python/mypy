@@ -21,16 +21,16 @@ RTypes.
 """
 
 from abc import abstractmethod
-from typing import Optional, Union, List, Dict, Generic, TypeVar, Tuple
+from typing import Dict, Generic, List, Optional, Tuple, TypeVar, Union
 
-from typing_extensions import Final, ClassVar, TYPE_CHECKING
+from typing_extensions import TYPE_CHECKING, ClassVar, Final
 
-from mypyc.common import JsonDict, short_name, IS_32_BIT_PLATFORM, PLATFORM_SIZE
+from mypyc.common import IS_32_BIT_PLATFORM, PLATFORM_SIZE, JsonDict, short_name
 from mypyc.namegen import NameGenerator
 
 if TYPE_CHECKING:
-    from mypyc.ir.ops import DeserMaps
     from mypyc.ir.class_ir import ClassIR
+    from mypyc.ir.ops import DeserMaps
 
 T = TypeVar("T")
 

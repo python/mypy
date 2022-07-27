@@ -18,29 +18,27 @@ to know at import-time whether it is using distutils or setuputils. We
 hackily decide based on whether setuptools has been imported already.
 """
 
-import sys
-import os.path
 import hashlib
-import time
+import os.path
 import re
+import sys
+import time
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
-from typing import List, Tuple, Any, Optional, Dict, Union, Set, Iterable, cast
 from typing_extensions import TYPE_CHECKING, NoReturn, Type
 
-from mypy.main import process_options
-from mypy.errors import CompileError
-from mypy.options import Options
 from mypy.build import BuildSource
+from mypy.errors import CompileError
 from mypy.fscache import FileSystemCache
+from mypy.main import process_options
+from mypy.options import Options
 from mypy.util import write_junit_xml
-
+from mypyc.codegen import emitmodule
+from mypyc.common import RUNTIME_C_FILES, shared_lib_name
+from mypyc.errors import Errors
+from mypyc.ir.pprint import format_modules
 from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
-from mypyc.errors import Errors
-from mypyc.common import RUNTIME_C_FILES, shared_lib_name
-from mypyc.ir.pprint import format_modules
-
-from mypyc.codegen import emitmodule
 
 if TYPE_CHECKING:
     from distutils.core import Extension  # noqa
@@ -52,7 +50,7 @@ except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
         raise
-from distutils import sysconfig, ccompiler
+from distutils import ccompiler, sysconfig
 
 
 def get_extension() -> Type["Extension"]:

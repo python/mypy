@@ -1,20 +1,19 @@
 import os.path
 import sys
 import traceback
-
-from mypy.backports import OrderedDict
 from collections import defaultdict
+from typing import Callable, Dict, List, Optional, Set, TextIO, Tuple, TypeVar, Union
 
-from typing import Tuple, List, TypeVar, Set, Dict, Optional, TextIO, Callable, Union
 from typing_extensions import Final, Literal, NoReturn
 
-from mypy.scope import Scope
-from mypy.options import Options
-from mypy.version import __version__ as mypy_version
-from mypy.errorcodes import ErrorCode, IMPORT
-from mypy.message_registry import ErrorMessage
 from mypy import errorcodes as codes
+from mypy.backports import OrderedDict
+from mypy.errorcodes import IMPORT, ErrorCode
+from mypy.message_registry import ErrorMessage
+from mypy.options import Options
+from mypy.scope import Scope
 from mypy.util import DEFAULT_SOURCE_OFFSET, is_typeshed_file
+from mypy.version import __version__ as mypy_version
 
 T = TypeVar("T")
 

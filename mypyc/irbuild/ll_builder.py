@@ -8,139 +8,137 @@ of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
 """
 
-from typing import Callable, List, Tuple, Optional, Sequence
+from typing import Callable, List, Optional, Sequence, Tuple
 
 from typing_extensions import Final
 
-from mypy.nodes import ArgKind, ARG_POS, ARG_STAR, ARG_STAR2
+from mypy.checkexpr import map_actuals_to_formals
+from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
-from mypy.checkexpr import map_actuals_to_formals
-
-from mypyc.ir.ops import (
-    BasicBlock,
-    Op,
-    Integer,
-    Value,
-    Register,
-    Assign,
-    Branch,
-    Goto,
-    Call,
-    Box,
-    Unbox,
-    Cast,
-    GetAttr,
-    LoadStatic,
-    MethodCall,
-    CallC,
-    Truncate,
-    LoadLiteral,
-    AssignMulti,
-    RaiseStandardError,
-    Unreachable,
-    LoadErrorValue,
-    NAMESPACE_TYPE,
-    NAMESPACE_MODULE,
-    NAMESPACE_STATIC,
-    IntOp,
-    GetElementPtr,
-    LoadMem,
-    ComparisonOp,
-    LoadAddress,
-    TupleGet,
-    KeepAlive,
-    ERR_NEVER,
-    ERR_FALSE,
-    SetMem,
-)
-from mypyc.ir.rtypes import (
-    RType,
-    RUnion,
-    RInstance,
-    RArray,
-    optional_value_type,
-    int_rprimitive,
-    float_rprimitive,
-    bool_rprimitive,
-    list_rprimitive,
-    str_rprimitive,
-    is_none_rprimitive,
-    object_rprimitive,
-    c_pyssize_t_rprimitive,
-    is_short_int_rprimitive,
-    is_tagged,
-    PyVarObject,
-    short_int_rprimitive,
-    is_list_rprimitive,
-    is_tuple_rprimitive,
-    is_dict_rprimitive,
-    is_set_rprimitive,
-    PySetObject,
-    none_rprimitive,
-    RTuple,
-    is_bool_rprimitive,
-    is_str_rprimitive,
-    c_int_rprimitive,
-    pointer_rprimitive,
-    PyObject,
-    PyListObject,
-    bit_rprimitive,
-    is_bit_rprimitive,
-    object_pointer_rprimitive,
-    c_size_t_rprimitive,
-    dict_rprimitive,
-    bytes_rprimitive,
-    is_bytes_rprimitive,
-)
-from mypyc.ir.func_ir import FuncDecl, FuncSignature
-from mypyc.ir.class_ir import ClassIR, all_concrete_classes
 from mypyc.common import (
     FAST_ISINSTANCE_MAX_SUBCLASSES,
     MAX_LITERAL_SHORT_INT,
     MIN_LITERAL_SHORT_INT,
     PLATFORM_SIZE,
-    use_vectorcall,
     use_method_vectorcall,
+    use_vectorcall,
 )
-from mypyc.primitives.registry import (
-    method_call_ops,
-    CFunctionDescription,
-    binary_ops,
-    unary_ops,
-    ERR_NEG_INT,
+from mypyc.ir.class_ir import ClassIR, all_concrete_classes
+from mypyc.ir.func_ir import FuncDecl, FuncSignature
+from mypyc.ir.ops import (
+    ERR_FALSE,
+    ERR_NEVER,
+    NAMESPACE_MODULE,
+    NAMESPACE_STATIC,
+    NAMESPACE_TYPE,
+    Assign,
+    AssignMulti,
+    BasicBlock,
+    Box,
+    Branch,
+    Call,
+    CallC,
+    Cast,
+    ComparisonOp,
+    GetAttr,
+    GetElementPtr,
+    Goto,
+    Integer,
+    IntOp,
+    KeepAlive,
+    LoadAddress,
+    LoadErrorValue,
+    LoadLiteral,
+    LoadMem,
+    LoadStatic,
+    MethodCall,
+    Op,
+    RaiseStandardError,
+    Register,
+    SetMem,
+    Truncate,
+    TupleGet,
+    Unbox,
+    Unreachable,
+    Value,
 )
+from mypyc.ir.rtypes import (
+    PyListObject,
+    PyObject,
+    PySetObject,
+    PyVarObject,
+    RArray,
+    RInstance,
+    RTuple,
+    RType,
+    RUnion,
+    bit_rprimitive,
+    bool_rprimitive,
+    bytes_rprimitive,
+    c_int_rprimitive,
+    c_pyssize_t_rprimitive,
+    c_size_t_rprimitive,
+    dict_rprimitive,
+    float_rprimitive,
+    int_rprimitive,
+    is_bit_rprimitive,
+    is_bool_rprimitive,
+    is_bytes_rprimitive,
+    is_dict_rprimitive,
+    is_list_rprimitive,
+    is_none_rprimitive,
+    is_set_rprimitive,
+    is_short_int_rprimitive,
+    is_str_rprimitive,
+    is_tagged,
+    is_tuple_rprimitive,
+    list_rprimitive,
+    none_rprimitive,
+    object_pointer_rprimitive,
+    object_rprimitive,
+    optional_value_type,
+    pointer_rprimitive,
+    short_int_rprimitive,
+    str_rprimitive,
+)
+from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.util import concrete_arg_kind
+from mypyc.options import CompilerOptions
 from mypyc.primitives.bytes_ops import bytes_compare
-from mypyc.primitives.list_ops import list_extend_op, new_list_op, list_build_op
-from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
 from mypyc.primitives.dict_ops import (
-    dict_update_in_display_op,
-    dict_new_op,
     dict_build_op,
+    dict_new_op,
     dict_ssize_t_size_op,
+    dict_update_in_display_op,
 )
+from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
 from mypyc.primitives.generic_ops import (
-    py_getattr_op,
-    py_call_op,
-    py_call_with_kwargs_op,
-    py_method_call_op,
-    py_vectorcall_op,
-    py_vectorcall_method_op,
     generic_len_op,
     generic_ssize_t_len_op,
+    py_call_op,
+    py_call_with_kwargs_op,
+    py_getattr_op,
+    py_method_call_op,
+    py_vectorcall_method_op,
+    py_vectorcall_op,
 )
-from mypyc.primitives.misc_ops import none_object_op, fast_isinstance_op, bool_op
 from mypyc.primitives.int_ops import int_comparison_op_mapping
-from mypyc.primitives.exc_ops import err_occurred_op, keep_propagating_op
-from mypyc.primitives.str_ops import unicode_compare, str_check_if_true, str_ssize_t_size_op
+from mypyc.primitives.list_ops import list_build_op, list_extend_op, new_list_op
+from mypyc.primitives.misc_ops import bool_op, fast_isinstance_op, none_object_op
+from mypyc.primitives.registry import (
+    ERR_NEG_INT,
+    CFunctionDescription,
+    binary_ops,
+    method_call_ops,
+    unary_ops,
+)
 from mypyc.primitives.set_ops import new_set_op
+from mypyc.primitives.str_ops import str_check_if_true, str_ssize_t_size_op, unicode_compare
+from mypyc.primitives.tuple_ops import list_tuple_op, new_tuple_op, new_tuple_with_length_op
 from mypyc.rt_subtype import is_runtime_subtype
-from mypyc.subtype import is_subtype
 from mypyc.sametype import is_same_type
-from mypyc.irbuild.mapper import Mapper
-from mypyc.options import CompilerOptions
-from mypyc.irbuild.util import concrete_arg_kind
-
+from mypyc.subtype import is_subtype
 
 DictEntry = Tuple[Optional[Value], Value]
 

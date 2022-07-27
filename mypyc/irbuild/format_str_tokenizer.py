@@ -1,25 +1,25 @@
 """Tokenizers for three string formatting methods"""
 
-from typing import List, Tuple, Optional
-from typing_extensions import Final
 from enum import Enum, unique
+from typing import List, Optional, Tuple
+
+from typing_extensions import Final
 
 from mypy.checkstrformat import (
-    parse_format_value,
     ConversionSpecifier,
     parse_conversion_specifiers,
+    parse_format_value,
 )
 from mypy.errors import Errors
 from mypy.messages import MessageBuilder
 from mypy.nodes import Context, Expression
-
-from mypyc.ir.ops import Value, Integer
+from mypyc.ir.ops import Integer, Value
 from mypyc.ir.rtypes import (
     c_pyssize_t_rprimitive,
-    is_str_rprimitive,
+    is_bytes_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
-    is_bytes_rprimitive,
+    is_str_rprimitive,
 )
 from mypyc.irbuild.builder import IRBuilder
 from mypyc.primitives.bytes_ops import bytes_build_op

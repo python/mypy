@@ -1,14 +1,14 @@
 """Test cases for type inference helper functions."""
 
-from typing import List, Optional, Tuple, Union, Dict, Set
+from typing import Dict, List, Optional, Set, Tuple, Union
 
-from mypy.test.helpers import Suite, assert_equal
 from mypy.argmap import map_actuals_to_formals
-from mypy.checker import group_comparison_operands, DisjointDict
+from mypy.checker import DisjointDict, group_comparison_operands
 from mypy.literals import Key
-from mypy.nodes import ArgKind, ARG_POS, ARG_OPT, ARG_STAR, ARG_STAR2, ARG_NAMED, NameExpr
-from mypy.types import AnyType, TupleType, Type, TypeOfAny
+from mypy.nodes import ARG_NAMED, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind, NameExpr
+from mypy.test.helpers import Suite, assert_equal
 from mypy.test.typefixture import TypeFixture
+from mypy.types import AnyType, TupleType, Type, TypeOfAny
 
 
 class MapActualsToFormalsSuite(Suite):

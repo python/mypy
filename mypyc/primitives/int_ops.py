@@ -9,27 +9,28 @@ Use mypyc.ir.ops.IntOp for operations on fixed-width/C integers.
 """
 
 from typing import Dict, NamedTuple
-from mypyc.ir.ops import ERR_NEVER, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_ALWAYS, ComparisonOp
+
+from mypyc.ir.ops import ERR_ALWAYS, ERR_MAGIC, ERR_MAGIC_OVERLAPPING, ERR_NEVER, ComparisonOp
 from mypyc.ir.rtypes import (
-    int_rprimitive,
+    RType,
+    bit_rprimitive,
     bool_rprimitive,
+    c_pyssize_t_rprimitive,
     float_rprimitive,
+    int32_rprimitive,
+    int64_rprimitive,
+    int_rprimitive,
     object_rprimitive,
     str_rprimitive,
-    bit_rprimitive,
-    int64_rprimitive,
-    int32_rprimitive,
     void_rtype,
-    RType,
-    c_pyssize_t_rprimitive,
 )
 from mypyc.primitives.registry import (
-    load_address_op,
-    unary_op,
     CFunctionDescription,
-    function_op,
     binary_op,
     custom_op,
+    function_op,
+    load_address_op,
+    unary_op,
 )
 
 # These int constructors produce object_rprimitives that then need to be unboxed

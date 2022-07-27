@@ -1,33 +1,33 @@
-from typing import Sequence, Tuple, Set, List
+from typing import List, Sequence, Set, Tuple
 
+from mypy.typeops import is_simple_literal, make_simplified_union, tuple_fallback
 from mypy.types import (
-    Type,
-    UnboundType,
     AnyType,
-    NoneType,
-    TupleType,
-    TypedDictType,
-    UnionType,
     CallableType,
-    TypeVarType,
-    Instance,
-    TypeVisitor,
-    ErasedType,
-    Overloaded,
-    PartialType,
     DeletedType,
-    UninhabitedType,
-    TypeType,
+    ErasedType,
+    Instance,
     LiteralType,
-    ProperType,
-    get_proper_type,
-    TypeAliasType,
-    ParamSpecType,
+    NoneType,
+    Overloaded,
     Parameters,
-    UnpackType,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeType,
     TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
 )
-from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_literal
 
 
 def is_same_type(left: Type, right: Type) -> bool:

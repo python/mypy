@@ -24,32 +24,33 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
-from typing import List, Tuple, Optional, Union, Callable
+from typing import Callable, List, Optional, Tuple, Union
+
 from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
-from mypy.backports import nullcontext
-from mypy.nodes import MypyFile, TypeInfo, FuncDef, Decorator, OverloadedFuncDef, Var
-from mypy.semanal_typeargs import TypeArgumentAnalyzer
+import mypy.build
 import mypy.state
+from mypy.backports import nullcontext
+from mypy.checker import FineGrainedDeferredNode
+from mypy.errors import Errors
+from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var
+from mypy.options import Options
+from mypy.plugin import ClassDefContext
 from mypy.semanal import (
     SemanticAnalyzer,
     apply_semantic_analyzer_patches,
     remove_imported_names_from_symtable,
 )
 from mypy.semanal_classprop import (
+    add_type_promotion,
     calculate_class_abstract_status,
     calculate_class_vars,
     check_protocol_status,
-    add_type_promotion,
 )
-from mypy.errors import Errors
 from mypy.semanal_infer import infer_decorator_signature_if_simple
-from mypy.checker import FineGrainedDeferredNode
+from mypy.semanal_typeargs import TypeArgumentAnalyzer
 from mypy.server.aststrip import SavedAttributes
 from mypy.util import is_typeshed_file
-from mypy.options import Options
-from mypy.plugin import ClassDefContext
-import mypy.build
 
 if TYPE_CHECKING:
     from mypy.build import Graph, State

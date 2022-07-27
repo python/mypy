@@ -14,17 +14,16 @@ import os
 import os.path
 import re
 import subprocess
-from subprocess import PIPE
 import sys
+from subprocess import PIPE
 from tempfile import TemporaryDirectory
-
 from typing import List
 
+from mypy import api
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, split_lines
-from mypy import api
 
 # Path to Python 3 interpreter
 python3_path = sys.executable

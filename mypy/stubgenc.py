@@ -8,19 +8,20 @@ import importlib
 import inspect
 import os.path
 import re
-from typing import List, Dict, Tuple, Optional, Mapping, Any, Set
 from types import ModuleType
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple
+
 from typing_extensions import Final
 
 from mypy.moduleinspect import is_c_module
 from mypy.stubdoc import (
-    infer_sig_from_docstring,
-    infer_prop_type_from_docstring,
     ArgSig,
+    FunctionSig,
     infer_arg_sig_from_anon_docstring,
+    infer_prop_type_from_docstring,
     infer_ret_type_sig_from_anon_docstring,
     infer_ret_type_sig_from_docstring,
-    FunctionSig,
+    infer_sig_from_docstring,
 )
 
 # Members of the typing module to consider for importing by default.

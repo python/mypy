@@ -3,64 +3,62 @@
 # FIXME: Basically nothing in this file operates on the level of a
 # single module and it should be renamed.
 
-import os
 import json
-from mypy.backports import OrderedDict
-from typing import List, Tuple, Dict, Iterable, Set, TypeVar, Optional
+import os
+from typing import Dict, Iterable, List, Optional, Set, Tuple, TypeVar
 
-from mypy.nodes import MypyFile
+from mypy.backports import OrderedDict
 from mypy.build import (
-    BuildSource,
     BuildResult,
+    BuildSource,
     State,
     build,
-    sorted_components,
-    get_cache_names,
-    create_metastore,
     compute_hash,
+    create_metastore,
+    get_cache_names,
+    sorted_components,
 )
 from mypy.errors import CompileError
+from mypy.fscache import FileSystemCache
+from mypy.nodes import MypyFile
 from mypy.options import Options
 from mypy.plugin import Plugin, ReportConfigContext
-from mypy.fscache import FileSystemCache
 from mypy.util import hash_digest
-
-from mypyc.irbuild.main import build_ir
-from mypyc.irbuild.prepare import load_type_map
-from mypyc.irbuild.mapper import Mapper
+from mypyc.codegen.cstring import c_string_initializer
+from mypyc.codegen.emit import Emitter, EmitterContext, HeaderDeclaration
+from mypyc.codegen.emitclass import generate_class, generate_class_type_decl
+from mypyc.codegen.emitfunc import generate_native_function, native_function_header
+from mypyc.codegen.emitwrapper import (
+    generate_legacy_wrapper_function,
+    generate_wrapper_function,
+    legacy_wrapper_function_header,
+    wrapper_function_header,
+)
+from mypyc.codegen.literals import Literals
 from mypyc.common import (
-    PREFIX,
-    TOP_LEVEL_NAME,
     MODULE_PREFIX,
+    PREFIX,
     RUNTIME_C_FILES,
+    TOP_LEVEL_NAME,
+    shared_lib_name,
     short_id_from_name,
     use_fastcall,
     use_vectorcall,
-    shared_lib_name,
 )
-from mypyc.codegen.cstring import c_string_initializer
-from mypyc.codegen.literals import Literals
-from mypyc.codegen.emit import EmitterContext, Emitter, HeaderDeclaration
-from mypyc.codegen.emitfunc import generate_native_function, native_function_header
-from mypyc.codegen.emitclass import generate_class_type_decl, generate_class
-from mypyc.codegen.emitwrapper import (
-    generate_wrapper_function,
-    wrapper_function_header,
-    generate_legacy_wrapper_function,
-    legacy_wrapper_function_header,
-)
-from mypyc.ir.ops import DeserMaps, LoadLiteral
-from mypyc.ir.rtypes import RType, RTuple
-from mypyc.ir.func_ir import FuncIR
-from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
-from mypyc.options import CompilerOptions
-from mypyc.transform.uninit import insert_uninit_checks
-from mypyc.transform.refcount import insert_ref_count_opcodes
-from mypyc.transform.exceptions import insert_exception_handling
-from mypyc.namegen import NameGenerator, exported_name
 from mypyc.errors import Errors
-
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.module_ir import ModuleIR, ModuleIRs, deserialize_modules
+from mypyc.ir.ops import DeserMaps, LoadLiteral
+from mypyc.ir.rtypes import RTuple, RType
+from mypyc.irbuild.main import build_ir
+from mypyc.irbuild.mapper import Mapper
+from mypyc.irbuild.prepare import load_type_map
+from mypyc.namegen import NameGenerator, exported_name
+from mypyc.options import CompilerOptions
+from mypyc.transform.exceptions import insert_exception_handling
+from mypyc.transform.refcount import insert_ref_count_opcodes
+from mypyc.transform.uninit import insert_uninit_checks
 
 # All of the modules being compiled are divided into "groups". A group
 # is a set of modules that are placed into the same shared library.

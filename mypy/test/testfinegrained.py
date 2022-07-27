@@ -15,30 +15,29 @@ on specified sources.
 import os
 import re
 import sys
-
-from typing import List, Dict, Any, Tuple, Union, cast
-
-from mypy import build
-from mypy.modulefinder import BuildSource
-from mypy.errors import CompileError
-from mypy.options import Options
-from mypy.test.config import test_temp_dir
-from mypy.test.data import DataDrivenTestCase, DataSuite, UpdateFile, DeleteFile
-from mypy.test.helpers import (
-    assert_string_arrays_equal,
-    parse_options,
-    assert_module_equivalence,
-    assert_target_equivalence,
-    perform_file_operations,
-    find_test_files,
-)
-from mypy.server.mergecheck import check_consistency
-from mypy.dmypy_util import DEFAULT_STATUS_FILE
-from mypy.dmypy_server import Server
-from mypy.config_parser import parse_config_file
-from mypy.find_sources import create_source_list
+from typing import Any, Dict, List, Tuple, Union, cast
 
 import pytest
+
+from mypy import build
+from mypy.config_parser import parse_config_file
+from mypy.dmypy_server import Server
+from mypy.dmypy_util import DEFAULT_STATUS_FILE
+from mypy.errors import CompileError
+from mypy.find_sources import create_source_list
+from mypy.modulefinder import BuildSource
+from mypy.options import Options
+from mypy.server.mergecheck import check_consistency
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase, DataSuite, DeleteFile, UpdateFile
+from mypy.test.helpers import (
+    assert_module_equivalence,
+    assert_string_arrays_equal,
+    assert_target_equivalence,
+    find_test_files,
+    parse_options,
+    perform_file_operations,
+)
 
 # Set to True to perform (somewhat expensive) checks for duplicate AST nodes after merge
 CHECK_CONSISTENCY = False

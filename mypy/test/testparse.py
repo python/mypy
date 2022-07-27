@@ -5,11 +5,11 @@ import sys
 from pytest import skip
 
 from mypy import defaults
-from mypy.test.helpers import assert_string_arrays_equal, parse_options, find_test_files
-from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.options import Options
+from mypy.parse import parse
+from mypy.test.data import DataDrivenTestCase, DataSuite
+from mypy.test.helpers import assert_string_arrays_equal, find_test_files, parse_options
 
 
 class ParserSuite(DataSuite):

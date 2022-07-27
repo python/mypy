@@ -1,28 +1,24 @@
 """Mypy type checker command line tool."""
 
 import argparse
-from gettext import gettext
 import os
 import subprocess
 import sys
 import time
+from gettext import gettext
+from typing import IO, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
 
-from typing import Any, Dict, IO, List, Optional, Sequence, Tuple, TextIO, Union
 from typing_extensions import Final, NoReturn
 
-from mypy import build
-from mypy import defaults
-from mypy import state
-from mypy import util
-from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
-from mypy.find_sources import create_source_list, InvalidSourceList
-from mypy.fscache import FileSystemCache
-from mypy.errors import CompileError
+from mypy import build, defaults, state, util
+from mypy.config_parser import get_config_module_names, parse_config_file, parse_version
 from mypy.errorcodes import error_codes
-from mypy.options import Options, BuildType
-from mypy.config_parser import get_config_module_names, parse_version, parse_config_file
+from mypy.errors import CompileError
+from mypy.find_sources import InvalidSourceList, create_source_list
+from mypy.fscache import FileSystemCache
+from mypy.modulefinder import BuildSource, FindModuleCache, SearchPaths, get_search_dirs, mypy_path
+from mypy.options import BuildType, Options
 from mypy.split_namespace import SplitNamespace
-
 from mypy.version import __version__
 
 orig_stat: Final = os.stat

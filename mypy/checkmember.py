@@ -1,71 +1,70 @@
 """Type checking of attribute access"""
 
-from typing import cast, Callable, Optional, Union, Sequence
+from typing import Callable, Optional, Sequence, Union, cast
+
 from typing_extensions import TYPE_CHECKING
 
-from mypy.types import (
-    Type,
-    Instance,
-    AnyType,
-    TupleType,
-    TypedDictType,
-    CallableType,
-    FunctionLike,
-    TypeVarLikeType,
-    Overloaded,
-    TypeVarType,
-    UnionType,
-    PartialType,
-    TypeOfAny,
-    LiteralType,
-    DeletedType,
-    NoneType,
-    TypeType,
-    has_type_vars,
-    get_proper_type,
-    ProperType,
-    ParamSpecType,
-    TypeVarTupleType,
-    ENUM_REMOVED_PROPS,
-)
+from mypy import meet, message_registry, subtypes
+from mypy.erasetype import erase_typevars
+from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
+from mypy.maptype import map_instance_to_supertype
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
-    TypeInfo,
-    FuncBase,
-    Var,
-    FuncDef,
-    SymbolNode,
-    SymbolTable,
-    Context,
-    MypyFile,
-    TypeVarExpr,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
-    Decorator,
-    OverloadedFuncDef,
-    TypeAlias,
-    TempNode,
-    is_final_node,
     SYMBOL_FUNCBASE_TYPES,
+    Context,
+    Decorator,
+    FuncBase,
+    FuncDef,
     IndexExpr,
+    MypyFile,
+    OverloadedFuncDef,
+    SymbolNode,
+    SymbolTable,
+    TempNode,
+    TypeAlias,
+    TypeInfo,
+    TypeVarExpr,
+    Var,
+    is_final_node,
 )
-from mypy.messages import MessageBuilder
-from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
-from mypy.erasetype import erase_typevars
 from mypy.plugin import AttributeContext
 from mypy.typeanal import set_any_tvars
-from mypy import message_registry
-from mypy import subtypes
-from mypy import meet
 from mypy.typeops import (
-    tuple_fallback,
     bind_self,
-    erase_to_bound,
     class_callable,
-    type_object_type_from_function,
-    make_simplified_union,
+    erase_to_bound,
     function_type,
+    make_simplified_union,
+    tuple_fallback,
+    type_object_type_from_function,
+)
+from mypy.types import (
+    ENUM_REMOVED_PROPS,
+    AnyType,
+    CallableType,
+    DeletedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnionType,
+    get_proper_type,
+    has_type_vars,
 )
 
 if TYPE_CHECKING:  # import for forward declaration only

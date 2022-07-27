@@ -1,19 +1,19 @@
 """Utilities for processing .test files containing test case descriptions."""
 
-import os.path
 import os
-import tempfile
+import os.path
 import posixpath
 import re
 import shutil
-from abc import abstractmethod
 import sys
+import tempfile
+from abc import abstractmethod
+from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Pattern, Set, Tuple, Union
 
 import pytest
-from typing import List, Tuple, Set, Optional, Iterator, Any, Dict, NamedTuple, Union, Pattern
 from typing_extensions import Final
 
-from mypy.test.config import test_data_prefix, test_temp_dir, PREFIX
+from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
 
 root_dir = os.path.normpath(PREFIX)
 

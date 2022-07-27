@@ -1,7 +1,7 @@
-from typing import Iterator, List
-import sys
 import os
 import os.path
+import sys
+from typing import Iterator, List
 
 
 class Chunk:

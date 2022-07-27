@@ -1,8 +1,8 @@
-from typing import Union, Optional
+from typing import Optional, Union
 
 from mypy.errors import Errors
-from mypy.options import Options
 from mypy.nodes import MypyFile
+from mypy.options import Options
 
 
 def parse(

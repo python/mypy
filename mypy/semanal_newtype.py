@@ -3,46 +3,46 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
+from mypy import errorcodes as codes
+from mypy.errorcodes import ErrorCode
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
+from mypy.messages import MessageBuilder, format_type
+from mypy.nodes import (
+    ARG_POS,
+    MDEF,
+    Argument,
+    AssignmentStmt,
+    Block,
+    BytesExpr,
+    CallExpr,
+    Context,
+    FuncDef,
+    NameExpr,
+    NewTypeExpr,
+    PlaceholderNode,
+    RefExpr,
+    StrExpr,
+    SymbolTableNode,
+    TypeInfo,
+    UnicodeExpr,
+    Var,
+)
+from mypy.options import Options
+from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
-    Type,
-    Instance,
-    CallableType,
-    NoneType,
-    TupleType,
     AnyType,
+    CallableType,
+    Instance,
+    NoneType,
     PlaceholderType,
+    TupleType,
+    Type,
     TypeOfAny,
     get_proper_type,
 )
-from mypy.nodes import (
-    AssignmentStmt,
-    NewTypeExpr,
-    CallExpr,
-    NameExpr,
-    RefExpr,
-    Context,
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    Block,
-    FuncDef,
-    Argument,
-    TypeInfo,
-    Var,
-    SymbolTableNode,
-    MDEF,
-    ARG_POS,
-    PlaceholderNode,
-)
-from mypy.semanal_shared import SemanticAnalyzerInterface
-from mypy.options import Options
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
-from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.messages import MessageBuilder, format_type
-from mypy.errorcodes import ErrorCode
-from mypy import errorcodes as codes
 
 
 class NewTypeAnalyzer:

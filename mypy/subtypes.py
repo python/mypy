@@ -1,64 +1,64 @@
 from contextlib import contextmanager
+from typing import Any, Callable, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
 
-from typing import Any, List, Optional, Callable, Tuple, Iterator, Set, Union, cast, TypeVar
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
-from mypy.types import (
-    Type,
-    AnyType,
-    UnboundType,
-    TypeVisitor,
-    FormalArgument,
-    NoneType,
-    Instance,
-    TypeVarType,
-    CallableType,
-    TupleType,
-    TypedDictType,
-    UnionType,
-    Overloaded,
-    ErasedType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    TypeType,
-    is_named_instance,
-    FunctionLike,
-    TypeOfAny,
-    LiteralType,
-    get_proper_type,
-    TypeAliasType,
-    ParamSpecType,
-    Parameters,
-    UnpackType,
-    TUPLE_LIKE_INSTANCE_NAMES,
-    TYPED_NAMEDTUPLE_NAMES,
-    TypeVarTupleType,
-    ProperType,
-)
 import mypy.applytype
 import mypy.constraints
-import mypy.typeops
 import mypy.sametypes
+import mypy.typeops
 from mypy.erasetype import erase_type
+from mypy.expandtype import expand_type_by_instance
+from mypy.maptype import map_instance_to_supertype
 
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
-    FuncBase,
-    Var,
-    Decorator,
-    OverloadedFuncDef,
-    TypeInfo,
     CONTRAVARIANT,
     COVARIANT,
+    Decorator,
+    FuncBase,
+    OverloadedFuncDef,
+    TypeInfo,
+    Var,
 )
-from mypy.maptype import map_instance_to_supertype
-from mypy.expandtype import expand_type_by_instance
-from mypy.typestate import TypeState, SubtypeKind
 from mypy.options import Options
 from mypy.state import state
-from mypy.typevartuples import split_with_instance, extract_unpack
+from mypy.types import (
+    TUPLE_LIKE_INSTANCE_NAMES,
+    TYPED_NAMEDTUPLE_NAMES,
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FormalArgument,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+    is_named_instance,
+)
+from mypy.typestate import SubtypeKind, TypeState
+from mypy.typevartuples import extract_unpack, split_with_instance
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1

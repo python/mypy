@@ -1,50 +1,50 @@
 """Calculation of the least upper bound types (joins)."""
 
-from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple
 
-from mypy.types import (
-    Type,
-    AnyType,
-    NoneType,
-    TypeVisitor,
-    Instance,
-    UnboundType,
-    TypeVarType,
-    CallableType,
-    TupleType,
-    TypedDictType,
-    ErasedType,
-    UnionType,
-    FunctionLike,
-    Overloaded,
-    LiteralType,
-    PartialType,
-    DeletedType,
-    UninhabitedType,
-    TypeType,
-    TypeOfAny,
-    get_proper_type,
-    ProperType,
-    get_proper_types,
-    TypeAliasType,
-    PlaceholderType,
-    ParamSpecType,
-    Parameters,
-    UnpackType,
-    TypeVarTupleType,
-)
+import mypy.typeops
+from mypy.backports import OrderedDict
 from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
+from mypy.state import state
 from mypy.subtypes import (
-    is_subtype,
+    find_member,
     is_equivalent,
     is_proper_subtype,
     is_protocol_implementation,
-    find_member,
+    is_subtype,
 )
-from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
-import mypy.typeops
-from mypy.state import state
+from mypy.types import (
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 class InstanceJoiner:

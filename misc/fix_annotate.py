@@ -30,11 +30,10 @@ Finally, it knows that __init__() is supposed to return None.
 
 import os
 import re
-
 from lib2to3.fixer_base import BaseFix
+from lib2to3.fixer_util import syms, token, touch_import
 from lib2to3.patcomp import compile_pattern
 from lib2to3.pytree import Leaf, Node
-from lib2to3.fixer_util import token, syms, touch_import
 
 
 class FixAnnotate(BaseFix):

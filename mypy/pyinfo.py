@@ -14,7 +14,7 @@ import sysconfig
 
 MYPY = False
 if MYPY:
-    from typing import Tuple, List
+    from typing import List, Tuple
 
 if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types

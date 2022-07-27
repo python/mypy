@@ -3,13 +3,13 @@
 Parse source files and print the abstract syntax trees.
 """
 
-from typing import Tuple
-import sys
 import argparse
+import sys
+from typing import Tuple
 
+from mypy import defaults
 from mypy.errors import CompileError
 from mypy.options import Options
-from mypy import defaults
 from mypy.parse import parse
 
 

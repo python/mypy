@@ -1,15 +1,15 @@
 """Test cases for AST diff (used for fine-grained incremental checking)"""
 
 import os
-from typing import List, Tuple, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from mypy import build
-from mypy.modulefinder import BuildSource
 from mypy.defaults import PYTHON3_VERSION
 from mypy.errors import CompileError
+from mypy.modulefinder import BuildSource
 from mypy.nodes import MypyFile
 from mypy.options import Options
-from mypy.server.astdiff import snapshot_symbol_table, compare_symbol_table_snapshots
+from mypy.server.astdiff import compare_symbol_table_snapshots, snapshot_symbol_table
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, parse_options

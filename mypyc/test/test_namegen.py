@@ -2,8 +2,8 @@ import unittest
 
 from mypyc.namegen import (
     NameGenerator,
-    exported_name,
     candidate_suffixes,
+    exported_name,
     make_module_translation_map,
 )
 

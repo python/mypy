@@ -3,16 +3,16 @@
 # This file is named test_serialization.py even though it doesn't
 # contain its own tests so that pytest will rewrite the asserts...
 
-from typing import Any, Dict, Tuple
-from mypy.backports import OrderedDict
 from collections.abc import Iterable
+from typing import Any, Dict, Tuple
 
+from mypy.backports import OrderedDict
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.module_ir import ModuleIR, deserialize_modules
 from mypyc.ir.ops import DeserMaps
 from mypyc.ir.rtypes import RType
-from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
-from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.module_ir import ModuleIR, deserialize_modules
-from mypyc.sametype import is_same_type, is_same_signature
+from mypyc.sametype import is_same_signature, is_same_type
 
 
 def get_dict(x: Any) -> Dict[str, Any]:

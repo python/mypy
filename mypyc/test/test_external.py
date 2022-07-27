@@ -1,12 +1,10 @@
 """Test cases that run tests as subprocesses."""
 
-from typing import List
-
 import os
 import subprocess
 import sys
 import unittest
-
+from typing import List
 
 base_dir = os.path.join(os.path.dirname(__file__), "..", "..")
 

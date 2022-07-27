@@ -1,10 +1,11 @@
 """Check for duplicate AST nodes after merge."""
 
 from typing import Dict, List, Tuple
+
 from typing_extensions import Final
 
-from mypy.nodes import FakeInfo, SymbolNode, Var, Decorator, FuncDef
-from mypy.server.objgraph import get_reachable_graph, get_path
+from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var
+from mypy.server.objgraph import get_path, get_reachable_graph
 
 # If True, print more verbose output on failure.
 DUMP_MISMATCH_NODES: Final = False

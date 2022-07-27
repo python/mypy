@@ -5,18 +5,18 @@ making mypyc.irbuild.builder larger.
 """
 
 from mypy.nodes import (
-    Expression,
-    MemberExpr,
-    Var,
-    IntExpr,
-    FloatExpr,
-    StrExpr,
+    LDEF,
     BytesExpr,
+    ComparisonExpr,
+    Expression,
+    FloatExpr,
+    IntExpr,
+    MemberExpr,
     NameExpr,
     OpExpr,
+    StrExpr,
     UnaryExpr,
-    ComparisonExpr,
-    LDEF,
+    Var,
 )
 from mypyc.ir.ops import BasicBlock
 from mypyc.ir.rtypes import is_tagged

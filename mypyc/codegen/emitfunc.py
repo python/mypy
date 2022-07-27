@@ -1,70 +1,71 @@
 """Code generation for native function bodies."""
 
-from typing import List, Union, Optional
+from typing import List, Optional, Union
+
 from typing_extensions import Final
 
-from mypyc.common import REG_PREFIX, NATIVE_PREFIX, STATIC_PREFIX, TYPE_PREFIX, MODULE_PREFIX
-from mypyc.codegen.emit import Emitter, TracebackAndGotoHandler, DEBUG_ERRORS
+from mypyc.analysis.blockfreq import frequently_executed_blocks
+from mypyc.codegen.emit import DEBUG_ERRORS, Emitter, TracebackAndGotoHandler
+from mypyc.common import MODULE_PREFIX, NATIVE_PREFIX, REG_PREFIX, STATIC_PREFIX, TYPE_PREFIX
+from mypyc.ir.class_ir import ClassIR
+from mypyc.ir.func_ir import FUNC_CLASSMETHOD, FUNC_STATICMETHOD, FuncDecl, FuncIR, all_values
 from mypyc.ir.ops import (
-    Op,
-    OpVisitor,
-    Goto,
-    Branch,
-    Return,
-    Assign,
-    Integer,
-    LoadErrorValue,
-    GetAttr,
-    SetAttr,
-    LoadStatic,
-    InitStatic,
-    TupleGet,
-    TupleSet,
-    Call,
-    IncRef,
-    DecRef,
-    Box,
-    Cast,
-    Unbox,
-    BasicBlock,
-    Value,
-    MethodCall,
-    Unreachable,
+    ERR_FALSE,
+    NAMESPACE_MODULE,
     NAMESPACE_STATIC,
     NAMESPACE_TYPE,
-    NAMESPACE_MODULE,
-    RaiseStandardError,
-    CallC,
-    LoadGlobal,
-    Truncate,
-    IntOp,
-    LoadMem,
-    GetElementPtr,
-    LoadAddress,
-    ComparisonOp,
-    SetMem,
-    Register,
-    LoadLiteral,
+    Assign,
     AssignMulti,
-    KeepAlive,
+    BasicBlock,
+    Box,
+    Branch,
+    Call,
+    CallC,
+    Cast,
+    ComparisonOp,
+    DecRef,
     Extend,
-    ERR_FALSE,
+    GetAttr,
+    GetElementPtr,
+    Goto,
+    IncRef,
+    InitStatic,
+    Integer,
+    IntOp,
+    KeepAlive,
+    LoadAddress,
+    LoadErrorValue,
+    LoadGlobal,
+    LoadLiteral,
+    LoadMem,
+    LoadStatic,
+    MethodCall,
+    Op,
+    OpVisitor,
+    RaiseStandardError,
+    Register,
+    Return,
+    SetAttr,
+    SetMem,
+    Truncate,
+    TupleGet,
+    TupleSet,
+    Unbox,
+    Unreachable,
+    Value,
 )
+from mypyc.ir.pprint import generate_names_for_ir
 from mypyc.ir.rtypes import (
-    RType,
-    RTuple,
     RArray,
-    is_tagged,
+    RStruct,
+    RTuple,
+    RType,
     is_int32_rprimitive,
     is_int64_rprimitive,
-    RStruct,
-    is_pointer_rprimitive,
     is_int_rprimitive,
+    is_pointer_rprimitive,
+    is_tagged,
 )
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FUNC_STATICMETHOD, FUNC_CLASSMETHOD, all_values
-from mypyc.ir.class_ir import ClassIR
-from mypyc.ir.pprint import generate_names_for_ir
-from mypyc.analysis.blockfreq import frequently_executed_blocks
 
 
 def native_function_type(fn: FuncIR, emitter: Emitter) -> str:

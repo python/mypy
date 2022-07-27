@@ -1,18 +1,19 @@
-from typing import Optional, Dict, Union
-from mypy.types import (
-    TypeVarLikeType,
-    TypeVarType,
-    ParamSpecType,
-    ParamSpecFlavor,
-    TypeVarId,
-    TypeVarTupleType,
-)
+from typing import Dict, Optional, Union
+
 from mypy.nodes import (
     ParamSpecExpr,
+    SymbolTableNode,
     TypeVarExpr,
     TypeVarLikeExpr,
-    SymbolTableNode,
     TypeVarTupleExpr,
+)
+from mypy.types import (
+    ParamSpecFlavor,
+    ParamSpecType,
+    TypeVarId,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
 )
 
 

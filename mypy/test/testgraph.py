@@ -1,18 +1,25 @@
 """Test cases for graph processing code in build.py."""
 
 import sys
-from typing import AbstractSet, Dict, Set, List
+from typing import AbstractSet, Dict, List, Set
 
-from mypy.test.helpers import assert_equal, Suite
-from mypy.build import BuildManager, State, BuildSourceSet
-from mypy.modulefinder import SearchPaths
-from mypy.build import topsort, strongly_connected_components, sorted_components, order_ascc
-from mypy.version import __version__
-from mypy.options import Options
-from mypy.report import Reports
-from mypy.plugin import Plugin
+from mypy.build import (
+    BuildManager,
+    BuildSourceSet,
+    State,
+    order_ascc,
+    sorted_components,
+    strongly_connected_components,
+    topsort,
+)
 from mypy.errors import Errors
 from mypy.fscache import FileSystemCache
+from mypy.modulefinder import SearchPaths
+from mypy.options import Options
+from mypy.plugin import Plugin
+from mypy.report import Reports
+from mypy.test.helpers import Suite, assert_equal
+from mypy.version import __version__
 
 
 class GraphSuite(Suite):

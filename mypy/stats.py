@@ -1,64 +1,64 @@
 """Utilities for calculating and reporting statistics about types."""
 
 import os
+import typing
 from collections import Counter
 from contextlib import contextmanager
+from typing import Dict, Iterator, List, Optional, Union, cast
 
-import typing
-from typing import Dict, List, cast, Optional, Union, Iterator
 from typing_extensions import Final
 
+from mypy import nodes
+from mypy.argmap import map_formals_to_actuals
+from mypy.nodes import (
+    AssignmentExpr,
+    AssignmentStmt,
+    BreakStmt,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    ComparisonExpr,
+    ComplexExpr,
+    ContinueStmt,
+    EllipsisExpr,
+    Expression,
+    ExpressionStmt,
+    FloatExpr,
+    FuncDef,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    Node,
+    OpExpr,
+    PassStmt,
+    RefExpr,
+    StrExpr,
+    TypeApplication,
+    UnaryExpr,
+    UnicodeExpr,
+    YieldFromExpr,
+)
 from mypy.traverser import TraverserVisitor
 from mypy.typeanal import collect_all_inner_types
 from mypy.types import (
-    Type,
     AnyType,
-    Instance,
-    FunctionLike,
-    TupleType,
-    TypeVarType,
-    TypeQuery,
     CallableType,
+    FunctionLike,
+    Instance,
+    TupleType,
+    Type,
     TypeOfAny,
+    TypeQuery,
+    TypeVarType,
     get_proper_type,
     get_proper_types,
 )
-from mypy import nodes
-from mypy.nodes import (
-    Expression,
-    FuncDef,
-    TypeApplication,
-    AssignmentStmt,
-    NameExpr,
-    CallExpr,
-    MypyFile,
-    MemberExpr,
-    OpExpr,
-    ComparisonExpr,
-    IndexExpr,
-    UnaryExpr,
-    YieldFromExpr,
-    RefExpr,
-    ClassDef,
-    AssignmentExpr,
-    ImportFrom,
-    Import,
-    ImportAll,
-    PassStmt,
-    BreakStmt,
-    ContinueStmt,
-    StrExpr,
-    BytesExpr,
-    UnicodeExpr,
-    IntExpr,
-    FloatExpr,
-    ComplexExpr,
-    EllipsisExpr,
-    ExpressionStmt,
-    Node,
-)
 from mypy.util import correct_relative_import
-from mypy.argmap import map_formals_to_actuals
 
 TYPE_EMPTY: Final = 0
 TYPE_UNANALYZED: Final = 1  # type of non-typechecked code

@@ -3,23 +3,22 @@
 import os.path
 from typing import Set
 
-from mypy.test.data import DataDrivenTestCase
-from mypy.test.config import test_temp_dir
 from mypy.errors import CompileError
-
-from mypyc.common import TOP_LEVEL_NAME
+from mypy.test.config import test_temp_dir
+from mypy.test.data import DataDrivenTestCase
 from mypyc.analysis import dataflow
-from mypyc.transform import exceptions
-from mypyc.ir.pprint import format_func, generate_names_for_ir
-from mypyc.ir.ops import Value
+from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.func_ir import all_values
+from mypyc.ir.ops import Value
+from mypyc.ir.pprint import format_func, generate_names_for_ir
 from mypyc.test.testutil import (
     ICODE_GEN_BUILTINS,
-    use_custom_builtins,
     MypycDataSuite,
-    build_ir_for_single_file,
     assert_test_output,
+    build_ir_for_single_file,
+    use_custom_builtins,
 )
+from mypyc.transform import exceptions
 
 files = ["analysis.test"]
 

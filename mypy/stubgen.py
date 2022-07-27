@@ -45,98 +45,98 @@ TODO:
  - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
+import argparse
 import glob
 import os
 import os.path
 import sys
 import traceback
-import argparse
 from collections import defaultdict
+from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union, cast
 
-from typing import List, Dict, Tuple, Iterable, Mapping, Optional, Set, Union, cast
 from typing_extensions import Final
 
 import mypy.build
+import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
-import mypy.mixedtraverser
 import mypy.util
 from mypy import defaults
+from mypy.build import build
+from mypy.errors import CompileError, Errors
+from mypy.find_sources import InvalidSourceList, create_source_list
 from mypy.modulefinder import (
-    ModuleNotFoundReason,
-    FindModuleCache,
-    SearchPaths,
     BuildSource,
+    FindModuleCache,
+    ModuleNotFoundReason,
+    SearchPaths,
     default_lib_path,
 )
+from mypy.moduleinspect import ModuleInspect
 from mypy.nodes import (
-    Expression,
-    IntExpr,
-    UnaryExpr,
-    StrExpr,
-    BytesExpr,
-    NameExpr,
-    FloatExpr,
-    MemberExpr,
-    TupleExpr,
-    ListExpr,
-    ComparisonExpr,
-    CallExpr,
-    IndexExpr,
-    EllipsisExpr,
-    ClassDef,
-    MypyFile,
-    Decorator,
-    AssignmentStmt,
-    TypeInfo,
-    IfStmt,
-    ImportAll,
-    ImportFrom,
-    Import,
-    FuncDef,
-    FuncBase,
-    Block,
-    Statement,
-    OverloadedFuncDef,
+    ARG_NAMED,
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
-    ARG_NAMED,
+    AssignmentStmt,
+    Block,
+    BytesExpr,
+    CallExpr,
+    ClassDef,
+    ComparisonExpr,
+    Decorator,
+    EllipsisExpr,
+    Expression,
+    FloatExpr,
+    FuncBase,
+    FuncDef,
+    IfStmt,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    ListExpr,
+    MemberExpr,
+    MypyFile,
+    NameExpr,
+    OverloadedFuncDef,
+    Statement,
+    StrExpr,
+    TupleExpr,
+    TypeInfo,
+    UnaryExpr,
 )
+from mypy.options import Options as MypyOptions
+from mypy.stubdoc import Sig, find_unique_signatures, parse_all_signatures
 from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
-    default_py2_interpreter,
     CantImport,
-    generate_guarded,
-    walk_packages,
+    common_dir_prefix,
+    default_py2_interpreter,
+    fail_missing,
     find_module_path_and_all_py2,
     find_module_path_and_all_py3,
-    report_missing,
-    fail_missing,
+    generate_guarded,
     remove_misplaced_type_comments,
-    common_dir_prefix,
+    report_missing,
+    walk_packages,
 )
-from mypy.stubdoc import parse_all_signatures, find_unique_signatures, Sig
-from mypy.options import Options as MypyOptions
+from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
 from mypy.types import (
-    Type,
-    TypeStrVisitor,
+    OVERLOAD_NAMES,
+    AnyType,
     CallableType,
-    UnboundType,
+    Instance,
     NoneType,
     TupleType,
+    Type,
     TypeList,
-    Instance,
-    AnyType,
+    TypeStrVisitor,
+    UnboundType,
     get_proper_type,
-    OVERLOAD_NAMES,
 )
 from mypy.visitor import NodeVisitor
-from mypy.find_sources import create_source_list, InvalidSourceList
-from mypy.build import build
-from mypy.errors import CompileError, Errors
-from mypy.traverser import all_yield_expressions, has_return_statement, has_yield_expression
-from mypy.moduleinspect import ModuleInspect
 
 TYPING_MODULE_NAMES: Final = ("typing", "typing_extensions")
 

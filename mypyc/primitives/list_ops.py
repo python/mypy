@@ -1,25 +1,24 @@
 """List primitive ops."""
 
-from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE
+from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    int_rprimitive,
-    short_int_rprimitive,
-    list_rprimitive,
-    object_rprimitive,
+    bit_rprimitive,
     c_int_rprimitive,
     c_pyssize_t_rprimitive,
-    bit_rprimitive,
     int64_rprimitive,
+    int_rprimitive,
+    list_rprimitive,
+    object_rprimitive,
+    short_int_rprimitive,
 )
 from mypyc.primitives.registry import (
-    load_address_op,
-    function_op,
-    binary_op,
-    method_op,
-    custom_op,
     ERR_NEG_INT,
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
 )
-
 
 # Get the 'builtins.list' type object.
 load_address_op(name="builtins.list", type=object_rprimitive, src="PyList_Type")

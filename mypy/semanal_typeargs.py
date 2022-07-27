@@ -7,30 +7,30 @@ operations, including subtype checks.
 
 from typing import List, Optional, Set
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
-from mypy.types import (
-    Type,
-    Instance,
-    TypeVarType,
-    AnyType,
-    get_proper_types,
-    TypeAliasType,
-    ParamSpecType,
-    UnpackType,
-    TupleType,
-    TypeVarTupleType,
-    TypeOfAny,
-    get_proper_type,
-)
-from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.subtypes import is_subtype
-from mypy.sametypes import is_same_type
-from mypy.errors import Errors
-from mypy.scope import Scope
-from mypy.options import Options
+from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
-from mypy import message_registry, errorcodes as codes
+from mypy.errors import Errors
 from mypy.messages import format_type
+from mypy.mixedtraverser import MixedTraverserVisitor
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile, TypeInfo
+from mypy.options import Options
+from mypy.sametypes import is_same_type
+from mypy.scope import Scope
+from mypy.subtypes import is_subtype
+from mypy.types import (
+    AnyType,
+    Instance,
+    ParamSpecType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypeOfAny,
+    TypeVarTupleType,
+    TypeVarType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):

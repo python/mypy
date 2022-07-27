@@ -1,11 +1,10 @@
 """Classes for representing match statement patterns."""
-from typing import TypeVar, List, Optional, Union
+from typing import List, Optional, TypeVar, Union
 
 from mypy_extensions import trait
 
-from mypy.nodes import Node, RefExpr, NameExpr, Expression
+from mypy.nodes import Expression, NameExpr, Node, RefExpr
 from mypy.visitor import PatternVisitor
-
 
 T = TypeVar("T")
 

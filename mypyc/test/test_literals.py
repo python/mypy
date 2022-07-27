@@ -4,10 +4,10 @@ import unittest
 
 from mypyc.codegen.literals import (
     Literals,
-    format_str_literal,
-    _encode_str_values,
     _encode_bytes_values,
     _encode_int_values,
+    _encode_str_values,
+    format_str_literal,
 )
 
 

@@ -1,22 +1,23 @@
-from mypy.plugin import Plugin, FunctionContext
-from mypy.types import (
-    FunctionLike,
-    Type,
-    Instance,
-    CallableType,
-    UnionType,
-    get_proper_type,
-    ProperType,
-    get_proper_types,
-    TupleType,
-    NoneTyp,
-    AnyType,
-)
-from mypy.nodes import TypeInfo
-from mypy.subtypes import is_proper_subtype
+from typing import Callable, Optional
 
 from typing_extensions import Type as typing_Type
-from typing import Optional, Callable
+
+from mypy.nodes import TypeInfo
+from mypy.plugin import FunctionContext, Plugin
+from mypy.subtypes import is_proper_subtype
+from mypy.types import (
+    AnyType,
+    CallableType,
+    FunctionLike,
+    Instance,
+    NoneTyp,
+    ProperType,
+    TupleType,
+    Type,
+    UnionType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 class ProperTypePlugin(Plugin):

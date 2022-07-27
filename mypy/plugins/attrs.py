@@ -1,69 +1,69 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
-from mypy.backports import OrderedDict
+from typing import Dict, Iterable, List, Optional, Tuple, cast
 
-from typing import Optional, Dict, List, cast, Tuple, Iterable
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.exprtotype import expr_to_unanalyzed_type, TypeTranslationError
+from mypy.backports import OrderedDict
+from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
-    Context,
-    Argument,
-    Var,
+    ARG_NAMED,
+    ARG_NAMED_OPT,
     ARG_OPT,
     ARG_POS,
-    TypeInfo,
-    AssignmentStmt,
-    TupleExpr,
-    ListExpr,
-    NameExpr,
-    CallExpr,
-    RefExpr,
-    FuncDef,
-    is_class_var,
-    TempNode,
-    Decorator,
-    MemberExpr,
-    Expression,
-    SymbolTableNode,
     MDEF,
+    Argument,
+    AssignmentStmt,
+    CallExpr,
+    Context,
+    Decorator,
+    Expression,
+    FuncDef,
     JsonDict,
-    OverloadedFuncDef,
-    ARG_NAMED_OPT,
-    ARG_NAMED,
-    TypeVarExpr,
-    PlaceholderNode,
     LambdaExpr,
+    ListExpr,
+    MemberExpr,
+    NameExpr,
+    OverloadedFuncDef,
+    PlaceholderNode,
+    RefExpr,
+    SymbolTableNode,
+    TempNode,
+    TupleExpr,
+    TypeInfo,
+    TypeVarExpr,
+    Var,
+    is_class_var,
 )
 from mypy.plugin import SemanticAnalyzerPluginInterface
 from mypy.plugins.common import (
     _get_argument,
     _get_bool_argument,
     _get_decorator_bool_argument,
+    add_attribute_to_class,
     add_method,
     deserialize_and_fixup_type,
-    add_attribute_to_class,
 )
+from mypy.server.trigger import make_wildcard_trigger
+from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.types import (
-    TupleType,
-    Type,
     AnyType,
-    TypeOfAny,
     CallableType,
-    NoneType,
-    TypeVarType,
-    Overloaded,
-    UnionType,
     FunctionLike,
     Instance,
-    get_proper_type,
     LiteralType,
+    NoneType,
+    Overloaded,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeVarType,
+    UnionType,
+    get_proper_type,
 )
-from mypy.typeops import make_simplified_union, map_type_from_supertype
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
-from mypy.server.trigger import make_wildcard_trigger
 
 KW_ONLY_PYTHON_2_UNSUPPORTED: Final = "kw_only is not supported in Python 2"
 

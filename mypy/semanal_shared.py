@@ -1,37 +1,37 @@
 """Shared definitions used by different parts of semantic analysis."""
 
 from abc import abstractmethod
+from typing import Callable, List, Optional, Union
 
-from typing import Optional, List, Callable, Union
-from typing_extensions import Final, Protocol
 from mypy_extensions import trait
+from typing_extensions import Final, Protocol
 
+from mypy import join
+from mypy.errorcodes import ErrorCode
 from mypy.nodes import (
     Context,
-    SymbolTableNode,
+    Expression,
     FuncDef,
     Node,
-    TypeInfo,
-    Expression,
     SymbolNode,
     SymbolTable,
-)
-from mypy.types import (
-    Type,
-    FunctionLike,
-    Instance,
-    TupleType,
-    TPDICT_FB_NAMES,
-    ProperType,
-    get_proper_type,
-    ParamSpecType,
-    ParamSpecFlavor,
-    Parameters,
-    TypeVarId,
+    SymbolTableNode,
+    TypeInfo,
 )
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.errorcodes import ErrorCode
-from mypy import join
+from mypy.types import (
+    TPDICT_FB_NAMES,
+    FunctionLike,
+    Instance,
+    Parameters,
+    ParamSpecFlavor,
+    ParamSpecType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeVarId,
+    get_proper_type,
+)
 
 # Priorities for ordering of patches within the "patch" phase of semantic analysis
 # (after the main pass):

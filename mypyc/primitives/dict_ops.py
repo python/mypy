@@ -2,25 +2,24 @@
 
 from mypyc.ir.ops import ERR_FALSE, ERR_MAGIC, ERR_NEVER
 from mypyc.ir.rtypes import (
-    dict_rprimitive,
-    object_rprimitive,
+    bit_rprimitive,
     bool_rprimitive,
+    c_int_rprimitive,
+    c_pyssize_t_rprimitive,
+    dict_next_rtuple_pair,
+    dict_next_rtuple_single,
+    dict_rprimitive,
     int_rprimitive,
     list_rprimitive,
-    dict_next_rtuple_single,
-    dict_next_rtuple_pair,
-    c_pyssize_t_rprimitive,
-    c_int_rprimitive,
-    bit_rprimitive,
+    object_rprimitive,
 )
-
 from mypyc.primitives.registry import (
-    custom_op,
-    method_op,
-    function_op,
-    binary_op,
-    load_address_op,
     ERR_NEG_INT,
+    binary_op,
+    custom_op,
+    function_op,
+    load_address_op,
+    method_op,
 )
 
 # Get the 'dict' type object.

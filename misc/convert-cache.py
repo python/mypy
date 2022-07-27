@@ -5,12 +5,13 @@ We support a filesystem tree based cache and a sqlite based cache.
 See mypy/metastore.py for details.
 """
 
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import argparse
+
 from mypy.metastore import FilesystemMetadataStore, SqliteMetadataStore
 
 

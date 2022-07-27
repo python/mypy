@@ -1,12 +1,12 @@
-from mypy.backports import OrderedDict
-import re
 import pprint
+import re
 import sys
+from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
 
-from typing_extensions import Final, TYPE_CHECKING
-from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, Any
+from typing_extensions import TYPE_CHECKING, Final
 
 from mypy import defaults
+from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:

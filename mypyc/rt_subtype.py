@@ -14,19 +14,19 @@ coercion is necessary first.
 """
 
 from mypyc.ir.rtypes import (
-    RType,
-    RUnion,
+    RArray,
     RInstance,
     RPrimitive,
-    RTuple,
-    RVoid,
-    RTypeVisitor,
     RStruct,
-    RArray,
+    RTuple,
+    RType,
+    RTypeVisitor,
+    RUnion,
+    RVoid,
+    is_bit_rprimitive,
+    is_bool_rprimitive,
     is_int_rprimitive,
     is_short_int_rprimitive,
-    is_bool_rprimitive,
-    is_bit_rprimitive,
 )
 from mypyc.subtype import is_subtype
 

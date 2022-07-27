@@ -1,35 +1,36 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
 
-from typing import Tuple, TypeVar, Union, Optional
+from typing import Optional, Tuple, TypeVar, Union
+
 from typing_extensions import Final
 
+from mypy.literals import literal
 from mypy.nodes import (
+    LITERAL_YES,
+    AssertStmt,
+    Block,
+    CallExpr,
+    ComparisonExpr,
     Expression,
     IfStmt,
-    Block,
-    AssertStmt,
-    MatchStmt,
-    NameExpr,
-    UnaryExpr,
-    MemberExpr,
-    OpExpr,
-    ComparisonExpr,
-    StrExpr,
-    UnicodeExpr,
-    CallExpr,
-    IntExpr,
-    TupleExpr,
-    IndexExpr,
-    SliceExpr,
     Import,
-    ImportFrom,
     ImportAll,
-    LITERAL_YES,
+    ImportFrom,
+    IndexExpr,
+    IntExpr,
+    MatchStmt,
+    MemberExpr,
+    NameExpr,
+    OpExpr,
+    SliceExpr,
+    StrExpr,
+    TupleExpr,
+    UnaryExpr,
+    UnicodeExpr,
 )
 from mypy.options import Options
-from mypy.patterns import Pattern, AsPattern, OrPattern
+from mypy.patterns import AsPattern, OrPattern, Pattern
 from mypy.traverser import TraverserVisitor
-from mypy.literals import literal
 
 # Inferred truth value of an expression.
 ALWAYS_TRUE: Final = 1

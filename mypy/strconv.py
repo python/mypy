@@ -1,13 +1,13 @@
 """Conversion of parse tree nodes to strings."""
 
-import re
 import os
+import re
+from typing import Any, List, Optional, Sequence, Tuple, Union
 
-from typing import Any, List, Tuple, Optional, Union, Sequence
 from typing_extensions import TYPE_CHECKING
 
-from mypy.util import short_type, IdMapper
 import mypy.nodes
+from mypy.util import IdMapper, short_type
 from mypy.visitor import NodeVisitor
 
 if TYPE_CHECKING:
