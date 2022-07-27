@@ -733,10 +733,13 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         if emitter.capi_version < (3, 11):
             # __dict__ lives right after the struct and __weakref__ lives right after that
             emitter.emit_gc_visit(
-                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name),
+                object_rprimitive,
             )
             emitter.emit_gc_visit(
-                "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+                "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(
+                    struct_name
+                ),
                 object_rprimitive,
             )
         else:
@@ -744,9 +747,9 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
             # the struct
             emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
             emitter.emit_gc_visit(
-                "*((PyObject **)((char *)self + sizeof({})))".format(
-                    struct_name),
-                object_rprimitive)
+                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name),
+                object_rprimitive,
+            )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -764,10 +767,13 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         if emitter.capi_version < (3, 11):
             # __dict__ lives right after the struct and __weakref__ lives right after that
             emitter.emit_gc_clear(
-                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name),
+                object_rprimitive,
             )
             emitter.emit_gc_clear(
-                "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+                "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(
+                    struct_name
+                ),
                 object_rprimitive,
             )
         else:
@@ -775,9 +781,9 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
             # the struct
             emitter.emit_line("_PyObject_ClearManagedDict((PyObject *)self);")
             emitter.emit_gc_clear(
-                "*((PyObject **)((char *)self + sizeof({})))".format(
-                    struct_name),
-                object_rprimitive)
+                "*((PyObject **)((char *)self + sizeof({})))".format(struct_name),
+                object_rprimitive,
+            )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
