@@ -1063,7 +1063,7 @@ def verify_typealias(
                 ):
                     runtime_module = "typing"
                 runtime_fullname = f"{runtime_module}.{runtime_name}"
-                if re.fullmatch(fr"_?{re.escape(stub_origin.fullname)}", runtime_fullname):
+                if re.fullmatch(rf"_?{re.escape(stub_origin.fullname)}", runtime_fullname):
                     # Okay, we're probably fine.
                     return
 

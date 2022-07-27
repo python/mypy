@@ -718,7 +718,7 @@ class StubtestUnit(unittest.TestCase):
             E = Tuple[int, int, int]
             F = List[str]
             """,
-            error="F"
+            error="F",
         )
         yield Case(
             stub="""
@@ -733,7 +733,7 @@ class StubtestUnit(unittest.TestCase):
             H = Union[str, bool]
             I = str
             """,
-            error="I"
+            error="I",
         )
         yield Case(
             stub="""
@@ -752,7 +752,7 @@ class StubtestUnit(unittest.TestCase):
             KK = Iterable[str]
             LL = Iterable[str]
             """,
-            error=None
+            error=None,
         )
         yield Case(
             stub="""
@@ -769,7 +769,7 @@ class StubtestUnit(unittest.TestCase):
                 def foo(self, arg): pass
             IntFood = _Bacon[int]
             """,
-            error="IntFood.foo"
+            error="IntFood.foo",
         )
         yield Case(stub="StrList = list[str]", runtime="StrList = ['foo', 'bar']", error="StrList")
         yield Case(
@@ -786,7 +786,7 @@ class StubtestUnit(unittest.TestCase):
             O = Callable[[int], str]
             P = int
             """,
-            error="P"
+            error="P",
         )
         yield Case(
             stub="""
@@ -799,7 +799,7 @@ class StubtestUnit(unittest.TestCase):
                 class Bar: pass
             BarAlias = Foo.Bar
             """,
-            error=None
+            error=None,
         )
         yield Case(
             stub="""
@@ -810,7 +810,7 @@ class StubtestUnit(unittest.TestCase):
             from _io import StringIO
             StringIOAlias = StringIO
             """,
-            error=None
+            error=None,
         )
         yield Case(
             stub="""
@@ -821,7 +821,7 @@ class StubtestUnit(unittest.TestCase):
             from typing import Match
             M = Match[str]
             """,
-            error=None
+            error=None,
         )
         yield Case(
             stub="""
@@ -835,7 +835,7 @@ class StubtestUnit(unittest.TestCase):
             BazAlias = Baz
             Baz.__name__ = Baz.__qualname__ = Baz.__module__ = "New"
             """,
-            error=None
+            error=None,
         )
         yield Case(
             stub="""
@@ -850,7 +850,7 @@ class StubtestUnit(unittest.TestCase):
             FooBarAlias = FooBar
             FooBar.__module__ = None
             """,
-            error=None
+            error=None,
         )
         if sys.version_info >= (3, 10):
             yield Case(
@@ -887,7 +887,7 @@ class StubtestUnit(unittest.TestCase):
                 MM = Match[str]
                 MMM = Match[str]
                 """,
-                error=None
+                error=None,
             )
 
     @collect_cases
