@@ -86,7 +86,7 @@ p.add_argument("files", metavar="FILE", nargs="+", help="File (or directory) to 
 p.add_argument(
     "--export-types",
     action="store_true",
-    help="Store types of all expressions in a shared location" " (useful for inspections)",
+    help="Store types of all expressions in a shared location (useful for inspections)",
 )
 
 run_parser = p = subparsers.add_parser(
@@ -104,7 +104,7 @@ p.add_argument("--log-file", metavar="FILE", type=str, help="Direct daemon stdou
 p.add_argument(
     "--export-types",
     action="store_true",
-    help="Store types of all expressions in a shared location" " (useful for inspections)",
+    help="Store types of all expressions in a shared location (useful for inspections)",
 )
 p.add_argument(
     "flags",
@@ -126,7 +126,7 @@ p.add_argument("--perf-stats-file", help="write performance information to the g
 p.add_argument(
     "--export-types",
     action="store_true",
-    help="Store types of all expressions in a shared location" " (useful for inspections)",
+    help="Store types of all expressions in a shared location (useful for inspections)",
 )
 p.add_argument(
     "--update",
@@ -210,7 +210,7 @@ p.add_argument(
     metavar="NUM",
     type=int,
     default=0,
-    help="Return at most NUM innermost expressions (if position is given);" " 0 means no limit",
+    help="Return at most NUM innermost expressions (if position is given); 0 means no limit",
 )
 p.add_argument(
     "--include-span",
