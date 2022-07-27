@@ -275,9 +275,9 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
             fields["tp_dictoffset"] = base_size
             fields["tp_weaklistoffset"] = weak_offset
 
+        else:
             # In CPython >=3.11, __dict__ slot is automatically set before the type. So
             # we need to let CPython manage it.
-        else:
             # __weakref__ lives right after the struct
             # TODO: __weakref__ should get members in the struct instead of doing this nonsense.
             weak_offset = f"{base_size}"
