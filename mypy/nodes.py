@@ -1424,19 +1424,16 @@ class IfStmt(Statement):
 
 
 class RaiseStmt(Statement):
-    __slots__ = ("expr", "from_expr", "legacy_mode")
+    __slots__ = ("expr", "from_expr")
 
     # Plain 'raise' is a valid statement.
     expr: Optional[Expression]
     from_expr: Optional[Expression]
-    # Is set when python2 has `raise exc, msg, traceback`.
-    legacy_mode: bool
 
     def __init__(self, expr: Optional[Expression], from_expr: Optional[Expression]) -> None:
         super().__init__()
         self.expr = expr
         self.from_expr = from_expr
-        self.legacy_mode = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_raise_stmt(self)
