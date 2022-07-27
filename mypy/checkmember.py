@@ -410,10 +410,7 @@ def analyze_union_member_access(name: str, typ: UnionType, mx: MemberContext) ->
 
 
 def analyze_none_member_access(name: str, typ: NoneType, mx: MemberContext) -> Type:
-    is_python_3 = mx.chk.options.python_version[0] >= 3
-    # In Python 2 "None" has exactly the same attributes as "object". Python 3 adds a single
-    # extra attribute, "__bool__".
-    if is_python_3 and name == "__bool__":
+    if name == "__bool__":
         literal_false = LiteralType(False, fallback=mx.named_type("builtins.bool"))
         return CallableType(
             arg_types=[],
