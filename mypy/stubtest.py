@@ -266,13 +266,11 @@ def _verify_exported_names(
         stub_object=MISSING,
         runtime_object=MISSING,
         stub_desc=(
-            f"Names exported in the stub but not at runtime: "
-            f"{names_in_stub_not_runtime}"
+            f"Names exported in the stub but not at runtime: " f"{names_in_stub_not_runtime}"
         ),
         runtime_desc=(
-            f"Names exported at runtime but not in the stub: "
-            f"{names_in_runtime_not_stub}"
-        )
+            f"Names exported at runtime but not in the stub: " f"{names_in_runtime_not_stub}"
+        ),
     )
 
 
