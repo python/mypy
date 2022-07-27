@@ -57,22 +57,6 @@ x: 'a b'  # type: ignore[valid-type]
 for v in x:  # type: int, int  # type: ignore[syntax]
     pass
 
-[case testErrorCodeSyntaxError_python2]
-1 '' # E: invalid syntax  [syntax]
-
-[case testErrorCodeSyntaxError2_python2]
-def f(): # E: Type signature has too many arguments  [syntax]
-    # type: (int) -> None
-    1
-
-x = 0  # type: x y  # E: syntax error in type comment "x y"  [syntax]
-
-[case testErrorCodeSyntaxError3_python2]
-def f(): pass
-for v in f():  # type: int, int  # E: Syntax error in type annotation  [syntax] \
-    # N: Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)
-    pass
-
 [case testErrorCodeIgnore1]
 'x'.foobar  # type: ignore[attr-defined]
 'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
@@ -80,18 +64,6 @@ for v in f():  # type: int, int  # E: Syntax error in type annotation  [syntax] 
 'x'.foobar  # type: ignore
 
 [case testErrorCodeIgnore2]
-a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
-b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
-c = 'x'.foobar  # type: int  # type: ignore
-
-[case testErrorCodeIgnore1_python2]
-'x'.foobar  # type: ignore[attr-defined]
-'x'.foobar  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
-'x'.foobar  # type: ignore
-
-[case testErrorCodeIgnore2_python2]
 a = 'x'.foobar  # type: int  # type: ignore[attr-defined]
 b = 'x'.foobar  # type: int  # type: ignore[xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
     # N: Error code "attr-defined" not covered by "type: ignore" comment
@@ -105,18 +77,6 @@ a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not de
     # N: Error code "name-defined" not covered by "type: ignore" comment
 
 [case testErrorCodeIgnoreMultiple2]
-a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
-b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
-
-[case testErrorCodeIgnoreMultiple1_python2]
-a = 'x'.foobar(b)  # type: ignore[name-defined, attr-defined]
-a = 'x'.foobar(b)  # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
-    # N: Error code "attr-defined" not covered by "type: ignore" comment
-a = 'x'.foobar(b)  # type: ignore[xyz, w, attr-defined]  # E: Name "b" is not defined  [name-defined] \
-    # N: Error code "name-defined" not covered by "type: ignore" comment
-
-[case testErrorCodeIgnoreMultiple2_python2]
 a = 'x'.foobar(b) # type: int # type: ignore[name-defined, attr-defined]
 b = 'x'.foobar(b) # type: int # type: ignore[name-defined, xyz]  # E: "str" has no attribute "foobar"  [attr-defined] \
     # N: Error code "attr-defined" not covered by "type: ignore" comment
@@ -215,28 +175,7 @@ def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name
     # type () -> None
     pass
 
-[case testErrorCodeIgnoreAfterArgComment_python2]
-def f(x  # type: xyz  # type: ignore[name-defined]  # Comment
-      ):
-    # type () -> None
-    pass
-
-def g(x  # type: xyz  # type: ignore  # Comment
-      ):
-    # type () -> None
-    pass
-
-def h(x  # type: xyz  # type: ignore[foo]  # E: Name "xyz" is not defined  [name-defined] \
-      # N: Error code "name-defined" not covered by "type: ignore" comment
-      ):
-    # type () -> None
-    pass
-
 [case testErrorCodeIgnoreWithNote]
-import nostub  # type: ignore[import]
-from defusedxml import xyz  # type: ignore[import]
-
-[case testErrorCodeIgnoreWithNote_python2]
 import nostub  # type: ignore[import]
 from defusedxml import xyz  # type: ignore[import]
 
@@ -273,22 +212,6 @@ main:4: error: Invalid "type: ignore" comment  [syntax]
 main:5: error: Invalid "type: ignore" comment  [syntax]
 main:6: error: Invalid "type: ignore" comment  [syntax]
 
-[case testErrorCodeBadIgnore_python2]
-import nostub # type: ignore xyz
-import nostub # type: ignore[xyz  # Comment [x]
-import nostub # type: ignore[xyz][xyz]
-x = 0  # type: ignore[
-def f(x,  # type: int  # type: ignore[
-      ):
-    # type: (...) -> None
-    pass
-[out]
-main:1: error: Invalid "type: ignore" comment  [syntax]
-main:2: error: Invalid "type: ignore" comment  [syntax]
-main:3: error: Invalid "type: ignore" comment  [syntax]
-main:4: error: Invalid "type: ignore" comment  [syntax]
-main:5: error: Invalid "type: ignore" comment  [syntax]
-
 [case testErrorCodeArgKindAndCount]
 def f(x: int) -> None: pass  # N: "f" defined here
 f()  # E: Missing positional argument "x" in call to "f"  [call-arg]
@@ -301,14 +224,6 @@ g()  # E: Missing named argument "x" for "g"  [call-arg]
 def h(x: int, y: int, z: int) -> None: pass
 h(y=1, z=1)  # E: Missing positional argument "x" in call to "h"  [call-arg]
 h(y=1)  # E: Missing positional arguments "x", "z" in call to "h"  [call-arg]
-
-[case testErrorCodeSuperArgs_python2]
-class A:
-    def f(self):
-        pass
-class B(A):
-    def f(self):  # type: () -> None
-        super().f()  # E: Too few arguments for "super"  [call-arg]
 
 [case testErrorCodeArgType]
 def f(x: int) -> None: pass
@@ -568,15 +483,6 @@ from typing import cast
 x = cast(int, int())  # E: Redundant cast to "int"  [redundant-cast]
 
 [case testErrorCodeInvalidCommentSignature]
-def f(x):  # E: Type signature has too few arguments  [syntax]
-    # type: () -> None
-    pass
-
-def g(x):  # E: Type signature has too many arguments  [syntax]
-    # type: (int, int) -> None
-    pass
-
-[case testErrorCodeInvalidCommentSignature_python2]
 def f(x):  # E: Type signature has too few arguments  [syntax]
     # type: () -> None
     pass

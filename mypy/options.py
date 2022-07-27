@@ -1,12 +1,12 @@
-from mypy.backports import OrderedDict
-import re
 import pprint
+import re
 import sys
+from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
 
-from typing_extensions import Final, TYPE_CHECKING
-from typing import Dict, List, Mapping, Optional, Pattern, Set, Tuple, Callable, Any
+from typing_extensions import TYPE_CHECKING, Final
 
 from mypy import defaults
+from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:
@@ -85,7 +85,7 @@ class Options:
         self.ignore_missing_imports = False
         # Is ignore_missing_imports set in a per-module section
         self.ignore_missing_imports_per_module = False
-        self.follow_imports = 'normal'  # normal|silent|skip|error
+        self.follow_imports = "normal"  # normal|silent|skip|error
         # Whether to respect the follow_imports setting even for stub files.
         # Intended to be used for disabling specific stubs.
         self.follow_imports_for_stubs = False
@@ -319,18 +319,18 @@ class Options:
     def snapshot(self) -> object:
         """Produce a comparable snapshot of this Option"""
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
-        d = dict(getattr(self, '__dict__', ()))
+        d = dict(getattr(self, "__dict__", ()))
         for k in get_class_descriptors(Options):
             if hasattr(self, k) and k != "new_semantic_analyzer":
                 d[k] = getattr(self, k)
         # Remove private attributes from snapshot
-        d = {k: v for k, v in d.items() if not k.startswith('_')}
+        d = {k: v for k, v in d.items() if not k.startswith("_")}
         return d
 
     def __repr__(self) -> str:
-        return f'Options({pprint.pformat(self.snapshot())})'
+        return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: Dict[str, object]) -> 'Options':
+    def apply_changes(self, changes: Dict[str, object]) -> "Options":
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -360,12 +360,10 @@ class Options:
         # than foo.bar.*.
         # (A section being "processed last" results in its config "winning".)
         # Unstructured glob configs are stored and are all checked for each module.
-        unstructured_glob_keys = [k for k in self.per_module_options.keys()
-                                  if '*' in k[:-1]]
-        structured_keys = [k for k in self.per_module_options.keys()
-                           if '*' not in k[:-1]]
-        wildcards = sorted(k for k in structured_keys if k.endswith('.*'))
-        concrete = [k for k in structured_keys if not k.endswith('.*')]
+        unstructured_glob_keys = [k for k in self.per_module_options.keys() if "*" in k[:-1]]
+        structured_keys = [k for k in self.per_module_options.keys() if "*" not in k[:-1]]
+        wildcards = sorted(k for k in structured_keys if k.endswith(".*"))
+        concrete = [k for k in structured_keys if not k.endswith(".*")]
 
         for glob in unstructured_glob_keys:
             self._glob_options.append((glob, self.compile_glob(glob)))
@@ -387,7 +385,7 @@ class Options:
         # they only count as used if actually used by a real module.
         self.unused_configs.update(structured_keys)
 
-    def clone_for_module(self, module: str) -> 'Options':
+    def clone_for_module(self, module: str) -> "Options":
         """Create an Options object that incorporates per-module options.
 
         NOTE: Once this method is called all Options objects should be
@@ -408,9 +406,9 @@ class Options:
         # This is technically quadratic in the length of the path, but module paths
         # don't actually get all that long.
         options = self
-        path = module.split('.')
+        path = module.split(".")
         for i in range(len(path), 0, -1):
-            key = '.'.join(path[:i] + ['*'])
+            key = ".".join(path[:i] + ["*"])
             if key in self._per_module_cache:
                 self.unused_configs.discard(key)
                 options = self._per_module_cache[key]
@@ -418,7 +416,7 @@ class Options:
 
         # OK and *now* we need to look for unstructured glob matches.
         # We only do this for concrete modules, not structured wildcards.
-        if not module.endswith('.*'):
+        if not module.endswith(".*"):
             for key, pattern in self._glob_options:
                 if pattern.match(module):
                     self.unused_configs.discard(key)
@@ -434,11 +432,11 @@ class Options:
         # Compile one of the glob patterns to a regex so that '.*' can
         # match *zero or more* module sections. This means we compile
         # '.*' into '(\..*)?'.
-        parts = s.split('.')
-        expr = re.escape(parts[0]) if parts[0] != '*' else '.*'
+        parts = s.split(".")
+        expr = re.escape(parts[0]) if parts[0] != "*" else ".*"
         for part in parts[1:]:
-            expr += re.escape('.' + part) if part != '*' else r'(\..*)?'
-        return re.compile(expr + '\\Z')
+            expr += re.escape("." + part) if part != "*" else r"(\..*)?"
+        return re.compile(expr + "\\Z")
 
     def select_options_affecting_cache(self) -> Mapping[str, object]:
         return {opt: getattr(self, opt) for opt in OPTIONS_AFFECTING_CACHE}

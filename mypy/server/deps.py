@@ -79,51 +79,122 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
-from typing import Dict, List, Set, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
+
 from typing_extensions import DefaultDict
 
 from mypy.checkmember import bind_self
 from mypy.nodes import (
-    Node, Expression, MypyFile, FuncDef, ClassDef, AssignmentStmt, NameExpr, MemberExpr, Import,
-    ImportFrom, CallExpr, CastExpr, TypeVarExpr, TypeApplication, IndexExpr, UnaryExpr, OpExpr,
-    ComparisonExpr, GeneratorExpr, DictionaryComprehension, StarExpr, PrintStmt, ForStmt, WithStmt,
-    TupleExpr, OperatorAssignmentStmt, DelStmt, YieldFromExpr, Decorator, Block,
-    TypeInfo, FuncBase, OverloadedFuncDef, RefExpr, SuperExpr, Var, NamedTupleExpr, TypedDictExpr,
-    LDEF, MDEF, GDEF, TypeAliasExpr, NewTypeExpr, ImportAll, EnumCallExpr, AwaitExpr,
+    GDEF,
+    LDEF,
+    MDEF,
     AssertTypeExpr,
+    AssignmentStmt,
+    AwaitExpr,
+    Block,
+    CallExpr,
+    CastExpr,
+    ClassDef,
+    ComparisonExpr,
+    Decorator,
+    DelStmt,
+    DictionaryComprehension,
+    EnumCallExpr,
+    Expression,
+    ForStmt,
+    FuncBase,
+    FuncDef,
+    GeneratorExpr,
+    Import,
+    ImportAll,
+    ImportFrom,
+    IndexExpr,
+    MemberExpr,
+    MypyFile,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    Node,
+    OperatorAssignmentStmt,
+    OpExpr,
+    OverloadedFuncDef,
+    PrintStmt,
+    RefExpr,
+    StarExpr,
+    SuperExpr,
+    TupleExpr,
+    TypeAliasExpr,
+    TypeApplication,
+    TypedDictExpr,
+    TypeInfo,
+    TypeVarExpr,
+    UnaryExpr,
+    Var,
+    WithStmt,
+    YieldFromExpr,
 )
 from mypy.operators import (
-    op_methods, reverse_op_methods, ops_with_inplace_method, unary_op_methods
+    op_methods,
+    ops_with_inplace_method,
+    reverse_op_methods,
+    unary_op_methods,
 )
+from mypy.options import Options
+from mypy.scope import Scope
+from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.traverser import TraverserVisitor
 from mypy.types import (
-    Type, Instance, AnyType, NoneType, TypeVisitor, CallableType, DeletedType, PartialType,
-    TupleType, TypeType, TypeVarType, TypedDictType, UnboundType, UninhabitedType, UnionType,
-    FunctionLike, Overloaded, TypeOfAny, LiteralType, ErasedType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, Parameters, UnpackType, TypeVarTupleType,
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
 )
-from mypy.server.trigger import make_trigger, make_wildcard_trigger
-from mypy.util import correct_relative_import
-from mypy.scope import Scope
 from mypy.typestate import TypeState
-from mypy.options import Options
+from mypy.util import correct_relative_import
 
 
-def get_dependencies(target: MypyFile,
-                     type_map: Dict[Expression, Type],
-                     python_version: Tuple[int, int],
-                     options: Options) -> Dict[str, Set[str]]:
+def get_dependencies(
+    target: MypyFile,
+    type_map: Dict[Expression, Type],
+    python_version: Tuple[int, int],
+    options: Options,
+) -> Dict[str, Set[str]]:
     """Get all dependencies of a node, recursively."""
     visitor = DependencyVisitor(type_map, python_version, target.alias_deps, options)
     target.accept(visitor)
     return visitor.map
 
 
-def get_dependencies_of_target(module_id: str,
-                               module_tree: MypyFile,
-                               target: Node,
-                               type_map: Dict[Expression, Type],
-                               python_version: Tuple[int, int]) -> Dict[str, Set[str]]:
+def get_dependencies_of_target(
+    module_id: str,
+    module_tree: MypyFile,
+    target: Node,
+    type_map: Dict[Expression, Type],
+    python_version: Tuple[int, int],
+) -> Dict[str, Set[str]]:
     """Get dependencies of a target -- don't recursive into nested targets."""
     # TODO: Add tests for this function.
     visitor = DependencyVisitor(type_map, python_version, module_tree.alias_deps)
@@ -146,11 +217,13 @@ def get_dependencies_of_target(module_id: str,
 
 
 class DependencyVisitor(TraverserVisitor):
-    def __init__(self,
-                 type_map: Dict[Expression, Type],
-                 python_version: Tuple[int, int],
-                 alias_deps: 'DefaultDict[str, Set[str]]',
-                 options: Optional[Options] = None) -> None:
+    def __init__(
+        self,
+        type_map: Dict[Expression, Type],
+        python_version: Tuple[int, int],
+        alias_deps: "DefaultDict[str, Set[str]]",
+        options: Optional[Options] = None,
+    ) -> None:
         self.scope = Scope()
         self.type_map = type_map
         self.python2 = python_version[0] == 2
@@ -192,8 +265,8 @@ class DependencyVisitor(TraverserVisitor):
                 for base in non_trivial_bases(o.info):
                     # Base class __init__/__new__ doesn't generate a logical
                     # dependency since the override can be incompatible.
-                    if not self.use_logical_deps() or o.name not in ('__init__', '__new__'):
-                        self.add_dependency(make_trigger(base.fullname + '.' + o.name))
+                    if not self.use_logical_deps() or o.name not in ("__init__", "__new__"):
+                        self.add_dependency(make_trigger(base.fullname + "." + o.name))
             self.add_type_alias_deps(self.scope.current_target())
             super().visit_func_def(o)
             variants = set(o.expanded) - {o}
@@ -219,8 +292,11 @@ class DependencyVisitor(TraverserVisitor):
                 tname: Optional[str] = None
                 if isinstance(d, RefExpr) and d.fullname is not None:
                     tname = d.fullname
-                if (isinstance(d, CallExpr) and isinstance(d.callee, RefExpr) and
-                        d.callee.fullname is not None):
+                if (
+                    isinstance(d, CallExpr)
+                    and isinstance(d.callee, RefExpr)
+                    and d.callee.fullname is not None
+                ):
                     tname = d.callee.fullname
                 if tname is not None:
                     self.add_dependency(make_trigger(tname), make_trigger(o.func.fullname))
@@ -266,8 +342,9 @@ class DependencyVisitor(TraverserVisitor):
                 #
                 # In this example we add <Super[wildcard]> -> <Sub>, to invalidate Sub if
                 # a new member is added to Super.
-                self.add_dependency(make_wildcard_trigger(base_info.fullname),
-                                    target=make_trigger(target))
+                self.add_dependency(
+                    make_wildcard_trigger(base_info.fullname), target=make_trigger(target)
+                )
                 # More protocol dependencies are collected in TypeState._snapshot_protocol_deps
                 # after a full run or update is finished.
 
@@ -276,12 +353,14 @@ class DependencyVisitor(TraverserVisitor):
             if isinstance(node.node, Var):
                 # Recheck Liskov if needed, self definitions are checked in the defining method
                 if node.node.is_initialized_in_class and has_user_bases(info):
-                    self.add_dependency(make_trigger(info.fullname + '.' + name))
+                    self.add_dependency(make_trigger(info.fullname + "." + name))
                 for base_info in non_trivial_bases(info):
                     # If the type of an attribute changes in a base class, we make references
                     # to the attribute in the subclass stale.
-                    self.add_dependency(make_trigger(base_info.fullname + '.' + name),
-                                        target=make_trigger(info.fullname + '.' + name))
+                    self.add_dependency(
+                        make_trigger(base_info.fullname + "." + name),
+                        target=make_trigger(info.fullname + "." + name),
+                    )
         for base_info in non_trivial_bases(info):
             for name, node in base_info.names.items():
                 if self.use_logical_deps():
@@ -298,26 +377,34 @@ class DependencyVisitor(TraverserVisitor):
                         continue
                     # __init__ and __new__ can be overridden with different signatures, so no
                     # logical dependency.
-                    if name in ('__init__', '__new__'):
+                    if name in ("__init__", "__new__"):
                         continue
-                self.add_dependency(make_trigger(base_info.fullname + '.' + name),
-                                    target=make_trigger(info.fullname + '.' + name))
+                self.add_dependency(
+                    make_trigger(base_info.fullname + "." + name),
+                    target=make_trigger(info.fullname + "." + name),
+                )
             if not self.use_logical_deps():
                 # These dependencies are only useful for propagating changes --
                 # they aren't logical dependencies since __init__ and __new__ can be
                 # overridden with a different signature.
-                self.add_dependency(make_trigger(base_info.fullname + '.__init__'),
-                                    target=make_trigger(info.fullname + '.__init__'))
-                self.add_dependency(make_trigger(base_info.fullname + '.__new__'),
-                                    target=make_trigger(info.fullname + '.__new__'))
+                self.add_dependency(
+                    make_trigger(base_info.fullname + ".__init__"),
+                    target=make_trigger(info.fullname + ".__init__"),
+                )
+                self.add_dependency(
+                    make_trigger(base_info.fullname + ".__new__"),
+                    target=make_trigger(info.fullname + ".__new__"),
+                )
                 # If the set of abstract attributes change, this may invalidate class
                 # instantiation, or change the generated error message, since Python checks
                 # class abstract status when creating an instance.
-                self.add_dependency(make_trigger(base_info.fullname + '.(abstract)'),
-                                    target=make_trigger(info.fullname + '.__init__'))
+                self.add_dependency(
+                    make_trigger(base_info.fullname + ".(abstract)"),
+                    target=make_trigger(info.fullname + ".__init__"),
+                )
                 # If the base class abstract attributes change, subclass abstract
                 # attributes need to be recalculated.
-                self.add_dependency(make_trigger(base_info.fullname + '.(abstract)'))
+                self.add_dependency(make_trigger(base_info.fullname + ".(abstract)"))
 
     def visit_import(self, o: Import) -> None:
         for id, as_id in o.ids:
@@ -327,19 +414,17 @@ class DependencyVisitor(TraverserVisitor):
         if self.use_logical_deps():
             # Just importing a name doesn't create a logical dependency.
             return
-        module_id, _ = correct_relative_import(self.scope.current_module_id(),
-                                               o.relative,
-                                               o.id,
-                                               self.is_package_init_file)
+        module_id, _ = correct_relative_import(
+            self.scope.current_module_id(), o.relative, o.id, self.is_package_init_file
+        )
         self.add_dependency(make_trigger(module_id))  # needed if module is added/removed
         for name, as_name in o.names:
-            self.add_dependency(make_trigger(module_id + '.' + name))
+            self.add_dependency(make_trigger(module_id + "." + name))
 
     def visit_import_all(self, o: ImportAll) -> None:
-        module_id, _ = correct_relative_import(self.scope.current_module_id(),
-                                               o.relative,
-                                               o.id,
-                                               self.is_package_init_file)
+        module_id, _ = correct_relative_import(
+            self.scope.current_module_id(), o.relative, o.id, self.is_package_init_file
+        )
         # The current target needs to be rechecked if anything "significant" changes in the
         # target module namespace (as the imported definitions will need to be updated).
         self.add_dependency(make_wildcard_trigger(module_id))
@@ -352,8 +437,9 @@ class DependencyVisitor(TraverserVisitor):
         rvalue = o.rvalue
         if isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypeVarExpr):
             analyzed = rvalue.analyzed
-            self.add_type_dependencies(analyzed.upper_bound,
-                                       target=make_trigger(analyzed.fullname))
+            self.add_type_dependencies(
+                analyzed.upper_bound, target=make_trigger(analyzed.fullname)
+            )
             for val in analyzed.values:
                 self.add_type_dependencies(val, target=make_trigger(analyzed.fullname))
             # We need to re-analyze the definition if bound or value is deleted.
@@ -361,20 +447,20 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, NamedTupleExpr):
             # Depend on types of named tuple items.
             info = rvalue.analyzed.info
-            prefix = f'{self.scope.current_full_target()}.{info.name}'
+            prefix = f"{self.scope.current_full_target()}.{info.name}"
             for name, symnode in info.names.items():
-                if not name.startswith('_') and isinstance(symnode.node, Var):
+                if not name.startswith("_") and isinstance(symnode.node, Var):
                     typ = symnode.node.type
                     if typ:
                         self.add_type_dependencies(typ)
                         self.add_type_dependencies(typ, target=make_trigger(prefix))
-                        attr_target = make_trigger(f'{prefix}.{name}')
+                        attr_target = make_trigger(f"{prefix}.{name}")
                         self.add_type_dependencies(typ, target=attr_target)
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, TypedDictExpr):
             # Depend on the underlying typeddict type
             info = rvalue.analyzed.info
             assert info.typeddict_type is not None
-            prefix = f'{self.scope.current_full_target()}.{info.name}'
+            prefix = f"{self.scope.current_full_target()}.{info.name}"
             self.add_type_dependencies(info.typeddict_type, target=make_trigger(prefix))
         elif isinstance(rvalue, CallExpr) and isinstance(rvalue.analyzed, EnumCallExpr):
             # Enum values are currently not checked, but for future we add the deps on them
@@ -388,8 +474,8 @@ class DependencyVisitor(TraverserVisitor):
             typ = get_proper_type(self.type_map.get(lvalue))
             if isinstance(typ, FunctionLike) and typ.is_type_obj():
                 class_name = typ.type_object().fullname
-                self.add_dependency(make_trigger(class_name + '.__init__'))
-                self.add_dependency(make_trigger(class_name + '.__new__'))
+                self.add_dependency(make_trigger(class_name + ".__init__"))
+                self.add_dependency(make_trigger(class_name + ".__new__"))
             if isinstance(rvalue, IndexExpr) and isinstance(rvalue.analyzed, TypeAliasExpr):
                 self.add_type_dependencies(rvalue.analyzed.type)
             elif typ:
@@ -404,7 +490,7 @@ class DependencyVisitor(TraverserVisitor):
                 lvalue = items[i]
                 rvalue = items[i + 1]
                 if isinstance(lvalue, TupleExpr):
-                    self.add_attribute_dependency_for_expr(rvalue, '__iter__')
+                    self.add_attribute_dependency_for_expr(rvalue, "__iter__")
             if o.type:
                 self.add_type_dependencies(o.type)
         if self.use_logical_deps() and o.unanalyzed_type is None:
@@ -412,12 +498,15 @@ class DependencyVisitor(TraverserVisitor):
             #     x = func(...)
             # we add a logical dependency <func> -> <x>, because if `func` is not annotated,
             # then it will make all points of use of `x` unchecked.
-            if (isinstance(rvalue, CallExpr) and isinstance(rvalue.callee, RefExpr)
-                    and rvalue.callee.fullname is not None):
+            if (
+                isinstance(rvalue, CallExpr)
+                and isinstance(rvalue.callee, RefExpr)
+                and rvalue.callee.fullname is not None
+            ):
                 fname: Optional[str] = None
                 if isinstance(rvalue.callee.node, TypeInfo):
                     # use actual __init__ as a dependency source
-                    init = rvalue.callee.node.get('__init__')
+                    init = rvalue.callee.node.get("__init__")
                     if init and isinstance(init.node, FuncBase):
                         fname = init.node.fullname
                 else:
@@ -433,15 +522,16 @@ class DependencyVisitor(TraverserVisitor):
     def process_lvalue(self, lvalue: Expression) -> None:
         """Generate additional dependencies for an lvalue."""
         if isinstance(lvalue, IndexExpr):
-            self.add_operator_method_dependency(lvalue.base, '__setitem__')
+            self.add_operator_method_dependency(lvalue.base, "__setitem__")
         elif isinstance(lvalue, NameExpr):
             if lvalue.kind in (MDEF, GDEF):
                 # Assignment to an attribute in the class body, or direct assignment to a
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = self.get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger('{}.{}'.format(self.scope.current_full_target(),
-                                                       lvalue.name))
+                attr_trigger = make_trigger(
+                    "{}.{}".format(self.scope.current_full_target(), lvalue.name)
+                )
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
@@ -451,7 +541,7 @@ class DependencyVisitor(TraverserVisitor):
                     info = node.info
                     if info and has_user_bases(info):
                         # Recheck Liskov for self definitions
-                        self.add_dependency(make_trigger(info.fullname + '.' + lvalue.name))
+                        self.add_dependency(make_trigger(info.fullname + "." + lvalue.name))
             if lvalue.kind is None:
                 # Reference to a non-module attribute
                 if lvalue.expr not in self.type_map:
@@ -503,7 +593,7 @@ class DependencyVisitor(TraverserVisitor):
         method = op_methods[o.op]
         self.add_attribute_dependency_for_expr(o.lvalue, method)
         if o.op in ops_with_inplace_method:
-            inplace_method = '__i' + method[2:]
+            inplace_method = "__i" + method[2:]
             self.add_attribute_dependency_for_expr(o.lvalue, inplace_method)
 
     def visit_for_stmt(self, o: ForStmt) -> None:
@@ -511,18 +601,18 @@ class DependencyVisitor(TraverserVisitor):
         if not o.is_async:
             # __getitem__ is only used if __iter__ is missing but for simplicity we
             # just always depend on both.
-            self.add_attribute_dependency_for_expr(o.expr, '__iter__')
-            self.add_attribute_dependency_for_expr(o.expr, '__getitem__')
+            self.add_attribute_dependency_for_expr(o.expr, "__iter__")
+            self.add_attribute_dependency_for_expr(o.expr, "__getitem__")
             if o.inferred_iterator_type:
                 if self.python2:
-                    method = 'next'
+                    method = "next"
                 else:
-                    method = '__next__'
+                    method = "__next__"
                 self.add_attribute_dependency(o.inferred_iterator_type, method)
         else:
-            self.add_attribute_dependency_for_expr(o.expr, '__aiter__')
+            self.add_attribute_dependency_for_expr(o.expr, "__aiter__")
             if o.inferred_iterator_type:
-                self.add_attribute_dependency(o.inferred_iterator_type, '__anext__')
+                self.add_attribute_dependency(o.inferred_iterator_type, "__anext__")
 
         self.process_lvalue(o.index)
         if isinstance(o.index, TupleExpr):
@@ -530,8 +620,8 @@ class DependencyVisitor(TraverserVisitor):
             item_type = o.inferred_item_type
             if item_type:
                 # This is similar to above.
-                self.add_attribute_dependency(item_type, '__iter__')
-                self.add_attribute_dependency(item_type, '__getitem__')
+                self.add_attribute_dependency(item_type, "__iter__")
+                self.add_attribute_dependency(item_type, "__getitem__")
         if o.index_type:
             self.add_type_dependencies(o.index_type)
 
@@ -539,23 +629,23 @@ class DependencyVisitor(TraverserVisitor):
         super().visit_with_stmt(o)
         for e in o.expr:
             if not o.is_async:
-                self.add_attribute_dependency_for_expr(e, '__enter__')
-                self.add_attribute_dependency_for_expr(e, '__exit__')
+                self.add_attribute_dependency_for_expr(e, "__enter__")
+                self.add_attribute_dependency_for_expr(e, "__exit__")
             else:
-                self.add_attribute_dependency_for_expr(e, '__aenter__')
-                self.add_attribute_dependency_for_expr(e, '__aexit__')
+                self.add_attribute_dependency_for_expr(e, "__aenter__")
+                self.add_attribute_dependency_for_expr(e, "__aexit__")
         for typ in o.analyzed_types:
             self.add_type_dependencies(typ)
 
     def visit_print_stmt(self, o: PrintStmt) -> None:
         super().visit_print_stmt(o)
         if o.target:
-            self.add_attribute_dependency_for_expr(o.target, 'write')
+            self.add_attribute_dependency_for_expr(o.target, "write")
 
     def visit_del_stmt(self, o: DelStmt) -> None:
         super().visit_del_stmt(o)
         if isinstance(o.expr, IndexExpr):
-            self.add_attribute_dependency_for_expr(o.expr.base, '__delitem__')
+            self.add_attribute_dependency_for_expr(o.expr.base, "__delitem__")
 
     # Expressions
 
@@ -570,8 +660,8 @@ class DependencyVisitor(TraverserVisitor):
         typ = get_proper_type(self.type_map.get(o))
         if isinstance(typ, FunctionLike) and typ.is_type_obj():
             class_name = typ.type_object().fullname
-            self.add_dependency(make_trigger(class_name + '.__init__'))
-            self.add_dependency(make_trigger(class_name + '.__new__'))
+            self.add_dependency(make_trigger(class_name + ".__init__"))
+            self.add_dependency(make_trigger(class_name + ".__new__"))
 
     def visit_name_expr(self, o: NameExpr) -> None:
         if o.kind == LDEF:
@@ -601,7 +691,7 @@ class DependencyVisitor(TraverserVisitor):
                 return
             if isinstance(e.expr, RefExpr) and isinstance(e.expr.node, MypyFile):
                 # Special case: reference to a missing module attribute.
-                self.add_dependency(make_trigger(e.expr.node.fullname + '.' + e.name))
+                self.add_dependency(make_trigger(e.expr.node.fullname + "." + e.name))
                 return
             typ = get_proper_type(self.type_map[e.expr])
             self.add_attribute_dependency(typ, e.name)
@@ -623,13 +713,13 @@ class DependencyVisitor(TraverserVisitor):
         Return None if e doesn't refer to an unimported definition or if we can't
         determine the name.
         """
-        suffix = ''
+        suffix = ""
         # Unwrap nested member expression to handle cases like "a.b.c.d" where
         # "a.b" is a known reference to an unimported module. Find the base
         # reference to an unimported module (such as "a.b") and the name suffix
         # (such as "c.d") needed to build a full name.
         while typ.type_of_any == TypeOfAny.from_another_any and isinstance(e.expr, MemberExpr):
-            suffix = '.' + e.name + suffix
+            suffix = "." + e.name + suffix
             e = e.expr
             if e.expr not in self.type_map:
                 return None
@@ -640,7 +730,7 @@ class DependencyVisitor(TraverserVisitor):
             typ = obj_type
         if typ.type_of_any == TypeOfAny.from_unimported_type and typ.missing_import_name:
             # Infer the full name of the unimported definition.
-            return typ.missing_import_name + '.' + e.name + suffix
+            return typ.missing_import_name + "." + e.name + suffix
         return None
 
     def visit_super_expr(self, e: SuperExpr) -> None:
@@ -650,7 +740,7 @@ class DependencyVisitor(TraverserVisitor):
         if e.info is not None:
             name = e.name
             for base in non_trivial_bases(e.info):
-                self.add_dependency(make_trigger(base.fullname + '.' + name))
+                self.add_dependency(make_trigger(base.fullname + "." + name))
                 if name in base.names:
                     # No need to depend on further base classes, since we found
                     # the target.  This is safe since if the target gets
@@ -658,7 +748,7 @@ class DependencyVisitor(TraverserVisitor):
                     break
 
     def visit_call_expr(self, e: CallExpr) -> None:
-        if isinstance(e.callee, RefExpr) and e.callee.fullname == 'builtins.isinstance':
+        if isinstance(e.callee, RefExpr) and e.callee.fullname == "builtins.isinstance":
             self.process_isinstance_call(e)
         else:
             super().visit_call_expr(e)
@@ -666,16 +756,18 @@ class DependencyVisitor(TraverserVisitor):
             if typ is not None:
                 typ = get_proper_type(typ)
                 if not isinstance(typ, FunctionLike):
-                    self.add_attribute_dependency(typ, '__call__')
+                    self.add_attribute_dependency(typ, "__call__")
 
     def process_isinstance_call(self, e: CallExpr) -> None:
         """Process "isinstance(...)" in a way to avoid some extra dependencies."""
         if len(e.args) == 2:
             arg = e.args[1]
-            if (isinstance(arg, RefExpr)
-                    and arg.kind == GDEF
-                    and isinstance(arg.node, TypeInfo)
-                    and arg.fullname):
+            if (
+                isinstance(arg, RefExpr)
+                and arg.kind == GDEF
+                and isinstance(arg.node, TypeInfo)
+                and arg.fullname
+            ):
                 # Special case to avoid redundant dependencies from "__init__".
                 self.add_dependency(make_trigger(arg.fullname))
                 return
@@ -698,7 +790,7 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_index_expr(self, e: IndexExpr) -> None:
         super().visit_index_expr(e)
-        self.add_operator_method_dependency(e.base, '__getitem__')
+        self.add_operator_method_dependency(e.base, "__getitem__")
 
     def visit_unary_expr(self, e: UnaryExpr) -> None:
         super().visit_unary_expr(e)
@@ -717,14 +809,14 @@ class DependencyVisitor(TraverserVisitor):
             left = e.operands[i]
             right = e.operands[i + 1]
             self.process_binary_op(op, left, right)
-            if self.python2 and op in ('==', '!=', '<', '<=', '>', '>='):
-                self.add_operator_method_dependency(left, '__cmp__')
-                self.add_operator_method_dependency(right, '__cmp__')
+            if self.python2 and op in ("==", "!=", "<", "<=", ">", ">="):
+                self.add_operator_method_dependency(left, "__cmp__")
+                self.add_operator_method_dependency(right, "__cmp__")
 
     def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
         method = op_methods.get(op)
         if method:
-            if op == 'in':
+            if op == "in":
                 self.add_operator_method_dependency(right, method)
             else:
                 self.add_operator_method_dependency(left, method)
@@ -745,7 +837,7 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):
-            trigger = make_trigger(typ.type.fullname + '.' + method)
+            trigger = make_trigger(typ.type.fullname + "." + method)
             self.add_dependency(trigger)
         elif isinstance(typ, UnionType):
             for item in typ.items:
@@ -776,7 +868,7 @@ class DependencyVisitor(TraverserVisitor):
 
     def visit_await_expr(self, e: AwaitExpr) -> None:
         super().visit_await_expr(e)
-        self.add_attribute_dependency_for_expr(e.expr, '__await__')
+        self.add_attribute_dependency_for_expr(e.expr, "__await__")
 
     # Helpers
 
@@ -792,8 +884,9 @@ class DependencyVisitor(TraverserVisitor):
 
         If the target is not given explicitly, use the current target.
         """
-        if trigger.startswith(('<builtins.', '<typing.',
-                               '<mypy_extensions.', '<typing_extensions.')):
+        if trigger.startswith(
+            ("<builtins.", "<typing.", "<mypy_extensions.", "<typing_extensions.")
+        ):
             # Don't track dependencies to certain library modules to keep the size of
             # the dependencies manageable. These dependencies should only
             # change on mypy version updates, which will require a full rebuild
@@ -827,10 +920,10 @@ class DependencyVisitor(TraverserVisitor):
         if isinstance(typ, TupleType):
             typ = typ.partial_fallback
         if isinstance(typ, Instance):
-            member = f'{typ.type.fullname}.{name}'
+            member = f"{typ.type.fullname}.{name}"
             return [make_trigger(member)]
         elif isinstance(typ, FunctionLike) and typ.is_type_obj():
-            member = f'{typ.type_object().fullname}.{name}'
+            member = f"{typ.type_object().fullname}.{name}"
             triggers = [make_trigger(member)]
             triggers.extend(self.attribute_triggers(typ.fallback, name))
             return triggers
@@ -842,9 +935,9 @@ class DependencyVisitor(TraverserVisitor):
         elif isinstance(typ, TypeType):
             triggers = self.attribute_triggers(typ.item, name)
             if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
-                triggers.append(make_trigger('%s.%s' %
-                                             (typ.item.type.metaclass_type.type.fullname,
-                                              name)))
+                triggers.append(
+                    make_trigger("%s.%s" % (typ.item.type.metaclass_type.type.fullname, name))
+                )
             return triggers
         else:
             return []
@@ -857,7 +950,7 @@ class DependencyVisitor(TraverserVisitor):
     def add_iter_dependency(self, node: Expression) -> None:
         typ = self.type_map.get(node)
         if typ:
-            self.add_attribute_dependency(typ, '__iter__')
+            self.add_attribute_dependency(typ, "__iter__")
 
     def use_logical_deps(self) -> bool:
         return self.options is not None and self.options.logical_deps
@@ -945,8 +1038,8 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         if not self.use_logical_deps:
             old_triggers = triggers[:]
             for trigger in old_triggers:
-                triggers.append(trigger.rstrip('>') + '.__init__>')
-                triggers.append(trigger.rstrip('>') + '.__new__>')
+                triggers.append(trigger.rstrip(">") + ".__init__>")
+                triggers.append(trigger.rstrip(">") + ".__new__>")
         return triggers
 
     def visit_type_var(self, typ: TypeVarType) -> List[str]:
@@ -1005,31 +1098,31 @@ class TypeTriggersVisitor(TypeVisitor[List[str]]):
         return triggers
 
 
-def merge_dependencies(new_deps: Dict[str, Set[str]],
-                       deps: Dict[str, Set[str]]) -> None:
+def merge_dependencies(new_deps: Dict[str, Set[str]], deps: Dict[str, Set[str]]) -> None:
     for trigger, targets in new_deps.items():
         deps.setdefault(trigger, set()).update(targets)
 
 
 def non_trivial_bases(info: TypeInfo) -> List[TypeInfo]:
-    return [base for base in info.mro[1:]
-            if base.fullname != 'builtins.object']
+    return [base for base in info.mro[1:] if base.fullname != "builtins.object"]
 
 
 def has_user_bases(info: TypeInfo) -> bool:
-    return any(base.module_name not in ('builtins', 'typing', 'enum') for base in info.mro[1:])
+    return any(base.module_name not in ("builtins", "typing", "enum") for base in info.mro[1:])
 
 
-def dump_all_dependencies(modules: Dict[str, MypyFile],
-                          type_map: Dict[Expression, Type],
-                          python_version: Tuple[int, int],
-                          options: Options) -> None:
+def dump_all_dependencies(
+    modules: Dict[str, MypyFile],
+    type_map: Dict[Expression, Type],
+    python_version: Tuple[int, int],
+    options: Options,
+) -> None:
     """Generate dependencies for all interesting modules and print them to stdout."""
     all_deps: Dict[str, Set[str]] = {}
     for id, node in modules.items():
         # Uncomment for debugging:
         # print('processing', id)
-        if id in ('builtins', 'typing') or '/typeshed/' in node.path:
+        if id in ("builtins", "typing") or "/typeshed/" in node.path:
             continue
         assert id == node.fullname
         deps = get_dependencies(node, type_map, python_version, options)
@@ -1040,4 +1133,4 @@ def dump_all_dependencies(modules: Dict[str, MypyFile],
     for trigger, targets in sorted(all_deps.items(), key=lambda x: x[0]):
         print(trigger)
         for target in sorted(targets):
-            print(f'    {target}')
+            print(f"    {target}")
