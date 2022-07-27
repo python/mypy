@@ -23,6 +23,4 @@ def parse(
         source = options.transform_source(source)
     import mypy.fastparse
 
-    return mypy.fastparse.parse(
-        source, fnam=fnam, module=module, errors=errors, options=options
-    )
+    return mypy.fastparse.parse(source, fnam=fnam, module=module, errors=errors, options=options)
