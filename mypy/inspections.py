@@ -370,7 +370,7 @@ class InspectionEngine:
         return f"{module.path}:{node.line}:{node.column + 1}:{node.name}"
 
     def collect_nodes(self, expression: RefExpr) -> List[Union[FuncBase, SymbolNode]]:
-        """Collect nodes that can be referred to  by an expression.
+        """Collect nodes that can be referred to by an expression.
 
         Note: it can be more than one for example in case of a union attribute.
         """
