@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download diffs
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
-            const artifacts = await github.actions.listWorkflowRunArtifacts({
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
                run_id: ${{ github.event.workflow_run.id }},
@@ -29,7 +29,7 @@ jobs:
             const [matchArtifact] = artifacts.data.artifacts.filter((artifact) =>
               artifact.name == "mypy_primer_diffs");
 
-            const download = await github.actions.downloadArtifact({
+            const download = await github.rest.actions.downloadArtifact({
                owner: context.repo.owner,
                repo: context.repo.repo,
                artifact_id: matchArtifact.id,
@@ -43,7 +43,7 @@ jobs:
 
       - name: Post comment
         id: post-comment
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -66,7 +66,7 @@ jobs:
               body = 'According to [mypy_primer](https://github.com/hauntsaninja/mypy_primer), this change has no effect on the checked open source code. 🤖🎉'
             }
             const prNumber = parseInt(fs.readFileSync("pr_number.txt", { encoding: "utf8" }))
-            await github.issues.createComment({
+            await github.rest.issues.createComment({
               issue_number: prNumber,
               owner: context.repo.owner,
               repo: context.repo.repo,

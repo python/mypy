@@ -362,11 +362,6 @@ async def g():
 main:3: error: "yield from" in async function
 main:5: error: "yield from" in async function
 
-[case testNoAsyncDefInPY2_python2]
-
-async def f():  # E: invalid syntax
-    pass
-
 [case testYieldFromNoAwaitable]
 
 from typing import Any, Generator

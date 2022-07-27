@@ -114,8 +114,8 @@ import a
 [file a.py]
 # mypy: no-warn-no-return
 
-from typing import List
-def foo() -> List:
+from typing import Optional, List
+def foo() -> Optional[List]:
     20
 
 [file b.py.2]

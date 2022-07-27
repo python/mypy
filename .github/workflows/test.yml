@@ -86,16 +86,18 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: type
-        - name: Code style with flake8
+        - name: Formatting with Black + isort and code style with flake8
           python: '3.7'
           arch: x64
           os: ubuntu-latest
           toxenv: lint
 
     name: ${{ matrix.name }}
+    env:
+      TOX_SKIP_MISSING_INTERPRETERS: False
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python }}
         architecture: ${{ matrix.arch }}
@@ -108,7 +110,7 @@ jobs:
         ./misc/build-debug-python.sh $PYTHONVERSION $PYTHONDIR $VENV
         source $VENV/bin/activate
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.24.5
+      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
     - name: Compiled with mypyc
       if: ${{ matrix.test_mypyc }}
       run: |
@@ -123,12 +125,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Test suite with Python nightly
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
       with:
         python-version: '3.11-dev'
     - name: Install tox
-      run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.24.5
+      run: pip install --upgrade 'setuptools!=50' tox==3.24.5
     - name: Setup tox environment
       run: tox -e py --notest
     - name: Test
