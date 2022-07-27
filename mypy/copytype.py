@@ -24,6 +24,7 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
+
 # type_visitor needs to be imported after types
 from mypy.type_visitor import TypeVisitor  # isort: skip
 
