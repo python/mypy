@@ -12,6 +12,8 @@ import tempfile
 import unittest
 from typing import List, Tuple
 
+import pytest
+
 from mypy.dmypy_server import filter_out_missing_top_level_packages
 from mypy.fscache import FileSystemCache
 from mypy.modulefinder import SearchPaths
@@ -27,6 +29,8 @@ class DaemonSuite(DataSuite):
     files = daemon_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
+        if testcase.name.endswith("_python38") and sys.version_info < (3, 8):
+            pytest.skip("Not supported on this version of Python")
         try:
             test_daemon(testcase)
         finally:

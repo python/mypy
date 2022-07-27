@@ -117,7 +117,7 @@ class EnumCallAnalyzer:
             if name != var_name or is_func_scope:
                 self.api.add_symbol_skip_local(name, info)
         call.analyzed = EnumCallExpr(info, items, values)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
         info.line = node.line
         return info
 

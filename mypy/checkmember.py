@@ -224,6 +224,10 @@ def _analyze_member_access(
     elif isinstance(typ, NoneType):
         return analyze_none_member_access(name, typ, mx)
     elif isinstance(typ, TypeVarLikeType):
+        if isinstance(typ, TypeVarType) and typ.values:
+            return _analyze_member_access(
+                name, make_simplified_union(typ.values), mx, override_info
+            )
         return _analyze_member_access(name, typ.upper_bound, mx, override_info)
     elif isinstance(typ, DeletedType):
         mx.msg.deleted_as_rvalue(typ, mx.context)

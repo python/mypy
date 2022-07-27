@@ -270,7 +270,7 @@ class TypedDictAnalyzer:
         if var_name:
             self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
-        call.analyzed.set_line(call.line, call.column)
+        call.analyzed.set_line(call)
         return True, info
 
     def parse_typeddict_args(
