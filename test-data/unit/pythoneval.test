@@ -1553,7 +1553,7 @@ from scribe import x
 import maxminddb  # Python 3 stubs available for maxminddb
 import foobar_asdf
 [out]
-_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
+_testIgnoreImportIfNoPython3StubAvailable.py:4: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.7)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: Hint: "python3 -m pip install types-maxminddb"
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: (or run "mypy --install-types" to install all missing stub packages)
 _testIgnoreImportIfNoPython3StubAvailable.py:4: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
@@ -1565,7 +1565,7 @@ import maxminddb
 [out]
 _testNoPython3StubAvailable.py:1: error: Cannot find implementation or library stub for module named "scribe"
 _testNoPython3StubAvailable.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
-_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.6)
+_testNoPython3StubAvailable.py:3: error: Library stubs not installed for "maxminddb" (or incompatible with Python 3.7)
 _testNoPython3StubAvailable.py:3: note: Hint: "python3 -m pip install types-maxminddb"
 _testNoPython3StubAvailable.py:3: note: (or run "mypy --install-types" to install all missing stub packages)
 
