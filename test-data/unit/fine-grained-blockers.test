@@ -563,26 +563,6 @@ mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in posi
 ==
 main:2: error: Argument 1 to "f" has incompatible type "int"; expected "str"
 
-[case testDecodeErrorBlocker_python2-only_when_nocache]
-# flags: --py2
-import a
-a.f(1)
-[file a.py]
-def f(x):
-    # type: (int) -> None
-    pass
-[file a.py.2]
-ä = 1
-[file a.py.3]
-def f(x):
-    # type: (str) -> None
-    pass
-[out]
-==
-mypy: can't decode file 'tmp/a.py': 'ascii' codec can't decode byte 0xc3 in position 0: ordinal not in range(128)
-==
-main:3: error: Argument 1 to "f" has incompatible type "int"; expected "str"
-
 [case testDecodeErrorBlockerOnInitialRun-posix]
 # Note that there's no test variant for Windows, since the above Windows test case is good enough.
 import a

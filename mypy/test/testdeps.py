@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Set
 from typing_extensions import DefaultDict
 
-from mypy import build, defaults
+from mypy import build
 from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
@@ -29,8 +29,6 @@ class GetDependenciesSuite(DataSuite):
         src = '\n'.join(testcase.input)
         dump_all = '# __dump_all__' in src
         options = parse_options(src, testcase, incremental_step=1)
-        if testcase.name.endswith('python2'):
-            options.python_version = defaults.PYTHON2_VERSION
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull

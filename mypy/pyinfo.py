@@ -7,12 +7,13 @@ library found in Python 2. This file is run each mypy run, so it should be kept 
 possible.
 """
 import os
+import site
 import sys
 import sysconfig
 
 MYPY = False
 if MYPY:
-    from typing import List
+    from typing import Tuple, List
 
 if __name__ == '__main__':
     # HACK: We don't want to pick up mypy.types as the top-level types
@@ -24,7 +25,22 @@ if __name__ == '__main__':
     sys.path = old_sys_path
 
 
-def getsearchdirs():
+def getsitepackages():
+    # type: () -> List[str]
+    res = []
+    if hasattr(site, "getsitepackages"):
+        res.extend(site.getsitepackages())
+
+        if hasattr(site, "getusersitepackages") and site.ENABLE_USER_SITE:
+            res.insert(0, site.getusersitepackages())
+    else:
+        from distutils.sysconfig import get_python_lib
+
+        res = [get_python_lib()]
+    return res
+
+
+def getsyspath():
     # type: () -> List[str]
     # Do not include things from the standard library
     # because those should come from typeshed.
@@ -52,6 +68,14 @@ def getsearchdirs():
 
     abs_sys_path = (os.path.abspath(p) for p in sys.path[offset:])
     return [p for p in abs_sys_path if p not in excludes]
+
+
+def getsearchdirs():
+    # type: () -> Tuple[List[str], List[str]]
+    return (
+        getsyspath(),
+        getsitepackages(),
+    )
 
 
 if __name__ == '__main__':

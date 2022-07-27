@@ -86,7 +86,7 @@ jobs:
           arch: x64
           os: windows-latest
           toxenv: type
-        - name: Code style with flake8
+        - name: Formatting with Black + isort and code style with flake8
           python: '3.7'
           arch: x64
           os: ubuntu-latest
