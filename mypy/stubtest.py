@@ -794,12 +794,11 @@ def verify_funcitem(
     # That results in false positives.
     # See https://github.com/python/typeshed/issues/7344
     if runtime_is_coroutine and not stub.is_coroutine:
-        if (
-            getattr(runtime, "__isabstractmethod__", False)
-            or (isinstance(stub, nodes.FuncDef) and stub.is_abstract)
+        if getattr(runtime, "__isabstractmethod__", False) or (
+            isinstance(stub, nodes.FuncDef) and stub.is_abstract
         ):
             error_msg = (
-                "is an \"async def\" function at runtime, "
+                'is an "async def" function at runtime, '
                 "but doesn't return an awaitable in the stub"
             )
             # Be more permissive if the method is an abstractmethod:
@@ -807,8 +806,7 @@ def verify_funcitem(
             if isinstance(stub.type, mypy.types.CallableType):
                 ret_type = mypy.types.get_proper_type(stub.type.ret_type)
                 should_error = (
-                    isinstance(ret_type, mypy.types.Instance)
-                    and not ret_type.is_awaitable
+                    isinstance(ret_type, mypy.types.Instance) and not ret_type.is_awaitable
                 )
             else:
                 should_error = False
@@ -822,7 +820,7 @@ def verify_funcitem(
                 stub,
                 runtime,
                 stub_desc=stub_desc,
-                runtime_desc=runtime_sig_desc
+                runtime_desc=runtime_sig_desc,
             )
 
     if not signature:
