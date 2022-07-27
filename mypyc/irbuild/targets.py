@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-from mypyc.ir.ops import Value, Register
-from mypyc.ir.rtypes import RType, RInstance, object_rprimitive
+from mypyc.ir.ops import Register, Value
+from mypyc.ir.rtypes import RInstance, RType, object_rprimitive
 
 
 class AssignmentTarget:
@@ -35,9 +35,10 @@ class AssignmentTargetIndex(AssignmentTarget):
 class AssignmentTargetAttr(AssignmentTarget):
     """obj.attr as assignment target"""
 
-    def __init__(self, obj: Value, attr: str) -> None:
+    def __init__(self, obj: Value, attr: str, can_borrow: bool = False) -> None:
         self.obj = obj
         self.attr = attr
+        self.can_borrow = can_borrow
         if isinstance(obj.type, RInstance) and obj.type.class_ir.has_attr(attr):
             # Native attribute reference
             self.obj_type: RType = obj.type
@@ -51,8 +52,6 @@ class AssignmentTargetAttr(AssignmentTarget):
 class AssignmentTargetTuple(AssignmentTarget):
     """x, ..., y as assignment target"""
 
-    def __init__(self,
-                 items: List[AssignmentTarget],
-                 star_idx: Optional[int] = None) -> None:
+    def __init__(self, items: List[AssignmentTarget], star_idx: Optional[int] = None) -> None:
         self.items = items
         self.star_idx = star_idx

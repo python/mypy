@@ -319,36 +319,6 @@ class A: pass
 class B: pass
 [builtins fixtures/tuple.pyi]
 
-[case testMultipleAssignmentWithSquareBracketTuplesPython2]
-# flags: --python-version 2.7 --no-strict-optional
-from typing import Tuple
-
-def avoid_confusing_test_parser():
-    # type: () -> None
-    t1 = None # type: Tuple[A, B]
-    t2 = None # type: Tuple[A, B, A]
-    [a, b] = None, None # type: Tuple[A, B]
-    [a1, b1] = None, None # type: Tuple[A, B]
-
-    reveal_type(a1)  # N: Revealed type is "__main__.A"
-    reveal_type(b1)  # N: Revealed type is "__main__.B"
-
-    if int():
-        [a, a] = t1 # E: Incompatible types in assignment (expression has type "B", variable has type "A")
-        [b, b] = t1 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-        [a, b, b] = t2 # E: Incompatible types in assignment (expression has type "A", variable has type "B")
-
-        [a, b] = t1
-        [a, b, a1] = t2
-
-        [a2, b2] = t1
-        reveal_type(a2)  # N: Revealed type is "__main__.A"
-        reveal_type(b2)  # N: Revealed type is "__main__.B"
-
-class A: pass
-class B: pass
-[builtins fixtures/tuple.pyi]
-
 [case testMultipleAssignmentWithInvalidNumberOfValues]
 from typing import Tuple
 t1 = None # type: Tuple[A, A, A]
@@ -1462,10 +1432,6 @@ x9, y9, x10, y10, z5 = *points2, 1, *points2 # E: Contiguous iterable with same 
 [case testAssignEmptyPy36]
 # flags: --python-version 3.6
 () = []
-
-[case testAssignEmptyPy27]
-# flags: --python-version 2.7
-() = []  # E: can't assign to ()
 
 [case testAssignEmptyBogus]
 () = 1  # E: "int" object is not iterable

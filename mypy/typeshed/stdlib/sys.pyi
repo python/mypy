@@ -1,5 +1,5 @@
 import sys
-from _typeshed import OptExcInfo, structseq
+from _typeshed import OptExcInfo, ProfileFunction, TraceFunction, structseq
 from builtins import object as _object
 from collections.abc import AsyncGenerator, Callable, Coroutine, Sequence
 from importlib.abc import PathEntryFinder
@@ -75,7 +75,7 @@ _xoptions: dict[Any, Any]
 
 # Type alias used as a mixin for structseq classes that cannot be instantiated at runtime
 # This can't be represented in the type system, so we just use `structseq[Any]`
-_uninstantiable_structseq: TypeAlias = structseq[Any]
+_UninstantiableStructseq: TypeAlias = structseq[Any]
 
 flags: _flags
 
@@ -87,7 +87,7 @@ else:
     _FlagTuple: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int, int, int, int]
 
 @final
-class _flags(_uninstantiable_structseq, _FlagTuple):
+class _flags(_UninstantiableStructseq, _FlagTuple):
     @property
     def debug(self) -> int: ...
     @property
@@ -122,6 +122,9 @@ class _flags(_uninstantiable_structseq, _FlagTuple):
     if sys.version_info >= (3, 10):
         @property
         def warn_default_encoding(self) -> int: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        @property
+        def safe_path(self) -> bool: ...
 
 float_info: _float_info
 
@@ -195,7 +198,7 @@ class _int_info(structseq[int], tuple[int, int]):
     def sizeof_digit(self) -> int: ...
 
 @final
-class _version_info(_uninstantiable_structseq, tuple[int, int, int, str, int]):
+class _version_info(_UninstantiableStructseq, tuple[int, int, int, str, int]):
     @property
     def major(self) -> int: ...
     @property
@@ -218,6 +221,9 @@ def __displayhook__(__value: object) -> None: ...
 def __excepthook__(__exctype: type[BaseException], __value: BaseException, __traceback: TracebackType | None) -> None: ...
 def exc_info() -> OptExcInfo: ...
 
+if sys.version_info >= (3, 11):
+    def exception() -> BaseException | None: ...
+
 # sys.exit() accepts an optional argument of anything printable
 def exit(__status: object = ...) -> NoReturn: ...
 def getallocatedblocks() -> int: ...
@@ -235,21 +241,15 @@ def getsizeof(obj: object) -> int: ...
 @overload
 def getsizeof(obj: object, default: int) -> int: ...
 def getswitchinterval() -> float: ...
-
-_ProfileFunc: TypeAlias = Callable[[FrameType, str, Any], Any]
-
-def getprofile() -> _ProfileFunc | None: ...
-def setprofile(profilefunc: _ProfileFunc | None) -> None: ...
-
-_TraceFunc: TypeAlias = Callable[[FrameType, str, Any], Callable[[FrameType, str, Any], Any] | None]
-
-def gettrace() -> _TraceFunc | None: ...
-def settrace(tracefunc: _TraceFunc | None) -> None: ...
+def getprofile() -> ProfileFunction | None: ...
+def setprofile(profilefunc: ProfileFunction | None) -> None: ...
+def gettrace() -> TraceFunction | None: ...
+def settrace(tracefunc: TraceFunction | None) -> None: ...
 
 if sys.platform == "win32":
     # A tuple of length 5, even though it has more than 5 attributes.
     @final
-    class _WinVersion(_uninstantiable_structseq, tuple[int, int, int, int, str]):
+    class _WinVersion(_UninstantiableStructseq, tuple[int, int, int, int, str]):
         @property
         def major(self) -> int: ...
         @property
@@ -320,9 +320,8 @@ class _asyncgen_hooks(structseq[_AsyncgenHook], tuple[_AsyncgenHook, _AsyncgenHo
 def get_asyncgen_hooks() -> _asyncgen_hooks: ...
 def set_asyncgen_hooks(firstiter: _AsyncgenHook = ..., finalizer: _AsyncgenHook = ...) -> None: ...
 
-if sys.version_info >= (3, 6):
-    if sys.platform == "win32":
-        def _enablelegacywindowsfsencoding() -> None: ...
+if sys.platform == "win32":
+    def _enablelegacywindowsfsencoding() -> None: ...
 
 if sys.version_info >= (3, 7):
     def get_coroutine_origin_tracking_depth() -> int: ...

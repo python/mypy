@@ -35,6 +35,15 @@ CPyTagged CPyTagged_FromVoidPtr(void *ptr) {
     }
 }
 
+CPyTagged CPyTagged_FromInt64(int64_t value) {
+    if (unlikely(CPyTagged_TooBigInt64(value))) {
+        PyObject *object = PyLong_FromLongLong(value);
+        return ((CPyTagged)object) | CPY_INT_TAG;
+    } else {
+        return value << 1;
+    }
+}
+
 CPyTagged CPyTagged_FromObject(PyObject *object) {
     int overflow;
     // The overflow check knows about CPyTagged's width
@@ -250,8 +259,11 @@ bool CPyTagged_IsEq_(CPyTagged left, CPyTagged right) {
     if (CPyTagged_CheckShort(right)) {
         return false;
     } else {
-        int result = PyObject_RichCompareBool(CPyTagged_LongAsObject(left),
-                                              CPyTagged_LongAsObject(right), Py_EQ);
+        PyObject *left_obj = CPyTagged_AsObject(left);
+        PyObject *right_obj = CPyTagged_AsObject(right);
+        int result = PyObject_RichCompareBool(left_obj, right_obj, Py_EQ);
+        Py_DECREF(left_obj);
+        Py_DECREF(right_obj);
         if (result == -1) {
             CPyError_OutOfMemory();
         }
@@ -500,4 +512,130 @@ CPyTagged CPyTagged_Lshift(CPyTagged left, CPyTagged right) {
         return CPY_INT_TAG;
     }
     return CPyTagged_StealFromObject(result);
+}
+
+int64_t CPyLong_AsInt64(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = Py_SIZE(lobj);
+        if (likely(size == 1)) {
+            // Fast path
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    int overflow;
+    int64_t result = PyLong_AsLongLongAndOverflow(o, &overflow);
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i64");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int64_t CPyInt64_Divide(int64_t x, int64_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == -1LL << 63) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int64_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int64_t CPyInt64_Remainder(int64_t x, int64_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == -1LL << 63) {
+        return 0;
+    }
+    int64_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+int32_t CPyLong_AsInt32(PyObject *o) {
+    if (likely(PyLong_Check(o))) {
+        PyLongObject *lobj = (PyLongObject *)o;
+        Py_ssize_t size = lobj->ob_base.ob_size;
+        if (likely(size == 1)) {
+            // Fast path
+            return lobj->ob_digit[0];
+        } else if (likely(size == 0)) {
+            return 0;
+        }
+    }
+    // Slow path
+    int overflow;
+    long result = PyLong_AsLongAndOverflow(o, &overflow);
+    if (result > 0x7fffffffLL || result < -0x80000000LL) {
+        overflow = 1;
+        result = -1;
+    }
+    if (result == -1) {
+        if (PyErr_Occurred()) {
+            return CPY_LL_INT_ERROR;
+        } else if (overflow) {
+            PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
+            return CPY_LL_INT_ERROR;
+        }
+    }
+    return result;
+}
+
+int32_t CPyInt32_Divide(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    if (y == -1 && x == -1LL << 31) {
+        PyErr_SetString(PyExc_OverflowError, "integer division overflow");
+        return CPY_LL_INT_ERROR;
+    }
+    int32_t d = x / y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d * y != x) {
+        d--;
+    }
+    return d;
+}
+
+int32_t CPyInt32_Remainder(int32_t x, int32_t y) {
+    if (y == 0) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "integer division or modulo by zero");
+        return CPY_LL_INT_ERROR;
+    }
+    // Edge case: avoid core dump
+    if (y == -1 && x == -1LL << 31) {
+        return 0;
+    }
+    int32_t d = x % y;
+    // Adjust for Python semantics
+    if (((x < 0) != (y < 0)) && d != 0) {
+        d += y;
+    }
+    return d;
+}
+
+void CPyInt32_Overflow() {
+    PyErr_SetString(PyExc_OverflowError, "int too large to convert to i32");
 }

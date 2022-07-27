@@ -16,6 +16,22 @@ from io import BufferedRandom, BufferedReader, BufferedWriter, FileIO, TextIOWra
 from typing import IO, Any, BinaryIO, NoReturn, Protocol, overload, runtime_checkable
 from typing_extensions import Literal, TypeAlias
 
+if sys.version_info >= (3, 11):
+    __all__ = [
+        "Loader",
+        "Finder",
+        "MetaPathFinder",
+        "PathEntryFinder",
+        "ResourceLoader",
+        "InspectLoader",
+        "ExecutionLoader",
+        "FileLoader",
+        "SourceLoader",
+        "ResourceReader",
+        "Traversable",
+        "TraversableResources",
+    ]
+
 _Path: TypeAlias = bytes | str
 
 class Finder(metaclass=ABCMeta): ...

@@ -2,7 +2,7 @@ from _typeshed import Self
 from collections.abc import Iterator, MutableMapping
 from dbm import _TFlags
 from types import TracebackType
-from typing import TypeVar, overload
+from typing import Any, TypeVar, overload
 
 __all__ = ["Shelf", "BsdDbShelf", "DbfilenameShelf", "open"]
 
@@ -40,4 +40,4 @@ class BsdDbShelf(Shelf[_VT]):
 class DbfilenameShelf(Shelf[_VT]):
     def __init__(self, filename: str, flag: _TFlags = ..., protocol: int | None = ..., writeback: bool = ...) -> None: ...
 
-def open(filename: str, flag: _TFlags = ..., protocol: int | None = ..., writeback: bool = ...) -> Shelf[object]: ...
+def open(filename: str, flag: _TFlags = ..., protocol: int | None = ..., writeback: bool = ...) -> Shelf[Any]: ...

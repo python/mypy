@@ -117,3 +117,41 @@ L5:
     r8 = x
 L6:
     return r8
+
+[case testIntFloorDivideByPowerOfTwo]
+def divby1(x: int) -> int:
+    return x // 1
+def divby2(x: int) -> int:
+    return x // 2
+def divby3(x: int) -> int:
+    return x // 3
+def divby4(x: int) -> int:
+    return x // 4
+def divby8(x: int) -> int:
+    return x // 8
+[out]
+def divby1(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_FloorDivide(x, 2)
+    return r0
+def divby2(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Rshift(x, 2)
+    return r0
+def divby3(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_FloorDivide(x, 6)
+    return r0
+def divby4(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Rshift(x, 4)
+    return r0
+def divby8(x):
+    x, r0 :: int
+L0:
+    r0 = CPyTagged_Rshift(x, 6)
+    return r0

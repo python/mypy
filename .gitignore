@@ -9,11 +9,12 @@ docs/source/_build
 mypyc/doc/_build
 *.iml
 /out/
-.venv
+.venv*
 venv/
 .mypy_cache/
 .incremental_checker_cache.json
 .cache
+test-data/packages/.pip_lock
 dmypy.json
 .dmypy.json
 

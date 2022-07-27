@@ -9,7 +9,6 @@ import argparse
 import json
 import os
 import sys
-
 from collections import defaultdict
 from typing import Any, Dict, Optional, Set
 
@@ -59,12 +58,8 @@ def load(cache: MetadataStore, s: str) -> Any:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--verbose", action="store_true", default=False, help="Increase verbosity"
-    )
-    parser.add_argument(
-        "--sqlite", action="store_true", default=False, help="Use a sqlite cache"
-    )
+    parser.add_argument("--verbose", action="store_true", default=False, help="Increase verbosity")
+    parser.add_argument("--sqlite", action="store_true", default=False, help="Use a sqlite cache")
     parser.add_argument("input_dir1", help="Input directory for the cache")
     parser.add_argument("input_dir2", help="Input directory for the cache")
     parser.add_argument("output", help="Output file")

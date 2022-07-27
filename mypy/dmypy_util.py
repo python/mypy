@@ -4,8 +4,8 @@ This should be pretty lightweight and not depend on other mypy code (other than 
 """
 
 import json
-
 from typing import Any
+
 from typing_extensions import Final
 
 from mypy.ipc import IPCBase
@@ -23,9 +23,9 @@ def receive(connection: IPCBase) -> Any:
     if not bdata:
         raise OSError("No data received")
     try:
-        data = json.loads(bdata.decode('utf8'))
+        data = json.loads(bdata.decode("utf8"))
     except Exception as e:
         raise OSError("Data received is not valid JSON") from e
     if not isinstance(data, dict):
-        raise OSError("Data received is not a dict (%s)" % str(type(data)))
+        raise OSError(f"Data received is not a dict ({type(data)})")
     return data

@@ -1,5 +1,4 @@
 import sys
-import types
 from collections.abc import Coroutine
 from typing import Any
 from typing_extensions import TypeGuard
@@ -20,8 +19,5 @@ if sys.version_info < (3, 11):
 
 def iscoroutinefunction(func: object) -> bool: ...
 
-if sys.version_info >= (3, 8):
-    def iscoroutine(obj: object) -> TypeGuard[Coroutine[Any, Any, Any]]: ...
-
-else:
-    def iscoroutine(obj: object) -> TypeGuard[types.GeneratorType[Any, Any, Any] | Coroutine[Any, Any, Any]]: ...
+# Can actually be a generator-style coroutine on Python 3.7
+def iscoroutine(obj: object) -> TypeGuard[Coroutine[Any, Any, Any]]: ...

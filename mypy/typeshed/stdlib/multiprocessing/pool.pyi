@@ -16,14 +16,14 @@ _T = TypeVar("_T")
 class ApplyResult(Generic[_T]):
     if sys.version_info >= (3, 8):
         def __init__(
-            self, pool: Pool, callback: Callable[[_T], None] | None, error_callback: Callable[[BaseException], None] | None
+            self, pool: Pool, callback: Callable[[_T], object] | None, error_callback: Callable[[BaseException], object] | None
         ) -> None: ...
     else:
         def __init__(
             self,
             cache: dict[int, ApplyResult[Any]],
-            callback: Callable[[_T], None] | None,
-            error_callback: Callable[[BaseException], None] | None,
+            callback: Callable[[_T], object] | None,
+            error_callback: Callable[[BaseException], object] | None,
         ) -> None: ...
 
     def get(self, timeout: float | None = ...) -> _T: ...
@@ -43,8 +43,8 @@ class MapResult(ApplyResult[list[_T]]):
             pool: Pool,
             chunksize: int,
             length: int,
-            callback: Callable[[list[_T]], None] | None,
-            error_callback: Callable[[BaseException], None] | None,
+            callback: Callable[[list[_T]], object] | None,
+            error_callback: Callable[[BaseException], object] | None,
         ) -> None: ...
     else:
         def __init__(
@@ -52,8 +52,8 @@ class MapResult(ApplyResult[list[_T]]):
             cache: dict[int, ApplyResult[Any]],
             chunksize: int,
             length: int,
-            callback: Callable[[list[_T]], None] | None,
-            error_callback: Callable[[BaseException], None] | None,
+            callback: Callable[[list[_T]], object] | None,
+            error_callback: Callable[[BaseException], object] | None,
         ) -> None: ...
 
 class IMapIterator(Iterator[_T]):
@@ -72,7 +72,7 @@ class Pool:
     def __init__(
         self,
         processes: int | None = ...,
-        initializer: Callable[..., None] | None = ...,
+        initializer: Callable[..., object] | None = ...,
         initargs: Iterable[Any] = ...,
         maxtasksperchild: int | None = ...,
         context: Any | None = ...,
@@ -83,8 +83,8 @@ class Pool:
         func: Callable[..., _T],
         args: Iterable[Any] = ...,
         kwds: Mapping[str, Any] = ...,
-        callback: Callable[[_T], None] | None = ...,
-        error_callback: Callable[[BaseException], None] | None = ...,
+        callback: Callable[[_T], object] | None = ...,
+        error_callback: Callable[[BaseException], object] | None = ...,
     ) -> AsyncResult[_T]: ...
     def map(self, func: Callable[[_S], _T], iterable: Iterable[_S], chunksize: int | None = ...) -> list[_T]: ...
     def map_async(
@@ -92,8 +92,8 @@ class Pool:
         func: Callable[[_S], _T],
         iterable: Iterable[_S],
         chunksize: int | None = ...,
-        callback: Callable[[_T], None] | None = ...,
-        error_callback: Callable[[BaseException], None] | None = ...,
+        callback: Callable[[_T], object] | None = ...,
+        error_callback: Callable[[BaseException], object] | None = ...,
     ) -> MapResult[_T]: ...
     def imap(self, func: Callable[[_S], _T], iterable: Iterable[_S], chunksize: int | None = ...) -> IMapIterator[_T]: ...
     def imap_unordered(
@@ -105,8 +105,8 @@ class Pool:
         func: Callable[..., _T],
         iterable: Iterable[Iterable[Any]],
         chunksize: int | None = ...,
-        callback: Callable[[_T], None] | None = ...,
-        error_callback: Callable[[BaseException], None] | None = ...,
+        callback: Callable[[_T], object] | None = ...,
+        error_callback: Callable[[BaseException], object] | None = ...,
     ) -> AsyncResult[list[_T]]: ...
     def close(self) -> None: ...
     def terminate(self) -> None: ...
@@ -118,7 +118,7 @@ class Pool:
 
 class ThreadPool(Pool):
     def __init__(
-        self, processes: int | None = ..., initializer: Callable[..., Any] | None = ..., initargs: Iterable[Any] = ...
+        self, processes: int | None = ..., initializer: Callable[..., object] | None = ..., initargs: Iterable[Any] = ...
     ) -> None: ...
 
 # undocumented

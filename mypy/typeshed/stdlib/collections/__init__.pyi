@@ -14,6 +14,35 @@ else:
 
 __all__ = ["ChainMap", "Counter", "OrderedDict", "UserDict", "UserList", "UserString", "defaultdict", "deque", "namedtuple"]
 
+if sys.version_info < (3, 7):
+    __all__ += [
+        "Awaitable",
+        "Coroutine",
+        "AsyncIterable",
+        "AsyncIterator",
+        "AsyncGenerator",
+        "Hashable",
+        "Iterable",
+        "Iterator",
+        "Generator",
+        "Reversible",
+        "Sized",
+        "Container",
+        "Callable",
+        "Collection",
+        "Set",
+        "MutableSet",
+        "Mapping",
+        "MutableMapping",
+        "MappingView",
+        "KeysView",
+        "ItemsView",
+        "ValuesView",
+        "Sequence",
+        "MutableSequence",
+        "ByteString",
+    ]
+
 _S = TypeVar("_S")
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
@@ -43,7 +72,7 @@ class UserDict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     data: dict[_KT, _VT]
     # __init__ should be kept roughly in line with `dict.__init__`, which has the same semantics
     @overload
-    def __init__(self: UserDict[_KT, _VT], __dict: None = ...) -> None: ...
+    def __init__(self, __dict: None = ...) -> None: ...
     @overload
     def __init__(self: UserDict[str, _VT], __dict: None = ..., **kwargs: _VT) -> None: ...
     @overload
@@ -82,7 +111,10 @@ class UserDict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
 
 class UserList(MutableSequence[_T]):
     data: list[_T]
-    def __init__(self, initlist: Iterable[_T] | None = ...) -> None: ...
+    @overload
+    def __init__(self, initlist: None = ...) -> None: ...
+    @overload
+    def __init__(self, initlist: Iterable[_T]) -> None: ...
     def __lt__(self, other: list[_T] | UserList[_T]) -> bool: ...
     def __le__(self, other: list[_T] | UserList[_T]) -> bool: ...
     def __gt__(self, other: list[_T] | UserList[_T]) -> bool: ...
@@ -214,7 +246,10 @@ class UserString(Sequence[UserString]):
 class deque(MutableSequence[_T], Generic[_T]):
     @property
     def maxlen(self) -> int | None: ...
-    def __init__(self, iterable: Iterable[_T] = ..., maxlen: int | None = ...) -> None: ...
+    @overload
+    def __init__(self, *, maxlen: int | None = ...) -> None: ...
+    @overload
+    def __init__(self, iterable: Iterable[_T], maxlen: int | None = ...) -> None: ...
     def append(self, __x: _T) -> None: ...
     def appendleft(self, __x: _T) -> None: ...
     def copy(self: Self) -> Self: ...
@@ -248,7 +283,7 @@ class deque(MutableSequence[_T], Generic[_T]):
 
 class Counter(dict[_T, int], Generic[_T]):
     @overload
-    def __init__(self: Counter[_T], __iterable: None = ...) -> None: ...
+    def __init__(self, __iterable: None = ...) -> None: ...
     @overload
     def __init__(self: Counter[str], __iterable: None = ..., **kwargs: int) -> None: ...
     @overload
@@ -340,7 +375,7 @@ class OrderedDict(dict[_KT, _VT], Reversible[_KT], Generic[_KT, _VT]):
 class defaultdict(dict[_KT, _VT], Generic[_KT, _VT]):
     default_factory: Callable[[], _VT] | None
     @overload
-    def __init__(self: defaultdict[_KT, _VT]) -> None: ...
+    def __init__(self) -> None: ...
     @overload
     def __init__(self: defaultdict[str, _VT], **kwargs: _VT) -> None: ...
     @overload

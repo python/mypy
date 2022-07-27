@@ -293,8 +293,8 @@ from m.n import x
 from a.b import *
 [out]
 main:2: error: Cannot find implementation or library stub for module named "m.n"
+main:2: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main:3: error: Cannot find implementation or library stub for module named "a.b"
-main:3: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 
 [case testErrorInImportedModule]
 import m
@@ -867,7 +867,8 @@ x = None # type: Callable[int, str]
 y = None # type: Callable[int]
 z = None # type: Callable[int, int, int]
 [out]
-main:2: error: The first argument to Callable must be a list of types or "..."
+main:2: error: The first argument to Callable must be a list of types, parameter specification, or "..."
+main:2: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas
 main:3: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 main:4: error: Please use "Callable[[<parameters>], <return type>]" or "Callable"
 

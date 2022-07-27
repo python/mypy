@@ -1,8 +1,9 @@
-from mypy.util import unnamed_function
-from typing import Dict, Any, Optional, Tuple
 import sys
+from typing import Any, Dict, Optional, Tuple
 
 from typing_extensions import Final
+
+from mypy.util import unnamed_function
 
 PREFIX: Final = "CPyPy_"  # Python wrappers
 NATIVE_PREFIX: Final = "CPyDef_"  # Native functions etc.
@@ -46,24 +47,24 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
+MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [
-    'init.c',
-    'getargs.c',
-    'getargsfast.c',
-    'int_ops.c',
-    'str_ops.c',
-    'bytes_ops.c',
-    'list_ops.c',
-    'dict_ops.c',
-    'set_ops.c',
-    'tuple_ops.c',
-    'exc_ops.c',
-    'misc_ops.c',
-    'generic_ops.c',
+    "init.c",
+    "getargs.c",
+    "getargsfast.c",
+    "int_ops.c",
+    "str_ops.c",
+    "bytes_ops.c",
+    "list_ops.c",
+    "dict_ops.c",
+    "set_ops.c",
+    "tuple_ops.c",
+    "exc_ops.c",
+    "misc_ops.c",
+    "generic_ops.c",
 ]
 
 
@@ -75,11 +76,11 @@ def shared_lib_name(group_name: str) -> str:
 
     (This just adds a suffix to the final component.)
     """
-    return '{}__mypyc'.format(group_name)
+    return f"{group_name}__mypyc"
 
 
 def short_name(name: str) -> str:
-    if name.startswith('builtins.'):
+    if name.startswith("builtins."):
         return name[9:]
     return name
 
@@ -107,7 +108,7 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
     it handles the case where the function is named '_', in which case multiple different functions
     could have the same name."""
     if unnamed_function(name):
-        return "{}.{}".format(fullname, line)
+        return f"{fullname}.{line}"
     else:
         return fullname
 
@@ -115,7 +116,7 @@ def get_id_from_name(name: str, fullname: str, line: int) -> str:
 def short_id_from_name(func_name: str, shortname: str, line: Optional[int]) -> str:
     if unnamed_function(func_name):
         assert line is not None
-        partial_name = "{}.{}".format(shortname, line)
+        partial_name = f"{shortname}.{line}"
     else:
         partial_name = shortname
     return partial_name

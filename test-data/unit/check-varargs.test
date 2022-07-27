@@ -275,7 +275,7 @@ class CC(C): pass
 a = None # type: A
 
 f(*None)
-f(*a)    # E: List or tuple expected as variable arguments
+f(*a)    # E: List or tuple expected as variadic arguments
 f(*(a,))
 
 def f(a: 'A') -> None:
@@ -544,9 +544,9 @@ if int():
 if int():
     b, b = f(b, b, *aa) # E: Argument 3 to "f" has incompatible type "*List[A]"; expected "B"
 if int():
-    a, b = f(a, *a)  # E: List or tuple expected as variable arguments
+    a, b = f(a, *a)  # E: List or tuple expected as variadic arguments
 if int():
-    a, b = f(*a)     # E: List or tuple expected as variable arguments
+    a, b = f(*a)     # E: List or tuple expected as variadic arguments
 
 if int():
     a, a = f(*aa)
@@ -758,5 +758,5 @@ bar(*good1)
 bar(*good2)
 bar(*good3)
 bar(*bad1)  # E: Argument 1 to "bar" has incompatible type "*I[str]"; expected "float"
-bar(*bad2)  # E: List or tuple expected as variable arguments
+bar(*bad2)  # E: List or tuple expected as variadic arguments
 [builtins fixtures/dict.pyi]

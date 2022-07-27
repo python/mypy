@@ -4,7 +4,9 @@ from time import struct_time
 from typing import ClassVar, NamedTuple, NoReturn, SupportsAbs, TypeVar, overload
 from typing_extensions import Literal, TypeAlias, final
 
-if sys.version_info >= (3, 9):
+if sys.version_info >= (3, 11):
+    __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR", "UTC")
+elif sys.version_info >= (3, 9):
     __all__ = ("date", "datetime", "time", "timedelta", "timezone", "tzinfo", "MINYEAR", "MAXYEAR")
 
 _D = TypeVar("_D", bound=date)
@@ -19,7 +21,7 @@ class tzinfo:
     def fromutc(self, __dt: datetime) -> datetime: ...
 
 # Alias required to avoid name conflicts with date(time).tzinfo.
-_tzinfo: TypeAlias = tzinfo
+_TzInfo: TypeAlias = tzinfo
 
 @final
 class timezone(tzinfo):
@@ -28,6 +30,9 @@ class timezone(tzinfo):
     max: ClassVar[timezone]
     def __init__(self, offset: timedelta, name: str = ...) -> None: ...
     def __hash__(self) -> int: ...
+
+if sys.version_info >= (3, 11):
+    UTC: timezone
 
 if sys.version_info >= (3, 9):
     class _IsoCalendarDate(NamedTuple):
@@ -108,7 +113,7 @@ class time:
         minute: int = ...,
         second: int = ...,
         microsecond: int = ...,
-        tzinfo: _tzinfo | None = ...,
+        tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
     ) -> Self: ...
@@ -121,7 +126,7 @@ class time:
     @property
     def microsecond(self) -> int: ...
     @property
-    def tzinfo(self) -> _tzinfo | None: ...
+    def tzinfo(self) -> _TzInfo | None: ...
     @property
     def fold(self) -> int: ...
     def __le__(self, __other: time) -> bool: ...
@@ -145,13 +150,13 @@ class time:
         minute: int = ...,
         second: int = ...,
         microsecond: int = ...,
-        tzinfo: _tzinfo | None = ...,
+        tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
     ) -> Self: ...
 
-_date: TypeAlias = date
-_time: TypeAlias = time
+_Date: TypeAlias = date
+_Time: TypeAlias = time
 
 class timedelta(SupportsAbs[timedelta]):
     min: ClassVar[timedelta]
@@ -213,7 +218,7 @@ class datetime(date):
         minute: int = ...,
         second: int = ...,
         microsecond: int = ...,
-        tzinfo: _tzinfo | None = ...,
+        tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
     ) -> Self: ...
@@ -226,40 +231,40 @@ class datetime(date):
     @property
     def microsecond(self) -> int: ...
     @property
-    def tzinfo(self) -> _tzinfo | None: ...
+    def tzinfo(self) -> _TzInfo | None: ...
     @property
     def fold(self) -> int: ...
     # The first parameter in `fromtimestamp` is actually positional-or-keyword,
     # but it is named "timestamp" in the C implementation and "t" in the Python implementation,
     # so it is only truly *safe* to pass it as a positional argument.
     @classmethod
-    def fromtimestamp(cls: type[Self], __timestamp: float, tz: _tzinfo | None = ...) -> Self: ...
+    def fromtimestamp(cls: type[Self], __timestamp: float, tz: _TzInfo | None = ...) -> Self: ...
     @classmethod
     def utcfromtimestamp(cls: type[Self], __t: float) -> Self: ...
     if sys.version_info >= (3, 8):
         @classmethod
-        def now(cls: type[Self], tz: _tzinfo | None = ...) -> Self: ...
+        def now(cls: type[Self], tz: _TzInfo | None = ...) -> Self: ...
     else:
         @overload
         @classmethod
         def now(cls: type[Self], tz: None = ...) -> Self: ...
         @overload
         @classmethod
-        def now(cls, tz: _tzinfo) -> datetime: ...
+        def now(cls, tz: _TzInfo) -> datetime: ...
 
     @classmethod
     def utcnow(cls: type[Self]) -> Self: ...
     @classmethod
-    def combine(cls, date: _date, time: _time, tzinfo: _tzinfo | None = ...) -> datetime: ...
+    def combine(cls, date: _Date, time: _Time, tzinfo: _TzInfo | None = ...) -> datetime: ...
     if sys.version_info >= (3, 7):
         @classmethod
         def fromisoformat(cls: type[Self], __date_string: str) -> Self: ...
 
     def timestamp(self) -> float: ...
     def utctimetuple(self) -> struct_time: ...
-    def date(self) -> _date: ...
-    def time(self) -> _time: ...
-    def timetz(self) -> _time: ...
+    def date(self) -> _Date: ...
+    def time(self) -> _Time: ...
+    def timetz(self) -> _Time: ...
     def replace(
         self: Self,
         year: int = ...,
@@ -269,14 +274,14 @@ class datetime(date):
         minute: int = ...,
         second: int = ...,
         microsecond: int = ...,
-        tzinfo: _tzinfo | None = ...,
+        tzinfo: _TzInfo | None = ...,
         *,
         fold: int = ...,
     ) -> Self: ...
     if sys.version_info >= (3, 8):
-        def astimezone(self: Self, tz: _tzinfo | None = ...) -> Self: ...
+        def astimezone(self: Self, tz: _TzInfo | None = ...) -> Self: ...
     else:
-        def astimezone(self, tz: _tzinfo | None = ...) -> datetime: ...
+        def astimezone(self, tz: _TzInfo | None = ...) -> datetime: ...
 
     def ctime(self) -> str: ...
     def isoformat(self, sep: str = ..., timespec: str = ...) -> str: ...

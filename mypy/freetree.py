@@ -1,7 +1,7 @@
 """Generic node traverser visitor"""
 
-from mypy.traverser import TraverserVisitor
 from mypy.nodes import Block, MypyFile
+from mypy.traverser import TraverserVisitor
 
 
 class TreeFreer(TraverserVisitor):

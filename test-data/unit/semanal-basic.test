@@ -382,6 +382,29 @@ MypyFile:1(
           ExpressionStmt:6(
             NameExpr(x [l])))))))
 
+[case testNonlocalClass]
+def f() -> None:
+    a = 0
+    class C:
+        nonlocal a
+        a = 1
+[out]
+MypyFile:1(
+  FuncDef:1(
+    f
+    def ()
+    Block:1(
+      AssignmentStmt:2(
+        NameExpr(a* [l])
+        IntExpr(0))
+      ClassDef:3(
+        C
+        NonlocalDecl:4(
+          a)
+        AssignmentStmt:5(
+          NameExpr(a* [m])
+          IntExpr(1))))))
+
 [case testMultipleNamesInNonlocalDecl]
 def g():
     x, y = None, None
