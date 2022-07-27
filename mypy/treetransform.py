@@ -160,7 +160,7 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
         # Refresh lines of the inner things
-        arg.set_line(argument.line)
+        arg.set_line(argument)
 
         return arg
 
@@ -291,7 +291,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.final_value = node.final_value
         new.final_unset_in_class = node.final_unset_in_class
         new.final_set_in_init = node.final_set_in_init
-        new.set_line(node.line)
+        new.set_line(node)
         self.var_map[node] = new
         return new
 
@@ -535,7 +535,7 @@ class TransformVisitor(NodeVisitor[Node]):
                 new.analyzed = self.visit_type_application(node.analyzed)
             else:
                 new.analyzed = self.visit_type_alias_expr(node.analyzed)
-            new.analyzed.set_line(node.analyzed.line)
+            new.analyzed.set_line(node.analyzed)
         return new
 
     def visit_type_application(self, node: TypeApplication) -> TypeApplication:
@@ -543,12 +543,12 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_list_comprehension(self, node: ListComprehension) -> ListComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line, node.generator.column)
+        generator.set_line(node.generator)
         return ListComprehension(generator)
 
     def visit_set_comprehension(self, node: SetComprehension) -> SetComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line, node.generator.column)
+        generator.set_line(node.generator)
         return SetComprehension(generator)
 
     def visit_dictionary_comprehension(
@@ -634,25 +634,25 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def node(self, node: Node) -> Node:
         new = node.accept(self)
-        new.set_line(node.line)
+        new.set_line(node)
         return new
 
     def mypyfile(self, node: MypyFile) -> MypyFile:
         new = node.accept(self)
         assert isinstance(new, MypyFile)
-        new.set_line(node.line)
+        new.set_line(node)
         return new
 
     def expr(self, expr: Expression) -> Expression:
         new = expr.accept(self)
         assert isinstance(new, Expression)
-        new.set_line(expr.line, expr.column)
+        new.set_line(expr)
         return new
 
     def stmt(self, stmt: Statement) -> Statement:
         new = stmt.accept(self)
         assert isinstance(new, Statement)
-        new.set_line(stmt.line, stmt.column)
+        new.set_line(stmt)
         return new
 
     # Helpers

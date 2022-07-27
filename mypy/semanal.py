@@ -1222,6 +1222,7 @@ class SemanticAnalyzer(
         if not dec.is_overload:
             self.add_symbol(dec.name, dec, dec)
         dec.func._fullname = self.qualified_name(dec.name)
+        dec.var._fullname = self.qualified_name(dec.name)
         for d in dec.decorators:
             d.accept(self)
         removed: List[int] = []

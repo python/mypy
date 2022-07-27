@@ -14,6 +14,7 @@ on specified sources.
 
 import os
 import re
+import sys
 from typing import Any, Dict, List, Tuple, Union, cast
 
 import pytest
@@ -66,6 +67,8 @@ class FineGrainedSuite(DataSuite):
             if testcase.only_when == "-only_when_cache":
                 return True
 
+        if "Inspect" in testcase.name and sys.version_info < (3, 8):
+            return True
         return False
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
@@ -96,6 +99,7 @@ class FineGrainedSuite(DataSuite):
 
         assert testcase.tmpdir
         a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        a.extend(self.maybe_inspect(step, server, main_src))
 
         if server.fine_grained_manager:
             if CHECK_CONSISTENCY:
@@ -157,7 +161,7 @@ class FineGrainedSuite(DataSuite):
         return options
 
     def run_check(self, server: Server, sources: List[BuildSource]) -> List[str]:
-        response = server.check(sources, is_tty=False, terminal_width=-1)
+        response = server.check(sources, export_types=True, is_tty=False, terminal_width=-1)
         out = cast(str, response["out"] or response["err"])
         return out.splitlines()
 
@@ -238,6 +242,7 @@ class FineGrainedSuite(DataSuite):
         a = new_messages
         assert testcase.tmpdir
         a.extend(self.maybe_suggest(step, server, main_src, testcase.tmpdir.name))
+        a.extend(self.maybe_inspect(step, server, main_src))
 
         return a, triggered
 
@@ -294,19 +299,16 @@ class FineGrainedSuite(DataSuite):
             use_fixme = m.group(1) if m else None
             m = re.match("--max-guesses=([0-9]+)", flags)
             max_guesses = int(m.group(1)) if m else None
-            res = cast(
-                Dict[str, Any],
-                server.cmd_suggest(
-                    target.strip(),
-                    json=json,
-                    no_any=no_any,
-                    no_errors=no_errors,
-                    try_text=try_text,
-                    flex_any=flex_any,
-                    use_fixme=use_fixme,
-                    callsites=callsites,
-                    max_guesses=max_guesses,
-                ),
+            res: Dict[str, Any] = server.cmd_suggest(
+                target.strip(),
+                json=json,
+                no_any=no_any,
+                no_errors=no_errors,
+                try_text=try_text,
+                flex_any=flex_any,
+                use_fixme=use_fixme,
+                callsites=callsites,
+                max_guesses=max_guesses,
             )
             val = res["error"] if "error" in res else res["out"] + res["err"]
             if json:
@@ -316,9 +318,48 @@ class FineGrainedSuite(DataSuite):
             output.extend(val.strip().split("\n"))
         return normalize_messages(output)
 
+    def maybe_inspect(self, step: int, server: Server, src: str) -> List[str]:
+        output: List[str] = []
+        targets = self.get_inspect(src, step)
+        for flags, location in targets:
+            m = re.match(r"--show=(\w+)", flags)
+            show = m.group(1) if m else "type"
+            verbosity = 0
+            if "-v" in flags:
+                verbosity = 1
+            if "-vv" in flags:
+                verbosity = 2
+            m = re.match(r"--limit=([0-9]+)", flags)
+            limit = int(m.group(1)) if m else 0
+            include_span = "--include-span" in flags
+            include_kind = "--include-kind" in flags
+            include_object_attrs = "--include-object-attrs" in flags
+            union_attrs = "--union-attrs" in flags
+            force_reload = "--force-reload" in flags
+            res: Dict[str, Any] = server.cmd_inspect(
+                show,
+                location,
+                verbosity=verbosity,
+                limit=limit,
+                include_span=include_span,
+                include_kind=include_kind,
+                include_object_attrs=include_object_attrs,
+                union_attrs=union_attrs,
+                force_reload=force_reload,
+            )
+            val = res["error"] if "error" in res else res["out"] + res["err"]
+            output.extend(val.strip().split("\n"))
+        return normalize_messages(output)
+
     def get_suggest(self, program_text: str, incremental_step: int) -> List[Tuple[str, str]]:
         step_bit = "1?" if incremental_step == 1 else str(incremental_step)
         regex = f"# suggest{step_bit}: (--[a-zA-Z0-9_\\-./=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
+        m = re.findall(regex, program_text, flags=re.MULTILINE)
+        return m
+
+    def get_inspect(self, program_text: str, incremental_step: int) -> List[Tuple[str, str]]:
+        step_bit = "1?" if incremental_step == 1 else str(incremental_step)
+        regex = f"# inspect{step_bit}: (--[a-zA-Z0-9_\\-=?^ ]+ )*([a-zA-Z0-9_.:/?^ ]+)$"
         m = re.findall(regex, program_text, flags=re.MULTILINE)
         return m
 
