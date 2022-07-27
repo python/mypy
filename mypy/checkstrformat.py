@@ -38,7 +38,6 @@ from mypy.nodes import (
     StrExpr,
     TempNode,
     TupleExpr,
-    UnicodeExpr,
 )
 from mypy.types import (
     AnyType,
@@ -65,7 +64,7 @@ from mypy.parse import parse
 from mypy.subtypes import is_subtype
 from mypy.typeops import custom_special_method
 
-FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr, UnicodeExpr]
+FormatStringExpr: _TypeAlias = Union[StrExpr, BytesExpr]
 Checkers: _TypeAlias = Tuple[Callable[[Expression], None], Callable[[Type], bool]]
 MatchMap: _TypeAlias = Dict[Tuple[int, int], Match[str]]  # span -> match
 
@@ -331,9 +330,6 @@ class StringFormatterChecker:
         self.chk = chk
         self.exprchk = exprchk
         self.msg = msg
-        # This flag is used to track Python 2 corner case where for example
-        # '%s, %d' % (u'abc', 42) returns u'abc, 42' (i.e. unicode, not a string).
-        self.unicode_upcast = False
 
     def check_str_format_call(self, call: CallExpr, format_value: str) -> None:
         """Perform more precise checks for str.format() calls when possible.
@@ -402,7 +398,7 @@ class StringFormatterChecker:
                 expected_type: Optional[Type] = AnyType(TypeOfAny.special_form)
             else:
                 assert isinstance(call.callee, MemberExpr)
-                if isinstance(call.callee.expr, (StrExpr, UnicodeExpr)):
+                if isinstance(call.callee.expr, StrExpr):
                     format_str = call.callee.expr
                 else:
                     format_str = StrExpr(format_value)
@@ -713,7 +709,6 @@ class StringFormatterChecker:
             )
             return AnyType(TypeOfAny.from_error)
 
-        self.unicode_upcast = False
         if has_mapping_keys is None:
             pass  # Error was reported
         elif has_mapping_keys:
@@ -723,11 +718,7 @@ class StringFormatterChecker:
 
         if isinstance(expr, BytesExpr):
             return self.named_type("builtins.bytes")
-        elif isinstance(expr, UnicodeExpr):
-            return self.named_type("builtins.unicode")
         elif isinstance(expr, StrExpr):
-            if self.unicode_upcast:
-                return self.named_type("builtins.unicode")
             return self.named_type("builtins.str")
         else:
             assert False
@@ -814,7 +805,7 @@ class StringFormatterChecker:
     ) -> None:
         """Check % string interpolation with names specifiers '%(name)s' % {'name': 'John'}."""
         if isinstance(replacements, DictExpr) and all(
-            isinstance(k, (StrExpr, BytesExpr, UnicodeExpr)) for k, v in replacements.items
+            isinstance(k, (StrExpr, BytesExpr)) for k, v in replacements.items
         ):
             mapping: Dict[str, Type] = {}
             for k, v in replacements.items:
