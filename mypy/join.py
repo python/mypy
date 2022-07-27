@@ -1,23 +1,50 @@
 """Calculation of the least upper bound types (joins)."""
 
-from mypy.backports import OrderedDict
 from typing import List, Optional, Tuple
 
-from mypy.types import (
-    Type, AnyType, NoneType, TypeVisitor, Instance, UnboundType, TypeVarType, CallableType,
-    TupleType, TypedDictType, ErasedType, UnionType, FunctionLike, Overloaded, LiteralType,
-    PartialType, DeletedType, UninhabitedType, TypeType, TypeOfAny, get_proper_type,
-    ProperType, get_proper_types, TypeAliasType, PlaceholderType, ParamSpecType, Parameters,
-    UnpackType, TypeVarTupleType,
-)
-from mypy.maptype import map_instance_to_supertype
-from mypy.subtypes import (
-    is_subtype, is_equivalent, is_proper_subtype,
-    is_protocol_implementation, find_member
-)
-from mypy.nodes import INVARIANT, COVARIANT, CONTRAVARIANT
 import mypy.typeops
+from mypy.backports import OrderedDict
+from mypy.maptype import map_instance_to_supertype
+from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.state import state
+from mypy.subtypes import (
+    find_member,
+    is_equivalent,
+    is_proper_subtype,
+    is_protocol_implementation,
+    is_subtype,
+)
+from mypy.types import (
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 class InstanceJoiner:
@@ -87,10 +114,13 @@ class InstanceJoiner:
     def join_instances_via_supertype(self, t: Instance, s: Instance) -> ProperType:
         # Give preference to joins via duck typing relationship, so that
         # join(int, float) == float, for example.
-        if t.type._promote and is_subtype(t.type._promote, s):
-            return join_types(t.type._promote, s, self)
-        elif s.type._promote and is_subtype(s.type._promote, t):
-            return join_types(t, s.type._promote, self)
+        for p in t.type._promote:
+            if is_subtype(p, s):
+                return join_types(p, s, self)
+        for p in s.type._promote:
+            if is_subtype(p, t):
+                return join_types(t, p, self)
+
         # Compute the "best" supertype of t when joined with s.
         # The definition of "best" may evolve; for now it is the one with
         # the longest MRO.  Ties are broken by using the earlier base.
@@ -101,11 +131,12 @@ class InstanceJoiner:
             if best is None or is_better(res, best):
                 best = res
         assert best is not None
-        promote = get_proper_type(t.type._promote)
-        if isinstance(promote, Instance):
-            res = self.join_instances(promote, s)
-            if is_better(res, best):
-                best = res
+        for promote in t.type._promote:
+            promote = get_proper_type(promote)
+            if isinstance(promote, Instance):
+                res = self.join_instances(promote, s)
+                if is_better(res, best):
+                    best = res
         return best
 
 
@@ -311,11 +342,15 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             result = join_similar_callables(t, self.s)
             # We set the from_type_type flag to suppress error when a collection of
             # concrete class objects gets inferred as their common abstract superclass.
-            if not ((t.is_type_obj() and t.type_object().is_abstract) or
-                    (self.s.is_type_obj() and self.s.type_object().is_abstract)):
+            if not (
+                (t.is_type_obj() and t.type_object().is_abstract)
+                or (self.s.is_type_obj() and self.s.type_object().is_abstract)
+            ):
                 result.from_type_type = True
-            if any(isinstance(tp, (NoneType, UninhabitedType))
-                   for tp in get_proper_types(result.arg_types)):
+            if any(
+                isinstance(tp, (NoneType, UninhabitedType))
+                for tp in get_proper_types(result.arg_types)
+            ):
                 # We don't want to return unusable Callable, attempt fallback instead.
                 return join_types(t.fallback, self.s)
             return result
@@ -396,8 +431,9 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         if isinstance(self.s, TupleType) and self.s.length() == t.length():
             if self.instance_joiner is None:
                 self.instance_joiner = InstanceJoiner()
-            fallback = self.instance_joiner.join_instances(mypy.typeops.tuple_fallback(self.s),
-                                                       mypy.typeops.tuple_fallback(t))
+            fallback = self.instance_joiner.join_instances(
+                mypy.typeops.tuple_fallback(self.s), mypy.typeops.tuple_fallback(t)
+            )
             assert isinstance(fallback, Instance)
             if self.s.length() == t.length():
                 items: List[Type] = []
@@ -411,12 +447,16 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
 
     def visit_typeddict_type(self, t: TypedDictType) -> ProperType:
         if isinstance(self.s, TypedDictType):
-            items = OrderedDict([
-                (item_name, s_item_type)
-                for (item_name, s_item_type, t_item_type) in self.s.zip(t)
-                if (is_equivalent(s_item_type, t_item_type) and
-                    (item_name in t.required_keys) == (item_name in self.s.required_keys))
-            ])
+            items = OrderedDict(
+                [
+                    (item_name, s_item_type)
+                    for (item_name, s_item_type, t_item_type) in self.s.zip(t)
+                    if (
+                        is_equivalent(s_item_type, t_item_type)
+                        and (item_name in t.required_keys) == (item_name in self.s.required_keys)
+                    )
+                ]
+            )
             fallback = self.s.create_anonymous_fallback()
             # We need to filter by items.keys() since some required keys present in both t and
             # self.s might be missing from the join if the types are incompatible.
@@ -445,13 +485,13 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
     def visit_type_type(self, t: TypeType) -> ProperType:
         if isinstance(self.s, TypeType):
             return TypeType.make_normalized(self.join(t.item, self.s.item), line=t.line)
-        elif isinstance(self.s, Instance) and self.s.type.fullname == 'builtins.type':
+        elif isinstance(self.s, Instance) and self.s.type.fullname == "builtins.type":
             return self.s
         else:
             return self.default(self.s)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> ProperType:
-        assert False, "This should be never called, got {}".format(t)
+        assert False, f"This should be never called, got {t}"
 
     def join(self, s: Type, t: Type) -> ProperType:
         return join_types(s, t)
@@ -495,8 +535,11 @@ def is_similar_callables(t: CallableType, s: CallableType) -> bool:
     """Return True if t and s have identical numbers of
     arguments, default arguments and varargs.
     """
-    return (len(t.arg_types) == len(s.arg_types) and t.min_args == s.min_args and
-            t.is_var_arg == s.is_var_arg)
+    return (
+        len(t.arg_types) == len(s.arg_types)
+        and t.min_args == s.min_args
+        and t.is_var_arg == s.is_var_arg
+    )
 
 
 def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
@@ -508,15 +551,17 @@ def join_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # TODO in combine_similar_callables also applies here (names and kinds)
     # The fallback type can be either 'function' or 'type'. The result should have 'type' as
     # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != 'builtins.type':
+    if t.fallback.type.fullname != "builtins.type":
         fallback = t.fallback
     else:
         fallback = s.fallback
-    return t.copy_modified(arg_types=arg_types,
-                           arg_names=combine_arg_names(t, s),
-                           ret_type=join_types(t.ret_type, s.ret_type),
-                           fallback=fallback,
-                           name=None)
+    return t.copy_modified(
+        arg_types=arg_types,
+        arg_names=combine_arg_names(t, s),
+        ret_type=join_types(t.ret_type, s.ret_type),
+        fallback=fallback,
+        name=None,
+    )
 
 
 def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
@@ -526,15 +571,17 @@ def combine_similar_callables(t: CallableType, s: CallableType) -> CallableType:
     # TODO kinds and argument names
     # The fallback type can be either 'function' or 'type'. The result should have 'type' as
     # fallback only if both operands have it as 'type'.
-    if t.fallback.type.fullname != 'builtins.type':
+    if t.fallback.type.fullname != "builtins.type":
         fallback = t.fallback
     else:
         fallback = s.fallback
-    return t.copy_modified(arg_types=arg_types,
-                           arg_names=combine_arg_names(t, s),
-                           ret_type=join_types(t.ret_type, s.ret_type),
-                           fallback=fallback,
-                           name=None)
+    return t.copy_modified(
+        arg_types=arg_types,
+        arg_names=combine_arg_names(t, s),
+        ret_type=join_types(t.ret_type, s.ret_type),
+        fallback=fallback,
+        name=None,
+    )
 
 
 def combine_arg_names(t: CallableType, s: CallableType) -> List[Optional[str]]:
@@ -608,6 +655,6 @@ def join_type_list(types: List[Type]) -> ProperType:
 
 def unpack_callback_protocol(t: Instance) -> Optional[Type]:
     assert t.type.is_protocol
-    if t.type.protocol_members == ['__call__']:
-        return find_member('__call__', t, t, is_operator=True)
+    if t.type.protocol_members == ["__call__"]:
+        return find_member("__call__", t, t, is_operator=True)
     return None

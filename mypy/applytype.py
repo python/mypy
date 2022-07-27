@@ -1,13 +1,24 @@
-from typing import Dict, Sequence, Optional, Callable
+from typing import Callable, Dict, Optional, Sequence
 
-import mypy.subtypes
 import mypy.sametypes
+import mypy.subtypes
 from mypy.expandtype import expand_type
-from mypy.types import (
-    Type, TypeVarId, TypeVarType, CallableType, AnyType, PartialType, get_proper_types,
-    TypeVarLikeType, ProperType, ParamSpecType, Parameters, get_proper_type
-)
 from mypy.nodes import Context
+from mypy.types import (
+    AnyType,
+    CallableType,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    Type,
+    TypeVarId,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 def get_target_type(
@@ -16,9 +27,11 @@ def get_target_type(
     callable: CallableType,
     report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
     context: Context,
-    skip_unsatisfied: bool
+    skip_unsatisfied: bool,
 ) -> Optional[Type]:
     if isinstance(tvar, ParamSpecType):
+        return type
+    if isinstance(tvar, TypeVarTupleType):
         return type
     assert isinstance(tvar, TypeVarType)
     values = get_proper_types(tvar.values)
@@ -28,8 +41,7 @@ def get_target_type(
         if isinstance(type, TypeVarType) and type.values:
             # Allow substituting T1 for T if every allowed value of T1
             # is also a legal value of T.
-            if all(any(mypy.sametypes.is_same_type(v, v1) for v in values)
-                   for v1 in type.values):
+            if all(any(mypy.sametypes.is_same_type(v, v1) for v in values) for v1 in type.values):
                 return type
         matching = []
         for value in values:
@@ -55,10 +67,12 @@ def get_target_type(
 
 
 def apply_generic_arguments(
-        callable: CallableType, orig_types: Sequence[Optional[Type]],
-        report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
-        context: Context,
-        skip_unsatisfied: bool = False) -> CallableType:
+    callable: CallableType,
+    orig_types: Sequence[Optional[Type]],
+    report_incompatible_typevar_value: Callable[[CallableType, Type, str, Context], None],
+    context: Context,
+    skip_unsatisfied: bool = False,
+) -> CallableType:
     """Apply generic type arguments to a callable type.
 
     For example, applying [int] to 'def [T] (T) -> T' results in
@@ -100,6 +114,12 @@ def apply_generic_arguments(
     # Apply arguments to argument types.
     arg_types = [expand_type(at, id_to_type) for at in callable.arg_types]
 
+    # Apply arguments to TypeGuard if any.
+    if callable.type_guard is not None:
+        type_guard = expand_type(callable.type_guard, id_to_type)
+    else:
+        type_guard = None
+
     # The callable may retain some type vars if only some were applied.
     remaining_tvars = [tv for tv in tvars if tv.id not in id_to_type]
 
@@ -107,4 +127,5 @@ def apply_generic_arguments(
         arg_types=arg_types,
         ret_type=expand_type(callable.ret_type, id_to_type),
         variables=remaining_tvars,
+        type_guard=type_guard,
     )

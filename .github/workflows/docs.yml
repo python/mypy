@@ -18,13 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOXENV: docs
+      TOX_SKIP_MISSING_INTERPRETERS: False
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: '3.10'
+          python-version: '3.7'
       - name: Install tox
-        run: pip install --upgrade 'setuptools!=50' 'virtualenv>=20.6.0' tox==3.24.5
+        run: pip install --upgrade 'setuptools!=50' tox==3.24.5
       - name: Setup tox environment
         run: tox -e ${{ env.TOXENV }} --notest
       - name: Test

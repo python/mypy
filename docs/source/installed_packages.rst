@@ -25,6 +25,23 @@ you can create such packages.
    :pep:`561` specifies how a package can declare that it supports
    type checking.
 
+.. note::
+
+   New versions of stub packages often use type system features not
+   supported by older, and even fairly recent mypy versions. If you
+   pin to an older version of mypy (using ``requirements.txt``, for
+   example), it is recommended that you also pin the versions of all
+   your stub package dependencies.
+
+.. note::
+
+   Starting in mypy 0.900, most third-party package stubs must be
+   installed explicitly. This decouples mypy and stub versioning,
+   allowing stubs to updated without updating mypy. This also allows
+   stubs not originally included with mypy to be installed. Earlier
+   mypy versions included a fixed set of stubs for third-party
+   packages.
+
 Using installed packages with mypy (PEP 561)
 ********************************************
 

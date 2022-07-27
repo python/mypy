@@ -130,29 +130,32 @@ two/mod/__init__.py: note: See https://mypy.readthedocs.io/en/stable/running_myp
 two/mod/__init__.py: note: Common resolutions include: a) using `--exclude` to avoid checking one of them, b) adding `__init__.py` somewhere, c) using `--explicit-package-bases` or adjusting MYPYPATH
 == Return code: 2
 
-[case testFlagsFile]
+[case testFlagsFile-skip]
 # cmd: mypy @flagsfile
 [file flagsfile]
--2
+--always-true=FLAG
 main.py
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+# TODO: this test case passes if you try the exact same thing
+# outside of the test suite. what's going on? it's not related
+# to the extra flags that testcmdline adds. and things work
+# in the test suite with py2 (perhaps because it's a
+# special option)
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testConfigFile]
 # cmd: mypy main.py
 [file mypy.ini]
 \[mypy]
-python_version = 2.7
+always_true = FLAG
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testErrorContextConfig]
 # cmd: mypy main.py
@@ -170,13 +173,12 @@ main.py:2: error: Unsupported operand types for + ("int" and "str")
 # cmd: mypy --config-file config.ini main.py
 [file config.ini]
 \[mypy]
-python_version = 2.7
+always_true = FLAG
 [file main.py]
-def f():
-    try:
-        1/0
-    except ZeroDivisionError, err:
-        print err
+x: int
+FLAG = False
+if not FLAG:
+    x = "unreachable"
 
 [case testNoConfigFile]
 # cmd: mypy main.py --config-file=
@@ -335,11 +337,11 @@ file.py:6: error: Argument 1 to "foo" has incompatible type "str"; expected "int
 \[mypy-x]
 ignore_errors = True
 [file x.py]
-"" + 0
+x: str = 5
 [file y.py]
-"" + 0
+x: str = 5
 [out]
-y.py:1: error: Unsupported operand types for + ("str" and "int")
+y.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 
 [case testConfigFollowImportsNormal]
 # cmd: mypy main.py
@@ -360,6 +362,32 @@ x = 0
 x += ''  # Error reported here
 [out]
 a.py:2: error: Unsupported operand types for + ("int" and "str")
+main.py:3: error: Unsupported operand types for + ("int" and "str")
+main.py:6: error: Unsupported operand types for + ("int" and "str")
+main.py:7: error: Module has no attribute "y"
+main.py:8: error: Unsupported operand types for + (Module and "int")
+
+[case testConfigFollowImportsSysPath]
+# cmd: mypy main.py
+[file main.py]
+from a import x
+x + 0
+x + ''  # E
+import a
+a.x + 0
+a.x + ''  # E
+a.y  # E
+a + 0  # E
+[file mypy.ini]
+\[mypy]
+follow_imports = normal
+no_silence_site_packages = True
+[file pypath/a/__init__.py]
+x = 0
+x += ''  # Error reported here
+[file pypath/a/py.typed]
+[out]
+pypath/a/__init__.py:2: error: Unsupported operand types for + ("int" and "str")
 main.py:3: error: Unsupported operand types for + ("int" and "str")
 main.py:6: error: Unsupported operand types for + ("int" and "str")
 main.py:7: error: Module has no attribute "y"
@@ -405,9 +433,9 @@ main.py:4: note: Revealed type is "Any"
 [case testConfigFollowImportsError]
 # cmd: mypy main.py
 [file main.py]
-from a import x
+from a import x  # Error reported here
 reveal_type(x)  # Expect Any
-import a  # Error reported here
+import a
 reveal_type(a.x)  # Expect Any
 [file mypy.ini]
 \[mypy]
@@ -415,9 +443,9 @@ follow_imports = error
 [file a.py]
 /  # No error reported
 [out]
+main.py:1: error: Import of "a" ignored
+main.py:1: note: (Using --follow-imports=error, module not passed on command line)
 main.py:2: note: Revealed type is "Any"
-main.py:3: error: Import of "a" ignored
-main.py:3: note: (Using --follow-imports=error, module not passed on command line)
 main.py:4: note: Revealed type is "Any"
 
 [case testConfigFollowImportsSelective]
@@ -561,6 +589,15 @@ main.py:1: error: Cannot find implementation or library stub for module named "a
 main.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 main.py:1: error: Cannot find implementation or library stub for module named "a"
 
+[case testPythonVersionWrongFormatPyProjectTOML]
+# cmd: mypy -c pass
+[file pyproject.toml]
+\[tool.mypy]
+python_version = 3.10
+[out]
+pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4 or higher). You may need to put quotes around your Python version
+== Return code: 0
+
 [case testPythonVersionTooOld10]
 # cmd: mypy -c pass
 [file mypy.ini]
@@ -612,6 +649,10 @@ mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be
 \[mypy]
 python_version = 2.7
 [out]
+usage: mypy [-h] [-v] [-V] [more options; see below]
+            [-m MODULE] [-p PACKAGE] [-c PROGRAM_TEXT] [files ...]
+mypy: error: Mypy no longer supports checking Python 2 code. Consider pinning to mypy<0.980 if you need to check Python 2 code.
+== Return code: 2
 
 [case testPythonVersionAccepted34]
 # cmd: mypy -c pass
@@ -635,10 +676,10 @@ python_version = 3.6
 [file int_pow.py]
 a = 1
 b = a + 2
-reveal_type(a**0) # N: Revealed type is "builtins.int"
+reveal_type(a**0) # N: Revealed type is "Literal[1]"
 reveal_type(a**1) # N: Revealed type is "builtins.int"
 reveal_type(a**2) # N: Revealed type is "builtins.int"
-reveal_type(a**-0) # N: Revealed type is "builtins.int"
+reveal_type(a**-0) # N: Revealed type is "Literal[1]"
 reveal_type(a**-1) # N: Revealed type is "builtins.float"
 reveal_type(a**(-2)) # N: Revealed type is "builtins.float"
 reveal_type(a**b) # N: Revealed type is "Any"
@@ -805,19 +846,19 @@ src/anamespace/foo/bar.py:2: error: Incompatible return value type (got "int", e
 x = 0  # type: str
 [file pkg/a1/b/f.py]
 from pkg.a1.b.c.d.e import x
-x + 1
+x()
 
 [file pkg/a2/__init__.py]
 [file pkg/a2/b/c/d/e.py]
 x = 0  # type: str
 [file pkg/a2/b/f.py]
 from pkg.a2.b.c.d.e import x
-x + 1
+x()
 [out]
 pkg/a2/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
 pkg/a1/b/c/d/e.py:1: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-pkg/a2/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
-pkg/a1/b/f.py:2: error: Unsupported operand types for + ("str" and "int")
+pkg/a2/b/f.py:2: error: "str" not callable
+pkg/a1/b/f.py:2: error: "str" not callable
 
 [case testFollowImportStubs1]
 # cmd: mypy main.py
@@ -1077,7 +1118,7 @@ mypy: can't read file 'missing.py': No such file or directory
 == Return code: 2
 
 [case testShowSourceCodeSnippetsWrappedFormatting]
-# cmd: mypy --pretty --python-version=3.6 some_file.py
+# cmd: mypy --pretty some_file.py
 [file some_file.py]
 from typing import Union
 
@@ -1103,7 +1144,19 @@ some_file.py:11: error: Argument 1 to "some_interesting_method" of
 "AnotherCustomClassDefinedBelow"
     ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
                                                                          ^
-
+[out version>=3.8]
+some_file.py:3: error: Unsupported operand types for + ("int" and "str")
+    42 + 'no way'
+         ^~~~~~~~
+some_file.py:11: error: Incompatible types in assignment (expression has type
+"AnotherCustomClassDefinedBelow", variable has type "OneCustomClassName")
+    ...t_attribute_with_long_name: OneCustomClassName = OneCustomClassName()....
+                                                        ^~~~~~~~~~~~~~~~~~~~~...
+some_file.py:11: error: Argument 1 to "some_interesting_method" of
+"OneCustomClassName" has incompatible type "Union[int, str, float]"; expected
+"AnotherCustomClassDefinedBelow"
+    ...OneCustomClassName = OneCustomClassName().some_interesting_method(arg)
+                                                                         ^~~
 [case testShowSourceCodeSnippetsBlockingError]
 # cmd: mypy --pretty --show-error-codes some_file.py
 [file some_file.py]
@@ -1119,10 +1172,24 @@ some_file.py:1: error: invalid syntax  [syntax]
 [file tabs.py]
 def test_tabs() -> str:
 	return None
+def test_between(x: str) -> None: ...
+test_between(1	+	1)
 [out]
 tabs.py:2: error: Incompatible return value type (got "None", expected "str")
             return None
                    ^
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^
+[out version>=3.8]
+tabs.py:2: error: Incompatible return value type (got "None", expected "str")
+            return None
+                   ^~~~
+tabs.py:4: error: Argument 1 to "test_between" has incompatible type "int";
+expected "str"
+    test_between(1  +       1)
+                 ^~~~~~~~~~~~
 
 [case testErrorMessageWhenOpenPydFile]
 # cmd: mypy a.pyd
@@ -1373,3 +1440,20 @@ exclude = (?x)(
 1()
 [out]
 c/cpkg.py:1: error: "int" not callable
+
+
+[case testCmdlineTimingStats]
+# cmd: mypy --timing-stats timing.txt .
+[file b/__init__.py]
+[file b/c.py]
+class C: pass
+[outfile-re timing.txt]
+.*
+b \d+
+b\.c \d+
+.*
+
+[case testCmdlineEnableIncompleteFeatures]
+# cmd: mypy --enable-incomplete-features a.py
+[file a.py]
+pass

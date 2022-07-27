@@ -269,6 +269,9 @@ if sys.platform != "win32":
         if sys.version_info >= (3, 10):
             from os import RWF_APPEND as RWF_APPEND
 
+    if sys.version_info >= (3, 11):
+        from os import login_tty as login_tty
+
     if sys.version_info >= (3, 9):
         from os import CLD_KILLED as CLD_KILLED, CLD_STOPPED as CLD_STOPPED, waitstatus_to_exitcode as waitstatus_to_exitcode
 

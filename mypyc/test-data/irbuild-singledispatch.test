@@ -14,19 +14,17 @@ L0:
     return 0
 def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
-    r0 :: dict
-    r1 :: bool
-    r2 :: dict
-    r3 :: str
-    r4 :: int32
-    r5 :: bit
+    r0, r1 :: dict
+    r2 :: str
+    r3 :: int32
+    r4 :: bit
 L0:
     r0 = PyDict_New()
-    __mypyc_self__.registry = r0; r1 = is_error
-    r2 = PyDict_New()
-    r3 = 'dispatch_cache'
-    r4 = PyObject_SetAttr(__mypyc_self__, r3, r2)
-    r5 = r4 >= 0 :: signed
+    __mypyc_self__.registry = r0
+    r1 = PyDict_New()
+    r2 = 'dispatch_cache'
+    r3 = PyObject_SetAttr(__mypyc_self__, r2, r1)
+    r4 = r3 >= 0 :: signed
     return 1
 def f_obj.__call__(__mypyc_self__, arg):
     __mypyc_self__ :: __main__.f_obj
@@ -148,19 +146,17 @@ L0:
     return 1
 def f_obj.__init__(__mypyc_self__):
     __mypyc_self__ :: __main__.f_obj
-    r0 :: dict
-    r1 :: bool
-    r2 :: dict
-    r3 :: str
-    r4 :: int32
-    r5 :: bit
+    r0, r1 :: dict
+    r2 :: str
+    r3 :: int32
+    r4 :: bit
 L0:
     r0 = PyDict_New()
-    __mypyc_self__.registry = r0; r1 = is_error
-    r2 = PyDict_New()
-    r3 = 'dispatch_cache'
-    r4 = PyObject_SetAttr(__mypyc_self__, r3, r2)
-    r5 = r4 >= 0 :: signed
+    __mypyc_self__.registry = r0
+    r1 = PyDict_New()
+    r2 = 'dispatch_cache'
+    r3 = PyObject_SetAttr(__mypyc_self__, r2, r1)
+    r4 = r3 >= 0 :: signed
     return 1
 def f_obj.__call__(__mypyc_self__, x):
     __mypyc_self__ :: __main__.f_obj
@@ -259,4 +255,3 @@ L0:
     r1 = f(r0)
     r2 = box(None, 1)
     return r2
-
