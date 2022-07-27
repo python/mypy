@@ -9,7 +9,8 @@ Mypy: Static Typing for Python
 [![Documentation Status](https://readthedocs.org/projects/mypy/badge/?version=latest)](https://mypy.readthedocs.io/en/latest/?badge=latest)
 [![Chat at https://gitter.im/python/typing](https://badges.gitter.im/python/typing.svg)](https://gitter.im/python/typing?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Checked with mypy](http://www.mypy-lang.org/static/mypy_badge.svg)](http://mypy-lang.org/)
-
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg")](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 Got a question?
 ---------------
@@ -82,10 +83,12 @@ Mypy can be installed using pip:
 
     python3 -m pip install -U mypy
 
-If you want to run the latest version of the code, you can install from git:
+If you want to run the latest version of the code, you can install from the
+repo directly:
 
     python3 -m pip install -U git+https://github.com/python/mypy.git
-
+    # or if you don't have 'git' installed
+    python3 -m pip install -U https://github.com/python/mypy/zipball/master
 
 Now you can type-check the [statically typed parts] of a program like this:
 
