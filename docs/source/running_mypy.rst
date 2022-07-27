@@ -205,7 +205,7 @@ will continue to be of type ``Any``.
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To suppress *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence

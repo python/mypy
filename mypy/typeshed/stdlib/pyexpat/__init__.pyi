@@ -33,6 +33,8 @@ class XMLParserType:
     def ExternalEntityParserCreate(self, __context: str | None, __encoding: str = ...) -> XMLParserType: ...
     def SetParamEntityParsing(self, __flag: int) -> int: ...
     def UseForeignDTD(self, __flag: bool = ...) -> None: ...
+    @property
+    def intern(self) -> dict[str, str]: ...
     buffer_size: int
     buffer_text: bool
     buffer_used: int
@@ -69,6 +71,7 @@ class XMLParserType:
     DefaultHandlerExpand: Callable[[str], Any] | None
     NotStandaloneHandler: Callable[[], int] | None
     ExternalEntityRefHandler: Callable[[str, str | None, str | None, str | None], int] | None
+    SkippedEntityHandler: Callable[[str, bool], Any] | None
 
 def ErrorString(__code: int) -> str: ...
 

@@ -31,8 +31,10 @@ advantage of the benefits.
 import os
 import stat
 from typing import Dict, List, Set
-from mypy.util import hash_digest
+
 from mypy_extensions import mypyc_attr
+
+from mypy.util import hash_digest
 
 
 @mypyc_attr(allow_interpreted_subclasses=True)  # for tests
@@ -104,7 +106,7 @@ class FileSystemCache:
         if not self.package_root:
             return False
         dirname, basename = os.path.split(path)
-        if basename != '__init__.py':
+        if basename != "__init__.py":
             return False
         if not os.path.basename(dirname).isidentifier():
             # Can't put an __init__.py in a place that's not an identifier
@@ -139,7 +141,7 @@ class FileSystemCache:
         init_under_package_root() returns True.
         """
         dirname, basename = os.path.split(path)
-        assert basename == '__init__.py', path
+        assert basename == "__init__.py", path
         assert not os.path.exists(path), path  # Not cached!
         dirname = os.path.normpath(dirname)
         st = self.stat(dirname)  # May raise OSError
@@ -160,8 +162,8 @@ class FileSystemCache:
         if path in self.listdir_cache:
             res = self.listdir_cache[path]
             # Check the fake cache.
-            if path in self.fake_package_cache and '__init__.py' not in res:
-                res.append('__init__.py')  # Updates the result as well as the cache
+            if path in self.fake_package_cache and "__init__.py" not in res:
+                res.append("__init__.py")  # Updates the result as well as the cache
             return res
         if path in self.listdir_error_cache:
             raise copy_os_error(self.listdir_error_cache[path])
@@ -173,8 +175,8 @@ class FileSystemCache:
             raise err
         self.listdir_cache[path] = results
         # Check the fake cache.
-        if path in self.fake_package_cache and '__init__.py' not in results:
-            results.append('__init__.py')
+        if path in self.fake_package_cache and "__init__.py" not in results:
+            results.append("__init__.py")
         return results
 
     def isfile(self, path: str) -> bool:
@@ -271,11 +273,11 @@ class FileSystemCache:
         dirname, basename = os.path.split(path)
         dirname = os.path.normpath(dirname)
         # Check the fake cache.
-        if basename == '__init__.py' and dirname in self.fake_package_cache:
-            data = b''
+        if basename == "__init__.py" and dirname in self.fake_package_cache:
+            data = b""
         else:
             try:
-                with open(path, 'rb') as f:
+                with open(path, "rb") as f:
                     data = f.read()
             except OSError as err:
                 self.read_error_cache[path] = err

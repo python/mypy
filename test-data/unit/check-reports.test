@@ -247,17 +247,6 @@ none_lit         4        2          0    2      0           0
 str_lit          4        2          0    2      0           0
 true_lit         4        2          0    2      0           0
 
-[case testLinePrecisionUnicodeLiterals_python2]
-# flags: --lineprecision-report out
-def f(): # type: () -> object
-    return u''
-def g():
-    return u''
-[outfile out/lineprecision.txt]
-Name      Lines  Precise  Imprecise  Any  Empty  Unanalyzed
--------------------------------------------------------------
-__main__      5        2          0    2      1           0
-
 [case testLinePrecisionIfStatement]
 # flags: --lineprecision-report out
 if int():

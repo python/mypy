@@ -8,49 +8,29 @@ from types import TracebackType
 from typing import IO, Any, BinaryIO, TextIO
 from typing_extensions import Literal
 
+__all__ = [
+    "BlockingIOError",
+    "open",
+    "IOBase",
+    "RawIOBase",
+    "FileIO",
+    "BytesIO",
+    "StringIO",
+    "BufferedIOBase",
+    "BufferedReader",
+    "BufferedWriter",
+    "BufferedRWPair",
+    "BufferedRandom",
+    "TextIOBase",
+    "TextIOWrapper",
+    "UnsupportedOperation",
+    "SEEK_SET",
+    "SEEK_CUR",
+    "SEEK_END",
+]
+
 if sys.version_info >= (3, 8):
-    __all__ = [
-        "BlockingIOError",
-        "open",
-        "open_code",
-        "IOBase",
-        "RawIOBase",
-        "FileIO",
-        "BytesIO",
-        "StringIO",
-        "BufferedIOBase",
-        "BufferedReader",
-        "BufferedWriter",
-        "BufferedRWPair",
-        "BufferedRandom",
-        "TextIOBase",
-        "TextIOWrapper",
-        "UnsupportedOperation",
-        "SEEK_SET",
-        "SEEK_CUR",
-        "SEEK_END",
-    ]
-else:
-    __all__ = [
-        "BlockingIOError",
-        "open",
-        "IOBase",
-        "RawIOBase",
-        "FileIO",
-        "BytesIO",
-        "StringIO",
-        "BufferedIOBase",
-        "BufferedReader",
-        "BufferedWriter",
-        "BufferedRWPair",
-        "BufferedRandom",
-        "TextIOBase",
-        "TextIOWrapper",
-        "UnsupportedOperation",
-        "SEEK_SET",
-        "SEEK_CUR",
-        "SEEK_END",
-    ]
+    __all__ += ["open_code"]
 
 DEFAULT_BUFFER_SIZE: Literal[8192]
 

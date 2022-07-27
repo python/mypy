@@ -1,6 +1,6 @@
 import abc
 import sys
-from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
+from _typeshed import IdentityFunction, Self as TypeshedSelf  # see #6932 for why the Self alias cannot have a leading underscore
 from typing import (  # noqa: Y022,Y027,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
@@ -37,6 +37,8 @@ __all__ = [
     "Final",
     "LiteralString",
     "ParamSpec",
+    "ParamSpecArgs",
+    "ParamSpecKwargs",
     "Self",
     "Type",
     "TypeVarTuple",
@@ -158,6 +160,8 @@ if sys.version_info >= (3, 10):
     from typing import (
         Concatenate as Concatenate,
         ParamSpec as ParamSpec,
+        ParamSpecArgs as ParamSpecArgs,
+        ParamSpecKwargs as ParamSpecKwargs,
         TypeAlias as TypeAlias,
         TypeGuard as TypeGuard,
         is_typeddict as is_typeddict,
@@ -232,4 +236,4 @@ else:
         kw_only_default: bool = ...,
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: object,
-    ) -> Callable[[_T], _T]: ...
+    ) -> IdentityFunction: ...

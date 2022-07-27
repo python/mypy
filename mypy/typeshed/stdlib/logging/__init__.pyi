@@ -9,6 +9,9 @@ from types import FrameType, TracebackType
 from typing import Any, ClassVar, Generic, Pattern, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal, TypeAlias
 
+if sys.version_info >= (3, 11):
+    from types import GenericAlias
+
 __all__ = [
     "BASIC_FORMAT",
     "BufferingFormatter",
@@ -53,6 +56,9 @@ __all__ = [
     "lastResort",
     "raiseExceptions",
 ]
+
+if sys.version_info >= (3, 11):
+    __all__ += ["getLevelNamesMapping"]
 
 _SysExcInfoType: TypeAlias = Union[tuple[type[BaseException], BaseException, TracebackType | None], tuple[None, None, None]]
 _ExcInfoType: TypeAlias = None | bool | _SysExcInfoType | BaseException
@@ -407,6 +413,8 @@ class LogRecord:
         sinfo: str | None = ...,
     ) -> None: ...
     def getMessage(self) -> str: ...
+    # Allows setting contextual information on LogRecord objects as per the docs, see #7833
+    def __setattr__(self, __name: str, __value: Any) -> None: ...
 
 _L = TypeVar("_L", bound=Logger | LoggerAdapter[Any])
 
@@ -593,6 +601,8 @@ class LoggerAdapter(Generic[_L]):
     ) -> None: ...  # undocumented
     @property
     def name(self) -> str: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 def getLogger(name: str | None = ...) -> Logger: ...
 def getLoggerClass() -> type[Logger]: ...
@@ -706,6 +716,10 @@ else:
 
 def addLevelName(level: int, levelName: str) -> None: ...
 def getLevelName(level: _Level) -> Any: ...
+
+if sys.version_info >= (3, 11):
+    def getLevelNamesMapping() -> dict[str, int]: ...
+
 def makeLogRecord(dict: Mapping[str, object]) -> LogRecord: ...
 
 if sys.version_info >= (3, 9):
@@ -769,6 +783,8 @@ class StreamHandler(Handler, Generic[_StreamT]):
     def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
     if sys.version_info >= (3, 7):
         def setStream(self, stream: _StreamT) -> _StreamT | None: ...
+    if sys.version_info >= (3, 11):
+        def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
 class FileHandler(StreamHandler[TextIOWrapper]):
     baseFilename: str  # undocumented
@@ -818,8 +834,8 @@ class PercentStyle:  # undocumented
     def format(self, record: Any) -> str: ...
 
 class StrFormatStyle(PercentStyle):  # undocumented
-    fmt_spec = Any
-    field_spec = Any
+    fmt_spec: Pattern[str]
+    field_spec: Pattern[str]
 
 class StringTemplateStyle(PercentStyle):  # undocumented
     _tpl: Template

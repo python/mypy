@@ -1,4 +1,5 @@
 import sys
+from _typeshed import ReadableBuffer
 from asyncio import transports
 from typing import Any
 
@@ -19,7 +20,7 @@ class Protocol(BaseProtocol):
 
 if sys.version_info >= (3, 7):
     class BufferedProtocol(BaseProtocol):
-        def get_buffer(self, sizehint: int) -> bytearray: ...
+        def get_buffer(self, sizehint: int) -> ReadableBuffer: ...
         def buffer_updated(self, nbytes: int) -> None: ...
         def eof_received(self) -> bool | None: ...
 

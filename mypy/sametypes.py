@@ -1,13 +1,33 @@
-from typing import Sequence, Tuple, Set, List
+from typing import List, Sequence, Set, Tuple
 
+from mypy.typeops import is_simple_literal, make_simplified_union, tuple_fallback
 from mypy.types import (
-    Type, UnboundType, AnyType, NoneType, TupleType, TypedDictType,
-    UnionType, CallableType, TypeVarType, Instance, TypeVisitor, ErasedType,
-    Overloaded, PartialType, DeletedType, UninhabitedType, TypeType, LiteralType,
-    ProperType, get_proper_type, TypeAliasType, ParamSpecType, Parameters,
-    UnpackType, TypeVarTupleType,
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
 )
-from mypy.typeops import tuple_fallback, make_simplified_union, is_simple_literal
 
 
 def is_same_type(left: Type, right: Type) -> bool:
@@ -98,58 +118,67 @@ class SameTypeVisitor(TypeVisitor[bool]):
         return isinstance(self.right, DeletedType)
 
     def visit_instance(self, left: Instance) -> bool:
-        return (isinstance(self.right, Instance) and
-                left.type == self.right.type and
-                is_same_types(left.args, self.right.args) and
-                left.last_known_value == self.right.last_known_value)
+        return (
+            isinstance(self.right, Instance)
+            and left.type == self.right.type
+            and is_same_types(left.args, self.right.args)
+            and left.last_known_value == self.right.last_known_value
+        )
 
     def visit_type_alias_type(self, left: TypeAliasType) -> bool:
         # Similar to protocols, two aliases with the same targets return False here,
         # but both is_subtype(t, s) and is_subtype(s, t) return True.
-        return (isinstance(self.right, TypeAliasType) and
-                left.alias == self.right.alias and
-                is_same_types(left.args, self.right.args))
+        return (
+            isinstance(self.right, TypeAliasType)
+            and left.alias == self.right.alias
+            and is_same_types(left.args, self.right.args)
+        )
 
     def visit_type_var(self, left: TypeVarType) -> bool:
-        return (isinstance(self.right, TypeVarType) and
-                left.id == self.right.id)
+        return isinstance(self.right, TypeVarType) and left.id == self.right.id
 
     def visit_param_spec(self, left: ParamSpecType) -> bool:
         # Ignore upper bound since it's derived from flavor.
-        return (isinstance(self.right, ParamSpecType) and
-                left.id == self.right.id and left.flavor == self.right.flavor)
+        return (
+            isinstance(self.right, ParamSpecType)
+            and left.id == self.right.id
+            and left.flavor == self.right.flavor
+        )
 
     def visit_type_var_tuple(self, left: TypeVarTupleType) -> bool:
-        return (isinstance(self.right, TypeVarTupleType) and
-                left.id == self.right.id)
+        return isinstance(self.right, TypeVarTupleType) and left.id == self.right.id
 
     def visit_unpack_type(self, left: UnpackType) -> bool:
-        return (isinstance(self.right, UnpackType) and
-                is_same_type(left.type, self.right.type))
+        return isinstance(self.right, UnpackType) and is_same_type(left.type, self.right.type)
 
     def visit_parameters(self, left: Parameters) -> bool:
-        return (isinstance(self.right, Parameters) and
-                left.arg_names == self.right.arg_names and
-                is_same_types(left.arg_types, self.right.arg_types) and
-                left.arg_kinds == self.right.arg_kinds)
+        return (
+            isinstance(self.right, Parameters)
+            and left.arg_names == self.right.arg_names
+            and is_same_types(left.arg_types, self.right.arg_types)
+            and left.arg_kinds == self.right.arg_kinds
+        )
 
     def visit_callable_type(self, left: CallableType) -> bool:
         # FIX generics
         if isinstance(self.right, CallableType):
             cright = self.right
-            return (is_same_type(left.ret_type, cright.ret_type) and
-                    is_same_types(left.arg_types, cright.arg_types) and
-                    left.arg_names == cright.arg_names and
-                    left.arg_kinds == cright.arg_kinds and
-                    left.is_type_obj() == cright.is_type_obj() and
-                    left.is_ellipsis_args == cright.is_ellipsis_args)
+            return (
+                is_same_type(left.ret_type, cright.ret_type)
+                and is_same_types(left.arg_types, cright.arg_types)
+                and left.arg_names == cright.arg_names
+                and left.arg_kinds == cright.arg_kinds
+                and left.is_type_obj() == cright.is_type_obj()
+                and left.is_ellipsis_args == cright.is_ellipsis_args
+            )
         else:
             return False
 
     def visit_tuple_type(self, left: TupleType) -> bool:
         if isinstance(self.right, TupleType):
-            return (is_same_type(tuple_fallback(left), tuple_fallback(self.right))
-                    and is_same_types(left.items, self.right.items))
+            return is_same_type(
+                tuple_fallback(left), tuple_fallback(self.right)
+            ) and is_same_types(left.items, self.right.items)
         else:
             return False
 
