@@ -338,6 +338,7 @@ class MypyFile(SymbolNode):
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
+        self.column = 0  # Dummy column
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
@@ -599,6 +600,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
+            # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
@@ -749,6 +751,7 @@ class FuncItem(FuncBase):
     ) -> None:
         super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
+            # TODO: set arguments line/column to their precise locations.
             arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
@@ -764,7 +767,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     This is a non-lambda function defined using 'def'.
     """
 
-    __slots__ = ("_name", "is_decorated", "is_conditional", "is_abstract", "original_def")
+    __slots__ = (
+        "_name",
+        "is_decorated",
+        "is_conditional",
+        "is_abstract",
+        "original_def",
+        "deco_line",
+    )
 
     # Note that all __init__ args must have default values
     def __init__(
@@ -782,6 +792,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -1057,6 +1069,7 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
+        "deco_line",
     )
 
     name: str  # Name of the class without module prefix
@@ -1096,6 +1109,8 @@ class ClassDef(Statement):
         self.keywords = OrderedDict(keywords or [])
         self.analyzed = None
         self.has_incompatible_baseclass = False
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
