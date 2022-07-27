@@ -151,3 +151,9 @@ v = 1
 reveal_type(f'{v}') # N: Revealed type is "builtins.str"
 reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 [builtins fixtures/f_string.pyi]
+
+[case testFeatureVersionSuggestion]
+# flags: --python-version 3.99
+this is what future python looks like public static void main String[] args await goto exit
+[out]
+main:2: error: invalid syntax; you likely need to run mypy using Python 3.99 or newer
