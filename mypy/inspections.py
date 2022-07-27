@@ -8,15 +8,32 @@ from mypy.find_sources import SourceFinder, InvalidSourceList
 from mypy.messages import format_type
 from mypy.modulefinder import PYTHON_EXTENSIONS
 from mypy.nodes import (
-    Expression, Node, MypyFile, RefExpr, TypeInfo, MemberExpr, SymbolNode, Decorator,
-    OverloadedFuncDef, Var, FuncBase, LDEF
+    Expression,
+    Node,
+    MypyFile,
+    RefExpr,
+    TypeInfo,
+    MemberExpr,
+    SymbolNode,
+    Decorator,
+    OverloadedFuncDef,
+    Var,
+    FuncBase,
+    LDEF,
 )
 from mypy.server.update import FineGrainedBuildManager
 from mypy.traverser import ExtendedTraverserVisitor
 from mypy.typeops import tuple_fallback
 from mypy.types import (
-    get_proper_type, ProperType, Instance, TupleType, TypedDictType,
-    FunctionLike, LiteralType, TypeVarType, UnionType
+    get_proper_type,
+    ProperType,
+    Instance,
+    TupleType,
+    TypedDictType,
+    FunctionLike,
+    LiteralType,
+    TypeVarType,
+    UnionType,
 )
 from mypy.typevars import fill_typevars_with_any
 
@@ -29,15 +46,14 @@ def node_ends_before(o: Node, line: int, column: int) -> bool:
     # Unfortunately, end positions for some statements are a mess,
     # e.g. overloaded functions, so we return False when we don't know.
     if o.end_line is not None and o.end_column is not None:
-        if (o.end_line < line
-                or o.end_line == line and o.end_column < column):
+        if o.end_line < line or o.end_line == line and o.end_column < column:
             return True
     return False
 
 
 def expr_span(expr: Expression) -> str:
     """Format expression span as in mypy error messages."""
-    return f'{expr.line}:{expr.column + 1}:{expr.end_line}:{expr.end_column}'
+    return f"{expr.line}:{expr.column + 1}:{expr.end_line}:{expr.end_column}"
 
 
 def get_instance_fallback(typ: ProperType) -> List[Instance]:
@@ -100,9 +116,9 @@ def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optiona
     if head in modules:
         return modules[head]
     while True:
-        if '.' not in head:
+        if "." not in head:
             return None
-        head, tail = head.rsplit('.', maxsplit=1)
+        head, tail = head.rsplit(".", maxsplit=1)
         mod = modules.get(head)
         if mod is not None:
             return mod
@@ -112,13 +128,7 @@ def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optiona
 class SearchVisitor(ExtendedTraverserVisitor):
     """Visitor looking for an expression whose span matches given one exactly."""
 
-    def __init__(
-        self,
-        line: int,
-        column: int,
-        end_line: int,
-        end_column: int
-    ) -> None:
+    def __init__(self, line: int, column: int, end_line: int, end_column: int) -> None:
         self.line = line
         self.column = column
         self.end_line = end_line
@@ -142,11 +152,7 @@ class SearchVisitor(ExtendedTraverserVisitor):
 
 
 def find_by_location(
-    tree: MypyFile,
-    line: int,
-    column: int,
-    end_line: int,
-    end_column: int
+    tree: MypyFile, line: int, column: int, end_line: int, end_column: int
 ) -> Optional[Expression]:
     """Find an expression matching given span, or None if not found."""
     if end_line < line:
@@ -161,11 +167,7 @@ def find_by_location(
 class SearchAllVisitor(ExtendedTraverserVisitor):
     """Visitor looking for all expressions whose spans enclose given position."""
 
-    def __init__(
-        self,
-        line: int,
-        column: int
-    ) -> None:
+    def __init__(self, line: int, column: int) -> None:
         self.line = line
         self.column = column
         self.result: List[Expression] = []
@@ -180,11 +182,7 @@ class SearchAllVisitor(ExtendedTraverserVisitor):
         return True
 
 
-def find_all_by_location(
-    tree: MypyFile,
-    line: int,
-    column: int,
-) -> List[Expression]:
+def find_all_by_location(tree: MypyFile, line: int, column: int) -> List[Expression]:
     """Find all expressions enclosing given position starting from innermost."""
     visitor = SearchAllVisitor(line, column)
     tree.accept(visitor)
@@ -208,8 +206,7 @@ class InspectionEngine:
     ) -> None:
         self.fg_manager = fg_manager
         self.finder = SourceFinder(
-            self.fg_manager.manager.fscache,
-            self.fg_manager.manager.options
+            self.fg_manager.manager.fscache, self.fg_manager.manager.options
         )
         self.verbosity = verbosity
         self.limit = limit
@@ -222,7 +219,7 @@ class InspectionEngine:
         self.module: Optional[State] = None
 
     def parse_location(self, location: str) -> Tuple[str, List[int]]:
-        if location.count(':') not in [2, 4]:
+        if location.count(":") not in [2, 4]:
             raise ValueError("Format should be file:line:column[:end_line:end_column]")
         parts = location.split(":")
         module, *rest = parts
@@ -253,9 +250,9 @@ class InspectionEngine:
         return self.add_prefixes(type_str, expression), True
 
     def object_type(self) -> Instance:
-        builtins = self.fg_manager.graph['builtins'].tree
+        builtins = self.fg_manager.graph["builtins"].tree
         assert builtins is not None
-        object_node = builtins.names['object'].node
+        object_node = builtins.names["object"].node
         assert isinstance(object_node, TypeInfo)
         return Instance(object_node, [])
 
@@ -345,9 +342,9 @@ class InspectionEngine:
         if isinstance(expression, RefExpr) and isinstance(expression.node, MypyFile):
             node = expression.node
             names = sorted(node.names)
-            if '__builtins__' in names:
+            if "__builtins__" in names:
                 # This is just to make tests stable. No one will really need ths name.
-                names.remove('__builtins__')
+                names.remove("__builtins__")
             mod_dict = {f'"<{node.fullname}>"': [f'"{name}"' for name in names]}
         else:
             mod_dict = {}
@@ -370,7 +367,7 @@ class InspectionEngine:
         return self.add_prefixes(f'{{{", ".join(base_attrs)}}}', expression), True
 
     def format_node(self, module: State, node: Union[FuncBase, SymbolNode]) -> str:
-        return f'{module.path}:{node.line}:{node.column + 1}:{node.name}'
+        return f"{module.path}:{node.line}:{node.column + 1}:{node.name}"
 
     def collect_nodes(self, expression: RefExpr) -> List[Union[FuncBase, SymbolNode]]:
         """Collect nodes that can be referred to  by an expression.
@@ -415,9 +412,7 @@ class InspectionEngine:
         return nodes
 
     def modules_for_nodes(
-        self,
-        nodes: List[Union[FuncBase, SymbolNode]],
-        expression: RefExpr,
+        self, nodes: List[Union[FuncBase, SymbolNode]], expression: RefExpr
     ) -> Tuple[Dict[Union[FuncBase, SymbolNode], State], bool]:
         """Gather modules where given nodes where defined.
 
@@ -435,7 +430,7 @@ class InspectionEngine:
                     continue
             modules[node] = module
             if not module.tree or module.tree.is_cache_skeleton or self.force_reload:
-                reload_needed |= (not module.tree or module.tree.is_cache_skeleton)
+                reload_needed |= not module.tree or module.tree.is_cache_skeleton
                 self.reload_module(module)
         return modules, reload_needed
 
@@ -447,7 +442,7 @@ class InspectionEngine:
         """
         if not isinstance(expression, RefExpr):
             # If there are no suitable matches at all, we return error later.
-            return '', True
+            return "", True
 
         nodes = self.collect_nodes(expression)
 
@@ -469,29 +464,33 @@ class InspectionEngine:
         if not result:
             return self.missing_node(expression), False
 
-        return self.add_prefixes(', '.join(result), expression), True
+        return self.add_prefixes(", ".join(result), expression), True
 
     def missing_type(self, expression: Expression) -> str:
-        alt_suggestion = ''
+        alt_suggestion = ""
         if not self.force_reload:
-            alt_suggestion = ' or try --force-reload'
-        return (f'No known type available for "{type(expression).__name__}"'
-                f' (maybe unreachable{alt_suggestion})')
+            alt_suggestion = " or try --force-reload"
+        return (
+            f'No known type available for "{type(expression).__name__}"'
+            f" (maybe unreachable{alt_suggestion})"
+        )
 
     def missing_node(self, expression: Expression) -> str:
-        return (f'Cannot find definition for "{type(expression).__name__}"'
-                f' at {expr_span(expression)}')
+        return (
+            f'Cannot find definition for "{type(expression).__name__}"'
+            f" at {expr_span(expression)}"
+        )
 
     def add_prefixes(self, result: str, expression: Expression) -> str:
         prefixes = []
         if self.include_kind:
-            prefixes.append(f'{type(expression).__name__}')
+            prefixes.append(f"{type(expression).__name__}")
         if self.include_span:
             prefixes.append(expr_span(expression))
         if prefixes:
-            prefix = ':'.join(prefixes) + ' -> '
+            prefix = ":".join(prefixes) + " -> "
         else:
-            prefix = ''
+            prefix = ""
         return prefix + result
 
     def run_inspection_by_exact_location(
@@ -510,14 +509,14 @@ class InspectionEngine:
         try:
             expression = find_by_location(tree, line, column - 1, end_line, end_column)
         except ValueError as err:
-            return {'error': str(err)}
+            return {"error": str(err)}
 
         if expression is None:
-            span = f'{line}:{column}:{end_line}:{end_column}'
-            return {'out': f"Can't find expression at span {span}", 'err': '', 'status': 1}
+            span = f"{line}:{column}:{end_line}:{end_column}"
+            return {"out": f"Can't find expression at span {span}", "err": "", "status": 1}
 
         inspection_str, success = method(expression)
-        return {'out': inspection_str, 'err': '', 'status': 0 if success else 1}
+        return {"out": inspection_str, "err": "", "status": 0 if success else 1}
 
     def run_inspection_by_position(
         self,
@@ -532,9 +531,12 @@ class InspectionEngine:
         """
         expressions = find_all_by_location(tree, line, column - 1)
         if not expressions:
-            position = f'{line}:{column}'
-            return {'out': f"Can't find any expressions at position {position}",
-                    'err': '', 'status': 1}
+            position = f"{line}:{column}"
+            return {
+                "out": f"Can't find any expressions at position {position}",
+                "err": "",
+                "status": 1,
+            }
 
         inspection_strs = []
         status = 0
@@ -545,8 +547,8 @@ class InspectionEngine:
             if inspection_str:
                 inspection_strs.append(inspection_str)
         if self.limit:
-            inspection_strs = inspection_strs[:self.limit]
-        return {'out': '\n'.join(inspection_strs), 'err': '', 'status': status}
+            inspection_strs = inspection_strs[: self.limit]
+        return {"out": "\n".join(inspection_strs), "err": "", "status": status}
 
     def find_module(self, file: str) -> Tuple[Optional[State], Dict[str, object]]:
         """Find module by path, or return a suitable error message.
@@ -554,25 +556,22 @@ class InspectionEngine:
         Note we don't use exceptions to simplify handling 1 vs 2 statuses.
         """
         if not any(file.endswith(ext) for ext in PYTHON_EXTENSIONS):
-            return None, {'error': 'Source file is not a Python file'}
+            return None, {"error": "Source file is not a Python file"}
 
         try:
             module, _ = self.finder.crawl_up(os.path.normpath(file))
         except InvalidSourceList:
-            return None, {'error': 'Invalid source file name: ' + file}
+            return None, {"error": "Invalid source file name: " + file}
 
         state = self.fg_manager.graph.get(module)
         self.module = state
         return (
             state,
-            {'out': f'Unknown module: {module}', 'err': '', 'status': 1}
-            if state is None else {}
+            {"out": f"Unknown module: {module}", "err": "", "status": 1} if state is None else {},
         )
 
     def run_inspection(
-        self,
-        location: str,
-        method: Callable[[Expression], Tuple[str, bool]],
+        self, location: str, method: Callable[[Expression], Tuple[str, bool]]
     ) -> Dict[str, object]:
         """Top-level logic to inspect expression(s) at a location.
 
@@ -581,7 +580,7 @@ class InspectionEngine:
         try:
             file, pos = self.parse_location(location)
         except ValueError as err:
-            return {'error': str(err)}
+            return {"error": str(err)}
 
         state, err_dict = self.find_module(file)
         if state is None:
@@ -615,9 +614,9 @@ class InspectionEngine:
     def get_definition(self, location: str) -> Dict[str, object]:
         """Get symbol definitions of expression(s) at a location."""
         result = self.run_inspection(location, self.expression_def)
-        if 'out' in result and not result['out']:
+        if "out" in result and not result["out"]:
             # None of the expressions found turns out to be a RefExpr.
-            _, location = location.split(':', maxsplit=1)
-            result['out'] = f'No name or member expressions at {location}'
-            result['status'] = 1
+            _, location = location.split(":", maxsplit=1)
+            result["out"] = f"No name or member expressions at {location}"
+            result["status"] = 1
         return result

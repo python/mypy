@@ -23,22 +23,20 @@ from mypy.test.helpers import assert_string_arrays_equal, normalize_error_messag
 import pytest
 
 # Files containing test cases descriptions.
-daemon_files = [
-    'daemon.test',
-]
+daemon_files = ["daemon.test"]
 
 
 class DaemonSuite(DataSuite):
     files = daemon_files
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
-        if testcase.name.endswith('_python38') and sys.version_info < (3, 8):
+        if testcase.name.endswith("_python38") and sys.version_info < (3, 8):
             pytest.skip("Not supported on this version of Python")
         try:
             test_daemon(testcase)
         finally:
             # Kill the daemon if it's still running.
-            run_cmd('dmypy kill')
+            run_cmd("dmypy kill")
 
 
 def test_daemon(testcase: DataDrivenTestCase) -> None:
@@ -46,18 +44,19 @@ def test_daemon(testcase: DataDrivenTestCase) -> None:
     for i, step in enumerate(parse_script(testcase.input)):
         cmd = step[0]
         expected_lines = step[1:]
-        assert cmd.startswith('$')
+        assert cmd.startswith("$")
         cmd = cmd[1:].strip()
-        cmd = cmd.replace('{python}', sys.executable)
+        cmd = cmd.replace("{python}", sys.executable)
         sts, output = run_cmd(cmd)
         output_lines = output.splitlines()
         output_lines = normalize_error_messages(output_lines)
         if sts:
-            output_lines.append('== Return code: %d' % sts)
-        assert_string_arrays_equal(expected_lines,
-                                   output_lines,
-                                   "Command %d (%s) did not give expected output" %
-                                   (i + 1, cmd))
+            output_lines.append("== Return code: %d" % sts)
+        assert_string_arrays_equal(
+            expected_lines,
+            output_lines,
+            "Command %d (%s) did not give expected output" % (i + 1, cmd),
+        )
 
 
 def parse_script(input: List[str]) -> List[List[str]]:
@@ -70,9 +69,9 @@ def parse_script(input: List[str]) -> List[List[str]]:
     steps = []
     step: List[str] = []
     for line in input:
-        if line.startswith('$'):
+        if line.startswith("$"):
             if step:
-                assert step[0].startswith('$')
+                assert step[0].startswith("$")
                 steps.append(step)
                 step = []
         step.append(line)
@@ -82,19 +81,21 @@ def parse_script(input: List[str]) -> List[List[str]]:
 
 
 def run_cmd(input: str) -> Tuple[int, str]:
-    if input.startswith('dmypy '):
-        input = sys.executable + ' -m mypy.' + input
-    if input.startswith('mypy '):
-        input = sys.executable + ' -m' + input
+    if input.startswith("dmypy "):
+        input = sys.executable + " -m mypy." + input
+    if input.startswith("mypy "):
+        input = sys.executable + " -m" + input
     env = os.environ.copy()
-    env['PYTHONPATH'] = PREFIX
+    env["PYTHONPATH"] = PREFIX
     try:
-        output = subprocess.check_output(input,
-                                         shell=True,
-                                         stderr=subprocess.STDOUT,
-                                         universal_newlines=True,
-                                         cwd=test_temp_dir,
-                                         env=env)
+        output = subprocess.check_output(
+            input,
+            shell=True,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            cwd=test_temp_dir,
+            env=env,
+        )
         return 0, output
     except subprocess.CalledProcessError as err:
         return err.returncode, err.output
@@ -105,33 +106,34 @@ class DaemonUtilitySuite(unittest.TestCase):
 
     def test_filter_out_missing_top_level_packages(self) -> None:
         with tempfile.TemporaryDirectory() as td:
-            self.make_file(td, 'base/a/')
-            self.make_file(td, 'base/b.py')
-            self.make_file(td, 'base/c.pyi')
-            self.make_file(td, 'base/missing.txt')
-            self.make_file(td, 'typeshed/d.pyi')
-            self.make_file(td, 'typeshed/@python2/e')
-            self.make_file(td, 'pkg1/f-stubs')
-            self.make_file(td, 'pkg2/g-python2-stubs')
-            self.make_file(td, 'mpath/sub/long_name/')
+            self.make_file(td, "base/a/")
+            self.make_file(td, "base/b.py")
+            self.make_file(td, "base/c.pyi")
+            self.make_file(td, "base/missing.txt")
+            self.make_file(td, "typeshed/d.pyi")
+            self.make_file(td, "typeshed/@python2/e")
+            self.make_file(td, "pkg1/f-stubs")
+            self.make_file(td, "pkg2/g-python2-stubs")
+            self.make_file(td, "mpath/sub/long_name/")
 
             def makepath(p: str) -> str:
                 return os.path.join(td, p)
 
-            search = SearchPaths(python_path=(makepath('base'),),
-                                 mypy_path=(makepath('mpath/sub'),),
-                                 package_path=(makepath('pkg1'), makepath('pkg2')),
-                                 typeshed_path=(makepath('typeshed'),))
+            search = SearchPaths(
+                python_path=(makepath("base"),),
+                mypy_path=(makepath("mpath/sub"),),
+                package_path=(makepath("pkg1"), makepath("pkg2")),
+                typeshed_path=(makepath("typeshed"),),
+            )
             fscache = FileSystemCache()
             res = filter_out_missing_top_level_packages(
-                {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'long_name', 'ff', 'missing'},
-                search,
-                fscache)
-            assert res == {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'long_name'}
+                {"a", "b", "c", "d", "e", "f", "g", "long_name", "ff", "missing"}, search, fscache
+            )
+            assert res == {"a", "b", "c", "d", "e", "f", "g", "long_name"}
 
     def make_file(self, base: str, path: str) -> None:
         fullpath = os.path.join(base, path)
         os.makedirs(os.path.dirname(fullpath), exist_ok=True)
-        if not path.endswith('/'):
-            with open(fullpath, 'w') as f:
-                f.write('# test file')
+        if not path.endswith("/"):
+            with open(fullpath, "w") as f:
+                f.write("# test file")

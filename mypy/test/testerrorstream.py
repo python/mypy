@@ -11,8 +11,8 @@ from mypy.options import Options
 
 class ErrorStreamSuite(DataSuite):
     required_out_section = True
-    base_path = '.'
-    files = ['errorstream.test']
+    base_path = "."
+    files = ["errorstream.test"]
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         test_error_stream(testcase)
@@ -30,17 +30,17 @@ def test_error_stream(testcase: DataDrivenTestCase) -> None:
 
     def flush_errors(msgs: List[str], serious: bool) -> None:
         if msgs:
-            logged_messages.append('==== Errors flushed ====')
+            logged_messages.append("==== Errors flushed ====")
             logged_messages.extend(msgs)
 
-    sources = [BuildSource('main', '__main__', '\n'.join(testcase.input))]
+    sources = [BuildSource("main", "__main__", "\n".join(testcase.input))]
     try:
-        build.build(sources=sources,
-                    options=options,
-                    flush_errors=flush_errors)
+        build.build(sources=sources, options=options, flush_errors=flush_errors)
     except CompileError as e:
         assert e.messages == []
 
-    assert_string_arrays_equal(testcase.output, logged_messages,
-                               'Invalid output ({}, line {})'.format(
-                                   testcase.file, testcase.line))
+    assert_string_arrays_equal(
+        testcase.output,
+        logged_messages,
+        "Invalid output ({}, line {})".format(testcase.file, testcase.line),
+    )

@@ -66,8 +66,10 @@ def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]
 def run(args: List[str]) -> Tuple[str, str, int]:
     # Lazy import to avoid needing to import all of mypy to call run_dmypy
     from mypy.main import main
-    return _run(lambda stdout, stderr: main(None, args=args,
-                                            stdout=stdout, stderr=stderr, clean_exit=True))
+
+    return _run(
+        lambda stdout, stderr: main(None, args=args, stdout=stdout, stderr=stderr, clean_exit=True)
+    )
 
 
 def run_dmypy(args: List[str]) -> Tuple[str, str, int]:

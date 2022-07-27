@@ -100,7 +100,7 @@ def staticmethod(f: T) -> T: ...
 
 
 def run_stubtest(
-    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None,
+    stub: str, runtime: str, options: List[str], config_file: Optional[str] = None
 ) -> str:
     with use_tmp_dir(TEST_MODULE_NAME) as tmp_dir:
         with open("builtins.pyi", "w") as f:
@@ -117,10 +117,7 @@ def run_stubtest(
             options = options + ["--mypy-config-file", f"{TEST_MODULE_NAME}_config.ini"]
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
-            test_stubs(
-                parse_options([TEST_MODULE_NAME] + options),
-                use_builtins_fixtures=True
-            )
+            test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
         # remove cwd as it's not available from outside
         return output.getvalue().replace(tmp_dir + os.sep, "")
 
@@ -212,26 +209,12 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_coroutines(self) -> Iterator[Case]:
-        yield Case(
-            stub="def bar() -> int: ...",
-            runtime="async def bar(): return 5",
-            error="bar",
-        )
+        yield Case(stub="def bar() -> int: ...", runtime="async def bar(): return 5", error="bar")
         # Don't error for this one -- we get false positives otherwise
+        yield Case(stub="async def foo() -> int: ...", runtime="def foo(): return 5", error=None)
+        yield Case(stub="def baz() -> int: ...", runtime="def baz(): return 5", error=None)
         yield Case(
-            stub="async def foo() -> int: ...",
-            runtime="def foo(): return 5",
-            error=None,
-        )
-        yield Case(
-            stub="def baz() -> int: ...",
-            runtime="def baz(): return 5",
-            error=None,
-        )
-        yield Case(
-            stub="async def bingo() -> int: ...",
-            runtime="async def bingo(): return 5",
-            error=None,
+            stub="async def bingo() -> int: ...", runtime="async def bingo(): return 5", error=None
         )
 
     @collect_cases
@@ -717,17 +700,9 @@ class StubtestUnit(unittest.TestCase):
             error="A",
         )
         # Error if an alias isn't present at runtime...
-        yield Case(
-            stub="B = str",
-            runtime="",
-            error="B"
-        )
+        yield Case(stub="B = str", runtime="", error="B")
         # ... but only if the alias isn't private
-        yield Case(
-            stub="_C = int",
-            runtime="",
-            error=None
-        )
+        yield Case(stub="_C = int", runtime="", error=None)
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:
@@ -792,12 +767,12 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="class Y: ...",
             runtime="__all__ += ['Y']\nclass Y:\n  def __or__(self, other): return self|other",
-            error="Y.__or__"
+            error="Y.__or__",
         )
         yield Case(
             stub="class Z: ...",
             runtime="__all__ += ['Z']\nclass Z:\n  def __reduce__(self): return (Z,)",
-            error=None
+            error=None,
         )
 
     @collect_cases
@@ -815,9 +790,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_non_public_2(self) -> Iterator[Case]:
-        yield Case(
-            stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None
-        )
+        yield Case(stub="__all__: list[str] = ['f']", runtime="__all__ = ['f']", error=None)
         yield Case(stub="f: int", runtime="def f(): ...", error="f")
         yield Case(stub="g: int", runtime="def g(): ...", error="g")
 
@@ -853,9 +826,7 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_not_subclassable(self) -> Iterator[Case]:
         yield Case(
-            stub="class CanBeSubclassed: ...",
-            runtime="class CanBeSubclassed: ...",
-            error=None,
+            stub="class CanBeSubclassed: ...", runtime="class CanBeSubclassed: ...", error=None
         )
         yield Case(
             stub="class CannotBeSubclassed:\n  def __init_subclass__(cls) -> None: ...",
@@ -876,7 +847,7 @@ class StubtestUnit(unittest.TestCase):
                 def __mangle_good(self, text): pass
                 def __mangle_bad(self, text): pass
             """,
-            error="X.__mangle_bad"
+            error="X.__mangle_bad",
         )
 
     @collect_cases
@@ -898,7 +869,7 @@ class StubtestUnit(unittest.TestCase):
             class C(A):
                 def foo(self, y: int) -> None: ...
             """,
-            error="C.foo"
+            error="C.foo",
         )
         yield Case(
             stub="""
@@ -908,7 +879,7 @@ class StubtestUnit(unittest.TestCase):
             class X:
                 def __init__(self, x): pass
             """,
-            error="X.__init__"
+            error="X.__init__",
         )
 
     @collect_cases
@@ -953,16 +924,8 @@ class StubtestUnit(unittest.TestCase):
             runtime="INT_FLOAT_MISMATCH = 1.0",
             error="INT_FLOAT_MISMATCH",
         )
-        yield Case(
-            stub="WRONG_INT: Literal[1]",
-            runtime="WRONG_INT = 2",
-            error="WRONG_INT",
-        )
-        yield Case(
-            stub="WRONG_STR: Literal['a']",
-            runtime="WRONG_STR = 'b'",
-            error="WRONG_STR",
-        )
+        yield Case(stub="WRONG_INT: Literal[1]", runtime="WRONG_INT = 2", error="WRONG_INT")
+        yield Case(stub="WRONG_STR: Literal['a']", runtime="WRONG_STR = 'b'", error="WRONG_STR")
         yield Case(
             stub="BYTES_STR_MISMATCH: Literal[b'value']",
             runtime="BYTES_STR_MISMATCH = 'value'",
@@ -981,12 +944,12 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="WRONG_BOOL_1: Literal[True]",
             runtime="WRONG_BOOL_1 = False",
-            error='WRONG_BOOL_1',
+            error="WRONG_BOOL_1",
         )
         yield Case(
             stub="WRONG_BOOL_2: Literal[False]",
             runtime="WRONG_BOOL_2 = True",
-            error='WRONG_BOOL_2',
+            error="WRONG_BOOL_2",
         )
 
     @collect_cases
@@ -1043,7 +1006,7 @@ class StubtestUnit(unittest.TestCase):
                 bar: int
                 def foo(self, x: int, y: bytes = ...) -> str: ...
             """,
-            error=None
+            error=None,
         )
 
     @collect_cases
@@ -1051,27 +1014,15 @@ class StubtestUnit(unittest.TestCase):
         yield Case(
             stub="from typing import TypeVar", runtime="from typing import TypeVar", error=None
         )
-        yield Case(
-            stub="A = TypeVar('A')",
-            runtime="A = TypeVar('A')",
-            error=None,
-        )
-        yield Case(
-            stub="B = TypeVar('B')",
-            runtime="B = 5",
-            error="B",
-        )
+        yield Case(stub="A = TypeVar('A')", runtime="A = TypeVar('A')", error=None)
+        yield Case(stub="B = TypeVar('B')", runtime="B = 5", error="B")
         if sys.version_info >= (3, 10):
             yield Case(
                 stub="from typing import ParamSpec",
                 runtime="from typing import ParamSpec",
-                error=None
-            )
-            yield Case(
-                stub="C = ParamSpec('C')",
-                runtime="C = ParamSpec('C')",
                 error=None,
             )
+            yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
 
 def remove_color_code(s: str) -> str:
@@ -1088,9 +1039,9 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            'Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n'
+            "Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n"
             f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
-            'Found 1 error (checked 1 module)\n'
+            "Found 1 error (checked 1 module)\n"
         )
         assert remove_color_code(output) == expected
 
@@ -1109,17 +1060,15 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(
             stub="", runtime="__all__ = ['f']\ndef f(): pass", options=["--ignore-missing-stub"]
         )
-        assert output == 'Success: no issues found in 1 module\n'
+        assert output == "Success: no issues found in 1 module\n"
 
-        output = run_stubtest(
-            stub="", runtime="def f(): pass", options=["--ignore-missing-stub"]
-        )
-        assert output == 'Success: no issues found in 1 module\n'
+        output = run_stubtest(stub="", runtime="def f(): pass", options=["--ignore-missing-stub"])
+        assert output == "Success: no issues found in 1 module\n"
 
         output = run_stubtest(
             stub="def f(__a): ...", runtime="def f(a): pass", options=["--ignore-positional-only"]
         )
-        assert output == 'Success: no issues found in 1 module\n'
+        assert output == "Success: no issues found in 1 module\n"
 
     def test_allowlist(self) -> None:
         # Can't use this as a context because Windows
@@ -1133,7 +1082,7 @@ class StubtestMiscUnit(unittest.TestCase):
                 runtime="def bad(asdf, text): pass",
                 options=["--allowlist", allowlist.name],
             )
-            assert output == 'Success: no issues found in 1 module\n'
+            assert output == "Success: no issues found in 1 module\n"
 
             # test unused entry detection
             output = run_stubtest(stub="", runtime="", options=["--allowlist", allowlist.name])
@@ -1147,7 +1096,7 @@ class StubtestMiscUnit(unittest.TestCase):
                 runtime="",
                 options=["--allowlist", allowlist.name, "--ignore-unused-allowlist"],
             )
-            assert output == 'Success: no issues found in 1 module\n'
+            assert output == "Success: no issues found in 1 module\n"
 
             # test regex matching
             with open(allowlist.name, mode="w+") as f:
@@ -1161,20 +1110,23 @@ class StubtestMiscUnit(unittest.TestCase):
                     def good() -> None: ...
                     def bad(number: int) -> None: ...
                     def also_bad(number: int) -> None: ...
-                    """.lstrip("\n")
+                    """.lstrip(
+                        "\n"
+                    )
                 ),
                 runtime=textwrap.dedent(
                     """
                     def good(): pass
                     def bad(asdf): pass
                     def also_bad(asdf): pass
-                    """.lstrip("\n")
+                    """.lstrip(
+                        "\n"
+                    )
                 ),
                 options=["--allowlist", allowlist.name, "--generate-allowlist"],
             )
             assert output == (
-                f"note: unused allowlist entry unused.*\n"
-                f"{TEST_MODULE_NAME}.also_bad\n"
+                f"note: unused allowlist entry unused.*\n" f"{TEST_MODULE_NAME}.also_bad\n"
             )
         finally:
             os.unlink(allowlist.name)
@@ -1188,7 +1140,7 @@ class StubtestMiscUnit(unittest.TestCase):
 
         output = run_stubtest(stub="def f(): ...\ndef f(): ...", runtime="", options=[])
         assert remove_color_code(output) == (
-            'error: not checking stubs due to mypy build errors:\n{}.pyi:2: '
+            "error: not checking stubs due to mypy build errors:\n{}.pyi:2: "
             'error: Name "f" already defined on line 1\n'.format(TEST_MODULE_NAME)
         )
 
@@ -1212,7 +1164,7 @@ class StubtestMiscUnit(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 test_stubs(parse_options([TEST_MODULE_NAME]))
             output_str = remove_color_code(output.getvalue())
-            assert output_str == 'Success: no issues found in 1 module\n'
+            assert output_str == "Success: no issues found in 1 module\n"
 
     def test_get_typeshed_stdlib_modules(self) -> None:
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
@@ -1241,9 +1193,7 @@ class StubtestMiscUnit(unittest.TestCase):
     def test_config_file(self) -> None:
         runtime = "temp = 5\n"
         stub = "from decimal import Decimal\ntemp: Decimal\n"
-        config_file = (
-            f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
-        )
+        config_file = f"[mypy]\nplugins={root_dir}/test-data/unit/plugins/decimal_to_int.py\n"
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"

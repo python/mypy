@@ -7,13 +7,15 @@ from mypy.test.data import DataDrivenTestCase
 from mypy.errors import CompileError
 
 from mypyc.test.testutil import (
-    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file2,
-    assert_test_output, infer_ir_build_options_from_test_name
+    ICODE_GEN_BUILTINS,
+    use_custom_builtins,
+    MypycDataSuite,
+    build_ir_for_single_file2,
+    assert_test_output,
+    infer_ir_build_options_from_test_name,
 )
 
-files = [
-    'alwaysdefined.test'
-]
+files = ["alwaysdefined.test"]
 
 
 class TestAlwaysDefined(MypycDataSuite):
@@ -34,9 +36,10 @@ class TestAlwaysDefined(MypycDataSuite):
             else:
                 actual = []
                 for cl in ir.classes:
-                    if cl.name.startswith('_'):
+                    if cl.name.startswith("_"):
                         continue
-                    actual.append('{}: [{}]'.format(
-                        cl.name, ', '.join(sorted(cl._always_initialized_attrs))))
+                    actual.append(
+                        "{}: [{}]".format(cl.name, ", ".join(sorted(cl._always_initialized_attrs)))
+                    )
 
-            assert_test_output(testcase, actual, 'Invalid test output', testcase.output)
+            assert_test_output(testcase, actual, "Invalid test output", testcase.output)

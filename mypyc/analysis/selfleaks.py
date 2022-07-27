@@ -1,11 +1,41 @@
 from typing import List, Set, Tuple
 
 from mypyc.ir.ops import (
-    OpVisitor, Register, Goto, Assign, AssignMulti, SetMem, Call, MethodCall, LoadErrorValue,
-    LoadLiteral, GetAttr, SetAttr, LoadStatic, InitStatic, TupleGet, TupleSet, Box, Unbox,
-    Cast, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem,
-    GetElementPtr, LoadAddress, KeepAlive, Branch, Return, Unreachable, RegisterOp, BasicBlock,
-    Extend
+    OpVisitor,
+    Register,
+    Goto,
+    Assign,
+    AssignMulti,
+    SetMem,
+    Call,
+    MethodCall,
+    LoadErrorValue,
+    LoadLiteral,
+    GetAttr,
+    SetAttr,
+    LoadStatic,
+    InitStatic,
+    TupleGet,
+    TupleSet,
+    Box,
+    Unbox,
+    Cast,
+    RaiseStandardError,
+    CallC,
+    Truncate,
+    LoadGlobal,
+    IntOp,
+    ComparisonOp,
+    LoadMem,
+    GetElementPtr,
+    LoadAddress,
+    KeepAlive,
+    Branch,
+    Return,
+    Unreachable,
+    RegisterOp,
+    BasicBlock,
+    Extend,
 )
 from mypyc.ir.rtypes import RInstance
 from mypyc.analysis.dataflow import MAYBE_ANALYSIS, run_analysis, AnalysisResult, CFG
@@ -55,7 +85,7 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
 
     def visit_call(self, op: Call) -> GenAndKill:
         fn = op.fn
-        if fn.class_name and fn.name == '__init__':
+        if fn.class_name and fn.name == "__init__":
             self_type = op.fn.sig.args[0].type
             assert isinstance(self_type, RInstance)
             cl = self_type.class_ir
@@ -146,12 +176,14 @@ class SelfLeakedVisitor(OpVisitor[GenAndKill]):
         return CLEAN
 
 
-def analyze_self_leaks(blocks: List[BasicBlock],
-                       self_reg: Register,
-                       cfg: CFG) -> AnalysisResult[None]:
-    return run_analysis(blocks=blocks,
-                        cfg=cfg,
-                        gen_and_kill=SelfLeakedVisitor(self_reg),
-                        initial=set(),
-                        backward=False,
-                        kind=MAYBE_ANALYSIS)
+def analyze_self_leaks(
+    blocks: List[BasicBlock], self_reg: Register, cfg: CFG
+) -> AnalysisResult[None]:
+    return run_analysis(
+        blocks=blocks,
+        cfg=cfg,
+        gen_and_kill=SelfLeakedVisitor(self_reg),
+        initial=set(),
+        backward=False,
+        kind=MAYBE_ANALYSIS,
+    )

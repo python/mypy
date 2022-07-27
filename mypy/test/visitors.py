@@ -9,7 +9,13 @@ even if the test was compiled.
 from typing import Set
 
 from mypy.nodes import (
-    NameExpr, TypeVarExpr, CallExpr, Expression, MypyFile, AssignmentStmt, IntExpr
+    NameExpr,
+    TypeVarExpr,
+    CallExpr,
+    Expression,
+    MypyFile,
+    AssignmentStmt,
+    IntExpr,
 )
 from mypy.traverser import TraverserVisitor
 
@@ -24,7 +30,7 @@ class SkippedNodeSearcher(TraverserVisitor):
         self.is_typing = False
 
     def visit_mypy_file(self, f: MypyFile) -> None:
-        self.is_typing = f.fullname == 'typing' or f.fullname == 'builtins'
+        self.is_typing = f.fullname == "typing" or f.fullname == "builtins"
         super().visit_mypy_file(f)
 
     def visit_assignment_stmt(self, s: AssignmentStmt) -> None:
@@ -53,12 +59,11 @@ def ignore_node(node: Expression) -> bool:
     # from the typing module is not easy, we just to strip them all away.
     if isinstance(node, TypeVarExpr):
         return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.object':
+    if isinstance(node, NameExpr) and node.fullname == "builtins.object":
         return True
-    if isinstance(node, NameExpr) and node.fullname == 'builtins.None':
+    if isinstance(node, NameExpr) and node.fullname == "builtins.None":
         return True
-    if isinstance(node, CallExpr) and (ignore_node(node.callee) or
-                                       node.analyzed):
+    if isinstance(node, CallExpr) and (ignore_node(node.callee) or node.analyzed):
         return True
 
     return False

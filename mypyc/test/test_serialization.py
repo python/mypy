@@ -16,7 +16,7 @@ from mypyc.sametype import is_same_type, is_same_signature
 
 
 def get_dict(x: Any) -> Dict[str, Any]:
-    if hasattr(x, '__mypyc_attrs__'):
+    if hasattr(x, "__mypyc_attrs__"):
         return {k: getattr(x, k) for k in x.__mypyc_attrs__ if hasattr(x, k)}
     else:
         return dict(x.__dict__)
@@ -25,8 +25,8 @@ def get_dict(x: Any) -> Dict[str, Any]:
 def get_function_dict(x: FuncIR) -> Dict[str, Any]:
     """Get a dict of function attributes safe to compare across serialization"""
     d = get_dict(x)
-    d.pop('blocks', None)
-    d.pop('env', None)
+    d.pop("blocks", None)
+    d.pop("env", None)
     return d
 
 
@@ -87,12 +87,12 @@ def assert_modules_same(ir1: ModuleIR, ir2: ModuleIR) -> None:
         assert_blobs_same(get_dict(cls1), get_dict(cls2), (ir1.fullname, cls1.fullname))
 
     for fn1, fn2 in zip(ir1.functions, ir2.functions):
-        assert_blobs_same(get_function_dict(fn1), get_function_dict(fn2),
-                          (ir1.fullname, fn1.fullname))
-        assert_blobs_same(get_dict(fn1.decl), get_dict(fn2.decl),
-                          (ir1.fullname, fn1.fullname))
+        assert_blobs_same(
+            get_function_dict(fn1), get_function_dict(fn2), (ir1.fullname, fn1.fullname)
+        )
+        assert_blobs_same(get_dict(fn1.decl), get_dict(fn2.decl), (ir1.fullname, fn1.fullname))
 
-    assert_blobs_same(ir1.final_names, ir2.final_names, (ir1.fullname, 'final_names'))
+    assert_blobs_same(ir1.final_names, ir2.final_names, (ir1.fullname, "final_names"))
 
 
 def check_serialization_roundtrip(irs: Dict[str, ModuleIR]) -> None:

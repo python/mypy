@@ -1,9 +1,21 @@
 from typing import Optional
 
 from mypy.nodes import (
-    AssertTypeExpr, Var, FuncItem, ClassDef, AssignmentStmt, ForStmt, WithStmt,
-    CastExpr, TypeApplication, TypeAliasExpr, TypeVarExpr, TypedDictExpr, NamedTupleExpr,
-    PromoteExpr, NewTypeExpr
+    AssertTypeExpr,
+    Var,
+    FuncItem,
+    ClassDef,
+    AssignmentStmt,
+    ForStmt,
+    WithStmt,
+    CastExpr,
+    TypeApplication,
+    TypeAliasExpr,
+    TypeVarExpr,
+    TypedDictExpr,
+    NamedTupleExpr,
+    PromoteExpr,
+    NewTypeExpr,
 )
 from mypy.types import Type
 from mypy.traverser import TraverserVisitor

@@ -46,24 +46,24 @@ MAX_SHORT_INT: Final = sys.maxsize >> 1
 #
 # Note: Assume that the compiled code uses the same bit width as mypyc, except for
 #       Python 3.5 on macOS.
-MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2 ** 30 - 1
+MAX_LITERAL_SHORT_INT: Final = sys.maxsize >> 1 if not IS_MIXED_32_64_BIT_BUILD else 2**30 - 1
 MIN_LITERAL_SHORT_INT: Final = -MAX_LITERAL_SHORT_INT - 1
 
 # Runtime C library files
 RUNTIME_C_FILES: Final = [
-    'init.c',
-    'getargs.c',
-    'getargsfast.c',
-    'int_ops.c',
-    'str_ops.c',
-    'bytes_ops.c',
-    'list_ops.c',
-    'dict_ops.c',
-    'set_ops.c',
-    'tuple_ops.c',
-    'exc_ops.c',
-    'misc_ops.c',
-    'generic_ops.c',
+    "init.c",
+    "getargs.c",
+    "getargsfast.c",
+    "int_ops.c",
+    "str_ops.c",
+    "bytes_ops.c",
+    "list_ops.c",
+    "dict_ops.c",
+    "set_ops.c",
+    "tuple_ops.c",
+    "exc_ops.c",
+    "misc_ops.c",
+    "generic_ops.c",
 ]
 
 
@@ -75,11 +75,11 @@ def shared_lib_name(group_name: str) -> str:
 
     (This just adds a suffix to the final component.)
     """
-    return f'{group_name}__mypyc'
+    return f"{group_name}__mypyc"
 
 
 def short_name(name: str) -> str:
-    if name.startswith('builtins.'):
+    if name.startswith("builtins."):
         return name[9:]
     return name
 

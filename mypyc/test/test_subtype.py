@@ -3,8 +3,12 @@
 import unittest
 
 from mypyc.ir.rtypes import (
-    bit_rprimitive, bool_rprimitive, int_rprimitive, int64_rprimitive, int32_rprimitive,
-    short_int_rprimitive
+    bit_rprimitive,
+    bool_rprimitive,
+    int_rprimitive,
+    int64_rprimitive,
+    int32_rprimitive,
+    short_int_rprimitive,
 )
 from mypyc.subtype import is_subtype
 from mypyc.rt_subtype import is_runtime_subtype

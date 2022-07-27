@@ -52,8 +52,6 @@ class AssignmentTargetAttr(AssignmentTarget):
 class AssignmentTargetTuple(AssignmentTarget):
     """x, ..., y as assignment target"""
 
-    def __init__(self,
-                 items: List[AssignmentTarget],
-                 star_idx: Optional[int] = None) -> None:
+    def __init__(self, items: List[AssignmentTarget], star_idx: Optional[int] = None) -> None:
         self.items = items
         self.star_idx = star_idx

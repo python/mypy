@@ -50,34 +50,35 @@ def check_consistency(o: object) -> None:
         path2 = get_path(sym2, seen, parents)
 
         if fn in m:
-            print('\nDuplicate {!r} nodes with fullname {!r} found:'.format(
-                type(sym).__name__, fn))
-            print('[1] %d: %s' % (id(sym1), path_to_str(path1)))
-            print('[2] %d: %s' % (id(sym2), path_to_str(path2)))
+            print(
+                "\nDuplicate {!r} nodes with fullname {!r} found:".format(type(sym).__name__, fn)
+            )
+            print("[1] %d: %s" % (id(sym1), path_to_str(path1)))
+            print("[2] %d: %s" % (id(sym2), path_to_str(path2)))
 
         if DUMP_MISMATCH_NODES and fn in m:
             # Add verbose output with full AST node contents.
-            print('---')
+            print("---")
             print(id(sym1), sym1)
-            print('---')
+            print("---")
             print(id(sym2), sym2)
 
         assert sym.fullname not in m
 
 
 def path_to_str(path: List[Tuple[object, object]]) -> str:
-    result = '<root>'
+    result = "<root>"
     for attr, obj in path:
         t = type(obj).__name__
-        if t in ('dict', 'tuple', 'SymbolTable', 'list'):
-            result += f'[{repr(attr)}]'
+        if t in ("dict", "tuple", "SymbolTable", "list"):
+            result += f"[{repr(attr)}]"
         else:
             if isinstance(obj, Var):
-                result += f'.{attr}({t}:{obj.name})'
-            elif t in ('BuildManager', 'FineGrainedBuildManager'):
+                result += f".{attr}({t}:{obj.name})"
+            elif t in ("BuildManager", "FineGrainedBuildManager"):
                 # Omit class name for some classes that aren't part of a class
                 # hierarchy since there isn't much ambiguity.
-                result += f'.{attr}'
+                result += f".{attr}"
             else:
-                result += f'.{attr}({t})'
+                result += f".{attr}({t})"
     return result

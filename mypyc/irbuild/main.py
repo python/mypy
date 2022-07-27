@@ -45,17 +45,19 @@ from mypyc.analysis.attrdefined import analyze_always_defined_attrs
 
 # The stubs for callable contextmanagers are busted so cast it to the
 # right type...
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
 strict_optional_dec = cast(Callable[[F], F], state.strict_optional_set(True))
 
 
 @strict_optional_dec  # Turn on strict optional for any type manipulations we do
-def build_ir(modules: List[MypyFile],
-             graph: Graph,
-             types: Dict[Expression, Type],
-             mapper: Mapper,
-             options: CompilerOptions,
-             errors: Errors) -> ModuleIRs:
+def build_ir(
+    modules: List[MypyFile],
+    graph: Graph,
+    types: Dict[Expression, Type],
+    mapper: Mapper,
+    options: CompilerOptions,
+    errors: Errors,
+) -> ModuleIRs:
     """Build IR for a set of modules that have been type-checked by mypy."""
 
     build_type_map(mapper, modules, graph, types, options, errors)
@@ -74,7 +76,14 @@ def build_ir(modules: List[MypyFile],
         # Construct and configure builder objects (cyclic runtime dependency).
         visitor = IRBuilderVisitor()
         builder = IRBuilder(
-            module.fullname, types, graph, errors, mapper, pbv, visitor, options,
+            module.fullname,
+            types,
+            graph,
+            errors,
+            mapper,
+            pbv,
+            visitor,
+            options,
             singledispatch_info.singledispatch_impls,
         )
         visitor.builder = builder
@@ -86,7 +95,7 @@ def build_ir(modules: List[MypyFile],
             list(builder.imports),
             builder.functions,
             builder.classes,
-            builder.final_names
+            builder.final_names,
         )
         result[module.fullname] = module_ir
         class_irs.extend(builder.classes)
@@ -104,7 +113,7 @@ def build_ir(modules: List[MypyFile],
 def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     """Generate IR for a single module."""
 
-    if mypyfile.fullname in ('typing', 'abc'):
+    if mypyfile.fullname in ("typing", "abc"):
         # These module are special; their contents are currently all
         # built-in primitives.
         return
@@ -118,10 +127,10 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
         ir = builder.mapper.type_to_ir[cls.info]
         builder.classes.append(ir)
 
-    builder.enter('<top level>')
+    builder.enter("<top level>")
 
     # Make sure we have a builtins import
-    builder.gen_import('builtins', -1)
+    builder.gen_import("builtins", -1)
 
     # Generate ops.
     for node in mypyfile.defs:
@@ -132,6 +141,10 @@ def transform_mypy_file(builder: IRBuilder, mypyfile: MypyFile) -> None:
     # Generate special function representing module top level.
     args, _, blocks, ret_type, _ = builder.leave()
     sig = FuncSignature([], none_rprimitive)
-    func_ir = FuncIR(FuncDecl(TOP_LEVEL_NAME, None, builder.module_name, sig), args, blocks,
-                     traceback_name="<module>")
+    func_ir = FuncIR(
+        FuncDecl(TOP_LEVEL_NAME, None, builder.module_name, sig),
+        args,
+        blocks,
+        traceback_name="<module>",
+    )
     builder.functions.append(func_ir)

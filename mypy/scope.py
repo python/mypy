@@ -33,7 +33,7 @@ class Scope:
         assert self.module
         if self.function:
             fullname = self.function.fullname
-            return fullname or ''
+            return fullname or ""
         return self.module
 
     def current_full_target(self) -> str:

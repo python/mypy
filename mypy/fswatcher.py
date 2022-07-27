@@ -89,10 +89,7 @@ class FileSystemWatcher:
         """Return paths that have changes since the last call, in the watched set."""
         return self._find_changed(self._paths)
 
-    def update_changed(self,
-                       remove: List[str],
-                       update: List[str],
-                       ) -> AbstractSet[str]:
+    def update_changed(self, remove: List[str], update: List[str]) -> AbstractSet[str]:
         """Alternative to find_changed() given explicit changes.
 
         This only calls self.fs.stat() on added or updated files, not

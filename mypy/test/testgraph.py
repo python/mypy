@@ -16,12 +16,11 @@ from mypy.fscache import FileSystemCache
 
 
 class GraphSuite(Suite):
-
     def test_topsort(self) -> None:
-        a = frozenset({'A'})
-        b = frozenset({'B'})
-        c = frozenset({'C'})
-        d = frozenset({'D'})
+        a = frozenset({"A"})
+        b = frozenset({"B"})
+        c = frozenset({"C"})
+        d = frozenset({"D"})
         data: Dict[AbstractSet[str], Set[AbstractSet[str]]] = {a: {b, c}, b: {d}, c: {d}}
         res = list(topsort(data))
         assert_equal(res, [{d}, {b, c}, {a}])
@@ -30,10 +29,7 @@ class GraphSuite(Suite):
         vertices = {"A", "B", "C", "D"}
         edges: Dict[str, List[str]] = {"A": ["B", "C"], "B": ["C"], "C": ["B", "D"], "D": []}
         sccs = {frozenset(x) for x in strongly_connected_components(vertices, edges)}
-        assert_equal(sccs,
-                     {frozenset({'A'}),
-                      frozenset({'B', 'C'}),
-                      frozenset({'D'})})
+        assert_equal(sccs, {frozenset({"A"}), frozenset({"B", "C"}), frozenset({"D"})})
 
     def _make_manager(self) -> BuildManager:
         errors = Errors()
@@ -41,11 +37,11 @@ class GraphSuite(Suite):
         fscache = FileSystemCache()
         search_paths = SearchPaths((), (), (), ())
         manager = BuildManager(
-            data_dir='',
+            data_dir="",
             search_paths=search_paths,
-            ignore_prefix='',
+            ignore_prefix="",
             source_set=BuildSourceSet([]),
-            reports=Reports('', {}),
+            reports=Reports("", {}),
             options=options,
             version_id=__version__,
             plugin=Plugin(options),
@@ -60,23 +56,25 @@ class GraphSuite(Suite):
 
     def test_sorted_components(self) -> None:
         manager = self._make_manager()
-        graph = {'a': State('a', None, 'import b, c', manager),
-                 'd': State('d', None, 'pass', manager),
-                 'b': State('b', None, 'import c', manager),
-                 'c': State('c', None, 'import b, d', manager),
-                 }
+        graph = {
+            "a": State("a", None, "import b, c", manager),
+            "d": State("d", None, "pass", manager),
+            "b": State("b", None, "import c", manager),
+            "c": State("c", None, "import b, d", manager),
+        }
         res = sorted_components(graph)
-        assert_equal(res, [frozenset({'d'}), frozenset({'c', 'b'}), frozenset({'a'})])
+        assert_equal(res, [frozenset({"d"}), frozenset({"c", "b"}), frozenset({"a"})])
 
     def test_order_ascc(self) -> None:
         manager = self._make_manager()
-        graph = {'a': State('a', None, 'import b, c', manager),
-                 'd': State('d', None, 'def f(): import a', manager),
-                 'b': State('b', None, 'import c', manager),
-                 'c': State('c', None, 'import b, d', manager),
-                 }
+        graph = {
+            "a": State("a", None, "import b, c", manager),
+            "d": State("d", None, "def f(): import a", manager),
+            "b": State("b", None, "import c", manager),
+            "c": State("c", None, "import b, d", manager),
+        }
         res = sorted_components(graph)
-        assert_equal(res, [frozenset({'a', 'd', 'c', 'b'})])
+        assert_equal(res, [frozenset({"a", "d", "c", "b"})])
         ascc = res[0]
         scc = order_ascc(graph, ascc)
-        assert_equal(scc, ['d', 'c', 'b', 'a'])
+        assert_equal(scc, ["d", "c", "b", "a"])

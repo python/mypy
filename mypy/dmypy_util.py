@@ -23,7 +23,7 @@ def receive(connection: IPCBase) -> Any:
     if not bdata:
         raise OSError("No data received")
     try:
-        data = json.loads(bdata.decode('utf8'))
+        data = json.loads(bdata.decode("utf8"))
     except Exception as e:
         raise OSError("Data received is not valid JSON") from e
     if not isinstance(data, dict):

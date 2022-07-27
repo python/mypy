@@ -9,8 +9,18 @@ from typing import List, Optional, Set
 
 from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
 from mypy.types import (
-    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, ParamSpecType,
-    UnpackType, TupleType, TypeVarTupleType, TypeOfAny, get_proper_type
+    Type,
+    Instance,
+    TypeVarType,
+    AnyType,
+    get_proper_types,
+    TypeAliasType,
+    ParamSpecType,
+    UnpackType,
+    TupleType,
+    TypeVarTupleType,
+    TypeOfAny,
+    get_proper_type,
 )
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.subtypes import is_subtype
@@ -82,8 +92,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                         if not arg_values:
                             self.fail(
                                 message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
-                                    arg.name, info.name),
-                                t, code=codes.TYPE_VAR)
+                                    arg.name, info.name
+                                ),
+                                t,
+                                code=codes.TYPE_VAR,
+                            )
                             continue
                     else:
                         arg_values = [arg]
@@ -91,8 +104,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
                 if not is_subtype(arg, tvar.upper_bound):
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
-                            format_type(arg), info.name, format_type(tvar.upper_bound)),
-                        t, code=codes.TYPE_VAR)
+                            format_type(arg), info.name, format_type(tvar.upper_bound)
+                        ),
+                        t,
+                        code=codes.TYPE_VAR,
+                    )
         super().visit_instance(t)
 
     def visit_unpack_type(self, typ: UnpackType) -> None:
@@ -110,24 +126,35 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         # typechecking to work.
         self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
 
-    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
-                              valids: List[Type], arg_number: int, context: Context) -> None:
+    def check_type_var_values(
+        self,
+        type: TypeInfo,
+        actuals: List[Type],
+        arg_name: str,
+        valids: List[Type],
+        arg_number: int,
+        context: Context,
+    ) -> None:
         for actual in get_proper_types(actuals):
-            if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, value)
-                            for value in valids)):
+            if not isinstance(actual, AnyType) and not any(
+                is_same_type(actual, value) for value in valids
+            ):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
                     self.fail(
                         message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
-                        context, code=codes.TYPE_VAR)
+                        context,
+                        code=codes.TYPE_VAR,
+                    )
                 else:
                     class_name = f'"{type.name}"'
                     actual_type_name = f'"{actual.type.name}"'
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                            arg_name, class_name, actual_type_name),
+                            arg_name, class_name, actual_type_name
+                        ),
                         context,
-                        code=codes.TYPE_VAR)
+                        code=codes.TYPE_VAR,
+                    )
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.errors.report(context.get_line(), context.get_column(), msg, code=code)

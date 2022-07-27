@@ -14,9 +14,5 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         for direction in [SUBTYPE_OF, SUPERTYPE_OF]:
             assert infer_constraints(fx.gt, fx.ga, direction) == [
-                Constraint(
-                    type_var=fx.t.id,
-                    op=direction,
-                    target=fx.a,
-                )
+                Constraint(type_var=fx.t.id, op=direction, target=fx.a)
             ]

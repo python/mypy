@@ -53,47 +53,47 @@ def constant_fold_expr(builder: IRBuilder, expr: Expression) -> Optional[Constan
 
 
 def constant_fold_binary_int_op(op: str, left: int, right: int) -> Optional[int]:
-    if op == '+':
+    if op == "+":
         return left + right
-    if op == '-':
+    if op == "-":
         return left - right
-    elif op == '*':
+    elif op == "*":
         return left * right
-    elif op == '//':
+    elif op == "//":
         if right != 0:
             return left // right
-    elif op == '%':
+    elif op == "%":
         if right != 0:
             return left % right
-    elif op == '&':
+    elif op == "&":
         return left & right
-    elif op == '|':
+    elif op == "|":
         return left | right
-    elif op == '^':
+    elif op == "^":
         return left ^ right
-    elif op == '<<':
+    elif op == "<<":
         if right >= 0:
             return left << right
-    elif op == '>>':
+    elif op == ">>":
         if right >= 0:
             return left >> right
-    elif op == '**':
+    elif op == "**":
         if right >= 0:
-            return left ** right
+            return left**right
     return None
 
 
 def constant_fold_unary_int_op(op: str, value: int) -> Optional[int]:
-    if op == '-':
+    if op == "-":
         return -value
-    elif op == '~':
+    elif op == "~":
         return ~value
-    elif op == '+':
+    elif op == "+":
         return value
     return None
 
 
 def constant_fold_binary_str_op(op: str, left: str, right: str) -> Optional[str]:
-    if op == '+':
+    if op == "+":
         return left + right
     return None

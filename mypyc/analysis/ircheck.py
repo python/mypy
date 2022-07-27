@@ -2,17 +2,62 @@
 from typing import List, Union, Set, Tuple
 from mypyc.ir.pprint import format_func
 from mypyc.ir.ops import (
-    OpVisitor, BasicBlock, Op, ControlOp, Goto, Branch, Return, Unreachable,
-    Assign, AssignMulti, LoadErrorValue, LoadLiteral, GetAttr, SetAttr, LoadStatic,
-    InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast,
-    Box, Unbox, RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp,
-    LoadMem, SetMem, GetElementPtr, LoadAddress, KeepAlive, Register, Integer,
-    BaseAssign, Extend
+    OpVisitor,
+    BasicBlock,
+    Op,
+    ControlOp,
+    Goto,
+    Branch,
+    Return,
+    Unreachable,
+    Assign,
+    AssignMulti,
+    LoadErrorValue,
+    LoadLiteral,
+    GetAttr,
+    SetAttr,
+    LoadStatic,
+    InitStatic,
+    TupleGet,
+    TupleSet,
+    IncRef,
+    DecRef,
+    Call,
+    MethodCall,
+    Cast,
+    Box,
+    Unbox,
+    RaiseStandardError,
+    CallC,
+    Truncate,
+    LoadGlobal,
+    IntOp,
+    ComparisonOp,
+    LoadMem,
+    SetMem,
+    GetElementPtr,
+    LoadAddress,
+    KeepAlive,
+    Register,
+    Integer,
+    BaseAssign,
+    Extend,
 )
 from mypyc.ir.rtypes import (
-    RType, RPrimitive, RUnion, is_object_rprimitive, RInstance, RArray,
-    int_rprimitive, list_rprimitive, dict_rprimitive, set_rprimitive,
-    range_rprimitive, str_rprimitive, bytes_rprimitive, tuple_rprimitive
+    RType,
+    RPrimitive,
+    RUnion,
+    is_object_rprimitive,
+    RInstance,
+    RArray,
+    int_rprimitive,
+    list_rprimitive,
+    dict_rprimitive,
+    set_rprimitive,
+    range_rprimitive,
+    str_rprimitive,
+    bytes_rprimitive,
+    tuple_rprimitive,
 )
 from mypyc.ir.func_ir import FuncIR, FUNC_STATICMETHOD
 
@@ -24,9 +69,7 @@ class FnError:
 
     def __eq__(self, other: object) -> bool:
         return (
-            isinstance(other, FnError)
-            and self.source == other.source
-            and self.desc == other.desc
+            isinstance(other, FnError) and self.source == other.source and self.desc == other.desc
         )
 
     def __repr__(self) -> str:
@@ -42,27 +85,14 @@ def check_func_ir(fn: FuncIR) -> List[FnError]:
     for block in fn.blocks:
         if not block.terminated:
             errors.append(
-                FnError(
-                    source=block.ops[-1] if block.ops else block,
-                    desc="Block not terminated",
-                )
+                FnError(source=block.ops[-1] if block.ops else block, desc="Block not terminated")
             )
         for op in block.ops[:-1]:
             if isinstance(op, ControlOp):
-                errors.append(
-                    FnError(
-                        source=op,
-                        desc="Block has operations after control op",
-                    )
-                )
+                errors.append(FnError(source=op, desc="Block has operations after control op"))
 
             if op in op_set:
-                errors.append(
-                    FnError(
-                        source=op,
-                        desc="Func has a duplicate op",
-                    )
-                )
+                errors.append(FnError(source=op, desc="Func has a duplicate op"))
             op_set.add(op)
 
     errors.extend(check_op_sources_valid(fn))
@@ -86,7 +116,7 @@ def assert_func_ir_valid(fn: FuncIR) -> None:
     if errors:
         raise IrCheckException(
             "Internal error: Generated invalid IR: \n"
-            + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors])),
+            + "\n".join(format_func(fn, [(e.source, e.desc) for e in errors]))
         )
 
 
@@ -98,9 +128,7 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
     for block in fn.blocks:
         valid_ops.update(block.ops)
 
-        valid_registers.update(
-            [op.dest for op in block.ops if isinstance(op, BaseAssign)]
-        )
+        valid_registers.update([op.dest for op in block.ops if isinstance(op, BaseAssign)])
 
     valid_registers.update(fn.arg_regs)
 
@@ -121,8 +149,7 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
                     if source not in valid_registers:
                         errors.append(
                             FnError(
-                                source=op,
-                                desc=f"Invalid op reference to register {source.name}",
+                                source=op, desc=f"Invalid op reference to register {source.name}"
                             )
                         )
 
@@ -130,14 +157,14 @@ def check_op_sources_valid(fn: FuncIR) -> List[FnError]:
 
 
 disjoint_types = {
-        int_rprimitive.name,
-        bytes_rprimitive.name,
-        str_rprimitive.name,
-        dict_rprimitive.name,
-        list_rprimitive.name,
-        set_rprimitive.name,
-        tuple_rprimitive.name,
-        range_rprimitive.name,
+    int_rprimitive.name,
+    bytes_rprimitive.name,
+    str_rprimitive.name,
+    dict_rprimitive.name,
+    list_rprimitive.name,
+    set_rprimitive.name,
+    tuple_rprimitive.name,
+    range_rprimitive.name,
 }
 
 
@@ -177,15 +204,12 @@ class OpChecker(OpVisitor[None]):
     def check_control_op_targets(self, op: ControlOp) -> None:
         for target in op.targets():
             if target not in self.parent_fn.blocks:
-                self.fail(
-                    source=op, desc=f"Invalid control operation target: {target.label}"
-                )
+                self.fail(source=op, desc=f"Invalid control operation target: {target.label}")
 
     def check_type_coercion(self, op: Op, src: RType, dest: RType) -> None:
         if not can_coerce_to(src, dest):
             self.fail(
-                source=op,
-                desc=f"Cannot coerce source type {src.name} to dest type {dest.name}",
+                source=op, desc=f"Cannot coerce source type {src.name} to dest type {dest.name}"
             )
 
     def visit_goto(self, op: Goto) -> None:
@@ -216,13 +240,9 @@ class OpChecker(OpVisitor[None]):
         # has an error value.
         pass
 
-    def check_tuple_items_valid_literals(
-        self, op: LoadLiteral, t: Tuple[object, ...]
-    ) -> None:
+    def check_tuple_items_valid_literals(self, op: LoadLiteral, t: Tuple[object, ...]) -> None:
         for x in t:
-            if x is not None and not isinstance(
-                x, (str, bytes, bool, int, float, complex, tuple)
-            ):
+            if x is not None and not isinstance(x, (str, bytes, bool, int, float, complex, tuple)):
                 self.fail(op, f"Invalid type for item of tuple literal: {type(x)})")
             if isinstance(x, tuple):
                 self.check_tuple_items_valid_literals(op, x)

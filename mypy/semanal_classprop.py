@@ -7,7 +7,14 @@ from typing import List, Set, Optional
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Node, TypeInfo, Var, Decorator, OverloadedFuncDef, SymbolTable, CallExpr, PromoteExpr,
+    Node,
+    TypeInfo,
+    Var,
+    Decorator,
+    OverloadedFuncDef,
+    SymbolTable,
+    CallExpr,
+    PromoteExpr,
 )
 from mypy.types import Instance, Type
 from mypy.errors import Errors
@@ -17,10 +24,7 @@ from mypy.options import Options
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
 # subclass relationship.
-TYPE_PROMOTIONS: Final = {
-    'builtins.int': 'float',
-    'builtins.float': 'complex',
-}
+TYPE_PROMOTIONS: Final = {"builtins.int": "float", "builtins.float": "complex"}
 
 # Hard coded type promotions for Python 3.
 #
@@ -28,10 +32,7 @@ TYPE_PROMOTIONS: Final = {
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
 TYPE_PROMOTIONS_PYTHON3: Final = TYPE_PROMOTIONS.copy()
-TYPE_PROMOTIONS_PYTHON3.update({
-    'builtins.bytearray': 'bytes',
-    'builtins.memoryview': 'bytes',
-})
+TYPE_PROMOTIONS_PYTHON3.update({"builtins.bytearray": "bytes", "builtins.memoryview": "bytes"})
 
 # Hard coded type promotions for Python 2.
 #
@@ -39,11 +40,9 @@ TYPE_PROMOTIONS_PYTHON3.update({
 # for convenience and also for Python 3 compatibility
 # (bytearray -> str).
 TYPE_PROMOTIONS_PYTHON2: Final = TYPE_PROMOTIONS.copy()
-TYPE_PROMOTIONS_PYTHON2.update({
-    'builtins.str': 'unicode',
-    'builtins.bytearray': 'str',
-    'builtins.memoryview': 'str',
-})
+TYPE_PROMOTIONS_PYTHON2.update(
+    {"builtins.str": "unicode", "builtins.bytearray": "str", "builtins.memoryview": "str"}
+)
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
@@ -97,32 +96,37 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     # implement some methods.
     typ.abstract_attributes = sorted(abstract)
     if is_stub_file:
-        if typ.declared_metaclass and typ.declared_metaclass.type.fullname == 'abc.ABCMeta':
+        if typ.declared_metaclass and typ.declared_metaclass.type.fullname == "abc.ABCMeta":
             return
         if typ.is_protocol:
             return
         if abstract and not abstract_in_this_class:
+
             def report(message: str, severity: str) -> None:
                 errors.report(typ.line, typ.column, message, severity=severity)
 
             attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
-            report(f"Class {typ.fullname} has abstract attributes {attrs}", 'error')
-            report("If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass",
-                   'note')
+            report(f"Class {typ.fullname} has abstract attributes {attrs}", "error")
+            report(
+                "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass", "note"
+            )
     if typ.is_final and abstract:
         attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
-        errors.report(typ.line, typ.column,
-                      f"Final class {typ.fullname} has abstract attributes {attrs}")
+        errors.report(
+            typ.line, typ.column, f"Final class {typ.fullname} has abstract attributes {attrs}"
+        )
 
 
 def check_protocol_status(info: TypeInfo, errors: Errors) -> None:
     """Check that all classes in MRO of a protocol are protocols"""
     if info.is_protocol:
         for type in info.bases:
-            if not type.type.is_protocol and type.type.fullname != 'builtins.object':
+            if not type.type.is_protocol and type.type.fullname != "builtins.object":
+
                 def report(message: str, severity: str) -> None:
                     errors.report(info.line, info.column, message, severity=severity)
-                report('All bases of a protocol must be protocols', 'error')
+
+                report("All bases of a protocol must be protocols", "error")
 
 
 def calculate_class_vars(info: TypeInfo) -> None:
@@ -140,14 +144,13 @@ def calculate_class_vars(info: TypeInfo) -> None:
         if isinstance(node, Var) and node.info and node.is_inferred and not node.is_classvar:
             for base in info.mro[1:]:
                 member = base.names.get(name)
-                if (member is not None
-                        and isinstance(member.node, Var)
-                        and member.node.is_classvar):
+                if member is not None and isinstance(member.node, Var) and member.node.is_classvar:
                     node.is_classvar = True
 
 
-def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Options,
-                       builtin_names: SymbolTable) -> None:
+def add_type_promotion(
+    info: TypeInfo, module_names: SymbolTable, options: Options, builtin_names: SymbolTable
+) -> None:
     """Setup extra, ad-hoc subtyping relationships between classes (promotion).
 
     This includes things like 'int' being compatible with 'float'.
@@ -161,8 +164,9 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
                 # _promote class decorator (undocumented feature).
                 promote_targets.append(analyzed.type)
     if not promote_targets:
-        promotions = (TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3
-                      else TYPE_PROMOTIONS_PYTHON2)
+        promotions = (
+            TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3 else TYPE_PROMOTIONS_PYTHON2
+        )
         if defn.fullname in promotions:
             target_sym = module_names.get(promotions[defn.fullname])
             # With test stubs, the target may not exist.
@@ -173,8 +177,8 @@ def add_type_promotion(info: TypeInfo, module_names: SymbolTable, options: Optio
     # Special case the promotions between 'int' and native integer types.
     # These have promotions going both ways, such as from 'int' to 'i64'
     # and 'i64' to 'int', for convenience.
-    if defn.fullname == 'mypy_extensions.i64' or defn.fullname == 'mypy_extensions.i32':
-        int_sym = builtin_names['int']
+    if defn.fullname == "mypy_extensions.i64" or defn.fullname == "mypy_extensions.i32":
+        int_sym = builtin_names["int"]
         assert isinstance(int_sym.node, TypeInfo)
         int_sym.node._promote.append(Instance(defn.info, []))
         defn.info.alt_promote = int_sym.node
