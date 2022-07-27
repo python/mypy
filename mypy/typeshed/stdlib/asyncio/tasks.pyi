@@ -13,43 +13,27 @@ if sys.version_info >= (3, 9):
 if sys.version_info >= (3, 11):
     from contextvars import Context
 
-if sys.version_info >= (3, 7):
-    __all__ = (
-        "Task",
-        "create_task",
-        "FIRST_COMPLETED",
-        "FIRST_EXCEPTION",
-        "ALL_COMPLETED",
-        "wait",
-        "wait_for",
-        "as_completed",
-        "sleep",
-        "gather",
-        "shield",
-        "ensure_future",
-        "run_coroutine_threadsafe",
-        "current_task",
-        "all_tasks",
-        "_register_task",
-        "_unregister_task",
-        "_enter_task",
-        "_leave_task",
-    )
-else:
-    __all__ = [
-        "Task",
-        "FIRST_COMPLETED",
-        "FIRST_EXCEPTION",
-        "ALL_COMPLETED",
-        "wait",
-        "wait_for",
-        "as_completed",
-        "sleep",
-        "gather",
-        "shield",
-        "ensure_future",
-        "run_coroutine_threadsafe",
-    ]
+__all__ = (
+    "Task",
+    "create_task",
+    "FIRST_COMPLETED",
+    "FIRST_EXCEPTION",
+    "ALL_COMPLETED",
+    "wait",
+    "wait_for",
+    "as_completed",
+    "sleep",
+    "gather",
+    "shield",
+    "ensure_future",
+    "run_coroutine_threadsafe",
+    "current_task",
+    "all_tasks",
+    "_register_task",
+    "_unregister_task",
+    "_enter_task",
+    "_leave_task",
+)
 
 _T = TypeVar("_T")
 _T1 = TypeVar("_T1")
@@ -78,24 +62,22 @@ def ensure_future(coro_or_future: _FT, *, loop: AbstractEventLoop | None = ...) 
 @overload
 def ensure_future(coro_or_future: Awaitable[_T], *, loop: AbstractEventLoop | None = ...) -> Task[_T]: ...
 
-# Prior to Python 3.7 'async' was an alias for 'ensure_future'.
-# It became a keyword in 3.7.
-
 # `gather()` actually returns a list with length equal to the number
 # of tasks passed; however, Tuple is used similar to the annotation for
 # zip() because typing does not support variadic type variables.  See
 # typing PR #1550 for discussion.
+#
+# The many type: ignores here are because the overloads overlap,
+# but having overlapping overloads is the only way to get acceptable type inference in all edge cases.
 if sys.version_info >= (3, 10):
     @overload
-    def gather(*, return_exceptions: bool = ...) -> Future[tuple[()]]: ...
+    def gather(__coro_or_future1: _FutureLike[_T1], *, return_exceptions: Literal[False] = ...) -> Future[tuple[_T1]]: ...  # type: ignore[misc]
     @overload
-    def gather(__coro_or_future1: _FutureLike[_T1], *, return_exceptions: Literal[False] = ...) -> Future[tuple[_T1]]: ...
-    @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1], __coro_or_future2: _FutureLike[_T2], *, return_exceptions: Literal[False] = ...
     ) -> Future[tuple[_T1, _T2]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -103,7 +85,7 @@ if sys.version_info >= (3, 10):
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -112,7 +94,7 @@ if sys.version_info >= (3, 10):
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3, _T4]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -122,13 +104,13 @@ if sys.version_info >= (3, 10):
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3, _T4, _T5]]: ...
     @overload
-    def gather(__coro_or_future1: _FutureLike[_T1], *, return_exceptions: bool) -> Future[tuple[_T1 | BaseException]]: ...
+    def gather(__coro_or_future1: _FutureLike[_T1], *, return_exceptions: bool) -> Future[tuple[_T1 | BaseException]]: ...  # type: ignore[misc]
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1], __coro_or_future2: _FutureLike[_T2], *, return_exceptions: bool
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -136,7 +118,7 @@ if sys.version_info >= (3, 10):
         return_exceptions: bool,
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -145,7 +127,7 @@ if sys.version_info >= (3, 10):
         return_exceptions: bool,
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException, _T4 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -157,26 +139,15 @@ if sys.version_info >= (3, 10):
         tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException, _T4 | BaseException, _T5 | BaseException]
     ]: ...
     @overload
-    def gather(
-        __coro_or_future1: _FutureLike[Any],
-        __coro_or_future2: _FutureLike[Any],
-        __coro_or_future3: _FutureLike[Any],
-        __coro_or_future4: _FutureLike[Any],
-        __coro_or_future5: _FutureLike[Any],
-        __coro_or_future6: _FutureLike[Any],
-        *coros_or_futures: _FutureLike[Any],
-        return_exceptions: bool = ...,
-    ) -> Future[list[Any]]: ...
+    def gather(*coros_or_futures: _FutureLike[Any], return_exceptions: bool = ...) -> Future[list[Any]]: ...  # type: ignore[misc]
 
 else:
     @overload
-    def gather(*, loop: AbstractEventLoop | None = ..., return_exceptions: bool = ...) -> Future[tuple[()]]: ...
-    @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1], *, loop: AbstractEventLoop | None = ..., return_exceptions: Literal[False] = ...
     ) -> Future[tuple[_T1]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         *,
@@ -184,7 +155,7 @@ else:
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -193,7 +164,7 @@ else:
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -203,7 +174,7 @@ else:
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3, _T4]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -214,11 +185,11 @@ else:
         return_exceptions: Literal[False] = ...,
     ) -> Future[tuple[_T1, _T2, _T3, _T4, _T5]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1], *, loop: AbstractEventLoop | None = ..., return_exceptions: bool
     ) -> Future[tuple[_T1 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         *,
@@ -226,7 +197,7 @@ else:
         return_exceptions: bool,
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -235,7 +206,7 @@ else:
         return_exceptions: bool,
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -245,7 +216,7 @@ else:
         return_exceptions: bool,
     ) -> Future[tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException, _T4 | BaseException]]: ...
     @overload
-    def gather(
+    def gather(  # type: ignore[misc]
         __coro_or_future1: _FutureLike[_T1],
         __coro_or_future2: _FutureLike[_T2],
         __coro_or_future3: _FutureLike[_T3],
@@ -258,16 +229,8 @@ else:
         tuple[_T1 | BaseException, _T2 | BaseException, _T3 | BaseException, _T4 | BaseException, _T5 | BaseException]
     ]: ...
     @overload
-    def gather(
-        __coro_or_future1: _FutureLike[Any],
-        __coro_or_future2: _FutureLike[Any],
-        __coro_or_future3: _FutureLike[Any],
-        __coro_or_future4: _FutureLike[Any],
-        __coro_or_future5: _FutureLike[Any],
-        __coro_or_future6: _FutureLike[Any],
-        *coros_or_futures: _FutureLike[Any],
-        loop: AbstractEventLoop | None = ...,
-        return_exceptions: bool = ...,
+    def gather(  # type: ignore[misc]
+        *coros_or_futures: _FutureLike[Any], loop: AbstractEventLoop | None = ..., return_exceptions: bool = ...
     ) -> Future[list[Any]]: ...
 
 def run_coroutine_threadsafe(coro: _FutureLike[_T], loop: AbstractEventLoop) -> concurrent.futures.Future[_T]: ...
@@ -334,24 +297,24 @@ class Task(Future[_T], Generic[_T]):
         def current_task(cls, loop: AbstractEventLoop | None = ...) -> Task[Any] | None: ...
         @classmethod
         def all_tasks(cls, loop: AbstractEventLoop | None = ...) -> set[Task[Any]]: ...
-    if sys.version_info < (3, 7):
-        def _wakeup(self, fut: Future[Any]) -> None: ...
     if sys.version_info >= (3, 9):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 
-if sys.version_info >= (3, 7):
-    def all_tasks(loop: AbstractEventLoop | None = ...) -> set[Task[Any]]: ...
-    if sys.version_info >= (3, 11):
-        def create_task(
-            coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = ..., context: Context | None = ...
-        ) -> Task[_T]: ...
-    elif sys.version_info >= (3, 8):
-        def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = ...) -> Task[_T]: ...
-    else:
-        def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T]) -> Task[_T]: ...
+def all_tasks(loop: AbstractEventLoop | None = ...) -> set[Task[Any]]: ...
 
-    def current_task(loop: AbstractEventLoop | None = ...) -> Task[Any] | None: ...
-    def _enter_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
-    def _leave_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
-    def _register_task(task: Task[Any]) -> None: ...
-    def _unregister_task(task: Task[Any]) -> None: ...
+if sys.version_info >= (3, 11):
+    def create_task(
+        coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = ..., context: Context | None = ...
+    ) -> Task[_T]: ...
+
+elif sys.version_info >= (3, 8):
+    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T], *, name: str | None = ...) -> Task[_T]: ...
+
+else:
+    def create_task(coro: Generator[Any, None, _T] | Coroutine[Any, Any, _T]) -> Task[_T]: ...
+
+def current_task(loop: AbstractEventLoop | None = ...) -> Task[Any] | None: ...
+def _enter_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
+def _leave_task(loop: AbstractEventLoop, task: Task[Any]) -> None: ...
+def _register_task(task: Task[Any]) -> None: ...
+def _unregister_task(task: Task[Any]) -> None: ...

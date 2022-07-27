@@ -4,10 +4,11 @@ import time
 from _typeshed import Self
 from builtins import list as _list  # conflicts with a method named "list"
 from collections.abc import Callable
+from re import Pattern
 from socket import socket as _socket
 from ssl import SSLContext, SSLSocket
 from types import TracebackType
-from typing import IO, Any, Pattern
+from typing import IO, Any
 from typing_extensions import Literal, TypeAlias
 
 __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags", "Time2Internaldate", "IMAP4_SSL"]
@@ -17,6 +18,8 @@ __all__ = ["IMAP4", "IMAP4_stream", "Internaldate2tuple", "Int2AP", "ParseFlags"
 _CommandResults: TypeAlias = tuple[str, list[Any]]
 
 _AnyResponseData: TypeAlias = list[None] | list[bytes | tuple[bytes, bytes]]
+
+Commands: dict[str, tuple[str, ...]]
 
 class IMAP4:
     class error(Exception): ...

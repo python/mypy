@@ -3,7 +3,8 @@ from _typeshed import Self
 from collections.abc import Iterable, Iterator
 from email.errors import HeaderParseError, MessageDefect
 from email.policy import Policy
-from typing import Any, Pattern
+from re import Pattern
+from typing import Any
 from typing_extensions import Final
 
 WSP: Final[set[str]]
@@ -20,8 +21,7 @@ EXTENDED_ATTRIBUTE_ENDS: Final[set[str]]
 
 def quote_string(value: Any) -> str: ...
 
-if sys.version_info >= (3, 7):
-    rfc2047_matcher: Pattern[str]
+rfc2047_matcher: Pattern[str]
 
 class TokenList(list[TokenList | Terminal]):
     token_type: str | None

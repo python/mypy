@@ -1,23 +1,18 @@
 import email.message
 import io
 import socketserver
-import sys
 from _typeshed import StrPath, SupportsRead, SupportsWrite
 from collections.abc import Mapping, Sequence
 from typing import Any, AnyStr, BinaryIO, ClassVar
 
-if sys.version_info >= (3, 7):
-    __all__ = ["HTTPServer", "ThreadingHTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler", "CGIHTTPRequestHandler"]
-else:
-    __all__ = ["HTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler", "CGIHTTPRequestHandler"]
+__all__ = ["HTTPServer", "ThreadingHTTPServer", "BaseHTTPRequestHandler", "SimpleHTTPRequestHandler", "CGIHTTPRequestHandler"]
 
 class HTTPServer(socketserver.TCPServer):
     server_name: str
     server_port: int
 
-if sys.version_info >= (3, 7):
-    class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
-        daemon_threads: bool  # undocumented
+class ThreadingHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
+    daemon_threads: bool  # undocumented
 
 class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
     client_address: tuple[str, int]
@@ -60,13 +55,9 @@ class BaseHTTPRequestHandler(socketserver.StreamRequestHandler):
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     server_version: str
     extensions_map: dict[str, str]
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
-        ) -> None: ...
-    else:
-        def __init__(self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer) -> None: ...
-
+    def __init__(
+        self, request: bytes, client_address: tuple[str, int], server: socketserver.BaseServer, directory: str | None = ...
+    ) -> None: ...
     def do_GET(self) -> None: ...
     def do_HEAD(self) -> None: ...
     def send_head(self) -> io.BytesIO | BinaryIO | None: ...  # undocumented

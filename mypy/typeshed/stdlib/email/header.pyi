@@ -1,4 +1,5 @@
 from email.charset import Charset
+from typing import Any
 
 __all__ = ["Header", "decode_header", "make_header"]
 
@@ -17,7 +18,10 @@ class Header:
     def __eq__(self, other: object) -> bool: ...
     def __ne__(self, __other: object) -> bool: ...
 
-def decode_header(header: Header | str) -> list[tuple[bytes, str | None]]: ...
+# decode_header() either returns list[tuple[str, None]] if the header
+# contains no encoded parts, or list[tuple[bytes, str | None]] if the header
+# contains at least one encoded part.
+def decode_header(header: Header | str) -> list[tuple[Any, Any | None]]: ...
 def make_header(
     decoded_seq: list[tuple[bytes, str | None]],
     maxlinelen: int | None = ...,

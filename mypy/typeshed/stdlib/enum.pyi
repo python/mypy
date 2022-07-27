@@ -80,7 +80,7 @@ class _EnumDict(dict[str, Any]):
 class EnumMeta(ABCMeta):
     if sys.version_info >= (3, 11):
         def __new__(
-            metacls: type[Self],  # type: ignore
+            metacls: type[Self],
             cls: str,
             bases: tuple[type, ...],
             classdict: _EnumDict,
@@ -90,9 +90,9 @@ class EnumMeta(ABCMeta):
             **kwds: Any,
         ) -> Self: ...
     elif sys.version_info >= (3, 9):
-        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any) -> Self: ...  # type: ignore
+        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict, **kwds: Any) -> Self: ...
     else:
-        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict) -> Self: ...  # type: ignore
+        def __new__(metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: _EnumDict) -> Self: ...
 
     if sys.version_info >= (3, 9):
         @classmethod
@@ -161,8 +161,7 @@ class Enum(metaclass=EnumMeta):
     def value(self) -> Any: ...
     _name_: str
     _value_: Any
-    if sys.version_info >= (3, 7):
-        _ignore_: str | list[str]
+    _ignore_: str | list[str]
     _order_: str
     __order__: str
     @classmethod
@@ -182,6 +181,8 @@ class Enum(metaclass=EnumMeta):
 
 if sys.version_info >= (3, 11):
     class ReprEnum(Enum): ...
+
+if sys.version_info >= (3, 11):
     _IntEnumBase = ReprEnum
 else:
     _IntEnumBase = Enum
@@ -223,14 +224,26 @@ class Flag(Enum):
         __rand__ = __and__
         __rxor__ = __xor__
 
-class IntFlag(int, Flag):
-    def __new__(cls: type[Self], value: int) -> Self: ...
-    def __or__(self: Self, other: int) -> Self: ...
-    def __and__(self: Self, other: int) -> Self: ...
-    def __xor__(self: Self, other: int) -> Self: ...
-    __ror__ = __or__
-    __rand__ = __and__
-    __rxor__ = __xor__
+if sys.version_info >= (3, 11):
+    # The body of the class is the same, but the base classes are different.
+    class IntFlag(int, ReprEnum, Flag, boundary=KEEP):
+        def __new__(cls: type[Self], value: int) -> Self: ...
+        def __or__(self: Self, other: int) -> Self: ...
+        def __and__(self: Self, other: int) -> Self: ...
+        def __xor__(self: Self, other: int) -> Self: ...
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
+
+else:
+    class IntFlag(int, Flag):
+        def __new__(cls: type[Self], value: int) -> Self: ...
+        def __or__(self: Self, other: int) -> Self: ...
+        def __and__(self: Self, other: int) -> Self: ...
+        def __xor__(self: Self, other: int) -> Self: ...
+        __ror__ = __or__
+        __rand__ = __and__
+        __rxor__ = __xor__
 
 if sys.version_info >= (3, 11):
     class StrEnum(str, ReprEnum):

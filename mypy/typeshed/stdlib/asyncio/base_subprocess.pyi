@@ -56,7 +56,7 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
     async def _connect_pipes(self, waiter: futures.Future[Any] | None) -> None: ...  # undocumented
-    def _call(self, cb: Callable[..., Any], *data: Any) -> None: ...  # undocumented
+    def _call(self, cb: Callable[..., object], *data: Any) -> None: ...  # undocumented
     def _pipe_connection_lost(self, fd: int, exc: BaseException | None) -> None: ...  # undocumented
     def _pipe_data_received(self, fd: int, data: bytes) -> None: ...  # undocumented
     def _process_exited(self, returncode: int) -> None: ...  # undocumented

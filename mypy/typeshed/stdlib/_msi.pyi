@@ -46,3 +46,43 @@ if sys.platform == "win32":
     def FCICreate(__cabname: str, __files: list[str]) -> None: ...
     def OpenDatabase(__path: str, __persist: int) -> _Database: ...
     def CreateRecord(__count: int) -> _Record: ...
+
+    MSICOLINFO_NAMES: int
+    MSICOLINFO_TYPES: int
+    MSIDBOPEN_CREATE: int
+    MSIDBOPEN_CREATEDIRECT: int
+    MSIDBOPEN_DIRECT: int
+    MSIDBOPEN_PATCHFILE: int
+    MSIDBOPEN_READONLY: int
+    MSIDBOPEN_TRANSACT: int
+    MSIMODIFY_ASSIGN: int
+    MSIMODIFY_DELETE: int
+    MSIMODIFY_INSERT: int
+    MSIMODIFY_INSERT_TEMPORARY: int
+    MSIMODIFY_MERGE: int
+    MSIMODIFY_REFRESH: int
+    MSIMODIFY_REPLACE: int
+    MSIMODIFY_SEEK: int
+    MSIMODIFY_UPDATE: int
+    MSIMODIFY_VALIDATE: int
+    MSIMODIFY_VALIDATE_DELETE: int
+    MSIMODIFY_VALIDATE_FIELD: int
+    MSIMODIFY_VALIDATE_NEW: int
+
+    PID_APPNAME: int
+    PID_AUTHOR: int
+    PID_CHARCOUNT: int
+    PID_CODEPAGE: int
+    PID_COMMENTS: int
+    PID_CREATE_DTM: int
+    PID_KEYWORDS: int
+    PID_LASTAUTHOR: int
+    PID_LASTPRINTED: int
+    PID_LASTSAVE_DTM: int
+    PID_PAGECOUNT: int
+    PID_REVNUMBER: int
+    PID_SECURITY: int
+    PID_SUBJECT: int
+    PID_TEMPLATE: int
+    PID_TITLE: int
+    PID_WORDCOUNT: int
