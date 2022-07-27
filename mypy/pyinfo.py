@@ -1,4 +1,5 @@
 from __future__ import print_function
+
 """Utilities to find the site and prefix information of a Python executable, which may be Python 2.
 
 This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
@@ -13,15 +14,16 @@ import sysconfig
 
 MYPY = False
 if MYPY:
-    from typing import Tuple, List
+    from typing import List, Tuple
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # HACK: We don't want to pick up mypy.types as the top-level types
     #       module. This could happen if this file is run as a script.
     #       This workaround fixes it.
     old_sys_path = sys.path
     sys.path = sys.path[1:]
     import types  # noqa
+
     sys.path = old_sys_path
 
 
@@ -47,7 +49,7 @@ def getsyspath():
     stdlib_zip = os.path.join(
         sys.base_exec_prefix,
         getattr(sys, "platlibdir", "lib"),
-        "python{}{}.zip".format(sys.version_info.major, sys.version_info.minor)
+        "python{}{}.zip".format(sys.version_info.major, sys.version_info.minor),
     )
     stdlib = sysconfig.get_path("stdlib")
     stdlib_ext = os.path.join(stdlib, "lib-dynload")
@@ -72,14 +74,11 @@ def getsyspath():
 
 def getsearchdirs():
     # type: () -> Tuple[List[str], List[str]]
-    return (
-        getsyspath(),
-        getsitepackages(),
-    )
+    return (getsyspath(), getsitepackages())
 
 
-if __name__ == '__main__':
-    if sys.argv[-1] == 'getsearchdirs':
+if __name__ == "__main__":
+    if sys.argv[-1] == "getsearchdirs":
         print(repr(getsearchdirs()))
     else:
         print("ERROR: incorrect argument to pyinfo.py.", file=sys.stderr)

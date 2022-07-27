@@ -115,38 +115,48 @@ test cases (test-data/unit/fine-grained*.test).
 import os
 import sys
 import time
-from typing import (
-    Dict, List, Set, Tuple, Union, Optional, NamedTuple, Sequence, Callable
-)
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
+
 from typing_extensions import Final
 
 from mypy.build import (
-    BuildManager, State, BuildResult, Graph, load_graph,
-    process_fresh_modules, DEBUG_FINE_GRAINED,
+    DEBUG_FINE_GRAINED,
     FAKE_ROOT_MODULE,
+    BuildManager,
+    BuildResult,
+    Graph,
+    State,
+    load_graph,
+    process_fresh_modules,
 )
-from mypy.modulefinder import BuildSource
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import CompileError
+from mypy.fscache import FileSystemCache
+from mypy.modulefinder import BuildSource
 from mypy.nodes import (
-    MypyFile, FuncDef, TypeInfo, SymbolNode, Decorator,
-    OverloadedFuncDef, SymbolTable, ImportFrom
+    Decorator,
+    FuncDef,
+    ImportFrom,
+    MypyFile,
+    OverloadedFuncDef,
+    SymbolNode,
+    SymbolTable,
+    TypeInfo,
 )
 from mypy.options import Options
-from mypy.fscache import FileSystemCache
-from mypy.server.astdiff import (
-    snapshot_symbol_table, compare_symbol_table_snapshots, SnapshotItem
-)
 from mypy.semanal_main import (
-    semantic_analysis_for_scc, semantic_analysis_for_targets, core_modules
+    core_modules,
+    semantic_analysis_for_scc,
+    semantic_analysis_for_targets,
 )
+from mypy.server.astdiff import SnapshotItem, compare_symbol_table_snapshots, snapshot_symbol_table
 from mypy.server.astmerge import merge_asts
-from mypy.server.aststrip import strip_target, SavedAttributes
+from mypy.server.aststrip import SavedAttributes, strip_target
 from mypy.server.deps import get_dependencies_of_target, merge_dependencies
 from mypy.server.target import trigger_to_target
-from mypy.server.trigger import make_trigger, WILDCARD_TAG
-from mypy.util import module_prefix, split_target
+from mypy.server.trigger import WILDCARD_TAG, make_trigger
 from mypy.typestate import TypeState
+from mypy.util import module_prefix, split_target
 
 MAX_ITER: Final = 1000
 
@@ -190,9 +200,9 @@ class FineGrainedBuildManager:
         # Targets processed during last update (for testing only).
         self.processed_targets: List[str] = []
 
-    def update(self,
-               changed_modules: List[Tuple[str, str]],
-               removed_modules: List[Tuple[str, str]]) -> List[str]:
+    def update(
+        self, changed_modules: List[Tuple[str, str]], removed_modules: List[Tuple[str, str]]
+    ) -> List[str]:
         """Update previous build result by processing changed modules.
 
         Also propagate changes to other modules as needed, but only process
@@ -226,17 +236,19 @@ class FineGrainedBuildManager:
         self.updated_modules = []
         changed_modules = dedupe_modules(changed_modules + self.stale)
         initial_set = {id for id, _ in changed_modules}
-        self.manager.log_fine_grained('==== update %s ====' % ', '.join(
-            repr(id) for id, _ in changed_modules))
+        self.manager.log_fine_grained(
+            "==== update %s ====" % ", ".join(repr(id) for id, _ in changed_modules)
+        )
         if self.previous_targets_with_errors and is_verbose(self.manager):
-            self.manager.log_fine_grained('previous targets with errors: %s' %
-                             sorted(self.previous_targets_with_errors))
+            self.manager.log_fine_grained(
+                "previous targets with errors: %s" % sorted(self.previous_targets_with_errors)
+            )
 
         blocking_error = None
         if self.blocking_error:
             # Handle blocking errors first. We'll exit as soon as we find a
             # module that still has blocking errors.
-            self.manager.log_fine_grained(f'existing blocker: {self.blocking_error[0]}')
+            self.manager.log_fine_grained(f"existing blocker: {self.blocking_error[0]}")
             changed_modules = dedupe_modules([self.blocking_error] + changed_modules)
             blocking_error = self.blocking_error[0]
             self.blocking_error = None
@@ -262,8 +274,14 @@ class FineGrainedBuildManager:
                 # when propagating changes from the errored targets,
                 # which prevents us from reprocessing errors in it.
                 changed_modules = propagate_changes_using_dependencies(
-                    self.manager, self.graph, self.deps, set(), {next_id},
-                    self.previous_targets_with_errors, self.processed_targets)
+                    self.manager,
+                    self.graph,
+                    self.deps,
+                    set(),
+                    {next_id},
+                    self.previous_targets_with_errors,
+                    self.processed_targets,
+                )
                 changed_modules = dedupe_modules(changed_modules)
                 if not changed_modules:
                     # Preserve state needed for the next update.
@@ -281,8 +299,14 @@ class FineGrainedBuildManager:
         """
         self.manager.errors.reset()
         changed_modules = propagate_changes_using_dependencies(
-            self.manager, self.graph, self.deps, set(), set(),
-            self.previous_targets_with_errors | {target}, [])
+            self.manager,
+            self.graph,
+            self.deps,
+            set(),
+            set(),
+            self.previous_targets_with_errors | {target},
+            [],
+        )
         # Preserve state needed for the next update.
         self.previous_targets_with_errors = self.manager.errors.targets()
         self.previous_messages = self.manager.errors.new_messages()[:]
@@ -296,13 +320,13 @@ class FineGrainedBuildManager:
         """
         self.manager.ast_cache.clear()
 
-    def update_one(self,
-                   changed_modules: List[Tuple[str, str]],
-                   initial_set: Set[str],
-                   removed_set: Set[str],
-                   blocking_error: Optional[str]) -> Tuple[List[Tuple[str, str]],
-                                                           Tuple[str, str],
-                                                           Optional[List[str]]]:
+    def update_one(
+        self,
+        changed_modules: List[Tuple[str, str]],
+        initial_set: Set[str],
+        removed_set: Set[str],
+        blocking_error: Optional[str],
+    ) -> Tuple[List[Tuple[str, str]], Tuple[str, str], Optional[List[str]]]:
         """Process a module from the list of changed modules.
 
         Returns:
@@ -318,31 +342,31 @@ class FineGrainedBuildManager:
         # If we have a module with a blocking error that is no longer
         # in the import graph, we must skip it as otherwise we'll be
         # stuck with the blocking error.
-        if (next_id == blocking_error
-                and next_id not in self.previous_modules
-                and next_id not in initial_set):
+        if (
+            next_id == blocking_error
+            and next_id not in self.previous_modules
+            and next_id not in initial_set
+        ):
             self.manager.log_fine_grained(
-                f'skip {next_id!r} (module with blocking error not in import graph)')
+                f"skip {next_id!r} (module with blocking error not in import graph)"
+            )
             return changed_modules, (next_id, next_path), None
 
         result = self.update_module(next_id, next_path, next_id in removed_set)
         remaining, (next_id, next_path), blocker_messages = result
-        changed_modules = [(id, path) for id, path in changed_modules
-                           if id != next_id]
+        changed_modules = [(id, path) for id, path in changed_modules if id != next_id]
         changed_modules = dedupe_modules(remaining + changed_modules)
         t1 = time.time()
 
         self.manager.log_fine_grained(
-            f"update once: {next_id} in {t1 - t0:.3f}s - {len(changed_modules)} left")
+            f"update once: {next_id} in {t1 - t0:.3f}s - {len(changed_modules)} left"
+        )
 
         return changed_modules, (next_id, next_path), blocker_messages
 
-    def update_module(self,
-                      module: str,
-                      path: str,
-                      force_removed: bool) -> Tuple[List[Tuple[str, str]],
-                                                    Tuple[str, str],
-                                                    Optional[List[str]]]:
+    def update_module(
+        self, module: str, path: str, force_removed: bool
+    ) -> Tuple[List[Tuple[str, str]], Tuple[str, str], Optional[List[str]]]:
         """Update a single modified module.
 
         If the module contains imports of previously unseen modules, only process one of
@@ -361,7 +385,7 @@ class FineGrainedBuildManager:
             - Module which was actually processed as (id, path) tuple
             - If there was a blocking error, the error messages from it
         """
-        self.manager.log_fine_grained(f'--- update single {module!r} ---')
+        self.manager.log_fine_grained(f"--- update single {module!r} ---")
         self.updated_modules.append(module)
 
         # builtins and friends could potentially get triggered because
@@ -389,8 +413,9 @@ class FineGrainedBuildManager:
 
         manager.errors.reset()
         self.processed_targets.append(module)
-        result = update_module_isolated(module, path, manager, previous_modules, graph,
-                                        force_removed)
+        result = update_module_isolated(
+            module, path, manager, previous_modules, graph, force_removed
+        )
         if isinstance(result, BlockedUpdate):
             # Blocking error -- just give up
             module, path, remaining, errors = result
@@ -403,21 +428,23 @@ class FineGrainedBuildManager:
         t1 = time.time()
         triggered = calculate_active_triggers(manager, old_snapshots, {module: tree})
         if is_verbose(self.manager):
-            filtered = [trigger for trigger in triggered
-                        if not trigger.endswith('__>')]
-            self.manager.log_fine_grained(f'triggered: {sorted(filtered)!r}')
+            filtered = [trigger for trigger in triggered if not trigger.endswith("__>")]
+            self.manager.log_fine_grained(f"triggered: {sorted(filtered)!r}")
         self.triggered.extend(triggered | self.previous_targets_with_errors)
         if module in graph:
             graph[module].update_fine_grained_deps(self.deps)
             graph[module].free_state()
         remaining += propagate_changes_using_dependencies(
-            manager, graph, self.deps, triggered,
+            manager,
+            graph,
+            self.deps,
+            triggered,
             {module},
-            targets_with_errors=set(), processed_targets=self.processed_targets)
+            targets_with_errors=set(),
+            processed_targets=self.processed_targets,
+        )
         t2 = time.time()
-        manager.add_stats(
-            update_isolated_time=t1 - t0,
-            propagate_time=t2 - t1)
+        manager.add_stats(update_isolated_time=t1 - t0, propagate_time=t2 - t1)
 
         # Preserve state needed for the next update.
         self.previous_targets_with_errors.update(manager.errors.targets())
@@ -426,8 +453,9 @@ class FineGrainedBuildManager:
         return remaining, (module, path), None
 
 
-def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
-                       initial: Sequence[str]) -> List[str]:
+def find_unloaded_deps(
+    manager: BuildManager, graph: Dict[str, State], initial: Sequence[str]
+) -> List[str]:
     """Find all the deps of the nodes in initial that haven't had their tree loaded.
 
     The key invariant here is that if a module is loaded, so are all
@@ -453,8 +481,7 @@ def find_unloaded_deps(manager: BuildManager, graph: Dict[str, State],
     return unloaded
 
 
-def ensure_deps_loaded(module: str,
-                       deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
+def ensure_deps_loaded(module: str, deps: Dict[str, Set[str]], graph: Dict[str, State]) -> None:
     """Ensure that the dependencies on a module are loaded.
 
     Dependencies are loaded into the 'deps' dictionary.
@@ -465,22 +492,26 @@ def ensure_deps_loaded(module: str,
     """
     if module in graph and graph[module].fine_grained_deps_loaded:
         return
-    parts = module.split('.')
+    parts = module.split(".")
     for i in range(len(parts)):
-        base = '.'.join(parts[:i + 1])
+        base = ".".join(parts[: i + 1])
         if base in graph and not graph[base].fine_grained_deps_loaded:
             merge_dependencies(graph[base].load_fine_grained_deps(), deps)
             graph[base].fine_grained_deps_loaded = True
 
 
-def ensure_trees_loaded(manager: BuildManager, graph: Dict[str, State],
-                        initial: Sequence[str]) -> None:
+def ensure_trees_loaded(
+    manager: BuildManager, graph: Dict[str, State], initial: Sequence[str]
+) -> None:
     """Ensure that the modules in initial and their deps have loaded trees."""
     to_process = find_unloaded_deps(manager, graph, initial)
     if to_process:
         if is_verbose(manager):
-            manager.log_fine_grained("Calling process_fresh_modules on set of size {} ({})".format(
-                len(to_process), sorted(to_process)))
+            manager.log_fine_grained(
+                "Calling process_fresh_modules on set of size {} ({})".format(
+                    len(to_process), sorted(to_process)
+                )
+            )
         process_fresh_modules(graph, to_process, manager)
 
 
@@ -511,12 +542,14 @@ class BlockedUpdate(NamedTuple):
 UpdateResult = Union[NormalUpdate, BlockedUpdate]
 
 
-def update_module_isolated(module: str,
-                           path: str,
-                           manager: BuildManager,
-                           previous_modules: Dict[str, str],
-                           graph: Graph,
-                           force_removed: bool) -> UpdateResult:
+def update_module_isolated(
+    module: str,
+    path: str,
+    manager: BuildManager,
+    previous_modules: Dict[str, str],
+    graph: Graph,
+    force_removed: bool,
+) -> UpdateResult:
     """Build a new version of one changed module only.
 
     Don't propagate changes to elsewhere in the program. Raise CompileError on
@@ -533,7 +566,7 @@ def update_module_isolated(module: str,
     Returns a named tuple describing the result (see above for details).
     """
     if module not in graph:
-        manager.log_fine_grained(f'new module {module!r}')
+        manager.log_fine_grained(f"new module {module!r}")
 
     if not manager.fscache.isfile(path) or force_removed:
         delete_module(module, path, graph, manager)
@@ -591,7 +624,7 @@ def update_module_isolated(module: str,
         remaining_modules = changed_modules
         # The remaining modules haven't been processed yet so drop them.
         restore([id for id, _ in remaining_modules])
-        manager.log_fine_grained(f'--> {module!r} (newly imported)')
+        manager.log_fine_grained(f"--> {module!r} (newly imported)")
     else:
         remaining_modules = []
 
@@ -620,10 +653,7 @@ def update_module_isolated(module: str,
     t2 = time.time()
     state.finish_passes()
     t3 = time.time()
-    manager.add_stats(
-        semanal_time=t1 - t0,
-        typecheck_time=t2 - t1,
-        finish_passes_time=t3 - t2)
+    manager.add_stats(semanal_time=t1 - t0, typecheck_time=t2 - t1, finish_passes_time=t3 - t2)
 
     graph[module] = state
 
@@ -657,20 +687,17 @@ def find_relative_leaf_module(modules: List[Tuple[str, str]], graph: Graph) -> T
     return modules[0]
 
 
-def delete_module(module_id: str,
-                  path: str,
-                  graph: Graph,
-                  manager: BuildManager) -> None:
-    manager.log_fine_grained(f'delete module {module_id!r}')
+def delete_module(module_id: str, path: str, graph: Graph, manager: BuildManager) -> None:
+    manager.log_fine_grained(f"delete module {module_id!r}")
     # TODO: Remove deps for the module (this only affects memory use, not correctness)
     if module_id in graph:
         del graph[module_id]
     if module_id in manager.modules:
         del manager.modules[module_id]
-    components = module_id.split('.')
+    components = module_id.split(".")
     if len(components) > 1:
         # Delete reference to module in parent module.
-        parent_id = '.'.join(components[:-1])
+        parent_id = ".".join(components[:-1])
         # If parent module is ignored, it won't be included in the modules dictionary.
         if parent_id in manager.modules:
             parent = manager.modules[parent_id]
@@ -693,13 +720,12 @@ def dedupe_modules(modules: List[Tuple[str, str]]) -> List[Tuple[str, str]]:
 
 
 def get_module_to_path_map(graph: Graph) -> Dict[str, str]:
-    return {module: node.xpath
-            for module, node in graph.items()}
+    return {module: node.xpath for module, node in graph.items()}
 
 
-def get_sources(fscache: FileSystemCache,
-                modules: Dict[str, str],
-                changed_modules: List[Tuple[str, str]]) -> List[BuildSource]:
+def get_sources(
+    fscache: FileSystemCache, modules: Dict[str, str], changed_modules: List[Tuple[str, str]]
+) -> List[BuildSource]:
     sources = []
     for id, path in changed_modules:
         if fscache.isfile(path):
@@ -707,9 +733,11 @@ def get_sources(fscache: FileSystemCache,
     return sources
 
 
-def calculate_active_triggers(manager: BuildManager,
-                              old_snapshots: Dict[str, Dict[str, SnapshotItem]],
-                              new_modules: Dict[str, Optional[MypyFile]]) -> Set[str]:
+def calculate_active_triggers(
+    manager: BuildManager,
+    old_snapshots: Dict[str, Dict[str, SnapshotItem]],
+    new_modules: Dict[str, Optional[MypyFile]],
+) -> Set[str]:
     """Determine activated triggers by comparing old and new symbol tables.
 
     For example, if only the signature of function m.f is different in the new
@@ -728,14 +756,15 @@ def calculate_active_triggers(manager: BuildManager,
         else:
             snapshot2 = snapshot_symbol_table(id, new.names)
         diff = compare_symbol_table_snapshots(id, snapshot1, snapshot2)
-        package_nesting_level = id.count('.')
+        package_nesting_level = id.count(".")
         for item in diff.copy():
-            if (item.count('.') <= package_nesting_level + 1
-                    and item.split('.')[-1] not in ('__builtins__',
-                                                    '__file__',
-                                                    '__name__',
-                                                    '__package__',
-                                                    '__doc__')):
+            if item.count(".") <= package_nesting_level + 1 and item.split(".")[-1] not in (
+                "__builtins__",
+                "__file__",
+                "__name__",
+                "__package__",
+                "__doc__",
+            ):
                 # Activate catch-all wildcard trigger for top-level module changes (used for
                 # "from m import *"). This also gets triggered by changes to module-private
                 # entries, but as these unneeded dependencies only result in extra processing,
@@ -744,19 +773,20 @@ def calculate_active_triggers(manager: BuildManager,
                 # TODO: Some __* names cause mistriggers. Fix the underlying issue instead of
                 #     special casing them here.
                 diff.add(id + WILDCARD_TAG)
-            if item.count('.') > package_nesting_level + 1:
+            if item.count(".") > package_nesting_level + 1:
                 # These are for changes within classes, used by protocols.
-                diff.add(item.rsplit('.', 1)[0] + WILDCARD_TAG)
+                diff.add(item.rsplit(".", 1)[0] + WILDCARD_TAG)
 
         names |= diff
     return {make_trigger(name) for name in names}
 
 
 def replace_modules_with_new_variants(
-        manager: BuildManager,
-        graph: Dict[str, State],
-        old_modules: Dict[str, Optional[MypyFile]],
-        new_modules: Dict[str, Optional[MypyFile]]) -> None:
+    manager: BuildManager,
+    graph: Dict[str, State],
+    old_modules: Dict[str, Optional[MypyFile]],
+    new_modules: Dict[str, Optional[MypyFile]],
+) -> None:
     """Replace modules with newly builds versions.
 
     Retain the identities of externally visible AST nodes in the
@@ -770,20 +800,20 @@ def replace_modules_with_new_variants(
         preserved_module = old_modules.get(id)
         new_module = new_modules[id]
         if preserved_module and new_module is not None:
-            merge_asts(preserved_module, preserved_module.names,
-                       new_module, new_module.names)
+            merge_asts(preserved_module, preserved_module.names, new_module, new_module.names)
             manager.modules[id] = preserved_module
             graph[id].tree = preserved_module
 
 
 def propagate_changes_using_dependencies(
-        manager: BuildManager,
-        graph: Dict[str, State],
-        deps: Dict[str, Set[str]],
-        triggered: Set[str],
-        up_to_date_modules: Set[str],
-        targets_with_errors: Set[str],
-        processed_targets: List[str]) -> List[Tuple[str, str]]:
+    manager: BuildManager,
+    graph: Dict[str, State],
+    deps: Dict[str, Set[str]],
+    triggered: Set[str],
+    up_to_date_modules: Set[str],
+    targets_with_errors: Set[str],
+    processed_targets: List[str],
+) -> List[Tuple[str, str]]:
     """Transitively rechecks targets based on triggers and the dependency map.
 
     Returns a list (module id, path) tuples representing modules that contain
@@ -801,10 +831,11 @@ def propagate_changes_using_dependencies(
     while triggered or targets_with_errors:
         num_iter += 1
         if num_iter > MAX_ITER:
-            raise RuntimeError('Max number of iterations (%d) reached (endless loop?)' % MAX_ITER)
+            raise RuntimeError("Max number of iterations (%d) reached (endless loop?)" % MAX_ITER)
 
-        todo, unloaded, stale_protos = find_targets_recursive(manager, graph,
-                                                              triggered, deps, up_to_date_modules)
+        todo, unloaded, stale_protos = find_targets_recursive(
+            manager, graph, triggered, deps, up_to_date_modules
+        )
         # TODO: we sort to make it deterministic, but this is *incredibly* ad hoc
         remaining_modules.extend((id, graph[id].xpath) for id in sorted(unloaded))
         # Also process targets that used to have errors, as otherwise some
@@ -814,7 +845,7 @@ def propagate_changes_using_dependencies(
             if id is not None and id not in up_to_date_modules:
                 if id not in todo:
                     todo[id] = set()
-                manager.log_fine_grained(f'process target with error: {target}')
+                manager.log_fine_grained(f"process target with error: {target}")
                 more_nodes, _ = lookup_target(manager, target)
                 todo[id].update(more_nodes)
         triggered = set()
@@ -834,18 +865,18 @@ def propagate_changes_using_dependencies(
         up_to_date_modules = set()
         targets_with_errors = set()
         if is_verbose(manager):
-            manager.log_fine_grained(f'triggered: {list(triggered)!r}')
+            manager.log_fine_grained(f"triggered: {list(triggered)!r}")
 
     return remaining_modules
 
 
 def find_targets_recursive(
-        manager: BuildManager,
-        graph: Graph,
-        triggers: Set[str],
-        deps: Dict[str, Set[str]],
-        up_to_date_modules: Set[str]) -> Tuple[Dict[str, Set[FineGrainedDeferredNode]],
-                                               Set[str], Set[TypeInfo]]:
+    manager: BuildManager,
+    graph: Graph,
+    triggers: Set[str],
+    deps: Dict[str, Set[str]],
+    up_to_date_modules: Set[str],
+) -> Tuple[Dict[str, Set[FineGrainedDeferredNode]], Set[str], Set[TypeInfo]]:
     """Find names of all targets that need to reprocessed, given some triggers.
 
     Returns: A tuple containing a:
@@ -866,7 +897,7 @@ def find_targets_recursive(
         current = worklist
         worklist = set()
         for target in current:
-            if target.startswith('<'):
+            if target.startswith("<"):
                 module_id = module_prefix(graph, trigger_to_target(target))
                 if module_id:
                     ensure_deps_loaded(module_id, deps, graph)
@@ -880,8 +911,10 @@ def find_targets_recursive(
                 if module_id in up_to_date_modules:
                     # Already processed.
                     continue
-                if (module_id not in manager.modules
-                        or manager.modules[module_id].is_cache_skeleton):
+                if (
+                    module_id not in manager.modules
+                    or manager.modules[module_id].is_cache_skeleton
+                ):
                     # We haven't actually parsed and checked the module, so we don't have
                     # access to the actual nodes.
                     # Add it to the queue of files that need to be processed fully.
@@ -890,7 +923,7 @@ def find_targets_recursive(
 
                 if module_id not in result:
                     result[module_id] = set()
-                manager.log_fine_grained(f'process: {target}')
+                manager.log_fine_grained(f"process: {target}")
                 deferred, stale_proto = lookup_target(manager, target)
                 if stale_proto:
                     stale_protos.add(stale_proto)
@@ -899,19 +932,20 @@ def find_targets_recursive(
     return result, unloaded_files, stale_protos
 
 
-def reprocess_nodes(manager: BuildManager,
-                    graph: Dict[str, State],
-                    module_id: str,
-                    nodeset: Set[FineGrainedDeferredNode],
-                    deps: Dict[str, Set[str]],
-                    processed_targets: List[str]) -> Set[str]:
+def reprocess_nodes(
+    manager: BuildManager,
+    graph: Dict[str, State],
+    module_id: str,
+    nodeset: Set[FineGrainedDeferredNode],
+    deps: Dict[str, Set[str]],
+    processed_targets: List[str],
+) -> Set[str]:
     """Reprocess a set of nodes within a single module.
 
     Return fired triggers.
     """
     if module_id not in graph:
-        manager.log_fine_grained('%s not in graph (blocking errors or deleted?)' %
-                    module_id)
+        manager.log_fine_grained("%s not in graph (blocking errors or deleted?)" % module_id)
         return set()
 
     file_node = manager.modules[module_id]
@@ -929,7 +963,8 @@ def reprocess_nodes(manager: BuildManager,
 
     options = graph[module_id].options
     manager.errors.set_file_ignored_lines(
-        file_node.path, file_node.ignored_lines, options.ignore_errors)
+        file_node.path, file_node.ignored_lines, options.ignore_errors
+    )
 
     targets = set()
     for node in nodes:
@@ -976,9 +1011,9 @@ def reprocess_nodes(manager: BuildManager,
 
     new_symbols_snapshot = snapshot_symbol_table(file_node.fullname, file_node.names)
     # Check if any attribute types were changed and need to be propagated further.
-    changed = compare_symbol_table_snapshots(file_node.fullname,
-                                             old_symbols_snapshot,
-                                             new_symbols_snapshot)
+    changed = compare_symbol_table_snapshots(
+        file_node.fullname, old_symbols_snapshot, new_symbols_snapshot
+    )
     new_triggered = {make_trigger(name) for name in changed}
 
     # Dependencies may have changed.
@@ -1005,41 +1040,45 @@ def find_symbol_tables_recursive(prefix: str, symbols: SymbolTable) -> Dict[str,
     result = {}
     result[prefix] = symbols
     for name, node in symbols.items():
-        if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + '.'):
-            more = find_symbol_tables_recursive(prefix + '.' + name, node.node.names)
+        if isinstance(node.node, TypeInfo) and node.node.fullname.startswith(prefix + "."):
+            more = find_symbol_tables_recursive(prefix + "." + name, node.node.names)
             result.update(more)
     return result
 
 
-def update_deps(module_id: str,
-                nodes: List[FineGrainedDeferredNode],
-                graph: Dict[str, State],
-                deps: Dict[str, Set[str]],
-                options: Options) -> None:
+def update_deps(
+    module_id: str,
+    nodes: List[FineGrainedDeferredNode],
+    graph: Dict[str, State],
+    deps: Dict[str, Set[str]],
+    options: Options,
+) -> None:
     for deferred in nodes:
         node = deferred.node
         type_map = graph[module_id].type_map()
         tree = graph[module_id].tree
         assert tree is not None, "Tree must be processed at this stage"
-        new_deps = get_dependencies_of_target(module_id, tree, node, type_map,
-                                              options.python_version)
+        new_deps = get_dependencies_of_target(
+            module_id, tree, node, type_map, options.python_version
+        )
         for trigger, targets in new_deps.items():
             deps.setdefault(trigger, set()).update(targets)
     # Merge also the newly added protocol deps (if any).
     TypeState.update_protocol_deps(deps)
 
 
-def lookup_target(manager: BuildManager,
-                  target: str) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
+def lookup_target(
+    manager: BuildManager, target: str
+) -> Tuple[List[FineGrainedDeferredNode], Optional[TypeInfo]]:
     """Look up a target by fully-qualified name.
 
     The first item in the return tuple is a list of deferred nodes that
     needs to be reprocessed. If the target represents a TypeInfo corresponding
     to a protocol, return it as a second item in the return tuple, otherwise None.
     """
+
     def not_found() -> None:
-        manager.log_fine_grained(
-            f"Can't find matching target for {target} (stale dependency?)")
+        manager.log_fine_grained(f"Can't find matching target for {target} (stale dependency?)")
 
     modules = manager.modules
     items = split_target(modules, target)
@@ -1048,7 +1087,7 @@ def lookup_target(manager: BuildManager,
         return [], None
     module, rest = items
     if rest:
-        components = rest.split('.')
+        components = rest.split(".")
     else:
         components = []
     node: Optional[SymbolNode] = modules[module]
@@ -1059,8 +1098,7 @@ def lookup_target(manager: BuildManager,
             active_class = node
         if isinstance(node, MypyFile):
             file = node
-        if (not isinstance(node, (MypyFile, TypeInfo))
-                or c not in node.names):
+        if not isinstance(node, (MypyFile, TypeInfo)) or c not in node.names:
             not_found()  # Stale dependency
             return [], None
         # Don't reprocess plugin generated targets. They should get
@@ -1088,15 +1126,13 @@ def lookup_target(manager: BuildManager,
         for name, symnode in node.names.items():
             node = symnode.node
             if isinstance(node, FuncDef):
-                method, _ = lookup_target(manager, target + '.' + name)
+                method, _ = lookup_target(manager, target + "." + name)
                 result.extend(method)
         return result, stale_info
     if isinstance(node, Decorator):
         # Decorator targets actually refer to the function definition only.
         node = node.func
-    if not isinstance(node, (FuncDef,
-                             MypyFile,
-                             OverloadedFuncDef)):
+    if not isinstance(node, (FuncDef, MypyFile, OverloadedFuncDef)):
         # The target can't be refreshed. It's possible that the target was
         # changed to another type and we have a stale dependency pointing to it.
         not_found()
@@ -1113,9 +1149,9 @@ def is_verbose(manager: BuildManager) -> bool:
     return manager.options.verbosity >= 1 or DEBUG_FINE_GRAINED
 
 
-def target_from_node(module: str,
-                     node: Union[FuncDef, MypyFile, OverloadedFuncDef]
-                     ) -> Optional[str]:
+def target_from_node(
+    module: str, node: Union[FuncDef, MypyFile, OverloadedFuncDef]
+) -> Optional[str]:
     """Return the target name corresponding to a deferred node.
 
     Args:
@@ -1131,29 +1167,30 @@ def target_from_node(module: str,
         return module
     else:  # OverloadedFuncDef or FuncDef
         if node.info:
-            return f'{node.info.fullname}.{node.name}'
+            return f"{node.info.fullname}.{node.name}"
         else:
-            return f'{module}.{node.name}'
+            return f"{module}.{node.name}"
 
 
 if sys.platform != "win32":
     INIT_SUFFIXES: Final = ("/__init__.py", "/__init__.pyi")
 else:
     INIT_SUFFIXES: Final = (
-        os.sep + '__init__.py',
-        os.sep + '__init__.pyi',
-        os.altsep + '__init__.py',
-        os.altsep + '__init__.pyi',
+        os.sep + "__init__.py",
+        os.sep + "__init__.pyi",
+        os.altsep + "__init__.py",
+        os.altsep + "__init__.pyi",
     )
 
 
 def refresh_suppressed_submodules(
-        module: str,
-        path: Optional[str],
-        deps: Dict[str, Set[str]],
-        graph: Graph,
-        fscache: FileSystemCache,
-        refresh_file: Callable[[str, str], List[str]]) -> Optional[List[str]]:
+    module: str,
+    path: Optional[str],
+    deps: Dict[str, Set[str]],
+    graph: Graph,
+    fscache: FileSystemCache,
+    refresh_file: Callable[[str, str], List[str]],
+) -> Optional[List[str]]:
     """Look for submodules that are now suppressed in target package.
 
     If a submodule a.b gets added, we need to mark it as suppressed
@@ -1181,12 +1218,14 @@ def refresh_suppressed_submodules(
     except FileNotFoundError:
         entries = []
     for fnam in entries:
-        if (not fnam.endswith(('.py', '.pyi'))
-                or fnam.startswith("__init__.")
-                or fnam.count('.') != 1):
+        if (
+            not fnam.endswith((".py", ".pyi"))
+            or fnam.startswith("__init__.")
+            or fnam.count(".") != 1
+        ):
             continue
-        shortname = fnam.split('.')[0]
-        submodule = module + '.' + shortname
+        shortname = fnam.split(".")[0]
+        submodule = module + "." + shortname
         trigger = make_trigger(submodule)
 
         # We may be missing the required fine-grained deps.
@@ -1212,9 +1251,11 @@ def refresh_suppressed_submodules(
                     assert tree  # Will be fine, due to refresh_file() above
                     for imp in tree.imports:
                         if isinstance(imp, ImportFrom):
-                            if (imp.id == module
-                                    and any(name == shortname for name, _ in imp.names)
-                                    and submodule not in state.suppressed_set):
+                            if (
+                                imp.id == module
+                                and any(name == shortname for name, _ in imp.names)
+                                and submodule not in state.suppressed_set
+                            ):
                                 state.suppressed.append(submodule)
                                 state.suppressed_set.add(submodule)
     return messages
