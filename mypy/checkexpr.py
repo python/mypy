@@ -2585,7 +2585,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # Expressions of form [...] * e get special type inference.
             return self.check_list_multiply(e)
         if e.op == "%":
-            if isinstance(e.left, BytesExpr) and pyversion[1] >= 5:
+            if isinstance(e.left, BytesExpr) and self.chk.options.python_version >= (3, 5):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
             if isinstance(e.left, StrExpr):
                 return self.strfrm_checker.check_str_interpolation(e.left, e.right)
