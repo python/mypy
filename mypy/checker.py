@@ -1217,7 +1217,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     self.accept(item.body)
                 unreachable = self.binder.is_unreachable()
 
-            if self.options.warn_no_return and not unreachable:
+            if not unreachable and not body_is_trivial:
                 if defn.is_generator or is_named_instance(
                     self.return_types[-1], "typing.AwaitableGenerator"
                 ):
@@ -1228,17 +1228,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     return_type = self.get_coroutine_return_type(self.return_types[-1])
                 else:
                     return_type = self.return_types[-1]
-
                 return_type = get_proper_type(return_type)
-                if not isinstance(return_type, (NoneType, AnyType)) and not body_is_trivial:
-                    # Control flow fell off the end of a function that was
-                    # declared to return a non-None type and is not
-                    # entirely pass/Ellipsis/raise NotImplementedError.
-                    if isinstance(return_type, UninhabitedType):
-                        # This is a NoReturn function
-                        self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
-                    else:
-                        self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+
+                if self.options.warn_no_return:
+                    if not isinstance(return_type, (NoneType, AnyType)):
+                        # Control flow fell off the end of a function that was
+                        # declared to return a non-None type and is not
+                        # entirely pass/Ellipsis/raise NotImplementedError.
+                        if isinstance(return_type, UninhabitedType):
+                            # This is a NoReturn function
+                            self.fail(message_registry.INVALID_IMPLICIT_RETURN, defn)
+                        else:
+                            self.fail(message_registry.MISSING_RETURN_STATEMENT, defn)
+                else:
+                    # similar to code in check_return_stmt
+                    self.check_subtype(
+                        subtype_label="implicitly returns",
+                        subtype=NoneType(),
+                        supertype_label="expected",
+                        supertype=return_type,
+                        context=defn,
+                        msg=message_registry.INCOMPATIBLE_RETURN_VALUE_TYPE,
+                        code=codes.RETURN_VALUE,
+                    )
 
             self.return_types.pop()
 
@@ -4106,13 +4118,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.msg.deleted_as_rvalue(typ, e)
             return
 
-        if self.options.python_version[0] == 2:
-            # Since `raise` has very different rule on python2, we use a different helper.
-            # https://github.com/python/mypy/pull/11289
-            self._type_check_raise_python2(e, s, typ)
-            return
-
-        # Python3 case:
         exc_type = self.named_type("builtins.BaseException")
         expected_type_items = [exc_type, TypeType(exc_type)]
         if optional:
@@ -4127,76 +4132,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if isinstance(typ, FunctionLike):
             # https://github.com/python/mypy/issues/11089
             self.expr_checker.check_call(typ, [], [], e)
-
-    def _type_check_raise_python2(self, e: Expression, s: RaiseStmt, typ: ProperType) -> None:
-        # Python2 has two possible major cases:
-        # 1. `raise expr`, where `expr` is some expression, it can be:
-        #    - Exception typ
-        #    - Exception instance
-        #    - Old style class (not supported)
-        #    - Tuple, where 0th item is exception type or instance
-        # 2. `raise exc, msg, traceback`, where:
-        #    - `exc` is exception type (not instance!)
-        #    - `traceback` is `types.TracebackType | None`
-        # Important note: `raise exc, msg` is not the same as `raise (exc, msg)`
-        # We call `raise exc, msg, traceback` - legacy mode.
-        exc_type = self.named_type("builtins.BaseException")
-        exc_inst_or_type = UnionType([exc_type, TypeType(exc_type)])
-
-        if not s.legacy_mode and (
-            isinstance(typ, TupleType)
-            and typ.items
-            or (isinstance(typ, Instance) and typ.args and typ.type.fullname == "builtins.tuple")
-        ):
-            # `raise (exc, ...)` case:
-            item = typ.items[0] if isinstance(typ, TupleType) else typ.args[0]
-            self.check_subtype(
-                item,
-                exc_inst_or_type,
-                s,
-                "When raising a tuple, first element must by derived from BaseException",
-            )
-            return
-        elif s.legacy_mode:
-            # `raise Exception, msg` case
-            # `raise Exception, msg, traceback` case
-            # https://docs.python.org/2/reference/simple_stmts.html#the-raise-statement
-            assert isinstance(typ, TupleType)  # Is set in fastparse2.py
-            if len(typ.items) >= 2 and isinstance(get_proper_type(typ.items[1]), NoneType):
-                expected_type: Type = exc_inst_or_type
-            else:
-                expected_type = TypeType(exc_type)
-            self.check_subtype(
-                typ.items[0], expected_type, s, f'Argument 1 must be "{expected_type}" subtype'
-            )
-
-            # Typecheck `traceback` part:
-            if len(typ.items) == 3:
-                # Now, we typecheck `traceback` argument if it is present.
-                # We do this after the main check for better error message
-                # and better ordering: first about `BaseException` subtype,
-                # then about `traceback` type.
-                traceback_type = UnionType.make_union(
-                    [self.named_type("types.TracebackType"), NoneType()]
-                )
-                self.check_subtype(
-                    typ.items[2],
-                    traceback_type,
-                    s,
-                    f'Argument 3 must be "{traceback_type}" subtype',
-                )
-        else:
-            expected_type_items = [
-                # `raise Exception` and `raise Exception()` cases:
-                exc_type,
-                TypeType(exc_type),
-            ]
-            self.check_subtype(
-                typ,
-                UnionType.make_union(expected_type_items),
-                s,
-                message_registry.INVALID_EXCEPTION,
-            )
 
     def visit_try_stmt(self, s: TryStmt) -> None:
         """Type check a try statement."""

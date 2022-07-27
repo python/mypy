@@ -61,8 +61,8 @@ def isinstance_proper_hook(ctx: FunctionContext) -> Type:
                 " use mypy.types.get_proper_type() first",
                 ctx.context,
             )
-            ctx.api.note(
-                "If you pass on the original type"  # type: ignore[attr-defined]
+            ctx.api.note(  # type: ignore[attr-defined]
+                "If you pass on the original type"
                 " after the check, always use its unexpanded version",
                 ctx.context,
             )

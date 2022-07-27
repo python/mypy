@@ -360,8 +360,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 # The only case where expand_type_alias() can return an incorrect instance is
                 # when it is top-level instance, so no need to recurse.
                 if (
-                    isinstance(res, Instance)
-                    and len(res.args) != len(res.type.type_vars)  # type: ignore[misc]
+                    isinstance(res, Instance)  # type: ignore[misc]
+                    and len(res.args) != len(res.type.type_vars)
                     and not self.defining_alias
                 ):
                     fix_instance(

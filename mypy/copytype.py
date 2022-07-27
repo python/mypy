@@ -1,6 +1,5 @@
 from typing import Any, cast
 
-from mypy.type_visitor import TypeVisitor
 from mypy.types import (
     AnyType,
     CallableType,
@@ -25,6 +24,8 @@ from mypy.types import (
     UnionType,
     UnpackType,
 )
+# type_visitor needs to be imported after types
+from mypy.type_visitor import TypeVisitor  # isort: skip
 
 
 def copy_type(t: ProperType) -> ProperType:

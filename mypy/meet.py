@@ -211,7 +211,7 @@ def is_overlapping_types(
     """
     if isinstance(left, TypeGuardedType) or isinstance(  # type: ignore[misc]
         right, TypeGuardedType
-    ):  # type: ignore[misc]
+    ):
         # A type guard forces the new type even if it doesn't overlap the old.
         return True
 

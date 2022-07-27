@@ -2736,8 +2736,8 @@ def get_proper_type(typ: Optional[Type]) -> Optional[ProperType]:
 
 
 @overload
-def get_proper_types(it: Iterable[Type]) -> List[ProperType]:
-    ...  # type: ignore[misc]
+def get_proper_types(it: Iterable[Type]) -> List[ProperType]:  # type: ignore[misc]
+    ...
 
 
 @overload

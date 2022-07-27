@@ -308,9 +308,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             result = type_object_type(node, self.named_type)
-            if isinstance(result, CallableType) and isinstance(
+            if isinstance(result, CallableType) and isinstance(  # type: ignore
                 result.ret_type, Instance
-            ):  # type: ignore
+            ):
                 # We need to set correct line and column
                 # TODO: always do this in type_object_type by passing the original context
                 result.ret_type.line = e.line
@@ -917,7 +917,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         args: List[Expression],
         arg_kinds: List[ArgKind],
         arg_names: Optional[Sequence[Optional[str]]],
-        hook: Callable[[List[List[Expression]], CallableType], FunctionLike,],
+        hook: Callable[[List[List[Expression]], CallableType], FunctionLike],
     ) -> FunctionLike:
         """Helper to apply a signature hook for either a function or method"""
         if isinstance(callee, CallableType):
