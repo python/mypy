@@ -11,7 +11,7 @@ from mypyc.ir.ops import (
     LoadStatic, InitStatic, TupleGet, TupleSet, IncRef, DecRef, Call, MethodCall, Cast, Box, Unbox,
     RaiseStandardError, CallC, Truncate, LoadGlobal, IntOp, ComparisonOp, LoadMem, SetMem,
     GetElementPtr, LoadAddress, Register, Value, OpVisitor, BasicBlock, ControlOp, LoadLiteral,
-    AssignMulti, KeepAlive, Op, ERR_NEVER
+    AssignMulti, KeepAlive, Op, Extend, ERR_NEVER
 )
 from mypyc.ir.func_ir import FuncIR, all_values_full
 from mypyc.ir.module_ir import ModuleIRs
@@ -171,6 +171,13 @@ class IRPrettyPrintVisitor(OpVisitor[str]):
 
     def visit_truncate(self, op: Truncate) -> str:
         return self.format("%r = truncate %r: %t to %t", op, op.src, op.src_type, op.type)
+
+    def visit_extend(self, op: Extend) -> str:
+        if op.signed:
+            extra = ' signed'
+        else:
+            extra = ''
+        return self.format("%r = extend%s %r: %t to %t", op, extra, op.src, op.src_type, op.type)
 
     def visit_load_global(self, op: LoadGlobal) -> str:
         ann = f'  ({repr(op.ann)})' if op.ann else ''

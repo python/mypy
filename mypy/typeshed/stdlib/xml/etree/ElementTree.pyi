@@ -1,92 +1,41 @@
 import sys
+from _collections_abc import dict_keys
 from _typeshed import FileDescriptor, StrOrBytesPath, SupportsRead, SupportsWrite
-from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, KeysView, Mapping, MutableSequence, Sequence
+from collections.abc import Callable, Generator, ItemsView, Iterable, Iterator, Mapping, Sequence
 from typing import Any, TypeVar, overload
 from typing_extensions import Literal, SupportsIndex, TypeAlias, TypeGuard
 
+__all__ = [
+    "Comment",
+    "dump",
+    "Element",
+    "ElementTree",
+    "fromstring",
+    "fromstringlist",
+    "iselement",
+    "iterparse",
+    "parse",
+    "ParseError",
+    "PI",
+    "ProcessingInstruction",
+    "QName",
+    "SubElement",
+    "tostring",
+    "tostringlist",
+    "TreeBuilder",
+    "VERSION",
+    "XML",
+    "XMLID",
+    "XMLParser",
+    "XMLPullParser",
+    "register_namespace",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["C14NWriterTarget", "canonicalize"]
+
 if sys.version_info >= (3, 9):
-    __all__ = [
-        "Comment",
-        "dump",
-        "Element",
-        "ElementTree",
-        "fromstring",
-        "fromstringlist",
-        "indent",
-        "iselement",
-        "iterparse",
-        "parse",
-        "ParseError",
-        "PI",
-        "ProcessingInstruction",
-        "QName",
-        "SubElement",
-        "tostring",
-        "tostringlist",
-        "TreeBuilder",
-        "VERSION",
-        "XML",
-        "XMLID",
-        "XMLParser",
-        "XMLPullParser",
-        "register_namespace",
-        "canonicalize",
-        "C14NWriterTarget",
-    ]
-elif sys.version_info >= (3, 8):
-    __all__ = [
-        "Comment",
-        "dump",
-        "Element",
-        "ElementTree",
-        "fromstring",
-        "fromstringlist",
-        "iselement",
-        "iterparse",
-        "parse",
-        "ParseError",
-        "PI",
-        "ProcessingInstruction",
-        "QName",
-        "SubElement",
-        "tostring",
-        "tostringlist",
-        "TreeBuilder",
-        "VERSION",
-        "XML",
-        "XMLID",
-        "XMLParser",
-        "XMLPullParser",
-        "register_namespace",
-        "canonicalize",
-        "C14NWriterTarget",
-    ]
-else:
-    __all__ = [
-        "Comment",
-        "dump",
-        "Element",
-        "ElementTree",
-        "fromstring",
-        "fromstringlist",
-        "iselement",
-        "iterparse",
-        "parse",
-        "ParseError",
-        "PI",
-        "ProcessingInstruction",
-        "QName",
-        "SubElement",
-        "tostring",
-        "tostringlist",
-        "TreeBuilder",
-        "VERSION",
-        "XML",
-        "XMLID",
-        "XMLParser",
-        "XMLPullParser",
-        "register_namespace",
-    ]
+    __all__ += ["indent"]
 
 _T = TypeVar("_T")
 _FileRead: TypeAlias = StrOrBytesPath | FileDescriptor | SupportsRead[bytes] | SupportsRead[str]
@@ -132,7 +81,7 @@ if sys.version_info >= (3, 8):
         exclude_tags: Iterable[str] | None = ...,
     ) -> None: ...
 
-class Element(MutableSequence[Element]):
+class Element:
     tag: str
     attrib: dict[str, str]
     text: str | None
@@ -156,7 +105,7 @@ class Element(MutableSequence[Element]):
     def iter(self, tag: str | None = ...) -> Generator[Element, None, None]: ...
     def iterfind(self, path: str, namespaces: dict[str, str] | None = ...) -> Generator[Element, None, None]: ...
     def itertext(self) -> Generator[str, None, None]: ...
-    def keys(self) -> KeysView[str]: ...
+    def keys(self) -> dict_keys[str, str]: ...
     # makeelement returns the type of self in Python impl, but not in C impl
     def makeelement(self, __tag: str, __attrib: dict[str, str]) -> Element: ...
     def remove(self, __subelement: Element) -> None: ...
@@ -167,8 +116,10 @@ class Element(MutableSequence[Element]):
     @overload
     def __getitem__(self, __i: SupportsIndex) -> Element: ...
     @overload
-    def __getitem__(self, __s: slice) -> MutableSequence[Element]: ...
+    def __getitem__(self, __s: slice) -> list[Element]: ...
     def __len__(self) -> int: ...
+    # Doesn't actually exist at runtime, but instance of the class are indeed iterable due to __getitem__.
+    def __iter__(self) -> Iterator[Element]: ...
     @overload
     def __setitem__(self, __i: SupportsIndex, __o: Element) -> None: ...
     @overload
@@ -194,7 +145,7 @@ class QName:
 
 class ElementTree:
     def __init__(self, element: Element | None = ..., file: _FileRead | None = ...) -> None: ...
-    def getroot(self) -> Element: ...
+    def getroot(self) -> Element | Any: ...
     def parse(self, source: _FileRead, parser: XMLParser | None = ...) -> Element: ...
     def iter(self, tag: str | None = ...) -> Generator[Element, None, None]: ...
     if sys.version_info < (3, 9):
@@ -321,7 +272,9 @@ class XMLPullParser:
     def __init__(self, events: Sequence[str] | None = ..., *, _parser: XMLParser | None = ...) -> None: ...
     def feed(self, data: str | bytes) -> None: ...
     def close(self) -> None: ...
-    def read_events(self) -> Iterator[tuple[str, Element]]: ...
+    # Second element in the tuple could be `Element`, `tuple[str, str]` or `None`.
+    # Use `Any` to avoid false-positive errors.
+    def read_events(self) -> Iterator[tuple[str, Any]]: ...
 
 def XML(text: str | bytes, parser: XMLParser | None = ...) -> Element: ...
 def XMLID(text: str | bytes, parser: XMLParser | None = ...) -> tuple[Element, dict[str, Element]]: ...

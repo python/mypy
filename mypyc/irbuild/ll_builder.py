@@ -1337,7 +1337,7 @@ class LowLevelIRBuilder:
         if desc.truncated_type is None:
             result = target
         else:
-            truncate = self.add(Truncate(target, desc.return_type, desc.truncated_type))
+            truncate = self.add(Truncate(target, desc.truncated_type))
             result = truncate
         if result_type and not is_runtime_subtype(result.type, result_type):
             if is_none_rprimitive(result_type):

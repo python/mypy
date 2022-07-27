@@ -8,7 +8,8 @@ from mypy.types import (
     Instance, TypeVarType, CallableType, TupleType, TypedDictType, UnionType, Overloaded,
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, is_named_instance,
     FunctionLike, TypeOfAny, LiteralType, get_proper_type, TypeAliasType, ParamSpecType,
-    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TypeVarTupleType,
+    Parameters, UnpackType, TUPLE_LIKE_INSTANCE_NAMES, TYPED_NAMEDTUPLE_NAMES,
+    TypeVarTupleType, ProperType
 )
 import mypy.applytype
 import mypy.constraints
@@ -26,6 +27,7 @@ from mypy.expandtype import expand_type_by_instance
 from mypy.typestate import TypeState, SubtypeKind
 from mypy.options import Options
 from mypy.state import state
+from mypy.typevartuples import split_with_instance, extract_unpack
 
 # Flags for detected protocol members
 IS_SETTABLE: Final = 1
@@ -239,7 +241,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 members = self.right.type.protocol_members
                 # None is compatible with Hashable (and other similar protocols). This is
                 # slightly sloppy since we don't check the signature of "__hash__".
-                return not members or members == ["__hash__"]
+                # None is also compatible with `SupportsStr` protocol.
+                return not members or all(member in ("__hash__", "__str__") for member in members)
             return False
         else:
             return True
@@ -286,13 +289,95 @@ class SubtypeVisitor(TypeVisitor[bool]):
             # in `TypeInfo.mro`, so when `(a: NamedTuple) -> None` is used,
             # we need to check for `is_named_tuple` property
             if ((left.type.has_base(rname) or rname == 'builtins.object'
-                    or (rname == 'typing.NamedTuple'
+                    or (rname in TYPED_NAMEDTUPLE_NAMES
                         and any(l.is_named_tuple for l in left.type.mro)))
                     and not self.ignore_declared_variance):
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
                 nominal = True
-                for lefta, righta, tvar in zip(t.args, right.args, right.type.defn.type_vars):
+                if right.type.has_type_var_tuple_type:
+                    left_prefix, left_middle, left_suffix = (
+                        split_with_instance(left)
+                    )
+                    right_prefix, right_middle, right_suffix = (
+                        split_with_instance(right)
+                    )
+
+                    left_unpacked = extract_unpack(
+                        left_middle
+                    )
+                    right_unpacked = extract_unpack(
+                        right_middle
+                    )
+
+                    # Helper for case 2 below so we can treat them the same.
+                    def check_mixed(
+                        unpacked_type: ProperType,
+                        compare_to: Tuple[Type, ...]
+                    ) -> bool:
+                        if isinstance(unpacked_type, TypeVarTupleType):
+                            return False
+                        if isinstance(unpacked_type, AnyType):
+                            return True
+                        if isinstance(unpacked_type, TupleType):
+                            if len(unpacked_type.items) != len(compare_to):
+                                return False
+                            for t1, t2 in zip(unpacked_type.items, compare_to):
+                                if not is_equivalent(t1, t2):
+                                    return False
+                            return True
+                        return False
+
+                    # Case 1: Both are unpacks, in this case we check what is being
+                    # unpacked is the same.
+                    if left_unpacked is not None and right_unpacked is not None:
+                        if not is_equivalent(left_unpacked, right_unpacked):
+                            return False
+
+                    # Case 2: Only one of the types is an unpack. The equivalence
+                    # case is mostly the same but we check some additional
+                    # things when unpacking on the right.
+                    elif left_unpacked is not None and right_unpacked is None:
+                        if not check_mixed(left_unpacked, right_middle):
+                            return False
+                    elif left_unpacked is None and right_unpacked is not None:
+                        if (
+                            isinstance(right_unpacked, Instance)
+                            and right_unpacked.type.fullname == "builtins.tuple"
+                        ):
+                            return all(
+                                is_equivalent(l, right_unpacked.args[0])
+                                for l in left_middle
+                            )
+                        if not check_mixed(right_unpacked, left_middle):
+                            return False
+
+                    # Case 3: Neither type is an unpack. In this case we just compare
+                    # the items themselves.
+                    else:
+                        if len(left_middle) != len(right_middle):
+                            return False
+                        for left_t, right_t in zip(left_middle, right_middle):
+                            if not is_equivalent(left_t, right_t):
+                                return False
+
+                    left_items = t.args[:right.type.type_var_tuple_prefix]
+                    right_items = right.args[:right.type.type_var_tuple_prefix]
+                    if right.type.type_var_tuple_suffix:
+                        left_items += t.args[-right.type.type_var_tuple_suffix:]
+                        right_items += right.args[-right.type.type_var_tuple_suffix:]
+
+                    unpack_index = right.type.type_var_tuple_prefix
+                    assert unpack_index is not None
+                    type_params = zip(
+                        left_prefix + right_suffix,
+                        right_prefix + right_suffix,
+                        right.type.defn.type_vars[:unpack_index] +
+                        right.type.defn.type_vars[unpack_index+1:]
+                    )
+                else:
+                    type_params = zip(t.args, right.args, right.type.defn.type_vars)
+                for lefta, righta, tvar in type_params:
                     if isinstance(tvar, TypeVarType):
                         if not self.check_type_parameter(lefta, righta, tvar.variance):
                             nominal = False

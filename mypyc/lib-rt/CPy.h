@@ -122,6 +122,7 @@ static inline size_t CPy_FindAttrOffset(PyTypeObject *trait, CPyVTableItem *vtab
 
 CPyTagged CPyTagged_FromSsize_t(Py_ssize_t value);
 CPyTagged CPyTagged_FromVoidPtr(void *ptr);
+CPyTagged CPyTagged_FromInt64(int64_t value);
 CPyTagged CPyTagged_FromObject(PyObject *object);
 CPyTagged CPyTagged_StealFromObject(PyObject *object);
 CPyTagged CPyTagged_BorrowFromObject(PyObject *object);
@@ -150,6 +151,13 @@ PyObject *CPyLong_FromStrWithBase(PyObject *o, CPyTagged base);
 PyObject *CPyLong_FromStr(PyObject *o);
 PyObject *CPyLong_FromFloat(PyObject *o);
 PyObject *CPyBool_Str(bool b);
+int64_t CPyLong_AsInt64(PyObject *o);
+int64_t CPyInt64_Divide(int64_t x, int64_t y);
+int64_t CPyInt64_Remainder(int64_t x, int64_t y);
+int32_t CPyLong_AsInt32(PyObject *o);
+int32_t CPyInt32_Divide(int32_t x, int32_t y);
+int32_t CPyInt32_Remainder(int32_t x, int32_t y);
+void CPyInt32_Overflow(void);
 
 static inline int CPyTagged_CheckLong(CPyTagged x) {
     return x & CPY_INT_TAG;
@@ -190,6 +198,12 @@ static inline PyObject *CPyTagged_LongAsObject(CPyTagged x) {
 static inline bool CPyTagged_TooBig(Py_ssize_t value) {
     // Micro-optimized for the common case where it fits.
     return (size_t)value > CPY_TAGGED_MAX
+        && (value >= 0 || value < CPY_TAGGED_MIN);
+}
+
+static inline bool CPyTagged_TooBigInt64(int64_t value) {
+    // Micro-optimized for the common case where it fits.
+    return (uint64_t)value > CPY_TAGGED_MAX
         && (value >= 0 || value < CPY_TAGGED_MIN);
 }
 
@@ -342,8 +356,11 @@ PyObject *CPyList_GetItemUnsafe(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShort(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemBorrow(PyObject *list, CPyTagged index);
 PyObject *CPyList_GetItemShortBorrow(PyObject *list, CPyTagged index);
+PyObject *CPyList_GetItemInt64(PyObject *list, int64_t index);
+PyObject *CPyList_GetItemInt64Borrow(PyObject *list, int64_t index);
 bool CPyList_SetItem(PyObject *list, CPyTagged index, PyObject *value);
 bool CPyList_SetItemUnsafe(PyObject *list, CPyTagged index, PyObject *value);
+bool CPyList_SetItemInt64(PyObject *list, int64_t index, PyObject *value);
 PyObject *CPyList_PopLast(PyObject *obj);
 PyObject *CPyList_Pop(PyObject *obj, CPyTagged index);
 CPyTagged CPyList_Count(PyObject *obj, PyObject *value);

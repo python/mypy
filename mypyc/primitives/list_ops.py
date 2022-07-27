@@ -3,7 +3,7 @@
 from mypyc.ir.ops import ERR_MAGIC, ERR_NEVER, ERR_FALSE
 from mypyc.ir.rtypes import (
     int_rprimitive, short_int_rprimitive, list_rprimitive, object_rprimitive,  c_int_rprimitive,
-    c_pyssize_t_rprimitive, bit_rprimitive
+    c_pyssize_t_rprimitive, bit_rprimitive, int64_rprimitive
 )
 from mypyc.primitives.registry import (
     load_address_op, function_op, binary_op, method_op, custom_op, ERR_NEG_INT
@@ -55,7 +55,7 @@ list_get_item_op = method_op(
     c_function_name='CPyList_GetItem',
     error_kind=ERR_MAGIC)
 
-# list[index] version with no int bounds check for when it is known to be short
+# list[index] version with no int tag check for when it is known to be short
 method_op(
     name='__getitem__',
     arg_types=[list_rprimitive, short_int_rprimitive],
@@ -84,6 +84,25 @@ method_op(
     is_borrowed=True,
     priority=4)
 
+# Version with native int index
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, int64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemInt64',
+    error_kind=ERR_MAGIC,
+    priority=5)
+
+# Version with native int index
+method_op(
+    name='__getitem__',
+    arg_types=[list_rprimitive, int64_rprimitive],
+    return_type=object_rprimitive,
+    c_function_name='CPyList_GetItemInt64Borrow',
+    is_borrowed=True,
+    error_kind=ERR_MAGIC,
+    priority=6)
+
 # This is unsafe because it assumes that the index is a non-negative short integer
 # that is in-bounds for the list.
 list_get_item_unsafe_op = custom_op(
@@ -100,6 +119,16 @@ list_set_item_op = method_op(
     c_function_name='CPyList_SetItem',
     error_kind=ERR_FALSE,
     steals=[False, False, True])
+
+# list[index_i64] = obj
+method_op(
+    name='__setitem__',
+    arg_types=[list_rprimitive, int64_rprimitive, object_rprimitive],
+    return_type=bit_rprimitive,
+    c_function_name='CPyList_SetItemInt64',
+    error_kind=ERR_FALSE,
+    steals=[False, False, True],
+    priority=2)
 
 # PyList_SET_ITEM does no error checking,
 # and should only be used to fill in brand new lists.

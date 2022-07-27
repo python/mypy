@@ -137,6 +137,11 @@ class TypeVarEraser(TypeTranslator):
             return self.replacement
         return t
 
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         if self.erase_id(t.id):
             return self.replacement

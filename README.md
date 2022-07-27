@@ -82,10 +82,12 @@ Mypy can be installed using pip:
 
     python3 -m pip install -U mypy
 
-If you want to run the latest version of the code, you can install from git:
+If you want to run the latest version of the code, you can install from the
+repo directly:
 
     python3 -m pip install -U git+https://github.com/python/mypy.git
-
+    # or if you don't have 'git' installed
+    python3 -m pip install -U https://github.com/python/mypy/zipball/master
 
 Now you can type-check the [statically typed parts] of a program like this:
 

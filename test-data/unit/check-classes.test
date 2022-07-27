@@ -151,6 +151,24 @@ class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
 
 
+[case testOverridePartialAttributeWithMethod]
+# This was crashing: https://github.com/python/mypy/issues/11686.
+class Base:
+    def __init__(self, arg: int):
+        self.partial_type = []  # E: Need type annotation for "partial_type" (hint: "partial_type: List[<type>] = ...")
+        self.force_deferral = []
+
+    # Force inference of the `force_deferral` attribute in `__init__` to be
+    # deferred to a later pass by providing a definition in another context,
+    # which means `partial_type` remains only partially inferred.
+    force_deferral = []  # E: Need type annotation for "force_deferral" (hint: "force_deferral: List[<type>] = ...")
+
+
+class Derived(Base):
+    def partial_type(self) -> int:  # E: Signature of "partial_type" incompatible with supertype "Base"
+        ...
+
+
 -- Attributes
 -- ----------
 
@@ -822,7 +840,7 @@ from typing import Any, cast
 class A:
     def __init__(self, a: 'A') -> None: pass
 a = None # type: A
-a.__init__(a)  # E: Cannot access "__init__" directly
+a.__init__(a)  # E: Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass
 (cast(Any, a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
@@ -2189,7 +2207,7 @@ reveal_type(Num3() + Num1())  # N: Revealed type is "__main__.Num3"
 reveal_type(Num2() + Num3())  # N: Revealed type is "__main__.Num2"
 reveal_type(Num3() + Num2())  # N: Revealed type is "__main__.Num3"
 
-[case testDivReverseOperatorPython3]
+[case testDivReverseOperator]
 # No error: __div__ has no special meaning in Python 3
 class A1:
     def __div__(self, x: B1) -> int: ...
@@ -2203,37 +2221,6 @@ class B2:
 
 A1() / B1()                 # E: Unsupported left operand type for / ("A1")
 reveal_type(A2() / B2())    # N: Revealed type is "builtins.int"
-
-[case testDivReverseOperatorPython2]
-# flags: --python-version 2.7
-
-# Note: if 'from __future__ import division' is called, we use
-# __truediv__. Otherwise, we use __div__. So, we check both:
-class A1:
-    def __div__(self, x):
-        # type: (B1) -> int
-        pass
-class B1:
-    def __rdiv__(self, x):   # E: Signatures of "__rdiv__" of "B1" and "__div__" of "A1" are unsafely overlapping
-        # type: (A1) -> str
-        pass
-
-class A2:
-    def __truediv__(self, x):
-        # type: (B2) -> int
-        pass
-class B2:
-    def __rtruediv__(self, x):  # E: Signatures of "__rtruediv__" of "B2" and "__truediv__" of "A2" are unsafely overlapping
-        # type: (A2) -> str
-        pass
-
-# That said, mypy currently doesn't handle the actual division operation very
-# gracefully -- it doesn't correctly switch to using __truediv__ when
-# 'from __future__ import division' is included, it doesn't display a very
-# graceful error if __div__ is missing but __truediv__ is present...
-# Also see https://github.com/python/mypy/issues/2048
-reveal_type(A1() / B1())        # N: Revealed type is "builtins.int"
-A2() / B2()                     # E: "A2" has no attribute "__div__"
 
 [case testReverseOperatorMethodForwardIsAny]
 from typing import Any
@@ -2484,17 +2471,7 @@ reveal_type(B() + y)  # N: Revealed type is "Union[__main__.Out2, __main__.Out4]
 reveal_type(x + C())  # N: Revealed type is "Union[__main__.Out3, __main__.Out2]"
 reveal_type(x + D())  # N: Revealed type is "Union[__main__.Out1, __main__.Out4]"
 
-[case testOperatorDoubleUnionDivisionPython2]
-# flags: --python-version 2.7
-from typing import Union
-def f(a):
-    # type: (Union[int, float]) -> None
-    a /= 1.1
-    b = a / 1.1
-    reveal_type(b)  # N: Revealed type is "builtins.float"
-[builtins_py2 fixtures/ops.pyi]
-
-[case testOperatorDoubleUnionDivisionPython3]
+[case testOperatorDoubleUnionDivision]
 from typing import Union
 def f(a):
     # type: (Union[int, float]) -> None
@@ -3251,10 +3228,11 @@ def new_pro(pro_c: Type[P]) -> P:
     return new_user(pro_c)
 wiz = new_pro(WizUser)
 reveal_type(wiz)
-def error(u_c: Type[U]) -> P:
+def error(u_c: Type[U]) -> P: # Error here, see below
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is "__main__.WizUser"
+main:12: error: A function returning TypeVar should receive at least one argument containing the same Typevar
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
 
@@ -5065,16 +5043,6 @@ reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 reveal_type(type(B).x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
-[case testSixMetaclass_python2]
-import six
-class M(type):
-    x = 5
-class A(six.with_metaclass(M)): pass
-@six.add_metaclass(M)
-class B: pass
-reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
-reveal_type(type(B).x)  # N: Revealed type is "builtins.int"
-
 [case testFromSixMetaclass]
 from six import with_metaclass, add_metaclass
 class M(type):
@@ -5198,13 +5166,6 @@ class CQA(Q1): pass  # E: Inconsistent metaclass structure for "CQA"
 class CQW(six.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
 
-[case testSixMetaclassErrors_python2]
-# flags: --python-version 2.7
-import six
-class M(type): pass
-class C4(six.with_metaclass(M)):  # E: Multiple metaclass definitions
-    __metaclass__ = M
-
 [case testSixMetaclassAny]
 import t  # type: ignore
 import six
@@ -5224,13 +5185,6 @@ class M(type):
 class A(future.utils.with_metaclass(M)): pass
 reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
-
-[case testFutureMetaclass_python2]
-import future.utils
-class M(type):
-    x = 5
-class A(future.utils.with_metaclass(M)): pass
-reveal_type(type(A).x)  # N: Revealed type is "builtins.int"
 
 [case testFromFutureMetaclass]
 from future.utils import with_metaclass
@@ -5316,13 +5270,6 @@ class M1(type): pass
 class Q1(metaclass=M1): pass
 class CQW(future.utils.with_metaclass(M, Q1)): pass  # E: Inconsistent metaclass structure for "CQW"
 [builtins fixtures/tuple.pyi]
-
-[case testFutureMetaclassErrors_python2]
-# flags: --python-version 2.7
-import future.utils
-class M(type): pass
-class C4(future.utils.with_metaclass(M)):  # E: Multiple metaclass definitions
-    __metaclass__ = M
 
 [case testFutureMetaclassAny]
 import t  # type: ignore
@@ -7300,3 +7247,31 @@ def identity_wrapper(func: FuncT) -> FuncT:
 def foo(self: Any) -> str:
     return ""
 
+[case testParentClassWithTypeAliasAndSubclassWithMethod]
+from typing import Any, Callable, TypeVar
+
+class Parent:
+    foo = Callable[..., int]
+    class bar:
+        pass
+    import typing as baz
+    foobar = TypeVar("foobar")
+
+class Child(Parent):
+    def foo(self, val: int) -> int:  # E: Signature of "foo" incompatible with supertype "Parent"
+        return val
+    def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent"
+        return val
+    def baz(self, val: float) -> float:  # E: Signature of "baz" incompatible with supertype "Parent"
+        return val
+    def foobar(self) -> bool:  # E: Signature of "foobar" incompatible with supertype "Parent"
+        return False
+
+x: Parent.foo = lambda: 5
+y: Parent.bar = Parent.bar()
+z: Parent.baz.Any = 1
+child = Child()
+a: int = child.foo(1)
+b: str = child.bar("abc")
+c: float = child.baz(3.4)
+d: bool = child.foobar()

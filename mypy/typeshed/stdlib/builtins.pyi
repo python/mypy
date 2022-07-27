@@ -3,6 +3,7 @@ import types
 from _ast import AST
 from _collections_abc import dict_items, dict_keys, dict_values
 from _typeshed import (
+    AnyStr_co,
     OpenBinaryMode,
     OpenBinaryModeReading,
     OpenBinaryModeUpdating,
@@ -19,6 +20,7 @@ from _typeshed import (
     SupportsKeysAndGetItem,
     SupportsLenAndGetItem,
     SupportsNext,
+    SupportsRAdd,
     SupportsRDivMod,
     SupportsRichComparison,
     SupportsRichComparisonT,
@@ -190,6 +192,7 @@ class super:
 
 _PositiveInteger: TypeAlias = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 _NegativeInteger: TypeAlias = Literal[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16, -17, -18, -19, -20]
+_LiteralInteger = _PositiveInteger | _NegativeInteger | Literal[0]  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
 
 class int:
     @overload
@@ -815,7 +818,12 @@ class slice:
     def indices(self, __len: SupportsIndex) -> tuple[int, int, int]: ...
 
 class tuple(Sequence[_T_co], Generic[_T_co]):
-    def __new__(cls: type[Self], __iterable: Iterable[_T_co] = ...) -> Self: ...
+    # overloads are ordered this way to pass `isinstance` checks
+    # see: https://github.com/python/typeshed/pull/7454#issuecomment-1061490888
+    @overload
+    def __new__(cls: type[Self], __iterable: Iterable[_T_co]) -> Self: ...
+    @overload
+    def __new__(cls) -> tuple[()]: ...
     def __len__(self) -> int: ...
     def __contains__(self, __x: object) -> bool: ...
     @overload
@@ -871,11 +879,16 @@ class list(MutableSequence[_T], Generic[_T]):
     def extend(self, __iterable: Iterable[_T]) -> None: ...
     def pop(self, __index: SupportsIndex = ...) -> _T: ...
     # Signature of `list.index` should be kept in line with `collections.UserList.index()`
+    # and multiprocessing.managers.ListProxy.index()
     def index(self, __value: _T, __start: SupportsIndex = ..., __stop: SupportsIndex = ...) -> int: ...
     def count(self, __value: _T) -> int: ...
     def insert(self, __index: SupportsIndex, __object: _T) -> None: ...
     def remove(self, __value: _T) -> None: ...
     # Signature of `list.sort` should be kept inline with `collections.UserList.sort()`
+    # and multiprocessing.managers.ListProxy.sort()
+    #
+    # Use list[SupportsRichComparisonT] for the first overload rather than [SupportsRichComparison]
+    # to work around invariance
     @overload
     def sort(self: list[SupportsRichComparisonT], *, key: None = ..., reverse: bool = ...) -> None: ...
     @overload
@@ -908,8 +921,9 @@ class list(MutableSequence[_T], Generic[_T]):
 
 class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
     # __init__ should be kept roughly in line with `collections.UserDict.__init__`, which has similar semantics
+    # Also multiprocessing.managers.SyncManager.dict()
     @overload
-    def __init__(self: dict[_KT, _VT]) -> None: ...
+    def __init__(self) -> None: ...
     @overload
     def __init__(self: dict[str, _VT], **kwargs: _VT) -> None: ...
     @overload
@@ -962,7 +976,10 @@ class dict(MutableMapping[_KT, _VT], Generic[_KT, _VT]):
         def __ior__(self: Self, __value: Iterable[tuple[_KT, _VT]]) -> Self: ...
 
 class set(MutableSet[_T], Generic[_T]):
-    def __init__(self, __iterable: Iterable[_T] = ...) -> None: ...
+    @overload
+    def __init__(self) -> None: ...
+    @overload
+    def __init__(self, __iterable: Iterable[_T]) -> None: ...
     def add(self, __element: _T) -> None: ...
     def copy(self) -> set[_T]: ...
     def difference(self, *s: Iterable[Any]) -> set[_T]: ...
@@ -998,7 +1015,10 @@ class set(MutableSet[_T], Generic[_T]):
         def __class_getitem__(cls, __item: Any) -> GenericAlias: ...
 
 class frozenset(AbstractSet[_T_co], Generic[_T_co]):
-    def __init__(self, __iterable: Iterable[_T_co] = ...) -> None: ...
+    @overload
+    def __new__(cls: type[Self]) -> Self: ...
+    @overload
+    def __new__(cls: type[Self], __iterable: Iterable[_T_co]) -> Self: ...
     def copy(self) -> frozenset[_T_co]: ...
     def difference(self, *s: Iterable[object]) -> frozenset[_T_co]: ...
     def intersection(self, *s: Iterable[object]) -> frozenset[_T_co]: ...
@@ -1092,10 +1112,8 @@ def chr(__i: int) -> str: ...
 
 # We define this here instead of using os.PathLike to avoid import cycle issues.
 # See https://github.com/python/typeshed/pull/991#issuecomment-288160993
-_AnyStr_co = TypeVar("_AnyStr_co", str, bytes, covariant=True)
-
-class _PathLike(Protocol[_AnyStr_co]):
-    def __fspath__(self) -> _AnyStr_co: ...
+class _PathLike(Protocol[AnyStr_co]):
+    def __fspath__(self) -> AnyStr_co: ...
 
 if sys.version_info >= (3, 10):
     def aiter(__async_iterable: SupportsAiter[_SupportsAnextT]) -> _SupportsAnextT: ...
@@ -1534,19 +1552,35 @@ def sorted(
 @overload
 def sorted(__iterable: Iterable[_T], *, key: Callable[[_T], SupportsRichComparison], reverse: bool = ...) -> list[_T]: ...
 
-_SumT = TypeVar("_SumT", bound=SupportsAdd)
-_SumS = TypeVar("_SumS", bound=SupportsAdd)
+_AddableT1 = TypeVar("_AddableT1", bound=SupportsAdd[Any, Any])
+_AddableT2 = TypeVar("_AddableT2", bound=SupportsAdd[Any, Any])
 
-@overload
-def sum(__iterable: Iterable[_SumT]) -> _SumT | Literal[0]: ...
+class _SupportsSumWithNoDefaultGiven(SupportsAdd[Any, Any], SupportsRAdd[int, Any], Protocol): ...
 
+_SupportsSumNoDefaultT = TypeVar("_SupportsSumNoDefaultT", bound=_SupportsSumWithNoDefaultGiven)
+
+# In general, the return type of `x + x` is *not* guaranteed to be the same type as x.
+# However, we can't express that in the stub for `sum()`
+# without creating many false-positive errors (see #7578).
+# Instead, we special-case the most common examples of this: bool and literal integers.
 if sys.version_info >= (3, 8):
     @overload
-    def sum(__iterable: Iterable[_SumT], start: _SumS) -> _SumT | _SumS: ...
+    def sum(__iterable: Iterable[bool | _LiteralInteger], start: int = ...) -> int: ...  # type: ignore[misc]
 
 else:
     @overload
-    def sum(__iterable: Iterable[_SumT], __start: _SumS) -> _SumT | _SumS: ...
+    def sum(__iterable: Iterable[bool | _LiteralInteger], __start: int = ...) -> int: ...  # type: ignore[misc]
+
+@overload
+def sum(__iterable: Iterable[_SupportsSumNoDefaultT]) -> _SupportsSumNoDefaultT | Literal[0]: ...
+
+if sys.version_info >= (3, 8):
+    @overload
+    def sum(__iterable: Iterable[_AddableT1], start: _AddableT2) -> _AddableT1 | _AddableT2: ...
+
+else:
+    @overload
+    def sum(__iterable: Iterable[_AddableT1], __start: _AddableT2) -> _AddableT1 | _AddableT2: ...
 
 # The argument to `vars()` has to have a `__dict__` attribute, so can't be annotated with `object`
 # (A "SupportsDunderDict" protocol doesn't work)
@@ -1654,10 +1688,13 @@ class BaseException:
     __context__: BaseException | None
     __suppress_context__: bool
     __traceback__: TracebackType | None
-    if sys.version_info >= (3, 11):
-        __note__: str | None
     def __init__(self, *args: object) -> None: ...
+    def __setstate__(self, __state: dict[str, Any] | None) -> None: ...
     def with_traceback(self: Self, __tb: TracebackType | None) -> Self: ...
+    if sys.version_info >= (3, 11):
+        # only present after add_note() is called
+        __notes__: list[str]
+        def add_note(self, __note: str) -> None: ...
 
 class GeneratorExit(BaseException): ...
 class KeyboardInterrupt(BaseException): ...

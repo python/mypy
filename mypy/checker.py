@@ -12,7 +12,8 @@ from typing import (
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.backports import nullcontext
-from mypy.errors import Errors, report_internal_error
+from mypy.errorcodes import TYPE_VAR
+from mypy.errors import Errors, report_internal_error, ErrorWatcher
 from mypy.nodes import (
     SymbolTable, Statement, MypyFile, Var, Expression, Lvalue, Node,
     OverloadedFuncDef, FuncDef, FuncItem, FuncBase, TypeInfo,
@@ -38,8 +39,9 @@ from mypy.types import (
     is_named_instance, union_items, TypeQuery, LiteralType,
     is_optional, remove_optional, TypeTranslator, StarType, get_proper_type, ProperType,
     get_proper_types, is_literal_type, TypeAliasType, TypeGuardedType, ParamSpecType,
-    OVERLOAD_NAMES,
+    OVERLOAD_NAMES, UnboundType
 )
+from mypy.typetraverser import TypeTraverserVisitor
 from mypy.sametypes import is_same_type
 from mypy.messages import (
     MessageBuilder, make_inferred_type_note, append_invariance_notes, pretty_seq,
@@ -275,6 +277,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # NOTE: we use the context manager to avoid "threading" an additional `is_final_def`
         # argument through various `checker` and `checkmember` functions.
         self._is_final_def = False
+
+        # This flag is set when we run type-check or attribute access check for the purpose
+        # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
+        self.checking_missing_await = False
 
     @property
     def type_context(self) -> List[Optional[Type]]:
@@ -914,6 +920,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     if typ.ret_type.variance == CONTRAVARIANT:
                         self.fail(message_registry.RETURN_TYPE_CANNOT_BE_CONTRAVARIANT,
                                   typ.ret_type)
+                    self.check_unbound_return_typevar(typ)
 
                 # Check that Generator functions have the appropriate return type.
                 if defn.is_generator:
@@ -1057,6 +1064,16 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             self.return_types.pop()
 
             self.binder = old_binder
+
+    def check_unbound_return_typevar(self, typ: CallableType) -> None:
+        """Fails when the return typevar is not defined in arguments."""
+        if (typ.ret_type in typ.variables):
+            arg_type_visitor = CollectArgTypes()
+            for argtype in typ.arg_types:
+                argtype.accept(arg_type_visitor)
+
+            if typ.ret_type not in arg_type_visitor.arg_types:
+                self.fail(message_registry.UNBOUND_TYPEVAR, typ.ret_type, code=TYPE_VAR)
 
     def check_default_args(self, item: FuncItem, body_is_trivial: bool) -> None:
         for arg in item.arguments:
@@ -1575,7 +1592,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # it can be checked for compatibility.
             original_type = get_proper_type(base_attr.type)
             original_node = base_attr.node
-            if original_type is None:
+            # `original_type` can be partial if (e.g.) it is originally an
+            # instance variable from an `__init__` block that becomes deferred.
+            if original_type is None or isinstance(original_type, PartialType):
                 if self.pass_num < self.last_pass:
                     # If there are passes left, defer this node until next pass,
                     # otherwise try reconstructing the method type from available information.
@@ -1596,7 +1615,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     else:
                         original_type = NoneType()
                 else:
-                    assert False, str(base_attr.node)
+                    # Will always fail to typecheck below, since we know the node is a method
+                    original_type = NoneType()
             if isinstance(original_node, (FuncDef, OverloadedFuncDef)):
                 original_class_or_static = original_node.is_class or original_node.is_static
             elif isinstance(original_node, Decorator):
@@ -1960,14 +1980,29 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         return False
 
     def check_enum_bases(self, defn: ClassDef) -> None:
+        """
+        Non-enum mixins cannot appear after enum bases; this is disallowed at runtime:
+
+            class Foo: ...
+            class Bar(enum.Enum, Foo): ...
+
+        But any number of enum mixins can appear in a class definition
+        (even if multiple enum bases define __new__). So this is fine:
+
+            class Foo(enum.Enum):
+                def __new__(cls, val): ...
+            class Bar(enum.Enum):
+                def __new__(cls, val): ...
+            class Baz(int, Foo, Bar, enum.Flag): ...
+        """
         enum_base: Optional[Instance] = None
         for base in defn.info.bases:
             if enum_base is None and base.type.is_enum:
                 enum_base = base
                 continue
-            elif enum_base is not None:
+            elif enum_base is not None and not base.type.is_enum:
                 self.fail(
-                    f'No base classes are allowed after "{enum_base}"',
+                    f'No non-enum mixin classes are allowed after "{enum_base}"',
                     defn,
                 )
                 break
@@ -2715,13 +2750,14 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         if is_final_decl and self.scope.active_class():
             lv = lvs[0]
             assert isinstance(lv, RefExpr)
-            assert isinstance(lv.node, Var)
-            if (lv.node.final_unset_in_class and not lv.node.final_set_in_init and
-                    not self.is_stub and  # It is OK to skip initializer in stub files.
-                    # Avoid extra error messages, if there is no type in Final[...],
-                    # then we already reported the error about missing r.h.s.
-                    isinstance(s, AssignmentStmt) and s.type is not None):
-                self.msg.final_without_value(s)
+            if lv.node is not None:
+                assert isinstance(lv.node, Var)
+                if (lv.node.final_unset_in_class and not lv.node.final_set_in_init and
+                        not self.is_stub and  # It is OK to skip initializer in stub files.
+                        # Avoid extra error messages, if there is no type in Final[...],
+                        # then we already reported the error about missing r.h.s.
+                        isinstance(s, AssignmentStmt) and s.type is not None):
+                    self.msg.final_without_value(s)
         for lv in lvs:
             if isinstance(lv, RefExpr) and isinstance(lv.node, Var):
                 name = lv.node.name
@@ -5284,7 +5320,53 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 call = find_member('__call__', supertype, subtype, is_operator=True)
                 assert call is not None
                 self.msg.note_call(supertype, call, context, code=code)
+        self.check_possible_missing_await(subtype, supertype, context)
         return False
+
+    def get_precise_awaitable_type(self, typ: Type, local_errors: ErrorWatcher) -> Optional[Type]:
+        """If type implements Awaitable[X] with non-Any X, return X.
+
+        In all other cases return None. This method must be called in context
+        of local_errors.
+        """
+        if isinstance(get_proper_type(typ), PartialType):
+            # Partial types are special, ignore them here.
+            return None
+        try:
+            aw_type = self.expr_checker.check_awaitable_expr(
+                typ, Context(), '', ignore_binder=True
+            )
+        except KeyError:
+            # This is a hack to speed up tests by not including Awaitable in all typing stubs.
+            return None
+        if local_errors.has_new_errors():
+            return None
+        if isinstance(get_proper_type(aw_type), (AnyType, UnboundType)):
+            return None
+        return aw_type
+
+    @contextmanager
+    def checking_await_set(self) -> Iterator[None]:
+        self.checking_missing_await = True
+        try:
+            yield
+        finally:
+            self.checking_missing_await = False
+
+    def check_possible_missing_await(
+            self, subtype: Type, supertype: Type, context: Context
+    ) -> None:
+        """Check if the given type becomes a subtype when awaited."""
+        if self.checking_missing_await:
+            # Avoid infinite recursion.
+            return
+        with self.checking_await_set(), self.msg.filter_errors() as local_errors:
+            aw_type = self.get_precise_awaitable_type(subtype, local_errors)
+            if aw_type is None:
+                return
+            if not self.check_subtype(aw_type, supertype, context):
+                return
+        self.msg.possible_missing_await(context)
 
     def contains_none(self, t: Type) -> bool:
         t = get_proper_type(t)
@@ -5791,6 +5873,15 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
         return (member_type.is_enum_literal()
                 and member_type.fallback.type == parent_type.type_object())
+
+
+class CollectArgTypes(TypeTraverserVisitor):
+    """Collects the non-nested argument types in a set."""
+    def __init__(self) -> None:
+        self.arg_types: Set[TypeVarType] = set()
+
+    def visit_type_var(self, t: TypeVarType) -> None:
+        self.arg_types.add(t)
 
 
 @overload

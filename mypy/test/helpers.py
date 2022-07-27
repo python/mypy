@@ -1,11 +1,12 @@
 import os
+import pathlib
 import re
 import sys
 import time
 import shutil
 import contextlib
 
-from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern
+from typing import List, Iterable, Dict, Tuple, Callable, Any, Iterator, Union, Pattern, Optional
 
 from mypy import defaults
 import mypy.api as api
@@ -21,7 +22,7 @@ from mypy.options import Options
 from mypy.test.data import (
     DataDrivenTestCase, fix_cobertura_filename, UpdateFile, DeleteFile
 )
-from mypy.test.config import test_temp_dir
+from mypy.test.config import test_temp_dir, test_data_prefix
 import mypy.version
 
 skip = pytest.mark.skip
@@ -285,9 +286,7 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
 
 
 def testfile_pyversion(path: str) -> Tuple[int, int]:
-    if path.endswith('python2.test'):
-        return defaults.PYTHON2_VERSION
-    elif path.endswith('python310.test'):
+    if path.endswith('python310.test'):
         return 3, 10
     else:
         return defaults.PYTHON3_VERSION
@@ -295,6 +294,7 @@ def testfile_pyversion(path: str) -> Tuple[int, int]:
 
 def testcase_pyversion(path: str, testcase_name: str) -> Tuple[int, int]:
     if testcase_name.endswith('python2'):
+        raise ValueError(testcase_name)
         return defaults.PYTHON2_VERSION
     else:
         return testfile_pyversion(path)
@@ -494,3 +494,11 @@ def normalize_file_output(content: List[str], current_abs_path: str) -> List[str
     result = [re.sub(r'\b' + re.escape(base_version) + r'\b', '$VERSION', x) for x in result]
     result = [timestamp_regex.sub('$TIMESTAMP', x) for x in result]
     return result
+
+
+def find_test_files(pattern: str, exclude: Optional[List[str]] = None) -> List[str]:
+    return [
+        path.name
+        for path in (pathlib.Path(test_data_prefix).rglob(pattern))
+        if path.name not in (exclude or [])
+    ]

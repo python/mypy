@@ -6,7 +6,7 @@ from collections import defaultdict
 from typing import List, Tuple, Dict, Optional, Set
 from typing_extensions import DefaultDict
 
-from mypy import build, defaults
+from mypy import build
 from mypy.modulefinder import BuildSource
 from mypy.errors import CompileError
 from mypy.nodes import MypyFile, Expression
@@ -14,7 +14,7 @@ from mypy.options import Options
 from mypy.server.deps import get_dependencies
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
-from mypy.test.helpers import assert_string_arrays_equal, parse_options
+from mypy.test.helpers import assert_string_arrays_equal, parse_options, find_test_files
 from mypy.types import Type
 from mypy.typestate import TypeState
 
@@ -23,21 +23,12 @@ dumped_modules = ['__main__', 'pkg', 'pkg.mod']
 
 
 class GetDependenciesSuite(DataSuite):
-    files = [
-        'deps.test',
-        'deps-types.test',
-        'deps-generics.test',
-        'deps-expressions.test',
-        'deps-statements.test',
-        'deps-classes.test',
-    ]
+    files = find_test_files(pattern="deps*.test")
 
     def run_case(self, testcase: DataDrivenTestCase) -> None:
         src = '\n'.join(testcase.input)
         dump_all = '# __dump_all__' in src
         options = parse_options(src, testcase, incremental_step=1)
-        if testcase.name.endswith('python2'):
-            options.python_version = defaults.PYTHON2_VERSION
         options.use_builtins_fixtures = True
         options.show_traceback = True
         options.cache_dir = os.devnull

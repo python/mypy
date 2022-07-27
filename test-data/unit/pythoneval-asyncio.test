@@ -429,6 +429,7 @@ loop.run_until_complete(h())
 loop.close()
 [out]
 _program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
+_program.py:16: note: Maybe you forgot to use "await"?
 
 [case testErrorAssignmentDifferentType]
 import typing

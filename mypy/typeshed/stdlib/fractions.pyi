@@ -1,9 +1,10 @@
 import sys
 from _typeshed import Self
+from collections.abc import Callable
 from decimal import Decimal
 from numbers import Integral, Rational, Real
 from typing import Any, overload
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Literal, SupportsIndex, TypeAlias
 
 _ComparableNum: TypeAlias = int | float | Decimal | Real
 
@@ -118,7 +119,7 @@ class Fraction(Rational):
     @overload
     def __pow__(self, b: complex) -> complex: ...
     @overload
-    def __rpow__(self, a: int | float | Fraction) -> float: ...
+    def __rpow__(self, a: float | Fraction) -> float: ...
     @overload
     def __rpow__(self, a: complex) -> complex: ...
     def __pos__(self) -> Fraction: ...
@@ -141,7 +142,7 @@ class Fraction(Rational):
     def __copy__(self: Self) -> Self: ...
     def __deepcopy__(self: Self, memo: Any) -> Self: ...
     if sys.version_info >= (3, 11):
-        def __int__(self) -> int: ...
+        def __int__(self, _index: Callable[[SupportsIndex], int] = ...) -> int: ...
     # Not actually defined within fractions.py, but provides more useful
     # overrides
     @property

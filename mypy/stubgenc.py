@@ -74,9 +74,7 @@ def generate_stub_for_c_module(module_name: str,
         if name not in done and not inspect.ismodule(obj):
             type_str = strip_or_import(get_type_fullname(type(obj)), module, imports)
             variables.append(f'{name}: {type_str}')
-    output = []
-    for line in sorted(set(imports)):
-        output.append(line)
+    output = sorted(set(imports))
     for line in variables:
         output.append(line)
     for line in types:

@@ -7,7 +7,7 @@ from mypy.types import (
     Type, Instance, AnyType, TupleType, TypedDictType, CallableType, FunctionLike,
     TypeVarLikeType, Overloaded, TypeVarType, UnionType, PartialType, TypeOfAny, LiteralType,
     DeletedType, NoneType, TypeType, has_type_vars, get_proper_type, ProperType, ParamSpecType,
-    ENUM_REMOVED_PROPS
+    TypeVarTupleType, ENUM_REMOVED_PROPS
 )
 from mypy.nodes import (
     TypeInfo, FuncBase, Var, FuncDef, SymbolNode, SymbolTable, Context,
@@ -171,7 +171,38 @@ def _analyze_member_access(name: str,
         return AnyType(TypeOfAny.from_error)
     if mx.chk.should_suppress_optional_error([typ]):
         return AnyType(TypeOfAny.from_error)
-    return mx.msg.has_no_attr(mx.original_type, typ, name, mx.context, mx.module_symbol_table)
+    return report_missing_attribute(mx.original_type, typ, name, mx)
+
+
+def may_be_awaitable_attribute(
+    name: str,
+    typ: Type,
+    mx: MemberContext,
+    override_info: Optional[TypeInfo] = None
+) -> bool:
+    """Check if the given type has the attribute when awaited."""
+    if mx.chk.checking_missing_await:
+        # Avoid infinite recursion.
+        return False
+    with mx.chk.checking_await_set(), mx.msg.filter_errors() as local_errors:
+        aw_type = mx.chk.get_precise_awaitable_type(typ, local_errors)
+        if aw_type is None:
+            return False
+        _ = _analyze_member_access(name, aw_type, mx, override_info)
+        return not local_errors.has_new_errors()
+
+
+def report_missing_attribute(
+    original_type: Type,
+    typ: Type,
+    name: str,
+    mx: MemberContext,
+    override_info: Optional[TypeInfo] = None
+) -> Type:
+    res_type = mx.msg.has_no_attr(original_type, typ, name, mx.context, mx.module_symbol_table)
+    if may_be_awaitable_attribute(name, typ, mx, override_info):
+        mx.msg.possible_missing_await(mx.context)
+    return res_type
 
 
 # The several functions that follow implement analyze_member_access for various
@@ -438,9 +469,7 @@ def analyze_member_var_access(name: str,
     else:
         if mx.chk and mx.chk.should_suppress_optional_error([itype]):
             return AnyType(TypeOfAny.from_error)
-        return mx.msg.has_no_attr(
-            mx.original_type, itype, name, mx.context, mx.module_symbol_table
-        )
+        return report_missing_attribute(mx.original_type, itype, name, mx)
 
 
 def check_final_member(name: str, info: TypeInfo, msg: MessageBuilder, ctx: Context) -> None:
@@ -664,6 +693,7 @@ def check_self_arg(functype: FunctionLike,
     new_items = []
     if is_classmethod:
         dispatched_arg_type = TypeType.make_normalized(dispatched_arg_type)
+
     for item in items:
         if not item.arg_types or item.arg_kinds[0] not in (ARG_POS, ARG_STAR):
             # No positional first (self) argument (*args is okay).
@@ -672,12 +702,14 @@ def check_self_arg(functype: FunctionLike,
             # there is at least one such error.
             return functype
         else:
-            selfarg = item.arg_types[0]
+            selfarg = get_proper_type(item.arg_types[0])
             if subtypes.is_subtype(dispatched_arg_type, erase_typevars(erase_to_bound(selfarg))):
                 new_items.append(item)
             elif isinstance(selfarg, ParamSpecType):
                 # TODO: This is not always right. What's the most reasonable thing to do here?
                 new_items.append(item)
+            elif isinstance(selfarg, TypeVarTupleType):
+                raise NotImplementedError
     if not new_items:
         # Choose first item for the message (it may be not very helpful for overloads).
         msg.incompatible_self_argument(name, dispatched_arg_type, items[0],
@@ -851,9 +883,7 @@ def analyze_enum_class_attribute_access(itype: Instance,
                                         ) -> Optional[Type]:
     # Skip these since Enum will remove it
     if name in ENUM_REMOVED_PROPS:
-        return mx.msg.has_no_attr(
-            mx.original_type, itype, name, mx.context, mx.module_symbol_table
-        )
+        return report_missing_attribute(mx.original_type, itype, name, mx)
     # For other names surrendered by underscores, we don't make them Enum members
     if name.startswith('__') and name.endswith("__") and name.replace('_', '') != '':
         return None

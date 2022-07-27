@@ -18,15 +18,12 @@ from subprocess import PIPE
 import sys
 from tempfile import TemporaryDirectory
 
-import pytest
-
 from typing import List
 
 from mypy.defaults import PYTHON3_VERSION
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase, DataSuite
 from mypy.test.helpers import assert_string_arrays_equal, split_lines
-from mypy.util import try_find_python2_interpreter
 from mypy import api
 
 # Path to Python 3 interpreter
@@ -36,7 +33,6 @@ program_re = re.compile(r'\b_program.py\b')
 
 class PythonEvaluationSuite(DataSuite):
     files = ['pythoneval.test',
-             'python2eval.test',
              'pythoneval-asyncio.test']
     cache_dir = TemporaryDirectory()
 
@@ -59,18 +55,8 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         '--no-silence-site-packages',
         '--no-error-summary',
     ]
-    py2 = testcase.name.lower().endswith('python2')
-    if py2:
-        mypy_cmdline.append('--py2')
-        interpreter = try_find_python2_interpreter()
-        if interpreter is None:
-            # Skip, can't find a Python 2 interpreter.
-            pytest.skip()
-            # placate the type checker
-            return
-    else:
-        interpreter = python3_path
-        mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
+    interpreter = python3_path
+    mypy_cmdline.append(f"--python-version={'.'.join(map(str, PYTHON3_VERSION))}")
 
     m = re.search('# flags: (.*)$', '\n'.join(testcase.input), re.MULTILINE)
     if m:

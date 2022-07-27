@@ -716,27 +716,12 @@ reveal_type(p['x'])     # N: Revealed type is "builtins.int"
 reveal_type(p['y'])     # N: Revealed type is "builtins.int"
 [builtins fixtures/dict.pyi]
 
-[case testCanGetItemOfTypedDictWithValidBytesOrUnicodeLiteralKey]
-# flags: --python-version 2.7
-from mypy_extensions import TypedDict
-Cell = TypedDict('Cell', {'value': int})
-c = Cell(value=42)
-reveal_type(c['value'])   # N: Revealed type is "builtins.int"
-reveal_type(c[u'value'])  # N: Revealed type is "builtins.int"
-[builtins_py2 fixtures/dict.pyi]
-
 [case testCannotGetItemOfTypedDictWithInvalidStringLiteralKey]
 from mypy_extensions import TypedDict
 TaggedPoint = TypedDict('TaggedPoint', {'type': str, 'x': int, 'y': int})
 p: TaggedPoint
 p['typ']  # E: TypedDict "TaggedPoint" has no key "typ" \
           # N: Did you mean "type"?
-[builtins fixtures/dict.pyi]
-
-[case testTypedDictWithUnicodeName]
-# flags: --python-version 2.7
-from mypy_extensions import TypedDict
-TaggedPoint = TypedDict(u'TaggedPoint', {'type': str, 'x': int, 'y': int})
 [builtins fixtures/dict.pyi]
 
 [case testCannotGetItemOfAnonymousTypedDictWithInvalidStringLiteralKey]
@@ -1667,15 +1652,6 @@ a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key "x" but found keys ("z", 
 d = {'x': 1}
 a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
 [builtins fixtures/dict.pyi]
-
-[case testTypedDictNonMappingMethods_python2]
-from mypy_extensions import TypedDict
-A = TypedDict('A', {'x': int})
-a = A(x=1)
-reveal_type(a.copy()) # N: Revealed type is "TypedDict('__main__.A', {'x': builtins.int})"
-reveal_type(a.has_key('y')) # N: Revealed type is "builtins.bool"
-a.clear() # E: "A" has no attribute "clear"
-[builtins_py2 fixtures/dict.pyi]
 
 [case testTypedDictPopMethod]
 from typing import List

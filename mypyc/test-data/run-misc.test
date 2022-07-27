@@ -972,9 +972,13 @@ print(z)
 [case testCheckVersion]
 import sys
 
-# We lie about the version we are running in tests if it is 3.5, so
-# that hits a crash case.
-if sys.version_info[:2] == (3, 10):
+if sys.version_info[:2] == (3, 12):
+    def version() -> int:
+        return 12
+elif sys.version_info[:2] == (3, 11):
+    def version() -> int:
+        return 11
+elif sys.version_info[:2] == (3, 10):
     def version() -> int:
         return 10
 elif sys.version_info[:2] == (3, 9):
@@ -997,12 +1001,8 @@ else:
 import sys
 version = sys.version_info[:2]
 
-try:
-    import native
-    assert version != (3, 5), "3.5 should fail!"
-    assert native.version() == sys.version_info[1]
-except RuntimeError:
-    assert version == (3, 5), "only 3.5 should fail!"
+import native
+assert native.version() == sys.version_info[1]
 
 [case testTypeErrorMessages]
 from typing import Tuple

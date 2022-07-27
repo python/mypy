@@ -18,19 +18,6 @@ else:
 x
 z = 1 # type: t
 
-[case testConditionalTypeAliasPY3_python2]
-import typing
-def f(): pass
-PY3 = f()
-if PY3:
-    t = int
-    x = object() + 'x'
-else:
-    t = str
-    y = 'x' / 1 # E: "str" has no attribute "__div__"
-y
-z = '' # type: t
-
 [case testConditionalAssignmentPY2]
 import typing
 def f(): pass
@@ -40,16 +27,6 @@ if PY2:
 else:
     y = 'x' / 1 # E: Unsupported left operand type for / ("str")
 y
-
-[case testConditionalAssignmentPY2_python2]
-import typing
-def f(): pass
-PY2 = f()
-if PY2:
-    x = object() + 'x' # E: Unsupported left operand type for + ("object")
-else:
-    y = 'x' / 1
-x
 
 [case testConditionalImport]
 import typing
@@ -158,20 +135,6 @@ else:
 [builtins fixtures/bool.pyi]
 [out]
 
-[case testSysVersionInfo_python2]
-import sys
-if sys.version_info[0] >= 3:
-    def foo():
-        # type: () -> int
-        return 0
-else:
-    def foo():
-        # type: () -> str
-        return ''
-reveal_type(foo())  # N: Revealed type is "builtins.str"
-[builtins_py2 fixtures/ops.pyi]
-[out]
-
 [case testSysVersionInfo]
 import sys
 if sys.version_info[0] >= 3:
@@ -180,20 +143,6 @@ else:
     def foo() -> str: return ''
 reveal_type(foo())  # N: Revealed type is "builtins.int"
 [builtins fixtures/ops.pyi]
-[out]
-
-[case testSysVersionInfoNegated_python2]
-import sys
-if not (sys.version_info[0] < 3):
-    def foo():
-        # type: () -> int
-        return 0
-else:
-    def foo():
-        # type: () -> str
-        return ''
-reveal_type(foo())  # N: Revealed type is "builtins.str"
-[builtins_py2 fixtures/ops.pyi]
 [out]
 
 [case testSysVersionInfoReversedOperandsOrder]
