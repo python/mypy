@@ -207,8 +207,18 @@ testNamespacePkgWStubsWithNamespacePackagesFlag.py:8: error: Argument 1 to "bf" 
 
 [case testTypedPkgNamespaceRegFromImportTwiceMissing]
 # pkgs: typedpkg_ns_a
-from typedpkg_ns import b  # type: ignore
+from typedpkg_ns import does_not_exist  # type: ignore
 from typedpkg_ns import a
+-- dummy should trigger a second iteration
+[file dummy.py.2]
+[out]
+[out2]
+
+
+[case testTypedPkgNamespaceRegFromImportTwiceMissing2]
+# pkgs: typedpkg_ns_a
+from typedpkg_ns import does_not_exist  # type: ignore
+from typedpkg_ns.a.bbb import bf
 -- dummy should trigger a second iteration
 [file dummy.py.2]
 [out]

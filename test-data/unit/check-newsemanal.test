@@ -1267,33 +1267,6 @@ class Defer:
     x: str
 [builtins fixtures/tuple.pyi]
 
-[case testNewAnalyzerMetaclass1_python2]
-class A:
-    __metaclass__ = B
-
-reveal_type(A.f()) # N: Revealed type is "builtins.int"
-
-class B(type):
-    def f(cls):
-        # type: () -> int
-        return 0
-
-[case testNewAnalyzerMetaclass2_python2]
-reveal_type(A.f()) # N: Revealed type is "builtins.int"
-
-class A:
-    __metaclass__ = B
-
-class AA:
-    __metaclass__ = C  # E: Metaclasses not inheriting from "type" are not supported
-
-class B(type):
-    def f(cls):
-        # type: () -> int
-        return 0
-
-class C: pass
-
 [case testNewAnalyzerFinalDefiningModuleVar]
 from typing import Final
 

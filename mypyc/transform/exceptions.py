@@ -11,15 +11,27 @@ only be placed at the end of a basic block.
 
 from typing import List, Optional
 
-from mypyc.ir.ops import (
-    Value, BasicBlock, LoadErrorValue, Return, Branch, RegisterOp, ComparisonOp, CallC,
-    Integer, ERR_NEVER, ERR_MAGIC, ERR_FALSE, ERR_ALWAYS, ERR_MAGIC_OVERLAPPING,
-    NO_TRACEBACK_LINE_NO
-)
 from mypyc.ir.func_ir import FuncIR
+from mypyc.ir.ops import (
+    ERR_ALWAYS,
+    ERR_FALSE,
+    ERR_MAGIC,
+    ERR_MAGIC_OVERLAPPING,
+    ERR_NEVER,
+    NO_TRACEBACK_LINE_NO,
+    BasicBlock,
+    Branch,
+    CallC,
+    ComparisonOp,
+    Integer,
+    LoadErrorValue,
+    RegisterOp,
+    Return,
+    Value,
+)
 from mypyc.ir.rtypes import bool_rprimitive
-from mypyc.primitives.registry import CFunctionDescription
 from mypyc.primitives.exc_ops import err_occurred_op
+from mypyc.primitives.registry import CFunctionDescription
 
 
 def insert_exception_handling(ir: FuncIR) -> None:
@@ -45,9 +57,9 @@ def add_handler_block(ir: FuncIR) -> BasicBlock:
     return block
 
 
-def split_blocks_at_errors(blocks: List[BasicBlock],
-                           default_error_handler: BasicBlock,
-                           func_name: Optional[str]) -> List[BasicBlock]:
+def split_blocks_at_errors(
+    blocks: List[BasicBlock], default_error_handler: BasicBlock, func_name: Optional[str]
+) -> List[BasicBlock]:
     new_blocks: List[BasicBlock] = []
 
     # First split blocks on ops that may raise.
@@ -90,8 +102,9 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     cur_block.ops.append(comp)
                     new_block2 = BasicBlock()
                     new_blocks.append(new_block2)
-                    branch = Branch(comp, true_label=new_block2, false_label=new_block,
-                                    op=Branch.BOOL)
+                    branch = Branch(
+                        comp, true_label=new_block2, false_label=new_block, op=Branch.BOOL
+                    )
                     cur_block.ops.append(branch)
                     cur_block = new_block2
                     target = primitive_call(err_occurred_op, [], target.line)
@@ -99,18 +112,16 @@ def split_blocks_at_errors(blocks: List[BasicBlock],
                     variant = Branch.IS_ERROR
                     negated = True
                 else:
-                    assert False, 'unknown error kind %d' % op.error_kind
+                    assert False, "unknown error kind %d" % op.error_kind
 
                 # Void ops can't generate errors since error is always
                 # indicated by a special value stored in a register.
                 if op.error_kind != ERR_ALWAYS:
                     assert not op.is_void, "void op generating errors?"
 
-                branch = Branch(target,
-                                true_label=error_label,
-                                false_label=new_block,
-                                op=variant,
-                                line=op.line)
+                branch = Branch(
+                    target, true_label=error_label, false_label=new_block, op=variant, line=op.line
+                )
                 branch.negated = negated
                 if op.line != NO_TRACEBACK_LINE_NO and func_name is not None:
                     branch.traceback_entry = (func_name, op.line)
