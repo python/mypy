@@ -3017,10 +3017,7 @@ class TypeInfo(SymbolNode):
 
     @property
     def is_descriptor(self) -> bool:
-        return any(
-            self.get(method) is not None
-            for method in {"__get__", "__set__", "__delete__"}
-        )
+        return any(self.get(method) is not None for method in {"__get__", "__set__", "__delete__"})
 
     def has_base(self, fullname: str) -> bool:
         """Return True if type has a base type with the specified name.

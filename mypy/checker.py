@@ -2212,7 +2212,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return True  # Can be a class or anything else
         if is_definitely_not_enum_member(node.name, node.type):
             return False
-        return (self.is_stub or node.has_explicit_value)
+        return self.is_stub or node.has_explicit_value
 
     def check_enum_bases(self, defn: ClassDef) -> None:
         """

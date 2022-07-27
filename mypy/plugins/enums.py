@@ -19,8 +19,16 @@ from mypy.nodes import TypeInfo
 from mypy.semanal_enum import ENUM_BASES
 from mypy.subtypes import is_equivalent
 from mypy.typeops import make_simplified_union
-from mypy.types import CallableType, FunctionLike, Instance, LiteralType, ProperType, Type, get_proper_type
-from mypy.util import is_sunder, is_dunder, is_private
+from mypy.types import (
+    CallableType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    ProperType,
+    Type,
+    get_proper_type,
+)
+from mypy.util import is_dunder, is_private, is_sunder
 
 ENUM_NAME_ACCESS: Final = {f"{prefix}.name" for prefix in ENUM_BASES} | {
     f"{prefix}._name_" for prefix in ENUM_BASES
@@ -276,10 +284,6 @@ def is_definitely_not_enum_member(name: str, typ: Optional[Type]) -> bool:
         return False
 
     proper_type = get_proper_type(typ)
-    return (
-        isinstance(proper_type, FunctionLike)
-        or (
-            isinstance(proper_type, Instance)
-            and proper_type.type.is_descriptor
-        )
+    return isinstance(proper_type, FunctionLike) or (
+        isinstance(proper_type, Instance) and proper_type.type.is_descriptor
     )

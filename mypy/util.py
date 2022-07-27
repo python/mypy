@@ -83,7 +83,7 @@ def is_sunder(name: str) -> bool:
 
 def is_private(node_name: str) -> bool:
     """Check if node is private to class definition."""
-    return node_name.startswith('__') and not node_name.endswith('__')
+    return node_name.startswith("__") and not node_name.endswith("__")
 
 
 def split_module_names(mod_name: str) -> List[str]:
