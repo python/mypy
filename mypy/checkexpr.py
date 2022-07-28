@@ -2588,7 +2588,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return self.concat_tuples(proper_left_type, proper_right_type)
 
         if e.op in operators.op_methods:
-            method = self.get_operator_method(e.op)
+            method = operators.op_methods[e.op]
             result, method_type = self.check_op(method, left_type, e.right, e, allow_reverse=True)
             e.method_type = method_type
             return result
@@ -2665,7 +2665,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     self.msg.add_errors(local_errors.filtered_errors())
             elif operator in operators.op_methods:
-                method = self.get_operator_method(operator)
+                method = operators.op_methods[operator]
 
                 with ErrorWatcher(self.msg.errors) as w:
                     sub_result, method_type = self.check_op(
@@ -2795,9 +2795,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Comparing different booleans is not dangerous.
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
-
-    def get_operator_method(self, op: str) -> str:
-        return operators.op_methods[op]
 
     def check_method_call_by_name(
         self,
@@ -2961,7 +2958,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # STEP 1:
         # We start by getting the __op__ and __rop__ methods, if they exist.
 
-        rev_op_name = self.get_reverse_op_method(op_name)
+        rev_op_name = operators.reverse_op_methods[op_name]
 
         left_op = lookup_operator(op_name, left_type)
         right_op = lookup_operator(rev_op_name, right_type)
@@ -3187,9 +3184,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_kinds=[ARG_POS],
                 context=context,
             )
-
-    def get_reverse_op_method(self, method: str) -> str:
-        return operators.reverse_op_methods[method]
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
