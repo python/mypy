@@ -55,7 +55,6 @@ import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
 import mypy.util
-from mypy import defaults
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -568,7 +567,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
     def __init__(
         self,
         _all_: Optional[List[str]],
-        pyversion: Tuple[int, int],
         include_private: bool = False,
         analyzed: bool = False,
         export_less: bool = False,
@@ -585,7 +583,6 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         # What was generated previously in the stub file.
         self._state = EMPTY
         self._toplevel_names: List[str] = []
-        self._pyversion = pyversion
         self._include_private = include_private
         self.import_tracker = ImportTracker()
         # Was the tree semantically analysed before?
@@ -1602,7 +1599,6 @@ def generate_stub_from_ast(
     mod: StubSource,
     target: str,
     parse_only: bool = False,
-    pyversion: Tuple[int, int] = defaults.PYTHON3_VERSION,
     include_private: bool = False,
     export_less: bool = False,
 ) -> None:
@@ -1613,7 +1609,6 @@ def generate_stub_from_ast(
     """
     gen = StubGenerator(
         mod.runtime_all,
-        pyversion=pyversion,
         include_private=include_private,
         analyzed=not parse_only,
         export_less=export_less,
@@ -1671,12 +1666,7 @@ def generate_stubs(options: Options) -> None:
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(
-                mod,
-                target,
-                options.parse_only,
-                options.pyversion,
-                options.include_private,
-                options.export_less,
+                mod, target, options.parse_only, options.include_private, options.export_less
             )
 
     # Separately analyse C modules using different logic.
