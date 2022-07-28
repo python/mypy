@@ -173,7 +173,7 @@ def expr_to_unanalyzed_type(
             "builtins.str",
             expr.line,
             expr.column,
-            assume_str_is_unicode=expr.from_python_3,
+            assume_str_is_unicode=True,
         )
     elif isinstance(expr, BytesExpr):
         return parse_type_string(
