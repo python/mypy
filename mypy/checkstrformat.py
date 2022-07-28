@@ -122,25 +122,6 @@ FORMAT_RE_NEW: Final = compile_new_format_re(False)
 FORMAT_RE_NEW_CUSTOM: Final = compile_new_format_re(True)
 DUMMY_FIELD_NAME: Final = "__dummy_name__"
 
-# Format types supported by str.format() for builtin classes.
-SUPPORTED_TYPES_NEW: Final = {
-    "b",
-    "c",
-    "d",
-    "e",
-    "E",
-    "f",
-    "F",
-    "g",
-    "G",
-    "n",
-    "o",
-    "s",
-    "x",
-    "X",
-    "%",
-}
-
 # Types that require either int or float.
 NUMERIC_TYPES_OLD: Final = {"d", "i", "o", "u", "x", "X", "e", "E", "f", "F", "g", "G"}
 NUMERIC_TYPES_NEW: Final = {"b", "d", "o", "e", "E", "f", "F", "g", "G", "n", "x", "X", "%"}
