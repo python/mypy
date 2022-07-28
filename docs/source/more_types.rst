@@ -60,12 +60,6 @@ pip to use :py:data:`~typing.NoReturn` in your code. Python 3 command line:
 
     python3 -m pip install --upgrade typing-extensions
 
-This works for Python 2:
-
-.. code-block:: text
-
-    pip install --upgrade typing-extensions
-
 .. _newtypes:
 
 NewTypes
@@ -1065,12 +1059,6 @@ a subtype of (that is, compatible with) ``Mapping[str, object]``, since
 
       python3 -m pip install --upgrade typing-extensions
 
-   Or, if you are using Python 2:
-
-   .. code-block:: text
-
-      pip install --upgrade typing-extensions
-
 Totality
 --------
 
@@ -1136,13 +1124,6 @@ of supported operations:
 * :py:meth:`d1.update(d2) <dict.update>`
 * :py:meth:`d.pop(key[, default]) <dict.pop>` (partial ``TypedDict``\s only)
 * ``del d[key]`` (partial ``TypedDict``\s only)
-
-In Python 2 code, these methods are also supported:
-
-* ``has_key(key)``
-* ``viewitems()``
-* ``viewkeys()``
-* ``viewvalues()``
 
 .. note::
 

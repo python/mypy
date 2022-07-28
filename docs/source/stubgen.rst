@@ -147,10 +147,6 @@ Additional flags
 
     Show help message and exit.
 
-.. option:: --py2
-
-    Run stubgen in Python 2 mode (the default is Python 3 mode).
-
 .. option:: --ignore-errors
 
     If an exception was raised during stub generation, continue to process any
