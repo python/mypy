@@ -331,11 +331,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
 
 
 def parse_type_comment(
-    type_comment: str,
-    line: int,
-    column: int,
-    errors: Optional[Errors],
-    assume_str_is_unicode: bool = True,
+    type_comment: str, line: int, column: int, errors: Optional[Errors]
 ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
     """Parse type portion of a type comment (+ optional type ignore).
 
@@ -366,44 +362,21 @@ def parse_type_comment(
             ignored = None
         assert isinstance(typ, ast3_Expression)
         converted = TypeConverter(
-            errors,
-            line=line,
-            override_column=column,
-            assume_str_is_unicode=assume_str_is_unicode,
-            is_evaluated=False,
+            errors, line=line, override_column=column, is_evaluated=False
         ).visit(typ.body)
         return ignored, converted
 
 
 def parse_type_string(
-    expr_string: str,
-    expr_fallback_name: str,
-    line: int,
-    column: int,
-    assume_str_is_unicode: bool = True,
+    expr_string: str, expr_fallback_name: str, line: int, column: int
 ) -> ProperType:
-    """Parses a type that was originally present inside of an explicit string,
-    byte string, or unicode string.
+    """Parses a type that was originally present inside of an explicit string.
 
     For example, suppose we have the type `Foo["blah"]`. We should parse the
     string expression "blah" using this function.
-
-    If `assume_str_is_unicode` is set to true, this function will assume that
-    `Foo["blah"]` is equivalent to `Foo[u"blah"]`. Otherwise, it assumes it's
-    equivalent to `Foo[b"blah"]`.
-
-    The caller is responsible for keeping track of the context in which the
-    type string was encountered (e.g. in Python 3 code, Python 2 code, Python 2
-    code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
-        _, node = parse_type_comment(
-            expr_string.strip(),
-            line=line,
-            column=column,
-            errors=None,
-            assume_str_is_unicode=assume_str_is_unicode,
-        )
+        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -1743,14 +1716,12 @@ class TypeConverter:
         errors: Optional[Errors],
         line: int = -1,
         override_column: int = -1,
-        assume_str_is_unicode: bool = True,
         is_evaluated: bool = True,
     ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack: List[AST] = []
-        self.assume_str_is_unicode = assume_str_is_unicode
         self.is_evaluated = is_evaluated
 
     def convert_column(self, column: int) -> int:
@@ -1921,22 +1892,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            if (n.kind and "u" in n.kind) or self.assume_str_is_unicode:
-                return parse_type_string(
-                    n.s,
-                    "builtins.unicode",
-                    self.line,
-                    n.col_offset,
-                    assume_str_is_unicode=self.assume_str_is_unicode,
-                )
-            else:
-                return parse_type_string(
-                    n.s,
-                    "builtins.str",
-                    self.line,
-                    n.col_offset,
-                    assume_str_is_unicode=self.assume_str_is_unicode,
-                )
+            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
@@ -1990,34 +1946,7 @@ class TypeConverter:
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        # Note: we transform these fallback types into the correct types in
-        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
-        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
-        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
-        # translate 'builtins.bytes' in the method below into 'builtins.str'.
-
-        # Do a getattr because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.) We can't just do
-        # an attribute access with a `# type: ignore` because it would be
-        # unused on < 3.8.
-        kind: str = getattr(n, "kind")  # noqa
-
-        if "u" in kind or self.assume_str_is_unicode:
-            return parse_type_string(
-                n.s,
-                "builtins.unicode",
-                self.line,
-                n.col_offset,
-                assume_str_is_unicode=self.assume_str_is_unicode,
-            )
-        else:
-            return parse_type_string(
-                n.s,
-                "builtins.str",
-                self.line,
-                n.col_offset,
-                assume_str_is_unicode=self.assume_str_is_unicode,
-            )
+        return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:

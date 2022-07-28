@@ -168,13 +168,9 @@ def expr_to_unanalyzed_type(
             column=expr.column,
         )
     elif isinstance(expr, StrExpr):
-        return parse_type_string(
-            expr.value, "builtins.str", expr.line, expr.column, assume_str_is_unicode=True
-        )
+        return parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
     elif isinstance(expr, BytesExpr):
-        return parse_type_string(
-            expr.value, "builtins.bytes", expr.line, expr.column, assume_str_is_unicode=False
-        )
+        return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
         if isinstance(typ, RawExpressionType):

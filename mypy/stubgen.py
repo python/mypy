@@ -308,7 +308,7 @@ class AnnotationPrinter(TypeStrVisitor):
         The main difference from list_str is the preservation of quotes for string
         arguments
         """
-        types = ["builtins.bytes", "builtins.unicode"]
+        types = ["builtins.bytes", "builtins.str"]
         res = []
         for arg in args:
             arg_str = arg.accept(self)
