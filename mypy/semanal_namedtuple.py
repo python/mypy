@@ -4,7 +4,7 @@ This is conceptually part of mypy.semanal.
 """
 
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Mapping, Optional, Tuple, Union, cast
+from typing import Dict, Iterator, List, Mapping, Optional, Tuple, cast
 
 from typing_extensions import Final
 
