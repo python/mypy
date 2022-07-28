@@ -343,13 +343,13 @@ class FindModuleCache:
             # If this is not a directory then we can't traverse further into it
             if not self.fscache.isdir(dir_path):
                 break
-        if is_legacy_bundled_package(components[0], self.python_major_ver):
+        if is_legacy_bundled_package(components[0]):
             if len(components) == 1 or (
                 self.find_module(components[0])
                 is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
             ):
                 return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
-        if is_legacy_bundled_package(".".join(components[:2]), self.python_major_ver):
+        if is_legacy_bundled_package(".".join(components[:2])):
             return ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
         if plausible_match:
             return ModuleNotFoundReason.FOUND_WITHOUT_TYPE_HINTS

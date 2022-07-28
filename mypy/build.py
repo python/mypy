@@ -2620,12 +2620,8 @@ def find_module_and_diagnose(
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
-        py_ver = options.python_version[0]
         if (
-            (
-                is_legacy_bundled_package(top_level, py_ver)
-                or is_legacy_bundled_package(second_level, py_ver)
-            )
+            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2743,10 +2739,10 @@ def module_not_found(
             top_level = second_level
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=legacy_bundled_packages[top_level].name)
+                note = note.format(stub_dist=legacy_bundled_packages[top_level])
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(legacy_bundled_packages[top_level].name)
+            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
 
