@@ -2621,10 +2621,7 @@ def find_module_and_diagnose(
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
         if (
-            (
-                is_legacy_bundled_package(top_level)
-                or is_legacy_bundled_package(second_level)
-            )
+            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
