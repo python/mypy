@@ -25,25 +25,15 @@ from mypy.types import Instance, Type
 # These add extra ad-hoc edges to the subtyping relation. For example,
 # int is considered a subtype of float, even though there is no
 # subclass relationship.
-TYPE_PROMOTIONS: Final = {"builtins.int": "float", "builtins.float": "complex"}
-
-# Hard coded type promotions for Python 3.
-#
 # Note that the bytearray -> bytes promotion is a little unsafe
 # as some functions only accept bytes objects. Here convenience
 # trumps safety.
-TYPE_PROMOTIONS_PYTHON3: Final = TYPE_PROMOTIONS.copy()
-TYPE_PROMOTIONS_PYTHON3.update({"builtins.bytearray": "bytes", "builtins.memoryview": "bytes"})
-
-# Hard coded type promotions for Python 2.
-#
-# These promotions are unsafe, but we are doing them anyway
-# for convenience and also for Python 3 compatibility
-# (bytearray -> str).
-TYPE_PROMOTIONS_PYTHON2: Final = TYPE_PROMOTIONS.copy()
-TYPE_PROMOTIONS_PYTHON2.update(
-    {"builtins.str": "unicode", "builtins.bytearray": "str", "builtins.memoryview": "str"}
-)
+TYPE_PROMOTIONS: Final = {
+    "builtins.int": "float",
+    "builtins.float": "complex",
+    "builtins.bytearray": "bytes",
+    "builtins.memoryview": "bytes",
+}
 
 
 def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: Errors) -> None:
@@ -165,11 +155,8 @@ def add_type_promotion(
                 # _promote class decorator (undocumented feature).
                 promote_targets.append(analyzed.type)
     if not promote_targets:
-        promotions = (
-            TYPE_PROMOTIONS_PYTHON3 if options.python_version[0] >= 3 else TYPE_PROMOTIONS_PYTHON2
-        )
-        if defn.fullname in promotions:
-            target_sym = module_names.get(promotions[defn.fullname])
+        if defn.fullname in TYPE_PROMOTIONS:
+            target_sym = module_names.get(TYPE_PROMOTIONS[defn.fullname])
             # With test stubs, the target may not exist.
             if target_sym:
                 target_info = target_sym.node

@@ -849,16 +849,9 @@ class ASTConverter:
         return self.class_and_function_stack[-2:] == ["C", "F"]
 
     def translate_module_id(self, id: str) -> str:
-        """Return the actual, internal module id for a source text id.
-
-        For example, translate '__builtin__' in Python 2 to 'builtins'.
-        """
+        """Return the actual, internal module id for a source text id."""
         if id == self.options.custom_typing_module:
             return "typing"
-        elif id == "__builtin__" and self.options.python_version[0] == 2:
-            # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
-            #   is named __builtin__.py (there is another layer of translation elsewhere).
-            return "builtins"
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:

@@ -270,7 +270,6 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
-    UnionType,
     get_proper_type,
     get_proper_types,
     is_named_instance,
@@ -593,14 +592,8 @@ class SemanticAnalyzer(
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
         for name, t in implicit_module_attrs.items():
-            # unicode docstrings should be accepted in Python 2
             if name == "__doc__":
-                if self.options.python_version >= (3, 0):
-                    typ: Type = UnboundType("__builtins__.str")
-                else:
-                    typ = UnionType(
-                        [UnboundType("__builtins__.str"), UnboundType("__builtins__.unicode")]
-                    )
+                typ: Type = UnboundType("__builtins__.str")
             elif name == "__path__":
                 if not file_node.is_package_init_file():
                     continue
@@ -1849,24 +1842,11 @@ class SemanticAnalyzer(
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
 
-        * __metaclass__ attribute in Python 2
         * six.with_metaclass(M, B1, B2, ...)
         * @six.add_metaclass(M)
         * future.utils.with_metaclass(M, B1, B2, ...)
         * past.utils.with_metaclass(M, B1, B2, ...)
         """
-
-        # Look for "__metaclass__ = <metaclass>" in Python 2
-        python2_meta_expr: Optional[Expression] = None
-        if self.options.python_version[0] == 2:
-            for body_node in defn.defs.body:
-                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    break
-                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
-                    lvalue = body_node.lvalues[0]
-                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        python2_meta_expr = body_node.rvalue
 
         # Look for six.with_metaclass(M, B1, B2, ...)
         with_meta_expr: Optional[Expression] = None
@@ -1900,7 +1880,7 @@ class SemanticAnalyzer(
                     add_meta_expr = dec_expr.args[0]
                     break
 
-        metas = {defn.metaclass, python2_meta_expr, with_meta_expr, add_meta_expr} - {None}
+        metas = {defn.metaclass, with_meta_expr, add_meta_expr} - {None}
         if len(metas) == 0:
             return
         if len(metas) > 1:
