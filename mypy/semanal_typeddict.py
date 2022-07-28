@@ -13,7 +13,6 @@ from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
     AssignmentStmt,
-    BytesExpr,
     CallExpr,
     ClassDef,
     Context,
@@ -293,7 +292,7 @@ class TypedDictAnalyzer:
             return self.fail_typeddict_arg(
                 f'Unexpected keyword argument "{call.arg_names[2]}" for "TypedDict"', call
             )
-        if not isinstance(args[0], (StrExpr, BytesExpr)):
+        if not isinstance(args[0], StrExpr):
             return self.fail_typeddict_arg(
                 "TypedDict() expects a string literal as the first argument", call
             )
@@ -337,7 +336,7 @@ class TypedDictAnalyzer:
         items: List[str] = []
         types: List[Type] = []
         for (field_name_expr, field_type_expr) in dict_items:
-            if isinstance(field_name_expr, (StrExpr, BytesExpr)):
+            if isinstance(field_name_expr, StrExpr):
                 key = field_name_expr.value
                 items.append(key)
                 if key in seen_keys:

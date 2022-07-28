@@ -272,10 +272,11 @@ from typing import NewType
 a = NewType('b', int)  # E: String argument 1 "b" to NewType(...) does not match variable name "a"
 b = NewType('b', 3)    # E: Argument 2 to NewType(...) must be a valid type
 c = NewType(2, int)    # E: Argument 1 to NewType(...) must be a string literal
+d = NewType(b'f', int) # E: Argument 1 to NewType(...) must be a string literal
 foo = "d"
-d = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
-e = NewType(name='e', tp=int)   # E: NewType(...) expects exactly two positional arguments
-f = NewType('f', tp=int)        # E: NewType(...) expects exactly two positional arguments
+e = NewType(foo, int)  # E: Argument 1 to NewType(...) must be a string literal
+f = NewType(name='e', tp=int)   # E: NewType(...) expects exactly two positional arguments
+g = NewType('f', tp=int)        # E: NewType(...) expects exactly two positional arguments
 [out]
 
 [case testNewTypeWithAnyFails]
