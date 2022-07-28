@@ -2,8 +2,6 @@ import os
 
 from typing_extensions import Final
 
-PYTHON2_VERSION: Final = (2, 7)
-
 # Earliest fully supported Python 3.x version. Used as the default Python
 # version in tests. Mypy wheels should be built starting with this version,
 # and CI tests should be run on this version (and later versions).

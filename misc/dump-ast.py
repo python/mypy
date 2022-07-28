@@ -28,15 +28,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Parse source files and print the abstract syntax tree (AST)."
     )
-    parser.add_argument("--py2", action="store_true", help="parse FILEs as Python 2")
     parser.add_argument("--quiet", action="store_true", help="do not print AST")
     parser.add_argument("FILE", nargs="*", help="files to parse")
     args = parser.parse_args()
 
-    if args.py2:
-        pyversion = defaults.PYTHON2_VERSION
-    else:
-        pyversion = defaults.PYTHON3_VERSION
+    pyversion = defaults.PYTHON3_VERSION
 
     status = 0
     for fname in args.FILE:
