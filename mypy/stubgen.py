@@ -1415,10 +1415,7 @@ def collect_build_targets(
         else:
             # Using imports is the default, since we can also find C modules.
             py_modules, c_modules = find_module_paths_using_imports(
-                options.modules,
-                options.packages,
-                options.verbose,
-                options.quiet,
+                options.modules, options.packages, options.verbose, options.quiet
             )
     else:
         # Use mypy native source collection for files and directories.
@@ -1435,10 +1432,7 @@ def collect_build_targets(
 
 
 def find_module_paths_using_imports(
-    modules: List[str],
-    packages: List[str],
-    verbose: bool,
-    quiet: bool,
+    modules: List[str], packages: List[str], verbose: bool, quiet: bool
 ) -> Tuple[List[StubSource], List[StubSource]]:
     """Find path and runtime value of __all__ (if possible) for modules and packages.
 
