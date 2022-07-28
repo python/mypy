@@ -33,7 +33,6 @@ from mypy.nodes import (
     AssertTypeExpr,
     AssignmentExpr,
     AwaitExpr,
-    BackquoteExpr,
     BytesExpr,
     CallExpr,
     CastExpr,
@@ -84,7 +83,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     YieldExpr,
     YieldFromExpr,
@@ -509,7 +507,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """More precise type checking for str.format() calls on literals."""
         assert isinstance(e.callee, MemberExpr)
         format_value = None
-        if isinstance(e.callee.expr, (StrExpr, UnicodeExpr)):
+        if isinstance(e.callee.expr, StrExpr):
             format_value = e.callee.expr.value
         elif self.chk.has_type(e.callee.expr):
             base_typ = try_getting_literal(self.chk.lookup_type(e.callee.expr))
@@ -2553,10 +2551,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Type check a bytes literal (trivial)."""
         return self.infer_literal_expr_type(e.value, "builtins.bytes")
 
-    def visit_unicode_expr(self, e: UnicodeExpr) -> Type:
-        """Type check a unicode literal (trivial)."""
-        return self.infer_literal_expr_type(e.value, "builtins.unicode")
-
     def visit_float_expr(self, e: FloatExpr) -> Type:
         """Type check a float literal (trivial)."""
         return self.named_type("builtins.float")
@@ -3511,7 +3505,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return union
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
-        if isinstance(index, (StrExpr, UnicodeExpr)):
+        if isinstance(index, StrExpr):
             key_names = [index.value]
         else:
             typ = get_proper_type(self.accept(index))
@@ -4459,10 +4453,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return UninhabitedType()
             self.chk.push_type_map(map)
             return self.accept(node, type_context=context, allow_none_return=allow_none_return)
-
-    def visit_backquote_expr(self, e: BackquoteExpr) -> Type:
-        self.accept(e.expr)
-        return self.named_type("builtins.str")
 
     #
     # Helpers

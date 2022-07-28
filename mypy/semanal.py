@@ -96,7 +96,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -113,7 +112,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     Expression,
     ExpressionStmt,
     FakeExpression,
@@ -148,7 +146,6 @@ from mypy.nodes import (
     OverloadPart,
     ParamSpecExpr,
     PlaceholderNode,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -176,7 +173,6 @@ from mypy.nodes import (
     TypeVarLikeExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -2880,8 +2876,6 @@ class SemanticAnalyzer(
             value, type_name = rvalue.value, "builtins.str"
         if isinstance(rvalue, BytesExpr):
             value, type_name = rvalue.value, "builtins.bytes"
-        if isinstance(rvalue, UnicodeExpr):
-            value, type_name = rvalue.value, "builtins.unicode"
 
         if type_name is not None:
             assert value is not None
@@ -3483,10 +3477,7 @@ class SemanticAnalyzer(
         if len(call.args) < 1:
             self.fail(f"Too few arguments for {typevarlike_type}()", context)
             return False
-        if (
-            not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
-            or not call.arg_kinds[0] == ARG_POS
-        ):
+        if not isinstance(call.args[0], (StrExpr, BytesExpr)) or not call.arg_kinds[0] == ARG_POS:
             self.fail(f"{typevarlike_type}() expects a string literal as first argument", context)
             return False
         elif call.args[0].value != name:
@@ -4148,21 +4139,6 @@ class SemanticAnalyzer(
                     self.fail(f'Name "{name}" is nonlocal and global', d)
                 self.nonlocal_decls[-1].add(name)
 
-    def visit_print_stmt(self, s: PrintStmt) -> None:
-        self.statement = s
-        for arg in s.args:
-            arg.accept(self)
-        if s.target:
-            s.target.accept(self)
-
-    def visit_exec_stmt(self, s: ExecStmt) -> None:
-        self.statement = s
-        s.expr.accept(self)
-        if s.globals:
-            s.globals.accept(self)
-        if s.locals:
-            s.locals.accept(self)
-
     def visit_match_stmt(self, s: MatchStmt) -> None:
         self.statement = s
         infer_reachability_of_match_statement(s, self.options)
@@ -4704,9 +4680,6 @@ class SemanticAnalyzer(
         expr.if_expr.accept(self)
         expr.cond.accept(self)
         expr.else_expr.accept(self)
-
-    def visit_backquote_expr(self, expr: BackquoteExpr) -> None:
-        expr.expr.accept(self)
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         analyzed = self.anal_type(expr.type)

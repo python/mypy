@@ -14,7 +14,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -31,7 +30,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -62,7 +60,6 @@ from mypy.nodes import (
     OverloadPart,
     ParamSpecExpr,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -85,7 +82,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -383,16 +379,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 
-    def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
-        return PrintStmt(
-            self.expressions(node.args), node.newline, self.optional_expr(node.target)
-        )
-
-    def visit_exec_stmt(self, node: ExecStmt) -> ExecStmt:
-        return ExecStmt(
-            self.expr(node.expr), self.optional_expr(node.globals), self.optional_expr(node.locals)
-        )
-
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
 
@@ -404,9 +390,6 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_bytes_expr(self, node: BytesExpr) -> BytesExpr:
         return BytesExpr(node.value)
-
-    def visit_unicode_expr(self, node: UnicodeExpr) -> UnicodeExpr:
-        return UnicodeExpr(node.value)
 
     def visit_float_expr(self, node: FloatExpr) -> FloatExpr:
         return FloatExpr(node.value)
@@ -586,9 +569,6 @@ class TransformVisitor(NodeVisitor[Node]):
         return ConditionalExpr(
             self.expr(node.cond), self.expr(node.if_expr), self.expr(node.else_expr)
         )
-
-    def visit_backquote_expr(self, node: BackquoteExpr) -> BackquoteExpr:
-        return BackquoteExpr(self.expr(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> TypeVarExpr:
         return TypeVarExpr(

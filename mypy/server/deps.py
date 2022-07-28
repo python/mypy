@@ -118,7 +118,6 @@ from mypy.nodes import (
     OperatorAssignmentStmt,
     OpExpr,
     OverloadedFuncDef,
-    PrintStmt,
     RefExpr,
     StarExpr,
     SuperExpr,
@@ -636,11 +635,6 @@ class DependencyVisitor(TraverserVisitor):
                 self.add_attribute_dependency_for_expr(e, "__aexit__")
         for typ in o.analyzed_types:
             self.add_type_dependencies(typ)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        super().visit_print_stmt(o)
-        if o.target:
-            self.add_attribute_dependency_for_expr(o.target, "write")
 
     def visit_del_stmt(self, o: DelStmt) -> None:
         super().visit_del_stmt(o)

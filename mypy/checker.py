@@ -109,7 +109,6 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -126,7 +125,6 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -1393,11 +1391,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         body = block.body
 
         # Skip a docstring
-        if (
-            body
-            and isinstance(body[0], ExpressionStmt)
-            and isinstance(body[0].expr, (StrExpr, UnicodeExpr))
-        ):
+        if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
             body = block.body[1:]
 
         if len(body) == 0:
@@ -4507,29 +4501,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             "__exit__", ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr
         )
         return res
-
-    def visit_print_stmt(self, s: PrintStmt) -> None:
-        for arg in s.args:
-            self.expr_checker.accept(arg)
-        if s.target:
-            target_type = get_proper_type(self.expr_checker.accept(s.target))
-            if not isinstance(target_type, NoneType):
-                write_type = self.expr_checker.analyze_external_member_access(
-                    "write", target_type, s.target
-                )
-                required_type = CallableType(
-                    arg_types=[self.named_type("builtins.str")],
-                    arg_kinds=[ARG_POS],
-                    arg_names=[None],
-                    ret_type=AnyType(TypeOfAny.implementation_artifact),
-                    fallback=self.named_type("builtins.function"),
-                )
-                # This has to be hard-coded, since it is a syntax pattern, not a function call.
-                if not is_subtype(write_type, required_type):
-                    self.fail(
-                        message_registry.PYTHON2_PRINT_FILE_TYPE.format(write_type, required_type),
-                        s.target,
-                    )
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()

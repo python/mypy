@@ -9,7 +9,6 @@ from mypy.nodes import (
     AssertTypeExpr,
     AssignmentExpr,
     AwaitExpr,
-    BackquoteExpr,
     BytesExpr,
     CallExpr,
     CastExpr,
@@ -50,7 +49,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     YieldExpr,
     YieldFromExpr,
 )
@@ -117,7 +115,7 @@ def literal(e: Expression) -> int:
     elif isinstance(e, NameExpr):
         return LITERAL_TYPE
 
-    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
+    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr)):
         return LITERAL_YES
 
     if literal_hash(e):
@@ -145,9 +143,6 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ("Literal", e.value, e.from_python_3)
 
     def visit_bytes_expr(self, e: BytesExpr) -> Key:
-        return ("Literal", e.value)
-
-    def visit_unicode_expr(self, e: UnicodeExpr) -> Key:
         return ("Literal", e.value)
 
     def visit_float_expr(self, e: FloatExpr) -> Key:
@@ -256,9 +251,6 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
-        return None
-
-    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
         return None
 
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:

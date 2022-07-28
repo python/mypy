@@ -79,7 +79,6 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -1546,13 +1545,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Str(string s)
-    def visit_Str(self, n: Str) -> Union[UnicodeExpr, StrExpr]:
-        # Hack: assume all string literals in Python 2 stubs are normal
-        # strs (i.e. not unicode).  All stubs are parsed with the Python 3
-        # parser, which causes unprefixed string literals to be interpreted
-        # as unicode instead of bytes.  This hack is generally okay,
-        # because mypy considers str literals to be compatible with
-        # unicode.
+    def visit_Str(self, n: Str) -> StrExpr:
         e = StrExpr(n.s)
         return self.set_line(e, n)
 
