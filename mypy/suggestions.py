@@ -249,7 +249,6 @@ class SuggestionEngine:
         json: bool,
         no_errors: bool = False,
         no_any: bool = False,
-        try_text: bool = False,
         flex_any: Optional[float] = None,
         use_fixme: Optional[str] = None,
         max_guesses: Optional[int] = None,
@@ -262,7 +261,6 @@ class SuggestionEngine:
 
         self.give_json = json
         self.no_errors = no_errors
-        self.try_text = try_text
         self.flex_any = flex_any
         if no_any:
             self.flex_any = 1.0
@@ -768,8 +766,6 @@ class SuggestionEngine:
                 return 10
         if isinstance(t, CallableType) and (has_any_type(t) or is_tricky_callable(t)):
             return 10
-        if self.try_text and isinstance(t, Instance) and t.type.fullname == "builtins.str":
-            return 1
         return 0
 
     def score_callable(self, t: CallableType) -> int:

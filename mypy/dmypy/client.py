@@ -162,9 +162,6 @@ p.add_argument(
     help="Allow anys in types if they go above a certain score (scores are from 0-1)",
 )
 p.add_argument(
-    "--try-text", action="store_true", help="Try using unicode wherever str is inferred"
-)
-p.add_argument(
     "--callsites", action="store_true", help="Find callsites instead of suggesting a type"
 )
 p.add_argument(
@@ -525,7 +522,6 @@ def do_suggest(args: argparse.Namespace) -> None:
         no_errors=args.no_errors,
         no_any=args.no_any,
         flex_any=args.flex_any,
-        try_text=args.try_text,
         use_fixme=args.use_fixme,
         max_guesses=args.max_guesses,
     )

@@ -1946,12 +1946,6 @@ class TypeConverter:
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        # Do a getattr because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.) We can't just do
-        # an attribute access with a `# type: ignore` because it would be
-        # unused on < 3.8.
-        kind: str = getattr(n, "kind")  # noqa
-
         return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
 
     # Bytes(bytes s)
