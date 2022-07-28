@@ -168,13 +168,6 @@ Additional flags
     Specify module search directories, separated by colons (only used if
     :option:`--no-import` is given).
 
-.. option:: --python-executable PATH
-
-    Use Python interpreter at ``PATH`` for importing modules and runtime
-    introspection. This has no effect with :option:`--no-import`, and this only works
-    in Python 2 mode. In Python 3 mode the Python interpreter used to run stubgen
-    will always be used.
-
 .. option:: -o PATH, --output PATH
 
     Change the output directory. By default the stubs are written in the

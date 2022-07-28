@@ -24,10 +24,6 @@ Basic usage:
   $ stubgen -p urllib
   => Generate stubs for whole urlib package (recursively).
 
-For Python 2 mode, use --py2:
-
-  $ stubgen --py2 -m textwrap
-
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --doc-dir option:
 
@@ -36,8 +32,6 @@ documentation for extra information. For this, use the --doc-dir option:
 Note: The generated stubs should be verified manually.
 
 TODO:
- - support stubs for C modules in Python 2 mode
- - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
  - maybe use .rst docs also for Python modules
  - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
@@ -113,9 +107,7 @@ from mypy.stubgenc import generate_stub_for_c_module
 from mypy.stubutil import (
     CantImport,
     common_dir_prefix,
-    default_py2_interpreter,
     fail_missing,
-    find_module_path_and_all_py2,
     find_module_path_and_all_py3,
     generate_guarded,
     remove_misplaced_type_comments,
@@ -1423,12 +1415,7 @@ def collect_build_targets(
         else:
             # Using imports is the default, since we can also find C modules.
             py_modules, c_modules = find_module_paths_using_imports(
-                options.modules,
-                options.packages,
-                options.interpreter,
-                options.pyversion,
-                options.verbose,
-                options.quiet,
+                options.modules, options.packages, options.verbose, options.quiet
             )
     else:
         # Use mypy native source collection for files and directories.
@@ -1445,12 +1432,7 @@ def collect_build_targets(
 
 
 def find_module_paths_using_imports(
-    modules: List[str],
-    packages: List[str],
-    interpreter: str,
-    pyversion: Tuple[int, int],
-    verbose: bool,
-    quiet: bool,
+    modules: List[str], packages: List[str], verbose: bool, quiet: bool
 ) -> Tuple[List[StubSource], List[StubSource]]:
     """Find path and runtime value of __all__ (if possible) for modules and packages.
 
@@ -1466,10 +1448,7 @@ def find_module_paths_using_imports(
         ]  # We don't want to run any tests or scripts
         for mod in modules:
             try:
-                if pyversion[0] == 2:
-                    result = find_module_path_and_all_py2(mod, interpreter)
-                else:
-                    result = find_module_path_and_all_py3(inspect, mod, verbose)
+                result = find_module_path_and_all_py3(inspect, mod, verbose)
             except CantImport as e:
                 tb = traceback.format_exc()
                 if verbose:
@@ -1719,7 +1698,7 @@ def generate_stubs(options: Options) -> None:
             print(f"Generated files under {common_dir_prefix(files)}" + os.sep)
 
 
-HEADER = """%(prog)s [-h] [--py2] [more options, see -h]
+HEADER = """%(prog)s [-h] [more options, see -h]
                      [-m MODULE] [-p PACKAGE] [files ...]"""
 
 DESCRIPTION = """
@@ -1733,9 +1712,6 @@ manual changes.  This directory is assumed to exist.
 def parse_options(args: List[str]) -> Options:
     parser = argparse.ArgumentParser(prog="stubgen", usage=HEADER, description=DESCRIPTION)
 
-    parser.add_argument(
-        "--py2", action="store_true", help="run in Python 2 mode (default: Python 3 mode)"
-    )
     parser.add_argument(
         "--ignore-errors",
         action="store_true",
@@ -1785,13 +1761,6 @@ def parse_options(args: List[str]) -> Options:
         "(currently only used if --no-import is given)",
     )
     parser.add_argument(
-        "--python-executable",
-        metavar="PATH",
-        dest="interpreter",
-        default="",
-        help="use Python interpreter at PATH (only works for " "Python 2 right now)",
-    )
-    parser.add_argument(
         "-o",
         "--output",
         metavar="PATH",
@@ -1826,9 +1795,9 @@ def parse_options(args: List[str]) -> Options:
 
     ns = parser.parse_args(args)
 
-    pyversion = defaults.PYTHON2_VERSION if ns.py2 else sys.version_info[:2]
-    if not ns.interpreter:
-        ns.interpreter = sys.executable if pyversion[0] == 3 else default_py2_interpreter()
+    pyversion = sys.version_info[:2]
+    ns.interpreter = sys.executable
+
     if ns.modules + ns.packages and ns.files:
         parser.error("May only specify one of: modules/packages or files.")
     if ns.quiet and ns.verbose:
