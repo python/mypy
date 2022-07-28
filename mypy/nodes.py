@@ -1559,7 +1559,7 @@ class IntExpr(Expression):
         return visitor.visit_int_expr(self)
 
 
-# How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
+# How mypy uses StrExpr and BytesExpr:
 #
 # b'x' -> BytesExpr
 # 'x', u'x' -> StrExpr
