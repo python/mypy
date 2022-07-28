@@ -681,50 +681,6 @@ Now mypy will infer the correct type of the result when we call
 For more details about ``type[]`` and :py:class:`typing.Type[] <typing.Type>`, see :pep:`PEP 484: The type of
 class objects <484#the-type-of-class-objects>`.
 
-.. _text-and-anystr:
-
-Text and AnyStr
-***************
-
-Sometimes you may want to write a function which will accept only unicode
-strings. This can be challenging to do in a codebase intended to run in
-both Python 2 and Python 3 since ``str`` means something different in both
-versions and ``unicode`` is not a keyword in Python 3.
-
-To help solve this issue, use :py:class:`~typing.Text` which is aliased to
-``unicode`` in Python 2 and to ``str`` in Python 3. This allows you to
-indicate that a function should accept only unicode strings in a
-cross-compatible way:
-
-.. code-block:: python
-
-   from typing import Text
-
-   def unicode_only(s: Text) -> Text:
-       return s + u'\u2713'
-
-In other cases, you may want to write a function that will work with any
-kind of string but will not let you mix two different string types. To do
-so use :py:data:`~typing.AnyStr`:
-
-.. code-block:: python
-
-   from typing import AnyStr
-
-   def concat(x: AnyStr, y: AnyStr) -> AnyStr:
-       return x + y
-
-   concat('foo', 'foo')     # Okay
-   concat(b'foo', b'foo')   # Okay
-   concat('foo', b'foo')    # Error: cannot mix bytes and unicode
-
-For more details, see :ref:`type-variable-value-restriction`.
-
-.. note::
-
-   How ``bytes``, ``str``, and ``unicode`` are handled between Python 2 and
-   Python 3 may change in future versions of mypy.
-
 .. _generators:
 
 Generators

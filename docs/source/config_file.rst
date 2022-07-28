@@ -114,7 +114,6 @@ of your repo and run mypy.
     # Global options:
 
     [mypy]
-    python_version = 2.7
     warn_return_any = True
     warn_unused_configs = True
 
@@ -129,16 +128,13 @@ of your repo and run mypy.
     [mypy-somelibrary]
     ignore_missing_imports = True
 
-This config file specifies three global options in the ``[mypy]`` section. These three
+This config file specifies two global options in the ``[mypy]`` section. These two
 options will:
 
-1.  Type-check your entire project assuming it will be run using Python 2.7.
-    (This is equivalent to using the :option:`--python-version 2.7 <mypy --python-version>` or :option:`-2 <mypy -2>` flag).
-
-2.  Report an error whenever a function returns a value that is inferred
+1.  Report an error whenever a function returns a value that is inferred
     to have type ``Any``.
 
-3.  Report any config options that are unused by mypy. (This will help us catch typos
+2.  Report any config options that are unused by mypy. (This will help us catch typos
     when making changes to our config file).
 
 Next, this module specifies three per-module options. The first two options change how mypy
