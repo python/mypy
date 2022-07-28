@@ -6,7 +6,6 @@ import os
 import pathlib
 import re
 import shutil
-import subprocess
 import sys
 import time
 from typing import (
@@ -52,13 +51,6 @@ MINIMUM_WIDTH: Final = 20
 # supported, but are either going out of support, or make up only a few % of the market.
 MINIMUM_WINDOWS_MAJOR_VT100: Final = 10
 MINIMUM_WINDOWS_BUILD_VT100: Final = 10586
-
-default_python2_interpreter: Final = [
-    "python2",
-    "python",
-    "/usr/bin/python",
-    "C:\\Python27\\python.exe",
-]
 
 SPECIAL_DUNDERS: Final = frozenset(
     ("__init__", "__new__", "__call__", "__init_subclass__", "__class_getitem__")
@@ -243,26 +235,6 @@ def get_mypy_comments(source: str) -> List[Tuple[int, str]]:
             results.append((i + 1, line[len(PREFIX) :]))
 
     return results
-
-
-_python2_interpreter: Optional[str] = None
-
-
-def try_find_python2_interpreter() -> Optional[str]:
-    global _python2_interpreter
-    if _python2_interpreter:
-        return _python2_interpreter
-    for interpreter in default_python2_interpreter:
-        try:
-            retcode = subprocess.Popen(
-                [interpreter, "-c", "import sys, typing; assert sys.version_info[:2] == (2, 7)"]
-            ).wait()
-            if not retcode:
-                _python2_interpreter = interpreter
-                return interpreter
-        except OSError:
-            pass
-    return None
 
 
 PASS_TEMPLATE: Final = """<?xml version="1.0" encoding="utf-8"?>

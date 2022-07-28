@@ -1,9 +1,7 @@
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
 
-import json
 import os.path
 import re
-import subprocess
 import sys
 from contextlib import contextmanager
 from typing import Iterator, List, Optional, Tuple, Union
@@ -21,25 +19,6 @@ class CantImport(Exception):
     def __init__(self, module: str, message: str):
         self.module = module
         self.message = message
-
-
-def default_py2_interpreter() -> str:
-    """Find a system Python 2 interpreter.
-
-    Return full path or exit if failed.
-    """
-    # TODO: Make this do something reasonable in Windows.
-    for candidate in ("/usr/bin/python2", "/usr/bin/python"):
-        if not os.path.exists(candidate):
-            continue
-        output = subprocess.check_output(
-            [candidate, "--version"], stderr=subprocess.STDOUT
-        ).strip()
-        if b"Python 2" in output:
-            return candidate
-    raise SystemExit(
-        "Can't find a Python 2 interpreter -- " "please use the --python-executable option"
-    )
 
 
 def walk_packages(
@@ -70,52 +49,6 @@ def walk_packages(
             yield from walk_packages(inspect, prop.subpackages, verbose)
         else:
             yield from prop.subpackages
-
-
-def find_module_path_and_all_py2(
-    module: str, interpreter: str
-) -> Optional[Tuple[Optional[str], Optional[List[str]]]]:
-    """Return tuple (module path, module __all__) for a Python 2 module.
-
-    The path refers to the .py/.py[co] file. The second tuple item is
-    None if the module doesn't define __all__.
-
-    Raise CantImport if the module can't be imported, or exit if it's a C extension module.
-    """
-    cmd_template = f'{interpreter} -c "%s"'
-    code = (
-        "import importlib, json; mod = importlib.import_module('%s'); "
-        "print(mod.__file__); print(json.dumps(getattr(mod, '__all__', None)))"
-    ) % module
-    try:
-        output_bytes = subprocess.check_output(cmd_template % code, shell=True)
-    except subprocess.CalledProcessError as e:
-        path = find_module_path_using_py2_sys_path(module, interpreter)
-        if path is None:
-            raise CantImport(module, str(e)) from e
-        return path, None
-    output = output_bytes.decode("ascii").strip().splitlines()
-    module_path = output[0]
-    if not module_path.endswith((".py", ".pyc", ".pyo")):
-        raise SystemExit("%s looks like a C module; they are not supported for Python 2" % module)
-    if module_path.endswith((".pyc", ".pyo")):
-        module_path = module_path[:-1]
-    module_all = json.loads(output[1])
-    return module_path, module_all
-
-
-def find_module_path_using_py2_sys_path(module: str, interpreter: str) -> Optional[str]:
-    """Try to find the path of a .py file for a module using Python 2 sys.path.
-
-    Return None if no match was found.
-    """
-    out = subprocess.run(
-        [interpreter, "-c", "import sys; import json; print(json.dumps(sys.path))"],
-        check=True,
-        stdout=subprocess.PIPE,
-    ).stdout
-    sys_path = json.loads(out.decode("utf-8"))
-    return find_module_path_using_sys_path(module, sys_path)
 
 
 def find_module_path_using_sys_path(module: str, sys_path: List[str]) -> Optional[str]:
@@ -181,18 +114,10 @@ def generate_guarded(
             print(f"Created {target}")
 
 
-PY2_MODULES = {"cStringIO", "urlparse", "collections.UserDict"}
-
-
 def report_missing(mod: str, message: Optional[str] = "", traceback: str = "") -> None:
     if message:
         message = " with error: " + message
     print(f"{mod}: Failed to import, skipping{message}")
-    m = re.search(r"ModuleNotFoundError: No module named '([^']*)'", traceback)
-    if m:
-        missing_module = m.group(1)
-        if missing_module in PY2_MODULES:
-            print("note: Try --py2 for Python 2 mode")
 
 
 def fail_missing(mod: str, reason: ModuleNotFoundReason) -> None:
