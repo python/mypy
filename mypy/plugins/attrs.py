@@ -65,8 +65,6 @@ from mypy.types import (
 from mypy.typevars import fill_typevars
 from mypy.util import unmangle
 
-KW_ONLY_PYTHON_2_UNSUPPORTED: Final = "kw_only is not supported in Python 2"
-
 # The names of the different functions that create classes or arguments.
 attr_class_makers: Final = {"attr.s", "attr.attrs", "attr.attributes"}
 attr_dataclass_makers: Final = {"attr.dataclass"}
@@ -294,22 +292,6 @@ def attr_class_maker_callback(
     auto_attribs = _get_decorator_optional_bool_argument(ctx, "auto_attribs", auto_attribs_default)
     kw_only = _get_decorator_bool_argument(ctx, "kw_only", False)
     match_args = _get_decorator_bool_argument(ctx, "match_args", True)
-
-    early_fail = False
-    if ctx.api.options.python_version[0] < 3:
-        if auto_attribs:
-            ctx.api.fail("auto_attribs is not supported in Python 2", ctx.reason)
-            early_fail = True
-        if not info.defn.base_type_exprs:
-            # Note: This will not catch subclassing old-style classes.
-            ctx.api.fail("attrs only works with new-style classes", info.defn)
-            early_fail = True
-        if kw_only:
-            ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, ctx.reason)
-            early_fail = True
-    if early_fail:
-        _add_empty_metadata(info)
-        return True
 
     for super_info in ctx.cls.info.mro[1:-1]:
         if "attrs_tag" in super_info.metadata and "attrs" not in super_info.metadata:
@@ -585,9 +567,6 @@ def _attribute_from_attrib_maker(
     # Note: If the class decorator says kw_only=True the attribute is ignored.
     # See https://github.com/python-attrs/attrs/issues/481 for explanation.
     kw_only |= _get_bool_argument(ctx, rvalue, "kw_only", False)
-    if kw_only and ctx.api.options.python_version[0] < 3:
-        ctx.api.fail(KW_ONLY_PYTHON_2_UNSUPPORTED, stmt)
-        return None
 
     # TODO: Check for attr.NOTHING
     attr_has_default = bool(_get_argument(rvalue, "default"))
