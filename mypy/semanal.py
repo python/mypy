@@ -270,7 +270,6 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
-    UnionType,
     get_proper_type,
     get_proper_types,
     is_named_instance,
