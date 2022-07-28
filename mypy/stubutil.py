@@ -1,9 +1,7 @@
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
 
-import json
 import os.path
 import re
-import subprocess
 import sys
 from contextlib import contextmanager
 from typing import Iterator, List, Optional, Tuple, Union
