@@ -401,12 +401,6 @@ class SuggestionEngine:
             for arg in fdef.arguments
         ]
 
-    def add_adjustments(self, typs: List[Type]) -> List[Type]:
-        if not self.try_text or self.manager.options.python_version[0] != 2:
-            return typs
-        translator = StrToText(self.named_type)
-        return dedup(typs + [tp.accept(translator) for tp in typs])
-
     def get_guesses(
         self,
         is_method: bool,
@@ -420,7 +414,6 @@ class SuggestionEngine:
         This focuses just on the argument types, and doesn't change the provided return type.
         """
         options = self.get_args(is_method, base, defaults, callsites, uses)
-        options = [self.add_adjustments(tps) for tps in options]
 
         # Take the first `max_guesses` guesses.
         product = itertools.islice(itertools.product(*options), 0, self.max_guesses)
@@ -907,23 +900,6 @@ class TypeFormatter(TypeStrVisitor):
             arg_str = f"[{', '.join(args)}]"
 
         return f"Callable[{arg_str}, {t.ret_type.accept(self)}]"
-
-
-class StrToText(TypeTranslator):
-    def __init__(self, named_type: Callable[[str], Instance]) -> None:
-        self.text_type = named_type("builtins.unicode")
-
-    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
-        exp_t = get_proper_type(t)
-        if isinstance(exp_t, Instance) and exp_t.type.fullname == "builtins.str":
-            return self.text_type
-        return t.copy_modified(args=[a.accept(self) for a in t.args])
-
-    def visit_instance(self, t: Instance) -> Type:
-        if t.type.fullname == "builtins.str":
-            return self.text_type
-        else:
-            return super().visit_instance(t)
 
 
 TType = TypeVar("TType", bound=Type)

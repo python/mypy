@@ -1162,7 +1162,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return [
                 LiteralType(
                     value=arg.original_str_expr,
-                    fallback=self.named_type_with_normalized_str(arg.original_str_fallback),
+                    fallback=self.named_type(arg.original_str_fallback),
                     line=arg.line,
                     column=arg.column,
                 )
@@ -1210,7 +1210,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 return None
 
             # Remap bytes and unicode into the appropriate type for the correct Python version
-            fallback = self.named_type_with_normalized_str(arg.base_type_name)
+            fallback = self.named_type(arg.base_type_name)
             assert isinstance(fallback, Instance)
             return [LiteralType(arg.literal_value, fallback, line=arg.line, column=arg.column)]
         elif isinstance(arg, (NoneType, LiteralType)):
@@ -1356,17 +1356,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
 
     def anal_var_defs(self, var_defs: Sequence[TypeVarLikeType]) -> List[TypeVarLikeType]:
         return [self.anal_var_def(vd) for vd in var_defs]
-
-    def named_type_with_normalized_str(self, fully_qualified_name: str) -> Instance:
-        """Does almost the same thing as `named_type`, except that we immediately
-        unalias `builtins.bytes` and `builtins.unicode` to `builtins.str` as appropriate.
-        """
-        python_version = self.options.python_version
-        if python_version[0] == 2 and fully_qualified_name == "builtins.bytes":
-            fully_qualified_name = "builtins.str"
-        if python_version[0] >= 3 and fully_qualified_name == "builtins.unicode":
-            fully_qualified_name = "builtins.str"
-        return self.named_type(fully_qualified_name)
 
     def named_type(
         self,
