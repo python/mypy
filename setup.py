@@ -214,10 +214,7 @@ setup(
         "tomli>=1.1.0; python_version<'3.11'",
     ],
     # Same here.
-    extras_require={
-        "dmypy": "psutil >= 4.0",
-        "reports": "lxml",
-    },
+    extras_require={"dmypy": "psutil >= 4.0", "reports": "lxml"},
     python_requires=">=3.6",
     include_package_data=True,
     project_urls={
