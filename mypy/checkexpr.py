@@ -96,7 +96,7 @@ from mypy.plugin import (
 )
 from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
-from mypy.subtypes import is_equivalent, is_proper_subtype, is_subtype, non_method_protocol_members
+from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
