@@ -145,9 +145,9 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
             result = consider_sys_platform(expr, options.platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == "PY2":
-            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+            result = ALWAYS_FALSE
         elif name == "PY3":
-            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+            result = ALWAYS_TRUE
         elif name == "MYPY" or name == "TYPE_CHECKING":
             result = MYPY_TRUE
         elif name in options.always_true:
