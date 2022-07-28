@@ -11,8 +11,5 @@ class TestStubInfo(unittest.TestCase):
         assert is_legacy_bundled_package("pycurl", 2)
         assert is_legacy_bundled_package("pycurl", 3)
 
-        assert is_legacy_bundled_package("scribe", 2)
-        assert not is_legacy_bundled_package("scribe", 3)
-
         assert not is_legacy_bundled_package("dataclasses", 2)
         assert is_legacy_bundled_package("dataclasses", 3)
