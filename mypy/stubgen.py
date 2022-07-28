@@ -55,7 +55,6 @@ import mypy.mixedtraverser
 import mypy.parse
 import mypy.traverser
 import mypy.util
-from mypy import defaults
 from mypy.build import build
 from mypy.errors import CompileError, Errors
 from mypy.find_sources import InvalidSourceList, create_source_list
@@ -1667,11 +1666,7 @@ def generate_stubs(options: Options) -> None:
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
             generate_stub_from_ast(
-                mod,
-                target,
-                options.parse_only,
-                options.include_private,
-                options.export_less,
+                mod, target, options.parse_only, options.include_private, options.export_less
             )
 
     # Separately analyse C modules using different logic.
