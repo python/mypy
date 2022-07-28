@@ -274,8 +274,8 @@ def attr_class_maker_callback(
 
     At a quick glance, the decorator searches the class body for assignments of `attr.ib`s (or
     annotated variables if auto_attribs=True), then depending on how the decorator is called,
-    it will add an __init__ or all the __cmp__ methods.  For frozen=True it will turn the attrs
-    into properties.
+    it will add an __init__ or all the compare methods.
+    For frozen=True it will turn the attrs into properties.
 
     See http://www.attrs.org/en/stable/how-does-it-work.html for information on how attrs works.
 
