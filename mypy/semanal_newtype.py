@@ -26,7 +26,6 @@ from mypy.nodes import (
     StrExpr,
     SymbolTableNode,
     TypeInfo,
-    UnicodeExpr,
     Var,
 )
 from mypy.options import Options
@@ -178,7 +177,7 @@ class NewTypeAnalyzer:
             return None, False
 
         # Check first argument
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+        if not isinstance(args[0], (StrExpr, BytesExpr)):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif args[0].value != name:

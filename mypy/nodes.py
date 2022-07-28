@@ -1541,49 +1541,6 @@ class MatchStmt(Statement):
         return visitor.visit_match_stmt(self)
 
 
-class PrintStmt(Statement):
-    """Python 2 print statement"""
-
-    __slots__ = ("args", "newline", "target")
-
-    args: List[Expression]
-    newline: bool
-    # The file-like target object (given using >>).
-    target: Optional[Expression]
-
-    def __init__(
-        self, args: List[Expression], newline: bool, target: Optional[Expression] = None
-    ) -> None:
-        super().__init__()
-        self.args = args
-        self.newline = newline
-        self.target = target
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_print_stmt(self)
-
-
-class ExecStmt(Statement):
-    """Python 2 exec statement"""
-
-    __slots__ = ("expr", "globals", "locals")
-
-    expr: Expression
-    globals: Optional[Expression]
-    locals: Optional[Expression]
-
-    def __init__(
-        self, expr: Expression, globals: Optional[Expression], locals: Optional[Expression]
-    ) -> None:
-        super().__init__()
-        self.expr = expr
-        self.globals = globals
-        self.locals = locals
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_exec_stmt(self)
-
-
 # Expressions
 
 
@@ -1602,16 +1559,10 @@ class IntExpr(Expression):
         return visitor.visit_int_expr(self)
 
 
-# How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
-# In Python 2 mode:
-# b'x', 'x' -> StrExpr
-# u'x' -> UnicodeExpr
-# BytesExpr is unused
+# How mypy uses StrExpr and BytesExpr:
 #
-# In Python 3 mode:
 # b'x' -> BytesExpr
 # 'x', u'x' -> StrExpr
-# UnicodeExpr is unused
 
 
 class StrExpr(Expression):
@@ -1666,21 +1617,6 @@ class BytesExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
-
-
-class UnicodeExpr(Expression):
-    """Unicode literal (Python 2.x)"""
-
-    __slots__ = ("value",)
-
-    value: str
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self.value = value
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_unicode_expr(self)
 
 
 class FloatExpr(Expression):
@@ -2327,21 +2263,6 @@ class ConditionalExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
-
-
-class BackquoteExpr(Expression):
-    """Python 2 expression `...`."""
-
-    __slots__ = ("expr",)
-
-    expr: Expression
-
-    def __init__(self, expr: Expression) -> None:
-        super().__init__()
-        self.expr = expr
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_backquote_expr(self)
 
 
 class TypeApplication(Expression):

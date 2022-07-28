@@ -11,7 +11,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -28,7 +27,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -60,7 +58,6 @@ from mypy.nodes import (
     OverloadedFuncDef,
     ParamSpecExpr,
     PassStmt,
-    PrintStmt,
     RaiseStmt,
     ReturnStmt,
     RevealExpr,
@@ -79,7 +76,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     WhileStmt,
     WithStmt,
     YieldExpr,
@@ -361,9 +357,6 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_star_expr(self, o: StarExpr) -> None:
         o.expr.accept(self)
 
-    def visit_backquote_expr(self, o: BackquoteExpr) -> None:
-        o.expr.accept(self)
-
     def visit_await_expr(self, o: AwaitExpr) -> None:
         o.expr.accept(self)
 
@@ -413,17 +406,6 @@ class TraverserVisitor(NodeVisitor[None]):
     def visit_import_from(self, o: ImportFrom) -> None:
         for a in o.assignments:
             a.accept(self)
-
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        for arg in o.args:
-            arg.accept(self)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        o.expr.accept(self)
-        if o.globals:
-            o.globals.accept(self)
-        if o.locals:
-            o.locals.accept(self)
 
 
 class ExtendedTraverserVisitor(TraverserVisitor):
@@ -583,16 +565,6 @@ class ExtendedTraverserVisitor(TraverserVisitor):
             return
         super().visit_with_stmt(o)
 
-    def visit_print_stmt(self, o: PrintStmt) -> None:
-        if not self.visit(o):
-            return
-        super().visit_print_stmt(o)
-
-    def visit_exec_stmt(self, o: ExecStmt) -> None:
-        if not self.visit(o):
-            return
-        super().visit_exec_stmt(o)
-
     def visit_match_stmt(self, o: MatchStmt) -> None:
         if not self.visit(o):
             return
@@ -614,11 +586,6 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_bytes_expr(o)
-
-    def visit_unicode_expr(self, o: UnicodeExpr) -> None:
-        if not self.visit(o):
-            return
-        super().visit_unicode_expr(o)
 
     def visit_float_expr(self, o: FloatExpr) -> None:
         if not self.visit(o):
@@ -769,11 +736,6 @@ class ExtendedTraverserVisitor(TraverserVisitor):
         if not self.visit(o):
             return
         super().visit_conditional_expr(o)
-
-    def visit_backquote_expr(self, o: BackquoteExpr) -> None:
-        if not self.visit(o):
-            return
-        super().visit_backquote_expr(o)
 
     def visit_type_var_expr(self, o: TypeVarExpr) -> None:
         if not self.visit(o):

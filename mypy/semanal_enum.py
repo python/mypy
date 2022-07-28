@@ -3,7 +3,7 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
-from typing import List, Optional, Tuple, Union, cast
+from typing import List, Optional, Tuple, cast
 
 from typing_extensions import Final
 
@@ -25,7 +25,6 @@ from mypy.nodes import (
     SymbolTableNode,
     TupleExpr,
     TypeInfo,
-    UnicodeExpr,
     Var,
 )
 from mypy.options import Options
@@ -108,7 +107,7 @@ class EnumCallAnalyzer:
             # Error. Construct dummy return value.
             info = self.build_enum_call_typeinfo(var_name, [], fullname, node.line)
         else:
-            name = cast(Union[StrExpr, UnicodeExpr], call.args[0]).value
+            name = cast(StrExpr, call.args[0]).value
             if name != var_name or is_func_scope:
                 # Give it a unique name derived from the line number.
                 name += "@" + str(call.line)
@@ -165,32 +164,30 @@ class EnumCallAnalyzer:
             value = args[0]
         if names is None:
             names = args[1]
-        if not isinstance(value, (StrExpr, UnicodeExpr)):
+        if not isinstance(value, StrExpr):
             return self.fail_enum_call_arg(
                 f"{class_name}() expects a string literal as the first argument", call
             )
         items = []
         values: List[Optional[Expression]] = []
-        if isinstance(names, (StrExpr, UnicodeExpr)):
+        if isinstance(names, StrExpr):
             fields = names.value
             for field in fields.replace(",", " ").split():
                 items.append(field)
         elif isinstance(names, (TupleExpr, ListExpr)):
             seq_items = names.items
-            if all(isinstance(seq_item, (StrExpr, UnicodeExpr)) for seq_item in seq_items):
-                items = [
-                    cast(Union[StrExpr, UnicodeExpr], seq_item).value for seq_item in seq_items
-                ]
+            if all(isinstance(seq_item, StrExpr) for seq_item in seq_items):
+                items = [cast(StrExpr, seq_item).value for seq_item in seq_items]
             elif all(
                 isinstance(seq_item, (TupleExpr, ListExpr))
                 and len(seq_item.items) == 2
-                and isinstance(seq_item.items[0], (StrExpr, UnicodeExpr))
+                and isinstance(seq_item.items[0], StrExpr)
                 for seq_item in seq_items
             ):
                 for seq_item in seq_items:
                     assert isinstance(seq_item, (TupleExpr, ListExpr))
                     name, value = seq_item.items
-                    assert isinstance(name, (StrExpr, UnicodeExpr))
+                    assert isinstance(name, StrExpr)
                     items.append(name.value)
                     values.append(value)
             else:
@@ -200,7 +197,7 @@ class EnumCallAnalyzer:
                 )
         elif isinstance(names, DictExpr):
             for key, value in names.items:
-                if not isinstance(key, (StrExpr, UnicodeExpr)):
+                if not isinstance(key, StrExpr):
                     return self.fail_enum_call_arg(
                         f"{class_name}() with dict literal requires string literals", call
                     )

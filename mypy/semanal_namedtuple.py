@@ -39,7 +39,6 @@ from mypy.nodes import (
     TupleExpr,
     TypeInfo,
     TypeVarExpr,
-    UnicodeExpr,
     Var,
 )
 from mypy.options import Options
@@ -339,15 +338,13 @@ class NamedTupleAnalyzer:
         if call.arg_kinds[:2] != [ARG_POS, ARG_POS]:
             self.fail(f'Unexpected arguments to "{type_name}()"', call)
             return None
-        if not isinstance(args[0], (StrExpr, BytesExpr, UnicodeExpr)):
+        if not isinstance(args[0], (StrExpr, BytesExpr)):
             self.fail(f'"{type_name}()" expects a string literal as the first argument', call)
             return None
-        typename = cast(Union[StrExpr, BytesExpr, UnicodeExpr], call.args[0]).value
+        typename = cast(Union[StrExpr, BytesExpr], call.args[0]).value
         types: List[Type] = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
-            if fullname == "collections.namedtuple" and isinstance(
-                args[1], (StrExpr, BytesExpr, UnicodeExpr)
-            ):
+            if fullname == "collections.namedtuple" and isinstance(args[1], (StrExpr, BytesExpr)):
                 str_expr = args[1]
                 items = str_expr.value.replace(",", " ").split()
             else:
@@ -362,16 +359,10 @@ class NamedTupleAnalyzer:
             listexpr = args[1]
             if fullname == "collections.namedtuple":
                 # The fields argument contains just names, with implicit Any types.
-                if any(
-                    not isinstance(item, (StrExpr, BytesExpr, UnicodeExpr))
-                    for item in listexpr.items
-                ):
+                if any(not isinstance(item, (StrExpr, BytesExpr)) for item in listexpr.items):
                     self.fail('String literal expected as "namedtuple()" item', call)
                     return None
-                items = [
-                    cast(Union[StrExpr, BytesExpr, UnicodeExpr], item).value
-                    for item in listexpr.items
-                ]
+                items = [cast(Union[StrExpr, BytesExpr], item).value for item in listexpr.items]
             else:
                 # The fields argument contains (name, type) tuples.
                 result = self.parse_namedtuple_fields_with_types(listexpr.items, call)
@@ -410,7 +401,7 @@ class NamedTupleAnalyzer:
                     self.fail('Invalid "NamedTuple()" field definition', item)
                     return None
                 name, type_node = item.items
-                if isinstance(name, (StrExpr, BytesExpr, UnicodeExpr)):
+                if isinstance(name, (StrExpr, BytesExpr)):
                     items.append(name.value)
                 else:
                     self.fail('Invalid "NamedTuple()" field name', item)

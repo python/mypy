@@ -302,17 +302,6 @@ class StrConv(NodeVisitor[str]):
             a.append(o.unanalyzed_type)
         return self.dump(a + [o.body], o)
 
-    def visit_print_stmt(self, o: "mypy.nodes.PrintStmt") -> str:
-        a: List[Any] = o.args[:]
-        if o.target:
-            a.append(("Target", [o.target]))
-        if o.newline:
-            a.append("Newline")
-        return self.dump(a, o)
-
-    def visit_exec_stmt(self, o: "mypy.nodes.ExecStmt") -> str:
-        return self.dump([o.expr, o.globals, o.locals], o)
-
     def visit_match_stmt(self, o: "mypy.nodes.MatchStmt") -> str:
         a: List[Any] = [o.subject]
         for i in range(len(o.patterns)):
@@ -334,9 +323,6 @@ class StrConv(NodeVisitor[str]):
 
     def visit_bytes_expr(self, o: "mypy.nodes.BytesExpr") -> str:
         return f"BytesExpr({self.str_repr(o.value)})"
-
-    def visit_unicode_expr(self, o: "mypy.nodes.UnicodeExpr") -> str:
-        return f"UnicodeExpr({self.str_repr(o.value)})"
 
     def str_repr(self, s: str) -> str:
         s = re.sub(r"\\u[0-9a-fA-F]{4}", lambda m: "\\" + m.group(0), s)
@@ -556,9 +542,6 @@ class StrConv(NodeVisitor[str]):
         if not a[1]:
             a[1] = "<empty>"
         return self.dump(a, o)
-
-    def visit_backquote_expr(self, o: "mypy.nodes.BackquoteExpr") -> str:
-        return self.dump([o.expr], o)
 
     def visit_temp_node(self, o: "mypy.nodes.TempNode") -> str:
         return self.dump([o.type], o)
