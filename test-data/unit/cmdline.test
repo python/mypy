@@ -625,7 +625,7 @@ python_version = 4.0
 mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
 == Return code: 0
 
-[case testPythonVersionAccepted27]
+[case testPythonVersionTooDead27]
 # cmd: mypy -c pass
 [file mypy.ini]
 \[mypy]
