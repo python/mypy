@@ -1129,7 +1129,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype(ref_type, erased, ignore_type_params=True):
-                            note = None
                             if (
                                 isinstance(erased, Instance)
                                 and erased.type.is_protocol
@@ -1149,8 +1148,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
                             if msg:
                                 self.fail(msg, defn)
-                                if note:
-                                    self.note(note, defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
