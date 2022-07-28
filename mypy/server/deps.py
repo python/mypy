@@ -225,7 +225,6 @@ class DependencyVisitor(TraverserVisitor):
     ) -> None:
         self.scope = Scope()
         self.type_map = type_map
-        self.python2 = python_version[0] == 2
         # This attribute holds a mapping from target to names of type aliases
         # it depends on. These need to be processed specially, since they are
         # only present in expanded form in symbol tables. For example, after:
@@ -603,11 +602,7 @@ class DependencyVisitor(TraverserVisitor):
             self.add_attribute_dependency_for_expr(o.expr, "__iter__")
             self.add_attribute_dependency_for_expr(o.expr, "__getitem__")
             if o.inferred_iterator_type:
-                if self.python2:
-                    method = "next"
-                else:
-                    method = "__next__"
-                self.add_attribute_dependency(o.inferred_iterator_type, method)
+                self.add_attribute_dependency(o.inferred_iterator_type, "__next__")
         else:
             self.add_attribute_dependency_for_expr(o.expr, "__aiter__")
             if o.inferred_iterator_type:
@@ -803,9 +798,6 @@ class DependencyVisitor(TraverserVisitor):
             left = e.operands[i]
             right = e.operands[i + 1]
             self.process_binary_op(op, left, right)
-            if self.python2 and op in ("==", "!=", "<", "<=", ">", ">="):
-                self.add_operator_method_dependency(left, "__cmp__")
-                self.add_operator_method_dependency(right, "__cmp__")
 
     def process_binary_op(self, op: str, left: Expression, right: Expression) -> None:
         method = op_methods.get(op)

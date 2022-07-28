@@ -867,7 +867,7 @@ class StringFormatterChecker:
             str_type = self.chk.named_generic_type("builtins.str", [])
             return self.chk.named_generic_type("typing.Mapping", [str_type, any_type])
         else:
-            assert False, "There should not be UnicodeExpr on Python 3"
+            assert False, "Unreachable"
 
     def build_replacement_checkers(
         self, specifiers: List[ConversionSpecifier], context: Context, expr: FormatStringExpr
