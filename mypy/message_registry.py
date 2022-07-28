@@ -45,10 +45,6 @@ INVALID_RETURN_TYPE_FOR_ASYNC_GENERATOR: Final = ErrorMessage(
     'The return type of an async generator function should be "AsyncGenerator" or one of its '
     "supertypes"
 )
-INVALID_GENERATOR_RETURN_ITEM_TYPE: Final = ErrorMessage(
-    "The return type of a generator function must be None in"
-    " its third type parameter in Python 2"
-)
 YIELD_VALUE_EXPECTED: Final = ErrorMessage("Yield value expected")
 INCOMPATIBLE_TYPES: Final = "Incompatible types"
 INCOMPATIBLE_TYPES_IN_ASSIGNMENT: Final = "Incompatible types in assignment"
@@ -202,9 +198,6 @@ MISSING_OR_INVALID_SELF_TYPE: Final = ErrorMessage(
 )
 ERASED_SELF_TYPE_NOT_SUPERTYPE: Final = ErrorMessage(
     'The erased type of self "{}" is not a supertype of its class "{}"'
-)
-INVALID_SELF_TYPE_OR_EXTRA_ARG: Final = ErrorMessage(
-    "Invalid type for self, or extra argument type in function annotation"
 )
 
 # Final
