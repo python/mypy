@@ -8,6 +8,8 @@ _NL: TypeAlias = Node | Leaf
 _Context: TypeAlias = tuple[str, int, int]
 _Results: TypeAlias = dict[str, _NL]
 _RawNode: TypeAlias = tuple[int, str, _Context, list[_NL] | None]
+# This alias isn't used in this file,
+# but is imported in other lib2to3 submodules
 _Convert: TypeAlias = Callable[[Grammar, _RawNode], Any]
 
 HUGE: int

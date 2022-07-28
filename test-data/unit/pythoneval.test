@@ -652,7 +652,10 @@ x = range(3)
 a = list(map(str, x))
 a + 1
 [out]
-_program.py:4: error: Unsupported operand types for + ("List[str]" and "int")
+_testMapStr.py:4: error: No overload variant of "__add__" of "list" matches argument type "int"
+_testMapStr.py:4: note: Possible overload variants:
+_testMapStr.py:4: note:     def __add__(self, List[str]) -> List[str]
+_testMapStr.py:4: note:     def [_S] __add__(self, List[_S]) -> List[Union[_S, str]]
 
 [case testRelativeImport]
 import typing

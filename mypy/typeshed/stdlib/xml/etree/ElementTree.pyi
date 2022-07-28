@@ -325,7 +325,7 @@ if sys.version_info >= (3, 8):
     class C14NWriterTarget:
         def __init__(
             self,
-            write: Callable[[str], Any],
+            write: Callable[[str], object],
             *,
             with_comments: bool = ...,
             strip_text: bool = ...,

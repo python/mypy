@@ -1,11 +1,9 @@
 import os
 import sys
+from importlib.abc import ResourceReader
 from importlib.machinery import ModuleSpec
 from types import CodeType, ModuleType
 from typing import Any
-
-if sys.version_info >= (3, 7):
-    from importlib.abc import ResourceReader
 
 if sys.version_info >= (3, 8):
     __all__ = ["ZipImportError", "zipimporter"]
@@ -21,9 +19,7 @@ class zipimporter:
     def get_code(self, fullname: str) -> CodeType: ...
     def get_data(self, pathname: str) -> str: ...
     def get_filename(self, fullname: str) -> str: ...
-    if sys.version_info >= (3, 7):
-        def get_resource_reader(self, fullname: str) -> ResourceReader | None: ...  # undocumented
-
+    def get_resource_reader(self, fullname: str) -> ResourceReader | None: ...  # undocumented
     def get_source(self, fullname: str) -> str | None: ...
     def is_package(self, fullname: str) -> bool: ...
     def load_module(self, fullname: str) -> ModuleType: ...

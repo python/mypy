@@ -60,8 +60,7 @@ if sys.platform != "win32":
     A_DIM: int
     A_HORIZONTAL: int
     A_INVIS: int
-    if sys.version_info >= (3, 7):
-        A_ITALIC: int
+    A_ITALIC: int
     A_LEFT: int
     A_LOW: int
     A_NORMAL: int
