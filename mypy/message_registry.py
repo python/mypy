@@ -173,7 +173,6 @@ UNBOUND_TYPEVAR: Final = (
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
-TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
 SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage(
     '"super" with a single argument not supported'
 )

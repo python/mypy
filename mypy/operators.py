@@ -30,7 +30,6 @@ op_methods: Final = {
 op_methods_to_symbols: Final = {v: k for (k, v) in op_methods.items()}
 op_methods_to_symbols["__div__"] = "/"
 
-comparison_fallback_method: Final = "__cmp__"
 ops_falling_back_to_cmp: Final = {"__ne__", "__eq__", "__lt__", "__le__", "__gt__", "__ge__"}
 
 

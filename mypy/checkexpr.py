@@ -96,7 +96,7 @@ from mypy.plugin import (
 )
 from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
-from mypy.subtypes import is_equivalent, is_proper_subtype, is_subtype, non_method_protocol_members
+from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
@@ -2561,15 +2561,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def visit_ellipsis(self, e: EllipsisExpr) -> Type:
         """Type check '...'."""
-        if self.chk.options.python_version[0] >= 3:
-            return self.named_type("builtins.ellipsis")
-        else:
-            # '...' is not valid in normal Python 2 code, but it can
-            # be used in stubs.  The parser makes sure that we only
-            # get this far if we are in a stub, and we can safely
-            # return 'object' as ellipsis is special cased elsewhere.
-            # The builtins.ellipsis type does not exist in Python 2.
-            return self.named_type("builtins.object")
+        return self.named_type("builtins.ellipsis")
 
     def visit_op_expr(self, e: OpExpr) -> Type:
         """Type check a binary operator expression."""
@@ -2596,7 +2588,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         return self.concat_tuples(proper_left_type, proper_right_type)
 
         if e.op in operators.op_methods:
-            method = self.get_operator_method(e.op)
+            method = operators.op_methods[e.op]
             result, method_type = self.check_op(method, left_type, e.right, e, allow_reverse=True)
             e.method_type = method_type
             return result
@@ -2673,7 +2665,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     self.msg.add_errors(local_errors.filtered_errors())
             elif operator in operators.op_methods:
-                method = self.get_operator_method(operator)
+                method = operators.op_methods[operator]
 
                 with ErrorWatcher(self.msg.errors) as w:
                     sub_result, method_type = self.check_op(
@@ -2779,11 +2771,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             left = remove_optional(left)
             right = remove_optional(right)
             left, right = get_proper_types((left, right))
-        py2 = self.chk.options.python_version < (3, 0)
         if (
             original_container
-            and has_bytes_component(original_container, py2)
-            and has_bytes_component(left, py2)
+            and has_bytes_component(original_container)
+            and has_bytes_component(left)
         ):
             # We need to special case bytes and bytearray, because 97 in b'abc', b'a' in b'abc',
             # b'a' in bytearray(b'abc') etc. all return True (and we want to show the error only
@@ -2804,12 +2795,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # Comparing different booleans is not dangerous.
                 return False
         return not is_overlapping_types(left, right, ignore_promotions=False)
-
-    def get_operator_method(self, op: str) -> str:
-        if op == "/" and self.chk.options.python_version[0] == 2:
-            return "__truediv__" if self.chk.tree.is_future_flag_set("division") else "__div__"
-        else:
-            return operators.op_methods[op]
 
     def check_method_call_by_name(
         self,
@@ -2973,7 +2958,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # STEP 1:
         # We start by getting the __op__ and __rop__ methods, if they exist.
 
-        rev_op_name = self.get_reverse_op_method(op_name)
+        rev_op_name = operators.reverse_op_methods[op_name]
 
         left_op = lookup_operator(op_name, left_type)
         right_op = lookup_operator(rev_op_name, right_type)
@@ -2986,7 +2971,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        bias_right = is_proper_subtype(right_type, left_type)
         if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
@@ -3018,22 +3002,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             # __radd__ second when doing "A() + B()".
 
             variants_raw = [(left_op, left_type, right_expr), (right_op, right_type, left_expr)]
-
-        # STEP 2b:
-        # When running Python 2, we might also try calling the __cmp__ method.
-
-        is_python_2 = self.chk.options.python_version[0] == 2
-        if is_python_2 and op_name in operators.ops_falling_back_to_cmp:
-            cmp_method = operators.comparison_fallback_method
-            left_cmp_op = lookup_operator(cmp_method, left_type)
-            right_cmp_op = lookup_operator(cmp_method, right_type)
-
-            if bias_right:
-                variants_raw.append((right_cmp_op, right_type, left_expr))
-                variants_raw.append((left_cmp_op, left_type, right_expr))
-            else:
-                variants_raw.append((left_cmp_op, left_type, right_expr))
-                variants_raw.append((right_cmp_op, right_type, left_expr))
 
         # STEP 3:
         # We now filter out all non-existent operators. The 'variants' list contains
@@ -3216,12 +3184,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 arg_kinds=[ARG_POS],
                 context=context,
             )
-
-    def get_reverse_op_method(self, method: str) -> str:
-        if method == "__div__" and self.chk.options.python_version[0] == 2:
-            return "__rdiv__"
-        else:
-            return operators.reverse_op_methods[method]
 
     def check_boolean_op(self, e: OpExpr, context: Context) -> Type:
         """Type check a boolean operation ('and' or 'or')."""
@@ -3543,8 +3505,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self, enum_type: TypeInfo, index: Expression, context: Context
     ) -> Type:
         string_type: Type = self.named_type("builtins.str")
-        if self.chk.options.python_version[0] < 3:
-            string_type = UnionType.make_union([string_type, self.named_type("builtins.unicode")])
         self.chk.check_subtype(
             self.accept(index),
             string_type,
@@ -4176,10 +4136,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if not self.chk.in_checked_function():
             return AnyType(TypeOfAny.unannotated)
         elif len(e.call.args) == 0:
-            if self.chk.options.python_version[0] == 2:
-                self.chk.fail(message_registry.TOO_FEW_ARGS_FOR_SUPER, e)
-                return AnyType(TypeOfAny.from_error)
-            elif not e.info:
+            if not e.info:
                 # This has already been reported by the semantic analyzer.
                 return AnyType(TypeOfAny.from_error)
             elif self.chk.scope.active_class():
@@ -4528,7 +4485,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def is_valid_keyword_var_arg(self, typ: Type) -> bool:
         """Is a type valid as a **kwargs argument?"""
-        ret = (
+        return (
             is_subtype(
                 typ,
                 self.chk.named_generic_type(
@@ -4544,15 +4501,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             or isinstance(typ, ParamSpecType)
         )
-        if self.chk.options.python_version[0] < 3:
-            ret = ret or is_subtype(
-                typ,
-                self.chk.named_generic_type(
-                    "typing.Mapping",
-                    [self.named_type("builtins.unicode"), AnyType(TypeOfAny.special_form)],
-                ),
-            )
-        return ret
 
     def has_member(self, typ: Type, member: str) -> bool:
         """Does type have member with the given name?"""
@@ -5152,13 +5100,10 @@ def is_expr_literal_type(node: Expression) -> bool:
     return False
 
 
-def has_bytes_component(typ: Type, py2: bool = False) -> bool:
+def has_bytes_component(typ: Type) -> bool:
     """Is this one of builtin byte types, or a union that contains it?"""
     typ = get_proper_type(typ)
-    if py2:
-        byte_types = {"builtins.str", "builtins.bytearray"}
-    else:
-        byte_types = {"builtins.bytes", "builtins.bytearray"}
+    byte_types = {"builtins.bytes", "builtins.bytearray"}
     if isinstance(typ, UnionType):
         return any(has_bytes_component(t) for t in typ.items)
     if isinstance(typ, Instance) and typ.type.fullname in byte_types:
