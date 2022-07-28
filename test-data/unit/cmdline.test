@@ -604,7 +604,7 @@ pyproject.toml: [mypy]: python_version: Python 3.1 is not supported (must be 3.4
 \[mypy]
 python_version = 1.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 2 or 3)
+mypy.ini: [mypy]: python_version: Python major version '1' out of range (must be 3)
 == Return code: 0
 
 [case testPythonVersionTooOld33]
@@ -622,7 +622,7 @@ mypy.ini: [mypy]: python_version: Python 3.3 is not supported (must be 3.4 or hi
 \[mypy]
 python_version = 4.0
 [out]
-mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 2 or 3)
+mypy.ini: [mypy]: python_version: Python major version '4' out of range (must be 3)
 == Return code: 0
 
 [case testPythonVersionTooDead27]
