@@ -331,10 +331,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
 
 
 def parse_type_comment(
-    type_comment: str,
-    line: int,
-    column: int,
-    errors: Optional[Errors],
+    type_comment: str, line: int, column: int, errors: Optional[Errors]
 ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
     """Parse type portion of a type comment (+ optional type ignore).
 
@@ -365,19 +362,13 @@ def parse_type_comment(
             ignored = None
         assert isinstance(typ, ast3_Expression)
         converted = TypeConverter(
-            errors,
-            line=line,
-            override_column=column,
-            is_evaluated=False,
+            errors, line=line, override_column=column, is_evaluated=False
         ).visit(typ.body)
         return ignored, converted
 
 
 def parse_type_string(
-    expr_string: str,
-    expr_fallback_name: str,
-    line: int,
-    column: int,
+    expr_string: str, expr_fallback_name: str, line: int, column: int
 ) -> ProperType:
     """Parses a type that was originally present inside of an explicit string.
 
@@ -385,12 +376,7 @@ def parse_type_string(
     string expression "blah" using this function.
     """
     try:
-        _, node = parse_type_comment(
-            expr_string.strip(),
-            line=line,
-            column=column,
-            errors=None,
-        )
+        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -1906,12 +1892,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            return parse_type_string(
-                n.s,
-                "builtins.str",
-                self.line,
-                n.col_offset,
-            )
+            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
@@ -1971,12 +1952,7 @@ class TypeConverter:
         # unused on < 3.8.
         kind: str = getattr(n, "kind")  # noqa
 
-        return parse_type_string(
-            n.s,
-            "builtins.str",
-            self.line,
-            n.col_offset,
-        )
+        return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:
