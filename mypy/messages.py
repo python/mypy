@@ -428,9 +428,6 @@ class MessageBuilder:
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == "__aiter__" and matches == ["__iter__"]:
                         matches = []  # Avoid misleading suggestion
-                    if member == "__div__" and matches == ["__truediv__"]:
-                        # TODO: Handle differences in division between Python 2 and 3 more cleanly
-                        matches = []
                     if matches:
                         self.fail(
                             '{} has no attribute "{}"; maybe {}?{}'.format(
@@ -578,12 +575,6 @@ class MessageBuilder:
                                 op, base, arg_type, context, code=codes.OPERATOR
                             )
                         return codes.OPERATOR
-
-            if name.startswith('"__cmp__" of'):
-                self.unsupported_operand_types(
-                    "comparison", arg_type, base, context, code=codes.OPERATOR
-                )
-                return codes.INDEX
 
             if name.startswith('"__getitem__" of'):
                 self.invalid_index_type(
