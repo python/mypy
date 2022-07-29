@@ -145,6 +145,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     OverloadPart,
     ParamSpecExpr,
+    PassStmt,
     PlaceholderNode,
     PromoteExpr,
     RaiseStmt,
@@ -837,6 +838,16 @@ class SemanticAnalyzer(
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
+
+        # Mark protocol methods with empty bodies and None-incompatible return types as abstract.
+        if self.is_class_scope() and defn.type is not None:
+            assert self.type is not None and isinstance(defn.type, CallableType)
+            if (not self.is_stub_file and self.type.is_protocol and
+                    (not isinstance(self.scope.function, OverloadedFuncDef)
+                     or defn.is_property) and
+                    not can_be_none(defn.type.ret_type) and is_trivial_body(defn.body)):
+                defn.is_abstract = True
+
         if (
             defn.is_coroutine
             and isinstance(defn.type, CallableType)
@@ -975,6 +986,21 @@ class SemanticAnalyzer(
         # We know this is an overload def. Infer properties and perform some checks.
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
+        if defn.impl:
+            self.process_overload_impl(defn)
+
+    def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
+        """Set flags for an overload implementation.
+
+        Currently, this checks for a trivial body in protocols classes,
+        where it makes the method implicitly abstract.
+        """
+        assert defn.impl is not None
+        impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
+        if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
+            assert self.type is not None
+            if self.type.is_protocol:
+                impl.is_abstract = True
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
@@ -1052,7 +1078,8 @@ class SemanticAnalyzer(
         """Generate error about missing overload implementation (only if needed)."""
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
-                # An overloaded protocol method doesn't need an implementation.
+                # An overloaded protocol method doesn't need an implementation,
+                # but if it doesn't have one, then it is considered implicitly abstract.
                 for item in defn.items:
                     if isinstance(item, Decorator):
                         item.func.is_abstract = True
@@ -6032,4 +6059,58 @@ def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:
         a == b
         or (isinstance(a, PlaceholderNode) and isinstance(b, PlaceholderNode))
         or is_same_var_from_getattr(a, b)
+    )
+
+
+def is_trivial_body(block: Block) -> bool:
+    """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+    "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+    start with a statement containing just a string (e.g. a docstring).
+
+    Note: functions that raise other kinds of exceptions do not count as
+    "trivial". We use this function to help us determine when it's ok to
+    relax certain checks on body, but functions that raise arbitrary exceptions
+    are more likely to do non-trivial work. For example:
+
+       def halt(self, reason: str = ...) -> NoReturn:
+           raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+    A function that raises just NotImplementedError is much less likely to be
+    this complex.
+    """
+    body = block.body
+
+    # Skip a docstring
+    if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
+        body = block.body[1:]
+
+    if len(body) == 0:
+        # There's only a docstring (or no body at all).
+        return True
+    elif len(body) > 1:
+        return False
+
+    stmt = body[0]
+
+    if isinstance(stmt, RaiseStmt):
+        expr = stmt.expr
+        if expr is None:
+            return False
+        if isinstance(expr, CallExpr):
+            expr = expr.callee
+
+        return isinstance(expr, NameExpr) and expr.fullname == "builtins.NotImplementedError"
+
+    return isinstance(stmt, PassStmt) or (
+        isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
+    )
+
+
+def can_be_none(t: Type) -> bool:
+    """Can a variable of the given type be None?"""
+    t = get_proper_type(t)
+    return (
+        isinstance(t, NoneType) or
+        isinstance(t, AnyType) or
+        (isinstance(t, UnionType) and any(can_be_none(ut) for ut in t.items))
     )
