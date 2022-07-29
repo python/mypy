@@ -742,8 +742,35 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
-    def test_missing_all(self) -> Iterator[Case]:
-        yield Case(stub="", runtime="__all__ = []", error="__all__")
+    def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
+        yield Case(
+            stub="Z: int",
+            runtime="""
+            __all__ = []
+            Z = 5""",
+            error="__all__"
+        )
+
+    @collect_cases
+    def test_all_in_stub_not_at_runtime(self) -> Iterator[Case]:
+        yield Case(stub="__all__ = ()", runtime="", error="__all__")
+
+    @collect_cases
+    def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
+        # We *should* raise an error with the module name itself,
+        # if the stub *does* define __all__,
+        # but the stub's __all__ is inconsistent with the runtime's __all__
+        yield Case(
+            stub="""
+            __all__ = ['foo']
+            foo: str
+            """,
+            runtime="""
+            __all__ = []
+            foo = 'foo'
+            """,
+            error=""
+        )
 
     @collect_cases
     def test_missing(self) -> Iterator[Case]:
@@ -761,14 +788,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="",
             error="h",
         )
-        # If runtime has __all__ but stub does not,
-        # we'll already raise an error for a missing __all__,
-        # so we shouldn't raise another error for inconsistent exported names
-        yield Case(stub="_Z = int", runtime="__all__ = []", error=None)
-        # But we *should* raise an error with the module name itself,
-        # if the stub *does* define __all__,
-        # but the stub's __all__ is inconsistent with the runtime's __all__
-        yield Case(stub="__all__ = ['foo']", runtime="", error="")
+        yield Case(stub="", runtime="__all__ = []", error="__all__")  # dummy case
         yield Case(stub="", runtime="__all__ += ['y']\ny = 5", error="y")
         yield Case(stub="", runtime="__all__ += ['g']\ndef g(): pass", error="g")
         # Here we should only check that runtime has B, since the stub explicitly re-exports it
