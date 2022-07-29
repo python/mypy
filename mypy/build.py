@@ -2547,18 +2547,7 @@ def find_module_and_diagnose(
 
     Returns a tuple containing (file path, target's effective follow_imports setting)
     """
-    file_id = id
-    if id == "builtins" and options.python_version[0] == 2:
-        # The __builtin__ module is called internally by mypy
-        # 'builtins' in Python 2 mode (similar to Python 3),
-        # but the stub file is __builtin__.pyi.  The reason is
-        # that a lot of code hard-codes 'builtins.x' and it's
-        # easier to work it around like this.  It also means
-        # that the implementation can mostly ignore the
-        # difference and just assume 'builtins' everywhere,
-        # which simplifies code.
-        file_id = "__builtin__"
-    result = find_module_with_reason(file_id, manager)
+    result = find_module_with_reason(id, manager)
     if isinstance(result, str):
         # For non-stubs, look at options.follow_imports:
         # - normal (default) -> fully analyze
@@ -2614,18 +2603,14 @@ def find_module_and_diagnose(
         # search path or the module has not been installed.
 
         ignore_missing_imports = options.ignore_missing_imports
-        top_level, second_level = get_top_two_prefixes(file_id)
+        top_level, second_level = get_top_two_prefixes(id)
         # Don't honor a global (not per-module) ignore_missing_imports
         # setting for modules that used to have bundled stubs, as
         # otherwise updating mypy can silently result in new false
         # negatives. (Unless there are stubs but they are incomplete.)
         global_ignore_missing_imports = manager.options.ignore_missing_imports
-        py_ver = options.python_version[0]
         if (
-            (
-                is_legacy_bundled_package(top_level, py_ver)
-                or is_legacy_bundled_package(second_level, py_ver)
-            )
+            (is_legacy_bundled_package(top_level) or is_legacy_bundled_package(second_level))
             and global_ignore_missing_imports
             and not options.ignore_missing_imports_per_module
             and result is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED
@@ -2743,10 +2728,10 @@ def module_not_found(
             top_level = second_level
         for note in notes:
             if "{stub_dist}" in note:
-                note = note.format(stub_dist=legacy_bundled_packages[top_level].name)
+                note = note.format(stub_dist=legacy_bundled_packages[top_level])
             errors.report(line, 0, note, severity="note", only_once=True, code=codes.IMPORT)
         if reason is ModuleNotFoundReason.APPROVED_STUBS_NOT_INSTALLED:
-            manager.missing_stub_packages.add(legacy_bundled_packages[top_level].name)
+            manager.missing_stub_packages.add(legacy_bundled_packages[top_level])
     errors.set_import_context(save_import_context)
 
 

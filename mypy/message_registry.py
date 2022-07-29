@@ -141,9 +141,6 @@ FUNCTION_ALWAYS_TRUE: Final = ErrorMessage(
     "Function {} could always be true in boolean context", code=codes.TRUTHY_BOOL
 )
 NOT_CALLABLE: Final = "{} not callable"
-PYTHON2_PRINT_FILE_TYPE: Final = (
-    'Argument "file" to "print" has incompatible type "{}"; expected "{}"'
-)
 TYPE_MUST_BE_USED: Final = "Value of type {} must be used"
 
 # Generic
@@ -173,7 +170,6 @@ UNBOUND_TYPEVAR: Final = (
 
 # Super
 TOO_MANY_ARGS_FOR_SUPER: Final = ErrorMessage('Too many arguments for "super"')
-TOO_FEW_ARGS_FOR_SUPER: Final = ErrorMessage('Too few arguments for "super"', codes.CALL_ARG)
 SUPER_WITH_SINGLE_ARG_NOT_SUPPORTED: Final = ErrorMessage(
     '"super" with a single argument not supported'
 )

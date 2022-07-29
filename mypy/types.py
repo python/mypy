@@ -2406,10 +2406,6 @@ class LiteralType(ProperType):
             # Note: 'builtins.bytes' only appears in Python 3, so we want to
             # explicitly prefix with a "b"
             return "b" + raw
-        elif fallback_name == "builtins.unicode":
-            # Similarly, 'builtins.unicode' only appears in Python 2, where we also
-            # want to explicitly prefix
-            return "u" + raw
         else:
             # 'builtins.str' could mean either depending on context, but either way
             # we don't prefix: it's the "native" string. And of course, if value is

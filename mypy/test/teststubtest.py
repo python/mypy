@@ -44,6 +44,7 @@ class _SpecialForm:
 Callable: _SpecialForm = ...
 Generic: _SpecialForm = ...
 Protocol: _SpecialForm = ...
+Union: _SpecialForm = ...
 
 class TypeVar:
     def __init__(self, name, covariant: bool = ..., contravariant: bool = ...) -> None: ...
@@ -61,6 +62,7 @@ _R = TypeVar("_R", covariant=True)
 class Coroutine(Generic[_T_co, _S, _R]): ...
 class Iterable(Generic[_T_co]): ...
 class Mapping(Generic[_K, _V]): ...
+class Match(Generic[_T]): ...
 class Sequence(Iterable[_T_co]): ...
 class Tuple(Sequence[_T_co]): ...
 def overload(func: _T) -> _T: ...
@@ -703,6 +705,190 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="B = str", runtime="", error="B")
         # ... but only if the alias isn't private
         yield Case(stub="_C = int", runtime="", error=None)
+        yield Case(
+            stub="""
+            from typing import Tuple
+            D = tuple[str, str]
+            E = Tuple[int, int, int]
+            F = Tuple[str, int]
+            """,
+            runtime="""
+            from typing import List, Tuple
+            D = Tuple[str, str]
+            E = Tuple[int, int, int]
+            F = List[str]
+            """,
+            error="F",
+        )
+        yield Case(
+            stub="""
+            from typing import Union
+            G = str | int
+            H = Union[str, bool]
+            I = str | int
+            """,
+            runtime="""
+            from typing import Union
+            G = Union[str, int]
+            H = Union[str, bool]
+            I = str
+            """,
+            error="I",
+        )
+        yield Case(
+            stub="""
+            import typing
+            from collections.abc import Iterable
+            from typing import Dict
+            K = dict[str, str]
+            L = Dict[int, int]
+            KK = Iterable[str]
+            LL = typing.Iterable[str]
+            """,
+            runtime="""
+            from typing import Iterable, Dict
+            K = Dict[str, str]
+            L = Dict[int, int]
+            KK = Iterable[str]
+            LL = Iterable[str]
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing import Generic, TypeVar
+            _T = TypeVar("_T")
+            class _Spam(Generic[_T]):
+                def foo(self) -> None: ...
+            IntFood = _Spam[int]
+            """,
+            runtime="""
+            from typing import Generic, TypeVar
+            _T = TypeVar("_T")
+            class _Bacon(Generic[_T]):
+                def foo(self, arg): pass
+            IntFood = _Bacon[int]
+            """,
+            error="IntFood.foo",
+        )
+        yield Case(stub="StrList = list[str]", runtime="StrList = ['foo', 'bar']", error="StrList")
+        yield Case(
+            stub="""
+            import collections.abc
+            from typing import Callable
+            N = Callable[[str], bool]
+            O = collections.abc.Callable[[int], str]
+            P = Callable[[str], bool]
+            """,
+            runtime="""
+            from typing import Callable
+            N = Callable[[str], bool]
+            O = Callable[[int], str]
+            P = int
+            """,
+            error="P",
+        )
+        yield Case(
+            stub="""
+            class Foo:
+                class Bar: ...
+            BarAlias = Foo.Bar
+            """,
+            runtime="""
+            class Foo:
+                class Bar: pass
+            BarAlias = Foo.Bar
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from io import StringIO
+            StringIOAlias = StringIO
+            """,
+            runtime="""
+            from _io import StringIO
+            StringIOAlias = StringIO
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            from typing import Match
+            M = Match[str]
+            """,
+            runtime="""
+            from typing import Match
+            M = Match[str]
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class Baz:
+                def fizz(self) -> None: ...
+            BazAlias = Baz
+            """,
+            runtime="""
+            class Baz:
+                def fizz(self): pass
+            BazAlias = Baz
+            Baz.__name__ = Baz.__qualname__ = Baz.__module__ = "New"
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class FooBar:
+                __module__: None  # type: ignore
+                def fizz(self) -> None: ...
+            FooBarAlias = FooBar
+            """,
+            runtime="""
+            class FooBar:
+                def fizz(self): pass
+            FooBarAlias = FooBar
+            FooBar.__module__ = None
+            """,
+            error=None,
+        )
+        if sys.version_info >= (3, 10):
+            yield Case(
+                stub="""
+                import collections.abc
+                import re
+                from typing import Callable, Dict, Match, Iterable, Tuple, Union
+                Q = Dict[str, str]
+                R = dict[int, int]
+                S = Tuple[int, int]
+                T = tuple[str, str]
+                U = int | str
+                V = Union[int, str]
+                W = Callable[[str], bool]
+                Z = collections.abc.Callable[[str], bool]
+                QQ = Iterable[str]
+                RR = collections.abc.Iterable[str]
+                MM = Match[str]
+                MMM = re.Match[str]
+                """,
+                runtime="""
+                from collections.abc import Callable, Iterable
+                from re import Match
+                Q = dict[str, str]
+                R = dict[int, int]
+                S = tuple[int, int]
+                T = tuple[str, str]
+                U = int | str
+                V = int | str
+                W = Callable[[str], bool]
+                Z = Callable[[str], bool]
+                QQ = Iterable[str]
+                RR = Iterable[str]
+                MM = Match[str]
+                MMM = Match[str]
+                """,
+                error=None,
+            )
 
     @collect_cases
     def test_enum(self) -> Iterator[Case]:

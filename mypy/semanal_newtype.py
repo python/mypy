@@ -15,7 +15,6 @@ from mypy.nodes import (
     Argument,
     AssignmentStmt,
     Block,
-    BytesExpr,
     CallExpr,
     Context,
     FuncDef,
@@ -177,7 +176,7 @@ class NewTypeAnalyzer:
             return None, False
 
         # Check first argument
-        if not isinstance(args[0], (StrExpr, BytesExpr)):
+        if not isinstance(args[0], StrExpr):
             self.fail("Argument 1 to NewType(...) must be a string literal", context)
             has_failed = True
         elif args[0].value != name:
