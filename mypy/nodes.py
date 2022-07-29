@@ -795,7 +795,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: Optional[int] = None
-        self.docstring = None
+        self.docstring: Optional[str] = None
 
     @property
     def name(self) -> str:
@@ -1114,7 +1114,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: Optional[int] = None
-        self.docstring: str = None
+        self.docstring: Optional[str] = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
