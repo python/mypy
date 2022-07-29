@@ -1321,7 +1321,7 @@ class MessageBuilder:
         self.fail("All conditional function variants must have identical " "signatures", defn)
 
     def cannot_instantiate_abstract_class(
-        self, class_name: str, abstract_attributes: List[str], context: Context
+        self, class_name: str, abstract_attributes: Dict[str, bool], context: Context
     ) -> None:
         attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail(
@@ -1330,6 +1330,15 @@ class MessageBuilder:
             context,
             code=codes.ABSTRACT,
         )
+        for a, is_none_ret_and_prot in abstract_attributes.items():
+            if not is_none_ret_and_prot:
+                continue
+            self.note(
+                '"{}" was implicitly marked abstract because it has an empty function body. '
+                "If it is not meant to be abstract, explicitly return None.".format(a),
+                context,
+                code=codes.OVERRIDE,
+            )
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context

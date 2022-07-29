@@ -27,6 +27,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    IS_ABSTRACT,
     LITERAL_TYPE,
     REVEAL_TYPE,
     ArgKind,
@@ -1242,8 +1243,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and not callee.type_object().fallback_to_any
         ):
             type = callee.type_object()
+            # Determine whether the abstract attributes are functions with
+            # None-compatible return types and whether they were defined in a protocol.
+            is_none_ret_and_prot: Dict[str, bool] = {}
+            for attr_name, abstract_status in type.abstract_attributes:
+                if abstract_status == IS_ABSTRACT:
+                    is_none_ret_and_prot[attr_name] = False
+                    continue
+                is_none_ret_and_prot[attr_name] = self._has_none_compat_return(type, attr_name)
             self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name, type.abstract_attributes, context
+                callee.type_object().name, is_none_ret_and_prot, context
             )
         elif (
             callee.is_type_obj()
@@ -1334,6 +1343,31 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
+
+    def _has_none_compat_return(self, type: TypeInfo, attr_name: str) -> bool:
+        """Determine whether the attribute is a function with None-compatible return type.
+
+        Additionally, check whether the function was defined in a protocol.
+        """
+        for base in type.mro:
+            symnode = base.names.get(attr_name)
+            if symnode is None or not base.is_protocol:
+                continue
+            node = symnode.node
+            if isinstance(node, OverloadedFuncDef):
+                if node.impl is not None:
+                    assert isinstance(node.impl.type, CallableType)
+                    return is_subtype(NoneType(), node.impl.type.ret_type)
+                for overload in node.items:
+                    assert isinstance(overload.type, CallableType)
+                    if is_subtype(NoneType(), overload.type.ret_type):
+                        return True
+                else:
+                    return False
+            if isinstance(node, FuncDef) and node.type is not None:
+                assert isinstance(node.type, CallableType)
+                return is_subtype(NoneType(), node.type.ret_type)
+        return False
 
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].

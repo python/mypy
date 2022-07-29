@@ -617,7 +617,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name)
-            if fdef.func.is_abstract:
+            if fdef.func.abstract_status:
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)

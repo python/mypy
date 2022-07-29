@@ -186,7 +186,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new._fullname = node._fullname
         new.is_decorated = node.is_decorated
         new.is_conditional = node.is_conditional
-        new.is_abstract = node.is_abstract
+        new.abstract_status = node.abstract_status
         new.is_static = node.is_static
         new.is_class = node.is_class
         new.is_property = node.is_property

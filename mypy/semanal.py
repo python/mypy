@@ -84,7 +84,9 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
+    IMPLICITLY_ABSTRACT,
     INVARIANT,
+    IS_ABSTRACT,
     LDEF,
     MDEF,
     REVEAL_LOCALS,
@@ -849,7 +851,7 @@ class SemanticAnalyzer(
                 and (not isinstance(self.scope.function, OverloadedFuncDef) or defn.is_property)
                 and is_trivial_body(defn.body)
             ):
-                defn.is_abstract = True
+                defn.abstract_status = IMPLICITLY_ABSTRACT
 
         if (
             defn.is_coroutine
@@ -1003,7 +1005,7 @@ class SemanticAnalyzer(
         if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
             assert self.type is not None
             if self.type.is_protocol:
-                impl.is_abstract = True
+                impl.abstract_status = IMPLICITLY_ABSTRACT
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
@@ -1085,9 +1087,9 @@ class SemanticAnalyzer(
                 # but if it doesn't have one, then it is considered implicitly abstract.
                 for item in defn.items:
                     if isinstance(item, Decorator):
-                        item.func.is_abstract = True
+                        item.func.abstract_status = IMPLICITLY_ABSTRACT
                     else:
-                        item.is_abstract = True
+                        item.abstract_status = IMPLICITLY_ABSTRACT
             else:
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
@@ -1163,7 +1165,7 @@ class SemanticAnalyzer(
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
-                            item.func.is_abstract = first_item.func.is_abstract
+                            item.func.abstract_status = first_item.func.abstract_status
                 else:
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)
@@ -1250,7 +1252,7 @@ class SemanticAnalyzer(
             # A bunch of decorators are special cased here.
             if refers_to_fullname(d, "abc.abstractmethod"):
                 removed.append(i)
-                dec.func.is_abstract = True
+                dec.func.abstract_status = IS_ABSTRACT
                 self.check_decorated_function_is_method("abstractmethod", dec)
             elif refers_to_fullname(d, ("asyncio.coroutines.coroutine", "types.coroutine")):
                 removed.append(i)
@@ -1272,7 +1274,7 @@ class SemanticAnalyzer(
                 dec.func.is_property = True
                 dec.var.is_property = True
                 if refers_to_fullname(d, "abc.abstractproperty"):
-                    dec.func.is_abstract = True
+                    dec.func.abstract_status = IS_ABSTRACT
                 elif refers_to_fullname(d, "functools.cached_property"):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method("property", dec)
@@ -1301,7 +1303,7 @@ class SemanticAnalyzer(
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail("Decorated property not supported", dec)
-        if dec.func.is_abstract and dec.func.is_final:
+        if dec.func.abstract_status and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
 
     def check_decorated_function_is_method(self, decorator: str, context: Context) -> None:

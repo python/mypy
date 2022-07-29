@@ -3,12 +3,14 @@
 These happen after semantic analysis and before type checking.
 """
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 from typing_extensions import Final
 
 from mypy.errors import Errors
 from mypy.nodes import (
+    IMPLICITLY_ABSTRACT,
+    IS_ABSTRACT,
     CallExpr,
     Decorator,
     FuncDef,
@@ -47,7 +49,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
     concrete: Set[str] = set()
-    abstract: List[str] = []
+    abstract: List[Tuple[str, int]] = []
     abstract_in_this_class: List[str] = []
     if typ.is_newtype:
         # Special case: NewTypes are considered as always non-abstract, so they can be used as:
@@ -72,15 +74,18 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             if isinstance(func, Decorator):
                 func = func.func
             if isinstance(func, FuncDef):
-                if func.is_abstract and name not in concrete:
+                if (
+                    func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT)
+                    and name not in concrete
+                ):
                     typ.is_abstract = True
-                    abstract.append(name)
+                    abstract.append((name, func.abstract_status))
                     if base is typ:
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
                 if node.is_abstract_var and name not in concrete:
                     typ.is_abstract = True
-                    abstract.append(name)
+                    abstract.append((name, IS_ABSTRACT))
                     if base is typ:
                         abstract_in_this_class.append(name)
             concrete.add(name)
