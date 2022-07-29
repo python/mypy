@@ -635,7 +635,7 @@ class StubtestUnit(unittest.TestCase):
             class FineAndDandy:
                 attr = EvilDescriptor()
             """,
-            error=None
+            error=None,
         )
 
     @collect_cases
