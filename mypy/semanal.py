@@ -986,8 +986,7 @@ class SemanticAnalyzer(
         # We know this is an overload def. Infer properties and perform some checks.
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
-        if defn.impl:
-            self.process_overload_impl(defn)
+        self.process_overload_impl(defn)
 
     def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
         """Set flags for an overload implementation.
@@ -995,7 +994,8 @@ class SemanticAnalyzer(
         Currently, this checks for a trivial body in protocols classes,
         where it makes the method implicitly abstract.
         """
-        assert defn.impl is not None
+        if defn.impl is None:
+            return
         impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
         if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
             assert self.type is not None
