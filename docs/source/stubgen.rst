@@ -163,6 +163,11 @@ Additional flags
     Instead, only export imported names that are not referenced in the module
     that contains the import.
 
+.. option:: --include-docstrings
+
+    Include docstrings in stubs. This will add docstrings to Python function and
+    classes stubs and to C extension function stubs.
+
 .. option:: --search-path PATH
 
     Specify module search directories, separated by colons (only used if
