@@ -82,17 +82,15 @@ else:
         ignore_dangling_symlinks: bool = ...,
     ) -> _PathReturn: ...
 
+_OnErrorCallback: TypeAlias = Callable[[Callable[..., Any], Any, Any], object]
+
 if sys.version_info >= (3, 11):
     def rmtree(
-        path: StrOrBytesPath,
-        ignore_errors: bool = ...,
-        onerror: Callable[[Any, Any, Any], Any] | None = ...,
-        *,
-        dir_fd: int | None = ...,
+        path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ..., *, dir_fd: int | None = ...
     ) -> None: ...
 
 else:
-    def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: Callable[[Any, Any, Any], Any] | None = ...) -> None: ...
+    def rmtree(path: StrOrBytesPath, ignore_errors: bool = ..., onerror: _OnErrorCallback | None = ...) -> None: ...
 
 _CopyFn: TypeAlias = Callable[[str, str], object] | Callable[[StrPath, StrPath], object]
 
@@ -155,14 +153,7 @@ def register_archive_format(
     name: str, function: Callable[[str, str], object], extra_args: None = ..., description: str = ...
 ) -> None: ...
 def unregister_archive_format(name: str) -> None: ...
-
-if sys.version_info >= (3, 7):
-    def unpack_archive(filename: StrPath, extract_dir: StrPath | None = ..., format: str | None = ...) -> None: ...
-
-else:
-    # See http://bugs.python.org/issue30218
-    def unpack_archive(filename: str, extract_dir: StrPath | None = ..., format: str | None = ...) -> None: ...
-
+def unpack_archive(filename: StrPath, extract_dir: StrPath | None = ..., format: str | None = ...) -> None: ...
 @overload
 def register_unpack_format(
     name: str,

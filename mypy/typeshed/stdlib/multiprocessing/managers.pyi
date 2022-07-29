@@ -84,8 +84,6 @@ class DictProxy(BaseProxy, MutableMapping[_KT, _VT]):
     def keys(self) -> list[_KT]: ...  # type: ignore[override]
     def values(self) -> list[tuple[_KT, _VT]]: ...  # type: ignore[override]
     def items(self) -> list[_VT]: ...  # type: ignore[override]
-    if sys.version_info < (3, 7):
-        def has_key(self, k: _KT) -> bool: ...
 
 class BaseListProxy(BaseProxy, MutableSequence[_T]):
     __builtins__: ClassVar[dict[str, Any]]

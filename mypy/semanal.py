@@ -96,7 +96,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -113,7 +112,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     Expression,
     ExpressionStmt,
     FakeExpression,
@@ -148,7 +146,6 @@ from mypy.nodes import (
     OverloadPart,
     ParamSpecExpr,
     PlaceholderNode,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -176,7 +173,6 @@ from mypy.nodes import (
     TypeVarLikeExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -274,7 +270,6 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
-    UnionType,
     get_proper_type,
     get_proper_types,
     is_named_instance,
@@ -597,14 +592,8 @@ class SemanticAnalyzer(
     def add_implicit_module_attrs(self, file_node: MypyFile) -> None:
         """Manually add implicit definitions of module '__name__' etc."""
         for name, t in implicit_module_attrs.items():
-            # unicode docstrings should be accepted in Python 2
             if name == "__doc__":
-                if self.options.python_version >= (3, 0):
-                    typ: Type = UnboundType("__builtins__.str")
-                else:
-                    typ = UnionType(
-                        [UnboundType("__builtins__.str"), UnboundType("__builtins__.unicode")]
-                    )
+                typ: Type = UnboundType("__builtins__.str")
             elif name == "__path__":
                 if not file_node.is_package_init_file():
                     continue
@@ -1222,6 +1211,7 @@ class SemanticAnalyzer(
         if not dec.is_overload:
             self.add_symbol(dec.name, dec, dec)
         dec.func._fullname = self.qualified_name(dec.name)
+        dec.var._fullname = self.qualified_name(dec.name)
         for d in dec.decorators:
             d.accept(self)
         removed: List[int] = []
@@ -1852,24 +1842,11 @@ class SemanticAnalyzer(
     def update_metaclass(self, defn: ClassDef) -> None:
         """Lookup for special metaclass declarations, and update defn fields accordingly.
 
-        * __metaclass__ attribute in Python 2
         * six.with_metaclass(M, B1, B2, ...)
         * @six.add_metaclass(M)
         * future.utils.with_metaclass(M, B1, B2, ...)
         * past.utils.with_metaclass(M, B1, B2, ...)
         """
-
-        # Look for "__metaclass__ = <metaclass>" in Python 2
-        python2_meta_expr: Optional[Expression] = None
-        if self.options.python_version[0] == 2:
-            for body_node in defn.defs.body:
-                if isinstance(body_node, ClassDef) and body_node.name == "__metaclass__":
-                    self.fail("Metaclasses defined as inner classes are not supported", body_node)
-                    break
-                elif isinstance(body_node, AssignmentStmt) and len(body_node.lvalues) == 1:
-                    lvalue = body_node.lvalues[0]
-                    if isinstance(lvalue, NameExpr) and lvalue.name == "__metaclass__":
-                        python2_meta_expr = body_node.rvalue
 
         # Look for six.with_metaclass(M, B1, B2, ...)
         with_meta_expr: Optional[Expression] = None
@@ -1903,7 +1880,7 @@ class SemanticAnalyzer(
                     add_meta_expr = dec_expr.args[0]
                     break
 
-        metas = {defn.metaclass, python2_meta_expr, with_meta_expr, add_meta_expr} - {None}
+        metas = {defn.metaclass, with_meta_expr, add_meta_expr} - {None}
         if len(metas) == 0:
             return
         if len(metas) > 1:
@@ -2879,8 +2856,6 @@ class SemanticAnalyzer(
             value, type_name = rvalue.value, "builtins.str"
         if isinstance(rvalue, BytesExpr):
             value, type_name = rvalue.value, "builtins.bytes"
-        if isinstance(rvalue, UnicodeExpr):
-            value, type_name = rvalue.value, "builtins.unicode"
 
         if type_name is not None:
             assert value is not None
@@ -3482,10 +3457,7 @@ class SemanticAnalyzer(
         if len(call.args) < 1:
             self.fail(f"Too few arguments for {typevarlike_type}()", context)
             return False
-        if (
-            not isinstance(call.args[0], (StrExpr, BytesExpr, UnicodeExpr))
-            or not call.arg_kinds[0] == ARG_POS
-        ):
+        if not isinstance(call.args[0], StrExpr) or not call.arg_kinds[0] == ARG_POS:
             self.fail(f"{typevarlike_type}() expects a string literal as first argument", context)
             return False
         elif call.args[0].value != name:
@@ -4147,21 +4119,6 @@ class SemanticAnalyzer(
                     self.fail(f'Name "{name}" is nonlocal and global', d)
                 self.nonlocal_decls[-1].add(name)
 
-    def visit_print_stmt(self, s: PrintStmt) -> None:
-        self.statement = s
-        for arg in s.args:
-            arg.accept(self)
-        if s.target:
-            s.target.accept(self)
-
-    def visit_exec_stmt(self, s: ExecStmt) -> None:
-        self.statement = s
-        s.expr.accept(self)
-        if s.globals:
-            s.globals.accept(self)
-        if s.locals:
-            s.locals.accept(self)
-
     def visit_match_stmt(self, s: MatchStmt) -> None:
         self.statement = s
         infer_reachability_of_match_statement(s, self.options)
@@ -4703,9 +4660,6 @@ class SemanticAnalyzer(
         expr.if_expr.accept(self)
         expr.cond.accept(self)
         expr.else_expr.accept(self)
-
-    def visit_backquote_expr(self, expr: BackquoteExpr) -> None:
-        expr.expr.accept(self)
 
     def visit__promote_expr(self, expr: PromoteExpr) -> None:
         analyzed = self.anal_type(expr.type)

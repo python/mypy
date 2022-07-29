@@ -1,4 +1,3 @@
-import sys
 from collections.abc import Callable, Iterable, Iterator
 from lib2to3.pgen2.token import *
 from typing_extensions import TypeAlias
@@ -72,10 +71,8 @@ __all__ = [
     "tokenize",
     "generate_tokens",
     "untokenize",
+    "COLONEQUAL",
 ]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["COLONEQUAL"]
 
 _Coord: TypeAlias = tuple[int, int]
 _TokenEater: TypeAlias = Callable[[int, str, _Coord, _Coord, str], object]

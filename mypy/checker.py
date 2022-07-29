@@ -109,7 +109,6 @@ from mypy.nodes import (
     OpExpr,
     OverloadedFuncDef,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -126,7 +125,6 @@ from mypy.nodes import (
     TypeInfo,
     TypeVarExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -471,10 +469,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     seq_str = self.named_generic_type(
                         "typing.Sequence", [self.named_type("builtins.str")]
                     )
-                    if self.options.python_version[0] < 3:
-                        seq_str = self.named_generic_type(
-                            "typing.Sequence", [self.named_type("builtins.unicode")]
-                        )
                     if not is_subtype(all_.type, seq_str):
                         str_seq_s, all_s = format_type_distinctly(seq_str, all_.type)
                         self.fail(
@@ -1095,18 +1089,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         if not self.is_generator_return_type(typ.ret_type, defn.is_coroutine):
                             self.fail(message_registry.INVALID_RETURN_TYPE_FOR_GENERATOR, typ)
 
-                    # Python 2 generators aren't allowed to return values.
-                    orig_ret_type = get_proper_type(typ.ret_type)
-                    if (
-                        self.options.python_version[0] == 2
-                        and isinstance(orig_ret_type, Instance)
-                        and orig_ret_type.type.fullname == "typing.Generator"
-                    ):
-                        if not isinstance(
-                            get_proper_type(orig_ret_type.args[2]), (NoneType, AnyType)
-                        ):
-                            self.fail(message_registry.INVALID_GENERATOR_RETURN_ITEM_TYPE, typ)
-
                 # Fix the type if decorated with `@types.coroutine` or `@asyncio.coroutine`.
                 if defn.is_awaitable_coroutine:
                     # Update the return type to AwaitableGenerator.
@@ -1147,7 +1129,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                             ref_type = mypy.types.TypeType.make_normalized(ref_type)
                         erased = get_proper_type(erase_to_bound(arg_type))
                         if not is_subtype(ref_type, erased, ignore_type_params=True):
-                            note = None
                             if (
                                 isinstance(erased, Instance)
                                 and erased.type.is_protocol
@@ -1160,23 +1141,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                                 # the consistency check will be performed at call sites.
                                 msg = None
                             elif typ.arg_names[i] in {"self", "cls"}:
-                                if (
-                                    self.options.python_version[0] < 3
-                                    and is_same_type(erased, arg_type)
-                                    and not isclass
-                                ):
-                                    msg = message_registry.INVALID_SELF_TYPE_OR_EXTRA_ARG
-                                    note = "(Hint: typically annotations omit the type for self)"
-                                else:
-                                    msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
-                                        erased, ref_type
-                                    )
+                                msg = message_registry.ERASED_SELF_TYPE_NOT_SUPERTYPE.format(
+                                    erased, ref_type
+                                )
                             else:
                                 msg = message_registry.MISSING_OR_INVALID_SELF_TYPE
                             if msg:
                                 self.fail(msg, defn)
-                                if note:
-                                    self.note(note, defn)
                     elif isinstance(arg_type, TypeVarType):
                         # Refuse covariant parameter type variables
                         # TODO: check recursively for inner type variables
@@ -1289,16 +1260,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
 
     def is_forward_op_method(self, method_name: str) -> bool:
-        if self.options.python_version[0] == 2 and method_name == "__div__":
-            return True
-        else:
-            return method_name in operators.reverse_op_methods
+        return method_name in operators.reverse_op_methods
 
     def is_reverse_op_method(self, method_name: str) -> bool:
-        if self.options.python_version[0] == 2 and method_name == "__rdiv__":
-            return True
-        else:
-            return method_name in operators.reverse_op_method_set
+        return method_name in operators.reverse_op_method_set
 
     def check_for_missing_annotations(self, fdef: FuncItem) -> None:
         # Check for functions with unspecified/not fully specified types.
@@ -1393,11 +1358,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         body = block.body
 
         # Skip a docstring
-        if (
-            body
-            and isinstance(body[0], ExpressionStmt)
-            and isinstance(body[0].expr, (StrExpr, UnicodeExpr))
-        ):
+        if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
             body = block.body[1:]
 
         if len(body) == 0:
@@ -1465,10 +1426,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             )
         assert len(reverse_type.arg_types) >= 2
 
-        if self.options.python_version[0] == 2 and reverse_name == "__rdiv__":
-            forward_name = "__div__"
-        else:
-            forward_name = operators.normal_from_reverse_op[reverse_name]
+        forward_name = operators.normal_from_reverse_op[reverse_name]
         forward_inst = get_proper_type(reverse_type.arg_types[1])
         if isinstance(forward_inst, TypeVarType):
             forward_inst = get_proper_type(forward_inst.upper_bound)
@@ -1727,7 +1685,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # Make a copy of the function to check for each combination of
         # value restricted type variables. (Except when running mypyc,
         # where we need one canonical version of the function.)
-        if subst and not self.options.mypyc:
+        if subst and not (self.options.mypyc or self.options.inspections):
             result: List[Tuple[FuncItem, CallableType]] = []
             for substitutions in itertools.product(*subst):
                 mapping = dict(substitutions)
@@ -3205,7 +3163,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 lr_pairs = list(zip(left_lvs, left_rvs))
                 if star_lv:
                     rv_list = ListExpr(star_rvs)
-                    rv_list.set_line(rvalue.get_line())
+                    rv_list.set_line(rvalue)
                     lr_pairs.append((star_lv.expr, rv_list))
                 lr_pairs.extend(zip(right_lvs, right_rvs))
 
@@ -3406,7 +3364,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 list_expr = ListExpr(
                     [self.temp_node(rv_type, context) for rv_type in star_rv_types]
                 )
-                list_expr.set_line(context.get_line())
+                list_expr.set_line(context)
                 self.check_assignment(star_lv.expr, list_expr, infer_lvalue_type)
             for lv, rv_type in zip(right_lvs, right_rv_types):
                 self.check_assignment(lv, self.temp_node(rv_type, context), infer_lvalue_type)
@@ -4065,7 +4023,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def visit_while_stmt(self, s: WhileStmt) -> None:
         """Type check a while statement."""
         if_stmt = IfStmt([s.expr], [s.body], None)
-        if_stmt.set_line(s.get_line(), s.get_column())
+        if_stmt.set_line(s)
         self.accept_loop(if_stmt, s.else_body, exit_condition=s.expr)
 
     def visit_operator_assignment_stmt(self, s: OperatorAssignmentStmt) -> None:
@@ -4204,20 +4162,10 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                         self.accept(s.handlers[i])
                         var = s.vars[i]
                         if var:
-                            # Exception variables are deleted in python 3 but not python 2.
-                            # But, since it's bad form in python 2 and the type checking
-                            # wouldn't work very well, we delete it anyway.
-
+                            # Exception variables are deleted.
                             # Unfortunately, this doesn't let us detect usage before the
                             # try/except block.
-                            if self.options.python_version[0] >= 3:
-                                source = var.name
-                            else:
-                                source = (
-                                    '(exception variable "{}", which we do not '
-                                    "accept outside except: blocks even in "
-                                    "python 2)".format(var.name)
-                                )
+                            source = var.name
                             if isinstance(var.node, Var):
                                 var.node.type = DeletedType(source=source)
                             self.binder.cleanse(var)
@@ -4308,11 +4256,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             return iterator, joined
         else:
             # Non-tuple iterable.
-            if self.options.python_version[0] >= 3:
-                nextmethod = "__next__"
-            else:
-                nextmethod = "next"
-            return iterator, echk.check_method_call_by_name(nextmethod, iterator, [], [], expr)[0]
+            return iterator, echk.check_method_call_by_name("__next__", iterator, [], [], expr)[0]
 
     def analyze_container_item_type(self, typ: Type) -> Optional[Type]:
         """Check if a type is a nominal container of a union of such.
@@ -4507,29 +4451,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             "__exit__", ctx, [arg] * 3, [nodes.ARG_POS] * 3, expr
         )
         return res
-
-    def visit_print_stmt(self, s: PrintStmt) -> None:
-        for arg in s.args:
-            self.expr_checker.accept(arg)
-        if s.target:
-            target_type = get_proper_type(self.expr_checker.accept(s.target))
-            if not isinstance(target_type, NoneType):
-                write_type = self.expr_checker.analyze_external_member_access(
-                    "write", target_type, s.target
-                )
-                required_type = CallableType(
-                    arg_types=[self.named_type("builtins.str")],
-                    arg_kinds=[ARG_POS],
-                    arg_names=[None],
-                    ret_type=AnyType(TypeOfAny.implementation_artifact),
-                    fallback=self.named_type("builtins.function"),
-                )
-                # This has to be hard-coded, since it is a syntax pattern, not a function call.
-                if not is_subtype(write_type, required_type):
-                    self.fail(
-                        message_registry.PYTHON2_PRINT_FILE_TYPE.format(write_type, required_type),
-                        s.target,
-                    )
 
     def visit_break_stmt(self, s: BreakStmt) -> None:
         self.binder.handle_break()
@@ -6540,7 +6461,7 @@ def flatten_types(t: Type) -> List[Type]:
 
 def expand_func(defn: FuncItem, map: Dict[TypeVarId, Type]) -> FuncItem:
     visitor = TypeTransformVisitor(map)
-    ret = defn.accept(visitor)
+    ret = visitor.node(defn)
     assert isinstance(ret, FuncItem)
     return ret
 

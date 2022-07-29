@@ -6,15 +6,15 @@
 Welcome to mypy documentation!
 ==============================
 
-Mypy is a static type checker for Python 3 and Python 2.7. If you sprinkle
+Mypy is a static type checker for Python 3. If you sprinkle
 your code with type annotations, mypy can type check your code and find common
 bugs. As mypy is a static analyzer, or a lint-like tool, the type
 annotations are just hints for mypy and don't interfere when running your program.
 You run your program with a standard Python interpreter, and the annotations
 are treated effectively as comments.
 
-Using the Python 3 annotation syntax (using :pep:`484` and :pep:`526` notation)
-or a comment-based annotation syntax for Python 2 code, you will be able to
+Using the Python 3 annotation syntax (using :pep:`484` and :pep:`526` notation),
+you will be able to
 efficiently annotate your code and use mypy to check the code for common errors.
 Mypy has a powerful and easy-to-use type system with modern features such as
 type inference, generics, callable types, tuple types, union types, and
@@ -45,15 +45,7 @@ Contents
 
    getting_started
    existing_code
-
-.. _overview-cheat-sheets:
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Cheat sheets
-
    cheat_sheet_py3
-   cheat_sheet
 
 .. _overview-type-system-reference:
 
@@ -68,7 +60,6 @@ Contents
    runtime_troubles
    protocols
    dynamic_typing
-   python2
    type_narrowing
    duck_type_compatibility
    stubs

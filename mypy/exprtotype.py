@@ -20,7 +20,6 @@ from mypy.nodes import (
     StrExpr,
     TupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     get_member_expr_fullname,
 )
 from mypy.options import Options
@@ -47,8 +46,6 @@ def _extract_argument_name(expr: Expression) -> Optional[str]:
     if isinstance(expr, NameExpr) and expr.name == "None":
         return None
     elif isinstance(expr, StrExpr):
-        return expr.value
-    elif isinstance(expr, UnicodeExpr):
         return expr.value
     else:
         raise TypeTranslationError()
@@ -171,21 +168,9 @@ def expr_to_unanalyzed_type(
             column=expr.column,
         )
     elif isinstance(expr, StrExpr):
-        return parse_type_string(
-            expr.value,
-            "builtins.str",
-            expr.line,
-            expr.column,
-            assume_str_is_unicode=expr.from_python_3,
-        )
+        return parse_type_string(expr.value, "builtins.str", expr.line, expr.column)
     elif isinstance(expr, BytesExpr):
-        return parse_type_string(
-            expr.value, "builtins.bytes", expr.line, expr.column, assume_str_is_unicode=False
-        )
-    elif isinstance(expr, UnicodeExpr):
-        return parse_type_string(
-            expr.value, "builtins.unicode", expr.line, expr.column, assume_str_is_unicode=True
-        )
+        return parse_type_string(expr.value, "builtins.bytes", expr.line, expr.column)
     elif isinstance(expr, UnaryExpr):
         typ = expr_to_unanalyzed_type(expr.expr, options, allow_new_syntax)
         if isinstance(typ, RawExpressionType):

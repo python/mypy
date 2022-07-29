@@ -338,6 +338,7 @@ class MypyFile(SymbolNode):
         super().__init__()
         self.defs = defs
         self.line = 1  # Dummy line number
+        self.column = 0  # Dummy column
         self.imports = imports
         self.is_bom = is_bom
         self.alias_deps = defaultdict(set)
@@ -599,6 +600,7 @@ class OverloadedFuncDef(FuncBase, SymbolNode, Statement):
         self.unanalyzed_items = items.copy()
         self.impl = None
         if len(items) > 0:
+            # TODO: figure out how to reliably set end position (we don't know the impl here).
             self.set_line(items[0].line, items[0].column)
         self.is_final = False
 
@@ -749,6 +751,7 @@ class FuncItem(FuncBase):
     ) -> None:
         super().set_line(target, column, end_line, end_column)
         for arg in self.arguments:
+            # TODO: set arguments line/column to their precise locations.
             arg.set_line(self.line, self.column, self.end_line, end_column)
 
     def is_dynamic(self) -> bool:
@@ -764,7 +767,14 @@ class FuncDef(FuncItem, SymbolNode, Statement):
     This is a non-lambda function defined using 'def'.
     """
 
-    __slots__ = ("_name", "is_decorated", "is_conditional", "is_abstract", "original_def")
+    __slots__ = (
+        "_name",
+        "is_decorated",
+        "is_conditional",
+        "is_abstract",
+        "original_def",
+        "deco_line",
+    )
 
     # Note that all __init__ args must have default values
     def __init__(
@@ -782,6 +792,8 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     @property
     def name(self) -> str:
@@ -1057,6 +1069,7 @@ class ClassDef(Statement):
         "keywords",
         "analyzed",
         "has_incompatible_baseclass",
+        "deco_line",
     )
 
     name: str  # Name of the class without module prefix
@@ -1096,6 +1109,8 @@ class ClassDef(Statement):
         self.keywords = OrderedDict(keywords or [])
         self.analyzed = None
         self.has_incompatible_baseclass = False
+        # Used for error reporting (to keep backwad compatibility with pre-3.8)
+        self.deco_line: Optional[int] = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
@@ -1526,49 +1541,6 @@ class MatchStmt(Statement):
         return visitor.visit_match_stmt(self)
 
 
-class PrintStmt(Statement):
-    """Python 2 print statement"""
-
-    __slots__ = ("args", "newline", "target")
-
-    args: List[Expression]
-    newline: bool
-    # The file-like target object (given using >>).
-    target: Optional[Expression]
-
-    def __init__(
-        self, args: List[Expression], newline: bool, target: Optional[Expression] = None
-    ) -> None:
-        super().__init__()
-        self.args = args
-        self.newline = newline
-        self.target = target
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_print_stmt(self)
-
-
-class ExecStmt(Statement):
-    """Python 2 exec statement"""
-
-    __slots__ = ("expr", "globals", "locals")
-
-    expr: Expression
-    globals: Optional[Expression]
-    locals: Optional[Expression]
-
-    def __init__(
-        self, expr: Expression, globals: Optional[Expression], locals: Optional[Expression]
-    ) -> None:
-        super().__init__()
-        self.expr = expr
-        self.globals = globals
-        self.locals = locals
-
-    def accept(self, visitor: StatementVisitor[T]) -> T:
-        return visitor.visit_exec_stmt(self)
-
-
 # Expressions
 
 
@@ -1587,43 +1559,22 @@ class IntExpr(Expression):
         return visitor.visit_int_expr(self)
 
 
-# How mypy uses StrExpr, BytesExpr, and UnicodeExpr:
-# In Python 2 mode:
-# b'x', 'x' -> StrExpr
-# u'x' -> UnicodeExpr
-# BytesExpr is unused
+# How mypy uses StrExpr and BytesExpr:
 #
-# In Python 3 mode:
 # b'x' -> BytesExpr
 # 'x', u'x' -> StrExpr
-# UnicodeExpr is unused
 
 
 class StrExpr(Expression):
     """String literal"""
 
-    __slots__ = ("value", "from_python_3")
+    __slots__ = ("value",)
 
     value: str  # '' by default
 
-    # Keeps track of whether this string originated from Python 2 source code vs
-    # Python 3 source code. We need to keep track of this information so we can
-    # correctly handle types that have "nested strings". For example, consider this
-    # type alias, where we have a forward reference to a literal type:
-    #
-    #     Alias = List["Literal['foo']"]
-    #
-    # When parsing this, we need to know whether the outer string and alias came from
-    # Python 2 code vs Python 3 code so we can determine whether the inner `Literal['foo']`
-    # is meant to be `Literal[u'foo']` or `Literal[b'foo']`.
-    #
-    # This field keeps track of that information.
-    from_python_3: bool
-
-    def __init__(self, value: str, from_python_3: bool = False) -> None:
+    def __init__(self, value: str) -> None:
         super().__init__()
         self.value = value
-        self.from_python_3 = from_python_3
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_str_expr(self)
@@ -1651,21 +1602,6 @@ class BytesExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_bytes_expr(self)
-
-
-class UnicodeExpr(Expression):
-    """Unicode literal (Python 2.x)"""
-
-    __slots__ = ("value",)
-
-    value: str
-
-    def __init__(self, value: str) -> None:
-        super().__init__()
-        self.value = value
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_unicode_expr(self)
 
 
 class FloatExpr(Expression):
@@ -2312,21 +2248,6 @@ class ConditionalExpr(Expression):
 
     def accept(self, visitor: ExpressionVisitor[T]) -> T:
         return visitor.visit_conditional_expr(self)
-
-
-class BackquoteExpr(Expression):
-    """Python 2 expression `...`."""
-
-    __slots__ = ("expr",)
-
-    expr: Expression
-
-    def __init__(self, expr: Expression) -> None:
-        super().__init__()
-        self.expr = expr
-
-    def accept(self, visitor: ExpressionVisitor[T]) -> T:
-        return visitor.visit_backquote_expr(self)
 
 
 class TypeApplication(Expression):

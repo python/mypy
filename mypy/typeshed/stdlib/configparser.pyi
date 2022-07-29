@@ -1,7 +1,8 @@
 import sys
-from _typeshed import StrOrBytesPath, StrPath, SupportsWrite
+from _typeshed import StrOrBytesPath, SupportsWrite
 from collections.abc import Callable, ItemsView, Iterable, Iterator, Mapping, MutableMapping, Sequence
-from typing import Any, ClassVar, Pattern, TypeVar, overload
+from re import Pattern
+from typing import Any, ClassVar, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 __all__ = [
@@ -33,11 +34,6 @@ _Parser: TypeAlias = MutableMapping[str, _Section]
 _ConverterCallback: TypeAlias = Callable[[str], Any]
 _ConvertersMap: TypeAlias = dict[str, _ConverterCallback]
 _T = TypeVar("_T")
-
-if sys.version_info >= (3, 7):
-    _Path: TypeAlias = StrOrBytesPath
-else:
-    _Path: TypeAlias = StrPath
 
 DEFAULTSECT: Literal["DEFAULT"]
 MAX_INTERPOLATION_DEPTH: Literal[10]
@@ -110,7 +106,7 @@ class RawConfigParser(_Parser):
     def has_section(self, section: str) -> bool: ...
     def options(self, section: str) -> list[str]: ...
     def has_option(self, section: str, option: str) -> bool: ...
-    def read(self, filenames: _Path | Iterable[_Path], encoding: str | None = ...) -> list[str]: ...
+    def read(self, filenames: StrOrBytesPath | Iterable[StrOrBytesPath], encoding: str | None = ...) -> list[str]: ...
     def read_file(self, f: Iterable[str], source: str | None = ...) -> None: ...
     def read_string(self, string: str, source: str = ...) -> None: ...
     def read_dict(self, dictionary: Mapping[str, Mapping[str, Any]], source: str = ...) -> None: ...
@@ -147,9 +143,9 @@ class RawConfigParser(_Parser):
     ) -> _T: ...
     # This is incompatible with MutableMapping so we ignore the type
     @overload  # type: ignore[override]
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> str: ...
+    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> str | Any: ...
     @overload
-    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T) -> str | _T: ...
+    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T) -> str | _T | Any: ...
     @overload
     def items(self, *, raw: bool = ..., vars: _Section | None = ...) -> ItemsView[str, SectionProxy]: ...
     @overload
@@ -160,7 +156,12 @@ class RawConfigParser(_Parser):
     def remove_section(self, section: str) -> bool: ...
     def optionxform(self, optionstr: str) -> str: ...
 
-class ConfigParser(RawConfigParser): ...
+class ConfigParser(RawConfigParser):
+    # This is incompatible with MutableMapping so we ignore the type
+    @overload  # type: ignore[override]
+    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ...) -> str: ...
+    @overload
+    def get(self, section: str, option: str, *, raw: bool = ..., vars: _Section | None = ..., fallback: _T) -> str | _T: ...
 
 if sys.version_info < (3, 12):
     class SafeConfigParser(ConfigParser): ...  # deprecated alias
@@ -186,7 +187,7 @@ class SectionProxy(MutableMapping[str, str]):
         vars: _Section | None = ...,
         _impl: Any | None = ...,
         **kwargs: Any,
-    ) -> str: ...
+    ) -> str | Any: ...  # can be None in RawConfigParser's sections
     # These are partially-applied version of the methods with the same names in
     # RawConfigParser; the stubs should be kept updated together
     @overload

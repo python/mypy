@@ -14,7 +14,6 @@ from mypy.nodes import (
     AssignmentExpr,
     AssignmentStmt,
     AwaitExpr,
-    BackquoteExpr,
     Block,
     BreakStmt,
     BytesExpr,
@@ -31,7 +30,6 @@ from mypy.nodes import (
     DictionaryComprehension,
     EllipsisExpr,
     EnumCallExpr,
-    ExecStmt,
     Expression,
     ExpressionStmt,
     FloatExpr,
@@ -62,7 +60,6 @@ from mypy.nodes import (
     OverloadPart,
     ParamSpecExpr,
     PassStmt,
-    PrintStmt,
     PromoteExpr,
     RaiseStmt,
     RefExpr,
@@ -85,7 +82,6 @@ from mypy.nodes import (
     TypeVarExpr,
     TypeVarTupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -160,7 +156,7 @@ class TransformVisitor(NodeVisitor[Node]):
         )
 
         # Refresh lines of the inner things
-        arg.set_line(argument.line)
+        arg.set_line(argument)
 
         return arg
 
@@ -291,7 +287,7 @@ class TransformVisitor(NodeVisitor[Node]):
         new.final_value = node.final_value
         new.final_unset_in_class = node.final_unset_in_class
         new.final_set_in_init = node.final_set_in_init
-        new.set_line(node.line)
+        new.set_line(node)
         self.var_map[node] = new
         return new
 
@@ -383,16 +379,6 @@ class TransformVisitor(NodeVisitor[Node]):
         new.analyzed_types = [self.type(typ) for typ in node.analyzed_types]
         return new
 
-    def visit_print_stmt(self, node: PrintStmt) -> PrintStmt:
-        return PrintStmt(
-            self.expressions(node.args), node.newline, self.optional_expr(node.target)
-        )
-
-    def visit_exec_stmt(self, node: ExecStmt) -> ExecStmt:
-        return ExecStmt(
-            self.expr(node.expr), self.optional_expr(node.globals), self.optional_expr(node.locals)
-        )
-
     def visit_star_expr(self, node: StarExpr) -> StarExpr:
         return StarExpr(node.expr)
 
@@ -400,13 +386,10 @@ class TransformVisitor(NodeVisitor[Node]):
         return IntExpr(node.value)
 
     def visit_str_expr(self, node: StrExpr) -> StrExpr:
-        return StrExpr(node.value, node.from_python_3)
+        return StrExpr(node.value)
 
     def visit_bytes_expr(self, node: BytesExpr) -> BytesExpr:
         return BytesExpr(node.value)
-
-    def visit_unicode_expr(self, node: UnicodeExpr) -> UnicodeExpr:
-        return UnicodeExpr(node.value)
 
     def visit_float_expr(self, node: FloatExpr) -> FloatExpr:
         return FloatExpr(node.value)
@@ -535,7 +518,7 @@ class TransformVisitor(NodeVisitor[Node]):
                 new.analyzed = self.visit_type_application(node.analyzed)
             else:
                 new.analyzed = self.visit_type_alias_expr(node.analyzed)
-            new.analyzed.set_line(node.analyzed.line)
+            new.analyzed.set_line(node.analyzed)
         return new
 
     def visit_type_application(self, node: TypeApplication) -> TypeApplication:
@@ -543,12 +526,12 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def visit_list_comprehension(self, node: ListComprehension) -> ListComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line, node.generator.column)
+        generator.set_line(node.generator)
         return ListComprehension(generator)
 
     def visit_set_comprehension(self, node: SetComprehension) -> SetComprehension:
         generator = self.duplicate_generator(node.generator)
-        generator.set_line(node.generator.line, node.generator.column)
+        generator.set_line(node.generator)
         return SetComprehension(generator)
 
     def visit_dictionary_comprehension(
@@ -586,9 +569,6 @@ class TransformVisitor(NodeVisitor[Node]):
         return ConditionalExpr(
             self.expr(node.cond), self.expr(node.if_expr), self.expr(node.else_expr)
         )
-
-    def visit_backquote_expr(self, node: BackquoteExpr) -> BackquoteExpr:
-        return BackquoteExpr(self.expr(node.expr))
 
     def visit_type_var_expr(self, node: TypeVarExpr) -> TypeVarExpr:
         return TypeVarExpr(
@@ -634,25 +614,25 @@ class TransformVisitor(NodeVisitor[Node]):
 
     def node(self, node: Node) -> Node:
         new = node.accept(self)
-        new.set_line(node.line)
+        new.set_line(node)
         return new
 
     def mypyfile(self, node: MypyFile) -> MypyFile:
         new = node.accept(self)
         assert isinstance(new, MypyFile)
-        new.set_line(node.line)
+        new.set_line(node)
         return new
 
     def expr(self, expr: Expression) -> Expression:
         new = expr.accept(self)
         assert isinstance(new, Expression)
-        new.set_line(expr.line, expr.column)
+        new.set_line(expr)
         return new
 
     def stmt(self, stmt: Statement) -> Statement:
         new = stmt.accept(self)
         assert isinstance(new, Statement)
-        new.set_line(stmt.line, stmt.column)
+        new.set_line(stmt)
         return new
 
     # Helpers

@@ -1,12 +1,20 @@
 import collections  # Needed by aliases like DefaultDict, see mypy issue 2986
 import sys
-from _typeshed import IdentityFunction, ReadableBuffer, Self as TypeshedSelf, SupportsKeysAndGetItem
+from _typeshed import IdentityFunction, Incomplete, ReadableBuffer, Self as TypeshedSelf, SupportsKeysAndGetItem
 from abc import ABCMeta, abstractmethod
-from types import BuiltinFunctionType, CodeType, FrameType, FunctionType, MethodType, ModuleType, TracebackType
+from types import (
+    BuiltinFunctionType,
+    CodeType,
+    FrameType,
+    FunctionType,
+    MethodDescriptorType,
+    MethodType,
+    MethodWrapperType,
+    ModuleType,
+    TracebackType,
+    WrapperDescriptorType,
+)
 from typing_extensions import Literal as _Literal, ParamSpec as _ParamSpec, final as _final
-
-if sys.version_info >= (3, 7):
-    from types import MethodDescriptorType, MethodWrapperType, WrapperDescriptorType
 
 if sys.version_info >= (3, 9):
     from types import GenericAlias
@@ -71,13 +79,10 @@ __all__ = [
     "no_type_check",
     "no_type_check_decorator",
     "overload",
+    "ForwardRef",
+    "NoReturn",
+    "OrderedDict",
 ]
-
-if sys.version_info < (3, 7):
-    __all__ += ["GenericMeta"]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["ForwardRef", "NoReturn", "OrderedDict"]
 
 if sys.version_info >= (3, 8):
     __all__ += [
@@ -133,6 +138,8 @@ class TypeVar:
     if sys.version_info >= (3, 10):
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
+    if sys.version_info >= (3, 11):
+        def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
 
 # Used for an undocumented mypy feature. Does not exist at runtime.
 _promote = object()
@@ -187,9 +194,8 @@ if sys.version_info >= (3, 11):
         __name__: str
         def __init__(self, name: str) -> None: ...
         def __iter__(self) -> Any: ...
-
-if sys.version_info < (3, 7):
-    class GenericMeta(type): ...
+        def __typing_subst__(self, arg: Never) -> Never: ...
+        def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
 
 if sys.version_info >= (3, 10):
     class ParamSpecArgs:
@@ -210,6 +216,10 @@ if sys.version_info >= (3, 10):
         def args(self) -> ParamSpecArgs: ...
         @property
         def kwargs(self) -> ParamSpecKwargs: ...
+        if sys.version_info >= (3, 11):
+            def __typing_subst__(self, arg: Incomplete) -> Incomplete: ...
+            def __typing_prepare_subst__(self, alias: Incomplete, args: Incomplete) -> Incomplete: ...
+
         def __or__(self, right: Any) -> _SpecialForm: ...
         def __ror__(self, left: Any) -> _SpecialForm: ...
     Concatenate: _SpecialForm
@@ -255,8 +265,7 @@ Counter = _Alias()
 Deque = _Alias()
 ChainMap = _Alias()
 
-if sys.version_info >= (3, 7):
-    OrderedDict = _Alias()
+OrderedDict = _Alias()
 
 if sys.version_info >= (3, 9):
     Annotated: _SpecialForm
@@ -824,22 +833,17 @@ class Pattern(Generic[AnyStr]):
 
 # Functions
 
-if sys.version_info >= (3, 7):
-    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
-        object
-        | Callable[..., Any]
-        | FunctionType
-        | BuiltinFunctionType
-        | MethodType
-        | ModuleType
-        | WrapperDescriptorType
-        | MethodWrapperType
-        | MethodDescriptorType
-    )
-else:
-    _get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
-        object | Callable[..., Any] | FunctionType | BuiltinFunctionType | MethodType | ModuleType
-    )
+_get_type_hints_obj_allowed_types = (  # noqa: Y026  # TODO: Use TypeAlias once mypy bugs are fixed
+    object
+    | Callable[..., Any]
+    | FunctionType
+    | BuiltinFunctionType
+    | MethodType
+    | ModuleType
+    | WrapperDescriptorType
+    | MethodWrapperType
+    | MethodDescriptorType
+)
 
 if sys.version_info >= (3, 9):
     def get_type_hints(
@@ -910,7 +914,7 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
     # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
-    def pop(self, k: NoReturn, default: _T = ...) -> object: ...  # type: ignore
+    def pop(self, k: NoReturn, default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
     def update(self: _T, __m: _T) -> None: ...
     def __delitem__(self, k: NoReturn) -> None: ...
     def items(self) -> ItemsView[str, object]: ...
@@ -919,28 +923,27 @@ class _TypedDict(Mapping[str, object], metaclass=ABCMeta):
     def __or__(self: TypeshedSelf, __value: TypeshedSelf) -> TypeshedSelf: ...
     def __ior__(self: TypeshedSelf, __value: TypeshedSelf) -> TypeshedSelf: ...
 
-if sys.version_info >= (3, 7):
-    @_final
-    class ForwardRef:
-        __forward_arg__: str
-        __forward_code__: CodeType
-        __forward_evaluated__: bool
-        __forward_value__: Any | None
-        __forward_is_argument__: bool
-        __forward_is_class__: bool
-        __forward_module__: Any | None
-        if sys.version_info >= (3, 9):
-            # The module and is_class arguments were added in later Python 3.9 versions.
-            def __init__(self, arg: str, is_argument: bool = ..., module: Any | None = ..., *, is_class: bool = ...) -> None: ...
-        else:
-            def __init__(self, arg: str, is_argument: bool = ...) -> None: ...
+@_final
+class ForwardRef:
+    __forward_arg__: str
+    __forward_code__: CodeType
+    __forward_evaluated__: bool
+    __forward_value__: Any | None
+    __forward_is_argument__: bool
+    __forward_is_class__: bool
+    __forward_module__: Any | None
+    if sys.version_info >= (3, 9):
+        # The module and is_class arguments were added in later Python 3.9 versions.
+        def __init__(self, arg: str, is_argument: bool = ..., module: Any | None = ..., *, is_class: bool = ...) -> None: ...
+    else:
+        def __init__(self, arg: str, is_argument: bool = ...) -> None: ...
 
-        def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
-        def __eq__(self, other: object) -> bool: ...
-        def __hash__(self) -> int: ...
-        if sys.version_info >= (3, 11):
-            def __or__(self, other: Any) -> _SpecialForm: ...
-            def __ror__(self, other: Any) -> _SpecialForm: ...
+    def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
+    if sys.version_info >= (3, 11):
+        def __or__(self, other: Any) -> _SpecialForm: ...
+        def __ror__(self, other: Any) -> _SpecialForm: ...
 
 if sys.version_info >= (3, 10):
     def is_typeddict(tp: object) -> bool: ...

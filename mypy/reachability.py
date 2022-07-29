@@ -26,7 +26,6 @@ from mypy.nodes import (
     StrExpr,
     TupleExpr,
     UnaryExpr,
-    UnicodeExpr,
 )
 from mypy.options import Options
 from mypy.patterns import AsPattern, OrPattern, Pattern
@@ -146,9 +145,9 @@ def infer_condition_value(expr: Expression, options: Options) -> int:
             result = consider_sys_platform(expr, options.platform)
     if result == TRUTH_VALUE_UNKNOWN:
         if name == "PY2":
-            result = ALWAYS_TRUE if pyversion[0] == 2 else ALWAYS_FALSE
+            result = ALWAYS_FALSE
         elif name == "PY3":
-            result = ALWAYS_TRUE if pyversion[0] == 3 else ALWAYS_FALSE
+            result = ALWAYS_TRUE
         elif name == "MYPY" or name == "TYPE_CHECKING":
             result = MYPY_TRUE
         elif name in options.always_true:
@@ -234,13 +233,13 @@ def consider_sys_platform(expr: Expression, platform: str) -> int:
         if not is_sys_attr(expr.operands[0], "platform"):
             return TRUTH_VALUE_UNKNOWN
         right = expr.operands[1]
-        if not isinstance(right, (StrExpr, UnicodeExpr)):
+        if not isinstance(right, StrExpr):
             return TRUTH_VALUE_UNKNOWN
         return fixed_comparison(platform, op, right.value)
     elif isinstance(expr, CallExpr):
         if not isinstance(expr.callee, MemberExpr):
             return TRUTH_VALUE_UNKNOWN
-        if len(expr.args) != 1 or not isinstance(expr.args[0], (StrExpr, UnicodeExpr)):
+        if len(expr.args) != 1 or not isinstance(expr.args[0], StrExpr):
             return TRUTH_VALUE_UNKNOWN
         if not is_sys_attr(expr.callee.expr, "platform"):
             return TRUTH_VALUE_UNKNOWN

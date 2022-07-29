@@ -360,7 +360,7 @@ class Errors:
         file: Optional[str] = None,
         only_once: bool = False,
         allow_dups: bool = False,
-        origin_line: Optional[int] = None,
+        origin_span: Optional[Tuple[int, int]] = None,
         offset: int = 0,
         end_line: Optional[int] = None,
         end_column: Optional[int] = None,
@@ -377,7 +377,8 @@ class Errors:
             file: if non-None, override current file as context
             only_once: if True, only report this exact message once per build
             allow_dups: if True, allow duplicate copies of this message (ignored if only_once)
-            origin_line: if non-None, override current context as origin
+            origin_span: if non-None, override current context as origin
+                         (type: ignores have effect here)
             end_line: if non-None, override current context as end
         """
         if self.scope:
@@ -402,11 +403,11 @@ class Errors:
         if offset:
             message = " " * offset + message
 
-        if origin_line is None:
-            origin_line = line
+        if origin_span is None:
+            origin_span = (line, line)
 
         if end_line is None:
-            end_line = origin_line
+            end_line = line
 
         code = code or (codes.MISC if not blocker else None)
 
@@ -426,7 +427,7 @@ class Errors:
             blocker,
             only_once,
             allow_dups,
-            origin=(self.file, origin_line, end_line),
+            origin=(self.file, *origin_span),
             target=self.current_target(),
         )
         self.add_error_info(info)
@@ -468,12 +469,6 @@ class Errors:
             return
         if not info.blocker:  # Blockers cannot be ignored
             if file in self.ignored_lines:
-                # It's okay if end_line is *before* line.
-                # Function definitions do this, for example, because the correct
-                # error reporting line is at the *end* of the ignorable range
-                # (for compatibility reasons). If so, just flip 'em!
-                if end_line < line:
-                    line, end_line = end_line, line
                 # Check each line in this context for "type: ignore" comments.
                 # line == end_line for most nodes, so we only loop once.
                 for scope_line in range(line, end_line + 1):
@@ -576,14 +571,14 @@ class Errors:
         if info.blocker:
             # Blocking errors can never be ignored
             return False
-        if info.code and self.is_error_code_enabled(info.code) is False:
+        if info.code and not self.is_error_code_enabled(info.code):
             return True
         if line not in ignores:
             return False
         if not ignores[line]:
             # Empty list means that we ignore all errors
             return True
-        if info.code and self.is_error_code_enabled(info.code) is True:
+        if info.code and self.is_error_code_enabled(info.code):
             return info.code.code in ignores[line]
         return False
 

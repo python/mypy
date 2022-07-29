@@ -79,7 +79,6 @@ from mypy.nodes import (
     TryStmt,
     TupleExpr,
     UnaryExpr,
-    UnicodeExpr,
     Var,
     WhileStmt,
     WithStmt,
@@ -332,11 +331,7 @@ def parse_type_ignore_tag(tag: Optional[str]) -> Optional[List[str]]:
 
 
 def parse_type_comment(
-    type_comment: str,
-    line: int,
-    column: int,
-    errors: Optional[Errors],
-    assume_str_is_unicode: bool = True,
+    type_comment: str, line: int, column: int, errors: Optional[Errors]
 ) -> Tuple[Optional[List[str]], Optional[ProperType]]:
     """Parse type portion of a type comment (+ optional type ignore).
 
@@ -367,44 +362,21 @@ def parse_type_comment(
             ignored = None
         assert isinstance(typ, ast3_Expression)
         converted = TypeConverter(
-            errors,
-            line=line,
-            override_column=column,
-            assume_str_is_unicode=assume_str_is_unicode,
-            is_evaluated=False,
+            errors, line=line, override_column=column, is_evaluated=False
         ).visit(typ.body)
         return ignored, converted
 
 
 def parse_type_string(
-    expr_string: str,
-    expr_fallback_name: str,
-    line: int,
-    column: int,
-    assume_str_is_unicode: bool = True,
+    expr_string: str, expr_fallback_name: str, line: int, column: int
 ) -> ProperType:
-    """Parses a type that was originally present inside of an explicit string,
-    byte string, or unicode string.
+    """Parses a type that was originally present inside of an explicit string.
 
     For example, suppose we have the type `Foo["blah"]`. We should parse the
     string expression "blah" using this function.
-
-    If `assume_str_is_unicode` is set to true, this function will assume that
-    `Foo["blah"]` is equivalent to `Foo[u"blah"]`. Otherwise, it assumes it's
-    equivalent to `Foo[b"blah"]`.
-
-    The caller is responsible for keeping track of the context in which the
-    type string was encountered (e.g. in Python 3 code, Python 2 code, Python 2
-    code with unicode_literals...) and setting `assume_str_is_unicode` accordingly.
     """
     try:
-        _, node = parse_type_comment(
-            expr_string.strip(),
-            line=line,
-            column=column,
-            errors=None,
-            assume_str_is_unicode=assume_str_is_unicode,
-        )
+        _, node = parse_type_comment(expr_string.strip(), line=line, column=column, errors=None)
         if isinstance(node, UnboundType) and node.original_str_expr is None:
             node.original_str_expr = expr_string
             node.original_str_fallback = expr_fallback_name
@@ -480,8 +452,8 @@ class ASTConverter:
     def set_line(self, node: N, n: AstNode) -> N:
         node.line = n.lineno
         node.column = n.col_offset
-        node.end_line = getattr(n, "end_lineno", None) if isinstance(n, ast3.expr) else None
-        node.end_column = getattr(n, "end_col_offset", None) if isinstance(n, ast3.expr) else None
+        node.end_line = getattr(n, "end_lineno", None)
+        node.end_column = getattr(n, "end_col_offset", None)
 
         return node
 
@@ -593,6 +565,8 @@ class ASTConverter:
     def as_required_block(self, stmts: List[ast3.stmt], lineno: int) -> Block:
         assert stmts  # must be non-empty
         b = Block(self.fix_function_overloads(self.translate_stmt_list(stmts)))
+        # TODO: in most call sites line is wrong (includes first line of enclosing statement)
+        # TODO: also we need to set the column, and the end position here.
         b.set_line(lineno)
         return b
 
@@ -848,16 +822,9 @@ class ASTConverter:
         return self.class_and_function_stack[-2:] == ["C", "F"]
 
     def translate_module_id(self, id: str) -> str:
-        """Return the actual, internal module id for a source text id.
-
-        For example, translate '__builtin__' in Python 2 to 'builtins'.
-        """
+        """Return the actual, internal module id for a source text id."""
         if id == self.options.custom_typing_module:
             return "typing"
-        elif id == "__builtin__" and self.options.python_version[0] == 2:
-            # HACK: __builtin__ in Python 2 is aliases to builtins. However, the implementation
-            #   is named __builtin__.py (there is another layer of translation elsewhere).
-            return "builtins"
         return id
 
     def visit_Module(self, mod: ast3.Module) -> MypyFile:
@@ -983,6 +950,10 @@ class ASTConverter:
                     _dummy_fallback,
                 )
 
+        # End position is always the same.
+        end_line = getattr(n, "end_lineno", None)
+        end_column = getattr(n, "end_col_offset", None)
+
         func_def = FuncDef(n.name, args, self.as_required_block(n.body, lineno), func_type)
         if isinstance(func_def.type, CallableType):
             # semanal.py does some in-place modifications we want to avoid
@@ -997,28 +968,31 @@ class ASTConverter:
             if sys.version_info < (3, 8):
                 # Before 3.8, [typed_]ast the line number points to the first decorator.
                 # In 3.8, it points to the 'def' line, where we want it.
-                lineno += len(n.decorator_list)
-                end_lineno: Optional[int] = None
+                deco_line = lineno
+                lineno += len(n.decorator_list)  # this is only approximately true
             else:
-                # Set end_lineno to the old pre-3.8 lineno, in order to keep
+                # Set deco_line to the old pre-3.8 lineno, in order to keep
                 # existing "# type: ignore" comments working:
-                end_lineno = n.decorator_list[0].lineno + len(n.decorator_list)
+                deco_line = n.decorator_list[0].lineno
 
             var = Var(func_def.name)
             var.is_ready = False
             var.set_line(lineno)
 
             func_def.is_decorated = True
-            func_def.set_line(lineno, n.col_offset, end_lineno)
-            func_def.body.set_line(lineno)  # TODO: Why?
+            func_def.deco_line = deco_line
+            func_def.set_line(lineno, n.col_offset, end_line, end_column)
+            # Set the line again after we updated it (to make value same in Python 3.7/3.8)
+            # Note that TODOs in as_required_block() apply here as well.
+            func_def.body.set_line(lineno)
 
             deco = Decorator(func_def, self.translate_expr_list(n.decorator_list), var)
             first = n.decorator_list[0]
-            deco.set_line(first.lineno, first.col_offset)
+            deco.set_line(first.lineno, first.col_offset, end_line, end_column)
             retval: Union[FuncDef, Decorator] = deco
         else:
             # FuncDef overrides set_line -- can't use self.set_line
-            func_def.set_line(lineno, n.col_offset)
+            func_def.set_line(lineno, n.col_offset, end_line, end_column)
             retval = func_def
         self.class_and_function_stack.pop()
         return retval
@@ -1121,15 +1095,17 @@ class ASTConverter:
             keywords=keywords,
         )
         cdef.decorators = self.translate_expr_list(n.decorator_list)
-        # Set end_lineno to the old mypy 0.700 lineno, in order to keep
+        # Set lines to match the old mypy 0.700 lines, in order to keep
         # existing "# type: ignore" comments working:
         if sys.version_info < (3, 8):
             cdef.line = n.lineno + len(n.decorator_list)
-            cdef.end_line = n.lineno
+            cdef.deco_line = n.lineno
         else:
             cdef.line = n.lineno
-            cdef.end_line = n.decorator_list[0].lineno if n.decorator_list else None
+            cdef.deco_line = n.decorator_list[0].lineno if n.decorator_list else None
         cdef.column = n.col_offset
+        cdef.end_line = getattr(n, "end_lineno", None)
+        cdef.end_column = getattr(n, "end_col_offset", None)
         self.class_and_function_stack.pop()
         return cdef
 
@@ -1535,13 +1511,7 @@ class ASTConverter:
         return self.set_line(e, n)
 
     # Str(string s)
-    def visit_Str(self, n: Str) -> Union[UnicodeExpr, StrExpr]:
-        # Hack: assume all string literals in Python 2 stubs are normal
-        # strs (i.e. not unicode).  All stubs are parsed with the Python 3
-        # parser, which causes unprefixed string literals to be interpreted
-        # as unicode instead of bytes.  This hack is generally okay,
-        # because mypy considers str literals to be compatible with
-        # unicode.
+    def visit_Str(self, n: Str) -> StrExpr:
         e = StrExpr(n.s)
         return self.set_line(e, n)
 
@@ -1746,14 +1716,12 @@ class TypeConverter:
         errors: Optional[Errors],
         line: int = -1,
         override_column: int = -1,
-        assume_str_is_unicode: bool = True,
         is_evaluated: bool = True,
     ) -> None:
         self.errors = errors
         self.line = line
         self.override_column = override_column
         self.node_stack: List[AST] = []
-        self.assume_str_is_unicode = assume_str_is_unicode
         self.is_evaluated = is_evaluated
 
     def convert_column(self, column: int) -> int:
@@ -1820,15 +1788,6 @@ class TypeConverter:
 
     def translate_expr_list(self, l: Sequence[ast3.expr]) -> List[Type]:
         return [self.visit(e) for e in l]
-
-    def visit_raw_str(self, s: str) -> Type:
-        # An escape hatch that allows the AST walker in fastparse2 to
-        # directly hook into the Python 3 type converter in some cases
-        # without needing to create an intermediary `Str` object.
-        _, typ = parse_type_comment(
-            s.strip(), self.line, -1, self.errors, self.assume_str_is_unicode
-        )
-        return typ or AnyType(TypeOfAny.from_error)
 
     def visit_Call(self, e: Call) -> Type:
         # Parse the arg constructor
@@ -1933,22 +1892,7 @@ class TypeConverter:
             return UnboundType("None", line=self.line)
         if isinstance(val, str):
             # Parse forward reference.
-            if (n.kind and "u" in n.kind) or self.assume_str_is_unicode:
-                return parse_type_string(
-                    n.s,
-                    "builtins.unicode",
-                    self.line,
-                    n.col_offset,
-                    assume_str_is_unicode=self.assume_str_is_unicode,
-                )
-            else:
-                return parse_type_string(
-                    n.s,
-                    "builtins.str",
-                    self.line,
-                    n.col_offset,
-                    assume_str_is_unicode=self.assume_str_is_unicode,
-                )
+            return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
         if val is Ellipsis:
             # '...' is valid in some types.
             return EllipsisType(line=self.line)
@@ -2002,34 +1946,7 @@ class TypeConverter:
 
     # Str(string s)
     def visit_Str(self, n: Str) -> Type:
-        # Note: we transform these fallback types into the correct types in
-        # 'typeanal.py' -- specifically in the named_type_with_normalized_str method.
-        # If we're analyzing Python 3, that function will translate 'builtins.unicode'
-        # into 'builtins.str'. In contrast, if we're analyzing Python 2 code, we'll
-        # translate 'builtins.bytes' in the method below into 'builtins.str'.
-
-        # Do a getattr because the field doesn't exist in 3.8 (where
-        # this method doesn't actually ever run.) We can't just do
-        # an attribute access with a `# type: ignore` because it would be
-        # unused on < 3.8.
-        kind: str = getattr(n, "kind")  # noqa
-
-        if "u" in kind or self.assume_str_is_unicode:
-            return parse_type_string(
-                n.s,
-                "builtins.unicode",
-                self.line,
-                n.col_offset,
-                assume_str_is_unicode=self.assume_str_is_unicode,
-            )
-        else:
-            return parse_type_string(
-                n.s,
-                "builtins.str",
-                self.line,
-                n.col_offset,
-                assume_str_is_unicode=self.assume_str_is_unicode,
-            )
+        return parse_type_string(n.s, "builtins.str", self.line, n.col_offset)
 
     # Bytes(bytes s)
     def visit_Bytes(self, n: Bytes) -> Type:

@@ -46,7 +46,9 @@ from mypy.nodes import (
     SYMBOL_FUNCBASE_TYPES,
     ArgKind,
     CallExpr,
+    ClassDef,
     Context,
+    Expression,
     FuncDef,
     IndexExpr,
     MypyFile,
@@ -205,13 +207,33 @@ class MessageBuilder:
         offset: int = 0,
         allow_dups: bool = False,
     ) -> None:
-        """Report an error or note (unless disabled)."""
+        """Report an error or note (unless disabled).
+
+        Note that context controls where error is reported, while origin controls
+        where # type: ignore comments have effect.
+        """
+
+        def span_from_context(ctx: Context) -> Tuple[int, int]:
+            """This determines where a type: ignore for a given context has effect.
+
+            Current logic is a bit tricky, to keep as much backwards compatibility as
+            possible. We may reconsider this to always be a single line (or otherwise
+            simplify it) when we drop Python 3.7.
+            """
+            if isinstance(ctx, (ClassDef, FuncDef)):
+                return ctx.deco_line or ctx.line, ctx.line
+            elif not isinstance(ctx, Expression):
+                return ctx.line, ctx.line
+            else:
+                return ctx.line, ctx.end_line or ctx.line
+
+        origin_span: Optional[Tuple[int, int]]
         if origin is not None:
-            end_line = origin.end_line
+            origin_span = span_from_context(origin)
         elif context is not None:
-            end_line = context.end_line
+            origin_span = span_from_context(context)
         else:
-            end_line = None
+            origin_span = None
         self.errors.report(
             context.get_line() if context else -1,
             context.get_column() if context else -1,
@@ -219,8 +241,8 @@ class MessageBuilder:
             severity=severity,
             file=file,
             offset=offset,
-            origin_line=origin.get_line() if origin else None,
-            end_line=end_line,
+            origin_span=origin_span,
+            end_line=context.end_line if context else -1,
             end_column=context.end_column if context else -1,
             code=code,
             allow_dups=allow_dups,
@@ -233,13 +255,10 @@ class MessageBuilder:
         *,
         code: Optional[ErrorCode] = None,
         file: Optional[str] = None,
-        origin: Optional[Context] = None,
         allow_dups: bool = False,
     ) -> None:
         """Report an error message (unless disabled)."""
-        self.report(
-            msg, context, "error", code=code, file=file, origin=origin, allow_dups=allow_dups
-        )
+        self.report(msg, context, "error", code=code, file=file, allow_dups=allow_dups)
 
     def note(
         self,
@@ -269,7 +288,6 @@ class MessageBuilder:
         messages: str,
         context: Context,
         file: Optional[str] = None,
-        origin: Optional[Context] = None,
         offset: int = 0,
         allow_dups: bool = False,
         code: Optional[ErrorCode] = None,
@@ -277,14 +295,7 @@ class MessageBuilder:
         """Report as many notes as lines in the message (unless disabled)."""
         for msg in messages.splitlines():
             self.report(
-                msg,
-                context,
-                "note",
-                file=file,
-                origin=origin,
-                offset=offset,
-                allow_dups=allow_dups,
-                code=code,
+                msg, context, "note", file=file, offset=offset, allow_dups=allow_dups, code=code
             )
 
     #
@@ -417,9 +428,6 @@ class MessageBuilder:
                     matches.extend(best_matches(member, alternatives)[:3])
                     if member == "__aiter__" and matches == ["__iter__"]:
                         matches = []  # Avoid misleading suggestion
-                    if member == "__div__" and matches == ["__truediv__"]:
-                        # TODO: Handle differences in division between Python 2 and 3 more cleanly
-                        matches = []
                     if matches:
                         self.fail(
                             '{} has no attribute "{}"; maybe {}?{}'.format(
@@ -567,12 +575,6 @@ class MessageBuilder:
                                 op, base, arg_type, context, code=codes.OPERATOR
                             )
                         return codes.OPERATOR
-
-            if name.startswith('"__cmp__" of'):
-                self.unsupported_operand_types(
-                    "comparison", arg_type, base, context, code=codes.OPERATOR
-                )
-                return codes.INDEX
 
             if name.startswith('"__getitem__" of'):
                 self.invalid_index_type(
@@ -939,9 +941,6 @@ class MessageBuilder:
             )
         else:
             self.fail("Function does not return a value", context, code=codes.FUNC_RETURNS_VALUE)
-
-    def underscore_function_call(self, context: Context) -> None:
-        self.fail('Calling function named "_" is not allowed', context)
 
     def deleted_as_rvalue(self, typ: DeletedType, context: Context) -> None:
         """Report an error about using an deleted type as an rvalue."""

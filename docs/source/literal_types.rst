@@ -52,8 +52,8 @@ precise type signature for this function using ``Literal[...]`` and overloads:
 
     The examples in this page import ``Literal`` as well as ``Final`` and
     ``TypedDict`` from the ``typing`` module. These types were added to
-    ``typing`` in Python 3.8, but are also available for use in Python 2.7
-    and 3.4 - 3.7 via the ``typing_extensions`` package.
+    ``typing`` in Python 3.8, but are also available for use in Python
+    3.4 - 3.7 via the ``typing_extensions`` package.
 
 Parameterizing Literals
 ***********************
