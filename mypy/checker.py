@@ -1338,7 +1338,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 "but must return a subtype of",
             )
 
-
     def check_reverse_op_method(
         self, defn: FuncItem, reverse_type: CallableType, reverse_name: str, context: Context
     ) -> None:
