@@ -44,6 +44,7 @@ def generate_stub_for_c_module(
     target: str,
     sigs: Optional[Dict[str, str]] = None,
     class_sigs: Optional[Dict[str, str]] = None,
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for C module.
 
@@ -64,7 +65,7 @@ def generate_stub_for_c_module(
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
-            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs)
+            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs, include_docstrings=include_docstrings)
             done.add(name)
     types: List[str] = []
     for name, obj in items:
@@ -72,7 +73,7 @@ def generate_stub_for_c_module(
             continue
         if is_c_type(obj):
             generate_c_type_stub(
-                module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs
+                module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs, include_docstrings=include_docstrings
             )
             done.add(name)
     variables = []
@@ -156,10 +157,11 @@ def generate_c_function_stub(
     sigs: Optional[Dict[str, str]] = None,
     class_name: Optional[str] = None,
     class_sigs: Optional[Dict[str, str]] = None,
+    include_docstrings: bool = False
 ) -> None:
     """Generate stub for a single function or method.
 
-    The result (always a single line) will be appended to 'output'.
+    The result will be appended to 'output'.
     If necessary, any required names will be added to 'imports'.
     The 'class_name' is used to find signature of __init__ or __new__ in
     'class_sigs'.
@@ -170,7 +172,7 @@ def generate_c_function_stub(
         class_sigs = {}
 
     ret_type = "None" if name == "__init__" and class_name else "Any"
-
+    docstr = None
     if (
         name in ("__new__", "__init__")
         and name not in sigs
@@ -236,13 +238,23 @@ def generate_c_function_stub(
 
             if is_overloaded:
                 output.append("@overload")
-            output.append(
-                "def {function}({args}) -> {ret}: ...".format(
-                    function=name,
-                    args=", ".join(sig),
-                    ret=strip_or_import(signature.ret_type, module, imports),
+            if include_docstrings and docstr:
+                output.append(
+                    "def {function}({args}) -> {ret}:\n\"\"\"{docstr}\"\"\"\n...".format(
+                        function=name,
+                        args=", ".join(sig),
+                        ret=strip_or_import(signature.ret_type, module, imports),
+                        docstr=docstr,
+                    )
                 )
-            )
+            else:
+                output.append(
+                    "def {function}({args}) -> {ret}: ...".format(
+                        function=name,
+                        args=", ".join(sig),
+                        ret=strip_or_import(signature.ret_type, module, imports),
+                    )
+                )
 
 
 def strip_or_import(typ: str, module: ModuleType, imports: List[str]) -> str:
@@ -339,6 +351,7 @@ def generate_c_type_stub(
     imports: List[str],
     sigs: Optional[Dict[str, str]] = None,
     class_sigs: Optional[Dict[str, str]] = None,
+    include_docstrings: bool = False
 ) -> None:
     """Generate stub for a single class using runtime introspection.
 
@@ -382,6 +395,7 @@ def generate_c_type_stub(
                     sigs=sigs,
                     class_name=class_name,
                     class_sigs=class_sigs,
+                    include_docstrings=include_docstrings,
                 )
         elif is_c_property(value):
             done.add(attr)
@@ -397,7 +411,7 @@ def generate_c_type_stub(
             )
         elif is_c_type(value):
             generate_c_type_stub(
-                module, attr, value, types, imports=imports, sigs=sigs, class_sigs=class_sigs
+                module, attr, value, types, imports=imports, sigs=sigs, class_sigs=class_sigs, include_docstrings=include_docstrings
             )
             done.add(attr)
 

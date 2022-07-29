@@ -2688,3 +2688,20 @@ def f():
     return 0
 [out]
 def f(): ...
+
+[case testIncludeDocstrings]
+# flags:  --include-docstrings
+class A:
+    """class docstring"""
+    def func():
+        """func docstring"""
+        ...
+    def nodoc():
+        ...
+[out]
+class A:
+    """class docstring"""
+    def func() -> None:
+        """func docstring"""
+        ...
+    def nodoc() -> None: ...

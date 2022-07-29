@@ -774,6 +774,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "is_abstract",
         "original_def",
         "deco_line",
+        "docstring",
     )
 
     # Note that all __init__ args must have default values
@@ -794,6 +795,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: Optional[int] = None
+        self.docstring = None
 
     @property
     def name(self) -> str:
@@ -1070,6 +1072,7 @@ class ClassDef(Statement):
         "analyzed",
         "has_incompatible_baseclass",
         "deco_line",
+        "docstring",
     )
 
     name: str  # Name of the class without module prefix
@@ -1111,6 +1114,7 @@ class ClassDef(Statement):
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
         self.deco_line: Optional[int] = None
+        self.docstring: str = None
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_class_def(self)
