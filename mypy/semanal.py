@@ -839,14 +839,14 @@ class SemanticAnalyzer(
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
 
-        # Mark protocol methods with empty bodies and None-incompatible return types as abstract.
         if self.is_class_scope() and defn.type is not None:
-            assert self.type is not None and isinstance(defn.type, CallableType)
+            assert self.type is not None
+            # Mark protocol methods with empty bodies as implicitly abstract.
+            # This makes explicit protocol subclassing type-safe.
             if (
-                not self.is_stub_file
-                and self.type.is_protocol
+                self.type.is_protocol
+                and not self.is_stub_file  # Bodies in stub files are always empty.
                 and (not isinstance(self.scope.function, OverloadedFuncDef) or defn.is_property)
-                and not can_be_none(defn.type.ret_type)
                 and is_trivial_body(defn.body)
             ):
                 defn.is_abstract = True
@@ -6106,14 +6106,4 @@ def is_trivial_body(block: Block) -> bool:
 
     return isinstance(stmt, PassStmt) or (
         isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
-    )
-
-
-def can_be_none(t: Type) -> bool:
-    """Can a variable of the given type be None?"""
-    t = get_proper_type(t)
-    return (
-        isinstance(t, NoneType)
-        or isinstance(t, AnyType)
-        or (isinstance(t, UnionType) and any(can_be_none(ut) for ut in t.items))
     )
