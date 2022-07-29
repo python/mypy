@@ -65,7 +65,15 @@ def generate_stub_for_c_module(
     items = sorted(module.__dict__.items(), key=lambda x: x[0])
     for name, obj in items:
         if is_c_function(obj):
-            generate_c_function_stub(module, name, obj, functions, imports=imports, sigs=sigs, include_docstrings=include_docstrings)
+            generate_c_function_stub(
+                module,
+                name,
+                obj,
+                functions,
+                imports=imports,
+                sigs=sigs,
+                include_docstrings=include_docstrings,
+            )
             done.add(name)
     types: List[str] = []
     for name, obj in items:
@@ -73,7 +81,14 @@ def generate_stub_for_c_module(
             continue
         if is_c_type(obj):
             generate_c_type_stub(
-                module, name, obj, types, imports=imports, sigs=sigs, class_sigs=class_sigs, include_docstrings=include_docstrings
+                module,
+                name,
+                obj,
+                types,
+                imports=imports,
+                sigs=sigs,
+                class_sigs=class_sigs,
+                include_docstrings=include_docstrings,
             )
             done.add(name)
     variables = []
@@ -157,7 +172,7 @@ def generate_c_function_stub(
     sigs: Optional[Dict[str, str]] = None,
     class_name: Optional[str] = None,
     class_sigs: Optional[Dict[str, str]] = None,
-    include_docstrings: bool = False
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for a single function or method.
 
@@ -240,7 +255,7 @@ def generate_c_function_stub(
                 output.append("@overload")
             if include_docstrings and docstr:
                 output.append(
-                    "def {function}({args}) -> {ret}:\n\"\"\"{docstr}\"\"\"\n...".format(
+                    'def {function}({args}) -> {ret}:\n"""{docstr}"""\n...'.format(
                         function=name,
                         args=", ".join(sig),
                         ret=strip_or_import(signature.ret_type, module, imports),
@@ -351,7 +366,7 @@ def generate_c_type_stub(
     imports: List[str],
     sigs: Optional[Dict[str, str]] = None,
     class_sigs: Optional[Dict[str, str]] = None,
-    include_docstrings: bool = False
+    include_docstrings: bool = False,
 ) -> None:
     """Generate stub for a single class using runtime introspection.
 
@@ -411,7 +426,14 @@ def generate_c_type_stub(
             )
         elif is_c_type(value):
             generate_c_type_stub(
-                module, attr, value, types, imports=imports, sigs=sigs, class_sigs=class_sigs, include_docstrings=include_docstrings
+                module,
+                attr,
+                value,
+                types,
+                imports=imports,
+                sigs=sigs,
+                class_sigs=class_sigs,
+                include_docstrings=include_docstrings,
             )
             done.add(attr)
 
