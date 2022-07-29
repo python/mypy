@@ -1690,7 +1690,13 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sigs=sigs, class_sigs=class_sigs, include_docstrings=options.include_docstrings)
+            generate_stub_for_c_module(
+                mod.module,
+                target,
+                sigs=sigs,
+                class_sigs=class_sigs,
+                include_docstrings=options.include_docstrings,
+            )
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)
@@ -1748,9 +1754,7 @@ def parse_options(args: List[str]) -> Options:
     parser.add_argument(
         "--include-docstrings",
         action="store_true",
-        help=(
-            "include existing docstrings with the stubs"
-        ),
+        help=("include existing docstrings with the stubs"),
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="show more verbose messages")
     parser.add_argument("-q", "--quiet", action="store_true", help="show fewer messages")
