@@ -613,6 +613,30 @@ class StubtestUnit(unittest.TestCase):
             """,
             error=None,
         )
+        yield Case(
+            stub="""
+            class EvilDescriptor:
+                def __get__(self, instance: object, ownerclass: type | None = ...) -> int: ...
+                def __set__(self, instance: object, value: int) -> None: ...
+
+            class FineAndDandy:
+                @property
+                def attr(self) -> int: ...
+            """,
+            runtime="""
+            class EvilDescriptor:
+                def __get__(self, instance, ownerclass=None):
+                    if instance is None:
+                        raise AttributeError('no')
+                    return 42
+                def __set__(self, instance, value):
+                    raise AttributeError('no')
+
+            class FineAndDandy:
+                attr = EvilDescriptor()
+            """,
+            error=None
+        )
 
     @collect_cases
     def test_var(self) -> Iterator[Case]:
