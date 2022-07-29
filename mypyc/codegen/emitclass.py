@@ -745,7 +745,15 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         else:
             # In >=3.11, __dict__ is managed by CPython and __weakref__ lives right after
             # the struct
-            emitter.emit_line("_PyObject_VisitManagedDict((PyObject *)self, visit, arg);")
+            emitter.emit_line("{")
+            emitter.emit_line(
+                "int vret = _PyObject_VisitManagedDict((PyObject *)self, visit, arg);"
+            )
+            emitter.emit_line("if (vret)")
+            emitter.emit_line("{")
+            emitter.emit_line("return vret;")
+            emitter.emit_line("}")
+            emitter.emit_line("}")
             emitter.emit_gc_visit(
                 "*((PyObject **)((char *)self + sizeof({})))".format(struct_name),
                 object_rprimitive,
