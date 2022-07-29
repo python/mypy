@@ -748,7 +748,7 @@ class StubtestUnit(unittest.TestCase):
             runtime="""
             __all__ = []
             Z = 5""",
-            error="__all__"
+            error="__all__",
         )
 
     @collect_cases
@@ -769,7 +769,7 @@ class StubtestUnit(unittest.TestCase):
             __all__ = []
             foo = 'foo'
             """,
-            error=""
+            error="",
         )
 
     @collect_cases
