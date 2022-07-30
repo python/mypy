@@ -78,13 +78,15 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                     func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT)
                     and name not in concrete
                 ):
-                    typ.is_abstract = True
+                    if not typ.is_protocol:
+                        typ.is_abstract = True
                     abstract.append((name, func.abstract_status))
                     if base is typ:
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
                 if node.is_abstract_var and name not in concrete:
-                    typ.is_abstract = True
+                    if not typ.is_protocol:
+                        typ.is_abstract = True
                     abstract.append((name, IS_ABSTRACT))
                     if base is typ:
                         abstract_in_this_class.append(name)
