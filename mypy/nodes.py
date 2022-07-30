@@ -3041,7 +3041,7 @@ class TypeInfo(SymbolNode):
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
-        ti.abstract_attributes = [tuple(attr) for attr in data["abstract_attributes"]]
+        ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]

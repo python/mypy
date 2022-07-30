@@ -444,7 +444,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class "P2" with abstract attribute "attr"
+P2() # E: Cannot instantiate protocol class "P2"
 p: P2
 reveal_type(p.attr) # N: Revealed type is "builtins.int"
 
@@ -1553,7 +1553,7 @@ f2(z) # E: Argument 1 to "f2" has incompatible type "Union[C, D1]"; expected "P2
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class P1(Protocol):
     def m(self) -> None: pass
 class Pbad(Protocol):
@@ -1599,7 +1599,7 @@ f(GoodAlias)
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class B(P): pass
 class C:
     def m(self) -> None:
@@ -2926,6 +2926,7 @@ def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
 round(C(), 1)
 
 [case testEmptyBodyImplicitlyAbstractProtocol]
+# flags: --strict-optional
 from typing import Protocol, overload, Union
 
 class P1(Protocol):
@@ -2953,6 +2954,12 @@ class P3(Protocol):
     def meth(self, x: int) -> int: ...
     @overload
     def meth(self, x: str) -> str: ...
+    @overload
+    def not_abstract(self, x: int) -> int: ...
+    @overload
+    def not_abstract(self, x: str) -> str: ...
+    def not_abstract(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
 class B3(P3): ...
 class C3(P3):
     @overload
@@ -2966,6 +2973,7 @@ C3()
 [builtins fixtures/classmethod.pyi]
 
 [case testEmptyBodyImplicitlyAbstractProtocolProperty]
+# flags: --strict-optional
 from typing import Protocol
 
 class P1(Protocol):
@@ -3059,17 +3067,50 @@ class D(WithRaise): ...
 D() # E: Cannot instantiate abstract class "D" with abstract attribute "meth"
 [builtins fixtures/exception.pyi]
 
-[case testEmptyBodyNonAbstractProtocol]
-from typing import Any, Optional, Protocol, Union
+[case testEmptyBodyNoneCompatibleProtocol]
+# flags: --strict-optional
+from typing import Any, Optional, Protocol, Union, overload
+from typing_extensions import TypeAlias
 
-class NotAbstract(Protocol):
+NoneAlias: TypeAlias = None
+
+class NoneCompatible(Protocol):
     def f(self) -> None: ...
     def g(self) -> Any: ...
-    def h(self, x: int): ...
-    def j(self): ...
-    def k(self, x): ...
-    def l(self) -> Optional[int]: ...
-    def m(self) -> Union[str, None]: ...
+    def h(self): ...
+    def j(self) -> Optional[int]: ...
+    def k(self) -> Union[str, None]: ...
+    def l(self) -> NoneAlias: ...
+    @overload
+    def m(self, x: int) -> int: ...
+    @overload
+    def m(self, x: str) -> None: ...
+    @classmethod
+    def n(cls) -> None: ...
+    def o(self, x): ...
+    def p(self, x: int): ...
 
-class A(NotAbstract): ...
-A()
+class A(NoneCompatible): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attributes "f", "g", ... and "p" (7 methods suppressed) \
+  # N: "f" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "g" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "h" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "j" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "k" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "l" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "m" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "n" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "o" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None. \
+  # N: "p" was implicitly marked abstract because it has an empty function body. If it is not meant to be abstract, explicitly return None.
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyWithFinal]
+from typing import Protocol, final
+
+class P(Protocol):
+    @final          # E: Protocol member cannot be final
+    def f(self, x: int) -> str: ...
+
+class A(P): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"

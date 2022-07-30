@@ -103,13 +103,13 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
             def report(message: str, severity: str) -> None:
                 errors.report(typ.line, typ.column, message, severity=severity)
 
-            attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
+            attrs = ", ".join(f'"{attr}"' for attr, _ in sorted(abstract))
             report(f"Class {typ.fullname} has abstract attributes {attrs}", "error")
             report(
                 "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass", "note"
             )
     if typ.is_final and abstract:
-        attrs = ", ".join(f'"{attr}"' for attr in sorted(abstract))
+        attrs = ", ".join(f'"{attr}"' for attr, _ in sorted(abstract))
         errors.report(
             typ.line, typ.column, f"Final class {typ.fullname} has abstract attributes {attrs}"
         )

@@ -97,6 +97,7 @@ from mypy.plugin import (
 )
 from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
+from mypy.state import state
 from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
@@ -1237,6 +1238,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (
             callee.is_type_obj()
+            and callee.type_object().is_protocol
+            # Exception for Type[...]
+            and not callee.from_type_type
+        ):
+            self.chk.fail(
+                message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(callee.type_object().name),
+                context,
+            )
+        elif (
+            callee.is_type_obj()
             and callee.type_object().is_abstract
             # Exception for Type[...]
             and not callee.from_type_type
@@ -1245,24 +1256,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             type = callee.type_object()
             # Determine whether the abstract attributes are functions with
             # None-compatible return types and whether they were defined in a protocol.
-            is_none_ret_and_prot: Dict[str, bool] = {}
+            is_none_ret_from_prot: Dict[str, bool] = {}
             for attr_name, abstract_status in type.abstract_attributes:
                 if abstract_status == IS_ABSTRACT:
-                    is_none_ret_and_prot[attr_name] = False
+                    is_none_ret_from_prot[attr_name] = False
                     continue
-                is_none_ret_and_prot[attr_name] = self._has_none_compat_return(type, attr_name)
+                is_none_ret_from_prot[attr_name] = self._check_non_ret_from_prot(type, attr_name)
             self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name, is_none_ret_and_prot, context
-            )
-        elif (
-            callee.is_type_obj()
-            and callee.type_object().is_protocol
-            # Exception for Type[...]
-            and not callee.from_type_type
-        ):
-            self.chk.fail(
-                message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(callee.type_object().name),
-                context,
+                callee.type_object().name, is_none_ret_from_prot, context
             )
 
         formal_to_actual = map_actuals_to_formals(
@@ -1344,11 +1345,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
 
-    def _has_none_compat_return(self, type: TypeInfo, attr_name: str) -> bool:
+    def _check_non_ret_from_prot(self, type: TypeInfo, attr_name: str) -> bool:
         """Determine whether the attribute is a function with None-compatible return type.
 
         Additionally, check whether the function was defined in a protocol.
         """
+        if not state.strict_optional:
+            # If strict-optional is not set, is_subtype(NoneType(), T) is always True.
+            # So, we cannot do anything useful here in that case.
+            return False
         for base in type.mro:
             symnode = base.names.get(attr_name)
             if symnode is None or not base.is_protocol:
@@ -1356,17 +1361,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             node = symnode.node
             if isinstance(node, OverloadedFuncDef):
                 if node.impl is not None:
-                    assert isinstance(node.impl.type, CallableType)
-                    return is_subtype(NoneType(), node.impl.type.ret_type)
-                for overload in node.items:
-                    assert isinstance(overload.type, CallableType)
-                    if is_subtype(NoneType(), overload.type.ret_type):
+                    typ = get_proper_type(node.impl.type)
+                    assert isinstance(typ, CallableType)
+                    return is_subtype(NoneType(), typ.ret_type)
+                for func in node.items:
+                    if isinstance(func, Decorator):
+                        func = func.func
+                    assert isinstance(func.type, CallableType)
+                    if is_subtype(NoneType(), func.type.ret_type):
                         return True
+                    if func.is_property:
+                        return False  # Only check the first overload of properties.
                 else:
                     return False
-            if isinstance(node, FuncDef) and node.type is not None:
-                assert isinstance(node.type, CallableType)
-                return is_subtype(NoneType(), node.type.ret_type)
+            if isinstance(node, Decorator):
+                node = node.func
+            if isinstance(node, FuncDef):
+                if node.type is not None:
+                    assert isinstance(node.type, CallableType)
+                    return is_subtype(NoneType(), node.type.ret_type)
+                else:
+                    # No type annotations are available
+                    return True
         return False
 
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:

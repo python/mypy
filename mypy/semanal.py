@@ -841,7 +841,7 @@ class SemanticAnalyzer(
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
 
-        if self.is_class_scope() and defn.type is not None:
+        if self.is_class_scope():
             assert self.type is not None
             # Mark protocol methods with empty bodies as implicitly abstract.
             # This makes explicit protocol subclassing type-safe.
