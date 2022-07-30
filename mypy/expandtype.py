@@ -6,7 +6,7 @@ from mypy.types import (
     ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
     FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
     TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor,
-    UnpackType, TypeVarTupleType
+    UnpackType, TypeVarTupleType, SelfType
 )
 
 
@@ -44,7 +44,10 @@ def freshen_function_type_vars(callee: F) -> F:
         for v in callee.variables:
             # TODO(PEP612): fix for ParamSpecType
             if isinstance(v, TypeVarType):
-                tv: TypeVarLikeType = TypeVarType.new_unification_variable(v)
+                if isinstance(v, SelfType):
+                    tv: TypeVarLikeType = v
+                else:
+                    tv = TypeVarType.new_unification_variable(v)
             elif isinstance(v, TypeVarTupleType):
                 tv = TypeVarTupleType.new_unification_variable(v)
             else:
