@@ -28,6 +28,7 @@ from mypy.stubgen import (
     Options,
     collect_build_targets,
     generate_stubs,
+    get_sig_generators,
     is_blacklisted_path,
     is_non_library_module,
     mypy_options,
@@ -803,7 +804,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         mod = ModuleType("module", "")  # any module is fine
         imports: list[str] = []
-        generate_c_type_stub(mod, "alias", object, output, imports)
+        generate_c_type_stub(
+            mod,
+            "alias",
+            object,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(imports, [])
         assert_equal(output[0], "class alias:")
 
@@ -815,7 +823,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("module", "")  # any module is fine
-        generate_c_type_stub(mod, "C", TestClassVariableCls, output, imports)
+        generate_c_type_stub(
+            mod,
+            "C",
+            TestClassVariableCls,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(imports, [])
         assert_equal(output, ["class C:", "    x: ClassVar[int] = ..."])
 
@@ -826,7 +841,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("module, ")
-        generate_c_type_stub(mod, "C", TestClass, output, imports)
+        generate_c_type_stub(
+            mod,
+            "C",
+            TestClass,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["class C(KeyError): ..."])
         assert_equal(imports, [])
 
@@ -834,7 +856,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType(TestBaseClass.__module__, "")
-        generate_c_type_stub(mod, "C", TestClass, output, imports)
+        generate_c_type_stub(
+            mod,
+            "C",
+            TestClass,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["class C(TestBaseClass): ..."])
         assert_equal(imports, [])
 
@@ -847,7 +876,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("module", "")
-        generate_c_type_stub(mod, "C", TestClass, output, imports)
+        generate_c_type_stub(
+            mod,
+            "C",
+            TestClass,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["class C(argparse.Action): ..."])
         assert_equal(imports, ["import argparse"])
 
@@ -858,7 +894,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("module", "")
-        generate_c_type_stub(mod, "C", TestClass, output, imports)
+        generate_c_type_stub(
+            mod,
+            "C",
+            TestClass,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["class C(type): ..."])
         assert_equal(imports, [])
 
@@ -873,7 +916,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: int) -> Any: ..."])
         assert_equal(imports, [])
@@ -889,7 +939,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: int) -> Any: ..."])
         assert_equal(imports, [])
@@ -904,7 +961,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="cls", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="cls",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(cls, *args, **kwargs) -> Any: ..."])
         assert_equal(imports, [])
@@ -920,7 +984,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: str = ...) -> Any: ..."])
         assert_equal(imports, [])
@@ -937,7 +1008,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType(self.__module__, "")
-        generate_c_function_stub(mod, "test", test, output, imports)
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["def test(arg0: argparse.Action) -> Any: ..."])
         assert_equal(imports, ["import argparse"])
 
@@ -955,7 +1033,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("argparse", "")
-        generate_c_function_stub(mod, "test", test, output, imports)
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["def test(arg0: Action) -> Any: ..."])
         assert_equal(imports, [])
 
@@ -970,7 +1055,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType(self.__module__, "")
-        generate_c_function_stub(mod, "test", test, output, imports)
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["def test(arg0: str) -> argparse.Action: ..."])
         assert_equal(imports, ["import argparse"])
 
@@ -987,7 +1079,14 @@ class StubgencSuite(unittest.TestCase):
         output: list[str] = []
         imports: list[str] = []
         mod = ModuleType("argparse", "")
-        generate_c_function_stub(mod, "test", test, output, imports)
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output,
+            imports,
+            sig_generators=get_sig_generators(parse_options([])),
+        )
         assert_equal(output, ["def test(arg0: str) -> Action: ..."])
         assert_equal(imports, [])
 
@@ -1052,7 +1151,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: List[int]) -> Any: ..."])
         assert_equal(imports, [])
@@ -1068,7 +1174,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,int]) -> Any: ..."])
         assert_equal(imports, [])
@@ -1084,7 +1197,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,List[int]]) -> Any: ..."])
         assert_equal(imports, [])
@@ -1100,7 +1220,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[argparse.Action,int]) -> Any: ..."])
         assert_equal(imports, ["import argparse"])
@@ -1116,7 +1243,14 @@ class StubgencSuite(unittest.TestCase):
         imports: list[str] = []
         mod = ModuleType(TestClass.__module__, "")
         generate_c_function_stub(
-            mod, "test", TestClass.test, output, imports, self_var="self", class_name="TestClass"
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="self",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(output, ["def test(self, arg0: Dict[str,argparse.Action]) -> Any: ..."])
         assert_equal(imports, ["import argparse"])
@@ -1144,6 +1278,7 @@ class StubgencSuite(unittest.TestCase):
             imports,
             self_var="self",
             class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
         )
         assert_equal(
             output,
