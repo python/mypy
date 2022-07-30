@@ -1,4 +1,4 @@
-from typing import Optional, Callable, List
+from typing import Callable, List, Optional
 
 from mypy.nodes import TypeInfo
 from mypy.types import Instance
@@ -22,14 +22,14 @@ class MroError(Exception):
     """Raised if a consistent mro cannot be determined for a class."""
 
 
-def linearize_hierarchy(info: TypeInfo,
-                        obj_type: Optional[Callable[[], Instance]] = None) -> List[TypeInfo]:
+def linearize_hierarchy(
+    info: TypeInfo, obj_type: Optional[Callable[[], Instance]] = None
+) -> List[TypeInfo]:
     # TODO describe
     if info.mro:
         return info.mro
     bases = info.direct_base_classes()
-    if (not bases and info.fullname != 'builtins.object' and
-            obj_type is not None):
+    if not bases and info.fullname != "builtins.object" and obj_type is not None:
         # Second pass in import cycle, add a dummy `object` base class,
         # otherwise MRO calculation may spuriously fail.
         # MRO will be re-calculated for real in the third pass.

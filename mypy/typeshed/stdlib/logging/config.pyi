@@ -1,10 +1,10 @@
 import sys
-from _typeshed import StrOrBytesPath, StrPath
+from _typeshed import StrOrBytesPath
 from collections.abc import Callable, Sequence
 from configparser import RawConfigParser
+from re import Pattern
 from threading import Thread
-from typing import IO, Any, Pattern
-from typing_extensions import TypeAlias
+from typing import IO, Any
 
 from . import _Level
 
@@ -12,11 +12,6 @@ if sys.version_info >= (3, 8):
     from typing import Literal, TypedDict
 else:
     from typing_extensions import Literal, TypedDict
-
-if sys.version_info >= (3, 7):
-    _Path: TypeAlias = StrOrBytesPath
-else:
-    _Path: TypeAlias = StrPath
 
 DEFAULT_LOGGING_CONFIG_PORT: int
 RESET_ERROR: int  # undocumented
@@ -53,7 +48,7 @@ def dictConfig(config: _DictConfigArgs | dict[str, Any]) -> None: ...
 
 if sys.version_info >= (3, 10):
     def fileConfig(
-        fname: _Path | IO[str] | RawConfigParser,
+        fname: StrOrBytesPath | IO[str] | RawConfigParser,
         defaults: dict[str, str] | None = ...,
         disable_existing_loggers: bool = ...,
         encoding: str | None = ...,
@@ -61,7 +56,9 @@ if sys.version_info >= (3, 10):
 
 else:
     def fileConfig(
-        fname: _Path | IO[str] | RawConfigParser, defaults: dict[str, str] | None = ..., disable_existing_loggers: bool = ...
+        fname: StrOrBytesPath | IO[str] | RawConfigParser,
+        defaults: dict[str, str] | None = ...,
+        disable_existing_loggers: bool = ...,
     ) -> None: ...
 
 def valid_ident(s: str) -> Literal[True]: ...  # undocumented

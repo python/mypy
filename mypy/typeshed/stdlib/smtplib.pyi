@@ -2,10 +2,11 @@ import sys
 from _typeshed import Self
 from collections.abc import Sequence
 from email.message import Message as _Message
+from re import Pattern
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Pattern, Protocol, overload
+from typing import Any, Protocol, overload
 from typing_extensions import TypeAlias
 
 __all__ = [
@@ -22,10 +23,8 @@ __all__ = [
     "quotedata",
     "SMTP",
     "SMTP_SSL",
+    "SMTPNotSupportedError",
 ]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["SMTPNotSupportedError"]
 
 _Reply: TypeAlias = tuple[int, bytes]
 _SendErrs: TypeAlias = dict[str, _Reply]

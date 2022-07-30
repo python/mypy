@@ -62,16 +62,13 @@ __all__ = [
     "VBAR",
     "VBAREQUAL",
     "tok_name",
+    "ENCODING",
+    "NL",
+    "COMMENT",
 ]
 
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
-    __all__ += ["ASYNC", "AWAIT"]
-
-if sys.version_info >= (3, 7):
-    __all__ += ["ENCODING", "NL", "COMMENT"]
-
 if sys.version_info >= (3, 8):
-    __all__ += ["COLONEQUAL", "TYPE_COMMENT", "TYPE_IGNORE"]
+    __all__ += ["ASYNC", "AWAIT", "COLONEQUAL", "TYPE_COMMENT", "TYPE_IGNORE"]
 
 if sys.version_info >= (3, 10):
     __all__ += ["SOFT_KEYWORD"]
@@ -129,8 +126,7 @@ AT: int
 RARROW: int
 ELLIPSIS: int
 ATEQUAL: int
-if sys.version_info < (3, 7) or sys.version_info >= (3, 8):
-    # These were removed in Python 3.7 but added back in Python 3.8
+if sys.version_info >= (3, 8):
     AWAIT: int
     ASYNC: int
 OP: int
@@ -138,10 +134,9 @@ ERRORTOKEN: int
 N_TOKENS: int
 NT_OFFSET: int
 tok_name: dict[int, str]
-if sys.version_info >= (3, 7):
-    COMMENT: int
-    NL: int
-    ENCODING: int
+COMMENT: int
+NL: int
+ENCODING: int
 if sys.version_info >= (3, 8):
     TYPE_COMMENT: int
     TYPE_IGNORE: int

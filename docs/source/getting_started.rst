@@ -39,16 +39,6 @@ However, if you try directly running mypy on your existing Python code, it
 will most likely report little to no errors: you must add *type annotations*
 to your code to take full advantage of mypy. See the section below for details.
 
-.. note::
-
-  Although you must install Python 3 to run mypy, mypy is fully capable of
-  type checking Python 2 code as well: just pass in the :option:`--py2 <mypy --py2>` flag. See
-  :ref:`python2` for more details.
-
-  .. code-block:: shell
-
-      $ mypy --py2 program.py
-
 Function signatures and dynamic vs static typing
 ************************************************
 
@@ -89,10 +79,6 @@ calls since the arguments have invalid types:
 
 Note that this is all still valid Python 3 code! The function annotation syntax
 shown above was added to Python :pep:`as a part of Python 3.0 <3107>`.
-
-If you are trying to type check Python 2 code, you can add type hints
-using a comment-based syntax instead of the Python 3 annotation syntax.
-See our section on :ref:`typing Python 2 code <python2>` for more details.
 
 Being able to pick whether you want a function to be dynamically or statically
 typed can be very helpful. For example, if you are migrating an existing
@@ -248,7 +234,7 @@ to help function signatures look a little cleaner:
        return 'Hello, ' + name
 
 The :py:mod:`typing` module contains many other useful types. You can find a
-quick overview by looking through the :ref:`mypy cheatsheets <overview-cheat-sheets>`
+quick overview by looking through the :ref:`mypy cheatsheet <cheat-sheet-py3>`
 and a more detailed overview (including information on how to make your own
 generic types or your own type aliases) by looking through the
 :ref:`type system reference <overview-type-system-reference>`.
@@ -487,8 +473,7 @@ If you are in a hurry and don't want to read lots of documentation
 before getting started, here are some pointers to quick learning
 resources:
 
-* Read the :ref:`mypy cheatsheet <cheat-sheet-py3>` (also for
-  :ref:`Python 2 <cheat-sheet-py2>`).
+* Read the :ref:`mypy cheatsheet <cheat-sheet-py3>`.
 
 * Read :ref:`existing-code` if you have a significant existing
   codebase without many type annotations.

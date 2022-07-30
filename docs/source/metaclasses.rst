@@ -25,27 +25,6 @@ Defining a metaclass
     class A(metaclass=M):
         pass
 
-In Python 2, the syntax for defining a metaclass is different:
-
-.. code-block:: python
-
-    class A(object):
-        __metaclass__ = M
-
-Mypy also supports using :py:func:`six.with_metaclass` and :py:func:`@six.add_metaclass <six.add_metaclass>`
-to define metaclass in a portable way:
-
-.. code-block:: python
-
-    import six
-
-    class A(six.with_metaclass(M)):
-        pass
-
-    @six.add_metaclass(M)
-    class C(object):
-        pass
-
 .. _examples:
 
 Metaclass usage example

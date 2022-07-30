@@ -1,10 +1,10 @@
 import http.server
 import pydoc
 import socketserver
-import sys
 from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
-from typing import Any, ClassVar, Pattern, Protocol
+from re import Pattern
+from typing import Any, ClassVar, Protocol
 from typing_extensions import TypeAlias
 from xmlrpc.client import Fault
 
@@ -48,11 +48,7 @@ class SimpleXMLRPCDispatcher:  # undocumented
     use_builtin_types: bool
     def __init__(self, allow_none: bool = ..., encoding: str | None = ..., use_builtin_types: bool = ...) -> None: ...
     def register_instance(self, instance: Any, allow_dotted_names: bool = ...) -> None: ...
-    if sys.version_info >= (3, 7):
-        def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
-    else:
-        def register_function(self, function: _DispatchProtocol, name: str | None = ...) -> Callable[..., Any]: ...
-
+    def register_function(self, function: _DispatchProtocol | None = ..., name: str | None = ...) -> Callable[..., Any]: ...
     def register_introspection_functions(self) -> None: ...
     def register_multicall_functions(self) -> None: ...
     def _marshaled_dispatch(

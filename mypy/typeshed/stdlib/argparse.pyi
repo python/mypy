@@ -1,6 +1,7 @@
 import sys
 from collections.abc import Callable, Generator, Iterable, Sequence
-from typing import IO, Any, Generic, NewType, NoReturn, Pattern, Protocol, TypeVar, overload
+from re import Pattern
+from typing import IO, Any, Generic, NewType, NoReturn, Protocol, TypeVar, overload
 from typing_extensions import Literal, TypeAlias
 
 __all__ = [
@@ -171,65 +172,35 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def parse_args(self, *, namespace: None) -> Namespace: ...  # type: ignore[misc]
     @overload
     def parse_args(self, *, namespace: _N) -> _N: ...
-    if sys.version_info >= (3, 7):
-        @overload
-        def add_subparsers(
-            self: _ArgumentParserT,
-            *,
-            title: str = ...,
-            description: str | None = ...,
-            prog: str = ...,
-            action: type[Action] = ...,
-            option_string: str = ...,
-            dest: str | None = ...,
-            required: bool = ...,
-            help: str | None = ...,
-            metavar: str | None = ...,
-        ) -> _SubParsersAction[_ArgumentParserT]: ...
-        @overload
-        def add_subparsers(
-            self,
-            *,
-            title: str = ...,
-            description: str | None = ...,
-            prog: str = ...,
-            parser_class: type[_ArgumentParserT],
-            action: type[Action] = ...,
-            option_string: str = ...,
-            dest: str | None = ...,
-            required: bool = ...,
-            help: str | None = ...,
-            metavar: str | None = ...,
-        ) -> _SubParsersAction[_ArgumentParserT]: ...
-    else:
-        @overload
-        def add_subparsers(
-            self: _ArgumentParserT,
-            *,
-            title: str = ...,
-            description: str | None = ...,
-            prog: str = ...,
-            action: type[Action] = ...,
-            option_string: str = ...,
-            dest: str | None = ...,
-            help: str | None = ...,
-            metavar: str | None = ...,
-        ) -> _SubParsersAction[_ArgumentParserT]: ...
-        @overload
-        def add_subparsers(
-            self,
-            *,
-            title: str = ...,
-            description: str | None = ...,
-            prog: str = ...,
-            parser_class: type[_ArgumentParserT],
-            action: type[Action] = ...,
-            option_string: str = ...,
-            dest: str | None = ...,
-            help: str | None = ...,
-            metavar: str | None = ...,
-        ) -> _SubParsersAction[_ArgumentParserT]: ...
-
+    @overload
+    def add_subparsers(
+        self: _ArgumentParserT,
+        *,
+        title: str = ...,
+        description: str | None = ...,
+        prog: str = ...,
+        action: type[Action] = ...,
+        option_string: str = ...,
+        dest: str | None = ...,
+        required: bool = ...,
+        help: str | None = ...,
+        metavar: str | None = ...,
+    ) -> _SubParsersAction[_ArgumentParserT]: ...
+    @overload
+    def add_subparsers(
+        self,
+        *,
+        title: str = ...,
+        description: str | None = ...,
+        prog: str = ...,
+        parser_class: type[_ArgumentParserT],
+        action: type[Action] = ...,
+        option_string: str = ...,
+        dest: str | None = ...,
+        required: bool = ...,
+        help: str | None = ...,
+        metavar: str | None = ...,
+    ) -> _SubParsersAction[_ArgumentParserT]: ...
     def print_usage(self, file: IO[str] | None = ...) -> None: ...
     def print_help(self, file: IO[str] | None = ...) -> None: ...
     def format_usage(self) -> str: ...
@@ -240,11 +211,10 @@ class ArgumentParser(_AttributeHolder, _ActionsContainer):
     def convert_arg_line_to_args(self, arg_line: str) -> list[str]: ...
     def exit(self, status: int = ..., message: str | None = ...) -> NoReturn: ...
     def error(self, message: str) -> NoReturn: ...
-    if sys.version_info >= (3, 7):
-        def parse_intermixed_args(self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...) -> Namespace: ...
-        def parse_known_intermixed_args(
-            self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...
-        ) -> tuple[Namespace, list[str]]: ...
+    def parse_intermixed_args(self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...) -> Namespace: ...
+    def parse_known_intermixed_args(
+        self, args: Sequence[str] | None = ..., namespace: Namespace | None = ...
+    ) -> tuple[Namespace, list[str]]: ...
     # undocumented
     def _get_optional_actions(self) -> list[Action]: ...
     def _get_positional_actions(self) -> list[Action]: ...
@@ -478,37 +448,22 @@ class _SubParsersAction(Action, Generic[_ArgumentParserT]):
     _name_parser_map: dict[str, _ArgumentParserT]
     choices: dict[str, _ArgumentParserT]
     _choices_actions: list[Action]
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self,
-            option_strings: Sequence[str],
-            prog: str,
-            parser_class: type[_ArgumentParserT],
-            dest: str = ...,
-            required: bool = ...,
-            help: str | None = ...,
-            metavar: str | tuple[str, ...] | None = ...,
-        ) -> None: ...
-    else:
-        def __init__(
-            self,
-            option_strings: Sequence[str],
-            prog: str,
-            parser_class: type[_ArgumentParserT],
-            dest: str = ...,
-            help: str | None = ...,
-            metavar: str | tuple[str, ...] | None = ...,
-        ) -> None: ...
+    def __init__(
+        self,
+        option_strings: Sequence[str],
+        prog: str,
+        parser_class: type[_ArgumentParserT],
+        dest: str = ...,
+        required: bool = ...,
+        help: str | None = ...,
+        metavar: str | tuple[str, ...] | None = ...,
+    ) -> None: ...
     # TODO: Type keyword args properly.
     def add_parser(self, name: str, **kwargs: Any) -> _ArgumentParserT: ...
     def _get_subactions(self) -> list[Action]: ...
 
 # undocumented
 class ArgumentTypeError(Exception): ...
-
-if sys.version_info < (3, 7):
-    # undocumented
-    def _ensure_value(namespace: Namespace, name: str, value: Any) -> Any: ...
 
 # undocumented
 def _get_action_name(argument: Action | None) -> str | None: ...

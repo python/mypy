@@ -30,11 +30,8 @@ class shlex(Iterable[str]):
     lineno: int
     token: str
     eof: str
-    if sys.version_info >= (3, 7):
-        @property
-        def punctuation_chars(self) -> str: ...
-    else:
-        punctuation_chars: str
+    @property
+    def punctuation_chars(self) -> str: ...
     def __init__(
         self,
         instream: str | TextIO | None = ...,

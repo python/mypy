@@ -1,5 +1,5 @@
 from _markupbase import ParserBase
-from typing import Pattern
+from re import Pattern
 
 __all__ = ["HTMLParser"]
 

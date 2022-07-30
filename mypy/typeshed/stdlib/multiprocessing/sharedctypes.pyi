@@ -24,11 +24,11 @@ def RawArray(typecode_or_type: str, size_or_initializer: int | Sequence[Any]) ->
 def Value(typecode_or_type: type[_CT], *args: Any, lock: Literal[False], ctx: BaseContext | None = ...) -> _CT: ...
 @overload
 def Value(
-    typecode_or_type: type[_CT], *args: Any, lock: Literal[True] | _LockLike, ctx: BaseContext | None = ...
+    typecode_or_type: type[_CT], *args: Any, lock: Literal[True] | _LockLike = ..., ctx: BaseContext | None = ...
 ) -> SynchronizedBase[_CT]: ...
 @overload
 def Value(
-    typecode_or_type: str, *args: Any, lock: Literal[True] | _LockLike, ctx: BaseContext | None = ...
+    typecode_or_type: str, *args: Any, lock: Literal[True] | _LockLike = ..., ctx: BaseContext | None = ...
 ) -> SynchronizedBase[Any]: ...
 @overload
 def Value(
@@ -43,7 +43,7 @@ def Array(
     typecode_or_type: type[_CT],
     size_or_initializer: int | Sequence[Any],
     *,
-    lock: Literal[True] | _LockLike,
+    lock: Literal[True] | _LockLike = ...,
     ctx: BaseContext | None = ...,
 ) -> SynchronizedArray[_CT]: ...
 @overload
@@ -51,7 +51,7 @@ def Array(
     typecode_or_type: str,
     size_or_initializer: int | Sequence[Any],
     *,
-    lock: Literal[True] | _LockLike,
+    lock: Literal[True] | _LockLike = ...,
     ctx: BaseContext | None = ...,
 ) -> SynchronizedArray[Any]: ...
 @overload

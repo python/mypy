@@ -3,10 +3,11 @@ import threading
 from _typeshed import Self, StrPath, SupportsWrite
 from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequence
 from io import TextIOWrapper
+from re import Pattern
 from string import Template
 from time import struct_time
 from types import FrameType, TracebackType
-from typing import Any, ClassVar, Generic, Pattern, TextIO, TypeVar, Union, overload
+from typing import Any, ClassVar, Generic, TextIO, TypeVar, Union, overload
 from typing_extensions import Literal, TypeAlias
 
 if sys.version_info >= (3, 11):
@@ -708,12 +709,7 @@ else:
 
 fatal = critical
 
-if sys.version_info >= (3, 7):
-    def disable(level: int = ...) -> None: ...
-
-else:
-    def disable(level: int) -> None: ...
-
+def disable(level: int = ...) -> None: ...
 def addLevelName(level: int, levelName: str) -> None: ...
 def getLevelName(level: _Level) -> Any: ...
 
@@ -781,8 +777,7 @@ class StreamHandler(Handler, Generic[_StreamT]):
     def __init__(self: StreamHandler[TextIO], stream: None = ...) -> None: ...
     @overload
     def __init__(self: StreamHandler[_StreamT], stream: _StreamT) -> None: ...
-    if sys.version_info >= (3, 7):
-        def setStream(self, stream: _StreamT) -> _StreamT | None: ...
+    def setStream(self, stream: _StreamT) -> _StreamT | None: ...
     if sys.version_info >= (3, 11):
         def __class_getitem__(cls, item: Any) -> GenericAlias: ...
 

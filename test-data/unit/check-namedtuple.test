@@ -22,16 +22,6 @@ a, b, c = x # E: Need more than 2 values to unpack (3 expected)
 x[2] # E: Tuple index out of range
 [builtins fixtures/tuple.pyi]
 
-[case testNamedTupleUnicode_python2]
-from __future__ import unicode_literals
-from collections import namedtuple
-
-# This test is a regression test for a bug where mypyc-compiled mypy
-# would crash on namedtuple's with unicode arguments. Our test stubs
-# don't actually allow that, though, so we ignore the error and just
-# care we don't crash.
-X = namedtuple('X', ('x', 'y'))  # type: ignore
-
 [case testNamedTupleNoUnderscoreFields]
 from collections import namedtuple
 
@@ -1155,5 +1145,20 @@ class One(NamedTuple):
 o: One
 reveal_type(o.__match_args__)  # E: "One" has no attribute "__match_args__" \
                                # N: Revealed type is "Any"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testNamedTupleNoBytes]
+from collections import namedtuple
+from typing import NamedTuple
+
+NT1 = namedtuple('NT1', b'x y z')  # E: List or tuple literal expected as the second argument to "namedtuple()"
+NT2 = namedtuple(b'NT2', 'x y z')  # E: "namedtuple()" expects a string literal as the first argument \
+                                   # E: Argument 1 to "namedtuple" has incompatible type "bytes"; expected "str"
+NT3 = namedtuple('NT3', [b'x', 'y'])  # E: String literal expected as "namedtuple()" item
+
+NT4 = NamedTuple('NT4', [('x', int), (b'y', int)])  # E: Invalid "NamedTuple()" field name
+NT5 = NamedTuple(b'NT5', [('x', int), ('y', int)])  # E: "NamedTuple()" expects a string literal as the first argument
+
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
