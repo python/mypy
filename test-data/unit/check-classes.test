@@ -151,6 +151,24 @@ class Derived(Base):
     __hash__ = 1  # E: Incompatible types in assignment (expression has type "int", base class "Base" defined the type as "Callable[[Base], int]")
 
 
+[case testOverridePartialAttributeWithMethod]
+# This was crashing: https://github.com/python/mypy/issues/11686.
+class Base:
+    def __init__(self, arg: int):
+        self.partial_type = []  # E: Need type annotation for "partial_type" (hint: "partial_type: List[<type>] = ...")
+        self.force_deferral = []
+
+    # Force inference of the `force_deferral` attribute in `__init__` to be
+    # deferred to a later pass by providing a definition in another context,
+    # which means `partial_type` remains only partially inferred.
+    force_deferral = []  # E: Need type annotation for "force_deferral" (hint: "force_deferral: List[<type>] = ...")
+
+
+class Derived(Base):
+    def partial_type(self) -> int:  # E: Signature of "partial_type" incompatible with supertype "Base"
+        ...
+
+
 -- Attributes
 -- ----------
 
@@ -822,7 +840,7 @@ from typing import Any, cast
 class A:
     def __init__(self, a: 'A') -> None: pass
 a = None # type: A
-a.__init__(a)  # E: Cannot access "__init__" directly
+a.__init__(a)  # E: Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass
 (cast(Any, a)).__init__(a)
 
 [case testDeepInheritanceHierarchy]
@@ -3251,10 +3269,11 @@ def new_pro(pro_c: Type[P]) -> P:
     return new_user(pro_c)
 wiz = new_pro(WizUser)
 reveal_type(wiz)
-def error(u_c: Type[U]) -> P:
+def error(u_c: Type[U]) -> P: # Error here, see below
     return new_pro(u_c)  # Error here, see below
 [out]
 main:11: note: Revealed type is "__main__.WizUser"
+main:12: error: A function returning TypeVar should receive at least one argument containing the same Typevar
 main:13: error: Value of type variable "P" of "new_pro" cannot be "U"
 main:13: error: Incompatible return value type (got "U", expected "P")
 
@@ -7300,3 +7319,31 @@ def identity_wrapper(func: FuncT) -> FuncT:
 def foo(self: Any) -> str:
     return ""
 
+[case testParentClassWithTypeAliasAndSubclassWithMethod]
+from typing import Any, Callable, TypeVar
+
+class Parent:
+    foo = Callable[..., int] 
+    class bar:
+        pass
+    import typing as baz
+    foobar = TypeVar("foobar")
+
+class Child(Parent):
+    def foo(self, val: int) -> int:  # E: Signature of "foo" incompatible with supertype "Parent"
+        return val
+    def bar(self, val: str) -> str:  # E: Signature of "bar" incompatible with supertype "Parent"
+        return val
+    def baz(self, val: float) -> float:  # E: Signature of "baz" incompatible with supertype "Parent"
+        return val
+    def foobar(self) -> bool:  # E: Signature of "foobar" incompatible with supertype "Parent"
+        return False
+
+x: Parent.foo = lambda: 5
+y: Parent.bar = Parent.bar()
+z: Parent.baz.Any = 1
+child = Child()
+a: int = child.foo(1)
+b: str = child.bar("abc")
+c: float = child.baz(3.4)
+d: bool = child.foobar()

@@ -99,7 +99,8 @@ from mypy.types import (
     TypeTranslator, TypeOfAny, TypeType, NoneType, PlaceholderType, TPDICT_NAMES, ProperType,
     get_proper_type, get_proper_types, TypeAliasType, TypeVarLikeType, Parameters, ParamSpecType,
     PROTOCOL_NAMES, TYPE_ALIAS_NAMES, FINAL_TYPE_NAMES, FINAL_DECORATOR_NAMES, REVEAL_TYPE_NAMES,
-    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, is_named_instance, SelfType, SELF_TYPE_NAMES,
+    ASSERT_TYPE_NAMES, OVERLOAD_NAMES, TYPED_NAMEDTUPLE_NAMES, is_named_instance,
+    SelfType, SELF_TYPE_NAMES,
 )
 from mypy.typeops import function_type, get_type_vars
 from mypy.type_visitor import TypeQuery
@@ -1470,6 +1471,11 @@ class SemanticAnalyzer(NodeVisitor[None],
                 # It's bound by our type variable scope
                 return None
             return unbound.name, sym.node
+        if sym and isinstance(sym.node, TypeVarTupleExpr):
+            if sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
+                # It's bound by our type variable scope
+                return None
+            return unbound.name, sym.node
         if sym is None or not isinstance(sym.node, TypeVarExpr):
             return None
         elif sym.fullname and not self.tvar_scope.allow_binding(sym.fullname):
@@ -1578,7 +1584,7 @@ class SemanticAnalyzer(NodeVisitor[None],
         bases = []
         for base_expr in base_type_exprs:
             if (isinstance(base_expr, RefExpr) and
-                    base_expr.fullname in ('typing.NamedTuple',) + TPDICT_NAMES):
+                    base_expr.fullname in TYPED_NAMEDTUPLE_NAMES + TPDICT_NAMES):
                 # Ignore magic bases for now.
                 continue
 
@@ -1949,10 +1955,14 @@ class SemanticAnalyzer(NodeVisitor[None],
                                 fullname: str,
                                 module_public: bool,
                                 context: ImportBase) -> None:
-        module_hidden = not module_public and not (
-            # `from package import module` should work regardless of whether package
-            # re-exports module
-            isinstance(node.node, MypyFile) and fullname in self.modules
+        module_hidden = not module_public and (
+            # `from package import submodule` should work regardless of whether package
+            # re-exports submodule, so we shouldn't hide it
+            not isinstance(node.node, MypyFile)
+            or fullname not in self.modules
+            # but given `from somewhere import random_unrelated_module` we should hide
+            # random_unrelated_module
+            or not fullname.startswith(self.cur_mod_id + ".")
         )
 
         if isinstance(node.node, PlaceholderNode):
@@ -3861,7 +3871,7 @@ class SemanticAnalyzer(NodeVisitor[None],
 
     def visit_nonlocal_decl(self, d: NonlocalDecl) -> None:
         self.statement = d
-        if not self.is_func_scope():
+        if self.is_module_scope():
             self.fail("nonlocal declaration not allowed at module level", d)
         else:
             for name in d.names:

@@ -10,8 +10,10 @@ import enum
 import importlib
 import inspect
 import os
+import pkgutil
 import re
 import sys
+import traceback
 import types
 import typing
 import typing_extensions
@@ -55,6 +57,12 @@ def _style(message: str, **kwargs: Any) -> str:
     return _formatter.style(message, **kwargs)
 
 
+def _truncate(message: str, length: int) -> str:
+    if len(message) > length:
+        return message[:length - 3] + "..."
+    return message
+
+
 class StubtestFailure(Exception):
     pass
 
@@ -86,7 +94,7 @@ class Error:
         self.stub_object = stub_object
         self.runtime_object = runtime_object
         self.stub_desc = stub_desc or str(getattr(stub_object, "type", stub_object))
-        self.runtime_desc = runtime_desc or str(runtime_object)
+        self.runtime_desc = runtime_desc or _truncate(repr(runtime_object), 100)
 
     def is_missing_stub(self) -> bool:
         """Whether or not the error is for something missing from the stub."""
@@ -158,6 +166,17 @@ class Error:
 # Core logic
 # ====================
 
+def silent_import_module(module_name: str) -> types.ModuleType:
+    with open(os.devnull, "w") as devnull:
+        with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
+            warnings.simplefilter("ignore")
+            runtime = importlib.import_module(module_name)
+            # Also run the equivalent of `from module import *`
+            # This could have the additional effect of loading not-yet-loaded submodules
+            # mentioned in __all__
+            __import__(module_name, fromlist=["*"])
+    return runtime
+
 
 def test_module(module_name: str) -> Iterator[Error]:
     """Tests a given module's stub against introspecting it at runtime.
@@ -169,25 +188,42 @@ def test_module(module_name: str) -> Iterator[Error]:
     """
     stub = get_stub(module_name)
     if stub is None:
-        yield Error([module_name], "failed to find stubs", MISSING, None, runtime_desc="N/A")
+        runtime_desc = repr(sys.modules[module_name]) if module_name in sys.modules else "N/A"
+        yield Error(
+            [module_name], "failed to find stubs", MISSING, None, runtime_desc=runtime_desc
+        )
         return
 
     try:
-        with open(os.devnull, "w") as devnull:
-            with warnings.catch_warnings(), redirect_stdout(devnull), redirect_stderr(devnull):
-                warnings.simplefilter("ignore")
-                runtime = importlib.import_module(module_name)
-                # Also run the equivalent of `from module import *`
-                # This could have the additional effect of loading not-yet-loaded submodules
-                # mentioned in __all__
-                __import__(module_name, fromlist=["*"])
+        runtime = silent_import_module(module_name)
     except Exception as e:
         yield Error([module_name], f"failed to import, {type(e).__name__}: {e}", stub, MISSING)
         return
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        yield from verify(stub, runtime, [module_name])
+        try:
+            yield from verify(stub, runtime, [module_name])
+        except Exception as e:
+            bottom_frame = list(traceback.walk_tb(e.__traceback__))[-1][0]
+            bottom_module = bottom_frame.f_globals.get("__name__", "")
+            # Pass on any errors originating from stubtest or mypy
+            # These can occur expectedly, e.g. StubtestFailure
+            if bottom_module == "__main__" or bottom_module.split(".")[0] == "mypy":
+                raise
+            yield Error(
+                [module_name],
+                f"encountered unexpected error, {type(e).__name__}: {e}",
+                stub,
+                runtime,
+                stub_desc="N/A",
+                runtime_desc=(
+                    "This is most likely the fault of something very dynamic in your library. "
+                    "It's also possible this is a bug in stubtest.\nIf in doubt, please "
+                    "open an issue at https://github.com/python/mypy\n\n"
+                    + traceback.format_exc().strip()
+                ),
+            )
 
 
 @singledispatch
@@ -308,6 +344,14 @@ def verify_typeinfo(
         for m in cast(Any, vars)(runtime)
         if not is_probably_private(m) and m not in IGNORABLE_CLASS_DUNDERS
     )
+    # Special-case the __init__ method for Protocols
+    #
+    # TODO: On Python <3.11, __init__ methods on Protocol classes
+    # are silently discarded and replaced.
+    # However, this is not the case on Python 3.11+.
+    # Ideally, we'd figure out a good way of validating Protocol __init__ methods on 3.11+.
+    if stub.is_protocol:
+        to_check.discard("__init__")
 
     for entry in sorted(to_check):
         mangled_entry = entry
@@ -1054,6 +1098,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
     {
         # Special attributes
         "__dict__",
+        "__annotations__",
         "__text_signature__",
         "__weakref__",
         "__del__",  # Only ever called when an object is being deleted, who cares?
@@ -1283,7 +1328,18 @@ def build_stubs(modules: List[str], options: Options, find_submodules: bool = Fa
         else:
             found_sources = find_module_cache.find_modules_recursive(module)
             sources.extend(found_sources)
+            # find submodules via mypy
             all_modules.extend(s.module for s in found_sources if s.module not in all_modules)
+            # find submodules via pkgutil
+            try:
+                runtime = silent_import_module(module)
+                all_modules.extend(
+                    m.name
+                    for m in pkgutil.walk_packages(runtime.__path__, runtime.__name__ + ".")
+                    if m.name not in all_modules
+                )
+            except Exception:
+                pass
 
     if sources:
         try:

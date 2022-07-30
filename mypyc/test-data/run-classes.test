@@ -2206,3 +2206,13 @@ def test_serializable_sub_class_call_new() -> None:
     base: NonSerializable = sub
     with assertRaises(AttributeError):
         base.s
+
+[case testClassWithInherited__call__]
+class Base:
+    def __call__(self) -> int:
+        return 1
+
+class Derived(Base):
+    pass
+
+assert Derived()() == 1

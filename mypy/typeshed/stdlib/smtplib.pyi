@@ -8,39 +8,24 @@ from types import TracebackType
 from typing import Any, Pattern, Protocol, overload
 from typing_extensions import TypeAlias
 
+__all__ = [
+    "SMTPException",
+    "SMTPServerDisconnected",
+    "SMTPResponseException",
+    "SMTPSenderRefused",
+    "SMTPRecipientsRefused",
+    "SMTPDataError",
+    "SMTPConnectError",
+    "SMTPHeloError",
+    "SMTPAuthenticationError",
+    "quoteaddr",
+    "quotedata",
+    "SMTP",
+    "SMTP_SSL",
+]
+
 if sys.version_info >= (3, 7):
-    __all__ = [
-        "SMTPException",
-        "SMTPNotSupportedError",
-        "SMTPServerDisconnected",
-        "SMTPResponseException",
-        "SMTPSenderRefused",
-        "SMTPRecipientsRefused",
-        "SMTPDataError",
-        "SMTPConnectError",
-        "SMTPHeloError",
-        "SMTPAuthenticationError",
-        "quoteaddr",
-        "quotedata",
-        "SMTP",
-        "SMTP_SSL",
-    ]
-else:
-    __all__ = [
-        "SMTPException",
-        "SMTPServerDisconnected",
-        "SMTPResponseException",
-        "SMTPSenderRefused",
-        "SMTPRecipientsRefused",
-        "SMTPDataError",
-        "SMTPConnectError",
-        "SMTPHeloError",
-        "SMTPAuthenticationError",
-        "quoteaddr",
-        "quotedata",
-        "SMTP",
-        "SMTP_SSL",
-    ]
+    __all__ += ["SMTPNotSupportedError"]
 
 _Reply: TypeAlias = tuple[int, bytes]
 _SendErrs: TypeAlias = dict[str, _Reply]

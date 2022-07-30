@@ -878,9 +878,9 @@ def factory(default: int):
    ...
 @attr.s
 class C:
-    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions and types are currently supported
-    y: str = attr.ib(converter=lambda x: x)  # E: Unsupported converter, only named functions and types are currently supported
-    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions and types are currently supported
+    x: str = attr.ib(converter=thing.do_it)  # E: Unsupported converter, only named functions, types and lambdas are currently supported
+    y: str = attr.ib(converter=lambda x: x)
+    z: str = attr.ib(converter=factory(8))   # E: Unsupported converter, only named functions, types and lambdas are currently supported
 reveal_type(C)  # N: Revealed type is "def (x: Any, y: Any, z: Any) -> __main__.C"
 [builtins fixtures/list.pyi]
 
@@ -1731,9 +1731,38 @@ class C:
     name: Union[str, None] = attr.ib(default=None)
     options: Mapping[str, Mapping[str, Any]] = attr.ib(
         default=None, converter=default_if_none(factory=dict) \
-        # E: Unsupported converter, only named functions and types are currently supported
+        # E: Unsupported converter, only named functions, types and lambdas are currently supported
     )
 [builtins fixtures/dict.pyi]
+
+[case testAttrsUnannotatedConverter]
+import attr
+
+def foo(value):
+    return value.split()
+
+@attr.s
+class Bar:
+    field = attr.ib(default=None, converter=foo)
+
+reveal_type(Bar)  # N: Revealed type is "def (field: Any =) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.field)  # N: Revealed type is "Any"
+
+[builtins fixtures/tuple.pyi]
+
+[case testAttrsLambdaConverter]
+import attr
+
+@attr.s
+class Bar:
+    name: str = attr.ib(converter=lambda s: s.lower())
+
+reveal_type(Bar)  # N: Revealed type is "def (name: Any) -> __main__.Bar"
+bar = Bar("Hello")
+reveal_type(bar.name)  # N: Revealed type is "builtins.str"
+
+[builtins fixtures/tuple.pyi]
 
 [case testAttrsNestedClass]
 from typing import List

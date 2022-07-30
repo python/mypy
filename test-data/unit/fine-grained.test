@@ -98,6 +98,11 @@ class A:
 main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
             a.g() # E
             ^
+[out version>=3.8]
+==
+main:5: error: Missing positional argument "a" in call to "g" of "A"  [call-arg]
+            a.g() # E
+            ^~~~~
 
 [case testFunctionMissingModuleAttribute]
 import m

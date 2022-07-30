@@ -160,7 +160,9 @@ class MessageBuilder:
                            context.get_column() if context else -1,
                            msg, severity=severity, file=file, offset=offset,
                            origin_line=origin.get_line() if origin else None,
-                           end_line=end_line, code=code, allow_dups=allow_dups)
+                           end_line=end_line,
+                           end_column=context.end_column if context else -1,
+                           code=code, allow_dups=allow_dups)
 
     def fail(self,
              msg: str,
@@ -1978,7 +1980,9 @@ def pretty_callable(tp: CallableType) -> str:
             s += ' = ...'
 
     # If we got a "special arg" (i.e: self, cls, etc...), prepend it to the arg list
-    if isinstance(tp.definition, FuncDef) and tp.definition.name is not None:
+    if (isinstance(tp.definition, FuncDef) and
+            tp.definition.name is not None and
+            hasattr(tp.definition, 'arguments')):
         definition_args = [arg.variable.name for arg in tp.definition.arguments]
         if definition_args and tp.arg_names != definition_args \
                 and len(definition_args) > 0 and definition_args[0]:

@@ -10,7 +10,7 @@ class MIMEImage(MIMENonMultipart):
         self,
         _imagedata: str | bytes,
         _subtype: str | None = ...,
-        _encoder: Callable[[MIMEImage], None] = ...,
+        _encoder: Callable[[MIMEImage], object] = ...,
         *,
         policy: Policy | None = ...,
         **_params: _ParamsType,

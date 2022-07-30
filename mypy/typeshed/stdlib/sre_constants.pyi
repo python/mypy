@@ -55,7 +55,8 @@ ASSERT: _NamedIntConstant
 ASSERT_NOT: _NamedIntConstant
 AT: _NamedIntConstant
 BRANCH: _NamedIntConstant
-CALL: _NamedIntConstant
+if sys.version_info < (3, 11):
+    CALL: _NamedIntConstant
 CATEGORY: _NamedIntConstant
 CHARSET: _NamedIntConstant
 BIGCHARSET: _NamedIntConstant

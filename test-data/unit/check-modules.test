@@ -913,10 +913,10 @@ a.b.c.value
 [file a/b/c.py]
 value = 3.2
 [out]
-tmp/a/b/__init__.py:2: error: Name "c" is not defined
-tmp/a/b/__init__.py:3: error: Name "a" is not defined
 tmp/a/__init__.py:2: error: Name "b" is not defined
 tmp/a/__init__.py:3: error: Name "a" is not defined
+tmp/a/b/__init__.py:2: error: Name "c" is not defined
+tmp/a/b/__init__.py:3: error: Name "a" is not defined
 
 [case testSubmoduleMixingLocalAndQualifiedNames]
 from a.b import MyClass
@@ -1927,6 +1927,28 @@ class mod: ...
 from package import mod as mod
 # stubs require explicit re-export
 from package import mod as internal_detail
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedModule]
+from mod2 import unrelated  # E: Module "mod2" has no attribute "unrelated"
+
+[file mod1/__init__.pyi]
+[file mod1/unrelated.pyi]
+x: int
+
+[file mod2.pyi]
+from mod1 import unrelated
+[builtins fixtures/module.pyi]
+
+[case testNoReExportUnrelatedSiblingPrefix]
+from pkg.unrel import unrelated  # E: Module "pkg.unrel" has no attribute "unrelated"
+
+[file pkg/__init__.pyi]
+[file pkg/unrelated.pyi]
+x: int
+
+[file pkg/unrel.pyi]
+from pkg import unrelated
 [builtins fixtures/module.pyi]
 
 [case testNoReExportChildStubs]
@@ -3190,3 +3212,35 @@ from dir1 import *
 from .test2 import *
 [file dir1/test2.py]
 from test1 import aaaa  # E: Module "test1" has no attribute "aaaa"
+
+[case testIncompatibleOverrideFromCachedModuleIncremental]
+import b
+[file a.py]
+class Foo:
+    def frobnicate(self, *args, **kwargs): pass
+[file b.py]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self) -> None: pass
+[file b.py.2]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass
+[file b.py.3]
+from a import Foo
+class Bar(Foo):
+    def frobnicate(self, *args) -> None: pass # type: ignore[override] # I know
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[out1]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self) -> None
+[out2]
+tmp/b.py:3: error: Signature of "frobnicate" incompatible with supertype "Foo"
+tmp/b.py:3: note:      Superclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any, **kwargs: Any) -> Any
+tmp/b.py:3: note:      Subclass:
+tmp/b.py:3: note:          def frobnicate(self, *args: Any) -> None
