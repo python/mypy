@@ -866,8 +866,8 @@ class SemanticAnalyzer(
                 func.is_class = True
             if not func.arguments:
                 self.fail("Method must have at least one argument", func)
-            elif isinstance(functype, CallableType):
-                self_type = get_proper_type(functype.arg_types[0])
+            elif isinstance(func.type, CallableType):
+                self_type = get_proper_type(func.type.arg_types[0])
                 if isinstance(self_type, AnyType) and not self_type.type_of_any == TypeOfAny.explicit:
                     leading_type: Type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":

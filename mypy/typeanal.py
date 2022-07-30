@@ -47,7 +47,7 @@ from mypy.types import (
     FINAL_TYPE_NAMES,
     LITERAL_TYPE_NAMES,
     NEVER_NAMES,
-    SELF_TYPE_NAMES
+    SELF_TYPE_NAMES,
     TYPE_ALIAS_NAMES,
     AnyType,
     CallableArgument,

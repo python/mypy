@@ -4,6 +4,10 @@ from typing import Callable, Optional, Sequence, Union, cast
 
 from typing_extensions import TYPE_CHECKING
 
+from mypy.erasetype import erase_typevars
+from mypy.expandtype import freshen_function_type_vars, expand_type_by_instance
+from mypy.maptype import map_instance_to_supertype
+from mypy.messages import MessageBuilder
 from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
@@ -66,7 +70,7 @@ from mypy.types import (
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
 
-from mypy import state
+from mypy import state, meet, message_registry, subtypes
 
 
 class MemberContext:
