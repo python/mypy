@@ -1195,8 +1195,6 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_protocol(self) -> Iterator[Case]:
-        if sys.version_info < (3, 7):
-            return
         yield Case(
             stub="""
             from typing_extensions import Protocol

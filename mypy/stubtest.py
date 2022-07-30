@@ -302,12 +302,6 @@ def verify_mypyfile(
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
 
 
-if sys.version_info >= (3, 7):
-    _WrapperDescriptorType = types.WrapperDescriptorType
-else:
-    _WrapperDescriptorType = type(object.__init__)
-
-
 @verify.register(nodes.TypeInfo)
 def verify_typeinfo(
     stub: nodes.TypeInfo, runtime: MaybeMissing[Type[Any]], object_path: List[str]
@@ -378,7 +372,7 @@ def verify_typeinfo(
         # The vast majority of these are false positives.
         if not (
             isinstance(stub_to_verify, Missing)
-            and isinstance(runtime_attr, _WrapperDescriptorType)
+            and isinstance(runtime_attr, types.WrapperDescriptorType)
             and is_dunder(mangled_entry, exclude_special=True)
         ):
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
