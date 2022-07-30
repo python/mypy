@@ -1142,6 +1142,11 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__instancecheck__",
         "__subclasshook__",
         "__subclasscheck__",
+        # python2 only magic methods:
+        "__cmp__",
+        "__nonzero__",
+        "__unicode__",
+        "__div__",
         # Pickle methods
         "__setstate__",
         "__getstate__",
