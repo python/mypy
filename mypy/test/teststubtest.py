@@ -943,7 +943,7 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
-        # We *should* raise an error with the module name itself,
+        # We *should* emit an error with the module name itself,
         # if the stub *does* define __all__,
         # but the stub's __all__ is inconsistent with the runtime's __all__
         yield Case(

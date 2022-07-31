@@ -293,7 +293,6 @@ def verify_mypyfile(
         if "__all__" in stub.names:
             # Only verify the contents of the stub's __all__
             # if the stub actually defines __all__
-            # Otherwise we end up with duplicate errors when __all__ is missing
             yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
     else:
         runtime_all_as_set = None
