@@ -674,6 +674,7 @@ class BuildManager:
             if options.custom_typeshed_dir is not None:
                 # Check if module lives under custom_typeshed_dir subtree
                 custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+                path = os.path.abspath(path)
                 if os.path.commonpath((path, custom_typeshed_dir)) == custom_typeshed_dir:
                     continue
 
