@@ -316,7 +316,7 @@ def verify_mypyfile(
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
-        runtime_all_as_set | {"__all__"}
+        runtime_all_as_set
         if runtime_all_as_set is not None
         else {
             m
