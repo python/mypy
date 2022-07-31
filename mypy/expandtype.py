@@ -1,12 +1,36 @@
-from typing import Dict, Iterable, List, TypeVar, Mapping, cast, Union, Optional, Sequence
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar, Union, cast
 
 from mypy.types import (
-    Type, Instance, CallableType, TypeVisitor, UnboundType, AnyType,
-    NoneType, Overloaded, TupleType, TypedDictType, UnionType,
-    ErasedType, PartialType, DeletedType, UninhabitedType, TypeType, TypeVarId,
-    FunctionLike, TypeVarType, LiteralType, get_proper_type, ProperType,
-    TypeAliasType, ParamSpecType, TypeVarLikeType, Parameters, ParamSpecFlavor,
-    UnpackType, TypeVarTupleType, TypeList
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    FunctionLike,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecFlavor,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarId,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
 )
 from mypy.typevartuples import split_with_instance, split_with_prefix_and_suffix
 
@@ -50,7 +74,7 @@ def expand_type_by_instance(typ: Type, instance: Instance) -> Type:
         return expand_type(typ, variables)
 
 
-F = TypeVar('F', bound=FunctionLike)
+F = TypeVar("F", bound=FunctionLike)
 
 
 def freshen_function_type_vars(callee: F) -> F:
@@ -76,8 +100,7 @@ def freshen_function_type_vars(callee: F) -> F:
         return cast(F, fresh)
     else:
         assert isinstance(callee, Overloaded)
-        fresh_overload = Overloaded([freshen_function_type_vars(item)
-                                     for item in callee.items])
+        fresh_overload = Overloaded([freshen_function_type_vars(item) for item in callee.items])
         return cast(F, fresh_overload)
 
 
@@ -132,11 +155,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             # TODO: why does this case even happen? Instances aren't plural.
             return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
         elif isinstance(repl, ParamSpecType):
-            return repl.copy_modified(flavor=t.flavor, prefix=t.prefix.copy_modified(
-                arg_types=t.prefix.arg_types + repl.prefix.arg_types,
-                arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
-                arg_names=t.prefix.arg_names + repl.prefix.arg_names,
-            ))
+            return repl.copy_modified(
+                flavor=t.flavor,
+                prefix=t.prefix.copy_modified(
+                    arg_types=t.prefix.arg_types + repl.prefix.arg_types,
+                    arg_kinds=t.prefix.arg_kinds + repl.prefix.arg_kinds,
+                    arg_names=t.prefix.arg_names + repl.prefix.arg_names,
+                ),
+            )
         elif isinstance(repl, Parameters) or isinstance(repl, CallableType):
             # if the paramspec is *P.args or **P.kwargs:
             if t.flavor != ParamSpecFlavor.BARE:
@@ -148,10 +174,12 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 else:
                     return repl
             else:
-                return Parameters(t.prefix.arg_types + repl.arg_types,
-                                  t.prefix.arg_kinds + repl.arg_kinds,
-                                  t.prefix.arg_names + repl.arg_names,
-                                  variables=[*t.prefix.variables, *repl.variables])
+                return Parameters(
+                    t.prefix.arg_types + repl.arg_types,
+                    t.prefix.arg_kinds + repl.arg_kinds,
+                    t.prefix.arg_names + repl.arg_names,
+                    variables=[*t.prefix.variables, *repl.variables],
+                )
         else:
             # TODO: should this branch be removed? better not to fail silently
             return repl
@@ -220,12 +248,14 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                     arg_kinds=prefix.arg_kinds + t.arg_kinds,
                     arg_names=prefix.arg_names + t.arg_names,
                     ret_type=t.ret_type.accept(self),
-                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None))
+                    type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+                )
 
-        return t.copy_modified(arg_types=self.expand_types(t.arg_types),
-                               ret_type=t.ret_type.accept(self),
-                               type_guard=(t.type_guard.accept(self)
-                                           if t.type_guard is not None else None))
+        return t.copy_modified(
+            arg_types=self.expand_types(t.arg_types),
+            ret_type=t.ret_type.accept(self),
+            type_guard=(t.type_guard.accept(self) if t.type_guard is not None else None),
+        )
 
     def visit_overloaded(self, t: Overloaded) -> Type:
         items: List[CallableType] = []
@@ -284,6 +314,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         # After substituting for type variables in t.items,
         # some of the resulting types might be subtypes of others.
         from mypy.typeops import make_simplified_union  # asdf
+
         return make_simplified_union(self.expand_types(t.items), t.line, t.column)
 
     def visit_partial_type(self, t: PartialType) -> Type:

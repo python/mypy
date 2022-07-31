@@ -294,26 +294,14 @@ class TarFile:
     def chown(self, tarinfo: TarInfo, targetpath: StrOrBytesPath, numeric_owner: bool) -> None: ...  # undocumented
     def chmod(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
     def utime(self, tarinfo: TarInfo, targetpath: StrOrBytesPath) -> None: ...  # undocumented
-    if sys.version_info >= (3, 7):
-        def add(
-            self,
-            name: StrPath,
-            arcname: StrPath | None = ...,
-            recursive: bool = ...,
-            *,
-            filter: Callable[[TarInfo], TarInfo | None] | None = ...,
-        ) -> None: ...
-    else:
-        def add(
-            self,
-            name: StrPath,
-            arcname: StrPath | None = ...,
-            recursive: bool = ...,
-            exclude: Callable[[str], bool] | None = ...,
-            *,
-            filter: Callable[[TarInfo], TarInfo | None] | None = ...,
-        ) -> None: ...
-
+    def add(
+        self,
+        name: StrPath,
+        arcname: StrPath | None = ...,
+        recursive: bool = ...,
+        *,
+        filter: Callable[[TarInfo], TarInfo | None] | None = ...,
+    ) -> None: ...
     def addfile(self, tarinfo: TarInfo, fileobj: IO[bytes] | None = ...) -> None: ...
     def gettarinfo(
         self, name: StrOrBytesPath | None = ..., arcname: str | None = ..., fileobj: IO[bytes] | None = ...

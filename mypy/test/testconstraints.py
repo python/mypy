@@ -1,6 +1,6 @@
+from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint, infer_constraints
 from mypy.test.helpers import Suite
 from mypy.test.typefixture import TypeFixture
-from mypy.constraints import infer_constraints, SUBTYPE_OF, SUPERTYPE_OF, Constraint
 
 
 class ConstraintsSuite(Suite):
@@ -14,9 +14,5 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         for direction in [SUBTYPE_OF, SUPERTYPE_OF]:
             assert infer_constraints(fx.gt, fx.ga, direction) == [
-                Constraint(
-                    type_var=fx.t.id,
-                    op=direction,
-                    target=fx.a,
-                )
+                Constraint(type_var=fx.t.id, op=direction, target=fx.a)
             ]

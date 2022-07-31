@@ -30,11 +30,10 @@ Finally, it knows that __init__() is supposed to return None.
 
 import os
 import re
-
 from lib2to3.fixer_base import BaseFix
+from lib2to3.fixer_util import syms, token, touch_import
 from lib2to3.patcomp import compile_pattern
 from lib2to3.pytree import Leaf, Node
-from lib2to3.fixer_util import token, syms, touch_import
 
 
 class FixAnnotate(BaseFix):
@@ -50,13 +49,13 @@ class FixAnnotate(BaseFix):
               funcdef< 'def' name=any parameters< '(' [args=any] ')' > ':' suite=any+ >
               """
 
-    counter = None if not os.getenv('MAXFIXES') else int(os.getenv('MAXFIXES'))
+    counter = None if not os.getenv("MAXFIXES") else int(os.getenv("MAXFIXES"))
 
     def transform(self, node, results):
         if FixAnnotate.counter is not None:
             if FixAnnotate.counter <= 0:
                 return
-        suite = results['suite']
+        suite = results["suite"]
         children = suite[0].children
 
         # NOTE: I've reverse-engineered the structure of the parse tree.
@@ -80,7 +79,7 @@ class FixAnnotate(BaseFix):
 
         # Check if there's already an annotation.
         for ch in children:
-            if ch.prefix.lstrip().startswith('# type:'):
+            if ch.prefix.lstrip().startswith("# type:"):
                 return  # There's already a # type: comment here; don't change anything.
 
         # Compute the annotation
@@ -89,26 +88,28 @@ class FixAnnotate(BaseFix):
         # Insert '# type: {annot}' comment.
         # For reference, see lib2to3/fixes/fix_tuple_params.py in stdlib.
         if len(children) >= 2 and children[1].type == token.INDENT:
-            children[1].prefix = '{}# type: {}\n{}'.format(children[1].value, annot, children[1].prefix)
+            children[1].prefix = "{}# type: {}\n{}".format(
+                children[1].value, annot, children[1].prefix
+            )
             children[1].changed()
             if FixAnnotate.counter is not None:
                 FixAnnotate.counter -= 1
 
         # Also add 'from typing import Any' at the top.
-        if 'Any' in annot:
-            touch_import('typing', 'Any', node)
+        if "Any" in annot:
+            touch_import("typing", "Any", node)
 
     def make_annotation(self, node, results):
-        name = results['name']
+        name = results["name"]
         assert isinstance(name, Leaf), repr(name)
         assert name.type == token.NAME, repr(name)
         decorators = self.get_decorators(node)
         is_method = self.is_method(node)
-        if name.value == '__init__' or not self.has_return_exprs(node):
-            restype = 'None'
+        if name.value == "__init__" or not self.has_return_exprs(node):
+            restype = "None"
         else:
-            restype = 'Any'
-        args = results.get('args')
+            restype = "Any"
+        args = results.get("args")
         argtypes = []
         if isinstance(args, Node):
             children = args.children
@@ -118,48 +119,48 @@ class FixAnnotate(BaseFix):
             children = []
         # Interpret children according to the following grammar:
         # (('*'|'**')? NAME ['=' expr] ','?)*
-        stars = inferred_type = ''
+        stars = inferred_type = ""
         in_default = False
         at_start = True
         for child in children:
             if isinstance(child, Leaf):
-                if child.value in ('*', '**'):
+                if child.value in ("*", "**"):
                     stars += child.value
                 elif child.type == token.NAME and not in_default:
-                    if not is_method or not at_start or 'staticmethod' in decorators:
-                        inferred_type = 'Any'
+                    if not is_method or not at_start or "staticmethod" in decorators:
+                        inferred_type = "Any"
                     else:
                         # Always skip the first argument if it's named 'self'.
                         # Always skip the first argument of a class method.
-                        if  child.value == 'self' or 'classmethod' in decorators:
+                        if child.value == "self" or "classmethod" in decorators:
                             pass
                         else:
-                            inferred_type = 'Any'
-                elif child.value == '=':
+                            inferred_type = "Any"
+                elif child.value == "=":
                     in_default = True
-                elif in_default and child.value != ',':
+                elif in_default and child.value != ",":
                     if child.type == token.NUMBER:
-                        if re.match(r'\d+[lL]?$', child.value):
-                            inferred_type = 'int'
+                        if re.match(r"\d+[lL]?$", child.value):
+                            inferred_type = "int"
                         else:
-                            inferred_type = 'float'  # TODO: complex?
+                            inferred_type = "float"  # TODO: complex?
                     elif child.type == token.STRING:
-                        if child.value.startswith(('u', 'U')):
-                            inferred_type = 'unicode'
+                        if child.value.startswith(("u", "U")):
+                            inferred_type = "unicode"
                         else:
-                            inferred_type = 'str'
-                    elif child.type == token.NAME and child.value in ('True', 'False'):
-                        inferred_type = 'bool'
-                elif child.value == ',':
+                            inferred_type = "str"
+                    elif child.type == token.NAME and child.value in ("True", "False"):
+                        inferred_type = "bool"
+                elif child.value == ",":
                     if inferred_type:
                         argtypes.append(stars + inferred_type)
                     # Reset
-                    stars = inferred_type = ''
+                    stars = inferred_type = ""
                     in_default = False
                     at_start = False
         if inferred_type:
             argtypes.append(stars + inferred_type)
-        return '(' + ', '.join(argtypes) + ') -> ' + restype
+        return "(" + ", ".join(argtypes) + ") -> " + restype
 
     # The parse tree has a different shape when there is a single
     # decorator vs. when there are multiple decorators.
@@ -180,7 +181,7 @@ class FixAnnotate(BaseFix):
         results = {}
         if not self.decorated.match(node.parent, results):
             return []
-        decorators = results.get('dd') or [results['d']]
+        decorators = results.get("dd") or [results["d"]]
         decs = []
         for d in decorators:
             for child in d.children:

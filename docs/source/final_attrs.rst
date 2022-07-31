@@ -17,7 +17,7 @@ There is no runtime enforcement by the Python runtime.
 
     The examples in this page import ``Final`` and ``final`` from the
     ``typing`` module. These types were added to ``typing`` in Python 3.8,
-    but are also available for use in Python 2.7 and 3.4 - 3.7 via the
+    but are also available for use in Python 3.4 - 3.7 via the
     ``typing_extensions`` package.
 
 Final names

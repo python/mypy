@@ -7,7 +7,8 @@ from email.message import Message
 from importlib.abc import MetaPathFinder
 from os import PathLike
 from pathlib import Path
-from typing import Any, ClassVar, NamedTuple, Pattern, overload
+from re import Pattern
+from typing import Any, ClassVar, NamedTuple, overload
 
 __all__ = [
     "Distribution",
@@ -169,7 +170,7 @@ class MetadataPathFinder(DistributionFinder):
     def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
     if sys.version_info >= (3, 10):
         # Yes, this is an instance method that has argumend named "cls"
-        def invalidate_caches(cls) -> None: ...  # type: ignore
+        def invalidate_caches(cls) -> None: ...
 
 class PathDistribution(Distribution):
     def __init__(self, path: Path) -> None: ...

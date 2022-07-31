@@ -10,14 +10,14 @@ class Errors:
         self._errors = mypy.errors.Errors()
 
     def error(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='error', file=path)
+        self._errors.report(line, None, msg, severity="error", file=path)
         self.num_errors += 1
 
     def note(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='note', file=path)
+        self._errors.report(line, None, msg, severity="note", file=path)
 
     def warning(self, msg: str, path: str, line: int) -> None:
-        self._errors.report(line, None, msg, severity='warning', file=path)
+        self._errors.report(line, None, msg, severity="warning", file=path)
         self.num_warnings += 1
 
     def new_messages(self) -> List[str]:

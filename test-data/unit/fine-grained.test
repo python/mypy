@@ -2619,21 +2619,6 @@ class C(Generic[T]): pass
 main:3: error: "C" expects 2 type arguments, but 1 given
 ==
 
-[case testPrintStatement_python2]
-# flags: --py2
-import a
-[file a.py]
-def f(x): # type: (int) -> int
-    return 1
-print f(1)
-[file a.py.2]
-def f(x): # type: (int) -> int
-    return 1
-print f('')
-[out]
-==
-a.py:3: error: Argument 1 to "f" has incompatible type "str"; expected "int"
-
 [case testUnannotatedClass]
 import a
 [file a.py]
@@ -2836,21 +2821,6 @@ a.py:3: error: "int" not callable
 ==
 a.py:3: error: "int" not callable
 
-[case testMetaclassDefinition_python2]
-# flags: --py2
-import abc
-import m
-m.f()
-
-class A:
-    __metaclass__ = abc.ABCMeta
-[file m.py]
-def f(): pass
-[file m.py.2]
-def f(x=1): pass
-[out]
-==
-
 [case testMetaclassAttributes]
 import a
 [file a.py]
@@ -2954,64 +2924,6 @@ class M(type):
 [out]
 a.py:3: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 ==
-
-[case testMetaclassAttributesDirect_python2]
-# flags: --py2
-import a
-[file a.py]
-from mod import C
-def f():
-    # type: () -> None
-    C.x = int()
-[file mod.py]
-import submod
-class C:
-    __metaclass__ = submod.M
-[file submod.py]
-class M(type):
-    x = None  # type: int
-[file submod.py.2]
-class M(type):
-    x = None  # type: str
-[file submod.py.3]
-class M(type):
-    y = None  # type: str
-[file submod.py.4]
-class M(type):
-    x = None  # type: int
-[out]
-==
-a.py:4: error: Incompatible types in assignment (expression has type "int", variable has type "str")
-==
-a.py:4: error: "Type[C]" has no attribute "x"
-==
-
-[case testMetaclassOperators_python2]
-# flags: --py2
-import a
-[file a.py]
-from mod import C
-from typing import Type
-def f(arg):
-    # type: (Type[C]) -> None
-    arg + arg
-[file mod.py]
-import submod
-class C:
-    __metaclass__ = submod.M
-[file submod.py]
-class M(type):
-    def __add__(self, other):
-        # type: (M) -> M
-        pass
-[file submod.py.2]
-class M(type):
-    def __add__(self, other):
-        # type: (int) -> M
-        pass
-[out]
-==
-a.py:5: error: Unsupported operand types for + ("Type[C]" and "Type[C]")
 
 [case testFineMetaclassUpdate]
 import a
@@ -8086,70 +7998,6 @@ Func = Callable[..., Any]
 [out]
 ==
 
-[case testIdLikeDecoForwardCrash_python2]
-# flags: --py2
-import b
-[file b.py]
-from typing import Callable, Any, TypeVar
-
-F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
-def deco(func):  # type: ignore
-    # type: (F) -> F
-    pass
-
-@deco
-def test(x, y):
-    # type: (int, int) -> str
-    pass
-[file b.py.2]
-from typing import Callable, Any, TypeVar
-
-F = TypeVar('F_BadName', bound=Callable[..., Any])  # type: ignore
-def deco(func):  # type: ignore
-    # type: (F) -> F
-    pass
-
-@deco
-def test(x, y):
-    # type: (int, int) -> str
-    pass
-x = 1
-[out]
-==
-
-[case testIdLikeDecoForwardCrashAlias_python2]
-# flags: --py2
-import b
-[file b.py]
-from typing import Callable, Any, TypeVar
-
-F = TypeVar('F', bound=Func)
-def deco(func):
-    # type: (F) -> F
-    pass
-
-@deco
-def test(x, y):
-    # type: (int, int) -> str
-    pass
-Func = Callable[..., Any]
-[file b.py.2]
-from typing import Callable, Any, TypeVar
-
-F = TypeVar('F', bound=Func)
-def deco(func):
-    # type: (F) -> F
-    pass
-
-@deco
-def test(x, y):
-    # type: (int, int) -> str
-    pass
-x = 1
-Func = Callable[..., Any]
-[out]
-==
-
 -- Test cases for final qualifier
 
 [case testFinalAddFinalVarAssignFine]
@@ -8818,51 +8666,6 @@ main:2: note: Revealed type is "Literal['foo']"
 main:2: note: Revealed type is "Literal['foo']"
 ==
 main:2: note: Revealed type is "Literal[b'foo']"
-
-[case testLiteralFineGrainedStringConversionPython2]
-# flags: --python-version 2.7
-from mod1 import foo
-reveal_type(foo)
-[file mod1.py]
-from mod2 import bar
-foo = bar()
-[file mod2.py]
-from typing_extensions import Literal
-def bar():
-    # type: () -> Literal["foo"]
-    pass
-[file mod2.py.2]
-from typing_extensions import Literal
-def bar():
-    # type: () -> Literal[b"foo"]
-    pass
-[file mod2.py.3]
-from __future__ import unicode_literals
-from typing_extensions import Literal
-def bar():
-    # type: () -> Literal["foo"]
-    pass
-[file mod2.py.4]
-from __future__ import unicode_literals
-from typing_extensions import Literal
-def bar():
-    # type: () -> Literal[b"foo"]
-    pass
-[file mod2.py.5]
-from typing_extensions import Literal
-def bar():
-    # type: () -> Literal[u"foo"]
-    pass
-[out]
-main:3: note: Revealed type is "Literal['foo']"
-==
-main:3: note: Revealed type is "Literal['foo']"
-==
-main:3: note: Revealed type is "Literal[u'foo']"
-==
-main:3: note: Revealed type is "Literal['foo']"
-==
-main:3: note: Revealed type is "Literal[u'foo']"
 
 [case testReprocessModuleTopLevelWhileMethodDefinesAttr]
 import a
