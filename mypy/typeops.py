@@ -438,19 +438,22 @@ def make_simplified_union(
     to_union().
     """
     # Step 1: expand all nested unions
-    items = cast(List[ProperType], flatten_nested_unions(items, handle_type_alias_type=True))
+    items = flatten_nested_unions(items, handle_type_alias_type=True)
 
     # Step 2: remove redundant unions
     simplified_set = _remove_redundant_union_items(items, keep_erased)
 
     # Step 3: If more than one literal exists in the union, try to simplify
-    if contract_literals and sum(isinstance(item, LiteralType) for item in simplified_set) > 1:
+    if (
+        contract_literals
+        and sum(isinstance(get_proper_type(item), LiteralType) for item in simplified_set) > 1
+    ):
         simplified_set = try_contracting_literals_in_union(simplified_set)
 
-    return UnionType.make_union(simplified_set, line, column)
+    return get_proper_type(UnionType.make_union(simplified_set, line, column))
 
 
-def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) -> List[ProperType]:
+def _remove_redundant_union_items(items: List[Type], keep_erased: bool) -> List[Type]:
     from mypy.subtypes import is_proper_subtype
 
     removed: Set[int] = set()
@@ -461,10 +464,11 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
     # different enum types as try_expanding_sum_type_to_union works recursively and will
     # trigger intermediate simplifications that would render the fast path useless
     for i, item in enumerate(items):
+        proper_item = get_proper_type(item)
         if i in removed:
             continue
         # Avoid slow nested for loop for Union of Literal of strings/enums (issue #9169)
-        k = simple_literal_value_key(item)
+        k = simple_literal_value_key(proper_item)
         if k is not None:
             if k in seen:
                 removed.add(i)
@@ -485,6 +489,7 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
         # Keep track of the truthiness info for deleted subtypes which can be relevant
         cbt = cbf = False
         for j, tj in enumerate(items):
+            proper_tj = get_proper_type(tj)
             if (
                 i == j
                 # avoid further checks if this item was already marked redundant.
@@ -495,11 +500,11 @@ def _remove_redundant_union_items(items: List[ProperType], keep_erased: bool) ->
                 # However, if the current item is not a literal, it might plausibly be a
                 # supertype of other literals in the union, so we must check them again.
                 # This is an important optimization as is_proper_subtype is pretty expensive.
-                or (k is not None and is_simple_literal(tj))
+                or (k is not None and is_simple_literal(proper_tj))
             ):
                 continue
-            # actual redundancy checks
-            if is_redundant_literal_instance(item, tj) and is_proper_subtype(  # XXX?
+            # actual redundancy checks (XXX?)
+            if is_redundant_literal_instance(proper_item, proper_tj) and is_proper_subtype(
                 tj, item, keep_erased_types=keep_erased
             ):
                 # We found a redundant item in the union.
