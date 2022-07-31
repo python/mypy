@@ -362,7 +362,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 if (
                     isinstance(res, Instance)  # type: ignore[misc]
                     and len(res.args) != len(res.type.type_vars)
-                    and not self.defining_alias
+                    and (not self.defining_alias or self.nesting_level)
                 ):
                     fix_instance(
                         res,

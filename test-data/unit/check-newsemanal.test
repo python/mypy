@@ -3229,3 +3229,8 @@ class b:
     T = Union[Any]
 
 [builtins fixtures/tuple.pyi]
+
+[case testSelfReferentialSubscriptExpression]
+x = x[1]  # E: Cannot resolve name "x" (possible cyclic definition)
+y = 1[y]  # E: Value of type "int" is not indexable \
+          # E: Cannot determine type of "y"

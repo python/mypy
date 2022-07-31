@@ -3662,11 +3662,13 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
         else:
+            orig_lvalue = lvalue_type
             lvalue_type = get_proper_type(lvalue_type)
             always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
             rvalue_type = self.expr_checker.accept(
                 rvalue, lvalue_type, always_allow_any=always_allow_any
             )
+            orig_rvalue = rvalue_type
             rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
@@ -3674,8 +3676,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
             elif lvalue_type:
                 self.check_subtype(
-                    rvalue_type,
-                    lvalue_type,
+                    # Preserve original aliases for error messages when possible.
+                    orig_rvalue,
+                    orig_lvalue,
                     context,
                     msg,
                     f"{rvalue_name} has type",
@@ -5568,7 +5571,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             code = msg.code
         else:
             msg_text = msg
+        orig_subtype = subtype
         subtype = get_proper_type(subtype)
+        orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(
             subtype, supertype, context, msg_text, subtype_label, supertype_label, code=code
@@ -5580,7 +5585,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         note_msg = ""
         notes: List[str] = []
         if subtype_label is not None or supertype_label is not None:
-            subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
+            subtype_str, supertype_str = format_type_distinctly(orig_subtype, orig_supertype)
             if subtype_label is not None:
                 extra_info.append(subtype_label + " " + subtype_str)
             if supertype_label is not None:

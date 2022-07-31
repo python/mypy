@@ -1,0 +1,59 @@
+[case testRecursiveAliasBasic]
+# flags: --enable-recursive-aliases
+from typing import Dict, List, Union, TypeVar, Sequence
+
+JSON = Union[str, List[JSON], Dict[str, JSON]]
+
+x: JSON = ["foo", {"bar": "baz"}]
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[...], builtins.dict[builtins.str, ...]]"
+if isinstance(x, list):
+    x = x[0]
+
+class Bad: ...
+x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "Union[str, List[JSON], Dict[str, JSON]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasBasicGenericSubtype]
+# flags: --enable-recursive-aliases
+from typing import Union, TypeVar, Sequence, List
+
+T = TypeVar("T")
+
+Nested = Sequence[Union[T, Nested[T]]]
+
+class Bad: ...
+x: Nested[int]
+y: Nested[Bad]
+x = y  # E: Incompatible types in assignment (expression has type "Nested[Bad]", variable has type "Nested[int]")
+
+NestedOther = Sequence[Union[T, Nested[T]]]
+
+xx: Nested[int]
+yy: NestedOther[bool]
+xx = yy  # OK
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasBasicGenericInference]
+# flags: --enable-recursive-aliases
+from typing import Union, TypeVar, Sequence, List
+
+T = TypeVar("T")
+
+Nested = Sequence[Union[T, Nested[T]]]
+
+def flatten(arg: Nested[T]) -> List[T]:
+    res: List[T] = []
+    for item in arg:
+        if isinstance(item, Sequence):
+            res.extend(flatten(item))
+        else:
+            res.append(item)
+    return res
+
+reveal_type(flatten([1, [2, [3]]]))  # N: Revealed type is "builtins.list[builtins.int]"
+
+class Bad: ...
+x: Nested[int] = [1, [2, [3]]]
+x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
+[builtins fixtures/isinstancelist.pyi]

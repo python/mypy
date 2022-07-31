@@ -55,6 +55,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
 )
@@ -436,17 +437,8 @@ def make_simplified_union(
     back into a sum type. Set it to False when called by try_expanding_sum_type_
     to_union().
     """
-    items = get_proper_types(items)
-
     # Step 1: expand all nested unions
-    while any(isinstance(typ, UnionType) for typ in items):
-        all_items: List[ProperType] = []
-        for typ in items:
-            if isinstance(typ, UnionType):
-                all_items.extend(get_proper_types(typ.items))
-            else:
-                all_items.append(typ)
-        items = all_items
+    items = cast(List[ProperType], flatten_nested_unions(items, handle_type_alias_type=True))
 
     # Step 2: remove redundant unions
     simplified_set = _remove_redundant_union_items(items, keep_erased)

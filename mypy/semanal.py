@@ -450,6 +450,14 @@ class SemanticAnalyzer(
         # current SCC or top-level function.
         self.deferral_debug_context: List[Tuple[str, int]] = []
 
+        # This is needed to properly support recursive type aliases. The problem is that
+        # Foo[Bar] could mean three things depending on context: a target for type alias,
+        # a normal index expression (including enum index), or a type application.
+        # The latter is particularly problematic as it can falsely create incomplete
+        # refs while analysing rvalues of type aliases. To avoid this we first analyse
+        # rvalues while temporarily setting this to True.
+        self.basic_type_applications = False
+
     # mypyc doesn't properly handle implementing an abstractproperty
     # with a regular attribute so we make them properties
     @property
@@ -2286,7 +2294,14 @@ class SemanticAnalyzer(
             return
 
         tag = self.track_incomplete_refs()
-        s.rvalue.accept(self)
+
+        # Here we have a chicken and egg problem: at this stage we can't call
+        # can_be_type_alias(), because we have not enough information about rvalue.
+        # But we can't use a full visit because it may emit extra incomplete refs (namely
+        # when analysing any type applications there) thus preventing the further analysis.
+        # To break the tie, we first analyse rvalue partially, if it can be a type alias.
+        with self.basic_type_applications_set(s):
+            s.rvalue.accept(self)
         if self.found_incomplete_ref(tag) or self.should_wait_rhs(s.rvalue):
             # Initializer couldn't be fully analyzed. Defer the current node and give up.
             # Make sure that if we skip the definition of some local names, they can't be
@@ -2326,6 +2341,10 @@ class SemanticAnalyzer(
         s.is_alias_def = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
+        if self.can_possibly_be_indexed_alias(s):
+            # Do a full visit if this is not a type alias after all. This will give
+            # consistent error messages, and it is safe as semantic analyzer is idempotent.
+            s.rvalue.accept(self)
         s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -2431,6 +2450,32 @@ class SemanticAnalyzer(
             ):
                 return True
         return False
+
+    @contextmanager
+    def basic_type_applications_set(self, s: AssignmentStmt) -> Iterator[None]:
+        old = self.basic_type_applications
+        self.basic_type_applications = self.can_possibly_be_indexed_alias(s)
+        try:
+            yield
+        finally:
+            self.basic_type_applications = old
+
+    def can_possibly_be_indexed_alias(self, s: AssignmentStmt) -> bool:
+        """Like can_be_type_alias(), but simpler and doesn't require analyzed rvalue.
+
+        Instead, use lvalues/annotations structure to figure out whether this can
+        potentially be a type alias definition.
+        """
+        if len(s.lvalues) > 1:
+            return False
+        if not isinstance(s.lvalues[0], NameExpr):
+            return False
+        if s.unanalyzed_type is not None and not self.is_pep_613(s):
+            return False
+        if not isinstance(s.rvalue, IndexExpr):
+            return False
+        # Something that looks like Foo = Bar[Baz, ...]
+        return True
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
         """Does this expression refer to a type?
@@ -2908,6 +2953,13 @@ class SemanticAnalyzer(
             qualified_tvars = []
         return typ, alias_tvars, depends_on, qualified_tvars
 
+    def is_pep_613(self, s: AssignmentStmt) -> bool:
+        if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
+            lookup = self.lookup_qualified(s.unanalyzed_type.name, s, suppress_errors=True)
+            if lookup and lookup.fullname in TYPE_ALIAS_NAMES:
+                return True
+        return False
+
     def check_and_set_up_type_alias(self, s: AssignmentStmt) -> bool:
         """Check if assignment creates a type alias and set it up as needed.
 
@@ -2922,11 +2974,7 @@ class SemanticAnalyzer(
             # First rule: Only simple assignments like Alias = ... create aliases.
             return False
 
-        pep_613 = False
-        if s.unanalyzed_type is not None and isinstance(s.unanalyzed_type, UnboundType):
-            lookup = self.lookup_qualified(s.unanalyzed_type.name, s, suppress_errors=True)
-            if lookup and lookup.fullname in TYPE_ALIAS_NAMES:
-                pep_613 = True
+        pep_613 = self.is_pep_613(s)
         if not pep_613 and s.unanalyzed_type is not None:
             # Second rule: Explicit type (cls: Type[A] = A) always creates variable, not alias.
             # unless using PEP 613 `cls: TypeAlias = A`
@@ -2990,9 +3038,16 @@ class SemanticAnalyzer(
             )
             if not res:
                 return False
-            # TODO: Maybe we only need to reject top-level placeholders, similar
-            #       to base classes.
-            if self.found_incomplete_ref(tag) or has_placeholder(res):
+            if self.options.enable_recursive_aliases:
+                # Only marking incomplete for top-level placeholders makes recursive aliases like
+                # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
+                # definitions, allowing `class str(Sequence[str]): ...`
+                incomplete_target = isinstance(res, ProperType) and isinstance(
+                    res, PlaceholderType
+                )
+            else:
+                incomplete_target = has_placeholder(res)
+            if self.found_incomplete_ref(tag) or incomplete_target:
                 # Since we have got here, we know this must be a type alias (incomplete refs
                 # may appear in nested positions), therefore use becomes_typeinfo=True.
                 self.mark_incomplete(lvalue.name, rvalue, becomes_typeinfo=True)
@@ -4498,6 +4553,9 @@ class SemanticAnalyzer(
         tag = self.track_incomplete_refs()
         self.analyze_type_expr(index)
         if self.found_incomplete_ref(tag):
+            return None
+        if self.basic_type_applications:
+            # Postpone the rest until we are sure this is not a r.h.s. of a type alias.
             return None
         types: List[Type] = []
         if isinstance(index, TupleExpr):
