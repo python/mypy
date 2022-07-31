@@ -3678,7 +3678,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 self.check_subtype(
                     # Preserve original aliases for error messages when possible.
                     orig_rvalue,
-                    orig_lvalue,
+                    orig_lvalue or lvalue_type,
                     context,
                     msg,
                     f"{rvalue_name} has type",

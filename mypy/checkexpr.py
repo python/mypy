@@ -138,7 +138,6 @@ from mypy.types import (
     StarType,
     TupleType,
     Type,
-    TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
