@@ -441,7 +441,7 @@ def make_simplified_union(
     items = flatten_nested_unions(items, handle_type_alias_type=True)
 
     # Step 2: remove redundant unions
-    simplified_set = _remove_redundant_union_items(items, keep_erased)
+    simplified_set: Sequence[Type] = _remove_redundant_union_items(items, keep_erased)
 
     # Step 3: If more than one literal exists in the union, try to simplify
     if (
