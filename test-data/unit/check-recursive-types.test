@@ -57,3 +57,18 @@ class Bad: ...
 x: Nested[int] = [1, [2, [3]]]
 x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasNewStyleSupported]
+# flags: --enable-recursive-aliases
+from test import A
+
+x: A
+if isinstance(x, list):
+    reveal_type(x[0])  # N: Revealed type is "Union[builtins.int, builtins.list[Union[builtins.int, builtins.list[...]]]]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[file test.pyi]
+A = int | list[A]
+
+[builtins fixtures/isinstancelist.pyi]

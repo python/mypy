@@ -2309,6 +2309,10 @@ class SemanticAnalyzer(
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
+        if self.can_possibly_be_indexed_alias(s):
+            # Now re-visit those rvalues that were we skipped type applications above.
+            # This should be safe as generally semantic analyzer is idempotent.
+            s.rvalue.accept(self)
 
         # The r.h.s. is now ready to be classified, first check if it is a special form:
         special_form = False
@@ -2341,10 +2345,6 @@ class SemanticAnalyzer(
         s.is_alias_def = False
 
         # OK, this is a regular assignment, perform the necessary analysis steps.
-        if self.can_possibly_be_indexed_alias(s):
-            # Do a full visit if this is not a type alias after all. This will give
-            # consistent error messages, and it is safe as semantic analyzer is idempotent.
-            s.rvalue.accept(self)
         s.is_final_def = self.unwrap_final(s)
         self.analyze_lvalues(s)
         self.check_final_implicit_def(s)
@@ -2472,7 +2472,7 @@ class SemanticAnalyzer(
             return False
         if s.unanalyzed_type is not None and not self.is_pep_613(s):
             return False
-        if not isinstance(s.rvalue, IndexExpr):
+        if not isinstance(s.rvalue, (IndexExpr, OpExpr)):
             return False
         # Something that looks like Foo = Bar[Baz, ...]
         return True
