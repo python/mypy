@@ -29,6 +29,7 @@ from mypy.types import (
     PartialType,
     PlaceholderType,
     ProperType,
+    SelfType,
     TupleType,
     Type,
     TypeAliasType,
@@ -278,6 +279,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
         return self.s
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
+        if isinstance(t, SelfType) and isinstance(self.s, Instance) and is_subtype(self.s, t):
+            return mypy.typeops.make_simplified_union([self.s, t])
         if isinstance(self.s, TypeVarType) and self.s.id == t.id:
             return self.s
         else:
