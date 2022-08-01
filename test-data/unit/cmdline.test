@@ -1465,3 +1465,16 @@ sys.path = path
 mypy: "typing.py" shadows library module "typing"
 note: A user-defined top-level module with name "typing" is not supported
 == Return code: 2
+
+[case testCustomTypeshedDirWithRelativePathDoesNotCrash]
+# cmd: mypy --custom-typeshed-dir dir dir/typing.pyi
+[file dir/stdlib/abc.pyi]
+[file dir/stdlib/builtins.pyi]
+[file dir/stdlib/sys.pyi]
+[file dir/stdlib/types.pyi]
+[file dir/stdlib/typing.pyi]
+[file dir/stdlib/typing_extensions.pyi]
+[file dir/stdlib/VERSIONS]
+[out]
+Failed to find builtin module mypy_extensions, perhaps typeshed is broken?
+== Return code: 2
