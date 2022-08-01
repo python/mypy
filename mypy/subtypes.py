@@ -65,19 +65,22 @@ IS_SETTABLE: Final = 1
 IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 
-TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
+TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
 
 
-def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
+# TODO: should we also pass other flags here?
+def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
     if variance == COVARIANT:
-        return is_subtype(lefta, righta)
+        return is_subtype(lefta, righta, proper_subtype=proper_subtype)
     elif variance == CONTRAVARIANT:
-        return is_subtype(righta, lefta)
+        return is_subtype(righta, lefta, proper_subtype=proper_subtype)
     else:
+        if proper_subtype:
+            return mypy.sametypes.is_same_type(lefta, righta)
         return is_equivalent(lefta, righta)
 
 
-def ignore_type_parameter(s: Type, t: Type, v: int) -> bool:
+def ignore_type_parameter(s: Type, t: Type, v: int, is_proper: bool) -> bool:
     return True
 
 
@@ -411,6 +414,10 @@ class SubtypeVisitor(TypeVisitor[bool]):
             ) and not self.subtype_context.ignore_declared_variance:
                 # Map left type to corresponding right instances.
                 t = map_instance_to_supertype(left, right.type)
+                if self.subtype_context.erase_instances:
+                    erased = erase_type(t)
+                    assert isinstance(erased, Instance)
+                    t = erased
                 nominal = True
                 if right.type.has_type_var_tuple_type:
                     left_prefix, left_middle, left_suffix = split_with_instance(left)
@@ -486,10 +493,14 @@ class SubtypeVisitor(TypeVisitor[bool]):
                     type_params = zip(t.args, right.args, right.type.defn.type_vars)
                 for lefta, righta, tvar in type_params:
                     if isinstance(tvar, TypeVarType):
-                        if not self.check_type_parameter(lefta, righta, tvar.variance):
+                        if not self.check_type_parameter(
+                            lefta, righta, tvar.variance, self.subtype_context.proper_subtype
+                        ):
                             nominal = False
                     else:
-                        if not self.check_type_parameter(lefta, righta, COVARIANT):
+                        if not self.check_type_parameter(
+                            lefta, righta, COVARIANT, self.subtype_context.proper_subtype
+                        ):
                             nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
@@ -501,13 +512,15 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = right.item
             if isinstance(item, TupleType):
                 item = mypy.typeops.tuple_fallback(item)
-            if is_named_instance(left, "builtins.type"):
-                return self._is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
-            if left.type.is_metaclass():
-                if isinstance(item, AnyType):
-                    return True
-                if isinstance(item, Instance):
-                    return is_named_instance(item, "builtins.object")
+            # This is a bit arbitrary, we should only skip Any-related cases.
+            if not self.subtype_context.proper_subtype:
+                if is_named_instance(left, "builtins.type"):
+                    return self._is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
+                if left.type.is_metaclass():
+                    if isinstance(item, AnyType):
+                        return True
+                    if isinstance(item, Instance):
+                        return is_named_instance(item, "builtins.object")
         if isinstance(right, LiteralType) and left.last_known_value is not None:
             return self._is_subtype(left.last_known_value, right)
         if isinstance(right, CallableType):
@@ -804,7 +817,11 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
-            # This is unsound, we don't check the __init__ signature.
+            # This is unsound, we don't check the full __init__ signature.
+            if self.subtype_context.proper_subtype and any(
+                isinstance(get_proper_type(t), AnyType) for t in right.arg_types
+            ):
+                return False
             return self._is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
             if right.type.fullname in ["builtins.object", "builtins.type"]:
