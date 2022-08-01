@@ -4555,7 +4555,7 @@ class SemanticAnalyzer(
         if self.found_incomplete_ref(tag):
             return None
         if self.basic_type_applications:
-            # Postpone the rest until we are sure this is not a r.h.s. of a type alias.
+            # Postpone the rest until we have more information (for r.h.s. of an assignment)
             return None
         types: List[Type] = []
         if isinstance(index, TupleExpr):
