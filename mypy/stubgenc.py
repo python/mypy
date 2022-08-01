@@ -262,7 +262,7 @@ def generate_c_function_stub(
                     )
                 )
                 output.append('    """{docstr}"""'.format(docstr=docstr.strip()))
-                output.append('    ...')
+                output.append("    ...")
             else:
                 output.append(
                     "def {function}({args}) -> {ret}: ...".format(
