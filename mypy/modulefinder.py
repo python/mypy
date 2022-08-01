@@ -47,8 +47,6 @@ StdlibVersions: _TypeAlias = Dict[str, Tuple[Tuple[int, int], Optional[Tuple[int
 
 PYTHON_EXTENSIONS: Final = [".pyi", ".py"]
 
-PYTHON2_STUB_DIR: Final = "@python2"
-
 
 # TODO: Consider adding more reasons here?
 # E.g. if we deduce a module would likely be found if the user were
@@ -192,7 +190,6 @@ class FindModuleCache:
         self.stdlib_py_versions = stdlib_py_versions or load_stdlib_py_versions(
             custom_typeshed_dir
         )
-        self.python_major_ver = 3 if options is None else options.python_version[0]
 
     def clear(self) -> None:
         self.results.clear()
@@ -291,9 +288,6 @@ class FindModuleCache:
             for name in contents:
                 name = os.path.splitext(name)[0]
                 components.setdefault(name, []).append(dir)
-
-        if self.python_major_ver == 2:
-            components = {id: filter_redundant_py2_dirs(dirs) for id, dirs in components.items()}
 
         self.initial_components[lib_path] = components
         return components.get(id, [])
@@ -439,12 +433,6 @@ class FindModuleCache:
         for pkg_dir in self.search_paths.package_path:
             stub_name = components[0] + "-stubs"
             stub_dir = os.path.join(pkg_dir, stub_name)
-            if self.python_major_ver == 2:
-                alt_stub_name = components[0] + "-python2-stubs"
-                alt_stub_dir = os.path.join(pkg_dir, alt_stub_name)
-                if fscache.isdir(alt_stub_dir):
-                    stub_name = alt_stub_name
-                    stub_dir = alt_stub_dir
             if fscache.isdir(stub_dir) and self._is_compatible_stub_package(stub_dir):
                 stub_typed_file = os.path.join(stub_dir, "py.typed")
                 stub_components = [stub_name] + components[1:]
@@ -506,11 +494,7 @@ class FindModuleCache:
             # Prefer package over module, i.e. baz/__init__.py* over baz.py*.
             for extension in PYTHON_EXTENSIONS:
                 path = base_path + sepinit + extension
-                suffix = "-stubs"
-                if self.python_major_ver == 2:
-                    if os.path.isdir(base_path + "-python2-stubs"):
-                        suffix = "-python2-stubs"
-                path_stubs = base_path + suffix + sepinit + extension
+                path_stubs = base_path + "-stubs" + sepinit + extension
                 if fscache.isfile_case(path, dir_prefix):
                     has_init = True
                     if verify and not verify_module(fscache, id, path, dir_prefix):
@@ -591,10 +575,7 @@ class FindModuleCache:
         if os.path.isfile(metadata_fnam):
             with open(metadata_fnam, "rb") as f:
                 metadata = tomllib.load(f)
-            if self.python_major_ver == 2:
-                return bool(metadata.get("python2", False))
-            else:
-                return bool(metadata.get("python3", True))
+            return bool(metadata.get("python3", True))
         return True
 
     def find_modules_recursive(self, module: str) -> List[BuildSource]:
@@ -726,10 +707,6 @@ def default_lib_path(
             data_dir = auto
         typeshed_dir = os.path.join(data_dir, "typeshed", "stdlib")
         mypy_extensions_dir = os.path.join(data_dir, "typeshed", "stubs", "mypy-extensions")
-    if pyversion[0] == 2:
-        # Python 2 variants of certain stdlib modules are in a separate directory.
-        python2_dir = os.path.join(typeshed_dir, PYTHON2_STUB_DIR)
-        path.append(python2_dir)
     path.append(typeshed_dir)
 
     # Get mypy-extensions stubs from typeshed, since we treat it as an
@@ -780,25 +757,6 @@ def get_search_dirs(python_executable: Optional[str]) -> Tuple[List[str], List[s
                 [f"mypy: Invalid python executable '{python_executable}': {reason}"]
             ) from err
     return sys_path, site_packages
-
-
-def add_py2_mypypath_entries(mypypath: List[str]) -> List[str]:
-    """Add corresponding @python2 subdirectories to mypypath.
-
-    For each path entry 'x', add 'x/@python2' before 'x' if the latter is
-    a directory.
-    """
-    result = []
-    for item in mypypath:
-        python2_dir = os.path.join(item, PYTHON2_STUB_DIR)
-        if os.path.isdir(python2_dir):
-            # @python2 takes precedence, but we also look into the parent
-            # directory.
-            result.append(python2_dir)
-            result.append(item)
-        else:
-            result.append(item)
-    return result
 
 
 def compute_search_paths(
@@ -863,11 +821,6 @@ def compute_search_paths(
     if alt_lib_path:
         mypypath.insert(0, alt_lib_path)
 
-    # When type checking in Python 2 module, add @python2 subdirectories of
-    # path items into the search path.
-    if options.python_version[0] == 2:
-        mypypath = add_py2_mypypath_entries(mypypath)
-
     sys_path, site_packages = get_search_dirs(options.python_executable)
     # We only use site packages for this check
     for site in site_packages:
@@ -919,19 +872,6 @@ def load_stdlib_py_versions(custom_typeshed_dir: Optional[str]) -> StdlibVersion
                 parse_version(versions[1]) if len(versions) >= 2 and versions[1].strip() else None
             )
             result[module] = min_version, max_version
-
-    # Modules that are Python 2 only or have separate Python 2 stubs
-    # have stubs in @python2/ and may need an override.
-    python2_dir = os.path.join(stdlib_dir, PYTHON2_STUB_DIR)
-    try:
-        for fnam in os.listdir(python2_dir):
-            fnam = fnam.replace(".pyi", "")
-            max_version = result.get(fnam, ((2, 7), None))[1]
-            result[fnam] = (2, 7), max_version
-    except FileNotFoundError:
-        # Ignore error to support installations where Python 2 stubs aren't available.
-        pass
-
     return result
 
 
@@ -944,23 +884,4 @@ def typeshed_py_version(options: Options) -> Tuple[int, int]:
     """Return Python version used for checking whether module supports typeshed."""
     # Typeshed no longer covers Python 3.x versions before 3.6, so 3.6 is
     # the earliest we can support.
-    if options.python_version[0] >= 3:
-        return max(options.python_version, (3, 6))
-    else:
-        return options.python_version
-
-
-def filter_redundant_py2_dirs(dirs: List[str]) -> List[str]:
-    """If dirs has <dir>/@python2 followed by <dir>, filter out the latter."""
-    if len(dirs) <= 1 or not any(d.endswith(PYTHON2_STUB_DIR) for d in dirs):
-        # Fast path -- nothing to do
-        return dirs
-    seen = []
-    result = []
-    for d in dirs:
-        if d.endswith(PYTHON2_STUB_DIR):
-            seen.append(os.path.dirname(d))
-            result.append(d)
-        elif d not in seen:
-            result.append(d)
-    return result
+    return max(options.python_version, (3, 6))
