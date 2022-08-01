@@ -932,7 +932,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             self.add(f"({', '.join(base_types)})")
         self.add(":\n")
         self._indent += "    "
-        if o.docstring:
+        if self._include_docstrings and o.docstring:
             self.add(f'{self._indent}"""{o.docstring}"""\n')
         n = len(self._output)
         self._vars.append([])
