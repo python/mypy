@@ -335,6 +335,8 @@ class TypeJoinVisitor(TypeVisitor[ProperType]):
             return join_types(t, self.s)
         elif isinstance(self.s, LiteralType):
             return join_types(t, self.s)
+        elif isinstance(self.s, SelfType):
+            return join_types(t, self.s)
         else:
             return self.default(self.s)
 
