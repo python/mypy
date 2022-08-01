@@ -255,13 +255,14 @@ def generate_c_function_stub(
                 output.append("@overload")
             if include_docstrings and docstr:
                 output.append(
-                    'def {function}({args}) -> {ret}:\n"""{docstr}"""\n...'.format(
+                    "def {function}({args}) -> {ret}:".format(
                         function=name,
                         args=", ".join(sig),
                         ret=strip_or_import(signature.ret_type, module, imports),
-                        docstr=docstr,
                     )
                 )
+                output.append('    """{docstr}"""'.format(docstr=docstr.strip()))
+                output.append('    ...')
             else:
                 output.append(
                     "def {function}({args}) -> {ret}: ...".format(
