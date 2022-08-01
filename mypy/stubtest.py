@@ -1183,6 +1183,8 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__nonzero__",
         "__unicode__",
         "__div__",
+        # cython methods
+        "__pyx_vtable__",
         # Pickle methods
         "__setstate__",
         "__getstate__",
