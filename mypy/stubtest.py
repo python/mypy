@@ -246,6 +246,8 @@ def verify(
 def _verify_exported_names(
     object_path: List[str], stub: nodes.MypyFile, runtime_all_as_set: Set[str]
 ) -> Iterator[Error]:
+    # note that this includes the case the stub simply defines `__all__: list[str]`
+    assert "__all__" in stub.names
     public_names_in_stub = {m for m, o in stub.names.items() if o.module_public}
     names_in_stub_not_runtime = sorted(public_names_in_stub - runtime_all_as_set)
     names_in_runtime_not_stub = sorted(runtime_all_as_set - public_names_in_stub)
@@ -254,16 +256,13 @@ def _verify_exported_names(
     yield Error(
         object_path,
         (
-            "module: names exported from the stub "
-            "do not correspond to the names exported at runtime.\n"
-            "(Note: This is probably either due to an inaccurate "
-            "`__all__` in the stub, "
-            "or due to a name being declared in `__all__` "
-            "but not actually defined in the stub.)"
+            "names exported from the stub do not correspond to the names exported at runtime. "
+            "This is probably due to an inaccurate `__all__` in the stub or things being missing from the stub."
         ),
-        # pass in MISSING instead of the stub and runtime objects,
-        # as the line numbers aren't very relevant here,
-        # and it makes for a prettier error message.
+        # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
+        # relevant here, and it makes for a prettier error message
+        # This means this error will be ignored when using `--ignore-missing-stub`, which is
+        # desirable in at least the `names_in_runtime_not_stub` case
         stub_object=MISSING,
         runtime_object=MISSING,
         stub_desc=(
