@@ -119,7 +119,7 @@ void bind_basics(py::module& basics) {
   using namespace basics;
 
   // Functions
-  basics.def("answer", &answer);
+  basics.def("answer", &answer, "answer docstring"); // tests explicit docstrings
   basics.def("sum", &sum);
   basics.def("midpoint", &midpoint, py::arg("left"), py::arg("right"));
   basics.def("weighted_midpoint", weighted_midpoint, py::arg("left"), py::arg("right"), py::arg("alpha")=0.5);
