@@ -948,6 +948,37 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
+        yield Case(
+            stub="Z: int",
+            runtime="""
+            __all__ = []
+            Z = 5""",
+            error=None,
+        )
+
+    @collect_cases
+    def test_all_in_stub_not_at_runtime(self) -> Iterator[Case]:
+        yield Case(stub="__all__ = ()", runtime="", error="__all__")
+
+    @collect_cases
+    def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
+        # We *should* emit an error with the module name itself,
+        # if the stub *does* define __all__,
+        # but the stub's __all__ is inconsistent with the runtime's __all__
+        yield Case(
+            stub="""
+            __all__ = ['foo']
+            foo: str
+            """,
+            runtime="""
+            __all__ = []
+            foo = 'foo'
+            """,
+            error="",
+        )
+
+    @collect_cases
     def test_missing(self) -> Iterator[Case]:
         yield Case(stub="x = 5", runtime="", error="x")
         yield Case(stub="def f(): ...", runtime="", error="f")
