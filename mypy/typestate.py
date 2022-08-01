@@ -109,6 +109,12 @@ class TypeState:
         return False
 
     @staticmethod
+    def get_assumptions(is_proper: bool) -> List[Tuple[TypeAliasType, TypeAliasType]]:
+        if is_proper:
+            return TypeState._assuming_proper
+        return TypeState._assuming
+
+    @staticmethod
     def reset_all_subtype_caches() -> None:
         """Completely reset all known subtype caches."""
         TypeState._subtype_caches.clear()
