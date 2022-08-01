@@ -5,7 +5,7 @@ from typing import Callable, Optional, Sequence, Union, cast
 from typing_extensions import TYPE_CHECKING
 
 from mypy.erasetype import erase_typevars
-from mypy.expandtype import freshen_function_type_vars, expand_type_by_instance
+from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
 from mypy.maptype import map_instance_to_supertype
 from mypy.messages import MessageBuilder
 from mypy.nodes import (
@@ -70,7 +70,7 @@ from mypy.types import (
 if TYPE_CHECKING:  # import for forward declaration only
     import mypy.checker
 
-from mypy import state, meet, message_registry, subtypes
+from mypy import meet, message_registry, state, subtypes
 
 
 class MemberContext:
@@ -910,6 +910,9 @@ def analyze_class_attribute_access(
                 # Exception: access on Type[...], including first argument of class methods is OK.
                 if isinstance(t, SelfType):
                     return mx.named_type(info.fullname)
+                if isinstance(t, UnionType):
+                    if any(isinstance(item, SelfType) for item in t.items):
+                        return make_simplified_union(t.items + [mx.named_type(info.fullname)])
                 elif not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
                         message = message_registry.GENERIC_CLASS_VAR_ACCESS
