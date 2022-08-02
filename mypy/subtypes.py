@@ -68,6 +68,11 @@ TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
 
 
 def is_same_type(left: Type, right: Type) -> bool:
+    """Are these types proper subtypes of each other?
+
+    With few exceptions, like int vs int64, these will be literally same
+    type (i.e. semantically exchangeable in all context).
+    """
     return is_proper_subtype(left, right) and is_proper_subtype(right, left)
 
 

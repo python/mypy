@@ -3004,6 +3004,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
+        # We use type equality instead of is_same_type() to account for types that are proper
+        # subtypes of each other but have different runtime representation, like int vs int64.
         if op_name in operators.op_methods_that_shortcut and left_type == right_type:
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
