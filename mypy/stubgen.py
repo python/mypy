@@ -1560,7 +1560,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     assert mod.path is not None, "Not found module was not skipped"
     with open(mod.path, "rb") as f:
         data = f.read()
-    source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
+    source = mypy.util.decode_python_encoding(data)
     errors = Errors()
     mod.ast = mypy.parse.parse(
         source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options
