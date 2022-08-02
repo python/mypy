@@ -9,7 +9,7 @@ import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import ARG_STAR, ARG_STAR2, CONTRAVARIANT, COVARIANT, ArgKind
+from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -733,8 +733,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 cactual_ps = cactual.param_spec()
 
                 if not cactual_ps:
-                    if any(kind in (ARG_STAR, ARG_STAR2) for kind in cactual.arg_kinds):
-                        prefix_len = 0
+                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                    prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
                             param_spec.id,
