@@ -1,6 +1,5 @@
 from typing import Callable, Dict, Optional, Sequence
 
-import mypy.sametypes
 import mypy.subtypes
 from mypy.expandtype import expand_type
 from mypy.nodes import Context
@@ -41,7 +40,7 @@ def get_target_type(
         if isinstance(type, TypeVarType) and type.values:
             # Allow substituting T1 for T if every allowed value of T1
             # is also a legal value of T.
-            if all(any(mypy.sametypes.is_same_type(v, v1) for v in values) for v1 in type.values):
+            if all(any(mypy.subtypes.is_same_type(v, v1) for v in values) for v1 in type.values):
                 return type
         matching = []
         for value in values:

@@ -95,10 +95,9 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
-from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
+from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
@@ -3005,7 +3004,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # We store the determined order inside the 'variants_raw' variable,
         # which records tuples containing the method, base type, and the argument.
 
-        if op_name in operators.op_methods_that_shortcut and is_same_type(left_type, right_type):
+        if op_name in operators.op_methods_that_shortcut and left_type == right_type:
             # When we do "A() + A()", for example, Python will only call the __add__ method,
             # never the __radd__ method.
             #
@@ -3561,7 +3560,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (
             options.warn_redundant_casts
             and not isinstance(get_proper_type(target_type), AnyType)
-            and is_same_type(source_type, target_type)
+            and source_type == target_type
         ):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):
@@ -3579,7 +3578,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             always_allow_any=True,
         )
         target_type = expr.type
-        if not is_same_type(source_type, target_type):
+        if not source_type == target_type:
             self.msg.assert_type_fail(source_type, target_type, expr)
         return source_type
 

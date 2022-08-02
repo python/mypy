@@ -5,7 +5,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype
 import mypy.constraints
-import mypy.sametypes
 import mypy.typeops
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type_by_instance
@@ -66,6 +65,10 @@ IS_CLASSVAR: Final = 2
 IS_CLASS_OR_STATIC: Final = 3
 
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int], bool]
+
+
+def is_same_type(left: Type, right: Type) -> bool:
+    return is_proper_subtype(left, right) and is_proper_subtype(right, left)
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
@@ -1694,9 +1697,9 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
                         elif variance == CONTRAVARIANT:
                             nominal = self._is_proper_subtype(ra, ta)
                         else:
-                            nominal = mypy.sametypes.is_same_type(ta, ra)
+                            nominal = is_same_type(ta, ra)
                     else:
-                        nominal = mypy.sametypes.is_same_type(ta, ra)
+                        nominal = is_same_type(ta, ra)
                     if not nominal:
                         break
 
@@ -1793,7 +1796,7 @@ class ProperSubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypedDictType):
             for name, typ in left.items.items():
-                if name in right.items and not mypy.sametypes.is_same_type(typ, right.items[name]):
+                if name in right.items and not is_same_type(typ, right.items[name]):
                     return False
             for name, typ in right.items.items():
                 if name not in left.items:
