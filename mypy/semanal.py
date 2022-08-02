@@ -849,6 +849,7 @@ class SemanticAnalyzer(
                 self.type.is_protocol
                 and not self.is_stub_file  # Bodies in stub files are always empty.
                 and (not isinstance(self.scope.function, OverloadedFuncDef) or defn.is_property)
+                and defn.abstract_status != IS_ABSTRACT
                 and is_trivial_body(defn.body)
             ):
                 defn.abstract_status = IMPLICITLY_ABSTRACT
