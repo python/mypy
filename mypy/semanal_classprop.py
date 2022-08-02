@@ -49,6 +49,7 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
     if typ.typeddict_type:
         return  # TypedDict can't be abstract
     concrete: Set[str] = set()
+    # List of abstract attributes together with their abstract status
     abstract: List[Tuple[str, int]] = []
     abstract_in_this_class: List[str] = []
     if typ.is_newtype:
@@ -78,15 +79,13 @@ def calculate_class_abstract_status(typ: TypeInfo, is_stub_file: bool, errors: E
                     func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT)
                     and name not in concrete
                 ):
-                    if not typ.is_protocol:
-                        typ.is_abstract = True
+                    typ.is_abstract = True
                     abstract.append((name, func.abstract_status))
                     if base is typ:
                         abstract_in_this_class.append(name)
             elif isinstance(node, Var):
                 if node.is_abstract_var and name not in concrete:
-                    if not typ.is_protocol:
-                        typ.is_abstract = True
+                    typ.is_abstract = True
                     abstract.append((name, IS_ABSTRACT))
                     if base is typ:
                         abstract_in_this_class.append(name)

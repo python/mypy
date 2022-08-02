@@ -1330,8 +1330,8 @@ class MessageBuilder:
             context,
             code=codes.ABSTRACT,
         )
-        for a, is_none_ret_and_prot in abstract_attributes.items():
-            if not is_none_ret_and_prot:
+        for a, can_return_none_and_implicit in abstract_attributes.items():
+            if not can_return_none_and_implicit:
                 continue
             self.note(
                 '"{}" was implicitly marked abstract because it has an empty function body. '

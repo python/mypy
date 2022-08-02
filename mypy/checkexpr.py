@@ -27,7 +27,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
-    IS_ABSTRACT,
+    IMPLICITLY_ABSTRACT,
     LITERAL_TYPE,
     REVEAL_TYPE,
     ArgKind,
@@ -1254,16 +1254,16 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and not callee.type_object().fallback_to_any
         ):
             type = callee.type_object()
-            # Determine whether the abstract attributes are functions with
-            # None-compatible return types and whether they were defined in a protocol.
-            is_none_ret_from_prot: Dict[str, bool] = {}
+            # Determine whether the implicitly abstract attributes are functions with
+            # None-compatible return types.
+            abstract_attributes: Dict[str, bool] = {}
             for attr_name, abstract_status in type.abstract_attributes:
-                if abstract_status == IS_ABSTRACT:
-                    is_none_ret_from_prot[attr_name] = False
-                    continue
-                is_none_ret_from_prot[attr_name] = self._check_non_ret_from_prot(type, attr_name)
+                if abstract_status == IMPLICITLY_ABSTRACT:
+                    abstract_attributes[attr_name] = self.can_return_none(type, attr_name)
+                else:
+                    abstract_attributes[attr_name] = False
             self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name, is_none_ret_from_prot, context
+                callee.type_object().name, abstract_attributes, context
             )
 
         formal_to_actual = map_actuals_to_formals(
@@ -1345,10 +1345,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
 
-    def _check_non_ret_from_prot(self, type: TypeInfo, attr_name: str) -> bool:
-        """Determine whether the attribute is a function with None-compatible return type.
+    def can_return_none(self, type: TypeInfo, attr_name: str) -> bool:
+        """Is the given attribute a method with a None-compatible return type?
 
-        Additionally, check whether the function was defined in a protocol.
+        Overloads are only checked if there is an implementation.
         """
         if not state.strict_optional:
             # If strict-optional is not set, is_subtype(NoneType(), T) is always True.
@@ -1356,33 +1356,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
         for base in type.mro:
             symnode = base.names.get(attr_name)
-            if symnode is None or not base.is_protocol:
+            if symnode is None:
                 continue
             node = symnode.node
             if isinstance(node, OverloadedFuncDef):
-                if node.impl is not None:
-                    typ = get_proper_type(node.impl.type)
-                    assert isinstance(typ, CallableType)
-                    return is_subtype(NoneType(), typ.ret_type)
-                for func in node.items:
-                    if isinstance(func, Decorator):
-                        func = func.func
-                    assert isinstance(func.type, CallableType)
-                    if is_subtype(NoneType(), func.type.ret_type):
-                        return True
-                    if func.is_property:
-                        return False  # Only check the first overload of properties.
-                else:
-                    return False
+                node = node.impl
             if isinstance(node, Decorator):
                 node = node.func
             if isinstance(node, FuncDef):
                 if node.type is not None:
                     assert isinstance(node.type, CallableType)
                     return is_subtype(NoneType(), node.type.ret_type)
-                else:
-                    # No type annotations are available
-                    return True
         return False
 
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:

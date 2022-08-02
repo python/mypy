@@ -762,7 +762,9 @@ FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
 
 # Abstract status of a function
 NOT_ABSTRACT: Final = 0
+# Explicitly abstract (with @abstractmethod or overload without implementation)
 IS_ABSTRACT: Final = 1
+# Implicitly abstract: used for functions with trivial bodies defined in Protocols
 IMPLICITLY_ABSTRACT: Final = 2
 
 
@@ -2681,6 +2683,8 @@ class TypeInfo(SymbolNode):
     is_abstract: bool  # Does the class have any abstract attributes?
     is_protocol: bool  # Is this a protocol class?
     runtime_protocol: bool  # Does this protocol support isinstance checks?
+    # List of names of abstract attributes together with their abstract status.
+    # The abstract status must be one of `NOT_ABSTRACT`, `IS_ABSTRACT`, `IMPLICITLY_ABSTRACT`.
     abstract_attributes: List[Tuple[str, int]]
     deletable_attributes: List[str]  # Used by mypyc only
     # Does this type have concrete `__slots__` defined?

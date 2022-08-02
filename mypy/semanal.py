@@ -1084,12 +1084,12 @@ class SemanticAnalyzer(
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
                 # An overloaded protocol method doesn't need an implementation,
-                # but if it doesn't have one, then it is considered implicitly abstract.
+                # but if it doesn't have one, then it is considered abstract.
                 for item in defn.items:
                     if isinstance(item, Decorator):
-                        item.func.abstract_status = IMPLICITLY_ABSTRACT
+                        item.func.abstract_status = IS_ABSTRACT
                     else:
-                        item.abstract_status = IMPLICITLY_ABSTRACT
+                        item.abstract_status = IS_ABSTRACT
             else:
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
@@ -1303,7 +1303,7 @@ class SemanticAnalyzer(
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail("Decorated property not supported", dec)
-        if dec.func.abstract_status and dec.func.is_final:
+        if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
 
     def check_decorated_function_is_method(self, decorator: str, context: Context) -> None:

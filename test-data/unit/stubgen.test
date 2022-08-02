@@ -2675,6 +2675,23 @@ T2 = TypeVar('T2')
 class PT(Protocol[T, T2]):
     def f(self, x: T) -> T2: ...
 
+[case testProtocolAbstractMethod_semanal]
+from abc import abstractmethod
+from typing import Protocol
+
+class P(Protocol):
+    @abstractmethod
+    def f(self, x: int, y: int) -> str:
+        ...
+
+[out]
+from abc import abstractmethod
+from typing import Protocol
+
+class P(Protocol):
+    @abstractmethod
+    def f(self, x: int, y: int) -> str: ...
+
 [case testNonDefaultKeywordOnlyArgAfterAsterisk]
 def func(*, non_default_kwarg: bool, default_kwarg: bool = True): ...
 [out]
