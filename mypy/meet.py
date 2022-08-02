@@ -381,6 +381,7 @@ def is_overlapping_types(
         return _type_object_overlap(left, right) or _type_object_overlap(right, left)
 
     if isinstance(left, CallableType) and isinstance(right, CallableType):
+
         def _callable_overlap(left: CallableType, right: CallableType) -> bool:
             return is_callable_compatible(
                 left,
@@ -389,6 +390,7 @@ def is_overlapping_types(
                 ignore_pos_arg_names=True,
                 allow_partial_overlap=True,
             )
+
         # Compare both directions to handle type objects.
         return _callable_overlap(left, right) or _callable_overlap(right, left)
     elif isinstance(left, CallableType):

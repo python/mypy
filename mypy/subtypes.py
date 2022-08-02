@@ -505,7 +505,9 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
-            if right.type.is_protocol and is_protocol_implementation(left, right):
+            if right.type.is_protocol and is_protocol_implementation(
+                left, right, proper_subtype=self.subtype_context.proper_subtype
+            ):
                 return True
             return False
         if isinstance(right, TypeType):
