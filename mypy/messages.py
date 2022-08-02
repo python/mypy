@@ -1330,15 +1330,24 @@ class MessageBuilder:
             context,
             code=codes.ABSTRACT,
         )
-        for a, can_return_none_and_implicit in abstract_attributes.items():
-            if not can_return_none_and_implicit:
-                continue
-            self.note(
-                '"{}" was implicitly marked abstract because it has an empty function body. '
-                "If it is not meant to be abstract, explicitly return None.".format(a),
-                context,
-                code=codes.ABSTRACT,
+        attrs_with_none = [
+            f'"{a}"'
+            for a, implicit_and_can_return_none in abstract_attributes.items()
+            if implicit_and_can_return_none
+        ]
+        if not attrs_with_none:
+            return
+        if len(attrs_with_none) == 1:
+            note = (
+                "The following method was marked implicitly abstract because it has an empty "
+                "function body: {}. If it is not meant to be abstract, explicitly return None."
             )
+        else:
+            note = (
+                "The following methods were marked implicitly abstract because they have empty "
+                "function bodies: {}. If they are not meant to be abstract, explicitly return None."
+            )
+        self.note(note.format(format_string_list(attrs_with_none)), context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context
