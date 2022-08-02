@@ -1337,7 +1337,7 @@ class MessageBuilder:
                 '"{}" was implicitly marked abstract because it has an empty function body. '
                 "If it is not meant to be abstract, explicitly return None.".format(a),
                 context,
-                code=codes.OVERRIDE,
+                code=codes.ABSTRACT,
             )
 
     def base_class_definitions_incompatible(
