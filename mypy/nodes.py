@@ -758,7 +758,14 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional", "is_abstract"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+
+# Abstract status of a function
+NOT_ABSTRACT: Final = 0
+# Explicitly abstract (with @abstractmethod or overload without implementation)
+IS_ABSTRACT: Final = 1
+# Implicitly abstract: used for functions with trivial bodies defined in Protocols
+IMPLICITLY_ABSTRACT: Final = 2
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -771,7 +778,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "_name",
         "is_decorated",
         "is_conditional",
-        "is_abstract",
+        "abstract_status",
         "original_def",
         "deco_line",
     )
@@ -788,7 +795,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
-        self.is_abstract = False
+        self.abstract_status = NOT_ABSTRACT
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
@@ -817,6 +824,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "arg_kinds": [int(x.value) for x in self.arg_kinds],
             "type": None if self.type is None else self.type.serialize(),
             "flags": get_flags(self, FUNCDEF_FLAGS),
+            "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
         }
 
@@ -839,6 +847,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.abstract_status = data["abstract_status"]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -2674,7 +2683,9 @@ class TypeInfo(SymbolNode):
     is_abstract: bool  # Does the class have any abstract attributes?
     is_protocol: bool  # Is this a protocol class?
     runtime_protocol: bool  # Does this protocol support isinstance checks?
-    abstract_attributes: List[str]
+    # List of names of abstract attributes together with their abstract status.
+    # The abstract status must be one of `NOT_ABSTRACT`, `IS_ABSTRACT`, `IMPLICITLY_ABSTRACT`.
+    abstract_attributes: List[Tuple[str, int]]
     deletable_attributes: List[str]  # Used by mypyc only
     # Does this type have concrete `__slots__` defined?
     # If class does not have `__slots__` defined then it is `None`,
@@ -3034,7 +3045,7 @@ class TypeInfo(SymbolNode):
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
-        ti.abstract_attributes = data["abstract_attributes"]
+        ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]

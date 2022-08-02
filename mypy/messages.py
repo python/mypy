@@ -1321,7 +1321,7 @@ class MessageBuilder:
         self.fail("All conditional function variants must have identical " "signatures", defn)
 
     def cannot_instantiate_abstract_class(
-        self, class_name: str, abstract_attributes: List[str], context: Context
+        self, class_name: str, abstract_attributes: Dict[str, bool], context: Context
     ) -> None:
         attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail(
@@ -1330,6 +1330,24 @@ class MessageBuilder:
             context,
             code=codes.ABSTRACT,
         )
+        attrs_with_none = [
+            f'"{a}"'
+            for a, implicit_and_can_return_none in abstract_attributes.items()
+            if implicit_and_can_return_none
+        ]
+        if not attrs_with_none:
+            return
+        if len(attrs_with_none) == 1:
+            note = (
+                "The following method was marked implicitly abstract because it has an empty "
+                "function body: {}. If it is not meant to be abstract, explicitly return None."
+            )
+        else:
+            note = (
+                "The following methods were marked implicitly abstract because they have empty "
+                "function bodies: {}. If they are not meant to be abstract, explicitly return None."
+            )
+        self.note(note.format(format_string_list(attrs_with_none)), context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context

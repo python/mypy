@@ -444,7 +444,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class "P2" with abstract attribute "attr"
+P2() # E: Cannot instantiate protocol class "P2"
 p: P2
 reveal_type(p.attr) # N: Revealed type is "builtins.int"
 
@@ -1553,7 +1553,7 @@ f2(z) # E: Argument 1 to "f2" has incompatible type "Union[C, D1]"; expected "P2
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class P1(Protocol):
     def m(self) -> None: pass
 class Pbad(Protocol):
@@ -1599,7 +1599,7 @@ f(GoodAlias)
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class B(P): pass
 class C:
     def m(self) -> None:
@@ -2924,3 +2924,196 @@ class C:
 def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
 
 round(C(), 1)
+
+[case testEmptyBodyImplicitlyAbstractProtocol]
+# flags: --strict-optional
+from typing import Protocol, overload, Union
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    def meth(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class "B1" with abstract attribute "meth"
+C1()
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+class B2(P2): ...
+class C2(P2):
+    @classmethod
+    def meth(cls) -> int:
+        return 0
+B2()  # E: Cannot instantiate abstract class "B2" with abstract attribute "meth"
+C2()
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def not_abstract(self, x: int) -> int: ...
+    @overload
+    def not_abstract(self, x: str) -> str: ...
+    def not_abstract(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+class B3(P3): ...
+class C3(P3):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+B3()  # E: Cannot instantiate abstract class "B3" with abstract attribute "meth"
+C3()
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolProperty]
+# flags: --strict-optional
+from typing import Protocol
+
+class P1(Protocol):
+    @property
+    def attr(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    @property
+    def attr(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class "B1" with abstract attribute "attr"
+C1()
+
+class P2(Protocol):
+    @property
+    def attr(self) -> int: ...
+    @attr.setter
+    def attr(self, value: int) -> None: ...
+class B2(P2): ...
+class C2(P2):
+    @property
+    def attr(self) -> int: return 0
+    @attr.setter
+    def attr(self, value: int) -> None: pass
+B2()  # E: Cannot instantiate abstract class "B2" with abstract attribute "attr"
+C2()
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolStub]
+from stub import P1, P2, P3, P4
+
+class B1(P1): ...
+class B2(P2): ...
+class B3(P3): ...
+class B4(P4): ...
+
+B1()
+B2()
+B3()
+B4()  # E: Cannot instantiate abstract class "B4" with abstract attribute "meth"
+
+[file stub.pyi]
+from typing import Protocol, overload, Union
+from abc import abstractmethod
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+
+class P4(Protocol):
+    @abstractmethod
+    def meth(self) -> int: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyVariationsImplicitlyAbstractProtocol]
+from typing import Protocol
+
+class WithPass(Protocol):
+    def meth(self) -> int:
+        pass
+class A(WithPass): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "meth"
+
+class WithEllipses(Protocol):
+    def meth(self) -> int: ...
+class B(WithEllipses): ...
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "meth"
+
+class WithDocstring(Protocol):
+    def meth(self) -> int:
+        """Docstring for meth.
+
+	This is meth."""
+class C(WithDocstring): ...
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "meth"
+
+class WithRaise(Protocol):
+    def meth(self) -> int:
+        """Docstring for meth."""
+        raise NotImplementedError
+class D(WithRaise): ...
+D() # E: Cannot instantiate abstract class "D" with abstract attribute "meth"
+[builtins fixtures/exception.pyi]
+
+[case testEmptyBodyNoneCompatibleProtocol]
+# flags: --strict-optional
+from abc import abstractmethod
+from typing import Any, Optional, Protocol, Union, overload
+from typing_extensions import TypeAlias
+
+NoneAlias: TypeAlias = None
+
+class NoneCompatible(Protocol):
+    def f(self) -> None: ...
+    def g(self) -> Any: ...
+    def h(self) -> Optional[int]: ...
+    def i(self) -> NoneAlias: ...
+    @classmethod
+    def j(cls) -> None: ...
+
+class A(NoneCompatible): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attributes "f", "g", "h", "i" and "j" \
+    # N: The following methods were marked implicitly abstract because they have empty function bodies: "f", "g", "h", "i" and "j". If they are not meant to be abstract, explicitly return None.
+
+class NoneCompatible2(Protocol):
+    def f(self, x: int): ...
+
+class B(NoneCompatible2): ...
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "f" \
+    # N: The following method was marked implicitly abstract because it has an empty function body: "f". If it is not meant to be abstract, explicitly return None.
+
+class NoneCompatible3(Protocol):
+    @abstractmethod
+    def f(self) -> None: ...
+    @overload
+    def g(self, x: int) -> int: ...
+    @overload
+    def g(self, x: str) -> None: ...
+    def h(self, x): ...
+
+class C(NoneCompatible3): ...
+C() # E: Cannot instantiate abstract class "C" with abstract attributes "f", "g" and "h"
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyWithFinal]
+from typing import Protocol, final
+
+class P(Protocol):
+    @final          # E: Protocol member cannot be final
+    def f(self, x: int) -> str: ...
+
+class A(P): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"

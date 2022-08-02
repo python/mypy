@@ -84,7 +84,9 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
+    IMPLICITLY_ABSTRACT,
     INVARIANT,
+    IS_ABSTRACT,
     LDEF,
     MDEF,
     REVEAL_LOCALS,
@@ -145,6 +147,7 @@ from mypy.nodes import (
     OverloadedFuncDef,
     OverloadPart,
     ParamSpecExpr,
+    PassStmt,
     PlaceholderNode,
     PromoteExpr,
     RaiseStmt,
@@ -837,6 +840,20 @@ class SemanticAnalyzer(
 
         self.analyze_arg_initializers(defn)
         self.analyze_function_body(defn)
+
+        if self.is_class_scope():
+            assert self.type is not None
+            # Mark protocol methods with empty bodies as implicitly abstract.
+            # This makes explicit protocol subclassing type-safe.
+            if (
+                self.type.is_protocol
+                and not self.is_stub_file  # Bodies in stub files are always empty.
+                and (not isinstance(self.scope.function, OverloadedFuncDef) or defn.is_property)
+                and defn.abstract_status != IS_ABSTRACT
+                and is_trivial_body(defn.body)
+            ):
+                defn.abstract_status = IMPLICITLY_ABSTRACT
+
         if (
             defn.is_coroutine
             and isinstance(defn.type, CallableType)
@@ -975,6 +992,21 @@ class SemanticAnalyzer(
         # We know this is an overload def. Infer properties and perform some checks.
         self.process_final_in_overload(defn)
         self.process_static_or_class_method_in_overload(defn)
+        self.process_overload_impl(defn)
+
+    def process_overload_impl(self, defn: OverloadedFuncDef) -> None:
+        """Set flags for an overload implementation.
+
+        Currently, this checks for a trivial body in protocols classes,
+        where it makes the method implicitly abstract.
+        """
+        if defn.impl is None:
+            return
+        impl = defn.impl if isinstance(defn.impl, FuncDef) else defn.impl.func
+        if is_trivial_body(impl.body) and self.is_class_scope() and not self.is_stub_file:
+            assert self.type is not None
+            if self.type.is_protocol:
+                impl.abstract_status = IMPLICITLY_ABSTRACT
 
     def analyze_overload_sigs_and_impl(
         self, defn: OverloadedFuncDef
@@ -1052,12 +1084,13 @@ class SemanticAnalyzer(
         """Generate error about missing overload implementation (only if needed)."""
         if not self.is_stub_file:
             if self.type and self.type.is_protocol and not self.is_func_scope():
-                # An overloaded protocol method doesn't need an implementation.
+                # An overloaded protocol method doesn't need an implementation,
+                # but if it doesn't have one, then it is considered abstract.
                 for item in defn.items:
                     if isinstance(item, Decorator):
-                        item.func.is_abstract = True
+                        item.func.abstract_status = IS_ABSTRACT
                     else:
-                        item.is_abstract = True
+                        item.abstract_status = IS_ABSTRACT
             else:
                 self.fail(
                     "An overloaded function outside a stub file must have an implementation",
@@ -1133,7 +1166,7 @@ class SemanticAnalyzer(
                             # The first item represents the entire property.
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
-                            item.func.is_abstract = first_item.func.is_abstract
+                            item.func.abstract_status = first_item.func.abstract_status
                 else:
                     self.fail("Decorated property not supported", item)
                 item.func.accept(self)
@@ -1220,7 +1253,7 @@ class SemanticAnalyzer(
             # A bunch of decorators are special cased here.
             if refers_to_fullname(d, "abc.abstractmethod"):
                 removed.append(i)
-                dec.func.is_abstract = True
+                dec.func.abstract_status = IS_ABSTRACT
                 self.check_decorated_function_is_method("abstractmethod", dec)
             elif refers_to_fullname(d, ("asyncio.coroutines.coroutine", "types.coroutine")):
                 removed.append(i)
@@ -1242,7 +1275,7 @@ class SemanticAnalyzer(
                 dec.func.is_property = True
                 dec.var.is_property = True
                 if refers_to_fullname(d, "abc.abstractproperty"):
-                    dec.func.is_abstract = True
+                    dec.func.abstract_status = IS_ABSTRACT
                 elif refers_to_fullname(d, "functools.cached_property"):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method("property", dec)
@@ -1271,7 +1304,7 @@ class SemanticAnalyzer(
             dec.func.accept(self)
         if dec.decorators and dec.var.is_property:
             self.fail("Decorated property not supported", dec)
-        if dec.func.is_abstract and dec.func.is_final:
+        if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
 
     def check_decorated_function_is_method(self, decorator: str, context: Context) -> None:
@@ -6032,4 +6065,48 @@ def is_same_symbol(a: Optional[SymbolNode], b: Optional[SymbolNode]) -> bool:
         a == b
         or (isinstance(a, PlaceholderNode) and isinstance(b, PlaceholderNode))
         or is_same_var_from_getattr(a, b)
+    )
+
+
+def is_trivial_body(block: Block) -> bool:
+    """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
+    "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
+    start with a statement containing just a string (e.g. a docstring).
+
+    Note: functions that raise other kinds of exceptions do not count as
+    "trivial". We use this function to help us determine when it's ok to
+    relax certain checks on body, but functions that raise arbitrary exceptions
+    are more likely to do non-trivial work. For example:
+
+       def halt(self, reason: str = ...) -> NoReturn:
+           raise MyCustomError("Fatal error: " + reason, self.line, self.context)
+
+    A function that raises just NotImplementedError is much less likely to be
+    this complex.
+    """
+    body = block.body
+
+    # Skip a docstring
+    if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
+        body = block.body[1:]
+
+    if len(body) == 0:
+        # There's only a docstring (or no body at all).
+        return True
+    elif len(body) > 1:
+        return False
+
+    stmt = body[0]
+
+    if isinstance(stmt, RaiseStmt):
+        expr = stmt.expr
+        if expr is None:
+            return False
+        if isinstance(expr, CallExpr):
+            expr = expr.callee
+
+        return isinstance(expr, NameExpr) and expr.fullname == "builtins.NotImplementedError"
+
+    return isinstance(stmt, PassStmt) or (
+        isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
     )

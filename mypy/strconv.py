@@ -133,7 +133,7 @@ class StrConv(NodeVisitor[str]):
         arg_kinds = {arg.kind for arg in o.arguments}
         if len(arg_kinds & {mypy.nodes.ARG_NAMED, mypy.nodes.ARG_NAMED_OPT}) > 0:
             a.insert(1, f"MaxPos({o.max_pos})")
-        if o.is_abstract:
+        if o.abstract_status in (mypy.nodes.IS_ABSTRACT, mypy.nodes.IMPLICITLY_ABSTRACT):
             a.insert(-1, "Abstract")
         if o.is_static:
             a.insert(-1, "Static")

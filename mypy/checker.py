@@ -67,7 +67,9 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
+    IMPLICITLY_ABSTRACT,
     INVARIANT,
+    IS_ABSTRACT,
     LDEF,
     LITERAL_TYPE,
     MDEF,
@@ -115,7 +117,6 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     Statement,
-    StrExpr,
     SymbolTable,
     SymbolTableNode,
     TempNode,
@@ -134,7 +135,7 @@ from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, Plugin
 from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.semanal import refers_to_fullname, set_callable_name
+from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
@@ -618,7 +619,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name)
-            if fdef.func.is_abstract:
+            if fdef.func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT):
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
@@ -1171,7 +1172,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
-                body_is_trivial = self.is_trivial_body(defn.body)
+                body_is_trivial = is_trivial_body(defn.body)
                 self.check_default_args(item, body_is_trivial)
 
             # Type check body in a new scope.
@@ -1338,49 +1339,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 "returns",
                 "but must return a subtype of",
             )
-
-    def is_trivial_body(self, block: Block) -> bool:
-        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
-        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
-        start with a statement containing just a string (e.g. a docstring).
-
-        Note: functions that raise other kinds of exceptions do not count as
-        "trivial". We use this function to help us determine when it's ok to
-        relax certain checks on body, but functions that raise arbitrary exceptions
-        are more likely to do non-trivial work. For example:
-
-           def halt(self, reason: str = ...) -> NoReturn:
-               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
-
-        A function that raises just NotImplementedError is much less likely to be
-        this complex.
-        """
-        body = block.body
-
-        # Skip a docstring
-        if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
-            body = block.body[1:]
-
-        if len(body) == 0:
-            # There's only a docstring (or no body at all).
-            return True
-        elif len(body) > 1:
-            return False
-
-        stmt = body[0]
-
-        if isinstance(stmt, RaiseStmt):
-            expr = stmt.expr
-            if expr is None:
-                return False
-            if isinstance(expr, CallExpr):
-                expr = expr.callee
-
-            return isinstance(expr, NameExpr) and expr.fullname == "builtins.NotImplementedError"
-
-        return isinstance(stmt, PassStmt) or (
-            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
-        )
 
     def check_reverse_op_method(
         self, defn: FuncItem, reverse_type: CallableType, reverse_name: str, context: Context
