@@ -817,11 +817,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         if isinstance(right, TypeType):
             return self._is_subtype(left.item, right.item)
         if isinstance(right, CallableType):
-            # This is unsound, we don't check the full __init__ signature.
-            if self.subtype_context.proper_subtype and any(
-                isinstance(get_proper_type(t), AnyType) for t in right.arg_types
-            ):
-                return False
+            # This is unsound, we don't check the __init__ signature.
             return self._is_subtype(left.item, right.ret_type)
         if isinstance(right, Instance):
             if right.type.fullname in ["builtins.object", "builtins.type"]:
