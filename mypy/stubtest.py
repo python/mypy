@@ -717,6 +717,7 @@ def _verify_signature(
         yield from _verify_arg_default_value(stub_arg, runtime_arg)
         if (
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
+            and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
@@ -729,7 +730,7 @@ def _verify_signature(
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
-            and stub_arg.variable.name.startswith("__")
+            and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -740,9 +741,9 @@ def _verify_signature(
     # Check unmatched positional args
     if len(stub.pos) > len(runtime.pos):
         # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through *args. Hence, a) we can't check that the runtime actually takes those
-        # parameters and b) below, we don't enforce that the stub takes *args, since runtime logic
-        # may prevent those arguments from actually being accepted.
+        # would take through *args. Hence, a) if runtime accepts *args, we don't check whether the
+        # runtime has all of the stub's parameters, b) below, we don't enforce that the stub takes
+        # *args, since runtime logic may prevent arbitrary arguments from actually being accepted.
         if runtime.varpos is None:
             for stub_arg in stub.pos[len(runtime.pos) :]:
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
@@ -776,16 +777,24 @@ def _verify_signature(
     # Check unmatched keyword-only args
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
         # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through *kwargs. Hence, a) we only check if the runtime actually takes those
-        # parameters when the above condition holds and b) below, we don't enforce that the stub
-        # takes *kwargs, since runtime logic may prevent additional arguments from actually being
-        # accepted.
+        # would take through **kwargs. Hence, a) if runtime accepts **kwargs (and the stub hasn't
+        # exhaustively listed out params), we don't check whether the runtime has all of the stub's
+        # parameters, b) below, we don't enforce that the stub takes **kwargs, since runtime logic
+        # may prevent arbitrary keyword arguments from actually being accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
-            yield f'runtime does not have argument "{arg}"'
+            if arg in {runtime_arg.name for runtime_arg in runtime.pos}:
+                # Don't report this if we've reported it before
+                if arg not in {runtime_arg.name for runtime_arg in runtime.pos[len(stub.pos) :]}:
+                    yield f'runtime argument "{arg}" is not keyword-only'
+            else:
+                yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
-            if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
+            if not (
+                runtime.varpos is None
+                and arg in {stub_arg.variable.name for stub_arg in stub.pos[len(runtime.pos) :]}
+            ):
                 yield f'stub argument "{arg}" is not keyword-only'
         else:
             yield f'stub does not have argument "{arg}"'
