@@ -68,60 +68,17 @@ IS_CLASS_OR_STATIC: Final = 3
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
 
 
-def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
-    if variance == COVARIANT:
-        return (is_proper_subtype if proper_subtype else is_subtype)(lefta, righta)
-    elif variance == CONTRAVARIANT:
-        return (is_proper_subtype if proper_subtype else is_subtype)(righta, lefta)
-    else:
-        if proper_subtype:
-            return mypy.sametypes.is_same_type(lefta, righta)
-        return is_equivalent(lefta, righta)
-
-
-def ignore_type_parameter(s: Type, t: Type, v: int, is_proper: bool) -> bool:
-    return True
-
-
-def is_proper_subtype(
-    left: Type,
-    right: Type,
-    *,
-    ignore_promotions: bool = False,
-    erase_instances: bool = False,
-    keep_erased_types: bool = False,
-) -> bool:
-    """Is left a proper subtype of right?
-
-    For proper subtypes, there's no need to rely on compatibility due to
-    Any types. Every usable type is a proper subtype of itself.
-
-    If erase_instances is True, erase left instance *after* mapping it to supertype
-    (this is useful for runtime isinstance() checks). If keep_erased_types is True,
-    do not consider ErasedType a subtype of all types (used by type inference against unions).
-    """
-    return is_subtype(
-        left,
-        right,
-        proper_subtype=True,
-        internal_call=INTERNAL_CALL,
-        ignore_promotions=ignore_promotions,
-        erase_instances=erase_instances,
-        keep_erased_types=keep_erased_types,
-    )
-
-
 class SubtypeContext:
     def __init__(
         self,
         *,
+        proper_subtype: bool,
         # Non-proper subtype flags
         ignore_type_params: bool = False,
         ignore_pos_arg_names: bool = False,
         ignore_declared_variance: bool = False,
         # Supported for both proper and non-proper
         ignore_promotions: bool = False,
-        proper_subtype: bool = False,
         # Proper subtype flags
         erase_instances: bool = False,
         keep_erased_types: bool = False,
@@ -147,9 +104,6 @@ class SubtypeContext:
         self.options = options
 
 
-INTERNAL_CALL: Final = object()
-
-
 def is_subtype(
     left: Type,
     right: Type,
@@ -159,11 +113,7 @@ def is_subtype(
     ignore_pos_arg_names: bool = False,
     ignore_declared_variance: bool = False,
     ignore_promotions: bool = False,
-    proper_subtype: bool = False,
-    erase_instances: bool = False,
-    keep_erased_types: bool = False,
     options: Optional[Options] = None,
-    internal_call: object = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
 
@@ -176,17 +126,13 @@ def is_subtype(
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
-    if proper_subtype:
-        assert internal_call is INTERNAL_CALL, "Never use is_subtype() with proper_subtype flag"
     if subtype_context is None:
         subtype_context = SubtypeContext(
+            proper_subtype=False,
             ignore_type_params=ignore_type_params,
             ignore_pos_arg_names=ignore_pos_arg_names,
             ignore_declared_variance=ignore_declared_variance,
             ignore_promotions=ignore_promotions,
-            proper_subtype=proper_subtype,
-            erase_instances=erase_instances,
-            keep_erased_types=keep_erased_types,
             options=options,
         )
     else:
@@ -196,18 +142,10 @@ def is_subtype(
                 ignore_pos_arg_names,
                 ignore_declared_variance,
                 ignore_promotions,
-                proper_subtype,
-                erase_instances,
-                keep_erased_types,
                 options,
             }
-        )
-    if (
-        not subtype_context.proper_subtype
-        and TypeState.is_assumed_subtype(left, right)
-        or subtype_context.proper_subtype
-        and TypeState.is_assumed_proper_subtype(left, right)
-    ):
+        ), "Don't pass both context and individual flags"
+    if TypeState.is_assumed_subtype(left, right):
         return True
     if (
         isinstance(left, TypeAliasType)
@@ -232,9 +170,75 @@ def is_subtype(
         #     B = Union[int, Tuple[B, ...]]
         # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
-        with pop_on_exit(TypeState.get_assumptions(subtype_context.proper_subtype), left, right):
+        with pop_on_exit(TypeState.get_assumptions(is_proper=False), left, right):
             return _is_subtype(left, right, subtype_context)
     return _is_subtype(left, right, subtype_context)
+
+
+def is_proper_subtype(
+    left: Type,
+    right: Type,
+    *,
+    subtype_context: Optional[SubtypeContext] = None,
+    ignore_promotions: bool = False,
+    erase_instances: bool = False,
+    keep_erased_types: bool = False,
+) -> bool:
+    """Is left a proper subtype of right?
+
+    For proper subtypes, there's no need to rely on compatibility due to
+    Any types. Every usable type is a proper subtype of itself.
+
+    If erase_instances is True, erase left instance *after* mapping it to supertype
+    (this is useful for runtime isinstance() checks). If keep_erased_types is True,
+    do not consider ErasedType a subtype of all types (used by type inference against unions).
+    """
+    if subtype_context is None:
+        subtype_context = SubtypeContext(
+            proper_subtype=True,
+            ignore_promotions=ignore_promotions,
+            erase_instances=erase_instances,
+            keep_erased_types=keep_erased_types,
+        )
+    else:
+        assert not any(
+            {ignore_promotions, erase_instances, keep_erased_types}
+        ), "Don't pass both context and individual flags"
+    if TypeState.is_assumed_proper_subtype(left, right):
+        return True
+    if (
+        isinstance(left, TypeAliasType)
+        and isinstance(right, TypeAliasType)
+        and left.is_recursive
+        and right.is_recursive
+    ):
+        # Same as for non-proper subtype, see detailed comment there for explanation.
+        with pop_on_exit(TypeState.get_assumptions(is_proper=True), left, right):
+            return _is_subtype(left, right, subtype_context)
+    return _is_subtype(left, right, subtype_context)
+
+
+def is_equivalent(
+    a: Type,
+    b: Type,
+    *,
+    ignore_type_params: bool = False,
+    ignore_pos_arg_names: bool = False,
+    options: Optional[Options] = None,
+) -> bool:
+    return is_subtype(
+        a,
+        b,
+        ignore_type_params=ignore_type_params,
+        ignore_pos_arg_names=ignore_pos_arg_names,
+        options=options,
+    ) and is_subtype(
+        b,
+        a,
+        ignore_type_params=ignore_type_params,
+        ignore_pos_arg_names=ignore_pos_arg_names,
+        options=options,
+    )
 
 
 def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> bool:
@@ -248,8 +252,11 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
         or isinstance(right, UnboundType)
         or isinstance(right, ErasedType)
     ):
+        # TODO: should we consider all types proper subtypes of UnboundType and/or
+        # ErasedType as we do for non-proper subtyping.
         return True
-    elif isinstance(right, UnionType) and not isinstance(left, UnionType):
+
+    if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
@@ -285,27 +292,21 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
     return left.accept(SubtypeVisitor(orig_right, subtype_context))
 
 
-def is_equivalent(
-    a: Type,
-    b: Type,
-    *,
-    ignore_type_params: bool = False,
-    ignore_pos_arg_names: bool = False,
-    options: Optional[Options] = None,
-) -> bool:
-    return is_subtype(
-        a,
-        b,
-        ignore_type_params=ignore_type_params,
-        ignore_pos_arg_names=ignore_pos_arg_names,
-        options=options,
-    ) and is_subtype(
-        b,
-        a,
-        ignore_type_params=ignore_type_params,
-        ignore_pos_arg_names=ignore_pos_arg_names,
-        options=options,
-    )
+def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+    def check(left: Type, right: Type) -> bool:
+        return is_proper_subtype(left, right) if proper_subtype else is_subtype(left, right)
+    if variance == COVARIANT:
+        return check(lefta, righta)
+    elif variance == CONTRAVARIANT:
+        return check(righta, lefta)
+    else:
+        if proper_subtype:
+            return mypy.sametypes.is_same_type(lefta, righta)
+        return is_equivalent(lefta, righta)
+
+
+def ignore_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
+    return True
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
