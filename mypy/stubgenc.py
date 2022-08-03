@@ -278,9 +278,9 @@ def generate_c_function_stub(
             inferred = sig_gen.get_method_sig(obj, module.__name__, class_name, name, self_var)
             if inferred:
                 # add self/cls var, if not present
-                args = inferred[0].args
-                if not args or args[0].name != self_var:
-                    args.insert(0, ArgSig(name=self_var))
+                for sig in inferred:
+                    if not sig.args or sig.args[0].name != self_var:
+                        sig.args.insert(0, ArgSig(name=self_var))
                 break
     else:
         # function:
@@ -295,6 +295,7 @@ def generate_c_function_stub(
             "if FallbackSignatureGenerator is provided"
         )
 
+    is_classmethod = self_var == "cls"
     is_overloaded = len(inferred) > 1 if inferred else False
     if is_overloaded:
         imports.append("from typing import overload")
@@ -319,6 +320,8 @@ def generate_c_function_stub(
 
             if is_overloaded:
                 output.append("@overload")
+            if is_classmethod:
+                output.append("@classmethod")
             output.append(
                 "def {function}({args}) -> {ret}: ...".format(
                     function=name,
@@ -450,7 +453,6 @@ def generate_c_type_stub(
                         continue
                     attr = "__init__"
                 if is_c_classmethod(value):
-                    methods.append("@classmethod")
                     self_var = "cls"
                 else:
                     self_var = "self"

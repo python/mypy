@@ -970,8 +970,44 @@ class StubgencSuite(unittest.TestCase):
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
-        assert_equal(output, ["def test(cls, *args, **kwargs) -> Any: ..."])
+        assert_equal(output, ["@classmethod", "def test(cls, *args, **kwargs) -> Any: ..."])
         assert_equal(imports, [])
+
+    def test_generate_c_type_classmethod_with_overloads(self) -> None:
+        class TestClass:
+            @classmethod
+            def test(self, arg0: str) -> None:
+                """
+                test(cls, arg0: str)
+                test(cls, arg0: int)
+                """
+                pass
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            TestClass.test,
+            output,
+            imports,
+            self_var="cls",
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(
+            output,
+            [
+                "@overload",
+                "@classmethod",
+                "def test(cls, arg0: str) -> Any: ...",
+                "@overload",
+                "@classmethod",
+                "def test(cls, arg0: int) -> Any: ...",
+            ],
+        )
+        assert_equal(imports, ["from typing import overload"])
 
     def test_generate_c_type_with_docstring_empty_default(self) -> None:
         class TestClass:
@@ -1288,7 +1324,7 @@ class StubgencSuite(unittest.TestCase):
                 "@overload",
                 "def __init__(self, arg0: str, arg1: str) -> None: ...",
                 "@overload",
-                "def __init__(*args, **kwargs) -> Any: ...",
+                "def __init__(self, *args, **kwargs) -> Any: ...",
             ],
         )
         assert_equal(set(imports), {"from typing import overload"})
