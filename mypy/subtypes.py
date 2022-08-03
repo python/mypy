@@ -521,7 +521,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             item = right.item
             if isinstance(item, TupleType):
                 item = mypy.typeops.tuple_fallback(item)
-            # This is a bit arbitrary, we should only skip Any-related cases.
+            # TODO: this is a bit arbitrary, we should only skip Any-related cases.
             if not self.subtype_context.proper_subtype:
                 if is_named_instance(left, "builtins.type"):
                     return self._is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
