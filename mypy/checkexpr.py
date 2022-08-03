@@ -3481,6 +3481,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
         self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
+        # We could return the return type from above, but unions are often better than the join
         union = make_simplified_union(left_type.items)
         if isinstance(index, SliceExpr):
             return self.chk.named_generic_type("builtins.tuple", [union])
