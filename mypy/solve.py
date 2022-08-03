@@ -7,11 +7,22 @@ from mypy.constraints import SUPERTYPE_OF, Constraint
 from mypy.join import join_types
 from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
-from mypy.types import AnyType, Type, TypeOfAny, TypeVarId, UninhabitedType, get_proper_type
+from mypy.types import (
+    AnyType,
+    Type,
+    TypeOfAny,
+    TypeVarId,
+    UninhabitedType,
+    UnionType,
+    get_proper_type,
+)
 
 
 def solve_constraints(
-    vars: List[TypeVarId], constraints: List[Constraint], strict: bool = True
+    vars: List[TypeVarId],
+    constraints: List[Constraint],
+    strict: bool = True,
+    infer_unions: bool = False,
 ) -> List[Optional[Type]]:
     """Solve type constraints.
 
@@ -43,7 +54,12 @@ def solve_constraints(
                 if bottom is None:
                     bottom = c.target
                 else:
-                    bottom = join_types(bottom, c.target)
+                    if infer_unions:
+                        # This deviates from the general mypy semantics because
+                        # recursive types are union-heavy in 95% of cases.
+                        bottom = UnionType.make_union([bottom, c.target])
+                    else:
+                        bottom = join_types(bottom, c.target)
             else:
                 if top is None:
                     top = c.target

@@ -1,0 +1,194 @@
+-- Tests checking that basic functionality works
+
+[case testRecursiveAliasBasic]
+# flags: --enable-recursive-aliases
+from typing import Dict, List, Union, TypeVar, Sequence
+
+JSON = Union[str, List[JSON], Dict[str, JSON]]
+
+x: JSON = ["foo", {"bar": "baz"}]
+
+reveal_type(x)  # N: Revealed type is "Union[builtins.str, builtins.list[...], builtins.dict[builtins.str, ...]]"
+if isinstance(x, list):
+    x = x[0]
+
+class Bad: ...
+x = ["foo", {"bar": [Bad()]}]  # E: List item 0 has incompatible type "Bad"; expected "Union[str, List[JSON], Dict[str, JSON]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasBasicGenericSubtype]
+# flags: --enable-recursive-aliases
+from typing import Union, TypeVar, Sequence, List
+
+T = TypeVar("T")
+
+Nested = Sequence[Union[T, Nested[T]]]
+
+class Bad: ...
+x: Nested[int]
+y: Nested[Bad]
+x = y  # E: Incompatible types in assignment (expression has type "Nested[Bad]", variable has type "Nested[int]")
+
+NestedOther = Sequence[Union[T, Nested[T]]]
+
+xx: Nested[int]
+yy: NestedOther[bool]
+xx = yy  # OK
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasBasicGenericInference]
+# flags: --enable-recursive-aliases
+from typing import Union, TypeVar, Sequence, List
+
+T = TypeVar("T")
+
+Nested = Sequence[Union[T, Nested[T]]]
+
+def flatten(arg: Nested[T]) -> List[T]:
+    res: List[T] = []
+    for item in arg:
+        if isinstance(item, Sequence):
+            res.extend(flatten(item))
+        else:
+            res.append(item)
+    return res
+
+reveal_type(flatten([1, [2, [3]]]))  # N: Revealed type is "builtins.list[builtins.int]"
+
+class Bad: ...
+x: Nested[int] = [1, [2, [3]]]
+x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasNewStyleSupported]
+# flags: --enable-recursive-aliases
+from test import A
+
+x: A
+if isinstance(x, list):
+    reveal_type(x[0])  # N: Revealed type is "Union[builtins.int, builtins.list[Union[builtins.int, builtins.list[...]]]]"
+else:
+    reveal_type(x)  # N: Revealed type is "builtins.int"
+
+[file test.pyi]
+A = int | list[A]
+[builtins fixtures/isinstancelist.pyi]
+
+-- Tests duplicating some existing tests with recursive aliases enabled
+
+[case testRecursiveAliasesMutual]
+# flags: --enable-recursive-aliases
+from typing import Type, Callable, Union
+
+A = Union[B, int]
+B = Callable[[C], int]
+C = Type[A]
+x: A
+reveal_type(x)  # N: Revealed type is "Union[def (Union[Type[def (...) -> builtins.int], Type[builtins.int]]) -> builtins.int, builtins.int]"
+
+[case testRecursiveAliasesProhibited-skip]
+# flags: --enable-recursive-aliases
+from typing import Type, Callable, Union
+
+A = Union[B, int]
+B = Union[A, int]
+C = Type[C]
+
+[case testRecursiveAliasImported]
+# flags: --enable-recursive-aliases
+import lib
+x: lib.A
+reveal_type(x)  # N: Revealed type is "builtins.list[builtins.list[...]]"
+
+[file lib.pyi]
+from typing import List
+from other import B
+A = List[B]
+
+[file other.pyi]
+from typing import List
+from lib import A
+B = List[A]
+[builtins fixtures/list.pyi]
+
+[case testRecursiveAliasViaBaseClass]
+# flags: --enable-recursive-aliases
+from typing import List
+
+x: B
+B = List[C]
+class C(B): pass
+
+reveal_type(x)  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
+[builtins fixtures/list.pyi]
+
+[case testRecursiveAliasViaBaseClass2]
+# flags: --enable-recursive-aliases
+from typing import NewType, List
+
+x: D
+reveal_type(x[0][0])  # N: Revealed type is "__main__.C"
+
+D = List[C]
+C = NewType('C', B)
+
+class B(D):
+    pass
+[builtins fixtures/list.pyi]
+
+[case testRecursiveAliasViaBaseClass3]
+# flags: --enable-recursive-aliases
+from typing import List, Generic, TypeVar, NamedTuple
+T = TypeVar('T')
+
+class C(A, B):
+    pass
+class G(Generic[T]): pass
+A = G[C]
+class B(NamedTuple):
+    x: int
+
+y: C
+reveal_type(y.x)  # N: Revealed type is "builtins.int"
+reveal_type(y[0])  # N: Revealed type is "builtins.int"
+x: A
+reveal_type(x)  # N: Revealed type is "__main__.G[Tuple[builtins.int, fallback=__main__.C]]"
+[builtins fixtures/list.pyi]
+
+[case testRecursiveAliasViaBaseClassImported]
+# flags: --enable-recursive-aliases
+import a
+[file a.py]
+from typing import List
+from b import D
+
+def f(x: B) -> List[B]: ...
+B = List[C]
+class C(B): pass
+
+[file b.py]
+from a import f
+class D: ...
+reveal_type(f)  # N: Revealed type is "def (x: builtins.list[a.C]) -> builtins.list[builtins.list[a.C]]"
+[builtins fixtures/list.pyi]
+
+[case testRecursiveAliasViaNamedTuple]
+# flags: --enable-recursive-aliases
+from typing import List, NamedTuple, Union
+
+Exp = Union['A', 'B']
+class A(NamedTuple('A', [('attr', List[Exp])])): pass
+class B(NamedTuple('B', [('val', object)])): pass
+
+def my_eval(exp: Exp) -> int:
+    reveal_type(exp) # N: Revealed type is "Union[Tuple[builtins.list[...], fallback=__main__.A], Tuple[builtins.object, fallback=__main__.B]]"
+    if isinstance(exp, A):
+        my_eval(exp[0][0])
+        return my_eval(exp.attr[0])
+    if isinstance(exp, B):
+        return exp.val  # E: Incompatible return value type (got "object", expected "int")
+    return 0
+
+my_eval(A([B(1), B(2)]))
+[builtins fixtures/isinstancelist.pyi]

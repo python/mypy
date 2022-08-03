@@ -3035,7 +3035,29 @@ class TypeStrVisitor(SyntheticTypeVisitor[str]):
         return ", ".join(res)
 
 
-class UnrollAliasVisitor(TypeTranslator):
+class TrivialSyntheticTypeTranslator(TypeTranslator, SyntheticTypeVisitor[Type]):
+    """A base class for type translators that need to be run during semantic analysis."""
+
+    def visit_placeholder_type(self, t: PlaceholderType) -> Type:
+        return t
+
+    def visit_callable_argument(self, t: CallableArgument) -> Type:
+        return t
+
+    def visit_ellipsis_type(self, t: EllipsisType) -> Type:
+        return t
+
+    def visit_raw_expression_type(self, t: RawExpressionType) -> Type:
+        return t
+
+    def visit_star_type(self, t: StarType) -> Type:
+        return t
+
+    def visit_type_list(self, t: TypeList) -> Type:
+        return t
+
+
+class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, initial_aliases: Set[TypeAliasType]) -> None:
         self.recursed = False
         self.initial_aliases = initial_aliases
@@ -3074,7 +3096,7 @@ def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:
     return isinstance(t, Instance) and t.type.fullname in fullnames
 
 
-class InstantiateAliasVisitor(TypeTranslator):
+class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
     def __init__(self, vars: List[str], subs: List[Type]) -> None:
         self.replacements = {v: s for (v, s) in zip(vars, subs)}
 
@@ -3122,6 +3144,19 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
+class HasRecursiveType(TypeQuery[bool]):
+    def __init__(self) -> None:
+        super().__init__(any)
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> bool:
+        return t.is_recursive
+
+
+def has_recursive_types(typ: Type) -> bool:
+    """Check if a type contains any recursive aliases (recursively)."""
+    return typ.accept(HasRecursiveType())
+
+
 def flatten_nested_unions(
     types: Iterable[Type], handle_type_alias_type: bool = False
 ) -> List[Type]:
@@ -3130,16 +3165,16 @@ def flatten_nested_unions(
     # if passed a "pathological" alias like A = Union[int, A] or similar.
     # TODO: ban such aliases in semantic analyzer.
     flat_items: List[Type] = []
-    if handle_type_alias_type:
-        types = get_proper_types(types)
     # TODO: avoid duplicate types in unions (e.g. using hash)
-    for tp in types:
+    for t in types:
+        tp = get_proper_type(t) if handle_type_alias_type else t
         if isinstance(tp, ProperType) and isinstance(tp, UnionType):
             flat_items.extend(
                 flatten_nested_unions(tp.items, handle_type_alias_type=handle_type_alias_type)
             )
         else:
-            flat_items.append(tp)
+            # Must preserve original aliases when possible.
+            flat_items.append(t)
     return flat_items
 
 
