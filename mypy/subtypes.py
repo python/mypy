@@ -250,9 +250,9 @@ def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
     # considered not the same type (which is the case at runtime).
     # Also Union[bool, int] (if it wasn't simplified before) will be different
     # from plain int, etc.
-    return is_proper_subtype(
-        a, b, ignore_promotions=ignore_promotions
-    ) and is_proper_subtype(b, a, ignore_promotions=ignore_promotions)
+    return is_proper_subtype(a, b, ignore_promotions=ignore_promotions) and is_proper_subtype(
+        b, a, ignore_promotions=ignore_promotions
+    )
 
 
 # This is a common entry point for subtyping checks (both proper and non-proper).
