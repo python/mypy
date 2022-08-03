@@ -297,6 +297,7 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
 def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
     def check(left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right) if proper_subtype else is_subtype(left, right)
+
     if variance == COVARIANT:
         return check(lefta, righta)
     elif variance == CONTRAVARIANT:
