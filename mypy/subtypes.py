@@ -67,16 +67,6 @@ IS_CLASS_OR_STATIC: Final = 3
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
 
 
-def is_same_type(left: Type, right: Type) -> bool:
-    """Are these types proper subtypes of each other?
-
-    This means types may have different representation (e.g. an alias, or
-    a non-simplified union) but are semantically exchangeable in all contexts.
-    """
-    return is_proper_subtype(left, right, ignore_promotions=True) and is_proper_subtype(
-        right, left, ignore_promotions=True
-    )
-
 class SubtypeContext:
     def __init__(
         self,
@@ -248,6 +238,21 @@ def is_equivalent(
         ignore_pos_arg_names=ignore_pos_arg_names,
         options=options,
     )
+
+
+def is_same_type(left: Type, right: Type, ignore_promotions: bool = True) -> bool:
+    """Are these types proper subtypes of each other?
+
+    This means types may have different representation (e.g. an alias, or
+    a non-simplified union) but are semantically exchangeable in all contexts.
+    """
+    # Note that using ignore_promotions=True (default) makes types like int and int64
+    # considered not the same type (which is the case at runtime).
+    # Also Union[bool, int] (if it wasn't simplified before) will be different
+    # from plain int, etc.
+    return is_proper_subtype(
+        left, right, ignore_promotions=ignore_promotions
+    ) and is_proper_subtype(right, left, ignore_promotions=ignore_promotions)
 
 
 # This is a common entry point for subtyping checks (both proper and non-proper).
