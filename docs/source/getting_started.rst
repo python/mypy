@@ -129,7 +129,7 @@ Arguments with default values can be annotated like so:
 .. code-block:: python
 
    def greeting(name: str, excited: bool = False) -> str:
-       message = 'Hello, {}'.format(name)
+       message = f'Hello, {name}'
        if excited:
            message += '!!!'
        return message
@@ -213,7 +213,7 @@ ints or strings, but no other types. You can express this using the :py:data:`~t
 
    def normalize_id(user_id: Union[int, str]) -> str:
        if isinstance(user_id, int):
-           return 'user-{}'.format(100000 + user_id)
+           return f'user-{100_000 + user_id}'
        else:
            return user_id
 

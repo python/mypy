@@ -452,7 +452,7 @@ but it's not obvious from its signature:
 
     def greeting(name: str) -> str:
         if name:
-            return 'Hello, {}'.format(name)
+            return f'Hello, {name}'
         else:
             return 'Hello, stranger'
 
@@ -469,7 +469,7 @@ enabled:
 
     def greeting(name: Optional[str]) -> str:
         if name:
-            return 'Hello, {}'.format(name)
+            return f'Hello, {name}'
         else:
             return 'Hello, stranger'
 

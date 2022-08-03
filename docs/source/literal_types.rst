@@ -446,7 +446,7 @@ Let's start with a definition:
 
   def assert_never(value: NoReturn) -> NoReturn:
       # This also works in runtime as well:
-      assert False, 'This code should never be reached, got: {0}'.format(value)
+      assert False, f'This code should never be reached, got: {value}'
 
   class Direction(Enum):
       up = 'up'
