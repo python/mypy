@@ -27,6 +27,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    IMPLICITLY_ABSTRACT,
     LITERAL_TYPE,
     REVEAL_TYPE,
     ArgKind,
@@ -96,6 +97,7 @@ from mypy.plugin import (
 )
 from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
+from mypy.state import state
 from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
@@ -147,6 +149,7 @@ from mypy.types import (
     flatten_nested_unions,
     get_proper_type,
     get_proper_types,
+    has_recursive_types,
     is_generic_instance,
     is_named_instance,
     is_optional,
@@ -1236,17 +1239,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if (
             callee.is_type_obj()
-            and callee.type_object().is_abstract
-            # Exception for Type[...]
-            and not callee.from_type_type
-            and not callee.type_object().fallback_to_any
-        ):
-            type = callee.type_object()
-            self.msg.cannot_instantiate_abstract_class(
-                callee.type_object().name, type.abstract_attributes, context
-            )
-        elif (
-            callee.is_type_obj()
             and callee.type_object().is_protocol
             # Exception for Type[...]
             and not callee.from_type_type
@@ -1254,6 +1246,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             self.chk.fail(
                 message_registry.CANNOT_INSTANTIATE_PROTOCOL.format(callee.type_object().name),
                 context,
+            )
+        elif (
+            callee.is_type_obj()
+            and callee.type_object().is_abstract
+            # Exception for Type[...]
+            and not callee.from_type_type
+            and not callee.type_object().fallback_to_any
+        ):
+            type = callee.type_object()
+            # Determine whether the implicitly abstract attributes are functions with
+            # None-compatible return types.
+            abstract_attributes: Dict[str, bool] = {}
+            for attr_name, abstract_status in type.abstract_attributes:
+                if abstract_status == IMPLICITLY_ABSTRACT:
+                    abstract_attributes[attr_name] = self.can_return_none(type, attr_name)
+                else:
+                    abstract_attributes[attr_name] = False
+            self.msg.cannot_instantiate_abstract_class(
+                callee.type_object().name, abstract_attributes, context
             )
 
         formal_to_actual = map_actuals_to_formals(
@@ -1334,6 +1345,30 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             callee = callee.copy_modified(ret_type=new_ret_type)
         return callee.ret_type, callee
+
+    def can_return_none(self, type: TypeInfo, attr_name: str) -> bool:
+        """Is the given attribute a method with a None-compatible return type?
+
+        Overloads are only checked if there is an implementation.
+        """
+        if not state.strict_optional:
+            # If strict-optional is not set, is_subtype(NoneType(), T) is always True.
+            # So, we cannot do anything useful here in that case.
+            return False
+        for base in type.mro:
+            symnode = base.names.get(attr_name)
+            if symnode is None:
+                continue
+            node = symnode.node
+            if isinstance(node, OverloadedFuncDef):
+                node = node.impl
+            if isinstance(node, Decorator):
+                node = node.func
+            if isinstance(node, FuncDef):
+                if node.type is not None:
+                    assert isinstance(node.type, CallableType)
+                    return is_subtype(NoneType(), node.type.ret_type)
+        return False
 
     def analyze_type_type_callee(self, item: ProperType, context: Context) -> Type:
         """Analyze the callee X in X(...) where X is Type[item].
@@ -1534,6 +1569,17 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     pass1_args.append(arg)
 
+            # This is a hack to better support inference for recursive types.
+            # When the outer context for a function call is known to be recursive,
+            # we solve type constraints inferred from arguments using unions instead
+            # of joins. This is a bit arbitrary, but in practice it works for most
+            # cases. A cleaner alternative would be to switch to single bin type
+            # inference, but this is a lot of work.
+            ctx = self.type_context[-1]
+            if ctx and has_recursive_types(ctx):
+                infer_unions = True
+            else:
+                infer_unions = False
             inferred_args = infer_function_type_arguments(
                 callee_type,
                 pass1_args,
@@ -1541,6 +1587,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 formal_to_actual,
                 context=self.argument_infer_context(),
                 strict=self.chk.in_checked_function(),
+                infer_unions=infer_unions,
             )
 
             if 2 in arg_pass_nums:

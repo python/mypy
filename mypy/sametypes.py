@@ -33,6 +33,10 @@ from mypy.types import (
 def is_same_type(left: Type, right: Type) -> bool:
     """Is 'left' the same type as 'right'?"""
 
+    if isinstance(left, TypeAliasType) and isinstance(right, TypeAliasType):
+        if left.is_recursive and right.is_recursive:
+            return left.alias == right.alias and left.args == right.args
+
     left = get_proper_type(left)
     right = get_proper_type(right)
 

@@ -87,6 +87,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
@@ -1321,7 +1322,7 @@ class MessageBuilder:
         self.fail("All conditional function variants must have identical " "signatures", defn)
 
     def cannot_instantiate_abstract_class(
-        self, class_name: str, abstract_attributes: List[str], context: Context
+        self, class_name: str, abstract_attributes: Dict[str, bool], context: Context
     ) -> None:
         attrs = format_string_list([f'"{a}"' for a in abstract_attributes])
         self.fail(
@@ -1330,6 +1331,24 @@ class MessageBuilder:
             context,
             code=codes.ABSTRACT,
         )
+        attrs_with_none = [
+            f'"{a}"'
+            for a, implicit_and_can_return_none in abstract_attributes.items()
+            if implicit_and_can_return_none
+        ]
+        if not attrs_with_none:
+            return
+        if len(attrs_with_none) == 1:
+            note = (
+                "The following method was marked implicitly abstract because it has an empty "
+                "function body: {}. If it is not meant to be abstract, explicitly return None."
+            )
+        else:
+            note = (
+                "The following methods were marked implicitly abstract because they have empty "
+                "function bodies: {}. If they are not meant to be abstract, explicitly return None."
+            )
+        self.note(note.format(format_string_list(attrs_with_none)), context, code=codes.ABSTRACT)
 
     def base_class_definitions_incompatible(
         self, name: str, base1: TypeInfo, base2: TypeInfo, context: Context
@@ -2128,7 +2147,17 @@ def format_type_inner(typ: Type, verbosity: int, fullnames: Optional[Set[str]]) 
         else:
             return typ.value_repr()
 
-    # TODO: show type alias names in errors.
+    if isinstance(typ, TypeAliasType) and typ.is_recursive:
+        # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
+        # too verbose for user messages, OTOH it nicely shows structure of recursive types.
+        if verbosity < 2:
+            type_str = typ.alias.name if typ.alias else "<alias (unfixed)>"
+            if typ.args:
+                type_str += f"[{format_list(typ.args)}]"
+            return type_str
+        return str(typ)
+
+    # TODO: always mention type alias names in errors.
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):

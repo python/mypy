@@ -315,6 +315,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable recursive type aliases (currently experimental)
+        self.enable_recursive_aliases = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

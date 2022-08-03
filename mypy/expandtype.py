@@ -293,7 +293,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
                 else:
                     items.extend(unpacked_items)
             else:
-                items.append(proper_item.accept(self))
+                # Must preserve original aliases when possible.
+                items.append(item.accept(self))
         return items
 
     def visit_tuple_type(self, t: TupleType) -> Type:
