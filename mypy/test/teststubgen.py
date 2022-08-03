@@ -38,7 +38,8 @@ from mypy.stubgenc import (
     generate_c_function_stub,
     generate_c_property_stub,
     generate_c_type_stub,
-    infer_method_sig,
+    infer_method_args,
+    infer_method_ret_type,
     is_c_property_readonly,
 )
 from mypy.stubutil import common_dir_prefix, remove_misplaced_type_comments, walk_packages
@@ -768,16 +769,18 @@ class StubgencSuite(unittest.TestCase):
     """
 
     def test_infer_hash_sig(self) -> None:
-        assert_equal(infer_method_sig("__hash__"), [self_arg])
+        assert_equal(infer_method_args("__hash__"), [self_arg])
+        assert_equal(infer_method_ret_type("__hash__"), "int")
 
     def test_infer_getitem_sig(self) -> None:
-        assert_equal(infer_method_sig("__getitem__"), [self_arg, ArgSig(name="index")])
+        assert_equal(infer_method_args("__getitem__"), [self_arg, ArgSig(name="index")])
 
     def test_infer_setitem_sig(self) -> None:
         assert_equal(
-            infer_method_sig("__setitem__"),
+            infer_method_args("__setitem__"),
             [self_arg, ArgSig(name="index"), ArgSig(name="object")],
         )
+        assert_equal(infer_method_ret_type("__setitem__"), "None")
 
     def test_infer_binary_op_sig(self) -> None:
         for op in (
@@ -794,11 +797,19 @@ class StubgencSuite(unittest.TestCase):
             "mul",
             "rmul",
         ):
-            assert_equal(infer_method_sig(f"__{op}__"), [self_arg, ArgSig(name="other")])
+            assert_equal(infer_method_args(f"__{op}__"), [self_arg, ArgSig(name="other")])
+
+    def test_infer_equality_op_sig(self):
+        for op in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
+            assert_equal(infer_method_ret_type(f"__{op}__"), "bool")
 
     def test_infer_unary_op_sig(self) -> None:
         for op in ("neg", "pos"):
-            assert_equal(infer_method_sig(f"__{op}__"), [self_arg])
+            assert_equal(infer_method_args(f"__{op}__"), [self_arg])
+
+    def test_infer_cast_sig(self):
+        for op in ("float", "bool", "bytes", "int"):
+            assert_equal(infer_method_ret_type(f"__{op}__"), op)
 
     def test_generate_c_type_stub_no_crash_for_object(self) -> None:
         output: list[str] = []

@@ -94,7 +94,7 @@ class ExternalSignatureGenerator(SignatureGenerator):
                 FunctionSig(
                     name=name,
                     args=infer_arg_sig_from_anon_docstring(self.class_sigs[class_name]),
-                    ret_type="None" if name == "__init__" else "Any",
+                    ret_type=infer_method_ret_type(name),
                 )
             ]
         return self.get_function_sig(func, module_name, name)
@@ -137,8 +137,8 @@ class FallbackSignatureGenerator(SignatureGenerator):
         return [
             FunctionSig(
                 name=name,
-                args=infer_method_sig(name, self_var),
-                ret_type="None" if name == "__init__" else "Any",
+                args=infer_method_args(name, self_var),
+                ret_type=infer_method_ret_type(name),
             )
         ]
 
@@ -571,7 +571,7 @@ def is_skipped_attribute(attr: str) -> bool:
     )
 
 
-def infer_method_sig(name: str, self_var: str | None = None) -> list[ArgSig]:
+def infer_method_args(name: str, self_var: str | None = None) -> list[ArgSig]:
     args: list[ArgSig] | None = None
     if name.startswith("__") and name.endswith("__"):
         name = name[2:-2]
@@ -673,3 +673,17 @@ def infer_method_sig(name: str, self_var: str | None = None) -> list[ArgSig]:
     if args is None:
         args = [ArgSig(name="*args"), ArgSig(name="**kwargs")]
     return [ArgSig(name=self_var or "self")] + args
+
+
+def infer_method_ret_type(name: str) -> str:
+    if name.startswith("__") and name.endswith("__"):
+        name = name[2:-2]
+        if name in ("float", "bool", "bytes", "int"):
+            return name
+        elif name in ("eq", "ne", "lt", "le", "gt", "ge", "contains"):
+            return "bool"
+        elif name in ("len", "hash", "sizeof", "trunc", "floor", "ceil"):
+            return "int"
+        elif name in ("init", "setitem"):
+            return "None"
+    return "Any"
