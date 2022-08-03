@@ -2309,7 +2309,7 @@ class SemanticAnalyzer(
             for expr in names_modified_by_assignment(s):
                 self.mark_incomplete(expr.name, expr)
             return
-        if self.can_possibly_be_indexed_alias(s):
+        if self.can_possibly_be_index_alias(s):
             # Now re-visit those rvalues that were we skipped type applications above.
             # This should be safe as generally semantic analyzer is idempotent.
             s.rvalue.accept(self)
@@ -2451,20 +2451,13 @@ class SemanticAnalyzer(
                 return True
         return False
 
-    @contextmanager
-    def basic_type_applications_set(self, s: AssignmentStmt) -> Iterator[None]:
-        old = self.basic_type_applications
-        self.basic_type_applications = self.can_possibly_be_indexed_alias(s)
-        try:
-            yield
-        finally:
-            self.basic_type_applications = old
-
-    def can_possibly_be_indexed_alias(self, s: AssignmentStmt) -> bool:
+    def can_possibly_be_index_alias(self, s: AssignmentStmt) -> bool:
         """Like can_be_type_alias(), but simpler and doesn't require analyzed rvalue.
 
         Instead, use lvalues/annotations structure to figure out whether this can
-        potentially be a type alias definition.
+        potentially be a type alias definition. Another difference from above function
+        is that we are only interested IndexExpr and OpExpr rvalues, since only those
+        can be potentially recursive (things like `A = A` are never valid).
         """
         if len(s.lvalues) > 1:
             return False
@@ -2476,6 +2469,17 @@ class SemanticAnalyzer(
             return False
         # Something that looks like Foo = Bar[Baz, ...]
         return True
+
+    @contextmanager
+    def basic_type_applications_set(self, s: AssignmentStmt) -> Iterator[None]:
+        old = self.basic_type_applications
+        # As an optimization, only use the double visit logic if this
+        # can possibly be a recursive type alias.
+        self.basic_type_applications = self.can_possibly_be_index_alias(s)
+        try:
+            yield
+        finally:
+            self.basic_type_applications = old
 
     def is_type_ref(self, rv: Expression, bare: bool = False) -> bool:
         """Does this expression refer to a type?
