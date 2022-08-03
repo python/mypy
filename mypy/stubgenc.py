@@ -52,7 +52,7 @@ class SignatureGenerator:
 
     @abstractmethod
     def get_method_sig(
-        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+        self, cls: type, func: object, module_name: str, class_name: str, name: str, self_var: str
     ) -> list[FunctionSig] | None:
         pass
 
@@ -83,7 +83,7 @@ class ExternalSignatureGenerator(SignatureGenerator):
             return None
 
     def get_method_sig(
-        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+        self, cls: type, func: object, module_name: str, class_name: str, name: str, self_var: str
     ) -> list[FunctionSig] | None:
         if (
             name in ("__new__", "__init__")
@@ -114,9 +114,19 @@ class DocstringSignatureGenerator(SignatureGenerator):
         return inferred
 
     def get_method_sig(
-        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+        self,
+        cls: type,
+        func: object,
+        module_name: str,
+        class_name: str,
+        func_name: str,
+        self_var: str,
     ) -> list[FunctionSig] | None:
-        return self.get_function_sig(func, module_name, name)
+        inferred = self.get_function_sig(func, module_name, func_name)
+        if not inferred and func_name == "__init__":
+            # look for class-level constructor signatures of the form <class_name>(<signature>)
+            inferred = self.get_function_sig(cls, module_name, class_name)
+        return inferred
 
 
 class FallbackSignatureGenerator(SignatureGenerator):
@@ -132,7 +142,7 @@ class FallbackSignatureGenerator(SignatureGenerator):
         ]
 
     def get_method_sig(
-        self, func: object, module_name: str, class_name: str, name: str, self_var: str
+        self, cls: type, func: object, module_name: str, class_name: str, name: str, self_var: str
     ) -> list[FunctionSig] | None:
         return [
             FunctionSig(
@@ -261,6 +271,7 @@ def generate_c_function_stub(
     imports: list[str],
     sig_generators: Iterable[SignatureGenerator],
     self_var: str | None = None,
+    cls: type | None = None,
     class_name: str | None = None,
 ) -> None:
     """Generate stub for a single function or method.
@@ -273,9 +284,12 @@ def generate_c_function_stub(
     inferred: list[FunctionSig] | None = None
     if class_name:
         # method:
+        assert cls is not None, "cls should be provided for methods"
         assert self_var is not None, "self_var should be provided for methods"
         for sig_gen in sig_generators:
-            inferred = sig_gen.get_method_sig(obj, module.__name__, class_name, name, self_var)
+            inferred = sig_gen.get_method_sig(
+                cls, obj, module.__name__, class_name, name, self_var
+            )
             if inferred:
                 # add self/cls var, if not present
                 for sig in inferred:
@@ -463,6 +477,7 @@ def generate_c_type_stub(
                     methods,
                     imports=imports,
                     self_var=self_var,
+                    cls=obj,
                     class_name=class_name,
                     sig_generators=sig_generators,
                 )

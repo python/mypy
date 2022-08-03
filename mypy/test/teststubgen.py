@@ -933,6 +933,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -956,6 +957,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -978,6 +980,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="cls",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1004,6 +1007,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="cls",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1037,6 +1041,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1204,6 +1209,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1227,6 +1233,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1250,6 +1257,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1273,6 +1281,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1296,6 +1305,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1324,6 +1334,7 @@ class StubgencSuite(unittest.TestCase):
             output,
             imports,
             self_var="self",
+            cls=TestClass,
             class_name="TestClass",
             sig_generators=get_sig_generators(parse_options([])),
         )
@@ -1336,6 +1347,41 @@ class StubgencSuite(unittest.TestCase):
                 "def __init__(self, arg0: str, arg1: str) -> None: ...",
                 "@overload",
                 "def __init__(self, *args, **kwargs) -> Any: ...",
+            ],
+        )
+        assert_equal(set(imports), {"from typing import overload"})
+
+    def test_generate_c_type_with_overload_shiboken(self) -> None:
+        class TestClass:
+            """
+            TestClass(self: TestClass, arg0: str) -> None
+            TestClass(self: TestClass, arg0: str, arg1: str) -> None
+            """
+
+            def __init__(self, arg0: str) -> None:
+                pass
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType(TestClass.__module__, "")
+        generate_c_function_stub(
+            mod,
+            "__init__",
+            TestClass.__init__,
+            output,
+            imports,
+            self_var="self",
+            cls=TestClass,
+            class_name="TestClass",
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(
+            output,
+            [
+                "@overload",
+                "def __init__(self, arg0: str) -> None: ...",
+                "@overload",
+                "def __init__(self, arg0: str, arg1: str) -> None: ...",
             ],
         )
         assert_equal(set(imports), {"from typing import overload"})
