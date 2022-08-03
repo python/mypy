@@ -154,7 +154,10 @@ class FallbackSignatureGenerator(SignatureGenerator):
 
 
 def generate_stub_for_c_module(
-    module_name: str, target: str, sig_generators: Iterable[SignatureGenerator]
+    module_name: str,
+    target: str,
+    known_modules: Iterable[str],
+    sig_generators: Iterable[SignatureGenerator],
 ) -> None:
     """Generate stub for C module.
 
@@ -180,7 +183,13 @@ def generate_stub_for_c_module(
     for name, obj in items:
         if is_c_function(obj):
             generate_c_function_stub(
-                module, name, obj, functions, imports=imports, sig_generators=sig_generators
+                module,
+                name,
+                obj,
+                output=functions,
+                known_modules=known_modules,
+                imports=imports,
+                sig_generators=sig_generators,
             )
             done.add(name)
     types: list[str] = []
@@ -189,7 +198,13 @@ def generate_stub_for_c_module(
             continue
         if is_c_type(obj):
             generate_c_type_stub(
-                module, name, obj, types, imports=imports, sig_generators=sig_generators
+                module,
+                name,
+                obj,
+                output=types,
+                known_modules=known_modules,
+                imports=imports,
+                sig_generators=sig_generators,
             )
             done.add(name)
     variables = []
@@ -197,7 +212,9 @@ def generate_stub_for_c_module(
         if name.startswith("__") and name.endswith("__"):
             continue
         if name not in done and not inspect.ismodule(obj):
-            type_str = strip_or_import(get_type_fullname(type(obj)), module, imports)
+            type_str = strip_or_import(
+                get_type_fullname(type(obj)), module, known_modules, imports
+            )
             variables.append(f"{name}: {type_str}")
     output = sorted(set(imports))
     for line in variables:
@@ -267,9 +284,10 @@ def generate_c_function_stub(
     module: ModuleType,
     name: str,
     obj: object,
+    known_modules: Iterable[str],
+    sig_generators: Iterable[SignatureGenerator],
     output: list[str],
     imports: list[str],
-    sig_generators: Iterable[SignatureGenerator],
     self_var: str | None = None,
     cls: type | None = None,
     class_name: str | None = None,
@@ -325,7 +343,7 @@ def generate_c_function_stub(
                         arg_def = "_none"  # None is not a valid argument name
 
                     if arg.type:
-                        arg_def += ": " + strip_or_import(arg.type, module, imports)
+                        arg_def += ": " + strip_or_import(arg.type, module, known_modules, imports)
 
                     if arg.default:
                         arg_def += " = ..."
@@ -340,12 +358,14 @@ def generate_c_function_stub(
                 "def {function}({args}) -> {ret}: ...".format(
                     function=name,
                     args=", ".join(args),
-                    ret=strip_or_import(signature.ret_type, module, imports),
+                    ret=strip_or_import(signature.ret_type, module, known_modules, imports),
                 )
             )
 
 
-def strip_or_import(typ: str, module: ModuleType, imports: list[str]) -> str:
+def strip_or_import(
+    typ: str, module: ModuleType, known_modules: Iterable[str], imports: list[str]
+) -> str:
     """Strips unnecessary module names from typ.
 
     If typ represents a type that is inside module or is a type coming from builtins, remove
@@ -354,21 +374,29 @@ def strip_or_import(typ: str, module: ModuleType, imports: list[str]) -> str:
     Arguments:
         typ: name of the type
         module: in which this type is used
+        known_modules: other modules being processed
         imports: list of import statements (may be modified during the call)
     """
+    local_modules = ["builtins"]
+    if module:
+        local_modules.append(module.__name__)
+
     stripped_type = typ
     if any(c in typ for c in "[,"):
         for subtyp in re.split(r"[\[,\]]", typ):
-            strip_or_import(subtyp.strip(), module, imports)
+            strip_or_import(subtyp.strip(), module, known_modules, imports)
         if module:
             stripped_type = re.sub(r"(^|[\[, ]+)" + re.escape(module.__name__ + "."), r"\1", typ)
-    elif module and typ.startswith(module.__name__ + "."):
-        stripped_type = typ[len(module.__name__) + 1 :]
     elif "." in typ:
-        arg_module = typ[: typ.rindex(".")]
-        if arg_module == "builtins":
-            stripped_type = typ[len("builtins") + 1 :]
+        for module_name in local_modules + list(reversed(known_modules)):
+            if typ.startswith(module_name + "."):
+                if module_name in local_modules:
+                    stripped_type = typ[len(module_name) + 1 :]
+                arg_module = module_name
+                break
         else:
+            arg_module = typ[: typ.rindex(".")]
+        if arg_module not in local_modules:
             imports.append(f"import {arg_module}")
     if stripped_type == "NoneType":
         stripped_type = "None"
@@ -387,6 +415,7 @@ def generate_c_property_stub(
     ro_properties: list[str],
     readonly: bool,
     module: ModuleType | None = None,
+    known_modules: Iterable[str] | None = None,
     imports: list[str] | None = None,
 ) -> None:
     """Generate property stub using introspection of 'obj'.
@@ -417,8 +446,8 @@ def generate_c_property_stub(
     if not inferred:
         inferred = "Any"
 
-    if module is not None and imports is not None:
-        inferred = strip_or_import(inferred, module, imports)
+    if module is not None and imports is not None and known_modules is not None:
+        inferred = strip_or_import(inferred, module, known_modules, imports)
 
     if is_static_property(obj):
         trailing_comment = "  # read-only" if readonly else ""
@@ -436,6 +465,7 @@ def generate_c_type_stub(
     class_name: str,
     obj: type,
     output: list[str],
+    known_modules: Iterable[str],
     imports: list[str],
     sig_generators: Iterable[SignatureGenerator],
 ) -> None:
@@ -474,7 +504,8 @@ def generate_c_type_stub(
                     module,
                     attr,
                     value,
-                    methods,
+                    output=methods,
+                    known_modules=known_modules,
                     imports=imports,
                     self_var=self_var,
                     cls=obj,
@@ -491,11 +522,18 @@ def generate_c_type_stub(
                 ro_properties,
                 is_c_property_readonly(value),
                 module=module,
+                known_modules=known_modules,
                 imports=imports,
             )
         elif is_c_type(value):
             generate_c_type_stub(
-                module, attr, value, types, imports=imports, sig_generators=sig_generators
+                module,
+                attr,
+                value,
+                types,
+                imports=imports,
+                known_modules=known_modules,
+                sig_generators=sig_generators,
             )
             done.add(attr)
 
@@ -505,7 +543,10 @@ def generate_c_type_stub(
         if attr not in done:
             static_properties.append(
                 "{}: ClassVar[{}] = ...".format(
-                    attr, strip_or_import(get_type_fullname(type(value)), module, imports)
+                    attr,
+                    strip_or_import(
+                        get_type_fullname(type(value)), module, known_modules, imports
+                    ),
                 )
             )
     all_bases = type.mro(obj)
@@ -525,7 +566,8 @@ def generate_c_type_stub(
             bases.append(base)
     if bases:
         bases_str = "(%s)" % ", ".join(
-            strip_or_import(get_type_fullname(base), module, imports) for base in bases
+            strip_or_import(get_type_fullname(base), module, known_modules, imports)
+            for base in bases
         )
     else:
         bases_str = ""

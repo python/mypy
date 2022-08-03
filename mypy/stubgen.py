@@ -1720,6 +1720,7 @@ def generate_stubs(options: Options) -> None:
             )
 
     # Separately analyse C modules using different logic.
+    all_modules = sorted(m.module for m in (py_modules + c_modules))
     for mod in c_modules:
         if any(py_mod.module.startswith(mod.module + ".") for py_mod in py_modules + c_modules):
             target = mod.module.replace(".", "/") + "/__init__.pyi"
@@ -1728,7 +1729,9 @@ def generate_stubs(options: Options) -> None:
         target = os.path.join(options.output_dir, target)
         files.append(target)
         with generate_guarded(mod.module, target, options.ignore_errors, options.verbose):
-            generate_stub_for_c_module(mod.module, target, sig_generators=sig_generators)
+            generate_stub_for_c_module(
+                mod.module, target, known_modules=all_modules, sig_generators=sig_generators
+            )
     num_modules = len(py_modules) + len(c_modules)
     if not options.quiet and num_modules > 0:
         print("Processed %d modules" % num_modules)
