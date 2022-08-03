@@ -105,13 +105,15 @@ def is_subtype(
     if TypeState.is_assumed_subtype(left, right):
         return True
     if (
+        # TODO: recursive instances like `class str(Sequence[str])` can also cause
+        # issues, so we also need to include them in the assumptions stack
         isinstance(left, TypeAliasType)
         and isinstance(right, TypeAliasType)
         and left.is_recursive
         and right.is_recursive
     ):
         # This case requires special care because it may cause infinite recursion.
-        # Our view on recursive types is known under a fancy name of equirecursive mu-types.
+        # Our view on recursive types is known under a fancy name of iso-recursive mu-types.
         # Roughly this means that a recursive type is defined as an alias where right hand side
         # can refer to the type as a whole, for example:
         #     A = Union[int, Tuple[A, ...]]

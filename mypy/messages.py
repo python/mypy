@@ -87,6 +87,7 @@ from mypy.types import (
     ProperType,
     TupleType,
     Type,
+    TypeAliasType,
     TypedDictType,
     TypeOfAny,
     TypeType,
@@ -2146,7 +2147,17 @@ def format_type_inner(typ: Type, verbosity: int, fullnames: Optional[Set[str]]) 
         else:
             return typ.value_repr()
 
-    # TODO: show type alias names in errors.
+    if isinstance(typ, TypeAliasType) and typ.is_recursive:
+        # TODO: find balance here, str(typ) doesn't support custom verbosity, and may be
+        # too verbose for user messages, OTOH it nicely shows structure of recursive types.
+        if verbosity < 2:
+            type_str = typ.alias.name if typ.alias else "<alias (unfixed)>"
+            if typ.args:
+                type_str += f"[{format_list(typ.args)}]"
+            return type_str
+        return str(typ)
+
+    # TODO: always mention type alias names in errors.
     typ = get_proper_type(typ)
 
     if isinstance(typ, Instance):
