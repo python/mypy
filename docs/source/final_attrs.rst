@@ -33,7 +33,7 @@ further assignments to final names in type-checked code:
 
    from typing import Final
 
-   RATE: Final = 3000
+   RATE: Final = 3_000
 
    class Base:
        DEFAULT_ID: Final = 0

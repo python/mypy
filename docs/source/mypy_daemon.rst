@@ -177,7 +177,7 @@ In this example, the function ``format_id()`` has no annotation:
 .. code-block:: python
 
    def format_id(user):
-       return "User: {}".format(user)
+       return f"User: {user}"
 
    root = format_id(0)
 
