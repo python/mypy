@@ -583,7 +583,10 @@ class Base(NamedTuple):
         self.x = 3  # E: Property "x" defined in "Base" is read-only
         self[1]  # E: Tuple index out of range
         reveal_type(self[T])  # N: Revealed type is "builtins.int" \
-                              # E: Invalid index type "object" for "Base"; expected type "int"
+                              # E: No overload variant of "__getitem__" of "tuple" matches argument type "object" \
+                              # N: Possible overload variants: \
+                              # N:     def __getitem__(self, int) -> int \
+                              # N:     def __getitem__(self, slice) -> Tuple[int, ...]
         return self.x
     def bad_override(self) -> int:
         return self.x
