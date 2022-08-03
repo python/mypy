@@ -68,12 +68,11 @@ IS_CLASS_OR_STATIC: Final = 3
 TypeParameterChecker: _TypeAlias = Callable[[Type, Type, int, bool], bool]
 
 
-# TODO: should we also pass other flags here?
 def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
     if variance == COVARIANT:
-        return is_subtype(lefta, righta, proper_subtype=proper_subtype)
+        return (is_proper_subtype if proper_subtype else is_subtype)(lefta, righta)
     elif variance == CONTRAVARIANT:
-        return is_subtype(righta, lefta, proper_subtype=proper_subtype)
+        return (is_proper_subtype if proper_subtype else is_subtype)(righta, lefta)
     else:
         if proper_subtype:
             return mypy.sametypes.is_same_type(lefta, righta)
@@ -104,8 +103,9 @@ def is_proper_subtype(
     return is_subtype(
         left,
         right,
-        ignore_promotions=ignore_promotions,
         proper_subtype=True,
+        internal_call=INTERNAL_CALL,
+        ignore_promotions=ignore_promotions,
         erase_instances=erase_instances,
         keep_erased_types=keep_erased_types,
     )
@@ -147,6 +147,9 @@ class SubtypeContext:
         self.options = options
 
 
+INTERNAL_CALL: Final = object()
+
+
 def is_subtype(
     left: Type,
     right: Type,
@@ -160,6 +163,7 @@ def is_subtype(
     erase_instances: bool = False,
     keep_erased_types: bool = False,
     options: Optional[Options] = None,
+    internal_call: object = None,
 ) -> bool:
     """Is 'left' subtype of 'right'?
 
@@ -172,6 +176,8 @@ def is_subtype(
     between the type arguments (e.g., A and B), taking the variance of the
     type var into account.
     """
+    if proper_subtype:
+        assert internal_call is INTERNAL_CALL, "Never use is_subtype() with proper_subtype flag"
     if subtype_context is None:
         subtype_context = SubtypeContext(
             ignore_type_params=ignore_type_params,
