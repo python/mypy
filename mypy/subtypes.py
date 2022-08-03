@@ -72,7 +72,6 @@ class SubtypeContext:
     def __init__(
         self,
         *,
-        proper_subtype: bool,
         # Non-proper subtype flags
         ignore_type_params: bool = False,
         ignore_pos_arg_names: bool = False,
@@ -84,24 +83,25 @@ class SubtypeContext:
         keep_erased_types: bool = False,
         options: Optional[Options] = None,
     ) -> None:
-        # Historically proper and non-proper subtypes were defined using different functions
-        # and different visitors. Check if flag values are such that we definitely support.
-        if proper_subtype:
-            assert (
-                not ignore_type_params
-                and not ignore_pos_arg_names
-                and not ignore_declared_variance
-            )
-        else:
-            assert not erase_instances and not keep_erased_types
         self.ignore_type_params = ignore_type_params
         self.ignore_pos_arg_names = ignore_pos_arg_names
         self.ignore_declared_variance = ignore_declared_variance
         self.ignore_promotions = ignore_promotions
-        self.proper_subtype = proper_subtype
         self.erase_instances = erase_instances
         self.keep_erased_types = keep_erased_types
         self.options = options
+
+    def check_context(self, proper_subtype: bool) -> None:
+        # Historically proper and non-proper subtypes were defined using different helpers
+        # and different visitors. Check if flag values are such that we definitely support.
+        if proper_subtype:
+            assert (
+                not self.ignore_type_params
+                and not self.ignore_pos_arg_names
+                and not self.ignore_declared_variance
+            )
+        else:
+            assert not self.erase_instances and not self.keep_erased_types
 
 
 def is_subtype(
@@ -128,7 +128,6 @@ def is_subtype(
     """
     if subtype_context is None:
         subtype_context = SubtypeContext(
-            proper_subtype=False,
             ignore_type_params=ignore_type_params,
             ignore_pos_arg_names=ignore_pos_arg_names,
             ignore_declared_variance=ignore_declared_variance,
@@ -173,8 +172,8 @@ def is_subtype(
         # When checking if A <: B we push pair (A, B) onto 'assuming' stack, then when after few
         # steps we come back to initial call is_subtype(A, B) and immediately return True.
         with pop_on_exit(TypeState.get_assumptions(is_proper=False), left, right):
-            return _is_subtype(left, right, subtype_context)
-    return _is_subtype(left, right, subtype_context)
+            return _is_subtype(left, right, subtype_context, proper_subtype=False)
+    return _is_subtype(left, right, subtype_context, proper_subtype=False)
 
 
 def is_proper_subtype(
@@ -197,7 +196,6 @@ def is_proper_subtype(
     """
     if subtype_context is None:
         subtype_context = SubtypeContext(
-            proper_subtype=True,
             ignore_promotions=ignore_promotions,
             erase_instances=erase_instances,
             keep_erased_types=keep_erased_types,
@@ -216,8 +214,8 @@ def is_proper_subtype(
     ):
         # Same as for non-proper subtype, see detailed comment there for explanation.
         with pop_on_exit(TypeState.get_assumptions(is_proper=True), left, right):
-            return _is_subtype(left, right, subtype_context)
-    return _is_subtype(left, right, subtype_context)
+            return _is_subtype(left, right, subtype_context, proper_subtype=True)
+    return _is_subtype(left, right, subtype_context, proper_subtype=True)
 
 
 def is_equivalent(
@@ -243,13 +241,18 @@ def is_equivalent(
     )
 
 
-def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> bool:
+# This is a common entry point for subtyping checks (both proper and non-proper).
+# Never call this private function directly, use the public versions.
+def _is_subtype(
+    left: Type, right: Type, subtype_context: SubtypeContext, proper_subtype: bool
+) -> bool:
+    subtype_context.check_context(proper_subtype)
     orig_right = right
     orig_left = left
     left = get_proper_type(left)
     right = get_proper_type(right)
 
-    if not subtype_context.proper_subtype and (
+    if not proper_subtype and (
         isinstance(right, AnyType)
         or isinstance(right, UnboundType)
         or isinstance(right, ErasedType)
@@ -258,12 +261,17 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
         # ErasedType as we do for non-proper subtyping.
         return True
 
+    def check_item(left: Type, right: Type, subtype_context: SubtypeContext) -> bool:
+        if proper_subtype:
+            return is_proper_subtype(left, right, subtype_context=subtype_context)
+        return is_subtype(left, right, subtype_context=subtype_context)
+
     if isinstance(right, UnionType) and not isinstance(left, UnionType):
         # Normally, when 'left' is not itself a union, the only way
         # 'left' can be a subtype of the union 'right' is if it is a
         # subtype of one of the items making up the union.
         is_subtype_of_item = any(
-            is_subtype(orig_left, item, subtype_context=subtype_context) for item in right.items
+            check_item(orig_left, item, subtype_context) for item in right.items
         )
         # Recombine rhs literal types, to make an enum type a subtype
         # of a union of all enum items as literal types. Only do it if
@@ -277,8 +285,7 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
         ):
             right = UnionType(mypy.typeops.try_contracting_literals_in_union(right.items))
             is_subtype_of_item = any(
-                is_subtype(orig_left, item, subtype_context=subtype_context)
-                for item in right.items
+                check_item(orig_left, item, subtype_context) for item in right.items
             )
         # However, if 'left' is a type variable T, T might also have
         # an upper bound which is itself a union. This case will be
@@ -291,7 +298,7 @@ def _is_subtype(left: Type, right: Type, subtype_context: SubtypeContext) -> boo
         elif is_subtype_of_item:
             return True
         # otherwise, fall through
-    return left.accept(SubtypeVisitor(orig_right, subtype_context))
+    return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 
 def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
@@ -313,30 +320,33 @@ def ignore_type_parameter(lefta: Type, righta: Type, variance: int, proper_subty
 
 
 class SubtypeVisitor(TypeVisitor[bool]):
-    def __init__(self, right: Type, subtype_context: SubtypeContext) -> None:
+    def __init__(self, right: Type, subtype_context: SubtypeContext, proper_subtype: bool) -> None:
         self.right = get_proper_type(right)
         self.orig_right = right
+        self.proper_subtype = proper_subtype
         self.subtype_context = subtype_context
         self.check_type_parameter = (
             ignore_type_parameter if subtype_context.ignore_type_params else check_type_parameter
         )
         self.options = subtype_context.options
-        self._subtype_kind = SubtypeVisitor.build_subtype_kind(subtype_context)
+        self._subtype_kind = SubtypeVisitor.build_subtype_kind(subtype_context, proper_subtype)
 
     @staticmethod
-    def build_subtype_kind(subtype_context: SubtypeContext) -> SubtypeKind:
+    def build_subtype_kind(subtype_context: SubtypeContext, proper_subtype: bool) -> SubtypeKind:
         return (
             state.strict_optional,
+            proper_subtype,
             subtype_context.ignore_type_params,
             subtype_context.ignore_pos_arg_names,
             subtype_context.ignore_declared_variance,
             subtype_context.ignore_promotions,
-            subtype_context.proper_subtype,
             subtype_context.erase_instances,
             subtype_context.keep_erased_types,
         )
 
     def _is_subtype(self, left: Type, right: Type) -> bool:
+        if self.proper_subtype:
+            return is_proper_subtype(left, right, subtype_context=self.subtype_context)
         return is_subtype(left, right, subtype_context=self.subtype_context)
 
     # visit_x(left) means: is left (which is an instance of X) a subtype of
@@ -349,7 +359,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_any(self, left: AnyType) -> bool:
-        return isinstance(self.right, AnyType) if self.subtype_context.proper_subtype else True
+        return isinstance(self.right, AnyType) if self.proper_subtype else True
 
     def visit_none_type(self, left: NoneType) -> bool:
         if state.strict_optional:
@@ -382,7 +392,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         return True
 
     def visit_instance(self, left: Instance) -> bool:
-        if left.type.fallback_to_any and not self.subtype_context.proper_subtype:
+        if left.type.fallback_to_any and not self.proper_subtype:
             if isinstance(self.right, NoneType):
                 # NOTE: `None` is a *non-subclassable* singleton, therefore no class
                 # can by a subtype of it, even with an `Any` fallback.
@@ -504,19 +514,19 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 for lefta, righta, tvar in type_params:
                     if isinstance(tvar, TypeVarType):
                         if not self.check_type_parameter(
-                            lefta, righta, tvar.variance, self.subtype_context.proper_subtype
+                            lefta, righta, tvar.variance, self.proper_subtype
                         ):
                             nominal = False
                     else:
                         if not self.check_type_parameter(
-                            lefta, righta, COVARIANT, self.subtype_context.proper_subtype
+                            lefta, righta, COVARIANT, self.proper_subtype
                         ):
                             nominal = False
                 if nominal:
                     TypeState.record_subtype_cache_entry(self._subtype_kind, left, right)
                 return nominal
             if right.type.is_protocol and is_protocol_implementation(
-                left, right, proper_subtype=self.subtype_context.proper_subtype
+                left, right, proper_subtype=self.proper_subtype
             ):
                 return True
             return False
@@ -525,7 +535,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if isinstance(item, TupleType):
                 item = mypy.typeops.tuple_fallback(item)
             # TODO: this is a bit arbitrary, we should only skip Any-related cases.
-            if not self.subtype_context.proper_subtype:
+            if not self.proper_subtype:
                 if is_named_instance(left, "builtins.type"):
                     return self._is_subtype(TypeType(AnyType(TypeOfAny.special_form)), right)
                 if left.type.is_metaclass():
@@ -638,7 +648,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 if right.args:
                     iter_type = right.args[0]
                 else:
-                    if self.subtype_context.proper_subtype:
+                    if self.proper_subtype:
                         return False
                     iter_type = AnyType(TypeOfAny.special_form)
                 if is_named_instance(right, "builtins.tuple") and isinstance(
@@ -679,7 +689,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
             if not left.names_are_wider_than(right):
                 return False
             for name, l, r in left.zip(right):
-                if self.subtype_context.proper_subtype:
+                if self.proper_subtype:
                     check = mypy.sametypes.is_same_type(l, r)
                 else:
                     check = is_equivalent(
@@ -813,7 +823,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
 
     def visit_partial_type(self, left: PartialType) -> bool:
         # This is indeterminate as we don't really know the complete type yet.
-        if self.subtype_context.proper_subtype:
+        if self.proper_subtype:
             # TODO: What's the right thing to do here?
             return False
         if left.type is None:
@@ -951,9 +961,8 @@ def is_protocol_implementation(
     else:
         ignore_names = False
     subtype_kind = SubtypeVisitor.build_subtype_kind(
-        subtype_context=SubtypeContext(
-            ignore_pos_arg_names=ignore_names, proper_subtype=proper_subtype
-        )
+        subtype_context=SubtypeContext(ignore_pos_arg_names=ignore_names),
+        proper_subtype=proper_subtype,
     )
     TypeState.record_subtype_cache_entry(subtype_kind, left, right)
     return True
