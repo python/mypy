@@ -5274,14 +5274,14 @@ def f2(g: G[A, B], x: int = ...) -> B: ...
 def f2(g: Any, x: int = ...) -> Any: ...
 
 [case testOverloadTypeVsCallable]
-from typing import TypeVar, Type, Callable, Any, overload
+from typing import TypeVar, Type, Callable, Any, overload, Optional
 class Foo:
     def __init__(self, **kwargs: Any): pass
 _T = TypeVar('_T')
 @overload
 def register(cls: Type[_T]) -> int: ...
 @overload
-def register(cls: Callable[..., _T]) -> str: ...
+def register(cls: Callable[..., _T]) -> Optional[int]: ...
 def register(cls: Any) -> Any: return None
 
 
