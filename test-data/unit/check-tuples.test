@@ -1226,7 +1226,7 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
-t[y]  # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+t[y]  # E: Invalid index type "str" for "Tuple[int, str]"; expected type "int"
 [builtins fixtures/tuple.pyi]
 
 [case testNonliteralTupleSlice]
