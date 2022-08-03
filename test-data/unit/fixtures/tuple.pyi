@@ -15,7 +15,10 @@ class tuple(Sequence[Tco], Generic[Tco]):
     def __new__(cls: Type[T], iterable: Iterable[Tco] = ...) -> T: ...
     def __iter__(self) -> Iterator[Tco]: pass
     def __contains__(self, item: object) -> bool: pass
+    @overload
     def __getitem__(self, x: int) -> Tco: pass
+    @overload
+    def __getitem__(self, x: slice) -> Tuple[Tco, ...]: ...
     def __mul__(self, n: int) -> Tuple[Tco, ...]: pass
     def __rmul__(self, n: int) -> Tuple[Tco, ...]: pass
     def __add__(self, x: Tuple[Tco, ...]) -> Tuple[Tco, ...]: pass
