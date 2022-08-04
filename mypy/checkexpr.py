@@ -3351,13 +3351,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         It may also represent type application.
         """
         result = self.visit_index_expr_helper(e)
-        result = get_proper_type(self.narrow_type_from_binder(e, result))
+        result = self.narrow_type_from_binder(e, result)
+        p_result = get_proper_type(result)
         if (
             self.is_literal_context()
-            and isinstance(result, Instance)
-            and result.last_known_value is not None
+            and isinstance(p_result, Instance)
+            and p_result.last_known_value is not None
         ):
-            result = result.last_known_value
+            result = p_result.last_known_value
         return result
 
     def visit_index_expr_helper(self, e: IndexExpr) -> Type:

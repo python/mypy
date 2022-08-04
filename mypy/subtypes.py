@@ -574,9 +574,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
-        if left.values and self._is_subtype(
-            UnionType.make_union(left.values), right
-        ):
+        if left.values and self._is_subtype(UnionType.make_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
@@ -1091,7 +1089,9 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
         return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
     if isinstance(node, FuncBase) or (
-        isinstance(p_typ, FunctionLike) and node.is_initialized_in_class and not node.is_staticmethod
+        isinstance(p_typ, FunctionLike)
+        and node.is_initialized_in_class
+        and not node.is_staticmethod
     ):
         assert isinstance(p_typ, FunctionLike)
         signature = bind_self(

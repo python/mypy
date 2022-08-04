@@ -250,9 +250,9 @@ B = Mapping[int, Union[int, B]]
 x: int
 y: Union[A, B]
 if isinstance(y, Sequence):
-    x = y
+    x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[int, A]]", variable has type "int")
 else:
-    x = y
+    x = y  # E: Incompatible types in assignment (expression has type "Mapping[int, Union[int, B]]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesRestrictions2]
@@ -267,14 +267,14 @@ NestedB = Sequence[Union[B, NestedB]]
 
 a: NestedA
 b: NestedB
+aa: NestedA
 
 x: int
 x = a  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "int")
 a = b
-x = a
-b = a
+x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
+b = aa  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "NestedB")
 if isinstance(b[0], Sequence):
     a = b[0]
-    x = a
-# Incompatible types in assignment (expression has type "Sequence[Union[B, Sequence[Union[B, Sequence[Union[B, Sequence[Union[B, Sequence[Union[B, Sequence[Union[B, NestedB]]]]]]]]]]]]", variable has type "int")
+    x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]

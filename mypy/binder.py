@@ -260,9 +260,6 @@ class ConditionalTypeBinder:
         # it means that the target is not final, and therefore can't hold a literal.
         type = remove_instance_last_known_values(type)
 
-        type = get_proper_type(type)
-        declared_type = get_proper_type(declared_type)
-
         if self.type_assignments is not None:
             # We are in a multiassign from union, defer the actual binding,
             # just collect the types.
@@ -287,6 +284,8 @@ class ConditionalTypeBinder:
             # times?
             return
 
+        p_declared = get_proper_type(declared_type)
+        p_type = get_proper_type(type)
         enclosing_type = get_proper_type(self.most_recent_enclosing_type(expr, type))
         if isinstance(enclosing_type, AnyType) and not restrict_any:
             # If x is Any and y is int, after x = y we do not infer that x is int.
@@ -302,9 +301,9 @@ class ConditionalTypeBinder:
         # in order to prevent false positives.
         # (See discussion in #3526)
         elif (
-            isinstance(type, AnyType)
-            and isinstance(declared_type, UnionType)
-            and any(isinstance(get_proper_type(item), NoneType) for item in declared_type.items)
+            isinstance(p_type, AnyType)
+            and isinstance(p_declared, UnionType)
+            and any(isinstance(get_proper_type(item), NoneType) for item in p_declared.items)
             and isinstance(
                 get_proper_type(self.most_recent_enclosing_type(expr, NoneType())), NoneType
             )
@@ -312,12 +311,12 @@ class ConditionalTypeBinder:
             # Replace any Nones in the union type with Any
             new_items = [
                 type if isinstance(get_proper_type(item), NoneType) else item
-                for item in declared_type.items
+                for item in p_declared.items
             ]
             self.put(expr, UnionType(new_items))
-        elif isinstance(type, AnyType) and not (
-            isinstance(declared_type, UnionType)
-            and any(isinstance(get_proper_type(item), AnyType) for item in declared_type.items)
+        elif isinstance(p_type, AnyType) and not (
+            isinstance(p_declared, UnionType)
+            and any(isinstance(get_proper_type(item), AnyType) for item in p_declared.items)
         ):
             # Assigning an Any value doesn't affect the type to avoid false negatives, unless
             # there is an Any item in a declared union type.
@@ -444,7 +443,7 @@ class ConditionalTypeBinder:
 
 def get_declaration(expr: BindableExpression) -> Optional[Type]:
     if isinstance(expr, RefExpr) and isinstance(expr.node, Var):
-        type = get_proper_type(expr.node.type)
-        if not isinstance(type, PartialType):
+        type = expr.node.type
+        if not isinstance(get_proper_type(type), PartialType):
             return type
     return None

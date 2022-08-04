@@ -9,12 +9,13 @@ from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
+    ProperType,
     Type,
     TypeOfAny,
     TypeVarId,
     UninhabitedType,
     UnionType,
-    get_proper_type, ProperType,
+    get_proper_type,
 )
 
 

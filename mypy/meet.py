@@ -65,6 +65,12 @@ def meet_types(s: Type, t: Type) -> ProperType:
     s = get_proper_type(s)
     t = get_proper_type(t)
 
+    if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
+        if is_proper_subtype(s, t, ignore_promotions=True):
+            return s
+        if is_proper_subtype(t, s, ignore_promotions=True):
+            return t
+
     if isinstance(s, ErasedType):
         return s
     if isinstance(s, AnyType):
@@ -120,16 +126,16 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         if declared.type.alt_promote:
             # Special case: low-level integer type can't be narrowed
             return original_declared
-        return meet_types(declared, narrowed)
+        return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, (TupleType, TypeType, LiteralType)):
-        return meet_types(declared, narrowed)
+        return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
         if narrowed.type.fullname == "builtins.dict" and all(
             isinstance(t, AnyType) for t in get_proper_types(narrowed.args)
         ):
             return original_declared
-        return meet_types(declared, narrowed)
+        return meet_types(original_declared, original_narrowed)
     return original_narrowed
 
 
