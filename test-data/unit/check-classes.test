@@ -6312,8 +6312,10 @@ class C(Generic[T]):
 # flags: --strict-optional
 from typing import Type, Optional
 class Base: ...
-class One(Base): ...
-class Other(Base): ...
+class One(Base):
+    x: int
+class Other(Base):
+    x: int
 
 def test() -> None:
     x: Optional[Type[Base]]
@@ -6323,7 +6325,8 @@ def test() -> None:
         x = Other
     else:
         return
-    reveal_type(x)  # N: Revealed type is "Union[Type[__main__.One], Type[__main__.Other]]"
+    reveal_type(x)  # N: Revealed type is "Union[def () -> __main__.One, def () -> __main__.Other]"
+    reveal_type(x.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testMemberRedefinition]

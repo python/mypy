@@ -2619,20 +2619,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
-                rvalue_type = get_proper_type(rvalue_type)
-                lvalue_type = get_proper_type(lvalue_type)
+                p_rvalue_type = get_proper_type(rvalue_type)
+                p_lvalue_type = get_proper_type(lvalue_type)
                 if (
-                    isinstance(rvalue_type, CallableType)
-                    and rvalue_type.is_type_obj()
+                    isinstance(p_rvalue_type, CallableType)
+                    and p_rvalue_type.is_type_obj()
                     and (
-                        rvalue_type.type_object().is_abstract
-                        or rvalue_type.type_object().is_protocol
+                        p_rvalue_type.type_object().is_abstract
+                        or p_rvalue_type.type_object().is_protocol
                     )
-                    and isinstance(lvalue_type, TypeType)
-                    and isinstance(lvalue_type.item, Instance)
-                    and (lvalue_type.item.type.is_abstract or lvalue_type.item.type.is_protocol)
+                    and isinstance(p_lvalue_type, TypeType)
+                    and isinstance(p_lvalue_type.item, Instance)
+                    and (
+                        p_lvalue_type.item.type.is_abstract or p_lvalue_type.item.type.is_protocol
+                    )
                 ):
-                    self.msg.concrete_only_assign(lvalue_type, rvalue)
+                    self.msg.concrete_only_assign(p_lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
@@ -3474,7 +3476,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self, name: Var, lvalue: Lvalue, init_type: Type, context: Context
     ) -> None:
         """Infer the type of initialized variables from initializer type."""
-        init_type = get_proper_type(init_type)
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
@@ -3620,14 +3621,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
         else:
-            orig_lvalue = lvalue_type
-            lvalue_type = get_proper_type(lvalue_type)
-            always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
+            always_allow_any = lvalue_type is not None and not isinstance(
+                get_proper_type(lvalue_type), AnyType
+            )
             rvalue_type = self.expr_checker.accept(
                 rvalue, lvalue_type, always_allow_any=always_allow_any
             )
-            orig_rvalue = rvalue_type
-            rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
@@ -3635,8 +3634,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             elif lvalue_type:
                 self.check_subtype(
                     # Preserve original aliases for error messages when possible.
-                    orig_rvalue,
-                    orig_lvalue or lvalue_type,
+                    rvalue_type,
+                    lvalue_type,
                     context,
                     msg,
                     f"{rvalue_name} has type",

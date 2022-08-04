@@ -574,9 +574,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         right = self.right
         if isinstance(right, TypeVarType) and left.id == right.id:
             return True
-        if left.values and self._is_subtype(
-            mypy.typeops.make_simplified_union(left.values), right
-        ):
+        if left.values and self._is_subtype(UnionType.make_union(left.values), right):
             return True
         return self._is_subtype(left.upper_bound, self.right)
 
@@ -825,8 +823,8 @@ class SubtypeVisitor(TypeVisitor[bool]):
             literal_types: Set[Instance] = set()
             # avoid redundant check for union of literals
             for item in left.relevant_items():
-                item = get_proper_type(item)
-                lit_type = mypy.typeops.simple_literal_type(item)
+                p_item = get_proper_type(item)
+                lit_type = mypy.typeops.simple_literal_type(p_item)
                 if lit_type is not None:
                     if lit_type in literal_types:
                         continue
@@ -1086,16 +1084,18 @@ def find_node_type(node: Union[Var, FuncBase], itype: Instance, subtype: Type) -
         )
     else:
         typ = node.type
-    typ = get_proper_type(typ)
+    p_typ = get_proper_type(typ)
     if typ is None:
         return AnyType(TypeOfAny.from_error)
     # We don't need to bind 'self' for static methods, since there is no 'self'.
     if isinstance(node, FuncBase) or (
-        isinstance(typ, FunctionLike) and node.is_initialized_in_class and not node.is_staticmethod
+        isinstance(p_typ, FunctionLike)
+        and node.is_initialized_in_class
+        and not node.is_staticmethod
     ):
-        assert isinstance(typ, FunctionLike)
+        assert isinstance(p_typ, FunctionLike)
         signature = bind_self(
-            typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
+            p_typ, subtype, is_classmethod=isinstance(node, Var) and node.is_classmethod
         )
         if node.is_property:
             assert isinstance(signature, CallableType)
@@ -1574,15 +1574,13 @@ def restrict_subtype_away(t: Type, s: Type, *, ignore_promotions: bool = False) 
     This is used for type inference of runtime type checks such as
     isinstance(). Currently this just removes elements of a union type.
     """
-    t = get_proper_type(t)
-    s = get_proper_type(s)
-
-    if isinstance(t, UnionType):
-        new_items = try_restrict_literal_union(t, s)
+    p_t = get_proper_type(t)
+    if isinstance(p_t, UnionType):
+        new_items = try_restrict_literal_union(p_t, s)
         if new_items is None:
             new_items = [
                 restrict_subtype_away(item, s, ignore_promotions=ignore_promotions)
-                for item in t.relevant_items()
+                for item in p_t.relevant_items()
                 if (
                     isinstance(get_proper_type(item), AnyType)
                     or not covers_at_runtime(item, s, ignore_promotions)

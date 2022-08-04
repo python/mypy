@@ -1301,7 +1301,7 @@ class Instance(ProperType):
         args: Bogus[List[Type]] = _dummy,
         last_known_value: Bogus[Optional["LiteralType"]] = _dummy,
     ) -> "Instance":
-        return Instance(
+        new = Instance(
             self.type,
             args if args is not _dummy else self.args,
             self.line,
@@ -1310,6 +1310,9 @@ class Instance(ProperType):
             if last_known_value is not _dummy
             else self.last_known_value,
         )
+        new.can_be_true = self.can_be_true
+        new.can_be_false = self.can_be_false
+        return new
 
     def has_readable_member(self, name: str) -> bool:
         return self.type.has_readable_member(name)
@@ -3077,15 +3080,16 @@ class UnrollAliasVisitor(TrivialSyntheticTypeTranslator):
         return result
 
 
-def strip_type(typ: Type) -> ProperType:
+def strip_type(typ: Type) -> Type:
     """Make a copy of type without 'debugging info' (function name)."""
+    orig_typ = typ
     typ = get_proper_type(typ)
     if isinstance(typ, CallableType):
         return typ.copy_modified(name=None)
     elif isinstance(typ, Overloaded):
         return Overloaded([cast(CallableType, strip_type(item)) for item in typ.items])
     else:
-        return typ
+        return orig_typ
 
 
 def is_named_instance(t: Type, fullnames: Union[str, Tuple[str, ...]]) -> bool:

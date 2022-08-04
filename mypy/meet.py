@@ -65,6 +65,12 @@ def meet_types(s: Type, t: Type) -> ProperType:
     s = get_proper_type(s)
     t = get_proper_type(t)
 
+    if not isinstance(s, UnboundType) and not isinstance(t, UnboundType):
+        if is_proper_subtype(s, t, ignore_promotions=True):
+            return s
+        if is_proper_subtype(t, s, ignore_promotions=True):
+            return t
+
     if isinstance(s, ErasedType):
         return s
     if isinstance(s, AnyType):
@@ -81,17 +87,19 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         # A type guard forces the new type even if it doesn't overlap the old.
         return narrowed.type_guard
 
+    original_declared = declared
+    original_narrowed = narrowed
     declared = get_proper_type(declared)
     narrowed = get_proper_type(narrowed)
 
     if declared == narrowed:
-        return declared
+        return original_declared
     if isinstance(declared, UnionType):
         return make_simplified_union(
             [narrow_declared_type(x, narrowed) for x in declared.relevant_items()]
         )
     if is_enum_overlapping_union(declared, narrowed):
-        return narrowed
+        return original_narrowed
     elif not is_overlapping_types(declared, narrowed, prohibit_none_typevar_overlap=True):
         if state.strict_optional:
             return UninhabitedType()
@@ -102,7 +110,7 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
             [narrow_declared_type(declared, x) for x in narrowed.relevant_items()]
         )
     elif isinstance(narrowed, AnyType):
-        return narrowed
+        return original_narrowed
     elif isinstance(narrowed, TypeVarType) and is_subtype(narrowed.upper_bound, declared):
         return narrowed
     elif isinstance(declared, TypeType) and isinstance(narrowed, TypeType):
@@ -113,22 +121,22 @@ def narrow_declared_type(declared: Type, narrowed: Type) -> Type:
         and narrowed.type.is_metaclass()
     ):
         # We'd need intersection types, so give up.
-        return declared
+        return original_declared
     elif isinstance(declared, Instance):
         if declared.type.alt_promote:
             # Special case: low-level integer type can't be narrowed
-            return declared
-        return meet_types(declared, narrowed)
+            return original_declared
+        return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, (TupleType, TypeType, LiteralType)):
-        return meet_types(declared, narrowed)
+        return meet_types(original_declared, original_narrowed)
     elif isinstance(declared, TypedDictType) and isinstance(narrowed, Instance):
         # Special case useful for selecting TypedDicts from unions using isinstance(x, dict).
         if narrowed.type.fullname == "builtins.dict" and all(
             isinstance(t, AnyType) for t in get_proper_types(narrowed.args)
         ):
-            return declared
-        return meet_types(declared, narrowed)
-    return narrowed
+            return original_declared
+        return meet_types(original_declared, original_narrowed)
+    return original_narrowed
 
 
 def get_possible_variants(typ: Type) -> List[Type]:

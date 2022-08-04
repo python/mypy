@@ -192,3 +192,89 @@ def my_eval(exp: Exp) -> int:
 
 my_eval(A([B(1), B(2)]))
 [builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesSimplifiedUnion]
+# flags: --enable-recursive-aliases
+from typing import Sequence, TypeVar, Union
+
+class A: ...
+class B(A): ...
+
+NestedA = Sequence[Union[A, NestedA]]
+NestedB = Sequence[Union[B, NestedB]]
+a: NestedA
+b: NestedB
+
+T = TypeVar("T")
+S = TypeVar("S")
+def union(a: T, b: S) -> Union[T, S]: ...
+
+x: int
+y = union(a, b)
+x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesJoins]
+# flags: --enable-recursive-aliases
+from typing import Sequence, TypeVar, Union
+
+class A: ...
+class B(A): ...
+
+NestedA = Sequence[Union[A, NestedA]]
+NestedB = Sequence[Union[B, NestedB]]
+a: NestedA
+b: NestedB
+la: Sequence[Sequence[A]]
+lb: Sequence[Sequence[B]]
+
+T = TypeVar("T")
+def join(a: T, b: T) -> T: ...
+x: int
+
+y1 = join(a, b)
+x = y1  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+y2 = join(a, lb)
+x = y2  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+y3 = join(la, b)
+x = y3  # E: Incompatible types in assignment (expression has type "Sequence[Union[Sequence[A], B, NestedB]]", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesRestrictions]
+# flags: --enable-recursive-aliases
+from typing import Sequence, Mapping, Union
+
+A = Sequence[Union[int, A]]
+B = Mapping[int, Union[int, B]]
+
+x: int
+y: Union[A, B]
+if isinstance(y, Sequence):
+    x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[int, A]]", variable has type "int")
+else:
+    x = y  # E: Incompatible types in assignment (expression has type "Mapping[int, Union[int, B]]", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesRestrictions2]
+# flags: --enable-recursive-aliases
+from typing import Sequence, Union
+
+class A: ...
+class B(A): ...
+
+NestedA = Sequence[Union[A, NestedA]]
+NestedB = Sequence[Union[B, NestedB]]
+
+a: NestedA
+b: NestedB
+aa: NestedA
+
+x: int
+x = a  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "int")
+a = b
+x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
+b = aa  # E: Incompatible types in assignment (expression has type "NestedA", variable has type "NestedB")
+if isinstance(b[0], Sequence):
+    a = b[0]
+    x = a  # E: Incompatible types in assignment (expression has type "Sequence[Union[B, NestedB]]", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]

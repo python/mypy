@@ -9,6 +9,7 @@ from mypy.meet import meet_types
 from mypy.subtypes import is_subtype
 from mypy.types import (
     AnyType,
+    ProperType,
     Type,
     TypeOfAny,
     TypeVarId,
@@ -66,11 +67,11 @@ def solve_constraints(
                 else:
                     top = meet_types(top, c.target)
 
-        top = get_proper_type(top)
-        bottom = get_proper_type(bottom)
-        if isinstance(top, AnyType) or isinstance(bottom, AnyType):
-            source_any = top if isinstance(top, AnyType) else bottom
-            assert isinstance(source_any, AnyType)
+        p_top = get_proper_type(top)
+        p_bottom = get_proper_type(bottom)
+        if isinstance(p_top, AnyType) or isinstance(p_bottom, AnyType):
+            source_any = top if isinstance(p_top, AnyType) else bottom
+            assert isinstance(source_any, ProperType) and isinstance(source_any, AnyType)
             res.append(AnyType(TypeOfAny.from_another_any, source_any=source_any))
             continue
         elif bottom is None:
