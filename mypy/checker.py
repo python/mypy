@@ -133,7 +133,6 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, Plugin
-from mypy.sametypes import is_same_type
 from mypy.scope import Scope
 from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
@@ -145,6 +144,7 @@ from mypy.subtypes import (
     is_equivalent,
     is_more_precise,
     is_proper_subtype,
+    is_same_type,
     is_subtype,
     restrict_subtype_away,
     unify_generic_callable,

@@ -369,9 +369,7 @@ class FindModuleCache:
             self.options,
             stdlib_py_versions=self.stdlib_py_versions,
         )
-        while any(
-            file.endswith(("__init__.py", "__init__.pyi")) for file in os.listdir(working_dir)
-        ):
+        while any(is_init_file(file) for file in os.listdir(working_dir)):
             working_dir = os.path.dirname(working_dir)
             parent_search.search_paths = SearchPaths((working_dir,), (), (), ())
             if not isinstance(parent_search._find_module(id, False), ModuleNotFoundReason):
@@ -585,7 +583,7 @@ class FindModuleCache:
         sources = [BuildSource(module_path, module, None)]
 
         package_path = None
-        if module_path.endswith(("__init__.py", "__init__.pyi")):
+        if is_init_file(module_path):
             package_path = os.path.dirname(module_path)
         elif self.fscache.isdir(module_path):
             package_path = module_path
@@ -648,9 +646,13 @@ def matches_exclude(
     return False
 
 
+def is_init_file(path: str) -> bool:
+    return os.path.basename(path) in ("__init__.py", "__init__.pyi")
+
+
 def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> bool:
     """Check that all packages containing id have a __init__ file."""
-    if path.endswith(("__init__.py", "__init__.pyi")):
+    if is_init_file(path):
         path = os.path.dirname(path)
     for i in range(id.count(".")):
         path = os.path.dirname(path)
@@ -664,7 +666,7 @@ def verify_module(fscache: FileSystemCache, id: str, path: str, prefix: str) -> 
 
 def highest_init_level(fscache: FileSystemCache, id: str, path: str, prefix: str) -> int:
     """Compute the highest level where an __init__ file is found."""
-    if path.endswith(("__init__.py", "__init__.pyi")):
+    if is_init_file(path):
         path = os.path.dirname(path)
     level = 0
     for i in range(id.count(".")):

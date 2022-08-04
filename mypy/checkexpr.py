@@ -95,10 +95,9 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
-from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
+from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
@@ -3493,25 +3492,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return None
 
     def nonliteral_tuple_index_helper(self, left_type: TupleType, index: Expression) -> Type:
-        index_type = self.accept(index)
-        expected_type = UnionType.make_union(
-            [self.named_type("builtins.int"), self.named_type("builtins.slice")]
-        )
-        if not self.chk.check_subtype(
-            index_type,
-            expected_type,
-            index,
-            message_registry.INVALID_TUPLE_INDEX_TYPE,
-            "actual type",
-            "expected type",
-        ):
-            return AnyType(TypeOfAny.from_error)
-        else:
-            union = make_simplified_union(left_type.items)
-            if isinstance(index, SliceExpr):
-                return self.chk.named_generic_type("builtins.tuple", [union])
-            else:
-                return union
+        self.check_method_call_by_name("__getitem__", left_type, [index], [ARG_POS], context=index)
+        # We could return the return type from above, but unions are often better than the join
+        union = make_simplified_union(left_type.items)
+        if isinstance(index, SliceExpr):
+            return self.chk.named_generic_type("builtins.tuple", [union])
+        return union
 
     def visit_typeddict_index_expr(self, td_type: TypedDictType, index: Expression) -> Type:
         if isinstance(index, StrExpr):
@@ -3574,7 +3560,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (
             options.warn_redundant_casts
             and not isinstance(get_proper_type(target_type), AnyType)
-            and is_same_type(source_type, target_type)
+            and source_type == target_type
         ):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):

@@ -434,7 +434,10 @@ else:
     reveal_type(impossible_mixture)     # N: Revealed type is "Union[__main__.KeyedObject, TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]})]"
 
 weird_mixture: Union[KeyedTypedDict, KeyedNamedTuple]
-if weird_mixture["key"] is Key.B:       # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+if weird_mixture["key"] is Key.B:       # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
+                                        # N: Possible overload variants: \
+                                        # N:     def __getitem__(self, int) -> Literal[Key.C] \
+                                        # N:     def __getitem__(self, slice) -> Tuple[Literal[Key.C], ...]
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
@@ -443,7 +446,8 @@ if weird_mixture[0] is Key.B:           # E: TypedDict key must be a string lite
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
-[builtins fixtures/slice.pyi]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNarrowingParentWithProperties]
 from enum import Enum

@@ -5,7 +5,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.applytype
 import mypy.constraints
-import mypy.sametypes
 import mypy.typeops
 from mypy.erasetype import erase_type
 from mypy.expandtype import expand_type_by_instance
@@ -241,6 +240,21 @@ def is_equivalent(
     )
 
 
+def is_same_type(a: Type, b: Type, ignore_promotions: bool = True) -> bool:
+    """Are these types proper subtypes of each other?
+
+    This means types may have different representation (e.g. an alias, or
+    a non-simplified union) but are semantically exchangeable in all contexts.
+    """
+    # Note that using ignore_promotions=True (default) makes types like int and int64
+    # considered not the same type (which is the case at runtime).
+    # Also Union[bool, int] (if it wasn't simplified before) will be different
+    # from plain int, etc.
+    return is_proper_subtype(a, b, ignore_promotions=ignore_promotions) and is_proper_subtype(
+        b, a, ignore_promotions=ignore_promotions
+    )
+
+
 # This is a common entry point for subtyping checks (both proper and non-proper).
 # Never call this private function directly, use the public versions.
 def _is_subtype(
@@ -301,6 +315,8 @@ def _is_subtype(
     return left.accept(SubtypeVisitor(orig_right, subtype_context, proper_subtype))
 
 
+# TODO: should we pass on the original flags here and in couple other places?
+# This seems logical but was never done in the past for some reasons.
 def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtype: bool) -> bool:
     def check(left: Type, right: Type) -> bool:
         return is_proper_subtype(left, right) if proper_subtype else is_subtype(left, right)
@@ -311,7 +327,7 @@ def check_type_parameter(lefta: Type, righta: Type, variance: int, proper_subtyp
         return check(righta, lefta)
     else:
         if proper_subtype:
-            return mypy.sametypes.is_same_type(lefta, righta)
+            return is_same_type(lefta, righta)
         return is_equivalent(lefta, righta)
 
 
@@ -690,7 +706,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
                 return False
             for name, l, r in left.zip(right):
                 if self.proper_subtype:
-                    check = mypy.sametypes.is_same_type(l, r)
+                    check = is_same_type(l, r)
                 else:
                     check = is_equivalent(
                         l,

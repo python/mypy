@@ -159,7 +159,7 @@ non-generic. For example:
 
    class StrDict(dict[str, str]):  # This is a non-generic subclass of dict
        def __str__(self) -> str:
-           return 'StrDict({})'.format(super().__str__())
+           return f'StrDict({super().__str__()})'
 
    data: StrDict[int, int]  # Error! StrDict is not generic
    data2: StrDict  # OK
