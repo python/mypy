@@ -139,7 +139,12 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        return self.variables.get(t.id, t)
+        repl = self.variables.get(t.id, t)
+        if isinstance(repl, ProperType) and isinstance(repl, Instance):
+            # TODO: do we really need to do this?
+            # If I try to remove this special-casing ~40 tests fail on reveal_type().
+            return repl.copy_modified(last_known_value=None)
+        return repl
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         repl = get_proper_type(self.variables.get(t.id, t))

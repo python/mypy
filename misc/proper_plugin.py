@@ -86,6 +86,7 @@ def is_special_target(right: ProperType) -> bool:
             "mypy.types.UnboundType",
             "mypy.types.TypeVarLikeType",
             "mypy.types.TypeVarType",
+            "mypy.types.UnpackType",
             "mypy.types.TypeVarTupleType",
             "mypy.types.ParamSpecType",
             "mypy.types.RawExpressionType",
