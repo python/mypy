@@ -129,7 +129,7 @@ def short_type(obj: object) -> str:
     return t.split(".")[-1].rstrip("'>")
 
 
-def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, int]:
+def find_python_encoding(text: bytes) -> Tuple[str, int]:
     """PEP-263 for detecting Python file encoding"""
     result = ENCODING_RE.match(text)
     if result:
@@ -140,7 +140,7 @@ def find_python_encoding(text: bytes, pyversion: Tuple[int, int]) -> Tuple[str, 
             encoding = "latin-1"
         return encoding, line
     else:
-        default_encoding = "utf8" if pyversion[0] >= 3 else "ascii"
+        default_encoding = "utf8"
         return default_encoding, -1
 
 
@@ -165,7 +165,7 @@ class DecodeError(Exception):
     """
 
 
-def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
+def decode_python_encoding(source: bytes) -> str:
     """Read the Python file with while obeying PEP-263 encoding detection.
 
     Returns the source as a string.
@@ -176,7 +176,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
         source = source[3:]
     else:
         # look at first two lines and check if PEP-263 coding is present
-        encoding, _ = find_python_encoding(source, pyversion)
+        encoding, _ = find_python_encoding(source)
 
     try:
         source_text = source.decode(encoding)
@@ -185,9 +185,7 @@ def decode_python_encoding(source: bytes, pyversion: Tuple[int, int]) -> str:
     return source_text
 
 
-def read_py_file(
-    path: str, read: Callable[[str], bytes], pyversion: Tuple[int, int]
-) -> Optional[List[str]]:
+def read_py_file(path: str, read: Callable[[str], bytes]) -> Optional[List[str]]:
     """Try reading a Python file as list of source lines.
 
     Return None if something goes wrong.
@@ -198,7 +196,7 @@ def read_py_file(
         return None
     else:
         try:
-            source_lines = decode_python_encoding(source, pyversion).splitlines()
+            source_lines = decode_python_encoding(source).splitlines()
         except DecodeError:
             return None
         return source_lines

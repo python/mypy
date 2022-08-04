@@ -233,7 +233,7 @@ def _build(
         options.show_error_codes,
         options.pretty,
         options.show_error_end,
-        lambda path: read_py_file(path, cached_read, options.python_version),
+        lambda path: read_py_file(path, cached_read),
         options.show_absolute_path,
         options.enabled_error_codes,
         options.disabled_error_codes,
@@ -2143,9 +2143,7 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = decode_python_encoding(
-                        manager.fscache.read(path), manager.options.python_version
-                    )
+                    source = decode_python_encoding(manager.fscache.read(path))
                     self.source_hash = manager.fscache.hash_digest(path)
                 except OSError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
