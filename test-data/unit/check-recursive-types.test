@@ -313,6 +313,7 @@ nb: Nested[B] = [B(), [B(), [B()]]]
 
 def foo(x: Nested[T]) -> T: ...
 reveal_type(foo([B(), [B(), [B()]]]))  # N: Revealed type is "__main__.B"
+reveal_type(foo(nb))  # N: Revealed type is "__main__.B"
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasTopUnion]
