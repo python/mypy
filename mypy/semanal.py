@@ -2534,7 +2534,7 @@ class SemanticAnalyzer(
         """
         if not isinstance(rv, RefExpr):
             return False
-        if isinstance(rv.node, TypeVarExpr):
+        if isinstance(rv.node, TypeVarLikeExpr):
             self.fail(
                 'Type variable "{}" is invalid as target for type alias'.format(rv.fullname), rv
             )
