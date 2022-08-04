@@ -1226,7 +1226,11 @@ t = (0, "")
 x = 0
 y = ""
 reveal_type(t[x])  # N: Revealed type is "Union[builtins.int, builtins.str]"
-t[y]  # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+t[y]  # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
+      # N: Possible overload variants: \
+      # N:     def __getitem__(self, int) -> object \
+      # N:     def __getitem__(self, slice) -> Tuple[object, ...]
+
 [builtins fixtures/tuple.pyi]
 
 [case testNonliteralTupleSlice]

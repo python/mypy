@@ -2630,6 +2630,7 @@ class P(Protocol): ...
 class C(P): ...
 
 reveal_type(C.register(int))  # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
 
