@@ -95,10 +95,9 @@ from mypy.plugin import (
     MethodSigContext,
     Plugin,
 )
-from mypy.sametypes import is_same_type
 from mypy.semanal_enum import ENUM_BASES
 from mypy.state import state
-from mypy.subtypes import is_equivalent, is_subtype, non_method_protocol_members
+from mypy.subtypes import is_equivalent, is_same_type, is_subtype, non_method_protocol_members
 from mypy.traverser import has_await_expression
 from mypy.typeanal import (
     check_for_explicit_any,
@@ -3561,7 +3560,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if (
             options.warn_redundant_casts
             and not isinstance(get_proper_type(target_type), AnyType)
-            and is_same_type(source_type, target_type)
+            and source_type == target_type
         ):
             self.msg.redundant_cast(target_type, expr)
         if options.disallow_any_unimported and has_any_from_unimported_type(target_type):

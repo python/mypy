@@ -62,13 +62,13 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.operators import op_methods, op_methods_to_symbols
-from mypy.sametypes import is_same_type
 from mypy.subtypes import (
     IS_CLASS_OR_STATIC,
     IS_CLASSVAR,
     IS_SETTABLE,
     find_member,
     get_member_flags,
+    is_same_type,
     is_subtype,
 )
 from mypy.typeops import separate_union_literals

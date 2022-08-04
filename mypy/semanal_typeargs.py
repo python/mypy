@@ -14,9 +14,8 @@ from mypy.messages import format_type
 from mypy.mixedtraverser import MixedTraverserVisitor
 from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile, TypeInfo
 from mypy.options import Options
-from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.subtypes import is_subtype
+from mypy.subtypes import is_same_type, is_subtype
 from mypy.types import (
     AnyType,
     Instance,
@@ -27,6 +26,7 @@ from mypy.types import (
     TypeOfAny,
     TypeVarTupleType,
     TypeVarType,
+    UnboundType,
     UnpackType,
     get_proper_type,
     get_proper_types,
@@ -136,7 +136,9 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         context: Context,
     ) -> None:
         for actual in get_proper_types(actuals):
-            if not isinstance(actual, AnyType) and not any(
+            # TODO: bind type variables in class bases/alias targets
+            # so we can safely check this, currently we miss some errors.
+            if not isinstance(actual, (AnyType, UnboundType)) and not any(
                 is_same_type(actual, value) for value in valids
             ):
                 if len(actuals) > 1 or not isinstance(actual, Instance):

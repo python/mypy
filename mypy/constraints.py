@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 
 from typing_extensions import Final
 
-import mypy.sametypes
 import mypy.subtypes
 import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, ArgKind
+from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -141,7 +140,9 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
 
     The constraints are represented as Constraint objects.
     """
-    if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
+    if any(
+        get_proper_type(template) == get_proper_type(t) for t in reversed(TypeState._inferring)
+    ):
         return []
     if isinstance(template, TypeAliasType) and template.is_recursive:
         # This case requires special care because it may cause infinite recursion.
@@ -341,7 +342,7 @@ def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
     return (
         c1.type_var == c2.type_var
         and (c1.op == c2.op or skip_op_check)
-        and mypy.sametypes.is_same_type(c1.target, c2.target)
+        and mypy.subtypes.is_same_type(c1.target, c2.target)
     )
 
 
@@ -474,9 +475,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if template.type.protocol_members == ["__call__"]:
                 # Special case: a generic callback protocol
-                if not any(
-                    mypy.sametypes.is_same_type(template, t) for t in template.type.inferring
-                ):
+                if not any(template == t for t in template.type.inferring):
                     template.type.inferring.append(template)
                     call = mypy.subtypes.find_member(
                         "__call__", template, actual, is_operator=True
@@ -635,7 +634,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # Note that we use is_protocol_implementation instead of is_subtype
                 # because some type may be considered a subtype of a protocol
                 # due to _promote, but still not implement the protocol.
-                not any(mypy.sametypes.is_same_type(template, t) for t in template.type.inferring)
+                not any(template == t for t in reversed(template.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased)
             ):
                 template.type.inferring.append(template)
@@ -651,7 +650,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 and self.direction == SUBTYPE_OF
                 and
                 # We avoid infinite recursion for structural subtypes also here.
-                not any(mypy.sametypes.is_same_type(instance, i) for i in instance.type.inferring)
+                not any(instance == i for i in reversed(instance.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(erased, instance)
             ):
                 instance.type.inferring.append(instance)
@@ -734,6 +733,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 cactual_ps = cactual.param_spec()
 
                 if not cactual_ps:
+                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                    prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
                             param_spec.id,

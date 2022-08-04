@@ -6464,6 +6464,6 @@ eggs = lambda: 'eggs'
 reveal_type(func(eggs))  # N: Revealed type is "def (builtins.str) -> builtins.str"
 
 spam: Callable[..., str] = lambda x, y: 'baz'
-reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> Any"
+reveal_type(func(spam))  # N: Revealed type is "def (*Any, **Any) -> builtins.str"
 
 [builtins fixtures/paramspec.pyi]

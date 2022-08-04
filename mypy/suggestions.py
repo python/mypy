@@ -64,7 +64,6 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.plugin import FunctionContext, MethodContext, Plugin
-from mypy.sametypes import is_same_type
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
@@ -929,7 +928,7 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
     """
     joined_type = join_type_list(types)
     union_type = make_simplified_union(types)
-    if is_same_type(joined_type, union_type):
+    if joined_type == union_type:
         return [joined_type]
     else:
         return [joined_type, union_type]
