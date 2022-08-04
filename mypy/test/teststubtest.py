@@ -929,6 +929,26 @@ class StubtestUnit(unittest.TestCase):
             """,
             error="X.c",
         )
+        yield Case(
+            stub="""
+            import enum
+            class Z(enum.IntEnum):
+                foo: int
+                @property
+                def spam(self) -> str: ...
+            """,
+            runtime="""
+            import enum
+            class Z(enum.IntEnum):
+                def __new__(cls, val, spam):
+                    obj = int.__new__(cls, val)
+                    obj._value_ = val
+                    obj.spam = spam
+                    return obj
+                foo = 1, 'foo'
+            """,
+            error=None,
+        )
 
     @collect_cases
     def test_decorator(self) -> Iterator[Case]:

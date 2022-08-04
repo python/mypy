@@ -362,6 +362,10 @@ def verify_typeinfo(
                 runtime_attr = getattr(runtime, mangled_entry)
             except AttributeError:
                 runtime_attr = inspect.getattr_static(runtime, mangled_entry, MISSING)
+            if runtime_attr is MISSING and issubclass(runtime, enum.Enum):
+                members = getattr(runtime, "__members__", [])
+                if members:
+                    runtime_attr = getattr(members[0], mangled_entry, MISSING)
         except Exception:
             # Catch all exceptions in case the runtime raises an unexpected exception
             # from __getattr__ or similar.
