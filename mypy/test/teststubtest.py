@@ -1267,35 +1267,47 @@ class StubtestUnit(unittest.TestCase):
     @collect_cases
     def test_abstract_methods(self) -> Iterator[Case]:
         yield Case(
+            stub="from abc import abstractmethod",
+            runtime="from abc import abstractmethod",
+            error=None,
+        )
+        yield Case(
             stub="""
-            from abc import abstractmethod
-
             class A1:
                 def some(self) -> None: ...
-
+            """,
+            runtime="""
+            class A1:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            error="A1.some",
+        )
+        yield Case(
+            stub="""
             class A2:
                 @abstractmethod
                 def some(self) -> None: ...
-
+            """,
+            runtime="""
+            class A2:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
             class A3:
                 @abstractmethod
                 def some(self) -> None: ...
             """,
             runtime="""
-            from abc import abstractmethod
-
-            class A1:
-                @abstractmethod
-                def some(self) -> None: ...
-
-            class A2:
-                @abstractmethod
-                def some(self) -> None: ...
-
             class A3:
                 def some(self) -> None: ...
             """,
-            error="A1.some",
+            error=None,
         )
 
 
