@@ -192,3 +192,41 @@ def my_eval(exp: Exp) -> int:
 
 my_eval(A([B(1), B(2)]))
 [builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesRestrictions]
+# flags: --enable-recursive-aliases
+from typing import Sequence, Mapping, Union
+
+A = Sequence[Union[int, A]]
+B = Mapping[int, Union[int, B]]
+
+x: int
+y: Union[A, B]
+if isinstance(y, Sequence):
+    x = y
+else:
+    x = y
+[builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesRestrictions2]
+# flags: --enable-recursive-aliases
+from typing import Sequence, Union
+
+class A: ...
+class B(A): ...
+
+NestedA = Sequence[Union[A, NestedA]]
+NestedB = Sequence[Union[B, NestedB]]
+
+a: NestedA
+b: NestedB
+
+x: int
+x = a
+a = b
+x = a
+b = a
+if isinstance(b[0], Sequence):
+    a = b[0]
+    x = a
+[builtins fixtures/isinstancelist.pyi]
