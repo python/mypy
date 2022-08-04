@@ -1310,6 +1310,58 @@ class StubtestUnit(unittest.TestCase):
             error=None,
         )
 
+    @collect_cases
+    def test_abstract_properties(self) -> Iterator[Case]:
+        yield Case(
+            stub="from abc import abstractmethod",
+            runtime="from abc import abstractmethod",
+            error=None,
+        )
+        # Ensure that `@property` also can be abstract:
+        yield Case(
+            stub="""
+            class AP1:
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP1:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error="AP1.some",
+        )
+        yield Case(
+            stub="""
+            class AP2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP2:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            error=None,
+        )
+        # Runtime can miss `@abstractmethod`:
+        yield Case(
+            stub="""
+            class AP3:
+                @property
+                @abstractmethod
+                def some(self) -> int: ...
+            """,
+            runtime="""
+            class AP3:
+                @property
+                def some(self) -> int: ...
+            """,
+            error=None,
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
