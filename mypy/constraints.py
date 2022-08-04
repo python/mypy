@@ -155,6 +155,7 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
 def _infer_constraints(template: Type, actual: Type, direction: int) -> List[Constraint]:
 
     orig_template = template
+    orig_actual = actual
     template = get_proper_type(template)
     actual = get_proper_type(actual)
 
@@ -181,7 +182,7 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> List[Con
     #     T :> U2", but they are not equivalent to the constraint solver,
     #     which never introduces new Union types (it uses join() instead).
     if isinstance(template, TypeVarType):
-        return [Constraint(template.id, direction, actual)]
+        return [Constraint(template.id, direction, orig_actual)]
 
     # Now handle the case of either template or actual being a Union.
     # For a Union to be a subtype of another type, every item of the Union

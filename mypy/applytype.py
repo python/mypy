@@ -10,14 +10,12 @@ from mypy.types import (
     Parameters,
     ParamSpecType,
     PartialType,
-    ProperType,
     Type,
     TypeVarId,
     TypeVarLikeType,
     TypeVarTupleType,
     TypeVarType,
     get_proper_type,
-    get_proper_types,
 )
 
 
@@ -88,7 +86,6 @@ def apply_generic_arguments(
     assert len(tvars) == len(orig_types)
     # Check that inferred type variable values are compatible with allowed
     # values and bounds.  Also, promote subtype values to allowed values.
-
     # Create a map from type variable id to target type.
     id_to_type: Dict[TypeVarId, Type] = {}
 

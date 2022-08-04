@@ -139,12 +139,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
-        repl = get_proper_type(self.variables.get(t.id, t))
-        if isinstance(repl, Instance):
-            inst = repl
-            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
-        else:
-            return repl
+        return self.variables.get(t.id, t)
 
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         repl = get_proper_type(self.variables.get(t.id, t))
