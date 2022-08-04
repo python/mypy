@@ -211,7 +211,7 @@ def union(a: T, b: S) -> Union[T, S]: ...
 
 x: int
 y = union(a, b)
-x = y
+x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
 [case testRecursiveAliasesRestrictions]

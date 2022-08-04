@@ -210,12 +210,14 @@ class LastKnownValueEraser(TypeTranslator):
         # Avoid merge in simple cases such as optional types.
         if len(instances) > 1:
             instances_by_name: Dict[str, List[Instance]] = {}
-            new_items = get_proper_types(new.items)
-            for item in new_items:
+            p_new_items = get_proper_types(new.items)
+            for item in p_new_items:
                 if isinstance(item, Instance) and not item.args:
                     instances_by_name.setdefault(item.type.fullname, []).append(item)
             merged: List[Type] = []
-            for item in new_items:
+            for item in new.items:
+                orig_item = item
+                item = get_proper_type(item)
                 if isinstance(item, Instance) and not item.args:
                     types = instances_by_name.get(item.type.fullname)
                     if types is not None:
@@ -227,6 +229,6 @@ class LastKnownValueEraser(TypeTranslator):
                             merged.append(make_simplified_union(types))
                             del instances_by_name[item.type.fullname]
                 else:
-                    merged.append(item)
+                    merged.append(orig_item)
             return UnionType.make_union(merged)
         return new

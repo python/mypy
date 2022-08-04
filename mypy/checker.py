@@ -3474,9 +3474,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self, name: Var, lvalue: Lvalue, init_type: Type, context: Context
     ) -> None:
         """Infer the type of initialized variables from initializer type."""
-        init_type = get_proper_type(init_type)
-        if isinstance(init_type, DeletedType):
-            self.msg.deleted_as_rvalue(init_type, context)
+        p_init_type = get_proper_type(init_type)
+        if isinstance(p_init_type, DeletedType):
+            self.msg.deleted_as_rvalue(p_init_type, context)
         elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
             # We cannot use the type of the initialization expression for full type
             # inference (it's not specific enough), but we might be able to give
