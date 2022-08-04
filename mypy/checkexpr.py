@@ -3591,7 +3591,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             always_allow_any=True,
         )
         target_type = expr.type
-        if not source_type == target_type:
+        if not is_same_type(source_type, target_type):
             self.msg.assert_type_fail(source_type, target_type, expr)
         return source_type
 
