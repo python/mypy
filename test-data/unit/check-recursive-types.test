@@ -214,6 +214,32 @@ y = union(a, b)
 x = y  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRecursiveAliasesJoins]
+# flags: --enable-recursive-aliases
+from typing import Sequence, TypeVar, Union
+
+class A: ...
+class B(A): ...
+
+NestedA = Sequence[Union[A, NestedA]]
+NestedB = Sequence[Union[B, NestedB]]
+a: NestedA
+b: NestedB
+la: Sequence[Sequence[A]]
+lb: Sequence[Sequence[B]]
+
+T = TypeVar("T")
+def join(a: T, b: T) -> T: ...
+x: int
+
+y1 = join(a, b)
+x = y1  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+y2 = join(a, lb)
+x = y2  # E: Incompatible types in assignment (expression has type "Sequence[Union[A, NestedA]]", variable has type "int")
+y3 = join(la, b)
+x = y3  # E: Incompatible types in assignment (expression has type "Sequence[Union[Sequence[A], B, NestedB]]", variable has type "int")
+[builtins fixtures/isinstancelist.pyi]
+
 [case testRecursiveAliasesRestrictions]
 # flags: --enable-recursive-aliases
 from typing import Sequence, Mapping, Union
