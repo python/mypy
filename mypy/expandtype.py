@@ -144,11 +144,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
     def visit_param_spec(self, t: ParamSpecType) -> Type:
         repl = get_proper_type(self.variables.get(t.id, t))
         if isinstance(repl, Instance):
-            inst = repl
-            # Return copy of instance with type erasure flag on.
             # TODO: what does prefix mean in this case?
             # TODO: why does this case even happen? Instances aren't plural.
-            return Instance(inst.type, inst.args, line=inst.line, column=inst.column)
+            return repl
         elif isinstance(repl, ParamSpecType):
             return repl.copy_modified(
                 flavor=t.flavor,
@@ -194,9 +192,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         """May return either a list of types to unpack to, any, or a single
         variable length tuple. The latter may not be valid in all contexts.
         """
-        proper_typ = get_proper_type(t.type)
-        if isinstance(proper_typ, TypeVarTupleType):
-            repl = get_proper_type(self.variables.get(proper_typ.id, t))
+        if isinstance(t.type, TypeVarTupleType):
+            repl = get_proper_type(self.variables.get(t.type.id, t))
             if isinstance(repl, TupleType):
                 return repl.items
             if isinstance(repl, TypeList):
@@ -216,7 +213,7 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             else:
                 raise NotImplementedError(f"Invalid type replacement to expand: {repl}")
         else:
-            raise NotImplementedError(f"Invalid type to expand: {proper_typ}")
+            raise NotImplementedError(f"Invalid type to expand: {t.type}")
 
     def visit_parameters(self, t: Parameters) -> Type:
         return t.copy_modified(arg_types=self.expand_types(t.arg_types))
@@ -272,9 +269,8 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
         """
         items: List[Type] = []
         for item in typs:
-            proper_item = get_proper_type(item)
-            if isinstance(proper_item, UnpackType):
-                unpacked_items = self.expand_unpack(proper_item)
+            if isinstance(item, UnpackType):
+                unpacked_items = self.expand_unpack(item)
                 if unpacked_items is None:
                     # TODO: better error, something like tuple of unknown?
                     return UninhabitedType()
