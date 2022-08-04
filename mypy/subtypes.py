@@ -145,14 +145,7 @@ def is_subtype(
         ), "Don't pass both context and individual flags"
     if TypeState.is_assumed_subtype(left, right):
         return True
-    if (
-        # TODO: recursive instances like `class str(Sequence[str])` can also cause
-        # issues, so we also need to include them in the assumptions stack
-        isinstance(left, TypeAliasType)
-        and isinstance(right, TypeAliasType)
-        and left.is_recursive
-        and right.is_recursive
-    ):
+    if mypy.typeops.is_recursive_pair(left, right):
         # This case requires special care because it may cause infinite recursion.
         # Our view on recursive types is known under a fancy name of iso-recursive mu-types.
         # Roughly this means that a recursive type is defined as an alias where right hand side
@@ -205,12 +198,7 @@ def is_proper_subtype(
         ), "Don't pass both context and individual flags"
     if TypeState.is_assumed_proper_subtype(left, right):
         return True
-    if (
-        isinstance(left, TypeAliasType)
-        and isinstance(right, TypeAliasType)
-        and left.is_recursive
-        and right.is_recursive
-    ):
+    if mypy.typeops.is_recursive_pair(left, right):
         # Same as for non-proper subtype, see detailed comment there for explanation.
         with pop_on_exit(TypeState.get_assumptions(is_proper=True), left, right):
             return _is_subtype(left, right, subtype_context, proper_subtype=True)
@@ -874,7 +862,7 @@ class SubtypeVisitor(TypeVisitor[bool]):
         assert False, f"This should be never called, got {left}"
 
 
-T = TypeVar("T", Instance, TypeAliasType)
+T = TypeVar("T", bound=Type)
 
 
 @contextmanager
