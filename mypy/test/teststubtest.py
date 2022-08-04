@@ -1264,6 +1264,40 @@ class StubtestUnit(unittest.TestCase):
             )
             yield Case(stub="C = ParamSpec('C')", runtime="C = ParamSpec('C')", error=None)
 
+    @collect_cases
+    def test_abstract_methods(self) -> Iterator[Case]:
+        yield Case(
+            stub="""
+            from abc import abstractmethod
+
+            class A1:
+                def some(self) -> None: ...
+
+            class A2:
+                @abstractmethod
+                def some(self) -> None: ...
+
+            class A3:
+                @abstractmethod
+                def some(self) -> None: ...
+            """,
+            runtime="""
+            from abc import abstractmethod
+
+            class A1:
+                @abstractmethod
+                def some(self) -> None: ...
+
+            class A2:
+                @abstractmethod
+                def some(self) -> None: ...
+
+            class A3:
+                def some(self) -> None: ...
+            """,
+            error="A1.some",
+        )
+
 
 def remove_color_code(s: str) -> str:
     return re.sub("\\x1b.*?m", "", s)  # this works!
