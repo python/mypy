@@ -288,6 +288,11 @@ class StubtestUnit(unittest.TestCase):
                 runtime="def runtime_posonly(number, /, text): pass",
                 error="runtime_posonly",
             )
+            yield Case(
+                stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
+                runtime="def stub_posonly_570(number, text): pass",
+                error="stub_posonly_570",
+            )
 
     @collect_cases
     def test_default_value(self) -> Iterator[Case]:
