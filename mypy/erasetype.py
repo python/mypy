@@ -211,9 +211,9 @@ class LastKnownValueEraser(TypeTranslator):
         if len(instances) > 1:
             instances_by_name: Dict[str, List[Instance]] = {}
             p_new_items = get_proper_types(new.items)
-            for item in p_new_items:
-                if isinstance(item, Instance) and not item.args:
-                    instances_by_name.setdefault(item.type.fullname, []).append(item)
+            for p_item in p_new_items:
+                if isinstance(p_item, Instance) and not p_item.args:
+                    instances_by_name.setdefault(p_item.type.fullname, []).append(p_item)
             merged: List[Type] = []
             for item in new.items:
                 orig_item = item
