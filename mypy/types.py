@@ -236,8 +236,6 @@ class Type(mypy.nodes.Context):
 class TypeAliasType(Type):
     """A type alias to another type.
 
-    NOTE: this is not being used yet, and the implementation is still incomplete.
-
     To support recursive type aliases we don't immediately expand a type alias
     during semantic analysis, but create an instance of this type that records the target alias
     definition node (mypy.nodes.TypeAlias) and type arguments (for generic aliases).
@@ -3195,6 +3193,50 @@ def union_items(typ: Type) -> List[ProperType]:
         return items
     else:
         return [typ]
+
+
+def invalid_recursive_alias(target: Type) -> bool:
+    """Flag aliases like A = Union[int, A] (and similar mutual aliases).
+
+    Such aliases don't make much sense, and cause problems in later phases.
+    """
+    target = get_proper_type(target)
+    if not isinstance(target, UnionType):
+        return False
+    seen_aliases: Set[TypeAliasType] = set()
+
+    def try_flatten_unions(typ: Type) -> bool:
+        if isinstance(typ, TypeAliasType):
+            if typ in seen_aliases:
+                return True
+            seen_aliases.add(typ)
+        typ = get_proper_type(typ)
+        if isinstance(typ, UnionType):
+            for item in typ.items:
+                recursed = try_flatten_unions(item)
+                if recursed:
+                    return True
+        return False
+
+    return try_flatten_unions(target)
+
+
+def bad_type_type_item(item: Type) -> bool:
+    """Prohibit types like Type[Type[...]].
+
+    Such types are explicitly prohibited by PEP 484. Also they cause problems
+    with recursive types like T = Type[T], because internal representation of
+    TypeType item is normalized (i.e. always a proper type).
+    """
+    item = get_proper_type(item)
+    if isinstance(item, TypeType):
+        return True
+    if isinstance(item, UnionType):
+        return any(
+            isinstance(get_proper_type(i), TypeType)
+            for i in flatten_nested_unions(item.items, handle_type_alias_type=True)
+        )
+    return False
 
 
 def is_union_with_any(tp: Type) -> bool:
