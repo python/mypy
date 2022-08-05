@@ -473,17 +473,20 @@ class ImportFrom(ImportBase):
 class ImportAll(ImportBase):
     """from m import *"""
 
-    __slots__ = ("id", "relative")
+    __slots__ = ("id", "relative", "imported_names")
 
     __match_args__ = ("id", "relative")
 
     id: str
     relative: int
+    # NOTE: Only filled and used by old semantic analyzer.
+    imported_names: List[str]
 
     def __init__(self, id: str, relative: int) -> None:
         super().__init__()
         self.id = id
         self.relative = relative
+        self.imported_names = []
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_import_all(self)
