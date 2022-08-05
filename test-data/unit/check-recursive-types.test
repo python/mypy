@@ -388,3 +388,33 @@ reveal_type(bar(la))  # N: Revealed type is "__main__.A"
 reveal_type(bar(lla))  # N: Revealed type is "__main__.A"
 reveal_type(bar(llla))  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testRecursiveAliasesProhibitBadAliases]
+# flags: --enable-recursive-aliases
+from typing import Union, Type, List, TypeVar
+
+NR = List[int]
+NR2 = Union[NR, NR]
+NR3 = Union[NR, Union[NR2, NR2]]
+
+A = Union[B, int]  # E: Invalid recursive alias: a union item of itself
+B = Union[int, A]  # E: Invalid recursive alias: a union item of itself
+def f() -> A: ...
+reveal_type(f())  # N: Revealed type is "Union[Any, builtins.int]"
+
+T = TypeVar("T")
+G = Union[T, G[T]]  # E: Invalid recursive alias: a union item of itself
+def g() -> G[int]: ...
+reveal_type(g())  # N: Revealed type is "Any"
+
+def local() -> None:
+    L = List[Union[int, L]]  # E: Cannot resolve name "L" (possible cyclic definition) \
+                             # N: Recursive types are not allowed at function scope
+    x: L
+    reveal_type(x)  # N: Revealed type is "builtins.list[Union[builtins.int, Any]]"
+
+S = Type[S]  # E: Type[...] cannot contain another Type[...]
+U = Type[Union[int, U]]  # E: Type[...] cannot contain another Type[...]
+x: U
+reveal_type(x)  # N: Revealed type is "Type[Any]"
+[builtins fixtures/isinstancelist.pyi]

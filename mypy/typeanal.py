@@ -82,6 +82,7 @@ from mypy.types import (
     UninhabitedType,
     UnionType,
     UnpackType,
+    bad_type_type_item,
     callable_with_ellipsis,
     get_proper_type,
     union_items,
@@ -374,7 +375,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                         unexpanded_type=t,
                     )
                 if node.eager:
-                    # TODO: Generate error if recursive (once we have recursive types)
                     res = get_proper_type(res)
                 return res
             elif isinstance(node, TypeInfo):
@@ -487,7 +487,10 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                 type_str = "Type[...]" if fullname == "typing.Type" else "type[...]"
                 self.fail(type_str + " must have exactly one type argument", t)
             item = self.anal_type(t.args[0])
-            return TypeType.make_normalized(item, line=t.line)
+            if bad_type_type_item(item):
+                self.fail("Type[...] can't contain another Type[...]", t)
+                item = AnyType(TypeOfAny.from_error)
+            return TypeType.make_normalized(item, line=t.line, column=t.column)
         elif fullname == "typing.ClassVar":
             if self.nesting_level > 0:
                 self.fail("Invalid type: ClassVar nested inside other type", t)

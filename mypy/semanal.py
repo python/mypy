@@ -275,6 +275,7 @@ from mypy.types import (
     UnboundType,
     get_proper_type,
     get_proper_types,
+    invalid_recursive_alias,
     is_named_instance,
 )
 from mypy.typevars import fill_typevars
@@ -3087,7 +3088,7 @@ class SemanticAnalyzer(
             )
             if not res:
                 return False
-            if self.options.enable_recursive_aliases:
+            if self.options.enable_recursive_aliases and not self.is_func_scope():
                 # Only marking incomplete for top-level placeholders makes recursive aliases like
                 # `A = Sequence[str | A]` valid here, similar to how we treat base classes in class
                 # definitions, allowing `class str(Sequence[str]): ...`
@@ -3131,6 +3132,8 @@ class SemanticAnalyzer(
             no_args=no_args,
             eager=eager,
         )
+        if invalid_recursive_alias({alias_node}, alias_node.target):
+            self.fail("Invalid recursive alias: a union item of itself", rvalue)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
@@ -5564,6 +5567,8 @@ class SemanticAnalyzer(
 
     def cannot_resolve_name(self, name: str, kind: str, ctx: Context) -> None:
         self.fail(f'Cannot resolve {kind} "{name}" (possible cyclic definition)', ctx)
+        if self.options.enable_recursive_aliases and self.is_func_scope():
+            self.note("Recursive types are not allowed at function scope", ctx)
 
     def qualified_name(self, name: str) -> str:
         if self.type is not None:
