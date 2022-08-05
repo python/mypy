@@ -1281,6 +1281,10 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="class T2: ...", runtime="class T2(metaclass=type): ...", error=None)
         yield Case(stub="class T3(metaclass=type): ...", runtime="class T3: ...", error=None)
 
+        # Explicit check that `_protected` names are also supported:
+        yield Case(stub="class _P1(type): ...", runtime="class _P1(type): ...", error=None)
+        yield Case(stub="class P2: ...", runtime="class P2(metaclass=_P1): ...", error="P2")
+
         # With inheritance:
         yield Case(
             stub="""
