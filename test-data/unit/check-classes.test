@@ -4496,6 +4496,23 @@ class E(metaclass=Explicit): ...
 class I(metaclass=Implicit): ...
 [builtins fixtures/classmethod.pyi]
 
+[case testValidTypeAliasOfTypeAliasAsMetaclass]
+from typing_extensions import TypeAlias
+
+Explicit: TypeAlias = type
+Implicit = type
+
+A1: TypeAlias = Explicit
+A2 = Explicit
+A3: TypeAlias = Implicit
+A4 = Implicit
+
+class C1(metaclass=A1): ...
+class C2(metaclass=A2): ...
+class C3(metaclass=A3): ...
+class C4(metaclass=A4): ...
+[builtins fixtures/classmethod.pyi]
+
 [case testTypeAliasWithArgsAsMetaclass]
 from typing import Generic, TypeVar
 from typing_extensions import TypeAlias
