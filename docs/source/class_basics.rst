@@ -244,11 +244,6 @@ function decorator. Example:
    x = Animal()  # Error: 'Animal' is abstract due to 'eat' and 'can_walk'
    y = Cat()     # OK
 
-.. note::
-
-   In Python 2.7 you have to use :py:func:`@abc.abstractproperty <abc.abstractproperty>` to define
-   an abstract property.
-
 Note that mypy performs checking for unimplemented abstract methods
 even if you omit the :py:class:`~abc.ABCMeta` metaclass. This can be useful if the
 metaclass would cause runtime metaclass conflicts.

@@ -28,7 +28,7 @@ if sys.version_info >= (3, 8):
         "PropertyMock",
         "seal",
     )
-elif sys.version_info >= (3, 7):
+else:
     __all__ = (
         "Mock",
         "MagicMock",
@@ -45,27 +45,10 @@ elif sys.version_info >= (3, 7):
         "PropertyMock",
         "seal",
     )
-else:
-    __all__ = (
-        "Mock",
-        "MagicMock",
-        "patch",
-        "sentinel",
-        "DEFAULT",
-        "ANY",
-        "call",
-        "create_autospec",
-        "FILTER_DIR",
-        "NonCallableMock",
-        "NonCallableMagicMock",
-        "mock_open",
-        "PropertyMock",
-    )
+
 __version__: str
 
 FILTER_DIR: Any
-
-class _slotted: ...
 
 class _SentinelObject:
     name: Any
@@ -157,10 +140,8 @@ class NonCallableMock(Base, Any):
         def assert_called_once(_mock_self) -> None: ...
 
     def reset_mock(self, visited: Any = ..., *, return_value: bool = ..., side_effect: bool = ...) -> None: ...
-    if sys.version_info >= (3, 7):
-        def _extract_mock_name(self) -> str: ...
-        def _get_call_signature_from_name(self, name: str) -> Any: ...
-
+    def _extract_mock_name(self) -> str: ...
+    def _get_call_signature_from_name(self, name: str) -> Any: ...
     def assert_any_call(self, *args: Any, **kwargs: Any) -> None: ...
     def assert_has_calls(self, calls: Sequence[_Call], any_order: bool = ...) -> None: ...
     def mock_add_spec(self, spec: Any, spec_set: bool = ...) -> None: ...
@@ -440,7 +421,12 @@ class _SpecState:
 
 def mock_open(mock: Any | None = ..., read_data: Any = ...) -> Any: ...
 
-PropertyMock = Any
+class PropertyMock(Mock):
+    if sys.version_info >= (3, 8):
+        def __get__(self: Self, obj: _T, obj_type: type[_T] | None = ...) -> Self: ...
+    else:
+        def __get__(self: Self, obj: _T, obj_type: type[_T] | None) -> Self: ...
 
-if sys.version_info >= (3, 7):
-    def seal(mock: Any) -> None: ...
+    def __set__(self, obj: Any, value: Any) -> None: ...
+
+def seal(mock: Any) -> None: ...

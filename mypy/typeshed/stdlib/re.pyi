@@ -4,111 +4,45 @@ import sys
 from _typeshed import ReadableBuffer
 from collections.abc import Callable, Iterator
 from sre_constants import error as error
-from typing import Any, AnyStr, overload
+from typing import Any, AnyStr, Match as Match, Pattern as Pattern, overload
 from typing_extensions import TypeAlias
 
-# ----- re variables and constants -----
-if sys.version_info >= (3, 7):
-    from typing import Match as Match, Pattern as Pattern
-else:
-    from typing import Match, Pattern
+__all__ = [
+    "match",
+    "fullmatch",
+    "search",
+    "sub",
+    "subn",
+    "split",
+    "findall",
+    "finditer",
+    "compile",
+    "purge",
+    "template",
+    "escape",
+    "error",
+    "A",
+    "I",
+    "L",
+    "M",
+    "S",
+    "X",
+    "U",
+    "ASCII",
+    "IGNORECASE",
+    "LOCALE",
+    "MULTILINE",
+    "DOTALL",
+    "VERBOSE",
+    "UNICODE",
+    "Match",
+    "Pattern",
+]
 
 if sys.version_info >= (3, 11):
-    __all__ = [
-        "match",
-        "fullmatch",
-        "search",
-        "sub",
-        "subn",
-        "split",
-        "findall",
-        "finditer",
-        "compile",
-        "purge",
-        "template",
-        "escape",
-        "error",
-        "Pattern",
-        "Match",
-        "A",
-        "I",
-        "L",
-        "M",
-        "S",
-        "X",
-        "U",
-        "ASCII",
-        "IGNORECASE",
-        "LOCALE",
-        "MULTILINE",
-        "DOTALL",
-        "VERBOSE",
-        "UNICODE",
-        "RegexFlag",
-        "NOFLAG",
-    ]
-elif sys.version_info >= (3, 8):
-    __all__ = [
-        "match",
-        "fullmatch",
-        "search",
-        "sub",
-        "subn",
-        "split",
-        "findall",
-        "finditer",
-        "compile",
-        "purge",
-        "template",
-        "escape",
-        "error",
-        "Pattern",
-        "Match",
-        "A",
-        "I",
-        "L",
-        "M",
-        "S",
-        "X",
-        "U",
-        "ASCII",
-        "IGNORECASE",
-        "LOCALE",
-        "MULTILINE",
-        "DOTALL",
-        "VERBOSE",
-        "UNICODE",
-    ]
-else:
-    __all__ = [
-        "match",
-        "fullmatch",
-        "search",
-        "sub",
-        "subn",
-        "split",
-        "findall",
-        "finditer",
-        "compile",
-        "purge",
-        "template",
-        "escape",
-        "error",
-        "A",
-        "I",
-        "L",
-        "M",
-        "S",
-        "X",
-        "U",
-        "ASCII",
-        "IGNORECASE",
-        "LOCALE",
-        "MULTILINE",
-        "DOTALL",
-        "VERBOSE",
-        "UNICODE",
-    ]
+    __all__ += ["NOFLAG", "RegexFlag"]
+
+# ----- re variables and constants -----
 
 class RegexFlag(enum.IntFlag):
     A = sre_compile.SRE_FLAG_ASCII
@@ -151,10 +85,6 @@ TEMPLATE = RegexFlag.TEMPLATE
 if sys.version_info >= (3, 11):
     NOFLAG = RegexFlag.NOFLAG
 _FlagsType: TypeAlias = int | RegexFlag
-
-if sys.version_info < (3, 7):
-    # undocumented
-    _pattern_type: type
 
 # Type-wise the compile() overloads are unnecessary, they could also be modeled using
 # unions in the parameter types. However mypy has a bug regarding TypeVar

@@ -6,64 +6,26 @@ from fractions import Fraction
 from typing import Any, NamedTuple, SupportsFloat, TypeVar
 from typing_extensions import Literal, TypeAlias
 
+__all__ = [
+    "StatisticsError",
+    "pstdev",
+    "pvariance",
+    "stdev",
+    "variance",
+    "median",
+    "median_low",
+    "median_high",
+    "median_grouped",
+    "mean",
+    "mode",
+    "harmonic_mean",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["geometric_mean", "multimode", "NormalDist", "fmean", "quantiles"]
+
 if sys.version_info >= (3, 10):
-    __all__ = [
-        "NormalDist",
-        "StatisticsError",
-        "correlation",
-        "covariance",
-        "fmean",
-        "geometric_mean",
-        "harmonic_mean",
-        "linear_regression",
-        "mean",
-        "median",
-        "median_grouped",
-        "median_high",
-        "median_low",
-        "mode",
-        "multimode",
-        "pstdev",
-        "pvariance",
-        "quantiles",
-        "stdev",
-        "variance",
-    ]
-elif sys.version_info >= (3, 8):
-    __all__ = [
-        "NormalDist",
-        "StatisticsError",
-        "fmean",
-        "geometric_mean",
-        "harmonic_mean",
-        "mean",
-        "median",
-        "median_grouped",
-        "median_high",
-        "median_low",
-        "mode",
-        "multimode",
-        "pstdev",
-        "pvariance",
-        "quantiles",
-        "stdev",
-        "variance",
-    ]
-else:
-    __all__ = [
-        "StatisticsError",
-        "pstdev",
-        "pvariance",
-        "stdev",
-        "variance",
-        "median",
-        "median_low",
-        "median_high",
-        "median_grouped",
-        "mean",
-        "mode",
-        "harmonic_mean",
-    ]
+    __all__ += ["covariance", "correlation", "linear_regression"]
 
 # Most functions in this module accept homogeneous collections of one of these types
 _Number: TypeAlias = float | Decimal | Fraction

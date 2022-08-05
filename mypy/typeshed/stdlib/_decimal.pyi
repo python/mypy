@@ -3,7 +3,7 @@ import sys
 from _typeshed import Self
 from collections.abc import Container, Sequence
 from types import TracebackType
-from typing import Any, NamedTuple, Union, overload
+from typing import Any, ClassVar, NamedTuple, Union, overload
 from typing_extensions import TypeAlias
 
 _Decimal: TypeAlias = Decimal | int
@@ -26,9 +26,7 @@ ROUND_FLOOR: str
 ROUND_UP: str
 ROUND_HALF_DOWN: str
 ROUND_05UP: str
-
-if sys.version_info >= (3, 7):
-    HAVE_CONTEXTVAR: bool
+HAVE_CONTEXTVAR: bool
 HAVE_THREADS: bool
 MAX_EMAX: int
 MAX_PREC: int
@@ -209,7 +207,8 @@ class Context:
     def clear_traps(self) -> None: ...
     def copy(self) -> Context: ...
     def __copy__(self) -> Context: ...
-    __hash__: Any
+    # see https://github.com/python/cpython/issues/94107
+    __hash__: ClassVar[None]  # type: ignore[assignment]
     def Etiny(self) -> int: ...
     def Etop(self) -> int: ...
     def create_decimal(self, __num: _DecimalNew = ...) -> Decimal: ...

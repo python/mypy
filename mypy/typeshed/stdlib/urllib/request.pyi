@@ -5,9 +5,10 @@ from collections.abc import Callable, Iterable, Mapping, MutableMapping, Sequenc
 from email.message import Message
 from http.client import HTTPMessage, HTTPResponse, _HTTPConnectionProtocol
 from http.cookiejar import CookieJar
-from typing import IO, Any, ClassVar, NoReturn, Pattern, TypeVar, overload
+from re import Pattern
+from typing import IO, Any, ClassVar, NoReturn, TypeVar, overload
 from typing_extensions import TypeAlias
-from urllib.error import HTTPError
+from urllib.error import HTTPError as HTTPError
 from urllib.response import addclosehook, addinfourl
 
 __all__ = [
@@ -150,6 +151,10 @@ class HTTPRedirectHandler(BaseHandler):
     def http_error_302(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_303(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
     def http_error_307(self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage) -> _UrlopenRet | None: ...
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, req: Request, fp: IO[bytes], code: int, msg: str, headers: HTTPMessage
+        ) -> _UrlopenRet | None: ...
 
 class HTTPCookieProcessor(BaseHandler):
     cookiejar: CookieJar
@@ -281,7 +286,7 @@ class HTTPErrorProcessor(BaseHandler):
 def urlretrieve(
     url: str,
     filename: StrOrBytesPath | None = ...,
-    reporthook: Callable[[int, int, int], None] | None = ...,
+    reporthook: Callable[[int, int, int], object] | None = ...,
     data: _DataType = ...,
 ) -> tuple[str, HTTPMessage]: ...
 def urlcleanup() -> None: ...
@@ -295,7 +300,7 @@ class URLopener:
         self,
         url: str,
         filename: str | None = ...,
-        reporthook: Callable[[int, int, int], None] | None = ...,
+        reporthook: Callable[[int, int, int], object] | None = ...,
         data: bytes | None = ...,
     ) -> tuple[str, Message | None]: ...
     def addheader(self, *args: tuple[str, str]) -> None: ...  # undocumented
@@ -330,6 +335,11 @@ class FancyURLopener(URLopener):
     def http_error_307(
         self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
     ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+    if sys.version_info >= (3, 11):
+        def http_error_308(
+            self, url: str, fp: IO[bytes], errcode: int, errmsg: str, headers: HTTPMessage, data: bytes | None = ...
+        ) -> _UrlopenRet | addinfourl | None: ...  # undocumented
+
     def http_error_401(
         self,
         url: str,

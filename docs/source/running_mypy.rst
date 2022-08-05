@@ -205,7 +205,7 @@ will continue to be of type ``Any``.
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To suppress *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
@@ -537,17 +537,3 @@ For example, if you have multiple projects that happen to be
 using the same set of work-in-progress stubs, it could be
 convenient to just have your ``MYPYPATH`` point to a single
 directory containing the stubs.
-
-Directories specific to Python 2 (@python2)
-*******************************************
-
-When type checking in Python 2 mode, mypy also looks for files under
-the ``@python2`` subdirectory of each ``MYPYPATH`` and ``mypy_path``
-entry, if the subdirectory exists. Files under the subdirectory take
-precedence over the parent directory. This can be used to provide
-separate Python 2 versions of stubs.
-
-.. note::
-
-    This does not need to be used (and cannot be used) with
-    :ref:`PEP 561 compliant stub packages <installed-packages>`.

@@ -448,7 +448,7 @@ g(None) # Ok
 f()     # Ok because not used to infer local variable type
 g(a)
 
-def f() -> T: pass
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 def g(a: T) -> None: pass
 [out]
 
@@ -2341,7 +2341,7 @@ def main() -> None:
 [case testDontMarkUnreachableAfterInferenceUninhabited]
 from typing import TypeVar
 T = TypeVar('T')
-def f() -> T: pass
+def f() -> T: pass # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 
 class C:
     x = f() # E: Need type annotation for "x"
@@ -3131,13 +3131,6 @@ y = defaultdict(list)  # E: Need type annotation for "y"
 y['a'] = []
 reveal_type(y)  # N: Revealed type is "collections.defaultdict[Any, Any]"
 [builtins fixtures/dict.pyi]
-
-[case testJoinOfStrAndUnicodeSubclass_python2]
-class S(unicode): pass
-reveal_type(S() if bool() else '')  # N: Revealed type is "builtins.unicode"
-reveal_type('' if bool() else S())  # N: Revealed type is "builtins.unicode"
-reveal_type(S() if bool() else str())  # N: Revealed type is "builtins.unicode"
-reveal_type(str() if bool() else S())  # N: Revealed type is "builtins.unicode"
 
 [case testInferCallableReturningNone1]
 # flags: --no-strict-optional

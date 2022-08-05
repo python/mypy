@@ -137,6 +137,16 @@ def f() -> Union[int, None]: pass
 x = 1
 x = f()
 
+[case testUnionWithEllipsis]
+from typing import Union
+def f(x: Union[int, EllipsisType]) -> int:
+    if x is Ellipsis:
+        reveal_type(x) # N: Revealed type is "builtins.ellipsis"
+        x = 1
+    reveal_type(x) # N: Revealed type is "builtins.int"
+    return x
+[builtins fixtures/isinstancelist.pyi]
+
 [case testOptional]
 from typing import Optional
 def f(x: Optional[int]) -> None: pass

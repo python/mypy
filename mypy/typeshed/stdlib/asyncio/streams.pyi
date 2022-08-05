@@ -1,3 +1,4 @@
+import ssl
 import sys
 from _typeshed import Self, StrPath
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterable, Sequence
@@ -10,7 +11,7 @@ from .base_events import Server
 if sys.platform == "win32":
     if sys.version_info >= (3, 8):
         __all__ = ("StreamReader", "StreamWriter", "StreamReaderProtocol", "open_connection", "start_server")
-    elif sys.version_info >= (3, 7):
+    else:
         __all__ = (
             "StreamReader",
             "StreamWriter",
@@ -20,16 +21,6 @@ if sys.platform == "win32":
             "IncompleteReadError",
             "LimitOverrunError",
         )
-    else:
-        __all__ = [
-            "StreamReader",
-            "StreamWriter",
-            "StreamReaderProtocol",
-            "open_connection",
-            "start_server",
-            "IncompleteReadError",
-            "LimitOverrunError",
-        ]
 else:
     if sys.version_info >= (3, 8):
         __all__ = (
@@ -41,7 +32,7 @@ else:
             "open_unix_connection",
             "start_unix_server",
         )
-    elif sys.version_info >= (3, 7):
+    else:
         __all__ = (
             "StreamReader",
             "StreamWriter",
@@ -53,18 +44,6 @@ else:
             "open_unix_connection",
             "start_unix_server",
         )
-    else:
-        __all__ = [
-            "StreamReader",
-            "StreamWriter",
-            "StreamReaderProtocol",
-            "open_connection",
-            "start_server",
-            "IncompleteReadError",
-            "LimitOverrunError",
-            "open_unix_connection",
-            "start_unix_server",
-        ]
 
 _ClientConnectedCallback: TypeAlias = Callable[[StreamReader, StreamWriter], Awaitable[None] | None]
 
@@ -119,24 +98,20 @@ else:
     ) -> Server: ...
 
 if sys.platform != "win32":
-    if sys.version_info >= (3, 7):
-        _PathType: TypeAlias = StrPath
-    else:
-        _PathType: TypeAlias = str
     if sys.version_info >= (3, 10):
         async def open_unix_connection(
-            path: _PathType | None = ..., *, limit: int = ..., **kwds: Any
+            path: StrPath | None = ..., *, limit: int = ..., **kwds: Any
         ) -> tuple[StreamReader, StreamWriter]: ...
         async def start_unix_server(
-            client_connected_cb: _ClientConnectedCallback, path: _PathType | None = ..., *, limit: int = ..., **kwds: Any
+            client_connected_cb: _ClientConnectedCallback, path: StrPath | None = ..., *, limit: int = ..., **kwds: Any
         ) -> Server: ...
     else:
         async def open_unix_connection(
-            path: _PathType | None = ..., *, loop: events.AbstractEventLoop | None = ..., limit: int = ..., **kwds: Any
+            path: StrPath | None = ..., *, loop: events.AbstractEventLoop | None = ..., limit: int = ..., **kwds: Any
         ) -> tuple[StreamReader, StreamWriter]: ...
         async def start_unix_server(
             client_connected_cb: _ClientConnectedCallback,
-            path: _PathType | None = ...,
+            path: StrPath | None = ...,
             *,
             loop: events.AbstractEventLoop | None = ...,
             limit: int = ...,
@@ -173,12 +148,14 @@ class StreamWriter:
     def write_eof(self) -> None: ...
     def can_write_eof(self) -> bool: ...
     def close(self) -> None: ...
-    if sys.version_info >= (3, 7):
-        def is_closing(self) -> bool: ...
-        async def wait_closed(self) -> None: ...
-
+    def is_closing(self) -> bool: ...
+    async def wait_closed(self) -> None: ...
     def get_extra_info(self, name: str, default: Any = ...) -> Any: ...
     async def drain(self) -> None: ...
+    if sys.version_info >= (3, 11):
+        async def start_tls(
+            self, sslcontext: ssl.SSLContext, *, server_hostname: str | None = ..., ssl_handshake_timeout: float | None = ...
+        ) -> None: ...
 
 class StreamReader(AsyncIterator[bytes]):
     def __init__(self, limit: int = ..., loop: events.AbstractEventLoop | None = ...) -> None: ...

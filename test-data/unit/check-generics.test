@@ -1533,9 +1533,9 @@ A = TypeVar('A')
 B = TypeVar('B')
 
 def f1(x: A) -> A: ...
-def f2(x: A) -> B: ...
+def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 def f3(x: B) -> B: ...
-def f4(x: int) -> A: ...
+def f4(x: int) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 
 y1 = f1
 if int():
@@ -1584,8 +1584,8 @@ B = TypeVar('B')
 T = TypeVar('T')
 def outer(t: T) -> None:
     def f1(x: A) -> A: ...
-    def f2(x: A) -> B: ...
-    def f3(x: T) -> A: ...
+    def f2(x: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+    def f3(x: T) -> A: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
     def f4(x: A) -> T: ...
     def f5(x: T) -> T: ...
 
@@ -1754,7 +1754,7 @@ from typing import TypeVar
 A = TypeVar('A')
 B = TypeVar('B')
 def f1(x: int, y: A) -> A: ...
-def f2(x: int, y: A) -> B: ...
+def f2(x: int, y: A) -> B: ... # E: A function returning TypeVar should receive at least one argument containing the same Typevar
 def f3(x: A, y: B) -> B: ...
 g = f1
 g = f2
@@ -2540,3 +2540,19 @@ class Whatever(Generic[T]):
 class WhateverPartTwo(Whatever[A], Generic[V]):
     def something(self: S) -> S:
         return self
+
+
+[case testConstrainedGenericSuper]
+from typing import Generic, TypeVar
+
+AnyStr = TypeVar("AnyStr", str, bytes)
+
+class Foo(Generic[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None: ...
+
+class Bar(Foo[AnyStr]):
+    def method1(self, s: AnyStr, t: AnyStr) -> None:
+        super().method1('x', b'y')  # Should be an error
+[out]
+main:10: error: Argument 1 to "method1" of "Foo" has incompatible type "str"; expected "AnyStr"
+main:10: error: Argument 2 to "method1" of "Foo" has incompatible type "bytes"; expected "AnyStr"

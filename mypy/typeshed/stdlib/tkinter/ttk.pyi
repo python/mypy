@@ -6,61 +6,33 @@ from tkinter.font import _FontDescription
 from typing import Any, overload
 from typing_extensions import Literal, TypeAlias, TypedDict
 
-if sys.version_info >= (3, 7):
-    __all__ = [
-        "Button",
-        "Checkbutton",
-        "Combobox",
-        "Entry",
-        "Frame",
-        "Label",
-        "Labelframe",
-        "LabelFrame",
-        "Menubutton",
-        "Notebook",
-        "Panedwindow",
-        "PanedWindow",
-        "Progressbar",
-        "Radiobutton",
-        "Scale",
-        "Scrollbar",
-        "Separator",
-        "Sizegrip",
-        "Spinbox",
-        "Style",
-        "Treeview",
-        "LabeledScale",
-        "OptionMenu",
-        "tclobjs_to_py",
-        "setup_master",
-    ]
-else:
-    __all__ = [
-        "Button",
-        "Checkbutton",
-        "Combobox",
-        "Entry",
-        "Frame",
-        "Label",
-        "Labelframe",
-        "LabelFrame",
-        "Menubutton",
-        "Notebook",
-        "Panedwindow",
-        "PanedWindow",
-        "Progressbar",
-        "Radiobutton",
-        "Scale",
-        "Scrollbar",
-        "Separator",
-        "Sizegrip",
-        "Style",
-        "Treeview",
-        "LabeledScale",
-        "OptionMenu",
-        "tclobjs_to_py",
-        "setup_master",
-    ]
+__all__ = [
+    "Button",
+    "Checkbutton",
+    "Combobox",
+    "Entry",
+    "Frame",
+    "Label",
+    "Labelframe",
+    "LabelFrame",
+    "Menubutton",
+    "Notebook",
+    "Panedwindow",
+    "PanedWindow",
+    "Progressbar",
+    "Radiobutton",
+    "Scale",
+    "Scrollbar",
+    "Separator",
+    "Sizegrip",
+    "Style",
+    "Treeview",
+    "LabeledScale",
+    "OptionMenu",
+    "tclobjs_to_py",
+    "setup_master",
+    "Spinbox",
+]
 
 def tclobjs_to_py(adict: dict[Any, Any]) -> dict[Any, Any]: ...
 def setup_master(master: Any | None = ...): ...
@@ -879,71 +851,70 @@ class Sizegrip(Widget):
     def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
     config = configure
 
-if sys.version_info >= (3, 7):
-    class Spinbox(Entry):
-        def __init__(
-            self,
-            master: tkinter.Misc | None = ...,
-            *,
-            background: tkinter._Color = ...,  # undocumented
-            class_: str = ...,
-            command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
-            cursor: tkinter._Cursor = ...,
-            exportselection: bool = ...,  # undocumented
-            font: _FontDescription = ...,  # undocumented
-            foreground: tkinter._Color = ...,  # undocumented
-            format: str = ...,
-            from_: float = ...,
-            increment: float = ...,
-            invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
-            justify: Literal["left", "center", "right"] = ...,  # undocumented
-            name: str = ...,
-            show: Any = ...,  # undocumented
-            state: str = ...,
-            style: str = ...,
-            takefocus: tkinter._TakeFocusValue = ...,
-            textvariable: tkinter.Variable = ...,  # undocumented
-            to: float = ...,
-            validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
-            validatecommand: tkinter._EntryValidateCommand = ...,
-            values: list[str] | tuple[str, ...] = ...,
-            width: int = ...,  # undocumented
-            wrap: bool = ...,
-            xscrollcommand: tkinter._XYScrollCommand = ...,
-        ) -> None: ...
-        @overload  # type: ignore[override]
-        def configure(
-            self,
-            cnf: dict[str, Any] | None = ...,
-            *,
-            background: tkinter._Color = ...,
-            command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
-            cursor: tkinter._Cursor = ...,
-            exportselection: bool = ...,
-            font: _FontDescription = ...,
-            foreground: tkinter._Color = ...,
-            format: str = ...,
-            from_: float = ...,
-            increment: float = ...,
-            invalidcommand: tkinter._EntryValidateCommand = ...,
-            justify: Literal["left", "center", "right"] = ...,
-            show: Any = ...,
-            state: str = ...,
-            style: str = ...,
-            takefocus: tkinter._TakeFocusValue = ...,
-            textvariable: tkinter.Variable = ...,
-            to: float = ...,
-            validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
-            validatecommand: tkinter._EntryValidateCommand = ...,
-            values: list[str] | tuple[str, ...] = ...,
-            width: int = ...,
-            wrap: bool = ...,
-            xscrollcommand: tkinter._XYScrollCommand = ...,
-        ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
-        @overload
-        def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
-        config = configure  # type: ignore[assignment]
-        def set(self, value: Any) -> None: ...
+class Spinbox(Entry):
+    def __init__(
+        self,
+        master: tkinter.Misc | None = ...,
+        *,
+        background: tkinter._Color = ...,  # undocumented
+        class_: str = ...,
+        command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
+        cursor: tkinter._Cursor = ...,
+        exportselection: bool = ...,  # undocumented
+        font: _FontDescription = ...,  # undocumented
+        foreground: tkinter._Color = ...,  # undocumented
+        format: str = ...,
+        from_: float = ...,
+        increment: float = ...,
+        invalidcommand: tkinter._EntryValidateCommand = ...,  # undocumented
+        justify: Literal["left", "center", "right"] = ...,  # undocumented
+        name: str = ...,
+        show: Any = ...,  # undocumented
+        state: str = ...,
+        style: str = ...,
+        takefocus: tkinter._TakeFocusValue = ...,
+        textvariable: tkinter.Variable = ...,  # undocumented
+        to: float = ...,
+        validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
+        validatecommand: tkinter._EntryValidateCommand = ...,
+        values: list[str] | tuple[str, ...] = ...,
+        width: int = ...,  # undocumented
+        wrap: bool = ...,
+        xscrollcommand: tkinter._XYScrollCommand = ...,
+    ) -> None: ...
+    @overload  # type: ignore[override]
+    def configure(
+        self,
+        cnf: dict[str, Any] | None = ...,
+        *,
+        background: tkinter._Color = ...,
+        command: Callable[[], Any] | str | list[str] | tuple[str, ...] = ...,
+        cursor: tkinter._Cursor = ...,
+        exportselection: bool = ...,
+        font: _FontDescription = ...,
+        foreground: tkinter._Color = ...,
+        format: str = ...,
+        from_: float = ...,
+        increment: float = ...,
+        invalidcommand: tkinter._EntryValidateCommand = ...,
+        justify: Literal["left", "center", "right"] = ...,
+        show: Any = ...,
+        state: str = ...,
+        style: str = ...,
+        takefocus: tkinter._TakeFocusValue = ...,
+        textvariable: tkinter.Variable = ...,
+        to: float = ...,
+        validate: Literal["none", "focus", "focusin", "focusout", "key", "all"] = ...,
+        validatecommand: tkinter._EntryValidateCommand = ...,
+        values: list[str] | tuple[str, ...] = ...,
+        width: int = ...,
+        wrap: bool = ...,
+        xscrollcommand: tkinter._XYScrollCommand = ...,
+    ) -> dict[str, tuple[str, str, str, Any, Any]] | None: ...
+    @overload
+    def configure(self, cnf: str) -> tuple[str, str, str, Any, Any]: ...
+    config = configure  # type: ignore[assignment]
+    def set(self, value: Any) -> None: ...
 
 class _TreeviewItemDict(TypedDict):
     text: str

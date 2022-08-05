@@ -1,3 +1,4 @@
+import sys
 from _typeshed import OptExcInfo, SupportsWrite
 from abc import abstractmethod
 from builtins import list as _list  # "list" conflicts with method name
@@ -78,21 +79,36 @@ class HTMLDoc(Doc):
     repr = _repr_instance.repr
     escape = _repr_instance.escape
     def page(self, title: str, contents: str) -> str: ...
-    def heading(self, title: str, fgcol: str, bgcol: str, extras: str = ...) -> str: ...
-    def section(
-        self,
-        title: str,
-        fgcol: str,
-        bgcol: str,
-        contents: str,
-        width: int = ...,
-        prelude: str = ...,
-        marginalia: str | None = ...,
-        gap: str = ...,
-    ) -> str: ...
+    if sys.version_info >= (3, 11):
+        def heading(self, title: str, extras: str = ...) -> str: ...
+        def section(
+            self,
+            title: str,
+            cls: str,
+            contents: str,
+            width: int = ...,
+            prelude: str = ...,
+            marginalia: str | None = ...,
+            gap: str = ...,
+        ) -> str: ...
+        def multicolumn(self, list: list[_T], format: Callable[[_T], str]) -> str: ...
+    else:
+        def heading(self, title: str, fgcol: str, bgcol: str, extras: str = ...) -> str: ...
+        def section(
+            self,
+            title: str,
+            fgcol: str,
+            bgcol: str,
+            contents: str,
+            width: int = ...,
+            prelude: str = ...,
+            marginalia: str | None = ...,
+            gap: str = ...,
+        ) -> str: ...
+        def multicolumn(self, list: list[_T], format: Callable[[_T], str], cols: int = ...) -> str: ...
+
     def bigsection(self, title: str, *args: Any) -> str: ...
     def preformat(self, text: str) -> str: ...
-    def multicolumn(self, list: list[_T], format: Callable[[_T], str], cols: int = ...) -> str: ...
     def grey(self, text: str) -> str: ...
     def namelink(self, name: str, *dicts: MutableMapping[str, str]) -> str: ...
     def classlink(self, object: object, modname: str) -> str: ...
@@ -186,8 +202,6 @@ def locate(path: str, forceload: bool = ...) -> object: ...
 text: TextDoc
 html: HTMLDoc
 
-class _OldStyleClass: ...
-
 def resolve(thing: str | object, forceload: bool = ...) -> tuple[object, str] | None: ...
 def render_doc(thing: str | object, title: str = ..., forceload: bool = ..., renderer: Doc | None = ...) -> str: ...
 def doc(thing: str | object, title: str = ..., forceload: bool = ..., output: SupportsWrite[str] | None = ...) -> None: ...
@@ -222,10 +236,10 @@ class ModuleScanner:
     quit: bool
     def run(
         self,
-        callback: Callable[[str | None, str, str], None],
+        callback: Callable[[str | None, str, str], object],
         key: str | None = ...,
-        completer: Callable[[], None] | None = ...,
-        onerror: Callable[[str], None] | None = ...,
+        completer: Callable[[], object] | None = ...,
+        onerror: Callable[[str], object] | None = ...,
     ) -> None: ...
 
 def apropos(key: str) -> None: ...

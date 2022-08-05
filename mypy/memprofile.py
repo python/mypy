@@ -4,18 +4,17 @@ This is tailored to mypy and knows (a little) about which list objects are
 owned by particular AST nodes, etc.
 """
 
-from collections import defaultdict
 import gc
 import sys
-from typing import List, Dict, Iterable, Tuple, cast
+from collections import defaultdict
+from typing import Dict, Iterable, List, Tuple, cast
 
 from mypy.nodes import FakeInfo, Node
 from mypy.types import Type
 from mypy.util import get_class_descriptors
 
 
-def collect_memory_stats() -> Tuple[Dict[str, int],
-                                    Dict[str, int]]:
+def collect_memory_stats() -> Tuple[Dict[str, int], Dict[str, int]]:
     """Return stats about memory use.
 
     Return a tuple with these items:
@@ -31,25 +30,25 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
             # Processing these would cause a crash.
             continue
         n = type(obj).__name__
-        if hasattr(obj, '__dict__'):
+        if hasattr(obj, "__dict__"):
             # Keep track of which class a particular __dict__ is associated with.
-            inferred[id(obj.__dict__)] = f'{n} (__dict__)'
+            inferred[id(obj.__dict__)] = f"{n} (__dict__)"
         if isinstance(obj, (Node, Type)):  # type: ignore
-            if hasattr(obj, '__dict__'):
+            if hasattr(obj, "__dict__"):
                 for x in obj.__dict__.values():
                     if isinstance(x, list):
                         # Keep track of which node a list is associated with.
-                        inferred[id(x)] = f'{n} (list)'
+                        inferred[id(x)] = f"{n} (list)"
                     if isinstance(x, tuple):
                         # Keep track of which node a list is associated with.
-                        inferred[id(x)] = f'{n} (tuple)'
+                        inferred[id(x)] = f"{n} (tuple)"
 
             for k in get_class_descriptors(type(obj)):
                 x = getattr(obj, k, None)
                 if isinstance(x, list):
-                    inferred[id(x)] = f'{n} (list)'
+                    inferred[id(x)] = f"{n} (list)"
                 if isinstance(x, tuple):
-                    inferred[id(x)] = f'{n} (tuple)'
+                    inferred[id(x)] = f"{n} (tuple)"
 
     freqs: Dict[str, int] = {}
     memuse: Dict[str, int] = {}
@@ -65,27 +64,28 @@ def collect_memory_stats() -> Tuple[Dict[str, int],
 
 
 def print_memory_profile(run_gc: bool = True) -> None:
-    if not sys.platform.startswith('win'):
+    if not sys.platform.startswith("win"):
         import resource
+
         system_memuse = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     else:
         system_memuse = -1  # TODO: Support this on Windows
     if run_gc:
         gc.collect()
     freqs, memuse = collect_memory_stats()
-    print('%7s  %7s  %7s  %s' % ('Freq', 'Size(k)', 'AvgSize', 'Type'))
-    print('-------------------------------------------')
+    print("%7s  %7s  %7s  %s" % ("Freq", "Size(k)", "AvgSize", "Type"))
+    print("-------------------------------------------")
     totalmem = 0
     i = 0
     for n, mem in sorted(memuse.items(), key=lambda x: -x[1]):
         f = freqs[n]
         if i < 50:
-            print('%7d  %7d  %7.0f  %s' % (f, mem // 1024, mem / f, n))
+            print("%7d  %7d  %7.0f  %s" % (f, mem // 1024, mem / f, n))
         i += 1
         totalmem += mem
     print()
-    print('Mem usage RSS   ', system_memuse // 1024)
-    print('Total reachable ', totalmem // 1024)
+    print("Mem usage RSS   ", system_memuse // 1024)
+    print("Total reachable ", totalmem // 1024)
 
 
 def find_recursive_objects(objs: List[object]) -> None:
@@ -112,8 +112,8 @@ def find_recursive_objects(objs: List[object]) -> None:
         if type(obj) in (list, tuple, set):
             for x in cast(Iterable[object], obj):
                 visit(x)
-        if hasattr(obj, '__slots__'):
+        if hasattr(obj, "__slots__"):
             for base in type.mro(type(obj)):
-                for slot in getattr(base, '__slots__', ()):
+                for slot in getattr(base, "__slots__", ()):
                     if hasattr(obj, slot):
                         visit(getattr(obj, slot))

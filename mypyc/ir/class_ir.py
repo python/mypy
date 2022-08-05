@@ -1,15 +1,13 @@
 """Intermediate representation of classes."""
 
-from typing import List, Optional, Set, Tuple, Dict, NamedTuple
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+
 from mypy.backports import OrderedDict
-
-from mypyc.common import JsonDict
-from mypyc.ir.ops import Value, DeserMaps
-from mypyc.ir.rtypes import RType, RInstance, deserialize_type
-from mypyc.ir.func_ir import FuncIR, FuncDecl, FuncSignature
+from mypyc.common import PROPSET_PREFIX, JsonDict
+from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
+from mypyc.ir.ops import DeserMaps, Value
+from mypyc.ir.rtypes import RInstance, RType, deserialize_type
 from mypyc.namegen import NameGenerator, exported_name
-from mypyc.common import PROPSET_PREFIX
-
 
 # Some notes on the vtable layout: Each concrete class has a vtable
 # that contains function pointers for its methods. So that subclasses
@@ -70,10 +68,9 @@ from mypyc.common import PROPSET_PREFIX
 # placed in the class's shadow vtable (if it has one).
 
 VTableMethod = NamedTuple(
-    'VTableMethod', [('cls', 'ClassIR'),
-                     ('name', str),
-                     ('method', FuncIR),
-                     ('shadow_method', Optional[FuncIR])])
+    "VTableMethod",
+    [("cls", "ClassIR"), ("name", str), ("method", FuncIR), ("shadow_method", Optional[FuncIR])],
+)
 
 
 VTableEntries = List[VTableMethod]
@@ -85,9 +82,15 @@ class ClassIR:
     This also describes the runtime structure of native instances.
     """
 
-    def __init__(self, name: str, module_name: str, is_trait: bool = False,
-                 is_generated: bool = False, is_abstract: bool = False,
-                 is_ext_class: bool = True) -> None:
+    def __init__(
+        self,
+        name: str,
+        module_name: str,
+        is_trait: bool = False,
+        is_generated: bool = False,
+        is_abstract: bool = False,
+        is_ext_class: bool = True,
+    ) -> None:
         self.name = name
         self.module_name = module_name
         self.is_trait = is_trait
@@ -185,13 +188,14 @@ class ClassIR:
             "name={self.name}, module_name={self.module_name}, "
             "is_trait={self.is_trait}, is_generated={self.is_generated}, "
             "is_abstract={self.is_abstract}, is_ext_class={self.is_ext_class}"
-            ")".format(self=self))
+            ")".format(self=self)
+        )
 
     @property
     def fullname(self) -> str:
         return f"{self.module_name}.{self.name}"
 
-    def real_base(self) -> Optional['ClassIR']:
+    def real_base(self) -> Optional["ClassIR"]:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
             return self.mro[1]
@@ -199,16 +203,16 @@ class ClassIR:
 
     def vtable_entry(self, name: str) -> int:
         assert self.vtable is not None, "vtable not computed yet"
-        assert name in self.vtable, f'{self.name!r} has no attribute {name!r}'
+        assert name in self.vtable, f"{self.name!r} has no attribute {name!r}"
         return self.vtable[name]
 
-    def attr_details(self, name: str) -> Tuple[RType, 'ClassIR']:
+    def attr_details(self, name: str) -> Tuple[RType, "ClassIR"]:
         for ir in self.mro:
             if name in ir.attributes:
                 return ir.attributes[name], ir
             if name in ir.property_types:
                 return ir.property_types[name], ir
-        raise KeyError(f'{self.name!r} has no attribute {name!r}')
+        raise KeyError(f"{self.name!r} has no attribute {name!r}")
 
     def attr_type(self, name: str) -> RType:
         return self.attr_details(name)[0]
@@ -217,7 +221,7 @@ class ClassIR:
         for ir in self.mro:
             if name in ir.method_decls:
                 return ir.method_decls[name]
-        raise KeyError(f'{self.name!r} has no attribute {name!r}')
+        raise KeyError(f"{self.name!r} has no attribute {name!r}")
 
     def method_sig(self, name: str) -> FuncSignature:
         return self.method_decl(name).sig
@@ -266,9 +270,9 @@ class ClassIR:
         return names.private_name(self.module_name, self.name)
 
     def struct_name(self, names: NameGenerator) -> str:
-        return f'{exported_name(self.fullname)}Object'
+        return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, 'ClassIR']]:
+    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, "ClassIR"]]:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name], ir
@@ -279,7 +283,7 @@ class ClassIR:
         res = self.get_method_and_class(name)
         return res[0] if res else None
 
-    def subclasses(self) -> Optional[Set['ClassIR']]:
+    def subclasses(self) -> Optional[Set["ClassIR"]]:
         """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
@@ -296,7 +300,7 @@ class ClassIR:
                 result.update(child_subs)
         return result
 
-    def concrete_subclasses(self) -> Optional[List['ClassIR']]:
+    def concrete_subclasses(self) -> Optional[List["ClassIR"]]:
         """Return all concrete (i.e. non-trait and non-abstract) subclasses.
 
         Include both direct and indirect subclasses. Place classes with no children first.
@@ -315,111 +319,108 @@ class ClassIR:
 
     def serialize(self) -> JsonDict:
         return {
-            'name': self.name,
-            'module_name': self.module_name,
-            'is_trait': self.is_trait,
-            'is_ext_class': self.is_ext_class,
-            'is_abstract': self.is_abstract,
-            'is_generated': self.is_generated,
-            'is_augmented': self.is_augmented,
-            'inherits_python': self.inherits_python,
-            'has_dict': self.has_dict,
-            'allow_interpreted_subclasses': self.allow_interpreted_subclasses,
-            'needs_getseters': self.needs_getseters,
-            '_serializable': self._serializable,
-            'builtin_base': self.builtin_base,
-            'ctor': self.ctor.serialize(),
+            "name": self.name,
+            "module_name": self.module_name,
+            "is_trait": self.is_trait,
+            "is_ext_class": self.is_ext_class,
+            "is_abstract": self.is_abstract,
+            "is_generated": self.is_generated,
+            "is_augmented": self.is_augmented,
+            "inherits_python": self.inherits_python,
+            "has_dict": self.has_dict,
+            "allow_interpreted_subclasses": self.allow_interpreted_subclasses,
+            "needs_getseters": self.needs_getseters,
+            "_serializable": self._serializable,
+            "builtin_base": self.builtin_base,
+            "ctor": self.ctor.serialize(),
             # We serialize dicts as lists to ensure order is preserved
-            'attributes': [(k, t.serialize()) for k, t in self.attributes.items()],
+            "attributes": [(k, t.serialize()) for k, t in self.attributes.items()],
             # We try to serialize a name reference, but if the decl isn't in methods
             # then we can't be sure that will work so we serialize the whole decl.
-            'method_decls': [(k, d.id if k in self.methods else d.serialize())
-                             for k, d in self.method_decls.items()],
-            # We serialize method fullnames out and put methods in a separate dict
-            'methods': [(k, m.id) for k, m in self.methods.items()],
-            'glue_methods': [
-                ((cir.fullname, k), m.id)
-                for (cir, k), m in self.glue_methods.items()
+            "method_decls": [
+                (k, d.id if k in self.methods else d.serialize())
+                for k, d in self.method_decls.items()
             ],
-
+            # We serialize method fullnames out and put methods in a separate dict
+            "methods": [(k, m.id) for k, m in self.methods.items()],
+            "glue_methods": [
+                ((cir.fullname, k), m.id) for (cir, k), m in self.glue_methods.items()
+            ],
             # We serialize properties and property_types separately out of an
             # abundance of caution about preserving dict ordering...
-            'property_types': [(k, t.serialize()) for k, t in self.property_types.items()],
-            'properties': list(self.properties),
-
-            'vtable': self.vtable,
-            'vtable_entries': serialize_vtable(self.vtable_entries),
-            'trait_vtables': [
+            "property_types": [(k, t.serialize()) for k, t in self.property_types.items()],
+            "properties": list(self.properties),
+            "vtable": self.vtable,
+            "vtable_entries": serialize_vtable(self.vtable_entries),
+            "trait_vtables": [
                 (cir.fullname, serialize_vtable(v)) for cir, v in self.trait_vtables.items()
             ],
-
             # References to class IRs are all just names
-            'base': self.base.fullname if self.base else None,
-            'traits': [cir.fullname for cir in self.traits],
-            'mro': [cir.fullname for cir in self.mro],
-            'base_mro': [cir.fullname for cir in self.base_mro],
-            'children': [
-                cir.fullname for cir in self.children
-            ] if self.children is not None else None,
-            'deletable': self.deletable,
-            'attrs_with_defaults': sorted(self.attrs_with_defaults),
-            '_always_initialized_attrs': sorted(self._always_initialized_attrs),
-            '_sometimes_initialized_attrs': sorted(self._sometimes_initialized_attrs),
-            'init_self_leak': self.init_self_leak,
+            "base": self.base.fullname if self.base else None,
+            "traits": [cir.fullname for cir in self.traits],
+            "mro": [cir.fullname for cir in self.mro],
+            "base_mro": [cir.fullname for cir in self.base_mro],
+            "children": [cir.fullname for cir in self.children]
+            if self.children is not None
+            else None,
+            "deletable": self.deletable,
+            "attrs_with_defaults": sorted(self.attrs_with_defaults),
+            "_always_initialized_attrs": sorted(self._always_initialized_attrs),
+            "_sometimes_initialized_attrs": sorted(self._sometimes_initialized_attrs),
+            "init_self_leak": self.init_self_leak,
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: 'DeserMaps') -> 'ClassIR':
-        fullname = data['module_name'] + '.' + data['name']
+    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "ClassIR":
+        fullname = data["module_name"] + "." + data["name"]
         assert fullname in ctx.classes, "Class %s not in deser class map" % fullname
         ir = ctx.classes[fullname]
 
-        ir.is_trait = data['is_trait']
-        ir.is_generated = data['is_generated']
-        ir.is_abstract = data['is_abstract']
-        ir.is_ext_class = data['is_ext_class']
-        ir.is_augmented = data['is_augmented']
-        ir.inherits_python = data['inherits_python']
-        ir.has_dict = data['has_dict']
-        ir.allow_interpreted_subclasses = data['allow_interpreted_subclasses']
-        ir.needs_getseters = data['needs_getseters']
-        ir._serializable = data['_serializable']
-        ir.builtin_base = data['builtin_base']
-        ir.ctor = FuncDecl.deserialize(data['ctor'], ctx)
-        ir.attributes = OrderedDict(
-            (k, deserialize_type(t, ctx)) for k, t in data['attributes']
+        ir.is_trait = data["is_trait"]
+        ir.is_generated = data["is_generated"]
+        ir.is_abstract = data["is_abstract"]
+        ir.is_ext_class = data["is_ext_class"]
+        ir.is_augmented = data["is_augmented"]
+        ir.inherits_python = data["inherits_python"]
+        ir.has_dict = data["has_dict"]
+        ir.allow_interpreted_subclasses = data["allow_interpreted_subclasses"]
+        ir.needs_getseters = data["needs_getseters"]
+        ir._serializable = data["_serializable"]
+        ir.builtin_base = data["builtin_base"]
+        ir.ctor = FuncDecl.deserialize(data["ctor"], ctx)
+        ir.attributes = OrderedDict((k, deserialize_type(t, ctx)) for k, t in data["attributes"])
+        ir.method_decls = OrderedDict(
+            (k, ctx.functions[v].decl if isinstance(v, str) else FuncDecl.deserialize(v, ctx))
+            for k, v in data["method_decls"]
         )
-        ir.method_decls = OrderedDict((k, ctx.functions[v].decl
-                                       if isinstance(v, str) else FuncDecl.deserialize(v, ctx))
-                                      for k, v in data['method_decls'])
-        ir.methods = OrderedDict((k, ctx.functions[v]) for k, v in data['methods'])
+        ir.methods = OrderedDict((k, ctx.functions[v]) for k, v in data["methods"])
         ir.glue_methods = OrderedDict(
-            ((ctx.classes[c], k), ctx.functions[v]) for (c, k), v in data['glue_methods']
+            ((ctx.classes[c], k), ctx.functions[v]) for (c, k), v in data["glue_methods"]
         )
         ir.property_types = OrderedDict(
-            (k, deserialize_type(t, ctx)) for k, t in data['property_types']
+            (k, deserialize_type(t, ctx)) for k, t in data["property_types"]
         )
         ir.properties = OrderedDict(
-            (k, (ir.methods[k], ir.methods.get(PROPSET_PREFIX + k))) for k in data['properties']
+            (k, (ir.methods[k], ir.methods.get(PROPSET_PREFIX + k))) for k in data["properties"]
         )
 
-        ir.vtable = data['vtable']
-        ir.vtable_entries = deserialize_vtable(data['vtable_entries'], ctx)
+        ir.vtable = data["vtable"]
+        ir.vtable_entries = deserialize_vtable(data["vtable_entries"], ctx)
         ir.trait_vtables = OrderedDict(
-            (ctx.classes[k], deserialize_vtable(v, ctx)) for k, v in data['trait_vtables']
+            (ctx.classes[k], deserialize_vtable(v, ctx)) for k, v in data["trait_vtables"]
         )
 
-        base = data['base']
+        base = data["base"]
         ir.base = ctx.classes[base] if base else None
-        ir.traits = [ctx.classes[s] for s in data['traits']]
-        ir.mro = [ctx.classes[s] for s in data['mro']]
-        ir.base_mro = [ctx.classes[s] for s in data['base_mro']]
-        ir.children = data['children'] and [ctx.classes[s] for s in data['children']]
-        ir.deletable = data['deletable']
-        ir.attrs_with_defaults = set(data['attrs_with_defaults'])
-        ir._always_initialized_attrs = set(data['_always_initialized_attrs'])
-        ir._sometimes_initialized_attrs = set(data['_sometimes_initialized_attrs'])
-        ir.init_self_leak = data['init_self_leak']
+        ir.traits = [ctx.classes[s] for s in data["traits"]]
+        ir.mro = [ctx.classes[s] for s in data["mro"]]
+        ir.base_mro = [ctx.classes[s] for s in data["base_mro"]]
+        ir.children = data["children"] and [ctx.classes[s] for s in data["children"]]
+        ir.deletable = data["deletable"]
+        ir.attrs_with_defaults = set(data["attrs_with_defaults"])
+        ir._always_initialized_attrs = set(data["_always_initialized_attrs"])
+        ir._sometimes_initialized_attrs = set(data["_sometimes_initialized_attrs"])
+        ir.init_self_leak = data["init_self_leak"]
 
         return ir
 
@@ -440,11 +441,11 @@ class NonExtClassInfo:
 
 def serialize_vtable_entry(entry: VTableMethod) -> JsonDict:
     return {
-        '.class': 'VTableMethod',
-        'cls': entry.cls.fullname,
-        'name': entry.name,
-        'method': entry.method.decl.id,
-        'shadow_method': entry.shadow_method.decl.id if entry.shadow_method else None,
+        ".class": "VTableMethod",
+        "cls": entry.cls.fullname,
+        "name": entry.name,
+        "method": entry.method.decl.id,
+        "shadow_method": entry.shadow_method.decl.id if entry.shadow_method else None,
     }
 
 
@@ -452,15 +453,18 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
-def deserialize_vtable_entry(data: JsonDict, ctx: 'DeserMaps') -> VTableMethod:
-    if data['.class'] == 'VTableMethod':
+def deserialize_vtable_entry(data: JsonDict, ctx: "DeserMaps") -> VTableMethod:
+    if data[".class"] == "VTableMethod":
         return VTableMethod(
-            ctx.classes[data['cls']], data['name'], ctx.functions[data['method']],
-            ctx.functions[data['shadow_method']] if data['shadow_method'] else None)
-    assert False, "Bogus vtable .class: %s" % data['.class']
+            ctx.classes[data["cls"]],
+            data["name"],
+            ctx.functions[data["method"]],
+            ctx.functions[data["shadow_method"]] if data["shadow_method"] else None,
+        )
+    assert False, "Bogus vtable .class: %s" % data[".class"]
 
 
-def deserialize_vtable(data: List[JsonDict], ctx: 'DeserMaps') -> VTableEntries:
+def deserialize_vtable(data: List[JsonDict], ctx: "DeserMaps") -> VTableEntries:
     return [deserialize_vtable_entry(x, ctx) for x in data]
 
 

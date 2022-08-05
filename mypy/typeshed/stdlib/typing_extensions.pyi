@@ -1,6 +1,8 @@
 import abc
+import collections
 import sys
-from _typeshed import Self as TypeshedSelf  # see #6932 for why the alias cannot have a leading underscore
+from _typeshed import IdentityFunction, Self as TypeshedSelf  # see #6932 for why the Self alias cannot have a leading underscore
+from collections.abc import Iterable
 from typing import (  # noqa: Y022,Y027,Y039
     TYPE_CHECKING as TYPE_CHECKING,
     Any,
@@ -37,6 +39,8 @@ __all__ = [
     "Final",
     "LiteralString",
     "ParamSpec",
+    "ParamSpecArgs",
+    "ParamSpecKwargs",
     "Self",
     "Type",
     "TypeVarTuple",
@@ -52,6 +56,7 @@ __all__ = [
     "Counter",
     "Deque",
     "DefaultDict",
+    "NamedTuple",
     "OrderedDict",
     "TypedDict",
     "SupportsIndex",
@@ -124,7 +129,7 @@ class _TypedDict(Mapping[str, object], metaclass=abc.ABCMeta):
     # can go through.
     def setdefault(self, k: NoReturn, default: object) -> object: ...
     # Mypy plugin hook for 'pop' expects that 'default' has a type variable type.
-    def pop(self, k: NoReturn, default: _T = ...) -> object: ...  # type: ignore
+    def pop(self, k: NoReturn, default: _T = ...) -> object: ...  # pyright: ignore[reportInvalidTypeVarUse]
     def update(self: _T, __m: _T) -> None: ...
     def items(self) -> ItemsView[str, object]: ...
     def keys(self) -> KeysView[str]: ...
@@ -158,6 +163,8 @@ if sys.version_info >= (3, 10):
     from typing import (
         Concatenate as Concatenate,
         ParamSpec as ParamSpec,
+        ParamSpecArgs as ParamSpecArgs,
+        ParamSpecKwargs as ParamSpecKwargs,
         TypeAlias as TypeAlias,
         TypeGuard as TypeGuard,
         is_typeddict as is_typeddict,
@@ -189,9 +196,11 @@ else:
     def is_typeddict(tp: object) -> bool: ...
 
 # New things in 3.11
+# NamedTuples are not new, but the ability to create generic NamedTuples is new in 3.11
 if sys.version_info >= (3, 11):
     from typing import (
         LiteralString as LiteralString,
+        NamedTuple as NamedTuple,
         Never as Never,
         NotRequired as NotRequired,
         Required as Required,
@@ -232,4 +241,25 @@ else:
         kw_only_default: bool = ...,
         field_specifiers: tuple[type[Any] | Callable[..., Any], ...] = ...,
         **kwargs: object,
-    ) -> Callable[[_T], _T]: ...
+    ) -> IdentityFunction: ...
+
+    class NamedTuple(tuple[Any, ...]):
+        if sys.version_info < (3, 8):
+            _field_types: collections.OrderedDict[str, type]
+        elif sys.version_info < (3, 9):
+            _field_types: dict[str, type]
+        _field_defaults: dict[str, Any]
+        _fields: tuple[str, ...]
+        _source: str
+        @overload
+        def __init__(self, typename: str, fields: Iterable[tuple[str, Any]] = ...) -> None: ...
+        @overload
+        def __init__(self, typename: str, fields: None = ..., **kwargs: Any) -> None: ...
+        @classmethod
+        def _make(cls: type[TypeshedSelf], iterable: Iterable[Any]) -> TypeshedSelf: ...
+        if sys.version_info >= (3, 8):
+            def _asdict(self) -> dict[str, Any]: ...
+        else:
+            def _asdict(self) -> collections.OrderedDict[str, Any]: ...
+
+        def _replace(self: TypeshedSelf, **kwargs: Any) -> TypeshedSelf: ...
