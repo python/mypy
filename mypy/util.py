@@ -525,7 +525,7 @@ def parse_gray_color(cup: bytes) -> str:
     if sys.platform == "win32":
         assert False, "curses is not available on Windows"
     set_color = "".join([cup[:-1].decode(), "m"])
-    gray = curses.tparm(set_color.encode("utf-8"), 1, 89).decode()
+    gray = curses.tparm(set_color.encode("utf-8"), 1, 9).decode()
     return gray
 
 
