@@ -375,6 +375,40 @@ def verify_typeinfo(
         # Examples: ctypes.Array, ctypes._SimpleCData
         pass
 
+    # Check metaclass. We exclude protocols, because of how complex
+    # their implementation is in different versions of python.
+    # Enums are also hard, ignoring.
+    if not stub.is_protocol and not stub.is_enum:
+        runtime_metaclass = type(runtime)
+        if runtime_metaclass is not type and stub.metaclass_type is None:
+            # This means that runtime has a custom metaclass, but a stub does not.
+            yield Error(
+                object_path,
+                "metaclass missmatch",
+                stub,
+                runtime,
+                stub_desc="Missing metaclass",
+                runtime_desc=f"Exiting metaclass: {runtime_metaclass}",
+            )
+        elif (
+            runtime_metaclass is type
+            and stub.metaclass_type is not None
+            # We ignore extra `ABCMeta` metaclass on stubs, this might be typing hack.
+            # We also ignore `builtins.type` metaclass as an implementation detail in mypy.
+            and not mypy.types.is_named_instance(
+                stub.metaclass_type, ("abc.ABCMeta", "builtins.type")
+            )
+        ):
+            # This means that our stub has a metaclass that is not present at runtime.
+            yield Error(
+                object_path,
+                "metaclass missmatch",
+                stub,
+                runtime,
+                stub_desc=f"Existing metaclass: {stub.metaclass_type.type.fullname}",
+                runtime_desc="Missing metaclass",
+            )
+
     # Check everything already defined on the stub class itself (i.e. not inherited)
     to_check = set(stub.names)
     # Check all public things on the runtime class
