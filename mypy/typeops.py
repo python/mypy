@@ -63,13 +63,25 @@ from mypy.typevars import fill_typevars
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
-    """Is this a pair of recursive type aliases?"""
-    return (
-        isinstance(s, TypeAliasType)
-        and isinstance(t, TypeAliasType)
-        and s.is_recursive
-        and t.is_recursive
-    )
+    """Is this a pair of recursive types?
+
+    There may be more cases, and we may be forced to use e.g. has_recursive_types()
+    here, but this function is called in very hot code, so we try to keep it simple
+    and return True only in cases we know may have problems.
+    """
+    if isinstance(s, TypeAliasType) and s.is_recursive:
+        return (
+            isinstance(get_proper_type(t), Instance)
+            or isinstance(t, TypeAliasType)
+            and t.is_recursive
+        )
+    if isinstance(t, TypeAliasType) and t.is_recursive:
+        return (
+            isinstance(get_proper_type(s), Instance)
+            or isinstance(s, TypeAliasType)
+            and s.is_recursive
+        )
+    return False
 
 
 def tuple_fallback(typ: TupleType) -> Instance:
@@ -81,9 +93,8 @@ def tuple_fallback(typ: TupleType) -> Instance:
         return typ.partial_fallback
     items = []
     for item in typ.items:
-        proper_type = get_proper_type(item)
-        if isinstance(proper_type, UnpackType):
-            unpacked_type = get_proper_type(proper_type.type)
+        if isinstance(item, UnpackType):
+            unpacked_type = get_proper_type(item.type)
             if isinstance(unpacked_type, TypeVarTupleType):
                 items.append(unpacked_type.upper_bound)
             elif isinstance(unpacked_type, TupleType):

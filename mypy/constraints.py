@@ -42,6 +42,8 @@ from mypy.types import (
     UnpackType,
     callable_with_ellipsis,
     get_proper_type,
+    has_recursive_types,
+    has_type_vars,
     is_named_instance,
     is_union_with_any,
 )
@@ -141,14 +143,19 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
     The constraints are represented as Constraint objects.
     """
     if any(
-        get_proper_type(template) == get_proper_type(t) for t in reversed(TypeState._inferring)
+        get_proper_type(template) == get_proper_type(t)
+        and get_proper_type(actual) == get_proper_type(a)
+        for (t, a) in reversed(TypeState.inferring)
     ):
         return []
-    if isinstance(template, TypeAliasType) and template.is_recursive:
+    if has_recursive_types(template):
         # This case requires special care because it may cause infinite recursion.
-        TypeState._inferring.append(template)
+        if not has_type_vars(template):
+            # Return early on an empty branch.
+            return []
+        TypeState.inferring.append((template, actual))
         res = _infer_constraints(template, actual, direction)
-        TypeState._inferring.pop()
+        TypeState.inferring.pop()
         return res
     return _infer_constraints(template, actual, direction)
 
@@ -216,13 +223,18 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> List[Con
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
-        return any_constraints(
+        result = any_constraints(
             [
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
             eager=False,
         )
+        if result:
+            return result
+        elif has_recursive_types(template) and not has_recursive_types(actual):
+            return handle_recursive_union(template, actual, direction)
+        return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction))
@@ -277,6 +289,19 @@ def merge_with_any(constraint: Constraint) -> Constraint:
         constraint.op,
         UnionType.make_union([target, any_type], target.line, target.column),
     )
+
+
+def handle_recursive_union(template: UnionType, actual: Type, direction: int) -> List[Constraint]:
+    # This is a hack to special-case things like Union[T, Inst[T]] in recursive types. Although
+    # it is quite arbitrary, it is a relatively common pattern, so we should handle it well.
+    # This function may be called when inferring against such union resulted in different
+    # constraints for each item. Normally we give up in such case, but here we instead split
+    # the union in two parts, and try inferring sequentially.
+    non_type_var_items = [t for t in template.items if not isinstance(t, TypeVarType)]
+    type_var_items = [t for t in template.items if isinstance(t, TypeVarType)]
+    return infer_constraints(
+        UnionType.make_union(non_type_var_items), actual, direction
+    ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)
 
 
 def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> List[Constraint]:

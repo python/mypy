@@ -154,6 +154,7 @@ from mypy.types import (
     is_optional,
     remove_optional,
 )
+from mypy.typestate import TypeState
 from mypy.typevars import fill_typevars
 from mypy.util import split_module_names
 from mypy.visitor import ExpressionVisitor
@@ -1429,6 +1430,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res.append(arg_type)
         return res
 
+    @contextmanager
+    def allow_unions(self, type_context: Type) -> Iterator[None]:
+        # This is a hack to better support inference for recursive types.
+        # When the outer context for a function call is known to be recursive,
+        # we solve type constraints inferred from arguments using unions instead
+        # of joins. This is a bit arbitrary, but in practice it works for most
+        # cases. A cleaner alternative would be to switch to single bin type
+        # inference, but this is a lot of work.
+        old = TypeState.infer_unions
+        if has_recursive_types(type_context):
+            TypeState.infer_unions = True
+        try:
+            yield
+        finally:
+            TypeState.infer_unions = old
+
     def infer_arg_types_in_context(
         self,
         callee: CallableType,
@@ -1448,7 +1465,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
-                    res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    with self.allow_unions(callee.arg_types[i]):
+                        res[ai] = self.accept(args[ai], callee.arg_types[i])
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
@@ -1568,17 +1586,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 else:
                     pass1_args.append(arg)
 
-            # This is a hack to better support inference for recursive types.
-            # When the outer context for a function call is known to be recursive,
-            # we solve type constraints inferred from arguments using unions instead
-            # of joins. This is a bit arbitrary, but in practice it works for most
-            # cases. A cleaner alternative would be to switch to single bin type
-            # inference, but this is a lot of work.
-            ctx = self.type_context[-1]
-            if ctx and has_recursive_types(ctx):
-                infer_unions = True
-            else:
-                infer_unions = False
             inferred_args = infer_function_type_arguments(
                 callee_type,
                 pass1_args,
@@ -1586,7 +1593,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 formal_to_actual,
                 context=self.argument_infer_context(),
                 strict=self.chk.in_checked_function(),
-                infer_unions=infer_unions,
             )
 
             if 2 in arg_pass_nums:
