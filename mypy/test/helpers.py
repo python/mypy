@@ -9,7 +9,9 @@ from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Patt
 
 # Exporting Suite as alias to TestCase for backwards compatibility
 # TODO: avoid aliasing - import and subclass TestCase directly
-from unittest import TestCase as Suite  # noqa: F401 (re-exporting)
+from unittest import TestCase
+
+Suite = TestCase  # re-exporting
 
 import pytest
 

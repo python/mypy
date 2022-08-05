@@ -75,8 +75,8 @@ from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
-    BuildSource,
-    BuildSourceSet,
+    BuildSource as BuildSource,
+    BuildSourceSet as BuildSourceSet,
     FindModuleCache,
     ModuleNotFoundReason,
     ModuleSearchResult,

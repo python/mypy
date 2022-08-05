@@ -12,7 +12,7 @@ from typing import Callable, List, Optional, Sequence, Tuple
 
 from typing_extensions import Final
 
-from mypy.checkexpr import map_actuals_to_formals
+from mypy.argmap import map_actuals_to_formals
 from mypy.nodes import ARG_POS, ARG_STAR, ARG_STAR2, ArgKind
 from mypy.operators import op_methods
 from mypy.types import AnyType, TypeOfAny
