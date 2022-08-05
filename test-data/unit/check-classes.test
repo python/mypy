@@ -4486,6 +4486,57 @@ class A(metaclass=M):
 reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
 
+[case testValidTypeAliasAsMetaclass]
+from typing_extensions import TypeAlias
+
+Explicit: TypeAlias = type
+Implicit = type
+
+class E(metaclass=Explicit): ...
+class I(metaclass=Implicit): ...
+[builtins fixtures/classmethod.pyi]
+
+[case testValidTypeAliasOfTypeAliasAsMetaclass]
+from typing_extensions import TypeAlias
+
+Explicit: TypeAlias = type
+Implicit = type
+
+A1: TypeAlias = Explicit
+A2 = Explicit
+A3: TypeAlias = Implicit
+A4 = Implicit
+
+class C1(metaclass=A1): ...
+class C2(metaclass=A2): ...
+class C3(metaclass=A3): ...
+class C4(metaclass=A4): ...
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeAliasWithArgsAsMetaclass]
+from typing import Generic, TypeVar
+from typing_extensions import TypeAlias
+
+T = TypeVar('T')
+class Meta(Generic[T]): ...
+
+Explicit: TypeAlias = Meta[T]
+Implicit = Meta[T]
+
+class E(metaclass=Explicit): ...  # E: Invalid metaclass "Explicit"
+class I(metaclass=Implicit): ...  # E: Invalid metaclass "Implicit"
+[builtins fixtures/classmethod.pyi]
+
+[case testTypeAliasNonTypeAsMetaclass]
+from typing_extensions import TypeAlias
+
+Explicit: TypeAlias = int
+Implicit = int
+
+class E(metaclass=Explicit): ...  # E: Metaclasses not inheriting from "type" are not supported
+class I(metaclass=Implicit): ...  # E: Metaclasses not inheriting from "type" are not supported
+[builtins fixtures/classmethod.pyi]
+
 [case testInvalidVariableAsMetaclass]
 from typing import Any
 M = 0  # type: int
