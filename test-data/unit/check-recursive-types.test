@@ -60,6 +60,23 @@ x: Nested[int] = [1, [2, [3]]]
 x = [1, [Bad()]]  # E: List item 0 has incompatible type "Bad"; expected "Union[int, Nested[int]]"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRecursiveAliasBasicGenericInferenceNested]
+# flags: --enable-recursive-aliases
+from typing import Union, TypeVar, Sequence, List
+
+# More tricky cases don't work without bound, see e.g. #11149
+T = TypeVar("T", bound=A)
+class A: ...
+class B(A): ...
+
+Nested = Sequence[Union[T, Nested[T]]]
+
+def flatten(arg: Nested[T]) -> List[T]: ...
+reveal_type(flatten([[B(), B()]]))  # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(flatten([[[[B()]]]]))  # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(flatten([[B(), [[B()]]]]))  # N: Revealed type is "builtins.list[__main__.B]"
+[builtins fixtures/isinstancelist.pyi]
+
 [case testRecursiveAliasNewStyleSupported]
 # flags: --enable-recursive-aliases
 from test import A
@@ -312,7 +329,7 @@ class B(Sequence[B]): ...
 nb: Nested[B] = [B(), [B(), [B()]]]
 reveal_type(foo(nb))  # N: Revealed type is "__main__.B"
 
-# This case doesn't work yet without upper bound (which could make sense)
+# This case doesn't work yet without upper bound
 TB = TypeVar("TB", bound=B)
 def foo(x: Nested[TB]) -> TB: ...
 reveal_type(foo([B(), [B(), [B()]]]))  # N: Revealed type is "__main__.B"
@@ -339,7 +356,7 @@ xx = yy  # E: Incompatible types in assignment (expression has type "PlainNested
 def foo(arg: PlainNested[T]) -> T: ...
 reveal_type(foo(xx))  # N: Revealed type is "__main__.B"
 
-# This case doesn't work yet without upper bound (which could make sense)
+# This case doesn't work yet without upper bound
 TA = TypeVar("TA", bound=A)
 def bar(arg: PlainNested[TA]) -> TA: ...
 reveal_type(bar([B(), [B(), [B()]]]))  # N: Revealed type is "__main__.B"

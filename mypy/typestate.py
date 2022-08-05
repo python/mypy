@@ -84,6 +84,8 @@ class TypeState:
     _assuming_proper: Final[List[Tuple[Type, Type]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
     inferring: Final[List[Tuple[Type, Type]]] = []
+    # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
+    infer_unions = False
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing

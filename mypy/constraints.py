@@ -42,6 +42,7 @@ from mypy.types import (
     UnpackType,
     callable_with_ellipsis,
     get_proper_type,
+    has_recursive_types,
     has_type_vars,
     is_named_instance,
     is_union_with_any,
@@ -147,7 +148,7 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
         for (t, a) in reversed(TypeState.inferring)
     ):
         return []
-    if isinstance(template, TypeAliasType) and template.is_recursive:
+    if has_recursive_types(template):
         # This case requires special care because it may cause infinite recursion.
         if not has_type_vars(template):
             # Return early on an empty branch.

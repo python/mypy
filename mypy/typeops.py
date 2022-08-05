@@ -63,7 +63,12 @@ from mypy.typevars import fill_typevars
 
 
 def is_recursive_pair(s: Type, t: Type) -> bool:
-    """Is this a pair of recursive type aliases?"""
+    """Is this a pair of recursive types?
+
+    There may be more cases, and we may be forced to use e.g. has_recursive_types()
+    here, but this function is called in very hot code, so we try to keep it simple
+    and return True only in cases we know may have problems.
+    """
     if isinstance(s, TypeAliasType) and s.is_recursive:
         return (
             isinstance(get_proper_type(t), Instance)
