@@ -10,7 +10,7 @@ from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:
-    from mypy.errors import ErrorCode
+    from mypy.errorcodes import ErrorCode
 
 
 class BuildType:

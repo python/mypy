@@ -19,7 +19,9 @@ from mypy.nodes import (
 )
 from mypy.plugin import CheckerPluginInterface, ClassDefContext, SemanticAnalyzerPluginInterface
 from mypy.semanal import ALLOW_INCOMPATIBLE_OVERRIDE, set_callable_name
-from mypy.typeops import try_getting_str_literals  # noqa: F401  # Part of public API
+from mypy.typeops import (  # noqa: F401  # Part of public API
+    try_getting_str_literals as try_getting_str_literals,
+)
 from mypy.types import (
     CallableType,
     Overloaded,

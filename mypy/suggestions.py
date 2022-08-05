@@ -41,8 +41,9 @@ from typing import (
 
 from typing_extensions import TypedDict
 
+from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
-from mypy.checkexpr import has_any_type, map_actuals_to_formals
+from mypy.checkexpr import has_any_type
 from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
