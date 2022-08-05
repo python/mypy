@@ -73,11 +73,11 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
             # types, since errors there have already been reported.
             return
         self.seen_aliases.add(t)
-        if invalid_recursive_alias(t):
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        if invalid_recursive_alias({t.alias}, t.alias.target):
             # Fix type arguments for invalid aliases (error is already reported).
             t.args = []
-            if t.alias is not None:
-                t.alias.target = AnyType(TypeOfAny.from_error)
+            t.alias.target = AnyType(TypeOfAny.from_error)
             return
         get_proper_type(t).accept(self)
 

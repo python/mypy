@@ -3195,30 +3195,20 @@ def union_items(typ: Type) -> List[ProperType]:
         return [typ]
 
 
-def invalid_recursive_alias(target: Type) -> bool:
+def invalid_recursive_alias(seen_nodes: Set[mypy.nodes.TypeAlias], target: Type) -> bool:
     """Flag aliases like A = Union[int, A] (and similar mutual aliases).
 
     Such aliases don't make much sense, and cause problems in later phases.
     """
-    target = get_proper_type(target)
+    if isinstance(target, TypeAliasType):
+        if target.alias in seen_nodes:
+            return True
+        assert target.alias, f"Unfixed type alias {target.type_ref}"
+        return invalid_recursive_alias(seen_nodes | {target.alias}, get_proper_type(target))
+    assert isinstance(target, ProperType)
     if not isinstance(target, UnionType):
         return False
-    seen_aliases: Set[TypeAliasType] = set()
-
-    def try_flatten_unions(typ: Type) -> bool:
-        if isinstance(typ, TypeAliasType):
-            if typ in seen_aliases:
-                return True
-            seen_aliases.add(typ)
-        typ = get_proper_type(typ)
-        if isinstance(typ, UnionType):
-            for item in typ.items:
-                recursed = try_flatten_unions(item)
-                if recursed:
-                    return True
-        return False
-
-    return try_flatten_unions(target)
+    return any(invalid_recursive_alias(seen_nodes, item) for item in target.items)
 
 
 def bad_type_type_item(item: Type) -> bool:

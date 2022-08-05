@@ -3120,6 +3120,8 @@ class SemanticAnalyzer(
             no_args=no_args,
             eager=eager,
         )
+        if invalid_recursive_alias({alias_node}, alias_node.target):
+            self.fail("Invalid recursive alias: a union item of itself", rvalue)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
@@ -3155,8 +3157,6 @@ class SemanticAnalyzer(
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             alias_node.normalized = rvalue.node.normalized
-        if invalid_recursive_alias(alias_node.target):
-            self.fail("Invalid recursive alias: a union item of itself", rvalue)
         return True
 
     def analyze_lvalue(
