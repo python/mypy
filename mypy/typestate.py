@@ -9,7 +9,7 @@ from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
 from mypy.server.trigger import make_trigger
-from mypy.types import Instance, Type, TypeAliasType, get_proper_type
+from mypy.types import Instance, Type, get_proper_type
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
