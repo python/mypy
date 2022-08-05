@@ -378,13 +378,14 @@ def verify_typeinfo(
     # Check metaclass. We exclude protocols, because of how complex
     # their implementation is in different versions of python.
     # Enums are also hard, ignoring.
+    # NOTE: we do not check that metaclasses are identical just yet.
     if not stub.is_protocol and not stub.is_enum:
         runtime_metaclass = type(runtime)
         if runtime_metaclass is not type and stub.metaclass_type is None:
             # This means that runtime has a custom metaclass, but a stub does not.
             yield Error(
                 object_path,
-                "metaclass missmatch",
+                "metaclass mismatch",
                 stub,
                 runtime,
                 stub_desc="Missing metaclass",
@@ -402,7 +403,7 @@ def verify_typeinfo(
             # This means that our stub has a metaclass that is not present at runtime.
             yield Error(
                 object_path,
-                "metaclass missmatch",
+                "metaclass mismatch",
                 stub,
                 runtime,
                 stub_desc=f"Existing metaclass: {stub.metaclass_type.type.fullname}",
