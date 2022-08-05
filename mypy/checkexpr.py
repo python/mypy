@@ -1430,6 +1430,22 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 res.append(arg_type)
         return res
 
+    @contextmanager
+    def allow_unions(self, type_context: Type) -> Iterator[None]:
+        # This is a hack to better support inference for recursive types.
+        # When the outer context for a function call is known to be recursive,
+        # we solve type constraints inferred from arguments using unions instead
+        # of joins. This is a bit arbitrary, but in practice it works for most
+        # cases. A cleaner alternative would be to switch to single bin type
+        # inference, but this is a lot of work.
+        old = TypeState.infer_unions
+        if has_recursive_types(type_context):
+            TypeState.infer_unions = True
+        try:
+            yield
+        finally:
+            TypeState.infer_unions = old
+
     def infer_arg_types_in_context(
         self,
         callee: CallableType,
@@ -1449,7 +1465,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         for i, actuals in enumerate(formal_to_actual):
             for ai in actuals:
                 if not arg_kinds[ai].is_star():
-                    res[ai] = self.accept(args[ai], callee.arg_types[i])
+                    with self.allow_unions(callee.arg_types[i]):
+                        res[ai] = self.accept(args[ai], callee.arg_types[i])
 
         # Fill in the rest of the argument types.
         for i, t in enumerate(res):
@@ -4452,15 +4469,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if node in self.type_overrides:
             return self.type_overrides[node]
         self.type_context.append(type_context)
-        old = TypeState.infer_unions
-        if type_context and has_recursive_types(type_context):
-            # This is a hack to better support inference for recursive types.
-            # When the outer context for a function call is known to be recursive,
-            # we solve type constraints inferred from arguments using unions instead
-            # of joins. This is a bit arbitrary, but in practice it works for most
-            # cases. A cleaner alternative would be to switch to single bin type
-            # inference, but this is a lot of work.
-            TypeState.infer_unions = True
         try:
             if allow_none_return and isinstance(node, CallExpr):
                 typ = self.visit_call_expr(node, allow_none_return=True)
@@ -4476,8 +4484,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             report_internal_error(
                 err, self.chk.errors.file, node.line, self.chk.errors, self.chk.options
             )
-        finally:
-            TypeState.infer_unions = old
 
         self.type_context.pop()
         assert typ is not None
