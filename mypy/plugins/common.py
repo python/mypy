@@ -126,11 +126,11 @@ def _get_default_bool_value(
         if initializer is None or not isinstance(initializer, NameExpr):
             # No default was defined in the code or it is a complex expression.
             return default  # Return analyzer-defined default.
-        if initializer.fullname == 'builtins.True':
+        if initializer.fullname == "builtins.True":
             return True
-        if initializer.fullname == 'builtins.False':
+        if initializer.fullname == "builtins.False":
             return False
-        if initializer.fullname == 'builtins.None':
+        if initializer.fullname == "builtins.None":
             return None
     return default  # Cannot extract default from code, return analyzer-defined default.
 

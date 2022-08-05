@@ -41,10 +41,10 @@ from mypy.plugins.common import (
     _get_argument,
     _get_bool_argument,
     _get_decorator_bool_argument,
+    _get_default_bool_value,
     add_attribute_to_class,
     add_method,
     deserialize_and_fixup_type,
-    _get_default_bool_value,
 )
 from mypy.server.trigger import make_wildcard_trigger
 from mypy.typeops import make_simplified_union, map_type_from_supertype
