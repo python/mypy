@@ -1985,15 +1985,27 @@ class SemanticAnalyzer(
             if isinstance(sym.node, PlaceholderNode):
                 self.defer(defn)
                 return
-            if not isinstance(sym.node, TypeInfo) or sym.node.tuple_type is not None:
+
+            # Support type aliases, like `_Meta: TypeAlias = type`
+            if (
+                isinstance(sym.node, TypeAlias)
+                and sym.node.no_args
+                and isinstance(sym.node.target, ProperType)
+                and isinstance(sym.node.target, Instance)
+            ):
+                metaclass_info: Optional[Node] = sym.node.target.type
+            else:
+                metaclass_info = sym.node
+
+            if not isinstance(metaclass_info, TypeInfo) or metaclass_info.tuple_type is not None:
                 self.fail(f'Invalid metaclass "{metaclass_name}"', defn.metaclass)
                 return
-            if not sym.node.is_metaclass():
+            if not metaclass_info.is_metaclass():
                 self.fail(
                     'Metaclasses not inheriting from "type" are not supported', defn.metaclass
                 )
                 return
-            inst = fill_typevars(sym.node)
+            inst = fill_typevars(metaclass_info)
             assert isinstance(inst, Instance)
             defn.info.declared_metaclass = inst
         defn.info.metaclass_type = defn.info.calculate_metaclass_type()

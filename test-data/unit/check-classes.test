@@ -4486,6 +4486,16 @@ class A(metaclass=M):
 reveal_type(A.y) # N: Revealed type is "builtins.int"
 A.x # E: "Type[A]" has no attribute "x"
 
+[case testValidTypeAliasAsMetaclass]
+from typing_extensions import TypeAlias
+
+Explicit: TypeAlias = type
+Implicit = type
+
+class E(metaclass=Explicit): ...
+class I(metaclass=Implicit): ...
+[builtins fixtures/classmethod.pyi]
+
 [case testInvalidVariableAsMetaclass]
 from typing import Any
 M = 0  # type: int
