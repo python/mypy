@@ -83,7 +83,7 @@ class TypeState:
     _assuming: Final[List[Tuple[Type, Type]]] = []
     _assuming_proper: Final[List[Tuple[Type, Type]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
-    inferring: Final[List[TypeAliasType]] = []
+    inferring: Final[List[Tuple[Type, Type]]] = []
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing

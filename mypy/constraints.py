@@ -141,14 +141,18 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
 
     The constraints are represented as Constraint objects.
     """
-    if any(get_proper_type(template) == get_proper_type(t) for t in reversed(TypeState.inferring)):
+    if any(
+        get_proper_type(template) == get_proper_type(t)
+        and get_proper_type(actual) == get_proper_type(a)
+        for (t, a) in reversed(TypeState.inferring)
+    ):
         return []
     if isinstance(template, TypeAliasType) and template.is_recursive:
         # This case requires special care because it may cause infinite recursion.
         if not has_type_vars(template):
             # Return early on an empty branch.
             return []
-        TypeState.inferring.append(template)
+        TypeState.inferring.append((template, actual))
         res = _infer_constraints(template, actual, direction)
         TypeState.inferring.pop()
         return res
