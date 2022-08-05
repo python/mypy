@@ -44,12 +44,12 @@ class Missing:
         return "MISSING"
 
 
-MISSING = Missing()
+MISSING: typing_extensions.Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
-_formatter = FancyFormatter(sys.stdout, sys.stderr, False)
+_formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
