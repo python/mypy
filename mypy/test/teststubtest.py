@@ -1277,7 +1277,11 @@ class StubtestUnit(unittest.TestCase):
         yield Case(stub="class A3(metaclass=Meta): ...", runtime="class A3: ...", error="A3")
 
         # Explicit `type` metaclass can always be added in any part:
-        yield Case(stub="class T1(metaclass=type): ...", runtime="class T1(metaclass=type): ...", error=None)
+        yield Case(
+            stub="class T1(metaclass=type): ...",
+            runtime="class T1(metaclass=type): ...",
+            error=None,
+        )
         yield Case(stub="class T2: ...", runtime="class T2(metaclass=type): ...", error=None)
         yield Case(stub="class T3(metaclass=type): ...", runtime="class T3: ...", error=None)
 
