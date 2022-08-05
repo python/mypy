@@ -2593,7 +2593,7 @@ class NamedTupleExpr(Expression):
 
     __slots__ = ("info", "is_typed")
 
-    __match_args__ = ("info")
+    __match_args__ = ("info",)
 
     # The class representation of this named tuple (its tuple_type attribute contains
     # the tuple item types)
