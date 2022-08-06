@@ -1022,7 +1022,6 @@ def filter_out_missing_top_level_packages(
         + search_paths.package_path
         + search_paths.typeshed_path
     )
-    paths += tuple(os.path.join(p, "@python2") for p in search_paths.typeshed_path)
     for p in paths:
         try:
             entries = fscache.listdir(p)
@@ -1038,8 +1037,6 @@ def filter_out_missing_top_level_packages(
             elif entry.endswith("-stubs"):
                 # Possible PEP 561 stub package
                 entry = entry[:-6]
-                if entry.endswith("-python2"):
-                    entry = entry[:-8]
             if entry in packages:
                 found.add(entry)
     return found

@@ -837,9 +837,10 @@ main:21: note:         def do_x(cls) -> Good
 # Friendlier error messages for common mistakes. See #2950
 class A:
     def f(x: int) -> None: ...
-    # def g(self: None) -> None: ... see in check-python2.test
+    def g(self: None) -> None: ...
 [out]
 main:3: error: Self argument missing for a non-static method (or an invalid type for self)
+main:4: error: The erased type of self "None" is not a supertype of its class "__main__.A"
 
 [case testUnionPropertyField]
 from typing import Union
