@@ -1,7 +1,6 @@
 import unittest
 from typing import List, Optional
 
-from mypy.backports import OrderedDict
 from mypy.test.helpers import assert_string_arrays_equal
 from mypyc.codegen.emit import Emitter, EmitterContext
 from mypyc.codegen.emitfunc import FunctionEmitterVisitor, generate_native_function
@@ -103,7 +102,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
             "tt", RTuple([RTuple([int_rprimitive, bool_rprimitive]), bool_rprimitive])
         )
         ir = ClassIR("A", "mod")
-        ir.attributes = OrderedDict([("x", bool_rprimitive), ("y", int_rprimitive)])
+        ir.attributes = {"x": bool_rprimitive, "y": int_rprimitive}
         compute_vtable(ir)
         ir.mro = [ir]
         self.r = add_local("r", RInstance(ir))

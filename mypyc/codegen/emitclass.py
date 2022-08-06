@@ -2,7 +2,6 @@
 
 from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
 
-from mypy.backports import OrderedDict
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler
 from mypyc.codegen.emitfunc import native_function_header
 from mypyc.codegen.emitwrapper import (
@@ -141,7 +140,7 @@ def slot_key(attr: str) -> str:
 
 
 def generate_slots(cl: ClassIR, table: SlotTable, emitter: Emitter) -> Dict[str, str]:
-    fields: Dict[str, str] = OrderedDict()
+    fields: Dict[str, str] = {}
     generated: Dict[str, str] = {}
     # Sort for determinism on Python 3.5
     for name, (slot, generator) in sorted(table.items(), key=lambda x: slot_key(x[0])):
@@ -199,7 +198,7 @@ def generate_class(cl: ClassIR, module: str, emitter: Emitter) -> None:
     methods_name = f"{name_prefix}_methods"
     vtable_setup_name = f"{name_prefix}_trait_vtable_setup"
 
-    fields: Dict[str, str] = OrderedDict()
+    fields: Dict[str, str] = {}
     fields["tp_name"] = f'"{name}"'
 
     generate_full = not cl.is_trait and not cl.builtin_base

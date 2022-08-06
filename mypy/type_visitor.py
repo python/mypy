@@ -16,10 +16,6 @@ from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, S
 
 from mypy_extensions import mypyc_attr, trait
 
-from mypy.backports import OrderedDict
-
-T = TypeVar("T")
-
 from mypy.types import (
     AnyType,
     CallableArgument,
@@ -52,6 +48,8 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
 )
+
+T = TypeVar("T")
 
 
 @trait
@@ -254,9 +252,7 @@ class TypeTranslator(TypeVisitor[Type]):
         )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, item_type.accept(self)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
         return TypedDictType(
             items,
             t.required_keys,

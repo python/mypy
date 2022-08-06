@@ -5,7 +5,6 @@ from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 
 from typing_extensions import Final
 
-from mypy.backports import OrderedDict
 from mypyc.codegen.literals import Literals
 from mypyc.common import (
     ATTR_PREFIX,
@@ -117,7 +116,7 @@ class EmitterContext:
         # A map of a C identifier to whatever the C identifier declares. Currently this is
         # used for declaring structs and the key corresponds to the name of the struct.
         # The declaration contains the body of the struct.
-        self.declarations: Dict[str, HeaderDeclaration] = OrderedDict()
+        self.declarations: Dict[str, HeaderDeclaration] = {}
 
         self.literals = Literals()
 

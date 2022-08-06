@@ -5,7 +5,6 @@ from typing import Dict, Iterable, List, Optional, Tuple, cast
 from typing_extensions import Final
 
 import mypy.plugin  # To avoid circular imports.
-from mypy.backports import OrderedDict
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.nodes import (
     ARG_NAMED,
@@ -354,7 +353,7 @@ def _analyze_class(
     auto_attribs=None means we'll detect which mode to use.
     kw_only=True means that all attributes created here will be keyword only args in __init__.
     """
-    own_attrs: OrderedDict[str, Attribute] = OrderedDict()
+    own_attrs: Dict[str, Attribute] = {}
     if auto_attribs is None:
         auto_attribs = _detect_auto_attribs(ctx)
 

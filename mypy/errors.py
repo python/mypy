@@ -7,7 +7,6 @@ from typing import Callable, Dict, List, Optional, Set, TextIO, Tuple, TypeVar, 
 from typing_extensions import Final, Literal, NoReturn
 
 from mypy import errorcodes as codes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import IMPORT, ErrorCode
 from mypy.message_registry import ErrorMessage
 from mypy.options import Options
@@ -279,11 +278,11 @@ class Errors:
         self.initialize()
 
     def initialize(self) -> None:
-        self.error_info_map = OrderedDict()
+        self.error_info_map = {}
         self.flushed_files = set()
         self.import_ctx = []
         self.function_or_member = [None]
-        self.ignored_lines = OrderedDict()
+        self.ignored_lines = {}
         self.used_ignored_lines = defaultdict(lambda: defaultdict(list))
         self.ignored_files = set()
         self.only_once_messages = set()

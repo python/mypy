@@ -22,7 +22,6 @@ below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 
 from typing import Any, Callable, Dict, List, TypeVar, cast
 
-from mypy.backports import OrderedDict
 from mypy.build import Graph
 from mypy.nodes import ClassDef, Expression, MypyFile
 from mypy.state import state
@@ -61,7 +60,7 @@ def build_ir(
     build_type_map(mapper, modules, graph, types, options, errors)
     singledispatch_info = find_singledispatch_register_impls(modules, errors)
 
-    result: ModuleIRs = OrderedDict()
+    result: ModuleIRs = {}
 
     # Generate IR for all modules.
     class_irs = []

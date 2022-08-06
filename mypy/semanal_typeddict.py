@@ -5,7 +5,6 @@ from typing import List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder
@@ -386,9 +385,7 @@ class TypedDictAnalyzer:
         )
         assert fallback is not None
         info = self.api.basic_new_typeinfo(name, fallback, line)
-        info.typeddict_type = TypedDictType(
-            OrderedDict(zip(items, types)), required_keys, fallback
-        )
+        info.typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
         return info
 
     # Helpers

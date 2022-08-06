@@ -23,7 +23,6 @@ from mypy_extensions import trait
 from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -1092,7 +1091,7 @@ class ClassDef(Statement):
     info: "TypeInfo"  # Related TypeInfo
     metaclass: Optional[Expression]
     decorators: List[Expression]
-    keywords: "OrderedDict[str, Expression]"
+    keywords: Dict[str, Expression]
     analyzed: Optional[Expression]
     has_incompatible_baseclass: bool
 
@@ -1115,7 +1114,7 @@ class ClassDef(Statement):
         self.info = CLASSDEF_NO_INFO
         self.metaclass = metaclass
         self.decorators = []
-        self.keywords = OrderedDict(keywords or [])
+        self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)

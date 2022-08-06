@@ -30,7 +30,6 @@ from typing import (
 from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
-from mypy.backports import OrderedDict
 from mypy.erasetype import erase_type
 from mypy.errorcodes import ErrorCode
 from mypy.errors import ErrorInfo, Errors, ErrorWatcher
@@ -1511,7 +1510,7 @@ class MessageBuilder:
     def reveal_locals(self, type_map: Dict[str, Optional[Type]], context: Context) -> None:
         # To ensure that the output is predictable on Python < 3.6,
         # use an ordered dictionary sorted by variable name
-        sorted_locals = OrderedDict(sorted(type_map.items(), key=lambda t: t[0]))
+        sorted_locals = dict(sorted(type_map.items(), key=lambda t: t[0]))
         if sorted_locals:
             self.note("Revealed local types are:", context)
             for k, v in sorted_locals.items():

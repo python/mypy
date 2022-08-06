@@ -6,7 +6,6 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, T
 from typing_extensions import TYPE_CHECKING, Final
 
 from mypy import defaults
-from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:
@@ -255,7 +254,7 @@ class Options:
         self.plugins: List[str] = []
 
         # Per-module options (raw)
-        self.per_module_options: OrderedDict[str, Dict[str, object]] = OrderedDict()
+        self.per_module_options: Dict[str, Dict[str, object]] = {}
         self._glob_options: List[Tuple[str, Pattern[str]]] = []
         self.unused_configs: Set[str] = set()
 

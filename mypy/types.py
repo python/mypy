@@ -20,7 +20,6 @@ from typing import (
 from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.nodes import (
     ARG_POS,
@@ -2152,13 +2151,13 @@ class TypedDictType(ProperType):
 
     __slots__ = ("items", "required_keys", "fallback")
 
-    items: "OrderedDict[str, Type]"  # item_name -> item_type
+    items: Dict[str, Type]  # item_name -> item_type
     required_keys: Set[str]
     fallback: Instance
 
     def __init__(
         self,
-        items: "OrderedDict[str, Type]",
+        items: Dict[str, Type],
         required_keys: Set[str],
         fallback: Instance,
         line: int = -1,
@@ -2200,7 +2199,7 @@ class TypedDictType(ProperType):
     def deserialize(cls, data: JsonDict) -> "TypedDictType":
         assert data[".class"] == "TypedDictType"
         return TypedDictType(
-            OrderedDict([(n, deserialize_type(t)) for (n, t) in data["items"]]),
+            {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             Instance.deserialize(data["fallback"]),
         )
@@ -2226,7 +2225,7 @@ class TypedDictType(ProperType):
         if item_types is None:
             items = self.items
         else:
-            items = OrderedDict(zip(self.items, item_types))
+            items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
