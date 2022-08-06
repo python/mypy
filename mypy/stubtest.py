@@ -116,10 +116,14 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file: None = None
+        stub_file = None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
-        # TODO: Find a way of getting the stub file
+        # TODO: find out how we can get filenames from other nodes:
+        if isinstance(self.stub_object, nodes.TypeInfo):
+            stub_file = os.path.abspath(
+                self.stub_object.module_name.replace(".", os.path.sep) + ".pyi"
+            )
 
         stub_loc_str = ""
         if stub_line:
