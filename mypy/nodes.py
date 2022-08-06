@@ -3196,7 +3196,7 @@ class TypeAlias(SymbolNode):
 
     Note: the fact that we support aliases like `A = List` means that the target
     type will be initially an instance type with wrong number of type arguments.
-    Such instances are all fixed in the third pass of semantic analyzis.
+    Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
     using the `no_args` flag. See also TypeAliasExpr.no_args.
 

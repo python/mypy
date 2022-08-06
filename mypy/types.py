@@ -3162,9 +3162,6 @@ def flatten_nested_unions(
     types: Iterable[Type], handle_type_alias_type: bool = False
 ) -> List[Type]:
     """Flatten nested unions in a type list."""
-    # This and similar functions on unions can cause infinite recursion
-    # if passed a "pathological" alias like A = Union[int, A] or similar.
-    # TODO: ban such aliases in semantic analyzer.
     flat_items: List[Type] = []
     # TODO: avoid duplicate types in unions (e.g. using hash)
     for t in types:
