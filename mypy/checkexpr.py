@@ -3134,10 +3134,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
                 left_variants = [
-                    item
-                    for item in flatten_nested_unions(
-                        base_type.relevant_items(), handle_type_alias_type=True
-                    )
+                    item for item in flatten_nested_unions(base_type.relevant_items())
                 ]
             right_type = self.accept(arg)
 
@@ -3181,9 +3178,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(right_type, UnionType):
                 right_variants = [
                     (item, TempNode(item, context=context))
-                    for item in flatten_nested_unions(
-                        right_type.relevant_items(), handle_type_alias_type=True
-                    )
+                    for item in flatten_nested_unions(right_type.relevant_items())
                 ]
 
             all_results = []

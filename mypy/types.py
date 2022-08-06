@@ -2464,7 +2464,9 @@ class UnionType(ProperType):
         uses_pep604_syntax: bool = False,
     ) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)
+        # We must keep this false to avoid crashes during semantic analysis.
+        # TODO: maybe switch this to True during type-checking pass?
+        self.items = flatten_nested_unions(items, handle_type_alias_type=False)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         # is_evaluated should be set to false for type comments and string literals
@@ -3159,7 +3161,7 @@ def has_recursive_types(typ: Type) -> bool:
 
 
 def flatten_nested_unions(
-    types: Iterable[Type], handle_type_alias_type: bool = False
+    types: Iterable[Type], handle_type_alias_type: bool = True
 ) -> List[Type]:
     """Flatten nested unions in a type list."""
     flat_items: List[Type] = []
@@ -3219,8 +3221,7 @@ def bad_type_type_item(item: Type) -> bool:
         return True
     if isinstance(item, UnionType):
         return any(
-            isinstance(get_proper_type(i), TypeType)
-            for i in flatten_nested_unions(item.items, handle_type_alias_type=True)
+            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
         )
     return False
 
