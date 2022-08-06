@@ -483,7 +483,7 @@ def process_options(
             flag, action="store_false" if default else "store_true", dest=dest, help=help
         )
         dest = arg.dest
-        arg = group.add_argument(
+        group.add_argument(
             inverse,
             action="store_true" if default else "store_false",
             dest=dest,

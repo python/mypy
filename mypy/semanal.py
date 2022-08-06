@@ -4873,10 +4873,9 @@ class SemanticAnalyzer(
             for table in reversed(self.locals[:-1]):
                 if table is not None and name in table:
                     return table[name]
-            else:
-                if not suppress_errors:
-                    self.name_not_defined(name, ctx)
-                return None
+            if not suppress_errors:
+                self.name_not_defined(name, ctx)
+            return None
         # 2. Class attributes (if within class definition)
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]

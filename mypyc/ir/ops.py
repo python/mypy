@@ -375,7 +375,7 @@ class Branch(ControlOp):
         assert i == 0 or i == 1
         if i == 0:
             self.true = new
-        elif i == 1:
+        else:
             self.false = new
 
     def sources(self) -> List[Value]:

@@ -326,7 +326,7 @@ class SuggestionEngine:
         # since they need some special treatment (specifically,
         # constraint generation ignores them.)
         return CallableType(
-            [AnyType(TypeOfAny.suggestion_engine) for a in fdef.arg_kinds],
+            [AnyType(TypeOfAny.suggestion_engine) for _ in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
