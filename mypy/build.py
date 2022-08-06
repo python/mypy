@@ -2336,8 +2336,9 @@ class State:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            return self.type_checker().check_second_pass()
+            result = self.type_checker().check_second_pass()
         self.time_spent_us += time_spent_us(t0)
+        return result
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"

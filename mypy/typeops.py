@@ -449,7 +449,7 @@ def make_simplified_union(
     to_union().
     """
     # Step 1: expand all nested unions
-    items = flatten_nested_unions(items, handle_type_alias_type=True)
+    items = flatten_nested_unions(items)
 
     # Step 2: remove redundant unions
     simplified_set: Sequence[Type] = _remove_redundant_union_items(items, keep_erased)

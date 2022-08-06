@@ -20,7 +20,6 @@ from typing import (
 from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.nodes import (
     ARG_POS,
@@ -2152,13 +2151,13 @@ class TypedDictType(ProperType):
 
     __slots__ = ("items", "required_keys", "fallback")
 
-    items: "OrderedDict[str, Type]"  # item_name -> item_type
+    items: Dict[str, Type]  # item_name -> item_type
     required_keys: Set[str]
     fallback: Instance
 
     def __init__(
         self,
-        items: "OrderedDict[str, Type]",
+        items: Dict[str, Type],
         required_keys: Set[str],
         fallback: Instance,
         line: int = -1,
@@ -2200,7 +2199,7 @@ class TypedDictType(ProperType):
     def deserialize(cls, data: JsonDict) -> "TypedDictType":
         assert data[".class"] == "TypedDictType"
         return TypedDictType(
-            OrderedDict([(n, deserialize_type(t)) for (n, t) in data["items"]]),
+            {n: deserialize_type(t) for (n, t) in data["items"]},
             set(data["required_keys"]),
             Instance.deserialize(data["fallback"]),
         )
@@ -2226,7 +2225,7 @@ class TypedDictType(ProperType):
         if item_types is None:
             items = self.items
         else:
-            items = OrderedDict(zip(self.items, item_types))
+            items = dict(zip(self.items, item_types))
         if required_keys is None:
             required_keys = self.required_keys
         return TypedDictType(items, required_keys, fallback, self.line, self.column)
@@ -2465,7 +2464,9 @@ class UnionType(ProperType):
         uses_pep604_syntax: bool = False,
     ) -> None:
         super().__init__(line, column)
-        self.items = flatten_nested_unions(items)
+        # We must keep this false to avoid crashes during semantic analysis.
+        # TODO: maybe switch this to True during type-checking pass?
+        self.items = flatten_nested_unions(items, handle_type_alias_type=False)
         self.can_be_true = any(item.can_be_true for item in items)
         self.can_be_false = any(item.can_be_false for item in items)
         # is_evaluated should be set to false for type comments and string literals
@@ -3160,12 +3161,9 @@ def has_recursive_types(typ: Type) -> bool:
 
 
 def flatten_nested_unions(
-    types: Iterable[Type], handle_type_alias_type: bool = False
+    types: Iterable[Type], handle_type_alias_type: bool = True
 ) -> List[Type]:
     """Flatten nested unions in a type list."""
-    # This and similar functions on unions can cause infinite recursion
-    # if passed a "pathological" alias like A = Union[int, A] or similar.
-    # TODO: ban such aliases in semantic analyzer.
     flat_items: List[Type] = []
     # TODO: avoid duplicate types in unions (e.g. using hash)
     for t in types:
@@ -3223,8 +3221,7 @@ def bad_type_type_item(item: Type) -> bool:
         return True
     if isinstance(item, UnionType):
         return any(
-            isinstance(get_proper_type(i), TypeType)
-            for i in flatten_nested_unions(item.items, handle_type_alias_type=True)
+            isinstance(get_proper_type(i), TypeType) for i in flatten_nested_unions(item.items)
         )
     return False
 

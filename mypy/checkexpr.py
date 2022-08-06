@@ -10,7 +10,6 @@ import mypy.checker
 import mypy.errorcodes as codes
 from mypy import applytype, erasetype, join, message_registry, nodes, operators, types
 from mypy.argmap import ArgTypeExpander, map_actuals_to_formals, map_formals_to_actuals
-from mypy.backports import OrderedDict
 from mypy.checkmember import analyze_member_access, type_object_type
 from mypy.checkstrformat import StringFormatterChecker
 from mypy.erasetype import erase_type, remove_instance_last_known_values, replace_meta_vars
@@ -624,7 +623,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item_names = cast(List[str], arg_names)
             item_args = args
             return self.check_typeddict_call_with_kwargs(
-                callee, OrderedDict(zip(item_names, item_args)), context
+                callee, dict(zip(item_names, item_args)), context
             )
 
         if len(args) == 1 and arg_kinds[0] == ARG_POS:
@@ -638,14 +637,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if len(args) == 0:
             # ex: EmptyDict()
-            return self.check_typeddict_call_with_kwargs(callee, OrderedDict(), context)
+            return self.check_typeddict_call_with_kwargs(callee, {}, context)
 
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def validate_typeddict_kwargs(
-        self, kwargs: DictExpr
-    ) -> "Optional[OrderedDict[str, Expression]]":
+    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> "Optional[Dict[str, Expression]]":
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]
@@ -662,7 +659,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 return None
             else:
                 item_names.append(literal_value)
-        return OrderedDict(zip(item_names, item_args))
+        return dict(zip(item_names, item_args))
 
     def match_typeddict_call_with_dict(
         self, callee: TypedDictType, kwargs: DictExpr, context: Context
@@ -685,7 +682,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_kwargs(
-        self, callee: TypedDictType, kwargs: "OrderedDict[str, Expression]", context: Context
+        self, callee: TypedDictType, kwargs: Dict[str, Expression], context: Context
     ) -> Type:
         if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
             expected_keys = [
@@ -3137,10 +3134,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             base_type = get_proper_type(base_type)
             if isinstance(base_type, UnionType):
                 left_variants = [
-                    item
-                    for item in flatten_nested_unions(
-                        base_type.relevant_items(), handle_type_alias_type=True
-                    )
+                    item for item in flatten_nested_unions(base_type.relevant_items())
                 ]
             right_type = self.accept(arg)
 
@@ -3184,9 +3178,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(right_type, UnionType):
                 right_variants = [
                     (item, TempNode(item, context=context))
-                    for item in flatten_nested_unions(
-                        right_type.relevant_items(), handle_type_alias_type=True
-                    )
+                    for item in flatten_nested_unions(right_type.relevant_items())
                 ]
 
             all_results = []

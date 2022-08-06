@@ -8,7 +8,6 @@ from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, 
 from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes
-from mypy.backports import OrderedDict
 from mypy.errorcodes import ErrorCode
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type
 from mypy.messages import MessageBuilder, format_type_bare, quote_type_string
@@ -910,9 +909,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         return TupleType(self.anal_array(t.items), fallback, t.line)
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict(
-            [(item_name, self.anal_type(item_type)) for (item_name, item_type) in t.items.items()]
-        )
+        items = {
+            item_name: self.anal_type(item_type) for (item_name, item_type) in t.items.items()
+        }
         return TypedDictType(items, set(t.required_keys), t.fallback)
 
     def visit_raw_expression_type(self, t: RawExpressionType) -> Type:

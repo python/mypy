@@ -1,7 +1,6 @@
 from typing import Callable, List, Optional, Tuple
 
 from mypy import join
-from mypy.backports import OrderedDict
 from mypy.erasetype import erase_type
 from mypy.maptype import map_instance_to_supertype
 from mypy.state import state
@@ -776,7 +775,7 @@ class TypeMeetVisitor(TypeVisitor[ProperType]):
                     # at least one of s_item_type and t_item_type is not None
                     assert t_item_type is not None
                     item_list.append((item_name, t_item_type))
-            items = OrderedDict(item_list)
+            items = dict(item_list)
             fallback = self.s.create_anonymous_fallback()
             required_keys = t.required_keys | self.s.required_keys
             return TypedDictType(items, required_keys, fallback)

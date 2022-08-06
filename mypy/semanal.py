@@ -1861,9 +1861,7 @@ class SemanticAnalyzer(
     ) -> None:
         """Calculate method resolution order for a class.
 
-        `obj_type` may be omitted in the third pass when all classes are already analyzed.
-        It exists just to fill in empty base class list during second pass in case of
-        an import cycle.
+        `obj_type` exists just to fill in empty base class list in case of an error.
         """
         try:
             calculate_mro(defn.info, obj_type)
@@ -3779,7 +3777,7 @@ class SemanticAnalyzer(
         class_def.info = info
         mro = basetype_or_fallback.type.mro
         if not mro:
-            # Forward reference, MRO should be recalculated in third pass.
+            # Probably an error, we should not crash so generate something meaningful.
             mro = [basetype_or_fallback.type, self.object_type().type]
         info.mro = [info] + mro
         info.bases = [basetype_or_fallback]
@@ -4873,10 +4871,9 @@ class SemanticAnalyzer(
             for table in reversed(self.locals[:-1]):
                 if table is not None and name in table:
                     return table[name]
-            else:
-                if not suppress_errors:
-                    self.name_not_defined(name, ctx)
-                return None
+            if not suppress_errors:
+                self.name_not_defined(name, ctx)
+            return None
         # 2. Class attributes (if within class definition)
         if self.type and not self.is_func_scope() and name in self.type.names:
             node = self.type.names[name]
@@ -5234,8 +5231,8 @@ class SemanticAnalyzer(
         This method can be used to add such classes to an enclosing,
         serialized symbol table.
         """
-        # TODO: currently this is only used by named tuples. Use this method
-        # also by typed dicts and normal classes, see issue #6422.
+        # TODO: currently this is only used by named tuples and typed dicts.
+        # Use this method also by normal classes, see issue #6422.
         if self.type is not None:
             names = self.type.names
             kind = MDEF

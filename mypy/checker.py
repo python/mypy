@@ -3,7 +3,7 @@
 import fnmatch
 import itertools
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
     Any,
@@ -29,7 +29,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
-from mypy.backports import nullcontext
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.checkmember import (
     MemberContext,
