@@ -121,7 +121,11 @@ def run_stubtest(
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(tmp_dir + os.sep, "")
+        return (
+            output.getvalue()
+            .replace(os.path.realpath(tmp_dir) + os.sep, "")
+            .replace(tmp_dir + os.sep, "")
+        )
 
 
 class Case:
@@ -1279,7 +1283,8 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            "Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n"
+            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -1437,7 +1442,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)
