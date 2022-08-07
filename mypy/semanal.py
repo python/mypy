@@ -270,7 +270,6 @@ from mypy.types import (
     Type,
     TypeAliasType,
     TypeOfAny,
-    TypeTranslator,
     TypeType,
     TypeVarLikeType,
     TypeVarType,

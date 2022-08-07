@@ -30,7 +30,6 @@ from mypy.types import (
     UnpackType,
     get_proper_type,
     get_proper_types,
-    invalid_recursive_alias,
 )
 
 
