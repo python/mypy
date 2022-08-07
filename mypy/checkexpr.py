@@ -718,17 +718,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         supertype_label="expected",
                         code=codes.TYPEDDICT_ITEM,
                     )
-        actual_keys = [*sure_keys, *maybe_keys]
 
-        if not (callee.required_keys <= set(sure_keys) <= set(actual_keys) <= set(callee.items.keys())):
-            expected_keys = [
-                key
-                for key in callee.items.keys()
-                if key in callee.required_keys or key in items.keys()
-            ]
-
+        if not (callee.required_keys <= set(sure_keys) <= set(sure_keys + maybe_keys) <= set(callee.items.keys())):
             self.msg.unexpected_typeddict_keys(
-                callee, expected_keys=expected_keys, actual_keys=sure_keys, context=context
+                callee,
+                required_keys=list(callee.required_keys),
+                expected_keys=list(callee.items.keys()),
+                actual_sure_keys=sure_keys,
+                actual_maybe_keys=maybe_keys,
+                context=context
             )
             return AnyType(TypeOfAny.from_error)
 

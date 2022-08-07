@@ -152,7 +152,7 @@ class Bar(TypedDict):
     b: int
 
 foo: Foo = {'a': 1}
-bar: Bar = {**foo, 'b': 2}  # E: Incompatible types (expression has type "str", TypedDict item "a" has type "int")
+bar: Bar = {**foo, 'b': 2}  # E: Extra key "a" for TypedDict "Bar"
 
 [typing fixtures/typing-typeddict.pyi]
 
