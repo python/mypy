@@ -636,7 +636,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> Optional[List[Tuple[Optional[str], Expression]]]:
+    def validate_typeddict_kwargs(
+        self, kwargs: DictExpr
+    ) -> Optional[List[Tuple[Optional[str], Expression]]]:
         """Validate kwargs for TypedDict constructor, e.g. Point({'x': 1, 'y': 2}).
         Check that all items have string literal keys or are using the unpack operator (**)
         """
@@ -659,13 +661,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 items.append((literal_value, item_arg))
         return items
 
-    def match_typeddict_call_with_dict(
-        self, callee: TypedDictType, kwargs: DictExpr
-    ) -> bool:
+    def match_typeddict_call_with_dict(self, callee: TypedDictType, kwargs: DictExpr) -> bool:
         """Check that kwargs is a valid set of TypedDict items, contains all required keys of callee, and has no extraneous keys"""
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
-            return callee.required_keys <= set(dict(validated_kwargs).keys()) <= set(callee.items.keys())
+            return (
+                callee.required_keys
+                <= set(dict(validated_kwargs).keys())
+                <= set(callee.items.keys())
+            )
         else:
             return False
 
@@ -682,7 +686,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return AnyType(TypeOfAny.from_error)
 
     def check_typeddict_call_with_kwargs(
-        self, callee: TypedDictType, kwargs: List[Tuple[Optional[str], Expression]], context: Context
+        self,
+        callee: TypedDictType,
+        kwargs: List[Tuple[Optional[str], Expression]],
+        context: Context,
     ) -> Type:
         """Check TypedDict constructor of format Point(x=1, y=2)"""
         # Infer types of item values and expand unpack operators
@@ -719,14 +726,19 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                         code=codes.TYPEDDICT_ITEM,
                     )
 
-        if not (callee.required_keys <= set(sure_keys) <= set(sure_keys + maybe_keys) <= set(callee.items.keys())):
+        if not (
+            callee.required_keys
+            <= set(sure_keys)
+            <= set(sure_keys + maybe_keys)
+            <= set(callee.items.keys())
+        ):
             self.msg.unexpected_typeddict_keys(
                 callee,
                 required_keys=list(callee.required_keys),
                 expected_keys=list(callee.items.keys()),
                 actual_sure_keys=sure_keys,
                 actual_maybe_keys=maybe_keys,
-                context=context
+                context=context,
             )
             return AnyType(TypeOfAny.from_error)
 
@@ -739,7 +751,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     supertype=item_expected_type,
                     context=item_value_expr,
                     msg=message_registry.INCOMPATIBLE_TYPES,
-                    subtype_label=f'expression has type',
+                    subtype_label=f"expression has type",
                     supertype_label=f'TypedDict item "{item_name}" has type',
                     code=codes.TYPEDDICT_ITEM,
                 )
