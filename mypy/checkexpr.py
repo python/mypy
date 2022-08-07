@@ -617,13 +617,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         args: List[Expression],
         context: Context,
     ) -> Type:
-        if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
+        if all([ak in {ARG_NAMED, ARG_STAR2} for ak in arg_kinds]):
             # ex: Point(x=42, y=1337)
-            assert all(arg_name is not None for arg_name in arg_names)
-            item_names = cast(List[str], arg_names)
             item_args = args
             return self.check_typeddict_call_with_kwargs(
-                callee, dict(zip(item_names, item_args)), context
+                callee, list(zip(arg_names, item_args)), context
             )
 
         if len(args) == 1 and arg_kinds[0] == ARG_POS:
@@ -635,22 +633,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # ex: Point(dict(x=42, y=1337))
                 return self.check_typeddict_call_with_dict(callee, unique_arg.analyzed, context)
 
-        if len(args) == 0:
-            # ex: EmptyDict()
-            return self.check_typeddict_call_with_kwargs(callee, {}, context)
-
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> "Optional[List[Tuple[Optional[str], Expression]]]":
-        item_names: List[Optional[str]] = []
-        item_args: List[Expression] = []
-
+    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> Optional[List[Tuple[Optional[str], Expression]]]:
+        items: List[Tuple[Optional[str], Expression]] = []
         for item_name_expr, item_arg in kwargs.items:
-            # Allow unpacking with **
+            # If the unpack operator (**) was used, name will be None
             if item_name_expr is None:
-                item_names.append(None)
-                item_args.append(item_arg)
+                items.append((None, item_arg))
                 continue
             literal_value = None
             if item_name_expr:
@@ -663,9 +654,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 self.chk.fail(message_registry.TYPEDDICT_KEY_MUST_BE_STRING_LITERAL, key_context)
                 return None
             else:
-                item_names.append(literal_value)
-                item_args.append(item_arg)
-        return list(zip(item_names, item_args))
+                items.append((literal_value, item_arg))
+        return items
 
     def match_typeddict_call_with_dict(
         self, callee: TypedDictType, kwargs: DictExpr, context: Context
@@ -690,53 +680,59 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     def check_typeddict_call_with_kwargs(
         self, callee: TypedDictType, kwargs: List[Tuple[Optional[str], Expression]], context: Context
     ) -> Type:
+        # Infer types of item values and expand unpack operators
         items: Dict[str, Tuple[Expression, Type]] = {}
-        for key, value in kwargs:
-            value_type = self.accept(value, callee.items.get(key) if key is not None else callee)
+        actual_keys: List[str] = []
+        for key, value_expr in kwargs:
             if key is not None:
-                items[key] = (value, value_type)
+                # Regular key and value
+                value_type = self.accept(value_expr, callee.items.get(key))
+                items[key] = (value_expr, value_type)
+                actual_keys.append(key)
             else:
-                # Spread operator was used; determine type of spread expression
+                # Unpack operator (**) was used; unpack all items of the type of this expression into items list
+                value_type = self.accept(value_expr, callee)
                 proper_type = get_proper_type(value_type)
                 if isinstance(proper_type, TypedDictType):
-                    # Spread TypedDict items directly into our items
-                    unpacked = {k: (value, proper_type.items[k]) for k in proper_type.required_keys}
-                    items.update(**unpacked)
+                    # Only allow unpacking of TypedDicts
+                    for nested_key, nested_value_type in proper_type.items.items():
+                        items[nested_key] = (value_expr, nested_value_type)
+                    # Only add required keys to set of actual keys
+                    # Non-required keys will still be items so that their values can be type-checked
+                    actual_keys.extend(proper_type.required_keys)
                 else:
-                    # If it's not a TypedDict, we can't check its items, so we just pretend there are none
-                    # But we can at least make sure it's a Mapping
-                    self.chk.check_subtype(
-                        value_type,
-                        self.chk.named_type("typing.Mapping"),
-                        value,
-                        message_registry.INCOMPATIBLE_TYPES,
-                        f"unpacked expression has type",
-                        f'expected',
+                    # Show error when trying to unpack anything else
+                    assert not self.chk.check_subtype(
+                        subtype=value_type,
+                        supertype=self.chk.named_type("typing._TypedDict"),
+                        context=value_expr,
+                        msg=message_registry.INCOMPATIBLE_TYPES,
+                        subtype_label="unpacked expression has type",
+                        supertype_label="expected",
                         code=codes.TYPEDDICT_ITEM,
                     )
 
-        if not (callee.required_keys <= set(items.keys()) <= set(callee.items.keys())):
+        if not (callee.required_keys <= set(actual_keys) <= set(callee.items.keys())):
             expected_keys = [
                 key
                 for key in callee.items.keys()
                 if key in callee.required_keys or key in items.keys()
             ]
-            actual_keys = items.keys()
             self.msg.unexpected_typeddict_keys(
-                callee, expected_keys=expected_keys, actual_keys=list(actual_keys), context=context
+                callee, expected_keys=expected_keys, actual_keys=actual_keys, context=context
             )
             return AnyType(TypeOfAny.from_error)
 
         for (item_name, item_expected_type) in callee.items.items():
             if item_name in items:
-                item_value_expr, item_value_actual_type = items[item_name]
+                item_value_expr, item_actual_type = items[item_name]
                 self.chk.check_subtype(
-                    item_value_actual_type,
-                    item_expected_type,
-                    item_value_expr,
-                    message_registry.INCOMPATIBLE_TYPES,
-                    f'expression has type',
-                    f'TypedDict item "{item_name}" has type',
+                    subtype=item_actual_type,
+                    supertype=item_expected_type,
+                    context=item_value_expr,
+                    msg=message_registry.INCOMPATIBLE_TYPES,
+                    subtype_label=f'expression has type',
+                    supertype_label=f'TypedDict item "{item_name}" has type',
                     code=codes.TYPEDDICT_ITEM,
                 )
 
