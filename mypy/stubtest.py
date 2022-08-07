@@ -90,6 +90,7 @@ class Error:
         :param runtime_desc: Specialised description for the runtime object, should you wish
 
         """
+        self.object_path = object_path
         self.object_desc = ".".join(object_path)
         self.message = message
         self.stub_object = stub_object
@@ -116,10 +117,12 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file: None = None
+        stub_file = None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
-        # TODO: Find a way of getting the stub file
+        stub_node = get_stub(self.object_path[0])
+        if stub_node is not None:
+            stub_file = stub_node.path or None
 
         stub_loc_str = ""
         if stub_line:
