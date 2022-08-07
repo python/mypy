@@ -2395,3 +2395,195 @@ def func(foo: Union[F1, F2]):
                   # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackSame]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+foo1: Foo = {'a': 1, 'b': 1}
+foo2: Foo = {**foo1, 'b': 2}
+foo3 = Foo(**foo1, b=2)
+foo4 = Foo({**foo1, 'b': 2})
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackCompatible]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo: Foo = {'a': 1}
+bar: Bar = {**foo, 'b': 2}
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+
+[case testTypedDictUnpackIncompatible]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: str
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo: Foo = {'a': 1, 'b': 'a'}
+bar1: Bar = {**foo, 'b': 2}  # Incompatible item is overriden
+bar2: Bar = {**foo, 'a': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackNotRequiredKeyIncompatible]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: NotRequired[str]
+
+class Bar(TypedDict):
+    a: NotRequired[int]
+
+foo: Foo = {}
+bar: Bar = {**foo}  # E: Incompatible types (expression has type "str", TypedDict item "a" has type "int")
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackMissingOrExtraKey]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo1: Foo = {'a': 1}
+bar1: Bar = {'a': 1, 'b': 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}  # E: Missing key "b" for TypedDict "Bar"
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackNotRequiredKeyExtra]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+foo1: Foo = {'a': 1}
+bar1: Bar = {'a': 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackRequiredKeyMissing]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: NotRequired[int]
+
+class Bar(TypedDict):
+    a: int
+
+foo: Foo = {'a': 1}
+bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackMultiple]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    b: int
+
+class Baz(TypedDict):
+    a: int
+    b: int
+    c: int
+
+foo: Foo = {'a': 1}
+bar: Bar = {'b': 1}
+baz: Baz = {**foo, **bar, 'c': 1}
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackNested]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    c: Foo
+    d: int
+
+foo: Foo = {'a': 1, 'b': 1}
+bar: Bar = {'c': foo, 'd': 1}
+bar2: Bar = {**bar, 'c': {**bar['c'], 'b': 2}, 'd': 2}
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackNestedError]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    c: Foo
+    d: int
+
+foo: Foo = {'a': 1, 'b': 1}
+bar: Bar = {'c': foo, 'd': 1}
+bar2: Bar = {**bar, 'c': {**bar['c'], 'b': 'wrong'}, 'd': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
+
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackUntypedDict]
+from typing import TypedDict
+
+class Bar(TypedDict):
+    pass
+
+foo: dict = {}
+bar: Bar = {**foo}  # E: Incompatible types (unpacked expression has type "Dict[Any, Any]", expected "_TypedDict")
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
