@@ -1579,8 +1579,6 @@ class MessageBuilder:
     def unexpected_typeddict_keys(
         self,
         typ: TypedDictType,
-        required_keys: List[str],
-        expected_keys: List[str],
         actual_sure_keys: List[str],
         actual_maybe_keys: List[str],
         context: Context,
@@ -1588,44 +1586,32 @@ class MessageBuilder:
         actual_keys = actual_sure_keys + actual_maybe_keys
         actual_sure_set = set(actual_sure_keys)
         actual_maybe_set = set(actual_maybe_keys)
-        actual_set = actual_sure_set | actual_maybe_set
+        required_keys = [k for k in typ.items.keys() if k in typ.required_keys]
         required_set = set(required_keys)
-        expected_set = set(expected_keys)
+        expected_set = set(typ.items.keys())
 
         if not typ.is_anonymous():
-            # Generate simpler messages for some common special cases.
-            if actual_sure_set < required_set:
-                # Use list comprehension instead of set operations to preserve order.
-                missing = [key for key in required_keys if key not in actual_sure_set]
-                self.fail(
-                    "Missing {} for TypedDict {}".format(
-                        format_key_list(missing, short=True), format_type(typ)
-                    ),
-                    context,
-                    code=codes.TYPEDDICT_ITEM,
-                )
-                return
-            else:
-                extra = [key for key in actual_keys if key not in expected_set]
-                if extra:
-                    # If there are both extra and missing keys, only report extra ones for
-                    # simplicity.
-                    self.fail(
-                        "Extra {} for TypedDict {}".format(
-                            format_key_list(extra, short=True), format_type(typ)
-                        ),
-                        context,
-                        code=codes.TYPEDDICT_ITEM,
-                    )
-                    return
-        found = format_key_list(actual_keys, short=True)
-        if not expected_set:
-            self.fail(f"Unexpected TypedDict {found}", context)
-            return
-        expected = format_key_list(required_keys)
-        if actual_keys and actual_set < required_set:
-            found = f"only {found}"
-        self.fail(f"Expected {expected} but found {found}", context, code=codes.TYPEDDICT_ITEM)
+            type_description = f" for TypedDict {format_type(typ)}"
+        else:
+            type_description = ""
+
+        if actual_sure_set < required_set:
+            # Use list comprehension instead of set operations to preserve order.
+            missing = [key for key in required_keys if key not in actual_sure_set]
+            self.fail(
+                f"Missing {format_key_list(missing, short=True)}{type_description}",
+                context,
+                code=codes.TYPEDDICT_ITEM,
+            )
+        else:
+            # If there are both extra and missing keys, only report extra ones for
+            # simplicity.
+            extra = [key for key in actual_keys if key not in expected_set]
+            self.fail(
+                f"Extra {format_key_list(extra, short=True)}{type_description}",
+                context,
+                code=codes.TYPEDDICT_ITEM,
+            )
 
     def typeddict_key_must_be_string_literal(self, typ: TypedDictType, context: Context) -> None:
         self.fail(

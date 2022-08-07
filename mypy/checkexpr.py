@@ -640,11 +640,11 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self, kwargs: DictExpr
     ) -> Optional[List[Tuple[Optional[str], Expression]]]:
         """Validate kwargs for TypedDict constructor, e.g. Point({'x': 1, 'y': 2}).
-        Check that all items have string literal keys or are using the unpack operator (**)
+        Check that all items have string literal keys or are using unpack operator (**)
         """
         items: List[Tuple[Optional[str], Expression]] = []
         for item_name_expr, item_arg in kwargs.items:
-            # If the unpack operator (**) was used, name will be None
+            # If unpack operator (**) was used, name will be None
             if item_name_expr is None:
                 items.append((None, item_arg))
                 continue
@@ -662,7 +662,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         return items
 
     def match_typeddict_call_with_dict(self, callee: TypedDictType, kwargs: DictExpr) -> bool:
-        """Check that kwargs is a valid set of TypedDict items, contains all required keys of callee, and has no extraneous keys"""
+        """Check that kwargs is valid set of TypedDict items, contains all required keys of callee, and has no extraneous keys"""
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
             return (
@@ -695,7 +695,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # Infer types of item values and expand unpack operators
         items: Dict[str, Tuple[Expression, Type]] = {}
         sure_keys: List[str] = []
-        maybe_keys: List[str] = []
+        maybe_keys: List[str] = []  # Will contain non-required items of unpacked TypedDicts
         for key, value_expr in kwargs:
             if key is not None:
                 # Regular key and value
@@ -707,7 +707,6 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 value_type = self.accept(value_expr, callee)
                 proper_type = get_proper_type(value_type)
                 if isinstance(proper_type, TypedDictType):
-                    # Only allow unpacking of TypedDicts
                     for nested_key, nested_value_type in proper_type.items.items():
                         items[nested_key] = (value_expr, nested_value_type)
                         if nested_key in proper_type.required_keys:
@@ -733,12 +732,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             <= set(callee.items.keys())
         ):
             self.msg.unexpected_typeddict_keys(
-                callee,
-                required_keys=list(callee.required_keys),
-                expected_keys=list(callee.items.keys()),
-                actual_sure_keys=sure_keys,
-                actual_maybe_keys=maybe_keys,
-                context=context,
+                callee, actual_sure_keys=sure_keys, actual_maybe_keys=maybe_keys, context=context
             )
             return AnyType(TypeOfAny.from_error)
 

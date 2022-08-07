@@ -1,4 +1,4 @@
-[case testTypedDictUnpackingSame]
+[case testTypedDictUnpackSame]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -13,7 +13,7 @@ foo4 = Foo({**foo1, 'b': 2})
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingCompatible]
+[case testTypedDictUnpackCompatible]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -30,23 +30,7 @@ bar: Bar = {**foo, 'b': 2}
 
 
 
-[case testTypedDictUnpackingIncompatible]
-from typing import TypedDict
-
-class Foo(TypedDict):
-    a: str
-
-class Bar(TypedDict):
-    a: int
-    b: int
-
-foo: Foo = {'a': 'x'}
-bar: Bar = {**foo, 'b': 2}  # E: Incompatible types (expression has type "str", TypedDict item "a" has type "int")
-
-[typing fixtures/typing-typeddict.pyi]
-
-
-[case testTypedDictUnpackingIncompatibleCorrected]
+[case testTypedDictUnpackIncompatible]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -57,77 +41,16 @@ class Bar(TypedDict):
     a: int
     b: int
 
-foo: Foo = {'a': 1, 'b': 'x'}
-bar: Bar = {**foo, 'b': 2}
+foo: Foo = {'a': 1, 'b': 'a'}
+bar1: Bar = {**foo, 'b': 2}  # Incompatible item is overriden
+bar2: Bar = {**foo, 'a': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
 
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingMissingKey]
-from typing import TypedDict
-
-class Foo(TypedDict):
-    a: int
-
-class Bar(TypedDict):
-    a: int
-    b: int
-
-foo: Foo = {'a': 1}
-bar: Bar = {**foo}  # E: Missing key "b" for TypedDict "Bar"
-
-[typing fixtures/typing-typeddict.pyi]
-
-
-[case testTypedDictUnpackingExtraKey]
-from typing import TypedDict
-
-class Foo(TypedDict):
-    a: int
-    c: int
-
-class Bar(TypedDict):
-    a: int
-    b: int
-
-foo: Foo = {'a': 1, 'c': 1}
-bar: Bar = {**foo, 'b': 1}  # E: Extra key "c" for TypedDict "Bar"
-
-[typing fixtures/typing-typeddict.pyi]
-
-
-[case testTypedDictUnpackingNotRequiredKeyMissing]
-from typing import TypedDict, NotRequired
-
-class Foo(TypedDict):
-    a: int
-
-class Bar(TypedDict):
-    a: int
-    b: NotRequired[int]
-
-foo: Foo = {'a': 1}
-bar: Bar = {**foo}
-
-[typing fixtures/typing-typeddict.pyi]
-
-
-[case testTypedDictUnpackingRequiredKeyMissing]
-from typing import TypedDict, NotRequired
-
-class Foo(TypedDict):
-    a: NotRequired[int]
-
-class Bar(TypedDict):
-    a: int
-
-foo: Foo = {'a': 1}
-bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
-
-[typing fixtures/typing-typeddict.pyi]
-
-
-[case testTypedDictUnpackingNotRequiredKeyIncompatible]
+[case testTypedDictUnpackNotRequiredKeyIncompatible]
 from typing import TypedDict, NotRequired
 
 class Foo(TypedDict):
@@ -142,22 +65,58 @@ bar: Bar = {**foo}  # E: Incompatible types (expression has type "str", TypedDic
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingNotRequiredKeyExtra]
+[case testTypedDictUnpackMissingOrExtraKey]
+from typing import TypedDict
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: int
+
+foo1: Foo = {'a': 1}
+bar1: Bar = {'a': 1, 'b': 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}  # E: Missing key "b" for TypedDict "Bar"
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackNotRequiredKeyExtra]
+from typing import TypedDict, NotRequired
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    a: int
+    b: NotRequired[int]
+
+foo1: Foo = {'a': 1}
+bar1: Bar = {'a': 1}
+foo2: Foo = {**bar1}  # E: Extra key "b" for TypedDict "Foo"
+bar2: Bar = {**foo1}
+
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackRequiredKeyMissing]
 from typing import TypedDict, NotRequired
 
 class Foo(TypedDict):
     a: NotRequired[int]
 
 class Bar(TypedDict):
-    b: int
+    a: int
 
 foo: Foo = {'a': 1}
-bar: Bar = {**foo, 'b': 2}  # E: Extra key "a" for TypedDict "Bar"
+bar: Bar = {**foo}  # E: Missing key "a" for TypedDict "Bar"
 
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingMultiple]
+[case testTypedDictUnpackMultiple]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -178,7 +137,7 @@ baz: Baz = {**foo, **bar, 'c': 1}
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingNested]
+[case testTypedDictUnpackNested]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -198,7 +157,7 @@ bar2: Bar = {**bar, 'c': {**bar['c'], 'b': 2}, 'd': 2}
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingNestedError]
+[case testTypedDictUnpackNestedError]
 from typing import TypedDict
 
 class Foo(TypedDict):
@@ -213,12 +172,11 @@ foo: Foo = {'a': 1, 'b': 1}
 bar: Bar = {'c': foo, 'd': 1}
 bar2: Bar = {**bar, 'c': {**bar['c'], 'b': 'wrong'}, 'd': 2}  # E: Incompatible types (expression has type "str", TypedDict item "b" has type "int")
 
-[builtins fixtures/tuple.pyi]
-[builtins fixtures/dict.pyi]
+
 [typing fixtures/typing-typeddict.pyi]
 
 
-[case testTypedDictUnpackingUntypedDict]
+[case testTypedDictUnpackUntypedDict]
 from typing import TypedDict
 
 class Bar(TypedDict):

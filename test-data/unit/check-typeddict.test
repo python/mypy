@@ -943,7 +943,7 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1), B(x=1, y=''))
 if int():
-    ab = {'x': 1, 'z': 1} # E: Expected TypedDict key "x" but found keys ("x", "z")
+    ab = {'x': 1, 'z': 1} # E: Extra key "z"
 [builtins fixtures/dict.pyi]
 
 [case testCannotCreateAnonymousTypedDictInstanceUsingDictLiteralWithMissingItems]
@@ -955,7 +955,7 @@ T = TypeVar('T')
 def join(x: T, y: T) -> T: return x
 ab = join(A(x=1, y=1, z=1), B(x=1, y=1, z=''))
 if int():
-    ab = {} # E: Expected TypedDict keys ("x", "y") but found no keys
+    ab = {} # E: Missing keys ("x", "y")
 [builtins fixtures/dict.pyi]
 
 
@@ -1653,9 +1653,9 @@ a.update({'x': 1})
 a.update({'x': ''}) # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 a.update({'x': 1, 'y': []})
 a.update({'x': 1, 'y': [1]})
-a.update({'z': 1}) # E: Unexpected TypedDict key "z"
-a.update({'z': 1, 'zz': 1}) # E: Unexpected TypedDict keys ("z", "zz")
-a.update({'z': 1, 'x': 1}) # E: Expected TypedDict key "x" but found keys ("z", "x")
+a.update({'z': 1}) # E: Extra key "z"
+a.update({'z': 1, 'zz': 1}) # E: Extra keys ("z", "zz")
+a.update({'z': 1, 'x': 1}) # E: Extra key "z"
 d = {'x': 1}
 a.update(d) # E: Argument 1 to "update" of "TypedDict" has incompatible type "Dict[str, int]"; expected "TypedDict({'x'?: int, 'y'?: List[int]})"
 [builtins fixtures/dict.pyi]
