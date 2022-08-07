@@ -8,9 +8,7 @@ import re
 import shutil
 import sys
 import time
-
 from importlib import resources as importlib_resources
-
 from typing import (
     IO,
     Callable,
