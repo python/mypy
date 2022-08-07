@@ -402,9 +402,13 @@ def strip_or_import(
     stripped_type = typ
     if any(c in typ for c in "[,"):
         for subtyp in re.split(r"[\[,\]]", typ):
-            strip_or_import(subtyp.strip(), module, known_modules, imports)
-        if module:
-            stripped_type = re.sub(r"(^|[\[, ]+)" + re.escape(module.__name__ + "."), r"\1", typ)
+            stripped_subtyp = strip_or_import(subtyp.strip(), module, known_modules, imports)
+            if stripped_subtyp != subtyp:
+                stripped_type = re.sub(
+                    r"(^|[\[, ]+)" + re.escape(subtyp) + r"($|[\], ]+)",
+                    r"\1" + stripped_subtyp + r"\2",
+                    stripped_type,
+                )
     elif "." in typ:
         for module_name in local_modules + list(reversed(known_modules)):
             if typ.startswith(module_name + "."):

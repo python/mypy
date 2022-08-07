@@ -1158,6 +1158,32 @@ class StubgencSuite(unittest.TestCase):
         assert_equal(output, ["def test(arg0: list[Action]) -> list[Action]: ..."])
         assert_equal(imports, [])
 
+    def test_generate_c_function_same_module_compound(self) -> None:
+        """Test that if annotation references type from same module but using full path, no module
+        will be imported, and type specification will be stripped to local reference.
+        """
+        # Provide different type in python spec than in docstring to make sure, that docstring
+        # information is used.
+        def test(arg0: str) -> None:
+            """
+            test(arg0: Union[argparse.Action, NoneType]) -> Tuple[argparse.Action, NoneType]
+            """
+
+        output: list[str] = []
+        imports: list[str] = []
+        mod = ModuleType("argparse", "")
+        generate_c_function_stub(
+            mod,
+            "test",
+            test,
+            output=output,
+            imports=imports,
+            known_modules=[mod.__name__],
+            sig_generators=get_sig_generators(parse_options([])),
+        )
+        assert_equal(output, ["def test(arg0: Union[Action,None]) -> Tuple[Action,None]: ..."])
+        assert_equal(imports, [])
+
     def test_generate_c_function_other_module_nested(self) -> None:
         """Test that if annotation references type from other module, module will be imported,
         and the import will be restricted to one of the known modules."""
