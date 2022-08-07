@@ -116,6 +116,9 @@ INVALID_TYPEDDICT_ARGS: Final = ErrorMessage(
 TYPEDDICT_KEY_MUST_BE_STRING_LITERAL: Final = ErrorMessage(
     "Expected TypedDict key to be string literal"
 )
+TYPEDDICT_UNPACKING_MUST_BE_TYPEDDICT: Final = ErrorMessage(
+    "{} cannot be unpacked into TypedDict (must be TypedDict)"
+)
 MALFORMED_ASSERT: Final = ErrorMessage("Assertion is always true, perhaps remove parentheses?")
 DUPLICATE_TYPE_SIGNATURES: Final = "Function has duplicate type signatures"
 DESCRIPTOR_SET_NOT_CALLABLE: Final = ErrorMessage("{}.__set__ is not callable")

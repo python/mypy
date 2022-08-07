@@ -20,7 +20,7 @@ from mypy.literals import literal
 from mypy.maptype import map_instance_to_supertype
 from mypy.meet import is_overlapping_types, narrow_declared_type
 from mypy.message_registry import ErrorMessage
-from mypy.messages import MessageBuilder
+from mypy.messages import MessageBuilder, format_type_bare
 from mypy.nodes import (
     ARG_NAMED,
     ARG_POS,
@@ -715,15 +715,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                             maybe_keys.append(nested_key)
                 else:
                     # Fail when trying to unpack anything but TypedDict
-                    assert not self.chk.check_subtype(
-                        subtype=value_type,
-                        supertype=self.chk.named_type("typing._TypedDict"),
-                        context=value_expr,
-                        msg=message_registry.INCOMPATIBLE_TYPES,
-                        subtype_label="unpacked expression has type",
-                        supertype_label="expected",
-                        code=codes.TYPEDDICT_ITEM,
+                    self.chk.fail(
+                        ErrorMessage.format(
+                            message_registry.TYPEDDICT_UNPACKING_MUST_BE_TYPEDDICT,
+                            format_type_bare(value_type),
+                        ),
+                        value_expr,
                     )
+                    return AnyType(TypeOfAny.from_error)
 
         if not (
             callee.required_keys

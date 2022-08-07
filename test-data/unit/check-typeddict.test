@@ -2582,7 +2582,44 @@ class Bar(TypedDict):
     pass
 
 foo: dict = {}
-bar: Bar = {**foo}  # E: Incompatible types (unpacked expression has type "Dict[Any, Any]", expected "_TypedDict")
+bar: Bar = {**foo}  # E: Dict[Any, Any] cannot be unpacked into TypedDict (must be TypedDict)
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackIntoUnion]
+from typing import TypedDict, Union
+
+class Foo(TypedDict):
+    a: int
+
+class Bar(TypedDict):
+    b: int
+
+# Would be great if this worked in the future
+foo: Foo = {'a': 1}
+foo_or_bar: Union[Foo, Bar] = {**foo}  # E: Incompatible types in assignment (expression has type "Dict[str, object]", variable has type "Union[Foo, Bar]")
+
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+
+[case testTypedDictUnpackFromUnion]
+from typing import TypedDict, Union
+
+class Foo(TypedDict):
+    a: int
+    b: int
+
+class Bar(TypedDict):
+    b: int
+
+# Would be great if this worked in the future
+foo_or_bar: Union[Foo, Bar] = {'b': 1}
+foo: Bar = {**foo_or_bar}  # E: Union[Foo, Bar] cannot be unpacked into TypedDict (must be TypedDict)
 
 [builtins fixtures/tuple.pyi]
 [builtins fixtures/dict.pyi]
