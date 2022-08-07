@@ -1585,7 +1585,6 @@ class MessageBuilder:
     ) -> None:
         actual_keys = actual_sure_keys + actual_maybe_keys
         actual_sure_set = set(actual_sure_keys)
-        actual_maybe_set = set(actual_maybe_keys)
         required_keys = [k for k in typ.items.keys() if k in typ.required_keys]
         required_set = set(required_keys)
         expected_set = set(typ.items.keys())

@@ -745,7 +745,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                     supertype=item_expected_type,
                     context=item_value_expr,
                     msg=message_registry.INCOMPATIBLE_TYPES,
-                    subtype_label=f"expression has type",
+                    subtype_label="expression has type",
                     supertype_label=f'TypedDict item "{item_name}" has type',
                     code=codes.TYPEDDICT_ITEM,
                 )
