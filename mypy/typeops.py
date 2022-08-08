@@ -6,7 +6,6 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 """
 
 import itertools
-import sys
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Set, Tuple, TypeVar, Union, cast
 
 from typing_extensions import Type as TypingType
