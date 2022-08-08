@@ -1808,14 +1808,18 @@ if issubclass(fm, Bar):
 [case testIssubclassWithMetaclassesStrictOptional]
 # flags: --strict-optional
 class FooMetaclass(type): ...
+class BarMetaclass(type): ...
 class Foo(metaclass=FooMetaclass): ...
-class Bar: ...
+class Bar(metaclass=BarMetaclass): ...
+class Baz: ...
 
 fm: FooMetaclass
 reveal_type(fm)  # N: Revealed type is "__main__.FooMetaclass"
 if issubclass(fm, Foo):
     reveal_type(fm)  # N: Revealed type is "Type[__main__.Foo]"
 if issubclass(fm, Bar):
+    reveal_type(fm)  # N: Revealed type is "<nothing>"
+if issubclass(fm, Baz):
     reveal_type(fm)  # N: Revealed type is "<nothing>"
 [builtins fixtures/isinstance.pyi]
 
