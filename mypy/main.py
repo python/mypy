@@ -7,7 +7,6 @@ import sys
 import time
 from gettext import gettext
 from typing import IO, Any, Dict, List, NoReturn, Optional, Sequence, TextIO, Tuple, Union
-
 from typing_extensions import Final
 
 from mypy import build, defaults, state, util

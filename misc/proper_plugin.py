@@ -1,5 +1,4 @@
 from typing import Callable, Optional
-
 from typing_extensions import Type as typing_Type
 
 from mypy.nodes import TypeInfo

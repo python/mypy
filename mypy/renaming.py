@@ -1,6 +1,5 @@
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Set
-
 from typing_extensions import Final
 
 from mypy.nodes import (

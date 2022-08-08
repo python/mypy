@@ -4,7 +4,6 @@ These happen after semantic analysis and before type checking.
 """
 
 from typing import List, Optional, Set, Tuple
-
 from typing_extensions import Final
 
 from mypy.errors import Errors

@@ -26,7 +26,6 @@ will be incomplete.
 
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.build

@@ -24,7 +24,6 @@ from typing import (
     cast,
     overload,
 )
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.checkexpr

@@ -4,7 +4,6 @@ These can be used for filtering specific errors.
 """
 
 from typing import Dict
-
 from typing_extensions import Final
 
 error_codes: Dict[str, "ErrorCode"] = {}

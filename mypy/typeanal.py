@@ -4,7 +4,6 @@ import itertools
 from contextlib import contextmanager
 from itertools import chain
 from typing import Callable, Iterable, Iterator, List, Optional, Sequence, Set, Tuple, TypeVar
-
 from typing_extensions import Final, Protocol
 
 from mypy import errorcodes as codes, message_registry, nodes

@@ -2,7 +2,6 @@
 
 from abc import abstractmethod
 from typing import Callable, List, Optional, Set, Tuple
-
 from typing_extensions import Final
 
 from mypy.nodes import (

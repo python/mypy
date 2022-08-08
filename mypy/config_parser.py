@@ -25,7 +25,6 @@ from typing import (
     Tuple,
     Union,
 )
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import defaults

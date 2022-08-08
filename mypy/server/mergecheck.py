@@ -1,7 +1,6 @@
 """Check for duplicate AST nodes after merge."""
 
 from typing import Dict, List, Tuple
-
 from typing_extensions import Final
 
 from mypy.nodes import Decorator, FakeInfo, FuncDef, SymbolNode, Var

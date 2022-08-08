@@ -2,9 +2,9 @@
 
 from abc import abstractmethod
 from typing import Callable, List, Optional, Union
+from typing_extensions import Final, Protocol
 
 from mypy_extensions import trait
-from typing_extensions import Final, Protocol
 
 from mypy import join
 from mypy.errorcodes import ErrorCode

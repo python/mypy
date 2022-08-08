@@ -24,7 +24,6 @@ from typing import (
     TypeVar,
     Union,
 )
-
 from typing_extensions import Final, Literal
 
 try:

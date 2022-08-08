@@ -1,7 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
 from typing import List, Optional, Set, Tuple
-
 from typing_extensions import Final
 
 from mypy import errorcodes as codes

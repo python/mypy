@@ -1,7 +1,6 @@
 """Plugin that provides support for dataclasses."""
 
 from typing import Dict, List, Optional, Set, Tuple
-
 from typing_extensions import Final
 
 from mypy.nodes import (

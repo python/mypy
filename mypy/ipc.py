@@ -11,7 +11,6 @@ import sys
 import tempfile
 from types import TracebackType
 from typing import Callable, Optional, Type
-
 from typing_extensions import Final
 
 if sys.platform == "win32":

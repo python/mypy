@@ -24,7 +24,6 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes

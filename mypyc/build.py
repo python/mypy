@@ -24,7 +24,6 @@ import re
 import sys
 import time
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
-
 from typing_extensions import TYPE_CHECKING, NoReturn, Type
 
 from mypy.build import BuildSource

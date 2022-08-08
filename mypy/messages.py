@@ -26,7 +26,6 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import Final
 
 from mypy import errorcodes as codes, message_registry
