@@ -389,6 +389,14 @@ reveal_type(bar(lla))  # N: Revealed type is "__main__.A"
 reveal_type(bar(llla))  # N: Revealed type is "__main__.A"
 [builtins fixtures/isinstancelist.pyi]
 
+[case testRecursiveAliasesWithOptional]
+# flags: --enable-recursive-aliases
+from typing import Optional, Sequence
+
+A = Sequence[Optional[A]]
+x: A
+y: str = x[0]  # E: Incompatible types in assignment (expression has type "Optional[A]", variable has type "str")
+
 [case testRecursiveAliasesProhibitBadAliases]
 # flags: --enable-recursive-aliases
 from typing import Union, Type, List, TypeVar
