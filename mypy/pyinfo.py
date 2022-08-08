@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 """Utilities to find the site and prefix information of a Python executable, which may be Python 2.
 
 This file MUST remain compatible with Python 2. Since we cannot make any assumptions about the
@@ -47,11 +49,11 @@ def getsyspath():
     stdlib_zip = os.path.join(
         sys.base_exec_prefix,
         getattr(sys, "platlibdir", "lib"),
-        f"python{sys.version_info.major}{sys.version_info.minor}.zip",
+        "python{}{}.zip".format(sys.version_info.major, sys.version_info.minor),
     )
     stdlib = sysconfig.get_path("stdlib")
     stdlib_ext = os.path.join(stdlib, "lib-dynload")
-    excludes = {stdlib_zip, stdlib, stdlib_ext}
+    excludes = set([stdlib_zip, stdlib, stdlib_ext])
 
     # Drop the first entry of sys.path
     # - If pyinfo.py is executed as a script (in a subprocess), this is the directory
