@@ -18,7 +18,6 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes

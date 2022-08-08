@@ -38,7 +38,6 @@ from typing import (
     Union,
     cast,
 )
-
 from typing_extensions import TypedDict
 
 from mypy.argmap import map_actuals_to_formals

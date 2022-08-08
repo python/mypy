@@ -36,7 +36,6 @@ optimized implementations of all ops.
 """
 
 from typing import Dict, List, NamedTuple, Optional, Tuple
-
 from typing_extensions import Final
 
 from mypyc.ir.ops import StealsDescription

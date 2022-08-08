@@ -5,7 +5,6 @@ This is conceptually part of mypy.semanal.
 
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Mapping, Optional, Tuple, cast
-
 from typing_extensions import Final
 
 from mypy.exprtotype import TypeTranslationError, expr_to_unanalyzed_type

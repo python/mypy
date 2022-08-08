@@ -3,7 +3,6 @@ import sys
 import traceback
 from collections import defaultdict
 from typing import Callable, Dict, List, NoReturn, Optional, Set, TextIO, Tuple, TypeVar, Union
-
 from typing_extensions import Final, Literal
 
 from mypy import errorcodes as codes

@@ -42,9 +42,9 @@ from typing import (
     TypeVar,
     Union,
 )
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy_extensions import TypedDict
-from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker

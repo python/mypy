@@ -17,6 +17,7 @@ import sys
 import traceback
 import types
 import typing
+import typing_extensions
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
@@ -35,8 +36,6 @@ from typing import (
     Union,
     cast,
 )
-
-import typing_extensions
 from typing_extensions import get_origin
 
 import mypy.build

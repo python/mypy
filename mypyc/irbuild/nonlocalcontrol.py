@@ -5,7 +5,6 @@ Model how these behave differently in different contexts.
 
 from abc import abstractmethod
 from typing import Optional, Union
-
 from typing_extensions import TYPE_CHECKING
 
 from mypyc.ir.ops import (

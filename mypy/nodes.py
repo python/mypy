@@ -20,9 +20,9 @@ from typing import (
     Union,
     cast,
 )
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy_extensions import trait
-from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
 from mypy.bogus_type import Bogus
