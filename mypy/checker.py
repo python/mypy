@@ -5753,7 +5753,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             n = self.modules[parts[0]]
             for i in range(1, len(parts) - 1):
                 sym = n.names.get(parts[i])
-                assert sym is not None, f"Internal error: attempted lookup of unknown name {name!r} {n} {self.modules}"
+                assert sym is not None, f"Internal error: attempted lookup of unknown name {name!r} {n.names}"
                 n = cast(MypyFile, sym.node)
             last = parts[-1]
             if last in n.names:
