@@ -64,6 +64,7 @@ from mypy.types import (
     TypeVarType,
     UnionType,
     get_proper_type,
+    has_self_types,
     has_type_vars,
 )
 
@@ -908,11 +909,11 @@ def analyze_class_attribute_access(
             #     C[int].x  # Also an error, since C[int] is same as C at runtime
             if isinstance(t, TypeVarType) or has_type_vars(t):
                 # Exception: access on Type[...], including first argument of class methods is OK.
-                if isinstance(t, SelfType):
-                    return mx.named_type(info.fullname)
-                if isinstance(t, UnionType):
-                    if any(isinstance(item, SelfType) for item in t.items):
-                        return make_simplified_union(t.items + [mx.named_type(info.fullname)])
+                if has_self_types(t):
+                    any = AnyType(TypeOfAny.from_omitted_generics)
+                    return make_simplified_union(
+                        [t, Instance(info, [any] * len(info.defn.type_vars))]
+                    )  # TODO look into why we can't use named_type here
                 elif not isinstance(get_proper_type(mx.original_type), TypeType) or node.implicit:
                     if node.node.is_classvar:
                         message = message_registry.GENERIC_CLASS_VAR_ACCESS

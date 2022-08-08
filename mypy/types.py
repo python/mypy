@@ -3202,6 +3202,15 @@ def has_type_vars(typ: Type) -> bool:
     return typ.accept(HasTypeVars())
 
 
+class HasSelfTypes(HasTypeVars):
+    def visit_type_var(self, t: TypeVarType) -> bool:
+        return isinstance(t, SelfType)
+
+
+def has_self_types(typ: Type) -> bool:
+    return typ.accept(HasSelfTypes())
+
+
 class HasRecursiveType(TypeQuery[bool]):
     def __init__(self) -> None:
         super().__init__(any)
