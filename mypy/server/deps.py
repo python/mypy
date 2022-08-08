@@ -83,7 +83,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from typing_extensions import DefaultDict
 
-from mypy.checkmember import bind_self
 from mypy.nodes import (
     GDEF,
     LDEF,
@@ -142,6 +141,7 @@ from mypy.options import Options
 from mypy.scope import Scope
 from mypy.server.trigger import make_trigger, make_wildcard_trigger
 from mypy.traverser import TraverserVisitor
+from mypy.typeops import bind_self
 from mypy.types import (
     AnyType,
     CallableType,

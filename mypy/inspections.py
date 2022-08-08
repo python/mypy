@@ -122,7 +122,6 @@ def find_module_by_fullname(fullname: str, modules: Dict[str, State]) -> Optiona
         mod = modules.get(head)
         if mod is not None:
             return mod
-    return None
 
 
 class SearchVisitor(ExtendedTraverserVisitor):

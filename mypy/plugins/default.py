@@ -2,7 +2,6 @@ from functools import partial
 from typing import Callable, List, Optional
 
 from mypy import message_registry
-from mypy.checkexpr import is_literal_type_like
 from mypy.nodes import DictExpr, IntExpr, StrExpr, UnaryExpr
 from mypy.plugin import (
     AttributeContext,
@@ -14,7 +13,7 @@ from mypy.plugin import (
 )
 from mypy.plugins.common import try_getting_str_literals
 from mypy.subtypes import is_subtype
-from mypy.typeops import make_simplified_union
+from mypy.typeops import is_literal_type_like, make_simplified_union
 from mypy.types import (
     TPDICT_FB_NAMES,
     AnyType,

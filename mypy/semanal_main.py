@@ -24,13 +24,13 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
+from contextlib import nullcontext
 from typing import Callable, List, Optional, Tuple, Union
 
 from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
 
 import mypy.build
 import mypy.state
-from mypy.backports import nullcontext
 from mypy.checker import FineGrainedDeferredNode
 from mypy.errors import Errors
 from mypy.nodes import Decorator, FuncDef, MypyFile, OverloadedFuncDef, TypeInfo, Var

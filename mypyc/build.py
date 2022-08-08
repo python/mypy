@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # type: ignore  # noqa
+    import setuptools  # noqa
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -61,7 +61,7 @@ def get_extension() -> Type["Extension"]:
     if not use_setuptools:
         from distutils.core import Extension
     else:
-        from setuptools import Extension  # type: ignore  # noqa
+        from setuptools import Extension  # noqa
 
     return Extension
 

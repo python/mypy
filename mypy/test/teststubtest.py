@@ -121,7 +121,11 @@ def run_stubtest(
         with contextlib.redirect_stdout(output):
             test_stubs(parse_options([TEST_MODULE_NAME] + options), use_builtins_fixtures=True)
         # remove cwd as it's not available from outside
-        return output.getvalue().replace(tmp_dir + os.sep, "")
+        return (
+            output.getvalue()
+            .replace(os.path.realpath(tmp_dir) + os.sep, "")
+            .replace(tmp_dir + os.sep, "")
+        )
 
 
 class Case:
@@ -287,6 +291,11 @@ class StubtestUnit(unittest.TestCase):
                 stub="def runtime_posonly(number: int, text: str) -> None: ...",
                 runtime="def runtime_posonly(number, /, text): pass",
                 error="runtime_posonly",
+            )
+            yield Case(
+                stub="def stub_posonly_570(number: int, /, text: str) -> None: ...",
+                runtime="def stub_posonly_570(number, text): pass",
+                error="stub_posonly_570",
             )
 
     @collect_cases
@@ -948,6 +957,37 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_all_at_runtime_not_stub(self) -> Iterator[Case]:
+        yield Case(
+            stub="Z: int",
+            runtime="""
+            __all__ = []
+            Z = 5""",
+            error=None,
+        )
+
+    @collect_cases
+    def test_all_in_stub_not_at_runtime(self) -> Iterator[Case]:
+        yield Case(stub="__all__ = ()", runtime="", error="__all__")
+
+    @collect_cases
+    def test_all_in_stub_different_to_all_at_runtime(self) -> Iterator[Case]:
+        # We *should* emit an error with the module name itself,
+        # if the stub *does* define __all__,
+        # but the stub's __all__ is inconsistent with the runtime's __all__
+        yield Case(
+            stub="""
+            __all__ = ['foo']
+            foo: str
+            """,
+            runtime="""
+            __all__ = []
+            foo = 'foo'
+            """,
+            error="",
+        )
+
+    @collect_cases
     def test_missing(self) -> Iterator[Case]:
         yield Case(stub="x = 5", runtime="", error="x")
         yield Case(stub="def f(): ...", runtime="", error="f")
@@ -1195,8 +1235,6 @@ class StubtestUnit(unittest.TestCase):
 
     @collect_cases
     def test_protocol(self) -> Iterator[Case]:
-        if sys.version_info < (3, 7):
-            return
         yield Case(
             stub="""
             from typing_extensions import Protocol
@@ -1245,7 +1283,8 @@ class StubtestMiscUnit(unittest.TestCase):
         expected = (
             f'error: {TEST_MODULE_NAME}.bad is inconsistent, stub argument "number" differs '
             'from runtime argument "num"\n'
-            "Stub: at line 1\ndef (number: builtins.int, text: builtins.str)\n"
+            f"Stub: at line 1 in file {TEST_MODULE_NAME}.pyi\n"
+            "def (number: builtins.int, text: builtins.str)\n"
             f"Runtime: at line 1 in file {TEST_MODULE_NAME}.py\ndef (num, text)\n\n"
             "Found 1 error (checked 1 module)\n"
         )
@@ -1373,13 +1412,14 @@ class StubtestMiscUnit(unittest.TestCase):
             assert output_str == "Success: no issues found in 1 module\n"
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 7))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
         assert "graphlib" not in stdlib
         assert "formatter" in stdlib
+        assert "contextvars" in stdlib  # 3.7+
         assert "importlib.metadata" not in stdlib
 
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))
@@ -1403,7 +1443,7 @@ class StubtestMiscUnit(unittest.TestCase):
         output = run_stubtest(stub=stub, runtime=runtime, options=[])
         assert remove_color_code(output) == (
             f"error: {TEST_MODULE_NAME}.temp variable differs from runtime type Literal[5]\n"
-            "Stub: at line 2\n_decimal.Decimal\nRuntime:\n5\n\n"
+            f"Stub: at line 2 in file {TEST_MODULE_NAME}.pyi\n_decimal.Decimal\nRuntime:\n5\n\n"
             "Found 1 error (checked 1 module)\n"
         )
         output = run_stubtest(stub=stub, runtime=runtime, options=[], config_file=config_file)

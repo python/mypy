@@ -6,7 +6,6 @@
 from collections.abc import Iterable
 from typing import Any, Dict, Tuple
 
-from mypy.backports import OrderedDict
 from mypyc.ir.class_ir import ClassIR
 from mypyc.ir.func_ir import FuncDecl, FuncIR, FuncSignature
 from mypyc.ir.module_ir import ModuleIR, deserialize_modules
@@ -49,7 +48,7 @@ def assert_blobs_same(x: Any, y: Any, trail: Tuple[Any, ...]) -> None:
     assert type(x) is type(y), (f"Type mismatch at {trail}", type(x), type(y))
     if isinstance(x, (FuncDecl, FuncIR, ClassIR)):
         assert x.fullname == y.fullname, f"Name mismatch at {trail}"
-    elif isinstance(x, OrderedDict):
+    elif isinstance(x, dict):
         assert len(x.keys()) == len(y.keys()), f"Keys mismatch at {trail}"
         for (xk, xv), (yk, yv) in zip(x.items(), y.items()):
             assert_blobs_same(xk, yk, trail + ("keys",))

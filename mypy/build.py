@@ -75,8 +75,8 @@ from mypy.freetree import free_tree
 from mypy.fscache import FileSystemCache
 from mypy.metastore import FilesystemMetadataStore, MetadataStore, SqliteMetadataStore
 from mypy.modulefinder import (
-    BuildSource,
-    BuildSourceSet,
+    BuildSource as BuildSource,
+    BuildSourceSet as BuildSourceSet,
     FindModuleCache,
     ModuleNotFoundReason,
     ModuleSearchResult,
@@ -233,7 +233,7 @@ def _build(
         options.show_error_codes,
         options.pretty,
         options.show_error_end,
-        lambda path: read_py_file(path, cached_read, options.python_version),
+        lambda path: read_py_file(path, cached_read),
         options.show_absolute_path,
         options.enabled_error_codes,
         options.disabled_error_codes,
@@ -657,6 +657,34 @@ class BuildManager:
         self.find_module_cache = FindModuleCache(
             self.search_paths, self.fscache, self.options, source_set=self.source_set
         )
+        for module in CORE_BUILTIN_MODULES:
+            if options.use_builtins_fixtures:
+                continue
+            if module == "_importlib_modulespec":
+                continue
+            path = self.find_module_cache.find_module(module)
+            if not isinstance(path, str):
+                raise CompileError(
+                    [f"Failed to find builtin module {module}, perhaps typeshed is broken?"]
+                )
+            if is_typeshed_file(path):
+                continue
+            if is_stub_package_file(path):
+                continue
+            if options.custom_typeshed_dir is not None:
+                # Check if module lives under custom_typeshed_dir subtree
+                custom_typeshed_dir = os.path.abspath(options.custom_typeshed_dir)
+                path = os.path.abspath(path)
+                if os.path.commonpath((path, custom_typeshed_dir)) == custom_typeshed_dir:
+                    continue
+
+            raise CompileError(
+                [
+                    f'mypy: "{os.path.relpath(path)}" shadows library module "{module}"',
+                    f'note: A user-defined top-level module with name "{module}" is not supported',
+                ]
+            )
+
         self.metastore = create_metastore(options)
 
         # a mapping from source files to their corresponding shadow files
@@ -2115,9 +2143,7 @@ class State:
             if self.path and source is None:
                 try:
                     path = manager.maybe_swap_for_shadow_path(self.path)
-                    source = decode_python_encoding(
-                        manager.fscache.read(path), manager.options.python_version
-                    )
+                    source = decode_python_encoding(manager.fscache.read(path))
                     self.source_hash = manager.fscache.hash_digest(path)
                 except OSError as ioerr:
                     # ioerr.strerror differs for os.stat failures between Windows and
@@ -2310,8 +2336,9 @@ class State:
             return False
         t0 = time_ref()
         with self.wrap_context():
-            return self.type_checker().check_second_pass()
+            result = self.type_checker().check_second_pass()
         self.time_spent_us += time_spent_us(t0)
+        return result
 
     def finish_passes(self) -> None:
         assert self.tree is not None, "Internal error: method must be called on parsed file only"
@@ -2583,19 +2610,6 @@ def find_module_and_diagnose(
                 if is_sub_path(result, dir):
                     # Silence errors in site-package dirs and typeshed
                     follow_imports = "silent"
-        if (
-            id in CORE_BUILTIN_MODULES
-            and not is_typeshed_file(result)
-            and not is_stub_package_file(result)
-            and not options.use_builtins_fixtures
-            and not options.custom_typeshed_dir
-        ):
-            raise CompileError(
-                [
-                    f'mypy: "{os.path.relpath(result)}" shadows library module "{id}"',
-                    f'note: A user-defined top-level module with name "{id}" is not supported',
-                ]
-            )
         return (result, follow_imports)
     else:
         # Could not find a module.  Typically the reason is a

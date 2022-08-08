@@ -71,6 +71,7 @@ from mypy.nodes import (
     ARG_POS,
     ARG_STAR,
     ARG_STAR2,
+    IS_ABSTRACT,
     AssignmentStmt,
     Block,
     BytesExpr,
@@ -723,7 +724,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 retname = None  # implicit Any
             else:
                 retname = self.print_annotation(o.unanalyzed_type.ret_type)
-        elif isinstance(o, FuncDef) and (o.is_abstract or o.name in METHODS_WITH_RETURN_VALUE):
+        elif isinstance(o, FuncDef) and (
+            o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE
+        ):
             # Always assume abstract methods return Any unless explicitly annotated. Also
             # some dunder methods should not have a None return type.
             retname = None  # implicit Any
@@ -910,16 +913,16 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
         if isinstance(o.metaclass, (NameExpr, MemberExpr)):
             meta = o.metaclass.accept(AliasPrinter(self))
             base_types.append("metaclass=" + meta)
-        elif self.analyzed and o.info.is_abstract:
-            base_types.append("metaclass=abc.ABCMeta")
-            self.import_tracker.add_import("abc")
-            self.import_tracker.require_name("abc")
         elif self.analyzed and o.info.is_protocol:
             type_str = "Protocol"
             if o.info.type_vars:
                 type_str += f'[{", ".join(o.info.type_vars)}]'
             base_types.append(type_str)
             self.add_typing_import("Protocol")
+        elif self.analyzed and o.info.is_abstract:
+            base_types.append("metaclass=abc.ABCMeta")
+            self.import_tracker.add_import("abc")
+            self.import_tracker.require_name("abc")
         if base_types:
             self.add(f"({', '.join(base_types)})")
         self.add(":\n")
@@ -1557,7 +1560,7 @@ def parse_source_file(mod: StubSource, mypy_options: MypyOptions) -> None:
     assert mod.path is not None, "Not found module was not skipped"
     with open(mod.path, "rb") as f:
         data = f.read()
-    source = mypy.util.decode_python_encoding(data, mypy_options.python_version)
+    source = mypy.util.decode_python_encoding(data)
     errors = Errors()
     mod.ast = mypy.parse.parse(
         source, fnam=mod.path, module=mod.module, errors=errors, options=mypy_options

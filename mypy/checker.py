@@ -3,7 +3,7 @@
 import fnmatch
 import itertools
 from collections import defaultdict
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from typing import (
     AbstractSet,
     Any,
@@ -29,7 +29,6 @@ from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.checkexpr
 from mypy import errorcodes as codes, message_registry, nodes, operators
-from mypy.backports import nullcontext
 from mypy.binder import ConditionalTypeBinder, get_declaration
 from mypy.checkmember import (
     MemberContext,
@@ -67,7 +66,9 @@ from mypy.nodes import (
     CONTRAVARIANT,
     COVARIANT,
     GDEF,
+    IMPLICITLY_ABSTRACT,
     INVARIANT,
+    IS_ABSTRACT,
     LDEF,
     LITERAL_TYPE,
     MDEF,
@@ -115,7 +116,6 @@ from mypy.nodes import (
     ReturnStmt,
     StarExpr,
     Statement,
-    StrExpr,
     SymbolTable,
     SymbolTableNode,
     TempNode,
@@ -132,9 +132,8 @@ from mypy.nodes import (
 )
 from mypy.options import Options
 from mypy.plugin import CheckerPluginInterface, Plugin
-from mypy.sametypes import is_same_type
 from mypy.scope import Scope
-from mypy.semanal import refers_to_fullname, set_callable_name
+from mypy.semanal import is_trivial_body, refers_to_fullname, set_callable_name
 from mypy.semanal_enum import ENUM_BASES, ENUM_SPECIAL_PROPS
 from mypy.sharedparse import BINARY_MAGIC_METHODS
 from mypy.state import state
@@ -144,6 +143,7 @@ from mypy.subtypes import (
     is_equivalent,
     is_more_precise,
     is_proper_subtype,
+    is_same_type,
     is_subtype,
     restrict_subtype_away,
     unify_generic_callable,
@@ -619,7 +619,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         for fdef in defn.items:
             assert isinstance(fdef, Decorator)
             self.check_func_item(fdef.func, name=fdef.func.name)
-            if fdef.func.is_abstract:
+            if fdef.func.abstract_status in (IS_ABSTRACT, IMPLICITLY_ABSTRACT):
                 num_abstract += 1
         if num_abstract not in (0, len(defn.items)):
             self.fail(message_registry.INCONSISTENT_ABSTRACT_OVERLOAD, defn)
@@ -1172,7 +1172,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                     item.arguments[i].variable.type = arg_type
 
                 # Type check initialization expressions.
-                body_is_trivial = self.is_trivial_body(defn.body)
+                body_is_trivial = is_trivial_body(defn.body)
                 self.check_default_args(item, body_is_trivial)
 
             # Type check body in a new scope.
@@ -1341,49 +1341,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 "returns",
                 "but must return a subtype of",
             )
-
-    def is_trivial_body(self, block: Block) -> bool:
-        """Returns 'true' if the given body is "trivial" -- if it contains just a "pass",
-        "..." (ellipsis), or "raise NotImplementedError()". A trivial body may also
-        start with a statement containing just a string (e.g. a docstring).
-
-        Note: functions that raise other kinds of exceptions do not count as
-        "trivial". We use this function to help us determine when it's ok to
-        relax certain checks on body, but functions that raise arbitrary exceptions
-        are more likely to do non-trivial work. For example:
-
-           def halt(self, reason: str = ...) -> NoReturn:
-               raise MyCustomError("Fatal error: " + reason, self.line, self.context)
-
-        A function that raises just NotImplementedError is much less likely to be
-        this complex.
-        """
-        body = block.body
-
-        # Skip a docstring
-        if body and isinstance(body[0], ExpressionStmt) and isinstance(body[0].expr, StrExpr):
-            body = block.body[1:]
-
-        if len(body) == 0:
-            # There's only a docstring (or no body at all).
-            return True
-        elif len(body) > 1:
-            return False
-
-        stmt = body[0]
-
-        if isinstance(stmt, RaiseStmt):
-            expr = stmt.expr
-            if expr is None:
-                return False
-            if isinstance(expr, CallExpr):
-                expr = expr.callee
-
-            return isinstance(expr, NameExpr) and expr.fullname == "builtins.NotImplementedError"
-
-        return isinstance(stmt, PassStmt) or (
-            isinstance(stmt, ExpressionStmt) and isinstance(stmt.expr, EllipsisExpr)
-        )
 
     def check_reverse_op_method(
         self, defn: FuncItem, reverse_type: CallableType, reverse_name: str, context: Context
@@ -2664,20 +2621,22 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                 # Special case: only non-abstract non-protocol classes can be assigned to
                 # variables with explicit type Type[A], where A is protocol or abstract.
-                rvalue_type = get_proper_type(rvalue_type)
-                lvalue_type = get_proper_type(lvalue_type)
+                p_rvalue_type = get_proper_type(rvalue_type)
+                p_lvalue_type = get_proper_type(lvalue_type)
                 if (
-                    isinstance(rvalue_type, CallableType)
-                    and rvalue_type.is_type_obj()
+                    isinstance(p_rvalue_type, CallableType)
+                    and p_rvalue_type.is_type_obj()
                     and (
-                        rvalue_type.type_object().is_abstract
-                        or rvalue_type.type_object().is_protocol
+                        p_rvalue_type.type_object().is_abstract
+                        or p_rvalue_type.type_object().is_protocol
                     )
-                    and isinstance(lvalue_type, TypeType)
-                    and isinstance(lvalue_type.item, Instance)
-                    and (lvalue_type.item.type.is_abstract or lvalue_type.item.type.is_protocol)
+                    and isinstance(p_lvalue_type, TypeType)
+                    and isinstance(p_lvalue_type.item, Instance)
+                    and (
+                        p_lvalue_type.item.type.is_abstract or p_lvalue_type.item.type.is_protocol
+                    )
                 ):
-                    self.msg.concrete_only_assign(lvalue_type, rvalue)
+                    self.msg.concrete_only_assign(p_lvalue_type, rvalue)
                     return
                 if rvalue_type and infer_lvalue_type and not isinstance(lvalue_type, PartialType):
                     # Don't use type binder for definitions of special forms, like named tuples.
@@ -3519,7 +3478,6 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         self, name: Var, lvalue: Lvalue, init_type: Type, context: Context
     ) -> None:
         """Infer the type of initialized variables from initializer type."""
-        init_type = get_proper_type(init_type)
         if isinstance(init_type, DeletedType):
             self.msg.deleted_as_rvalue(init_type, context)
         elif not is_valid_inferred_type(init_type) and not self.no_partial_types:
@@ -3665,18 +3623,19 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # '...' is always a valid initializer in a stub.
             return AnyType(TypeOfAny.special_form)
         else:
-            lvalue_type = get_proper_type(lvalue_type)
-            always_allow_any = lvalue_type is not None and not isinstance(lvalue_type, AnyType)
+            always_allow_any = lvalue_type is not None and not isinstance(
+                get_proper_type(lvalue_type), AnyType
+            )
             rvalue_type = self.expr_checker.accept(
                 rvalue, lvalue_type, always_allow_any=always_allow_any
             )
-            rvalue_type = get_proper_type(rvalue_type)
             if isinstance(rvalue_type, DeletedType):
                 self.msg.deleted_as_rvalue(rvalue_type, context)
             if isinstance(lvalue_type, DeletedType):
                 self.msg.deleted_as_lvalue(lvalue_type, context)
             elif lvalue_type:
                 self.check_subtype(
+                    # Preserve original aliases for error messages when possible.
                     rvalue_type,
                     lvalue_type,
                     context,
@@ -5571,7 +5530,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             code = msg.code
         else:
             msg_text = msg
+        orig_subtype = subtype
         subtype = get_proper_type(subtype)
+        orig_supertype = supertype
         supertype = get_proper_type(supertype)
         if self.msg.try_report_long_tuple_assignment_error(
             subtype, supertype, context, msg_text, subtype_label, supertype_label, code=code
@@ -5583,7 +5544,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         note_msg = ""
         notes: List[str] = []
         if subtype_label is not None or supertype_label is not None:
-            subtype_str, supertype_str = format_type_distinctly(subtype, supertype)
+            subtype_str, supertype_str = format_type_distinctly(orig_subtype, orig_supertype)
             if subtype_label is not None:
                 extra_info.append(subtype_label + " " + subtype_str)
             if supertype_label is not None:

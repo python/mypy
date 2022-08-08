@@ -41,8 +41,9 @@ from typing import (
 
 from typing_extensions import TypedDict
 
+from mypy.argmap import map_actuals_to_formals
 from mypy.build import Graph, State
-from mypy.checkexpr import has_any_type, map_actuals_to_formals
+from mypy.checkexpr import has_any_type
 from mypy.find_sources import InvalidSourceList, SourceFinder
 from mypy.join import join_type_list
 from mypy.meet import meet_type_list
@@ -64,7 +65,6 @@ from mypy.nodes import (
     reverse_builtin_aliases,
 )
 from mypy.plugin import FunctionContext, MethodContext, Plugin
-from mypy.sametypes import is_same_type
 from mypy.server.update import FineGrainedBuildManager
 from mypy.state import state
 from mypy.traverser import TraverserVisitor
@@ -326,7 +326,7 @@ class SuggestionEngine:
         # since they need some special treatment (specifically,
         # constraint generation ignores them.)
         return CallableType(
-            [AnyType(TypeOfAny.suggestion_engine) for a in fdef.arg_kinds],
+            [AnyType(TypeOfAny.suggestion_engine) for _ in fdef.arg_kinds],
             fdef.arg_kinds,
             fdef.arg_names,
             AnyType(TypeOfAny.suggestion_engine),
@@ -929,7 +929,7 @@ def generate_type_combinations(types: List[Type]) -> List[Type]:
     """
     joined_type = join_type_list(types)
     union_type = make_simplified_union(types)
-    if is_same_type(joined_type, union_type):
+    if joined_type == union_type:
         return [joined_type]
     else:
         return [joined_type, union_type]

@@ -483,7 +483,7 @@ def process_options(
             flag, action="store_false" if default else "store_true", dest=dest, help=help
         )
         dest = arg.dest
-        arg = group.add_argument(
+        group.add_argument(
             inverse,
             action="store_true" if default else "store_false",
             dest=dest,
@@ -976,6 +976,11 @@ def process_options(
         metavar="MODULE",
         dest="custom_typing_module",
         help="Use a custom typing module",
+    )
+    internals_group.add_argument(
+        "--enable-recursive-aliases",
+        action="store_true",
+        help="Experimental support for recursive type aliases",
     )
     internals_group.add_argument(
         "--custom-typeshed-dir", metavar="DIR", help="Use the custom typeshed in DIR"

@@ -6,11 +6,10 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, T
 from typing_extensions import TYPE_CHECKING, Final
 
 from mypy import defaults
-from mypy.backports import OrderedDict
 from mypy.util import get_class_descriptors, replace_object_state
 
 if TYPE_CHECKING:
-    from mypy.errors import ErrorCode
+    from mypy.errorcodes import ErrorCode
 
 
 class BuildType:
@@ -255,7 +254,7 @@ class Options:
         self.plugins: List[str] = []
 
         # Per-module options (raw)
-        self.per_module_options: OrderedDict[str, Dict[str, object]] = OrderedDict()
+        self.per_module_options: Dict[str, Dict[str, object]] = {}
         self._glob_options: List[Tuple[str, Pattern[str]]] = []
         self.unused_configs: Set[str] = set()
 
@@ -315,6 +314,8 @@ class Options:
         # skip most errors after this many messages have been reported.
         # -1 means unlimited.
         self.many_errors_threshold = defaults.MANY_ERRORS_THRESHOLD
+        # Enable recursive type aliases (currently experimental)
+        self.enable_recursive_aliases = False
 
     # To avoid breaking plugin compatibility, keep providing new_semantic_analyzer
     @property

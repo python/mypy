@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 
 from typing_extensions import Final
 
-import mypy.sametypes
 import mypy.subtypes
 import mypy.typeops
 from mypy.argmap import ArgTypeExpander
 from mypy.erasetype import erase_typevars
 from mypy.maptype import map_instance_to_supertype
-from mypy.nodes import CONTRAVARIANT, COVARIANT, ArgKind
+from mypy.nodes import ARG_OPT, ARG_POS, CONTRAVARIANT, COVARIANT, ArgKind
 from mypy.types import (
     TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
@@ -43,6 +42,8 @@ from mypy.types import (
     UnpackType,
     callable_with_ellipsis,
     get_proper_type,
+    has_recursive_types,
+    has_type_vars,
     is_named_instance,
     is_union_with_any,
 )
@@ -141,13 +142,20 @@ def infer_constraints(template: Type, actual: Type, direction: int) -> List[Cons
 
     The constraints are represented as Constraint objects.
     """
-    if any(get_proper_type(template) == get_proper_type(t) for t in TypeState._inferring):
+    if any(
+        get_proper_type(template) == get_proper_type(t)
+        and get_proper_type(actual) == get_proper_type(a)
+        for (t, a) in reversed(TypeState.inferring)
+    ):
         return []
-    if isinstance(template, TypeAliasType) and template.is_recursive:
+    if has_recursive_types(template):
         # This case requires special care because it may cause infinite recursion.
-        TypeState._inferring.append(template)
+        if not has_type_vars(template):
+            # Return early on an empty branch.
+            return []
+        TypeState.inferring.append((template, actual))
         res = _infer_constraints(template, actual, direction)
-        TypeState._inferring.pop()
+        TypeState.inferring.pop()
         return res
     return _infer_constraints(template, actual, direction)
 
@@ -215,13 +223,18 @@ def _infer_constraints(template: Type, actual: Type, direction: int) -> List[Con
         # When the template is a union, we are okay with leaving some
         # type variables indeterminate. This helps with some special
         # cases, though this isn't very principled.
-        return any_constraints(
+        result = any_constraints(
             [
                 infer_constraints_if_possible(t_item, actual, direction)
                 for t_item in template.items
             ],
             eager=False,
         )
+        if result:
+            return result
+        elif has_recursive_types(template) and not has_recursive_types(actual):
+            return handle_recursive_union(template, actual, direction)
+        return []
 
     # Remaining cases are handled by ConstraintBuilderVisitor.
     return template.accept(ConstraintBuilderVisitor(actual, direction))
@@ -276,6 +289,19 @@ def merge_with_any(constraint: Constraint) -> Constraint:
         constraint.op,
         UnionType.make_union([target, any_type], target.line, target.column),
     )
+
+
+def handle_recursive_union(template: UnionType, actual: Type, direction: int) -> List[Constraint]:
+    # This is a hack to special-case things like Union[T, Inst[T]] in recursive types. Although
+    # it is quite arbitrary, it is a relatively common pattern, so we should handle it well.
+    # This function may be called when inferring against such union resulted in different
+    # constraints for each item. Normally we give up in such case, but here we instead split
+    # the union in two parts, and try inferring sequentially.
+    non_type_var_items = [t for t in template.items if not isinstance(t, TypeVarType)]
+    type_var_items = [t for t in template.items if isinstance(t, TypeVarType)]
+    return infer_constraints(
+        UnionType.make_union(non_type_var_items), actual, direction
+    ) or infer_constraints(UnionType.make_union(type_var_items), actual, direction)
 
 
 def any_constraints(options: List[Optional[List[Constraint]]], eager: bool) -> List[Constraint]:
@@ -341,7 +367,7 @@ def is_same_constraint(c1: Constraint, c2: Constraint) -> bool:
     return (
         c1.type_var == c2.type_var
         and (c1.op == c2.op or skip_op_check)
-        and mypy.sametypes.is_same_type(c1.target, c2.target)
+        and mypy.subtypes.is_same_type(c1.target, c2.target)
     )
 
 
@@ -474,9 +500,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
         if isinstance(actual, (CallableType, Overloaded)) and template.type.is_protocol:
             if template.type.protocol_members == ["__call__"]:
                 # Special case: a generic callback protocol
-                if not any(
-                    mypy.sametypes.is_same_type(template, t) for t in template.type.inferring
-                ):
+                if not any(template == t for t in template.type.inferring):
                     template.type.inferring.append(template)
                     call = mypy.subtypes.find_member(
                         "__call__", template, actual, is_operator=True
@@ -635,7 +659,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 # Note that we use is_protocol_implementation instead of is_subtype
                 # because some type may be considered a subtype of a protocol
                 # due to _promote, but still not implement the protocol.
-                not any(mypy.sametypes.is_same_type(template, t) for t in template.type.inferring)
+                not any(template == t for t in reversed(template.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(instance, erased)
             ):
                 template.type.inferring.append(template)
@@ -651,7 +675,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 and self.direction == SUBTYPE_OF
                 and
                 # We avoid infinite recursion for structural subtypes also here.
-                not any(mypy.sametypes.is_same_type(instance, i) for i in instance.type.inferring)
+                not any(instance == i for i in reversed(instance.type.inferring))
                 and mypy.subtypes.is_protocol_implementation(erased, instance)
             ):
                 instance.type.inferring.append(instance)
@@ -734,6 +758,8 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
                 cactual_ps = cactual.param_spec()
 
                 if not cactual_ps:
+                    max_prefix_len = len([k for k in cactual.arg_kinds if k in (ARG_POS, ARG_OPT)])
+                    prefix_len = min(prefix_len, max_prefix_len)
                     res.append(
                         Constraint(
                             param_spec.id,

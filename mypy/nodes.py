@@ -23,7 +23,6 @@ from mypy_extensions import trait
 from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
-from mypy.backports import OrderedDict
 from mypy.bogus_type import Bogus
 from mypy.util import short_type
 from mypy.visitor import ExpressionVisitor, NodeVisitor, StatementVisitor
@@ -758,7 +757,14 @@ class FuncItem(FuncBase):
         return self.type is None
 
 
-FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional", "is_abstract"]
+FUNCDEF_FLAGS: Final = FUNCITEM_FLAGS + ["is_decorated", "is_conditional"]
+
+# Abstract status of a function
+NOT_ABSTRACT: Final = 0
+# Explicitly abstract (with @abstractmethod or overload without implementation)
+IS_ABSTRACT: Final = 1
+# Implicitly abstract: used for functions with trivial bodies defined in Protocols
+IMPLICITLY_ABSTRACT: Final = 2
 
 
 class FuncDef(FuncItem, SymbolNode, Statement):
@@ -771,7 +777,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         "_name",
         "is_decorated",
         "is_conditional",
-        "is_abstract",
+        "abstract_status",
         "original_def",
         "deco_line",
     )
@@ -788,7 +794,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         self._name = name
         self.is_decorated = False
         self.is_conditional = False  # Defined conditionally (within block)?
-        self.is_abstract = False
+        self.abstract_status = NOT_ABSTRACT
         self.is_final = False
         # Original conditional definition
         self.original_def: Union[None, FuncDef, Var, Decorator] = None
@@ -817,6 +823,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
             "arg_kinds": [int(x.value) for x in self.arg_kinds],
             "type": None if self.type is None else self.type.serialize(),
             "flags": get_flags(self, FUNCDEF_FLAGS),
+            "abstract_status": self.abstract_status,
             # TODO: Do we need expanded, original_def?
         }
 
@@ -839,6 +846,7 @@ class FuncDef(FuncItem, SymbolNode, Statement):
         # NOTE: ret.info is set in the fixup phase.
         ret.arg_names = data["arg_names"]
         ret.arg_kinds = [ArgKind(x) for x in data["arg_kinds"]]
+        ret.abstract_status = data["abstract_status"]
         # Leave these uninitialized so that future uses will trigger an error
         del ret.arguments
         del ret.max_pos
@@ -1083,7 +1091,7 @@ class ClassDef(Statement):
     info: "TypeInfo"  # Related TypeInfo
     metaclass: Optional[Expression]
     decorators: List[Expression]
-    keywords: "OrderedDict[str, Expression]"
+    keywords: Dict[str, Expression]
     analyzed: Optional[Expression]
     has_incompatible_baseclass: bool
 
@@ -1106,7 +1114,7 @@ class ClassDef(Statement):
         self.info = CLASSDEF_NO_INFO
         self.metaclass = metaclass
         self.decorators = []
-        self.keywords = OrderedDict(keywords or [])
+        self.keywords = dict(keywords) if keywords else {}
         self.analyzed = None
         self.has_incompatible_baseclass = False
         # Used for error reporting (to keep backwad compatibility with pre-3.8)
@@ -2674,7 +2682,9 @@ class TypeInfo(SymbolNode):
     is_abstract: bool  # Does the class have any abstract attributes?
     is_protocol: bool  # Is this a protocol class?
     runtime_protocol: bool  # Does this protocol support isinstance checks?
-    abstract_attributes: List[str]
+    # List of names of abstract attributes together with their abstract status.
+    # The abstract status must be one of `NOT_ABSTRACT`, `IS_ABSTRACT`, `IMPLICITLY_ABSTRACT`.
+    abstract_attributes: List[Tuple[str, int]]
     deletable_attributes: List[str]  # Used by mypyc only
     # Does this type have concrete `__slots__` defined?
     # If class does not have `__slots__` defined then it is `None`,
@@ -2693,7 +2703,7 @@ class TypeInfo(SymbolNode):
     # in corresponding column. This matrix typically starts filled with all 1's and
     # a typechecker tries to "disprove" every subtyping relation using atomic (or nominal) types.
     # However, we don't want to keep this huge global state. Instead, we keep the subtype
-    # information in the form of list of pairs (subtype, supertype) shared by all 'Instance's
+    # information in the form of list of pairs (subtype, supertype) shared by all Instances
     # with given supertype's TypeInfo. When we enter a subtype check we push a pair in this list
     # thus assuming that we started with 1 in corresponding matrix element. Such algorithm allows
     # to treat recursive and mutually recursive protocols and other kinds of complex situations.
@@ -2704,7 +2714,7 @@ class TypeInfo(SymbolNode):
     assuming: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     assuming_proper: List[Tuple["mypy.types.Instance", "mypy.types.Instance"]]
     # Ditto for temporary 'inferring' stack of recursive constraint inference.
-    # It contains Instance's of protocol types that appeared as an argument to
+    # It contains Instances of protocol types that appeared as an argument to
     # constraints.infer_constraints(). We need 'inferring' to avoid infinite recursion for
     # recursive and mutually recursive protocols.
     #
@@ -3034,7 +3044,7 @@ class TypeInfo(SymbolNode):
         ti = TypeInfo(names, defn, module_name)
         ti._fullname = data["fullname"]
         # TODO: Is there a reason to reconstruct ti.subtypes?
-        ti.abstract_attributes = data["abstract_attributes"]
+        ti.abstract_attributes = [(attr[0], attr[1]) for attr in data["abstract_attributes"]]
         ti.type_vars = data["type_vars"]
         ti.has_param_spec_type = data["has_param_spec_type"]
         ti.bases = [mypy.types.Instance.deserialize(b) for b in data["bases"]]
@@ -3186,7 +3196,7 @@ class TypeAlias(SymbolNode):
 
     Note: the fact that we support aliases like `A = List` means that the target
     type will be initially an instance type with wrong number of type arguments.
-    Such instances are all fixed in the third pass of semantic analyzis.
+    Such instances are all fixed either during or after main semantic analysis passes.
     We therefore store the difference between `List` and `List[Any]` rvalues (targets)
     using the `no_args` flag. See also TypeAliasExpr.no_args.
 
@@ -3201,7 +3211,7 @@ class TypeAlias(SymbolNode):
         are internally stored using `builtins.list` (because `typing.List` is
         itself an alias), while the second cannot be subscripted because of
         Python runtime limitation.
-    line and column: Line an column on the original alias definition.
+    line and column: Line and column on the original alias definition.
     eager: If True, immediately expand alias when referred to (useful for aliases
         within functions that can't be looked up from the symbol table)
     """
@@ -3322,7 +3332,7 @@ class PlaceholderNode(SymbolNode):
 
     Attributes:
 
-      fullname: Full name of of the PlaceholderNode.
+      fullname: Full name of the PlaceholderNode.
       node: AST node that contains the definition that caused this to
           be created. This is useful for tracking order of incomplete definitions
           and for debugging.

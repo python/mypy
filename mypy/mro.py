@@ -30,9 +30,8 @@ def linearize_hierarchy(
         return info.mro
     bases = info.direct_base_classes()
     if not bases and info.fullname != "builtins.object" and obj_type is not None:
-        # Second pass in import cycle, add a dummy `object` base class,
+        # Probably an error, add a dummy `object` base class,
         # otherwise MRO calculation may spuriously fail.
-        # MRO will be re-calculated for real in the third pass.
         bases = [obj_type().type]
     lin_bases = []
     for base in bases:

@@ -21,7 +21,7 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
 
 import typing_extensions
 from typing_extensions import Type, get_origin
@@ -44,12 +44,12 @@ class Missing:
         return "MISSING"
 
 
-MISSING = Missing()
+MISSING: typing_extensions.Final = Missing()
 
 T = TypeVar("T")
-MaybeMissing = Union[T, Missing]
+MaybeMissing: typing_extensions.TypeAlias = Union[T, Missing]
 
-_formatter = FancyFormatter(sys.stdout, sys.stderr, False)
+_formatter: typing_extensions.Final = FancyFormatter(sys.stdout, sys.stderr, False)
 
 
 def _style(message: str, **kwargs: Any) -> str:
@@ -90,6 +90,7 @@ class Error:
         :param runtime_desc: Specialised description for the runtime object, should you wish
 
         """
+        self.object_path = object_path
         self.object_desc = ".".join(object_path)
         self.message = message
         self.stub_object = stub_object
@@ -116,10 +117,12 @@ class Error:
             return _style(self.object_desc, bold=True) + " " + self.message
 
         stub_line = None
-        stub_file: None = None
+        stub_file = None
         if not isinstance(self.stub_object, Missing):
             stub_line = self.stub_object.line
-        # TODO: Find a way of getting the stub file
+        stub_node = get_stub(self.object_path[0])
+        if stub_node is not None:
+            stub_file = stub_node.path or None
 
         stub_loc_str = ""
         if stub_line:
@@ -243,6 +246,37 @@ def verify(
     yield Error(object_path, "is an unknown mypy node", stub, runtime)
 
 
+def _verify_exported_names(
+    object_path: List[str], stub: nodes.MypyFile, runtime_all_as_set: Set[str]
+) -> Iterator[Error]:
+    # note that this includes the case the stub simply defines `__all__: list[str]`
+    assert "__all__" in stub.names
+    public_names_in_stub = {m for m, o in stub.names.items() if o.module_public}
+    names_in_stub_not_runtime = sorted(public_names_in_stub - runtime_all_as_set)
+    names_in_runtime_not_stub = sorted(runtime_all_as_set - public_names_in_stub)
+    if not (names_in_runtime_not_stub or names_in_stub_not_runtime):
+        return
+    yield Error(
+        object_path,
+        (
+            "names exported from the stub do not correspond to the names exported at runtime. "
+            "This is probably due to an inaccurate `__all__` in the stub or things being missing from the stub."
+        ),
+        # Pass in MISSING instead of the stub and runtime objects, as the line numbers aren't very
+        # relevant here, and it makes for a prettier error message
+        # This means this error will be ignored when using `--ignore-missing-stub`, which is
+        # desirable in at least the `names_in_runtime_not_stub` case
+        stub_object=MISSING,
+        runtime_object=MISSING,
+        stub_desc=(
+            f"Names exported in the stub but not at runtime: " f"{names_in_stub_not_runtime}"
+        ),
+        runtime_desc=(
+            f"Names exported at runtime but not in the stub: " f"{names_in_runtime_not_stub}"
+        ),
+    )
+
+
 @verify.register(nodes.MypyFile)
 def verify_mypyfile(
     stub: nodes.MypyFile, runtime: MaybeMissing[types.ModuleType], object_path: List[str]
@@ -253,6 +287,17 @@ def verify_mypyfile(
     if not isinstance(runtime, types.ModuleType):
         yield Error(object_path, "is not a module", stub, runtime)
         return
+
+    runtime_all_as_set: Optional[Set[str]]
+
+    if hasattr(runtime, "__all__"):
+        runtime_all_as_set = set(runtime.__all__)
+        if "__all__" in stub.names:
+            # Only verify the contents of the stub's __all__
+            # if the stub actually defines __all__
+            yield from _verify_exported_names(object_path, stub, runtime_all_as_set)
+    else:
+        runtime_all_as_set = None
 
     # Check things in the stub
     to_check = {
@@ -272,16 +317,16 @@ def verify_mypyfile(
         return not isinstance(obj, types.ModuleType)
 
     runtime_public_contents = (
-        runtime.__all__
-        if hasattr(runtime, "__all__")
-        else [
+        runtime_all_as_set
+        if runtime_all_as_set is not None
+        else {
             m
             for m in dir(runtime)
             if not is_probably_private(m)
             # Ensure that the object's module is `runtime`, since in the absence of __all__ we
             # don't have a good way to detect re-exports at runtime.
             and _belongs_to_runtime(runtime, m)
-        ]
+        }
     )
     # Check all things declared in module's __all__, falling back to our best guess
     to_check.update(runtime_public_contents)
@@ -300,12 +345,6 @@ def verify_mypyfile(
             # from __getattr__ or similar.
             continue
         yield from verify(stub_entry, runtime_entry, object_path + [entry])
-
-
-if sys.version_info >= (3, 7):
-    _WrapperDescriptorType = types.WrapperDescriptorType
-else:
-    _WrapperDescriptorType = type(object.__init__)
 
 
 @verify.register(nodes.TypeInfo)
@@ -378,7 +417,7 @@ def verify_typeinfo(
         # The vast majority of these are false positives.
         if not (
             isinstance(stub_to_verify, Missing)
-            and isinstance(runtime_attr, _WrapperDescriptorType)
+            and isinstance(runtime_attr, types.WrapperDescriptorType)
             and is_dunder(mangled_entry, exclude_special=True)
         ):
             yield from verify(stub_to_verify, runtime_attr, object_path + [entry])
@@ -681,6 +720,7 @@ def _verify_signature(
         yield from _verify_arg_default_value(stub_arg, runtime_arg)
         if (
             runtime_arg.kind == inspect.Parameter.POSITIONAL_ONLY
+            and not stub_arg.pos_only
             and not stub_arg.variable.name.startswith("__")
             and not stub_arg.variable.name.strip("_") == "self"
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
@@ -693,7 +733,7 @@ def _verify_signature(
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
-            and stub_arg.variable.name.startswith("__")
+            and (stub_arg.pos_only or stub_arg.variable.name.startswith("__"))
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
@@ -704,9 +744,9 @@ def _verify_signature(
     # Check unmatched positional args
     if len(stub.pos) > len(runtime.pos):
         # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through *args. Hence, a) we can't check that the runtime actually takes those
-        # parameters and b) below, we don't enforce that the stub takes *args, since runtime logic
-        # may prevent those arguments from actually being accepted.
+        # would take through *args. Hence, a) if runtime accepts *args, we don't check whether the
+        # runtime has all of the stub's parameters, b) below, we don't enforce that the stub takes
+        # *args, since runtime logic may prevent arbitrary arguments from actually being accepted.
         if runtime.varpos is None:
             for stub_arg in stub.pos[len(runtime.pos) :]:
                 # If the variable is in runtime.kwonly, it's just mislabelled as not a
@@ -740,16 +780,24 @@ def _verify_signature(
     # Check unmatched keyword-only args
     if runtime.varkw is None or not set(runtime.kwonly).issubset(set(stub.kwonly)):
         # There are cases where the stub exhaustively lists out the extra parameters the function
-        # would take through *kwargs. Hence, a) we only check if the runtime actually takes those
-        # parameters when the above condition holds and b) below, we don't enforce that the stub
-        # takes *kwargs, since runtime logic may prevent additional arguments from actually being
-        # accepted.
+        # would take through **kwargs. Hence, a) if runtime accepts **kwargs (and the stub hasn't
+        # exhaustively listed out params), we don't check whether the runtime has all of the stub's
+        # parameters, b) below, we don't enforce that the stub takes **kwargs, since runtime logic
+        # may prevent arbitrary keyword arguments from actually being accepted.
         for arg in sorted(set(stub.kwonly) - set(runtime.kwonly)):
-            yield f'runtime does not have argument "{arg}"'
+            if arg in {runtime_arg.name for runtime_arg in runtime.pos}:
+                # Don't report this if we've reported it before
+                if arg not in {runtime_arg.name for runtime_arg in runtime.pos[len(stub.pos) :]}:
+                    yield f'runtime argument "{arg}" is not keyword-only'
+            else:
+                yield f'runtime does not have argument "{arg}"'
     for arg in sorted(set(runtime.kwonly) - set(stub.kwonly)):
         if arg in {stub_arg.variable.name for stub_arg in stub.pos}:
             # Don't report this if we've reported it before
-            if len(stub.pos) > len(runtime.pos) and runtime.varpos is not None:
+            if not (
+                runtime.varpos is None
+                and arg in {stub_arg.variable.name for stub_arg in stub.pos[len(runtime.pos) :]}
+            ):
                 yield f'stub argument "{arg}" is not keyword-only'
         else:
             yield f'stub does not have argument "{arg}"'
@@ -1142,6 +1190,13 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__instancecheck__",
         "__subclasshook__",
         "__subclasscheck__",
+        # python2 only magic methods:
+        "__cmp__",
+        "__nonzero__",
+        "__unicode__",
+        "__div__",
+        # cython methods
+        "__pyx_vtable__",
         # Pickle methods
         "__setstate__",
         "__getstate__",
@@ -1399,9 +1454,9 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.6
-    if sys.version_info < (3, 6):
-        version_info = (3, 6)
+    # Typeshed's minimum supported Python 3 is Python 3.7
+    if sys.version_info < (3, 7):
+        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None
