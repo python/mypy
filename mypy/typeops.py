@@ -6,7 +6,6 @@ NOTE: These must not be accessed from mypy.nodes or mypy.types to avoid import
 """
 
 import itertools
-import sys
 from typing import (
     Any,
     Dict,
@@ -857,14 +856,6 @@ def try_expanding_sum_type_to_union(typ: Type, target_fullname: str) -> ProperTy
                 if name in ENUM_REMOVED_PROPS:
                     continue
                 new_items.append(LiteralType(name, typ))
-            # SymbolTables are really just dicts, and dicts are guaranteed to preserve
-            # insertion order only starting with Python 3.7. So, we sort these for older
-            # versions of Python to help make tests deterministic.
-            #
-            # We could probably skip the sort for Python 3.6 since people probably run mypy
-            # only using CPython, but we might as well for the sake of full correctness.
-            if sys.version_info < (3, 7):
-                new_items.sort(key=lambda lit: lit.value)
             return make_simplified_union(new_items, contract_literals=False)
         elif typ.type.fullname == "builtins.bool":
             return make_simplified_union(
