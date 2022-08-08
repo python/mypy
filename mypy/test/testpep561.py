@@ -4,7 +4,6 @@ import subprocess
 import sys
 import tempfile
 from contextlib import contextmanager
-from subprocess import PIPE
 from typing import Iterator, List, Tuple
 
 import filelock
