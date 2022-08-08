@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
-
 from typing_extensions import Final
 
 import mypy.checker

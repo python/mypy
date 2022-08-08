@@ -4,7 +4,6 @@ import sys
 import typing  # for typing.Type, which conflicts with types.Type
 import warnings
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, TypeVar, Union, cast
-
 from typing_extensions import Final, Literal, overload
 
 from mypy import defaults, errorcodes as codes, message_registry
@@ -1855,9 +1854,7 @@ class TypeConverter:
         elif isinstance(n, NameConstant) and str(n.value) == "None":
             return None
         self.fail(
-            "Expected string literal for argument name, got {}".format(type(n).__name__),
-            self.line,
-            0,
+            f"Expected string literal for argument name, got {type(n).__name__}", self.line, 0
         )
         return None
 

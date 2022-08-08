@@ -25,7 +25,6 @@ from typing import (
     Tuple,
     Union,
 )
-
 from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy import defaults
@@ -46,7 +45,7 @@ def parse_version(v: Union[str, float]) -> Tuple[int, int]:
         pass  # Error raised elsewhere
     elif major == 3:
         if minor < defaults.PYTHON3_VERSION_MIN[1]:
-            msg = "Python 3.{0} is not supported (must be {1}.{2} or higher)".format(
+            msg = "Python 3.{} is not supported (must be {}.{} or higher)".format(
                 minor, *defaults.PYTHON3_VERSION_MIN
             )
 

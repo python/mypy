@@ -47,7 +47,6 @@ import sys
 import traceback
 from collections import defaultdict
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union, cast
-
 from typing_extensions import Final
 
 import mypy.build
@@ -874,7 +873,7 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             ):
                 self.add_coroutine_decorator(
                     context.func,
-                    "%s.coroutines.coroutine" % (expr.expr.expr.name,),
+                    f"{expr.expr.expr.name}.coroutines.coroutine",
                     expr.expr.expr.name,
                 )
             elif isinstance(expr.expr, NameExpr) and (

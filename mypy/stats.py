@@ -5,7 +5,6 @@ import typing
 from collections import Counter
 from contextlib import contextmanager
 from typing import Dict, Iterator, List, Optional, Union, cast
-
 from typing_extensions import Final
 
 from mypy import nodes

@@ -1,6 +1,5 @@
 """Plugin for supporting the functools standard library module."""
 from typing import Dict, NamedTuple, Optional
-
 from typing_extensions import Final
 
 import mypy.plugin

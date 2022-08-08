@@ -1,5 +1,4 @@
 import os
-
 from typing_extensions import Final
 
 PYTHON2_VERSION: Final = (2, 7)
