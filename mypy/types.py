@@ -3,7 +3,9 @@
 import sys
 from abc import abstractmethod
 from typing import (
+    TYPE_CHECKING,
     Any,
+    ClassVar,
     Dict,
     Iterable,
     List,
@@ -17,7 +19,7 @@ from typing import (
     cast,
 )
 
-from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
+from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus

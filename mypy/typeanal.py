@@ -1130,9 +1130,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
                     kind = ARG_KINDS_BY_CONSTRUCTOR[found.fullname]
                     kinds.append(kind)
                     if arg.name is not None and kind.is_star():
-                        self.fail(
-                            "{} arguments should not have names".format(arg.constructor), arg
-                        )
+                        self.fail(f"{arg.constructor} arguments should not have names", arg)
                         return None
             else:
                 args.append(arg)
@@ -1540,10 +1538,7 @@ def expand_type_alias(
         tp.column = ctx.column
         return tp
     if act_len != exp_len:
-        fail(
-            "Bad number of arguments for type alias, expected: %s, given: %s" % (exp_len, act_len),
-            ctx,
-        )
+        fail(f"Bad number of arguments for type alias, expected: {exp_len}, given: {act_len}", ctx)
         return set_any_tvars(node, ctx.line, ctx.column, from_error=True)
     typ = TypeAliasType(node, args, ctx.line, ctx.column)
     assert typ.alias is not None

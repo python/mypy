@@ -173,8 +173,7 @@ class NamedTupleAnalyzer:
                 # ...despite possible minor failures that allow further analyzis.
                 if name.startswith("_"):
                     self.fail(
-                        "NamedTuple field name cannot start with an underscore: {}".format(name),
-                        stmt,
+                        f"NamedTuple field name cannot start with an underscore: {name}", stmt
                     )
                 if stmt.type is None or hasattr(stmt, "new_syntax") and not stmt.new_syntax:
                     self.fail(NAMEDTUP_CLASS_ERROR, stmt)
