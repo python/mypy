@@ -117,9 +117,7 @@ class TypedDictAnalyzer:
                 valid_items = base_items.copy()
                 for key in base_items:
                     if key in keys:
-                        self.fail(
-                            'Overwriting TypedDict field "{}" while merging'.format(key), defn
-                        )
+                        self.fail(f'Overwriting TypedDict field "{key}" while merging', defn)
                 keys.extend(valid_items.keys())
                 types.extend(valid_items.values())
                 required_keys.update(base_typed_dict.required_keys)
@@ -167,9 +165,7 @@ class TypedDictAnalyzer:
             else:
                 name = stmt.lvalues[0].name
                 if name in (oldfields or []):
-                    self.fail(
-                        'Overwriting TypedDict field "{}" while extending'.format(name), stmt
-                    )
+                    self.fail(f'Overwriting TypedDict field "{name}" while extending', stmt)
                 if name in fields:
                     self.fail(f'Duplicate TypedDict key "{name}"', stmt)
                     continue

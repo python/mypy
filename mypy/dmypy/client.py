@@ -12,9 +12,7 @@ import pickle
 import sys
 import time
 import traceback
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
-
-from typing_extensions import NoReturn
+from typing import Any, Callable, Dict, List, Mapping, NoReturn, Optional, Tuple
 
 from mypy.dmypy_os import alive, kill
 from mypy.dmypy_util import DEFAULT_STATUS_FILE, receive

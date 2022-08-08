@@ -2,9 +2,9 @@ import os.path
 import sys
 import traceback
 from collections import defaultdict
-from typing import Callable, Dict, List, Optional, Set, TextIO, Tuple, TypeVar, Union
+from typing import Callable, Dict, List, NoReturn, Optional, Set, TextIO, Tuple, TypeVar, Union
 
-from typing_extensions import Final, Literal, NoReturn
+from typing_extensions import Final, Literal
 
 from mypy import errorcodes as codes
 from mypy.errorcodes import IMPORT, ErrorCode
@@ -884,7 +884,7 @@ class Errors:
                                 -1,
                                 -1,
                                 "note",
-                                'In class "{}":'.format(e.type),
+                                f'In class "{e.type}":',
                                 e.allow_dups,
                                 None,
                             )
@@ -899,7 +899,7 @@ class Errors:
                                 -1,
                                 -1,
                                 "note",
-                                'In function "{}":'.format(e.function_or_member),
+                                f'In function "{e.function_or_member}":',
                                 e.allow_dups,
                                 None,
                             )

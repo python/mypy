@@ -22,15 +22,18 @@ import sys
 import time
 import types
 from typing import (
+    TYPE_CHECKING,
     AbstractSet,
     Any,
     Callable,
+    ClassVar,
     Dict,
     Iterable,
     Iterator,
     List,
     Mapping,
     NamedTuple,
+    NoReturn,
     Optional,
     Sequence,
     Set,
@@ -41,7 +44,7 @@ from typing import (
 )
 
 from mypy_extensions import TypedDict
-from typing_extensions import TYPE_CHECKING, ClassVar, Final, NoReturn, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.semanal_main
 from mypy.checker import TypeChecker
@@ -1068,9 +1071,7 @@ def read_plugins_snapshot(manager: BuildManager) -> Optional[Dict[str, str]]:
     if snapshot is None:
         return None
     if not isinstance(snapshot, dict):
-        manager.log(
-            "Could not load plugins snapshot: cache is not a dict: {}".format(type(snapshot))
-        )
+        manager.log(f"Could not load plugins snapshot: cache is not a dict: {type(snapshot)}")
         return None
     return snapshot
 
@@ -1284,9 +1285,7 @@ def find_cache_meta(id: str, path: str, manager: BuildManager) -> Optional[Cache
     if meta is None:
         return None
     if not isinstance(meta, dict):
-        manager.log(
-            "Could not load cache for {}: meta cache is not a dict: {}".format(id, repr(meta))
-        )
+        manager.log(f"Could not load cache for {id}: meta cache is not a dict: {repr(meta)}")
         return None
     m = cache_meta_from_dict(meta, data_json)
     t2 = time.time()
@@ -1459,9 +1458,7 @@ def validate_meta(
                 manager.log(f"Using stale metadata for {id}: file {path}")
                 return meta
             else:
-                manager.log(
-                    "Metadata abandoned for {}: file {} has different hash".format(id, path)
-                )
+                manager.log(f"Metadata abandoned for {id}: file {path} has different hash")
                 return None
         else:
             t0 = time.time()

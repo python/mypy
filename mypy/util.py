@@ -20,11 +20,12 @@ from typing import (
     Sequence,
     Sized,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
 
-from typing_extensions import Final, Literal, Type
+from typing_extensions import Final, Literal
 
 try:
     import curses

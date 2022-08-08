@@ -21,10 +21,23 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import typing_extensions
-from typing_extensions import Type, get_origin
+from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
@@ -985,7 +998,7 @@ def verify_paramspecexpr(
         getattr(typing, "ParamSpec", None),
         getattr(typing_extensions, "ParamSpec", None),
     )
-    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    paramspec_types = tuple(t for t in maybe_paramspec_types if t is not None)
     if not paramspec_types or not isinstance(runtime, paramspec_types):
         yield Error(object_path, "is not a ParamSpec", stub, runtime)
         return

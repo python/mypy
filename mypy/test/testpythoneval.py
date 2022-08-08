@@ -15,7 +15,6 @@ import os.path
 import re
 import subprocess
 import sys
-from subprocess import PIPE
 from tempfile import TemporaryDirectory
 from typing import List
 
@@ -82,7 +81,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
     if returncode == 0:
         # Execute the program.
         proc = subprocess.run(
-            [interpreter, "-Wignore", program], cwd=test_temp_dir, stdout=PIPE, stderr=PIPE
+            [interpreter, "-Wignore", program], cwd=test_temp_dir, capture_output=True
         )
         output.extend(split_lines(proc.stdout, proc.stderr))
     # Remove temp file.
@@ -91,9 +90,7 @@ def test_python_evaluation(testcase: DataDrivenTestCase, cache_dir: str) -> None
         if os.path.sep + "typeshed" + os.path.sep in line:
             output[i] = line.split(os.path.sep)[-1]
     assert_string_arrays_equal(
-        adapt_output(testcase),
-        output,
-        "Invalid output ({}, line {})".format(testcase.file, testcase.line),
+        adapt_output(testcase), output, f"Invalid output ({testcase.file}, line {testcase.line})"
     )
 
 

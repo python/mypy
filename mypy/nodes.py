@@ -5,8 +5,10 @@ from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum, unique
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
+    DefaultDict,
     Dict,
     Iterator,
     List,
@@ -20,7 +22,7 @@ from typing import (
 )
 
 from mypy_extensions import trait
-from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
 from mypy.bogus_type import Bogus

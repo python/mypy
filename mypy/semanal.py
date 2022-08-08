@@ -2546,9 +2546,7 @@ class SemanticAnalyzer(
         if not isinstance(rv, RefExpr):
             return False
         if isinstance(rv.node, TypeVarLikeExpr):
-            self.fail(
-                'Type variable "{}" is invalid as target for type alias'.format(rv.fullname), rv
-            )
+            self.fail(f'Type variable "{rv.fullname}" is invalid as target for type alias', rv)
             return False
 
         if bare:
@@ -3654,8 +3652,7 @@ class SemanticAnalyzer(
                 return None
             else:
                 self.fail(
-                    '{}: "{}"'.format(message_registry.TYPEVAR_UNEXPECTED_ARGUMENT, param_name),
-                    context,
+                    f'{message_registry.TYPEVAR_UNEXPECTED_ARGUMENT}: "{param_name}"', context
                 )
                 return None
 
@@ -4466,9 +4463,7 @@ class SemanticAnalyzer(
             self.fail('"%s" expects %d argument%s' % (name, numargs, s), expr)
             return False
         if expr.arg_kinds != [ARG_POS] * numargs:
-            self.fail(
-                '"%s" must be called with %s positional argument%s' % (name, numargs, s), expr
-            )
+            self.fail(f'"{name}" must be called with {numargs} positional argument{s}', expr)
             return False
         return True
 

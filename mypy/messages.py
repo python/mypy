@@ -337,7 +337,7 @@ class MessageBuilder:
             self.fail(f'Member "{member}" is not assignable', context)
         elif member == "__contains__":
             self.fail(
-                "Unsupported right operand type for in ({})".format(format_type(original_type)),
+                f"Unsupported right operand type for in ({format_type(original_type)})",
                 context,
                 code=codes.OPERATOR,
             )
@@ -350,19 +350,19 @@ class MessageBuilder:
                     break
         elif member == "__neg__":
             self.fail(
-                "Unsupported operand type for unary - ({})".format(format_type(original_type)),
+                f"Unsupported operand type for unary - ({format_type(original_type)})",
                 context,
                 code=codes.OPERATOR,
             )
         elif member == "__pos__":
             self.fail(
-                "Unsupported operand type for unary + ({})".format(format_type(original_type)),
+                f"Unsupported operand type for unary + ({format_type(original_type)})",
                 context,
                 code=codes.OPERATOR,
             )
         elif member == "__invert__":
             self.fail(
-                "Unsupported operand type for ~ ({})".format(format_type(original_type)),
+                f"Unsupported operand type for ~ ({format_type(original_type)})",
                 context,
                 code=codes.OPERATOR,
             )
@@ -378,7 +378,7 @@ class MessageBuilder:
                 )
             else:
                 self.fail(
-                    "Value of type {} is not indexable".format(format_type(original_type)),
+                    f"Value of type {format_type(original_type)} is not indexable",
                     context,
                     code=codes.INDEX,
                 )
@@ -986,13 +986,13 @@ class MessageBuilder:
             )
         elif num_args == 1:
             self.fail(
-                "No overload variant{} matches argument type {}".format(name_str, arg_types_str),
+                f"No overload variant{name_str} matches argument type {arg_types_str}",
                 context,
                 code=code,
             )
         else:
             self.fail(
-                "No overload variant{} matches argument types {}".format(name_str, arg_types_str),
+                f"No overload variant{name_str} matches argument types {arg_types_str}",
                 context,
                 code=code,
             )
@@ -1009,13 +1009,11 @@ class MessageBuilder:
                 self.fail(f"Need more than 1 value to unpack ({expected} expected)", context)
             else:
                 self.fail(
-                    "Need more than {} values to unpack ({} expected)".format(provided, expected),
-                    context,
+                    f"Need more than {provided} values to unpack ({expected} expected)", context
                 )
         elif provided > expected:
             self.fail(
-                "Too many values to unpack ({} expected, {} provided)".format(expected, provided),
-                context,
+                f"Too many values to unpack ({expected} expected, {provided} provided)", context
             )
 
     def unpacking_strings_disallowed(self, context: Context) -> None:
@@ -1035,9 +1033,7 @@ class MessageBuilder:
     ) -> None:
         target = self.override_target(name, name_in_super, supertype)
         self.fail(
-            'Signature of "{}" incompatible with {}'.format(name, target),
-            context,
-            code=codes.OVERRIDE,
+            f'Signature of "{name}" incompatible with {target}', context, code=codes.OVERRIDE
         )
 
         note_template = 'Overload variants must be defined in the same order as they are in "{}"'
@@ -1054,9 +1050,7 @@ class MessageBuilder:
     ) -> None:
         code = codes.OVERRIDE
         target = self.override_target(name, name_in_super, supertype)
-        self.fail(
-            'Signature of "{}" incompatible with {}'.format(name, target), context, code=code
-        )
+        self.fail(f'Signature of "{name}" incompatible with {target}', context, code=code)
 
         INCLUDE_DECORATOR = True  # Include @classmethod and @staticmethod decorators, if any
         ALLOW_DUPS = True  # Allow duplicate notes, needed when signatures are duplicates
@@ -1197,13 +1191,11 @@ class MessageBuilder:
             self.fail("Type application targets a non-generic function or class", context)
         elif actual_arg_count > expected_arg_count:
             self.fail(
-                "Type application has too many types ({} expected)".format(expected_arg_count),
-                context,
+                f"Type application has too many types ({expected_arg_count} expected)", context
             )
         else:
             self.fail(
-                "Type application has too few types ({} expected)".format(expected_arg_count),
-                context,
+                f"Type application has too few types ({expected_arg_count} expected)", context
             )
 
     def could_not_infer_type_arguments(
@@ -1487,9 +1479,7 @@ class MessageBuilder:
         self.fail(f'Forward operator "{forward_method}" is not callable', context)
 
     def signatures_incompatible(self, method: str, other_method: str, context: Context) -> None:
-        self.fail(
-            'Signatures of "{}" and "{}" are incompatible'.format(method, other_method), context
-        )
+        self.fail(f'Signatures of "{method}" and "{other_method}" are incompatible', context)
 
     def yield_from_invalid_operand_type(self, expr: Type, context: Context) -> Type:
         text = format_type(expr) if format_type(expr) != "object" else expr
@@ -1641,7 +1631,7 @@ class MessageBuilder:
             )
         else:
             self.fail(
-                'TypedDict {} has no key "{}"'.format(format_type(typ), item_name),
+                f'TypedDict {format_type(typ)} has no key "{item_name}"',
                 context,
                 code=codes.TYPEDDICT_ITEM,
             )
@@ -1655,9 +1645,7 @@ class MessageBuilder:
 
     def typeddict_context_ambiguous(self, types: List[TypedDictType], context: Context) -> None:
         formatted_types = ", ".join(list(format_type_distinctly(*types)))
-        self.fail(
-            "Type of TypedDict is ambiguous, could be any of ({})".format(formatted_types), context
-        )
+        self.fail(f"Type of TypedDict is ambiguous, could be any of ({formatted_types})", context)
 
     def typeddict_key_cannot_be_deleted(
         self, typ: TypedDictType, item_name: str, context: Context
@@ -1666,8 +1654,7 @@ class MessageBuilder:
             self.fail(f'TypedDict key "{item_name}" cannot be deleted', context)
         else:
             self.fail(
-                'Key "{}" of TypedDict {} cannot be deleted'.format(item_name, format_type(typ)),
-                context,
+                f'Key "{item_name}" of TypedDict {format_type(typ)} cannot be deleted', context
             )
 
     def typeddict_setdefault_arguments_inconsistent(
@@ -1719,8 +1706,7 @@ class MessageBuilder:
             self.fail("Function is untyped after decorator transformation", context)
         else:
             self.fail(
-                'Type of decorated function contains type "Any" ({})'.format(format_type(typ)),
-                context,
+                f'Type of decorated function contains type "Any" ({format_type(typ)})', context
             )
 
     def typed_function_untyped_decorator(self, func_name: str, context: Context) -> None:
@@ -1739,14 +1725,12 @@ class MessageBuilder:
 
     def concrete_only_assign(self, typ: Type, context: Context) -> None:
         self.fail(
-            "Can only assign concrete classes to a variable of type {}".format(format_type(typ)),
-            context,
+            f"Can only assign concrete classes to a variable of type {format_type(typ)}", context
         )
 
     def concrete_only_call(self, typ: Type, context: Context) -> None:
         self.fail(
-            "Only concrete class can be given where {} is expected".format(format_type(typ)),
-            context,
+            f"Only concrete class can be given where {format_type(typ)} is expected", context
         )
 
     def cannot_use_function_with_type(
@@ -1763,7 +1747,7 @@ class MessageBuilder:
         )
         if len(members) < 3:
             attrs = ", ".join(members)
-            self.note('Protocol "{}" has non-method member(s): {}'.format(tp.name, attrs), context)
+            self.note(f'Protocol "{tp.name}" has non-method member(s): {attrs}', context)
 
     def note_call(
         self, subtype: Type, call: Type, context: Context, *, code: Optional[ErrorCode]
@@ -2117,9 +2101,7 @@ def format_callable_args(
             if arg_kind.is_star() or arg_name is None:
                 arg_strings.append(f"{constructor}({format(arg_type)})")
             else:
-                arg_strings.append(
-                    "{}({}, {})".format(constructor, format(arg_type), repr(arg_name))
-                )
+                arg_strings.append(f"{constructor}({format(arg_type)}, {repr(arg_name)})")
 
     return ", ".join(arg_strings)
 
