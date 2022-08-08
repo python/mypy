@@ -199,6 +199,7 @@ from mypy.types import (
     UnboundType,
     UninhabitedType,
     UnionType,
+    flatten_nested_unions,
     get_proper_type,
     get_proper_types,
     is_literal_type,
@@ -206,7 +207,6 @@ from mypy.types import (
     is_optional,
     remove_optional,
     strip_type,
-    union_items,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 from mypy.typevars import fill_typevars, fill_typevars_with_any, has_no_typevars
@@ -1464,7 +1464,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # inheritance. (This is consistent with how we handle overloads: we also
         # do not try checking unsafe overlaps due to multiple inheritance there.)
 
-        for forward_item in union_items(forward_type):
+        for forward_item in flatten_nested_unions([forward_type]):
+            forward_item = get_proper_type(forward_item)
             if isinstance(forward_item, CallableType):
                 if self.is_unsafe_overlapping_op(forward_item, forward_base, reverse_type):
                     self.msg.operator_method_signatures_overlap(
@@ -5320,8 +5321,8 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
             # Take each element in the parent union and replay the original lookup procedure
             # to figure out which parents are compatible.
             new_parent_types = []
-            for item in union_items(parent_type):
-                member_type = replay_lookup(item)
+            for item in flatten_nested_unions(parent_type.items):
+                member_type = replay_lookup(get_proper_type(item))
                 if member_type is None:
                     # We were unable to obtain the member type. So, we give up on refining this
                     # parent type entirely and abort.

@@ -18,8 +18,8 @@ from mypy.types import (
     Type,
     TypeOfAny,
     UnionType,
+    flatten_nested_unions,
     get_proper_type,
-    union_items,
 )
 
 
@@ -54,7 +54,8 @@ def _autoconvertible_to_cdata(tp: Type, api: "mypy.plugin.CheckerPluginInterface
     # items. This is not quite correct - strictly speaking, only types convertible to *all* of the
     # union items should be allowed. This may be worth changing in the future, but the more
     # correct algorithm could be too strict to be useful.
-    for t in union_items(tp):
+    for t in flatten_nested_unions([tp]):
+        t = get_proper_type(t)
         # Every type can be converted from itself (obviously).
         allowed_types.append(t)
         if isinstance(t, Instance):
@@ -197,7 +198,8 @@ def array_value_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
     et = _get_array_element_type(ctx.type)
     if et is not None:
         types: List[Type] = []
-        for tp in union_items(et):
+        for tp in flatten_nested_unions([et]):
+            tp = get_proper_type(tp)
             if isinstance(tp, AnyType):
                 types.append(AnyType(TypeOfAny.from_another_any, source_any=tp))
             elif isinstance(tp, Instance) and tp.type.fullname == "ctypes.c_char":
@@ -219,7 +221,8 @@ def array_raw_callback(ctx: "mypy.plugin.AttributeContext") -> Type:
     et = _get_array_element_type(ctx.type)
     if et is not None:
         types: List[Type] = []
-        for tp in union_items(et):
+        for tp in flatten_nested_unions([et]):
+            tp = get_proper_type(tp)
             if (
                 isinstance(tp, AnyType)
                 or isinstance(tp, Instance)

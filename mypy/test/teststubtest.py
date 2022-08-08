@@ -1412,13 +1412,14 @@ class StubtestMiscUnit(unittest.TestCase):
             assert output_str == "Success: no issues found in 1 module\n"
 
     def test_get_typeshed_stdlib_modules(self) -> None:
-        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 6))
+        stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 7))
         assert "builtins" in stdlib
         assert "os" in stdlib
         assert "os.path" in stdlib
         assert "asyncio" in stdlib
         assert "graphlib" not in stdlib
         assert "formatter" in stdlib
+        assert "contextvars" in stdlib  # 3.7+
         assert "importlib.metadata" not in stdlib
 
         stdlib = mypy.stubtest.get_typeshed_stdlib_modules(None, (3, 10))

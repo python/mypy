@@ -11,9 +11,21 @@ implementation simple.
 """
 
 import re
-from typing import Callable, Dict, List, Match, Optional, Pattern, Set, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    List,
+    Match,
+    Optional,
+    Pattern,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
-from typing_extensions import TYPE_CHECKING, Final, TypeAlias as _TypeAlias
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 import mypy.errorcodes as codes
 from mypy.errors import Errors

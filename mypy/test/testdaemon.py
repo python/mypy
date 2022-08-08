@@ -88,12 +88,7 @@ def run_cmd(input: str) -> Tuple[int, str]:
     env["PYTHONPATH"] = PREFIX
     try:
         output = subprocess.check_output(
-            input,
-            shell=True,
-            stderr=subprocess.STDOUT,
-            universal_newlines=True,
-            cwd=test_temp_dir,
-            env=env,
+            input, shell=True, stderr=subprocess.STDOUT, text=True, cwd=test_temp_dir, env=env
         )
         return 0, output
     except subprocess.CalledProcessError as err:

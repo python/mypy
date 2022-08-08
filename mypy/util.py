@@ -8,12 +8,7 @@ import re
 import shutil
 import sys
 import time
-
-try:
-    from importlib import resources as importlib_resources  # type: ignore[attr-defined]
-except ImportError:  # <python3.7
-    import importlib_resources  # type: ignore
-
+from importlib import resources as importlib_resources
 from typing import (
     IO,
     Callable,
@@ -25,11 +20,12 @@ from typing import (
     Sequence,
     Sized,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
 
-from typing_extensions import Final, Literal, Type
+from typing_extensions import Final, Literal
 
 try:
     import curses

@@ -1855,9 +1855,7 @@ class TypeConverter:
         elif isinstance(n, NameConstant) and str(n.value) == "None":
             return None
         self.fail(
-            "Expected string literal for argument name, got {}".format(type(n).__name__),
-            self.line,
-            0,
+            f"Expected string literal for argument name, got {type(n).__name__}", self.line, 0
         )
         return None
 

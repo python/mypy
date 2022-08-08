@@ -79,9 +79,7 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
-from typing import Dict, List, Optional, Set, Tuple
-
-from typing_extensions import DefaultDict
+from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from mypy.nodes import (
     GDEF,
@@ -527,9 +525,7 @@ class DependencyVisitor(TraverserVisitor):
                 # global variable.
                 lvalue_type = self.get_non_partial_lvalue_type(lvalue)
                 type_triggers = self.get_type_triggers(lvalue_type)
-                attr_trigger = make_trigger(
-                    "{}.{}".format(self.scope.current_full_target(), lvalue.name)
-                )
+                attr_trigger = make_trigger(f"{self.scope.current_full_target()}.{lvalue.name}")
                 for type_trigger in type_triggers:
                     self.add_dependency(type_trigger, attr_trigger)
         elif isinstance(lvalue, MemberExpr):
@@ -922,7 +918,7 @@ class DependencyVisitor(TraverserVisitor):
             triggers = self.attribute_triggers(typ.item, name)
             if isinstance(typ.item, Instance) and typ.item.type.metaclass_type is not None:
                 triggers.append(
-                    make_trigger("%s.%s" % (typ.item.type.metaclass_type.type.fullname, name))
+                    make_trigger(f"{typ.item.type.metaclass_type.type.fullname}.{name}")
                 )
             return triggers
         else:

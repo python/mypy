@@ -6,9 +6,9 @@ import subprocess
 import sys
 import time
 from gettext import gettext
-from typing import IO, Any, Dict, List, Optional, Sequence, TextIO, Tuple, Union
+from typing import IO, Any, Dict, List, NoReturn, Optional, Sequence, TextIO, Tuple, Union
 
-from typing_extensions import Final, NoReturn
+from typing_extensions import Final
 
 from mypy import build, defaults, state, util
 from mypy.config_parser import get_config_module_names, parse_config_file, parse_version

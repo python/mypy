@@ -21,10 +21,23 @@ import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import typing_extensions
-from typing_extensions import Type, get_origin
+from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
@@ -985,7 +998,7 @@ def verify_paramspecexpr(
         getattr(typing, "ParamSpec", None),
         getattr(typing_extensions, "ParamSpec", None),
     )
-    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    paramspec_types = tuple(t for t in maybe_paramspec_types if t is not None)
     if not paramspec_types or not isinstance(runtime, paramspec_types):
         yield Error(object_path, "is not a ParamSpec", stub, runtime)
         return
@@ -1454,9 +1467,9 @@ def get_typeshed_stdlib_modules(
     stdlib_py_versions = mypy.modulefinder.load_stdlib_py_versions(custom_typeshed_dir)
     if version_info is None:
         version_info = sys.version_info[0:2]
-    # Typeshed's minimum supported Python 3 is Python 3.6
-    if sys.version_info < (3, 6):
-        version_info = (3, 6)
+    # Typeshed's minimum supported Python 3 is Python 3.7
+    if sys.version_info < (3, 7):
+        version_info = (3, 7)
 
     def exists_in_version(module: str) -> bool:
         assert version_info is not None

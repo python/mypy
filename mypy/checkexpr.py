@@ -2,9 +2,21 @@
 
 import itertools
 from contextlib import contextmanager
-from typing import Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union, cast
+from typing import (
+    Callable,
+    ClassVar,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+    cast,
+)
 
-from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias, overload
+from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.checker
 import mypy.errorcodes as codes

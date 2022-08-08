@@ -1,8 +1,8 @@
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 
-from typing_extensions import DefaultDict, TypeAlias as _TypeAlias
+from typing_extensions import TypeAlias as _TypeAlias
 
 from mypy.erasetype import remove_instance_last_known_values
 from mypy.join import join_simple

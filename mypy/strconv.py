@@ -2,9 +2,7 @@
 
 import os
 import re
-from typing import Any, List, Optional, Sequence, Tuple, Union
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple, Union
 
 import mypy.nodes
 from mypy.util import IdMapper, short_type
