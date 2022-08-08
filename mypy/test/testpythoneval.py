@@ -15,7 +15,6 @@ import os.path
 import re
 import subprocess
 import sys
-from subprocess import PIPE
 from tempfile import TemporaryDirectory
 from typing import List
 
