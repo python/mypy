@@ -20,6 +20,7 @@ profile = "black"
 line_length = 99
 combine_as_imports = true
 skip_gitignore = true
+extra_standard_library = ["typing_extensions"]
 skip = [
     "mypy/typeshed",
     "mypyc/test-data",
