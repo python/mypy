@@ -83,8 +83,8 @@ from mypy.types import (
     UnpackType,
     bad_type_type_item,
     callable_with_ellipsis,
+    flatten_nested_unions,
     get_proper_type,
-    union_items,
 )
 from mypy.typetraverser import TypeTraverserVisitor
 
@@ -1739,11 +1739,16 @@ def make_optional_type(t: Type) -> Type:
     is called during semantic analysis and simplification only works during
     type checking.
     """
-    t = get_proper_type(t)
-    if isinstance(t, NoneType):
+    p_t = get_proper_type(t)
+    if isinstance(p_t, NoneType):
         return t
-    elif isinstance(t, UnionType):
-        items = [item for item in union_items(t) if not isinstance(item, NoneType)]
+    elif isinstance(p_t, UnionType):
+        # Eagerly expanding aliases is not safe during semantic analysis.
+        items = [
+            item
+            for item in flatten_nested_unions(p_t.items, handle_type_alias_type=False)
+            if not isinstance(get_proper_type(item), NoneType)
+        ]
         return UnionType(items + [NoneType()], t.line, t.column)
     else:
         return UnionType([t, NoneType()], t.line, t.column)

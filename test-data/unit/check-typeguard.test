@@ -421,7 +421,7 @@ def foobar(items: List[object]):
     c: List[Bar] = [x for x in items if is_foo(x)]  # E: List comprehension has incompatible type List[Foo]; expected List[Bar]
 [builtins fixtures/tuple.pyi]
 
-[case testTypeGuardNestedRestrictionUnionIsInstance-xfail]
+[case testTypeGuardNestedRestrictionUnionIsInstance]
 from typing_extensions import TypeGuard
 from typing import Any, List
 
