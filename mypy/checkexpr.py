@@ -629,7 +629,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         args: List[Expression],
         context: Context,
     ) -> Type:
-        if all([ak in {ARG_NAMED, ARG_STAR2} for ak in arg_kinds]):
+        if all(ak in {ARG_NAMED, ARG_STAR2} for ak in arg_kinds):
             # ex: Point(x=42, y=1337, **other_point)
             item_args = args
             return self.check_typeddict_call_with_kwargs(
@@ -677,11 +677,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         """Check that kwargs is valid set of TypedDict items, contains all required keys of callee, and has no extraneous keys"""
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
-            return (
-                callee.required_keys
-                <= set(dict(validated_kwargs).keys())
-                <= set(callee.items.keys())
-            )
+            return callee.required_keys <= dict(validated_kwargs).keys() <= callee.items.keys()
         else:
             return False
 
