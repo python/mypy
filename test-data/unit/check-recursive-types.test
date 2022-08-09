@@ -482,7 +482,7 @@ class B(Tuple[B, int]):
     x: int
 
 b, _ = x
-reveal_type(b.x)
+reveal_type(b.x)  # N:Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testBasicTupleClassesNewType]
@@ -492,17 +492,18 @@ from typing import Tuple, NamedTuple, NewType
 x: C
 class B(Tuple[B, int]):
     x: int
-C = NewType(B)
+C = NewType("C", B)
 b, _ = x
-reveal_type(b.x)
+reveal_type(b)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.B]"
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
 
-y: BNT
+y: CNT
 class BNT(NamedTuple):
-    x: BNT
+    x: CNT
     y: int
-CNT = NewType(BNT)
+CNT = NewType("CNT", BNT)
 bnt, _ = y
-reveal_type(bnt.y)
+reveal_type(bnt.y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 -- TODO: Add more fine-grained tests for various kinds of recursive types

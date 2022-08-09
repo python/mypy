@@ -93,6 +93,7 @@ class NewTypeAnalyzer:
                 name, old_type, old_type.partial_fallback, s.line
             )
             newtype_class_info.tuple_type = old_type
+            newtype_class_info.tuple_alias = old_type.partial_fallback.type.tuple_alias
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)
