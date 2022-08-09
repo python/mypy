@@ -1238,6 +1238,7 @@ class AssignmentStmt(Statement):
         "new_syntax",
         "is_alias_def",
         "is_final_def",
+        "invalid_recursive_alias",
     )
 
     lvalues: List[Lvalue]
@@ -1258,6 +1259,9 @@ class AssignmentStmt(Statement):
     # a final declaration overrides another final declaration (this is checked
     # during type checking when MROs are known).
     is_final_def: bool
+    # Stop further processing of this assignment, to prevent flipping back and forth
+    # during semantic analysis passes.
+    invalid_recursive_alias: bool
 
     def __init__(
         self,
@@ -1274,6 +1278,7 @@ class AssignmentStmt(Statement):
         self.new_syntax = new_syntax
         self.is_alias_def = False
         self.is_final_def = False
+        self.invalid_recursive_alias = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
