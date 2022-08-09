@@ -3448,6 +3448,30 @@ f(a.x)
 [out]
 ==
 
+[case testNamedTupleUpdate5]
+# flags: --enable-recursive-aliases
+import b
+[file a.py]
+from typing import NamedTuple, Optional
+class N(NamedTuple):
+    r: Optional[N]
+    x: int
+x = N(None, 1)
+[file a.py.2]
+from typing import NamedTuple, Optional
+class N(NamedTuple):
+    r: Optional[N]
+    x: str
+x = N(None, 'hi')
+[file b.py]
+import a
+def f(x: a.N) -> None:
+    pass
+f(a.x)
+[builtins fixtures/tuple.pyi]
+[out]
+==
+
 [case testTypedDictRefresh]
 [builtins fixtures/dict.pyi]
 import a

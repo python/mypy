@@ -475,13 +475,36 @@ if nt.x is not None:
 
 [case testBasicRegularTupleClass]
 # flags: --enable-recursive-aliases
+from typing import Tuple
+
+x: B
+class B(Tuple[B, int]):
+    x: int
+
+b, _ = x
+reveal_type(b.x)
 [builtins fixtures/tuple.pyi]
 
 [case testBasicTupleClassesNewType]
 # flags: --enable-recursive-aliases
-# check both regular and named
+from typing import Tuple, NamedTuple, NewType
+
+x: C
+class B(Tuple[B, int]):
+    x: int
+C = NewType(B)
+b, _ = x
+reveal_type(b.x)
+
+y: BNT
+class BNT(NamedTuple):
+    x: BNT
+    y: int
+CNT = NewType(BNT)
+bnt, _ = y
+reveal_type(bnt.y)
 [builtins fixtures/tuple.pyi]
 
--- Add fine-grained tests
+-- TODO: Add more fine-grained tests for various kinds of recursive types
 
 -- Tests duplicating some named tuple existing tests with recursive aliases enabled
