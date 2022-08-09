@@ -3260,10 +3260,9 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        assert info.tuple_type
         return TypeAlias(
-            info.tuple_type.copy_modified(
-                fallback=mypy.types.Instance(info, [])
-            ),
+            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),
             info.fullname,
             info.line,
             info.column,

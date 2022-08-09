@@ -338,9 +338,7 @@ def lookup_fully_qualified_alias(
     if isinstance(node, TypeAlias):
         return node
     elif isinstance(node, TypeInfo):
-        assert node.tuple_type
-        target = node.tuple_type.copy_modified(fallback=Instance(node, []))
-        alias = TypeAlias(target, node.fullname, node.line, node.column)
+        alias = TypeAlias.from_tuple_type(node)
         node.tuple_alias = alias
         return alias
     else:

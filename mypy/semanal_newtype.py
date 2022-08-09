@@ -89,6 +89,7 @@ class NewTypeAnalyzer:
                 return True
 
         # Create the corresponding class definition if the aliased type is subtypeable
+        assert isinstance(call.analyzed, NewTypeExpr)
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(
                 name, old_type, old_type.partial_fallback, s.line, call.analyzed.info

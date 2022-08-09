@@ -1841,13 +1841,13 @@ class SemanticAnalyzer(
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
         info.tuple_type = base
-        target = base.copy_modified(fallback=Instance(info, []))
+        alias = TypeAlias.from_tuple_type(info)
         if not info.tuple_alias:
-            info.tuple_alias = TypeAlias(target, info.fullname, info.line, info.column)
+            info.tuple_alias = alias
         else:
             if has_placeholder(info.tuple_alias.target):
                 self.defer(force_progress=True)
-            info.tuple_alias.target = target
+            info.tuple_alias.target = alias.target
 
         if base.partial_fallback.type.fullname == "builtins.tuple":
             # Fallback can only be safely calculated after semantic analysis, since base

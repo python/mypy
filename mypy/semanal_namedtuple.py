@@ -480,11 +480,11 @@ class NamedTupleAnalyzer:
         if existing_info:
             old_tuple_type = existing_info.tuple_type
         info.tuple_type = tuple_base
-        target = tuple_base.copy_modified(fallback=Instance(info, []))
+        alias = TypeAlias.from_tuple_type(info)
         if not info.tuple_alias:
-            info.tuple_alias = TypeAlias(target, info.fullname, info.line, info.column)
+            info.tuple_alias = alias
         else:
-            info.tuple_alias.target = target
+            info.tuple_alias.target = alias.target
         info.line = line
         # For use by mypyc.
         info.metadata["namedtuple"] = {"fields": items.copy()}
