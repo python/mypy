@@ -1441,8 +1441,6 @@ class SemanticAnalyzer(
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                if info.tuple_type and has_placeholder(info.tuple_type):
-                    self.defer(force_progress=True)
                 self.prepare_class_def(defn, info)
                 with self.scope.class_scope(defn.info):
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
