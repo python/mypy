@@ -405,13 +405,19 @@ NR = List[int]
 NR2 = Union[NR, NR]
 NR3 = Union[NR, Union[NR2, NR2]]
 
-A = Union[B, int]  # E: Invalid recursive alias: a union item of itself
-B = Union[int, A]  # E: Invalid recursive alias: a union item of itself
-def f() -> A: ...
-reveal_type(f())  # N: Revealed type is "Union[Any, builtins.int]"
-
 T = TypeVar("T")
+NRG = Union[int, T]
+NR4 = NRG[str]
+NR5 = Union[NRG[int], NR4]
+
+A = Union[B, int]  # E: Invalid recursive alias: a union item of itself
+B = Union[int, A]  # Error reported above
+def f() -> A: ...
+reveal_type(f())  # N: Revealed type is "Any"
+
 G = Union[T, G[T]]  # E: Invalid recursive alias: a union item of itself
+GL = Union[T, GL[List[T]]]  # E: Invalid recursive alias: a union item of itself \
+                            # E: Invalid recursive alias: type variable nesting on right hand side
 def g() -> G[int]: ...
 reveal_type(g())  # N: Revealed type is "Any"
 
@@ -425,4 +431,10 @@ S = Type[S]  # E: Type[...] cannot contain another Type[...]
 U = Type[Union[int, U]]  # E: Type[...] cannot contain another Type[...]
 x: U
 reveal_type(x)  # N: Revealed type is "Type[Any]"
+
+D = List[F[List[T]]]  # E: Invalid recursive alias: type variable nesting on right hand side
+F = D[T]  # Error reported above
+E = List[E[E[T]]]  # E: Invalid recursive alias: type variable nesting on right hand side
+d: D
+reveal_type(d)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]

@@ -65,6 +65,7 @@ from mypy.types import (
     RequiredType,
     StarType,
     SyntheticTypeVisitor,
+    TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
     TypeAliasType,
@@ -1611,6 +1612,10 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
         self.scope = scope
         self.include_bound_tvars = include_bound_tvars
         super().__init__(flatten_tvars)
+        # Only include type variables in type aliases args. This would be anyway
+        # that case if we expand (as target variables would be overridden with args)
+        # and it may cause infinite recursion on invalid (diverging) recursive aliases.
+        self.skip_alias_target = True
 
     def _seems_like_callable(self, type: UnboundType) -> bool:
         if not type.args:
@@ -1654,6 +1659,75 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
             return super().visit_callable_type(t)
         else:
             return []
+
+
+class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
+    """See docstring of detect_diverging_alias() for details."""
+
+    # TODO: this doesn't really need to be a translator, but we don't have a trivial visitor.
+    def __init__(
+        self,
+        seen_nodes: Set[TypeAlias],
+        lookup: Callable[[str, Context], Optional[SymbolTableNode]],
+        scope: "TypeVarLikeScope",
+    ) -> None:
+        self.seen_nodes = seen_nodes
+        self.lookup = lookup
+        self.scope = scope
+        self.diverging = False
+
+    def is_alias_tvar(self, t: Type) -> bool:
+        # Generic type aliases use unbound type variables.
+        if not isinstance(t, UnboundType) or t.args:
+            return False
+        node = self.lookup(t.name, t)
+        if (
+            node
+            and isinstance(node.node, TypeVarLikeExpr)
+            and self.scope.get_binding(node) is None
+        ):
+            return True
+        return False
+
+    def visit_type_alias_type(self, t: TypeAliasType) -> Type:
+        assert t.alias is not None, f"Unfixed type alias {t.type_ref}"
+        if t.alias in self.seen_nodes:
+            for arg in t.args:
+                if not self.is_alias_tvar(arg) and bool(
+                    arg.accept(TypeVarLikeQuery(self.lookup, self.scope))
+                ):
+                    self.diverging = True
+                    return t
+            # All clear for this expansion chain.
+            return t
+        new_nodes = self.seen_nodes | {t.alias}
+        visitor = DivergingAliasDetector(new_nodes, self.lookup, self.scope)
+        _ = get_proper_type(t).accept(visitor)
+        if visitor.diverging:
+            self.diverging = True
+        return t
+
+
+def detect_diverging_alias(
+    node: TypeAlias,
+    target: Type,
+    lookup: Callable[[str, Context], Optional[SymbolTableNode]],
+    scope: "TypeVarLikeScope",
+) -> bool:
+    """This detects type aliases that will diverge during type checking.
+
+    For example F = Something[..., F[List[T]]]. At each expansion step this will produce
+    *new* type aliases: e.g. F[List[int]], F[List[List[int]]], etc. So we can't detect
+    recursion. It is a known problem in the literature, recursive aliases and generic types
+    don't always go well together. It looks like there is no known systematic solution yet.
+
+    # TODO: should we handle such aliases using type_recursion counter and some large limit?
+    They may be handy in rare cases, e.g. to express a union of non-mixed nested lists:
+    Nested = Union[T, Nested[List[T]]] ~> Union[T, List[T], List[List[T]], ...]
+    """
+    visitor = DivergingAliasDetector({node}, lookup, scope)
+    _ = target.accept(visitor)
+    return visitor.diverging
 
 
 def check_for_explicit_any(

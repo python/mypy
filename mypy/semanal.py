@@ -232,6 +232,7 @@ from mypy.typeanal import (
     TypeVarLikeQuery,
     analyze_type_alias,
     check_for_explicit_any,
+    detect_diverging_alias,
     fix_instance_types,
     has_any_from_unimported_type,
     no_subscript_builtin_alias,
@@ -263,11 +264,11 @@ from mypy.types import (
     PlaceholderType,
     ProperType,
     StarType,
+    TrivialSyntheticTypeTranslator,
     TupleType,
     Type,
     TypeAliasType,
     TypeOfAny,
-    TypeTranslator,
     TypeType,
     TypeVarLikeType,
     TypeVarType,
@@ -3014,6 +3015,8 @@ class SemanticAnalyzer(
         Note: the resulting types for subscripted (including generic) aliases
         are also stored in rvalue.analyzed.
         """
+        if s.invalid_recursive_alias:
+            return True
         lvalue = s.lvalues[0]
         if len(s.lvalues) > 1 or not isinstance(lvalue, NameExpr):
             # First rule: Only simple assignments like Alias = ... create aliases.
@@ -3107,8 +3110,7 @@ class SemanticAnalyzer(
         check_for_explicit_any(res, self.options, self.is_typeshed_stub_file, self.msg, context=s)
         # When this type alias gets "inlined", the Any is not explicit anymore,
         # so we need to replace it with non-explicit Anys.
-        if not has_placeholder(res):
-            res = make_any_non_explicit(res)
+        res = make_any_non_explicit(res)
         # Note: with the new (lazy) type alias representation we only need to set no_args to True
         # if the expected number of arguments is non-zero, so that aliases like A = List work.
         # However, eagerly expanding aliases like Text = str is a nice performance optimization.
@@ -3127,8 +3129,6 @@ class SemanticAnalyzer(
             no_args=no_args,
             eager=eager,
         )
-        if invalid_recursive_alias({alias_node}, alias_node.target):
-            self.fail("Invalid recursive alias: a union item of itself", rvalue)
         if isinstance(s.rvalue, (IndexExpr, CallExpr)):  # CallExpr is for `void = type(None)`
             s.rvalue.analyzed = TypeAliasExpr(alias_node)
             s.rvalue.analyzed.line = s.line
@@ -3164,7 +3164,27 @@ class SemanticAnalyzer(
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
             alias_node.normalized = rvalue.node.normalized
+        current_node = existing.node if existing else alias_node
+        assert isinstance(current_node, TypeAlias)
+        self.disable_invalid_recursive_aliases(s, current_node)
         return True
+
+    def disable_invalid_recursive_aliases(
+        self, s: AssignmentStmt, current_node: TypeAlias
+    ) -> None:
+        """Prohibit and fix recursive type aliases that are invalid/unsupported."""
+        messages = []
+        if invalid_recursive_alias({current_node}, current_node.target):
+            messages.append("Invalid recursive alias: a union item of itself")
+        if detect_diverging_alias(
+            current_node, current_node.target, self.lookup_qualified, self.tvar_scope
+        ):
+            messages.append("Invalid recursive alias: type variable nesting on right hand side")
+        if messages:
+            current_node.target = AnyType(TypeOfAny.from_error)
+            s.invalid_recursive_alias = True
+        for msg in messages:
+            self.fail(msg, s.rvalue)
 
     def analyze_lvalue(
         self,
@@ -6056,7 +6076,7 @@ def make_any_non_explicit(t: Type) -> Type:
     return t.accept(MakeAnyNonExplicit())
 
 
-class MakeAnyNonExplicit(TypeTranslator):
+class MakeAnyNonExplicit(TrivialSyntheticTypeTranslator):
     def visit_any(self, t: AnyType) -> Type:
         if t.type_of_any == TypeOfAny.explicit:
             return t.copy_modified(TypeOfAny.special_form)
