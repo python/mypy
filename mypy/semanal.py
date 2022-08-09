@@ -1378,17 +1378,7 @@ class SemanticAnalyzer(
             self.mark_incomplete(defn.name, defn)
             return
 
-        is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
-        if is_typeddict:
-            for decorator in defn.decorators:
-                decorator.accept(self)
-                if isinstance(decorator, RefExpr):
-                    if decorator.fullname in FINAL_DECORATOR_NAMES:
-                        self.fail("@final cannot be used with TypedDict", decorator)
-            if info is None:
-                self.mark_incomplete(defn.name, defn)
-            else:
-                self.prepare_class_def(defn, info)
+        if self.analyze_typeddict_classdef(defn):
             return
 
         if self.analyze_namedtuple_classdef(defn):
@@ -1422,6 +1412,28 @@ class SemanticAnalyzer(
         defn.defs.accept(self)
         self.apply_class_plugin_hooks(defn)
         self.leave_class()
+
+    def analyze_typeddict_classdef(self, defn: ClassDef) -> bool:
+        if (
+            defn.info
+            and defn.info.typeddict_type
+            and not has_placeholder(defn.info.typeddict_type)
+        ):
+            # This is a valid TypedDict, and it is fully analyzed.
+            return True
+        is_typeddict, info = self.typed_dict_analyzer.analyze_typeddict_classdef(defn)
+        if is_typeddict:
+            for decorator in defn.decorators:
+                decorator.accept(self)
+                if isinstance(decorator, RefExpr):
+                    if decorator.fullname in FINAL_DECORATOR_NAMES:
+                        self.fail("@final cannot be used with TypedDict", decorator)
+            if info is None:
+                self.mark_incomplete(defn.name, defn)
+            else:
+                self.prepare_class_def(defn, info)
+            return True
+        return False
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
@@ -1841,7 +1853,7 @@ class SemanticAnalyzer(
         if info.tuple_type and info.tuple_type != base:
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        if info.tuple_alias and has_placeholder(info.tuple_alias.target):
+        if info.special_alias and has_placeholder(info.special_alias.target):
             self.defer(force_progress=True)
         info.update_tuple_type(base)
 
@@ -2661,7 +2673,12 @@ class SemanticAnalyzer(
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a typed dict."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, TypedDictExpr):
-            return True  # This is a valid and analyzed typed dict definition, nothing to do here.
+            if s.rvalue.analyzed.info.typeddict_type and not has_placeholder(
+                s.rvalue.analyzed.info.typeddict_type
+            ):
+                return (
+                    True  # This is a valid and analyzed typed dict definition, nothing to do here.
+                )
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
