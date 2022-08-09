@@ -84,7 +84,7 @@ class SemanticAnalyzerCoreInterface:
         raise NotImplementedError
 
     @abstractmethod
-    def defer(self, debug_context: Optional[Context] = ..., force_progress: bool = ...) -> None:
+    def defer(self, debug_context: Optional[Context] = None, force_progress: bool = False) -> None:
         raise NotImplementedError
 
     @abstractmethod
