@@ -66,10 +66,12 @@ from mypyc.namegen import NameGenerator, exported_name
 # The 'shadow_method', if present, contains the method that should be
 # placed in the class's shadow vtable (if it has one).
 
-VTableMethod = NamedTuple(
-    "VTableMethod",
-    [("cls", "ClassIR"), ("name", str), ("method", FuncIR), ("shadow_method", Optional[FuncIR])],
-)
+
+class VTableMethod(NamedTuple):
+    cls: "ClassIR"
+    name: str
+    method: FuncIR
+    shadow_method: Optional[FuncIR]
 
 
 VTableEntries = List[VTableMethod]

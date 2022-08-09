@@ -338,7 +338,7 @@ class Emitter:
                 self.tuple_undefined_check_cond(rtype, attr_expr, self.c_undefined_value, compare)
             )
         else:
-            check = "({} {} {})".format(attr_expr, compare, self.c_undefined_value(rtype))
+            check = f"({attr_expr} {compare} {self.c_undefined_value(rtype)})"
         if unlikely:
             check = f"(unlikely{check})"
         self.emit_line(f"if {check} {{")
@@ -361,7 +361,7 @@ class Emitter:
                 item_type, tuple_expr_in_c + ".f0", c_type_compare_val, compare
             )
         else:
-            return "{}.f0 {} {}".format(tuple_expr_in_c, compare, c_type_compare_val(item_type))
+            return f"{tuple_expr_in_c}.f0 {compare} {c_type_compare_val(item_type)}"
 
     def tuple_undefined_value(self, rtuple: RTuple) -> str:
         return "tuple_undefined_" + rtuple.unique_id
@@ -629,7 +629,7 @@ class Emitter:
                 )
                 self.emit_line("goto %s;" % error.label)
                 return
-            self.emit_line('CPy_TypeError("{}", {}); '.format(self.pretty_name(typ), src))
+            self.emit_line(f'CPy_TypeError("{self.pretty_name(typ)}", {src}); ')
         if isinstance(error, AssignHandler):
             self.emit_line("%s = NULL;" % dest)
         elif isinstance(error, GotoHandler):
@@ -811,8 +811,8 @@ class Emitter:
         elif is_int32_rprimitive(typ):
             # Whether we are borrowing or not makes no difference.
             if declare_dest:
-                self.emit_line("int32_t {};".format(dest))
-            self.emit_line("{} = CPyLong_AsInt32({});".format(dest, src))
+                self.emit_line(f"int32_t {dest};")
+            self.emit_line(f"{dest} = CPyLong_AsInt32({src});")
             # TODO: Handle 'optional'
             # TODO: Handle 'failure'
         elif isinstance(typ, RTuple):

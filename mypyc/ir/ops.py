@@ -10,8 +10,19 @@ value has a type (RType). A value can hold various things, such as:
 """
 
 from abc import abstractmethod
-from typing import Dict, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
-from typing_extensions import TYPE_CHECKING, Final
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generic,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from typing_extensions import Final
 
 from mypy_extensions import trait
 
@@ -1453,6 +1464,6 @@ class OpVisitor(Generic[T]):
 #
 # (Serialization and deserialization *will* be used for incremental
 # compilation but so far it is not hooked up to anything.)
-DeserMaps = NamedTuple(
-    "DeserMaps", [("classes", Dict[str, "ClassIR"]), ("functions", Dict[str, "FuncIR"])]
-)
+class DeserMaps(NamedTuple):
+    classes: Dict[str, "ClassIR"]
+    functions: Dict[str, "FuncIR"]

@@ -23,8 +23,20 @@ import os.path
 import re
 import sys
 import time
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
-from typing_extensions import TYPE_CHECKING, NoReturn, Type
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    NoReturn,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 from mypy.build import BuildSource
 from mypy.errors import CompileError
@@ -222,7 +234,7 @@ def generate_c(
 
     # ... you know, just in case.
     if options.junit_xml:
-        py_version = "{}_{}".format(options.python_version[0], options.python_version[1])
+        py_version = f"{options.python_version[0]}_{options.python_version[1]}"
         write_junit_xml(
             t2 - t0, serious, messages, options.junit_xml, py_version, options.platform
         )

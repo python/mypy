@@ -911,7 +911,7 @@ class GroupGenerator:
             "    goto fail;",
         )
         emitter.emit_line(
-            'modname = PyObject_GetAttrString((PyObject *){}, "__name__");'.format(module_static)
+            f'modname = PyObject_GetAttrString((PyObject *){module_static}, "__name__");'
         )
 
         module_globals = emitter.static_name("globals", module_name)
