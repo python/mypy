@@ -3258,6 +3258,17 @@ class TypeAlias(SymbolNode):
         self.eager = eager
         super().__init__(line, column)
 
+    @classmethod
+    def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        return TypeAlias(
+            info.tuple_type.copy_modified(
+                fallback=mypy.types.Instance(info, [])
+            ),
+            info.fullname,
+            info.line,
+            info.column,
+        )
+
     @property
     def name(self) -> str:
         return self._fullname.split(".")[-1]

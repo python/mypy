@@ -482,7 +482,7 @@ class B(Tuple[B, int]):
     x: int
 
 b, _ = x
-reveal_type(b.x)  # N:Revealed type is "builtins.int"
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
 [builtins fixtures/tuple.pyi]
 
 [case testBasicTupleClassesNewType]

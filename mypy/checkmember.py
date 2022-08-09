@@ -563,6 +563,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
     instance_type = get_proper_type(mx.original_type)
+    orig_descriptor_type = descriptor_type
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
@@ -571,10 +572,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
             [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
         )
     elif not isinstance(descriptor_type, Instance):
-        return descriptor_type
+        return orig_descriptor_type
 
     if not descriptor_type.type.has_readable_member("__get__"):
-        return descriptor_type
+        return orig_descriptor_type
 
     dunder_get = descriptor_type.type.get_method("__get__")
     if dunder_get is None:
