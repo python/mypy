@@ -108,6 +108,10 @@ class SemanticAnalyzerCoreInterface:
     def is_stub_file(self) -> bool:
         raise NotImplementedError
 
+    @abstractmethod
+    def is_func_scope(self) -> bool:
+        raise NotImplementedError
+
 
 @trait
 class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
@@ -209,10 +213,6 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
     @property
     @abstractmethod
     def is_typeshed_stub_file(self) -> bool:
-        raise NotImplementedError
-
-    @abstractmethod
-    def is_func_scope(self) -> bool:
         raise NotImplementedError
 
 

@@ -24,7 +24,6 @@ from mypy.nodes import (
     RefExpr,
     StrExpr,
     SymbolTableNode,
-    TypeAlias,
     TypeInfo,
     Var,
 )
@@ -94,12 +93,7 @@ class NewTypeAnalyzer:
             newtype_class_info = self.build_newtype_typeinfo(
                 name, old_type, old_type.partial_fallback, s.line, call.analyzed.info
             )
-            newtype_class_info.tuple_type = old_type
-            alias = TypeAlias.from_tuple_type(newtype_class_info)
-            if not newtype_class_info.tuple_alias:
-                newtype_class_info.tuple_alias = alias
-            else:
-                newtype_class_info.tuple_alias.target = alias.target
+            newtype_class_info.update_tuple_type(old_type)
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)

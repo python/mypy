@@ -2970,6 +2970,15 @@ class TypeInfo(SymbolNode):
         """
         return [base.type for base in self.bases]
 
+    def update_tuple_type(self, typ: "mypy.types.TupleType") -> None:
+        """Update tuple_type and tuple_alias as needed."""
+        self.tuple_type = typ
+        alias = TypeAlias.from_tuple_type(self)
+        if not self.tuple_alias:
+            self.tuple_alias = alias
+        else:
+            self.tuple_alias.target = alias.target
+
     def __str__(self) -> str:
         """Return a string representation of the type.
 
@@ -3260,6 +3269,7 @@ class TypeAlias(SymbolNode):
 
     @classmethod
     def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the tuple type described by a given TypeInfo."""
         assert info.tuple_type
         return TypeAlias(
             info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),

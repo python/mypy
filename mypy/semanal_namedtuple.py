@@ -35,7 +35,6 @@ from mypy.nodes import (
     SymbolTableNode,
     TempNode,
     TupleExpr,
-    TypeAlias,
     TypeInfo,
     TypeVarExpr,
     Var,
@@ -52,7 +51,6 @@ from mypy.types import (
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
-    Instance,
     LiteralType,
     TupleType,
     Type,
@@ -170,6 +168,9 @@ class NamedTupleAnalyzer:
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
+                    # We never allow recursive types at function scope. Although it is
+                    # possible to support this for named tuples, it is still tricky, and
+                    # it would be inconsistent with type aliases.
                     analyzed = self.api.anal_type(
                         stmt.type,
                         allow_placeholder=self.options.enable_recursive_aliases
@@ -428,6 +429,7 @@ class NamedTupleAnalyzer:
                 except TypeTranslationError:
                     self.fail("Invalid field type", type_node)
                     return None
+                # We never allow recursive types at function scope.
                 analyzed = self.api.anal_type(
                     type,
                     allow_placeholder=self.options.enable_recursive_aliases
@@ -476,21 +478,12 @@ class NamedTupleAnalyzer:
         info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
         info.is_named_tuple = True
         tuple_base = TupleType(types, fallback)
-        old_tuple_type = None
-        if existing_info:
-            old_tuple_type = existing_info.tuple_type
-        info.tuple_type = tuple_base
-        alias = TypeAlias.from_tuple_type(info)
-        if not info.tuple_alias:
-            info.tuple_alias = alias
-        else:
-            info.tuple_alias.target = alias.target
+        if info.tuple_alias and has_placeholder(info.tuple_alias.target):
+            self.api.defer(force_progress=True)
+        info.update_tuple_type(tuple_base)
         info.line = line
         # For use by mypyc.
         info.metadata["namedtuple"] = {"fields": items.copy()}
-
-        if old_tuple_type and has_placeholder(old_tuple_type):
-            self.api.defer(force_progress=True)
 
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
@@ -528,6 +521,7 @@ class NamedTupleAnalyzer:
         if self.options.python_version >= (3, 10):
             add_field(Var("__match_args__", match_args_type), is_initialized_in_class=True)
 
+        assert info.tuple_type is not None  # Set by update_tuple_type() above.
         tvd = TypeVarType(
             SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], info.tuple_type
         )
