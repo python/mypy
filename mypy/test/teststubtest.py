@@ -708,6 +708,90 @@ class StubtestUnit(unittest.TestCase):
         )
 
     @collect_cases
+    def test_class_var(self) -> Iterator[Case]:
+        # Regular classes
+        yield Case(stub="class Z: ...", runtime="class Z: ...", error=None)
+        yield Case(
+            stub="""
+            class A1:
+                a: type[Z]
+            """,
+            runtime="""
+            class A1:
+                a = Z
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class A2:
+                a: type[Z]
+            """,
+            runtime="""
+            class A2:
+                a = int
+            """,
+            error="A2.a",
+        )
+
+        # Now, with metaclasses:
+        yield Case(
+            stub="""
+            class Meta(type): ...
+            class Y(metaclass=Meta): ...
+            """,
+            runtime="""
+            class Meta(type): ...
+            class Y(metaclass=Meta): ...
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class B1:
+                a: type[Y]
+            """,
+            runtime="""
+            class B1:
+                a = Y
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class B2:
+                a: type[Y]
+            """,
+            runtime="""
+            class B2:
+                a = int
+            """,
+            error="B2.a",
+        )
+        yield Case(
+            stub="""
+            class B3:
+                a: Meta
+            """,
+            runtime="""
+            class B3:
+                a = Y
+            """,
+            error=None,
+        )
+        yield Case(
+            stub="""
+            class B4:
+                a: Meta
+            """,
+            runtime="""
+            class B4:
+                a = int
+            """,
+            error="B4.a",
+        )
+
+    @collect_cases
     def test_type_alias(self) -> Iterator[Case]:
         yield Case(
             stub="""

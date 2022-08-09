@@ -1353,10 +1353,15 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
         )
 
     # Try and look up a stub for the runtime object
-    stub = get_stub(type(runtime).__module__)
+    if isinstance(runtime, type):
+        runtime_type = runtime  # This might be a class
+    else:
+        runtime_type = type(runtime)  # Or an instance
+
+    stub = get_stub(runtime_type.__module__)
     if stub is None:
         return None
-    type_name = type(runtime).__name__
+    type_name = runtime_type.__name__
     if type_name not in stub.names:
         return None
     type_info = stub.names[type_name].node
@@ -1382,6 +1387,8 @@ def get_mypy_type_of_runtime_value(runtime: Any) -> Optional[mypy.types.Type]:
     elif isinstance(runtime, (bool, int, str)):
         value = runtime
     else:
+        if isinstance(runtime, type):
+            return mypy.types.TypeType(fallback)
         return fallback
 
     return mypy.types.LiteralType(value=value, fallback=fallback)
