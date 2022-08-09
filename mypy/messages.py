@@ -2292,6 +2292,11 @@ class CollectAllInstancesQuery(TypeTraverserVisitor):
         self.instances.append(t)
         super().visit_instance(t)
 
+    def visit_type_alias_type(self, t: TypeAliasType) -> None:
+        if t.alias and not t.is_recursive:
+            t.alias.target.accept(self)
+        super().visit_type_alias_type(t)
+
 
 def find_type_overlaps(*types: Type) -> Set[str]:
     """Return a set of fullnames that share a short name and appear in either type.

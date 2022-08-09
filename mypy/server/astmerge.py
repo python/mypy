@@ -364,6 +364,8 @@ class NodeReplaceVisitor(TraverserVisitor):
             self.fixup_type(target)
         self.fixup_type(info.tuple_type)
         self.fixup_type(info.typeddict_type)
+        if info.tuple_alias:
+            self.fixup_type(info.tuple_alias.target)
         info.defn.info = self.fixup(info)
         replace_nodes_in_symbol_table(info.names, self.replacements)
         for i, item in enumerate(info.mro):

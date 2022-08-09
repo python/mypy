@@ -2651,6 +2651,7 @@ class TypeInfo(SymbolNode):
         "bases",
         "_promote",
         "tuple_type",
+        "tuple_alias",
         "is_named_tuple",
         "typeddict_type",
         "is_newtype",
@@ -2789,6 +2790,9 @@ class TypeInfo(SymbolNode):
     # It is useful for plugins to add their data to save in the cache.
     metadata: Dict[str, JsonDict]
 
+    # Store type alias representing this type (for named tuples).
+    tuple_alias: Optional["TypeAlias"]
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -2835,6 +2839,7 @@ class TypeInfo(SymbolNode):
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
+        self.tuple_alias = None
         self.is_named_tuple = False
         self.typeddict_type = None
         self.is_newtype = False
