@@ -5522,6 +5522,11 @@ class SemanticAnalyzer(
         """
         assert not self.final_iteration, "Must not defer during final iteration"
         if force_progress:
+            # Usually, we report progress if we have replaced a placeholder node
+            # with an actual valid node. However, sometimes we need to update an
+            # existing node *in-place*. For example, this is used by type aliases
+            # in context of forward references and/or recursive aliases, and in
+            # similar situations (recursive named tuples etc).
             self.progress = True
         self.deferred = True
         # Store debug info for this deferral.
