@@ -5740,3 +5740,112 @@ class C:
         nt2: NT2 = NT2(x=1)
 
 [builtins fixtures/tuple.pyi]
+
+[case testNamedTupleUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import NamedTuple, Optional
+class N(NamedTuple):
+    r: Optional[M]
+    x: int
+n: N
+[file b.py]
+from a import N
+from typing import NamedTuple
+class M(NamedTuple):
+    r: None
+    x: int
+[file b.py.2]
+from a import N
+from typing import NamedTuple, Optional
+class M(NamedTuple):
+    r: Optional[N]
+    x: int
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x.r is not None:
+        s: int = x.r.x
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x.r is not None and x.r.r is not None and x.r.r.r is not None:
+        reveal_type(x)
+        s: int = x.r.r.r.r
+f(a.n)
+reveal_type(a.n)
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+
+[case testTupleTypeUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import Tuple, Optional
+class N(Tuple[Optional[M], int]): ...
+[file b.py]
+from a import N
+from typing import Tuple
+class M(Tuple[None, int]): ...
+[file b.py.2]
+from a import N
+from typing import Tuple, Optional
+class M(Tuple[Optional[N], int]): ...
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None:
+        s: int = x[0][1]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None and x[0][0] is not None and x[0][0][0] is not None:
+        reveal_type(x)
+        s: int = x[0][0][0][0]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+
+[case testTypeAliasUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import Tuple, Optional
+N = Tuple[Optional[M], int]
+[file b.py]
+from a import N
+from typing import Tuple
+M = Tuple[None, int]
+[file b.py.2]
+from a import N
+from typing import Tuple, Optional
+M = Tuple[Optional[N], int]
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None:
+        s: int = x[0][1]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x[0] is not None and x[0][0] is not None and x[0][0][0] is not None:
+        reveal_type(x)
+        s: int = x[0][0][0][0]
+[builtins fixtures/tuple.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")

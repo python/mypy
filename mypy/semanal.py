@@ -221,11 +221,11 @@ from mypy.semanal_shared import (
     PRIORITY_FALLBACKS,
     SemanticAnalyzerInterface,
     calculate_tuple_fallback,
+    has_placeholder,
     set_callable_name as set_callable_name,
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
-from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser,
     TypeVarLikeList,
@@ -1425,7 +1425,12 @@ class SemanticAnalyzer(
 
     def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
         """Check if this class can define a named tuple."""
-        if defn.info and defn.info.is_named_tuple:
+        if (
+            defn.info
+            and defn.info.is_named_tuple
+            and defn.info.tuple_type
+            and not has_placeholder(defn.info.tuple_type)
+        ):
             # Don't reprocess everything. We just need to process methods defined
             # in the named tuple class body.
             is_named_tuple, info = True, defn.info  # type: bool, Optional[TypeInfo]
@@ -1782,10 +1787,9 @@ class SemanticAnalyzer(
         base_types: List[Instance] = []
         info = defn.info
 
-        info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
-                actual_base = self.configure_tuple_base_class(defn, base, base_expr)
+                actual_base = self.configure_tuple_base_class(defn, base)
                 base_types.append(actual_base)
             elif isinstance(base, Instance):
                 if base.type.is_newtype:
@@ -1828,23 +1832,19 @@ class SemanticAnalyzer(
             return
         self.calculate_class_mro(defn, self.object_type)
 
-    def configure_tuple_base_class(
-        self, defn: ClassDef, base: TupleType, base_expr: Expression
-    ) -> Instance:
+    def configure_tuple_base_class(self, defn: ClassDef, base: TupleType) -> Instance:
         info = defn.info
 
         # There may be an existing valid tuple type from previous semanal iterations.
         # Use equality to check if it is the case.
-        if info.tuple_type and info.tuple_type != base:
+        if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
-        info.tuple_type = base
-        if isinstance(base_expr, CallExpr):
-            defn.analyzed = NamedTupleExpr(base.partial_fallback.type)
-            defn.analyzed.line = defn.line
-            defn.analyzed.column = defn.column
+        if info.tuple_alias and has_placeholder(info.tuple_alias.target):
+            self.defer(force_progress=True)
+        info.update_tuple_type(base)
 
-        if base.partial_fallback.type.fullname == "builtins.tuple":
+        if base.partial_fallback.type.fullname == "builtins.tuple" and not has_placeholder(base):
             # Fallback can only be safely calculated after semantic analysis, since base
             # classes may be incomplete. Postpone the calculation.
             self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))
@@ -2627,7 +2627,10 @@ class SemanticAnalyzer(
     def analyze_namedtuple_assign(self, s: AssignmentStmt) -> bool:
         """Check if s defines a namedtuple."""
         if isinstance(s.rvalue, CallExpr) and isinstance(s.rvalue.analyzed, NamedTupleExpr):
-            return True  # This is a valid and analyzed named tuple definition, nothing to do here.
+            if s.rvalue.analyzed.info.tuple_type and not has_placeholder(
+                s.rvalue.analyzed.info.tuple_type
+            ):
+                return True  # This is a valid and analyzed named tuple definition, nothing to do here.
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]
@@ -3028,6 +3031,9 @@ class SemanticAnalyzer(
             # unless using PEP 613 `cls: TypeAlias = A`
             return False
 
+        if isinstance(s.rvalue, CallExpr) and s.rvalue.analyzed:
+            return False
+
         existing = self.current_symbol_table().get(lvalue.name)
         # Third rule: type aliases can't be re-defined. For example:
         #     A: Type[float] = int
@@ -3157,9 +3163,8 @@ class SemanticAnalyzer(
                     self.cannot_resolve_name(lvalue.name, "name", s)
                     return True
                 else:
-                    self.progress = True
                     # We need to defer so that this change can get propagated to base classes.
-                    self.defer(s)
+                    self.defer(s, force_progress=True)
         else:
             self.add_symbol(lvalue.name, alias_node, s)
         if isinstance(rvalue, RefExpr) and isinstance(rvalue.node, TypeAlias):
@@ -5484,7 +5489,7 @@ class SemanticAnalyzer(
         yield
         self.tvar_scope = old_scope
 
-    def defer(self, debug_context: Optional[Context] = None) -> None:
+    def defer(self, debug_context: Optional[Context] = None, force_progress: bool = False) -> None:
         """Defer current analysis target to be analyzed again.
 
         This must be called if something in the current target is
@@ -5498,6 +5503,8 @@ class SemanticAnalyzer(
               They are usually preferable to a direct defer() call.
         """
         assert not self.final_iteration, "Must not defer during final iteration"
+        if force_progress:
+            self.progress = True
         self.deferred = True
         # Store debug info for this deferral.
         line = (
@@ -5997,19 +6004,6 @@ class SemanticAnalyzer(
 
     def is_future_flag_set(self, flag: str) -> bool:
         return self.modules[self.cur_mod_id].is_future_flag_set(flag)
-
-
-class HasPlaceholders(TypeQuery[bool]):
-    def __init__(self) -> None:
-        super().__init__(any)
-
-    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
-        return True
-
-
-def has_placeholder(typ: Type) -> bool:
-    """Check if a type contains any placeholder types (recursively)."""
-    return typ.accept(HasPlaceholders())
 
 
 def replace_implicit_first_type(sig: FunctionLike, new: Type) -> FunctionLike:

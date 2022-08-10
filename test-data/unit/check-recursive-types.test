@@ -90,7 +90,7 @@ else:
 A = int | list[A]
 [builtins fixtures/isinstancelist.pyi]
 
--- Tests duplicating some existing tests with recursive aliases enabled
+-- Tests duplicating some existing type alias tests with recursive aliases enabled
 
 [case testRecursiveAliasesMutual]
 # flags: --enable-recursive-aliases
@@ -438,3 +438,175 @@ E = List[E[E[T]]]  # E: Invalid recursive alias: type variable nesting on right 
 d: D
 reveal_type(d)  # N: Revealed type is "Any"
 [builtins fixtures/isinstancelist.pyi]
+
+[case testBasicRecursiveNamedTuple]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, Optional
+
+NT = NamedTuple("NT", [("x", Optional[NT]), ("y", int)])
+nt: NT
+reveal_type(nt)  # N: Revealed type is "Tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt[0])  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+y: str
+if nt.x is not None:
+    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
+[builtins fixtures/tuple.pyi]
+
+[case testBasicRecursiveNamedTupleSpecial]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, TypeVar, Tuple
+
+NT = NamedTuple("NT", [("x", NT), ("y", int)])
+nt: NT
+reveal_type(nt)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "Tuple[Tuple[..., builtins.int, fallback=__main__.NT], builtins.int, fallback=__main__.NT]"
+reveal_type(nt[0])  # N: Revealed type is "Tuple[Tuple[..., builtins.int, fallback=__main__.NT], builtins.int, fallback=__main__.NT]"
+y: str
+if nt.x is not None:
+    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "NT", variable has type "str")
+
+T = TypeVar("T")
+def f(a: T, b: T) -> T: ...
+tnt: Tuple[NT]
+
+# TODO: these should be tuple[object] instead.
+reveal_type(f(nt, tnt))  # N: Revealed type is "builtins.tuple[Any, ...]"
+reveal_type(f(tnt, nt))  # N: Revealed type is "builtins.tuple[Any, ...]"
+[builtins fixtures/tuple.pyi]
+
+[case testBasicRecursiveNamedTupleClass]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, Optional
+
+class NT(NamedTuple):
+    x: Optional[NT]
+    y: int
+
+nt: NT
+reveal_type(nt)  # N: Revealed type is "Tuple[Union[..., None], builtins.int, fallback=__main__.NT]"
+reveal_type(nt.x)  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+reveal_type(nt[0])  # N: Revealed type is "Union[Tuple[Union[..., None], builtins.int, fallback=__main__.NT], None]"
+y: str
+if nt.x is not None:
+    y = nt.x[0]  # E: Incompatible types in assignment (expression has type "Optional[NT]", variable has type "str")
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveRegularTupleClass]
+# flags: --enable-recursive-aliases
+from typing import Tuple
+
+x: B
+class B(Tuple[B, int]):
+    x: int
+
+b, _ = x
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+[case testRecursiveTupleClassesNewType]
+# flags: --enable-recursive-aliases
+from typing import Tuple, NamedTuple, NewType
+
+x: C
+class B(Tuple[B, int]):
+    x: int
+C = NewType("C", B)
+b, _ = x
+reveal_type(b)  # N: Revealed type is "Tuple[..., builtins.int, fallback=__main__.B]"
+reveal_type(b.x)  # N: Revealed type is "builtins.int"
+
+y: CNT
+class BNT(NamedTuple):
+    x: CNT
+    y: int
+CNT = NewType("CNT", BNT)
+bnt, _ = y
+reveal_type(bnt.y)  # N: Revealed type is "builtins.int"
+[builtins fixtures/tuple.pyi]
+
+-- Tests duplicating some existing named tuple tests with recursive aliases enabled
+
+[case testMutuallyRecursiveNamedTuples]
+# flags: --enable-recursive-aliases
+from typing import Tuple, NamedTuple, TypeVar, Union
+
+A = NamedTuple('A', [('x', str), ('y', Tuple[B, ...])])
+class B(NamedTuple):
+    x: A
+    y: int
+
+n: A
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, builtins.tuple[Tuple[..., builtins.int, fallback=__main__.B], ...], fallback=__main__.A]"
+
+T = TypeVar("T")
+S = TypeVar("S")
+def foo(arg: Tuple[T, S]) -> Union[T, S]: ...
+x = foo(n)
+y: str = x  # E: Incompatible types in assignment (expression has type "Union[str, Tuple[B, ...]]", variable has type "str")
+[builtins fixtures/tuple.pyi]
+
+[case testMutuallyRecursiveNamedTuplesJoin]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, Tuple
+
+class B(NamedTuple):
+    x: Tuple[A, int]
+    y: int
+
+A = NamedTuple('A', [('x', str), ('y', B)])
+n: B
+m: A
+s: str = n.x  # E: Incompatible types in assignment (expression has type "Tuple[A, int]", variable has type "str")
+reveal_type(m[0]) # N: Revealed type is "builtins.str"
+lst = [m, n]
+reveal_type(lst[0]) # N: Revealed type is "Tuple[builtins.object, builtins.object]"
+[builtins fixtures/tuple.pyi]
+
+[case testMutuallyRecursiveNamedTuplesClasses]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, Tuple
+
+class B(NamedTuple):
+    x: A
+    y: int
+class A(NamedTuple):
+    x: str
+    y: B
+
+n: A
+s: str = n.y[0]  # E: Incompatible types in assignment (expression has type "A", variable has type "str")
+
+m: B
+n = m.x
+n = n.y.x
+
+t: Tuple[str, B]
+t = n
+t = m  # E: Incompatible types in assignment (expression has type "B", variable has type "Tuple[str, B]")
+[builtins fixtures/tuple.pyi]
+
+[case testMutuallyRecursiveNamedTuplesCalls]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple
+
+B = NamedTuple('B', [('x', A), ('y', int)])
+A = NamedTuple('A', [('x', str), ('y', 'B')])
+n: A
+def f(m: B) -> None: pass
+reveal_type(n) # N: Revealed type is "Tuple[builtins.str, Tuple[..., builtins.int, fallback=__main__.B], fallback=__main__.A]"
+reveal_type(f) # N: Revealed type is "def (m: Tuple[Tuple[builtins.str, ..., fallback=__main__.A], builtins.int, fallback=__main__.B])"
+f(n)  # E: Argument 1 to "f" has incompatible type "A"; expected "B"
+[builtins fixtures/tuple.pyi]
+
+[case testNoRecursiveTuplesAtFunctionScope]
+# flags: --enable-recursive-aliases
+from typing import NamedTuple, Tuple
+def foo() -> None:
+    class B(NamedTuple):
+        x: B  # E: Cannot resolve name "B" (possible cyclic definition) \
+              # N: Recursive types are not allowed at function scope
+        y: int
+    b: B
+    reveal_type(b)  # N: Revealed type is "Tuple[Any, builtins.int, fallback=__main__.B@4]"
+[builtins fixtures/tuple.pyi]

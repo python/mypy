@@ -75,6 +75,7 @@ class NodeFixer(NodeVisitor[None]):
                     p.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
+                info.update_tuple_type(info.tuple_type)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
             if info.declared_metaclass:
@@ -337,6 +338,12 @@ def lookup_fully_qualified_alias(
     node = stnode.node if stnode else None
     if isinstance(node, TypeAlias):
         return node
+    elif isinstance(node, TypeInfo):
+        if node.tuple_alias:
+            return node.tuple_alias
+        alias = TypeAlias.from_tuple_type(node)
+        node.tuple_alias = alias
+        return alias
     else:
         # Looks like a missing TypeAlias during an initial daemon load, put something there
         assert (

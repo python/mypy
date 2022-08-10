@@ -2656,6 +2656,7 @@ class TypeInfo(SymbolNode):
         "bases",
         "_promote",
         "tuple_type",
+        "tuple_alias",
         "is_named_tuple",
         "typeddict_type",
         "is_newtype",
@@ -2794,6 +2795,9 @@ class TypeInfo(SymbolNode):
     # It is useful for plugins to add their data to save in the cache.
     metadata: Dict[str, JsonDict]
 
+    # Store type alias representing this type (for named tuples).
+    tuple_alias: Optional["TypeAlias"]
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -2840,6 +2844,7 @@ class TypeInfo(SymbolNode):
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
+        self.tuple_alias = None
         self.is_named_tuple = False
         self.typeddict_type = None
         self.is_newtype = False
@@ -2969,6 +2974,15 @@ class TypeInfo(SymbolNode):
         Omit base classes of other base classes.
         """
         return [base.type for base in self.bases]
+
+    def update_tuple_type(self, typ: "mypy.types.TupleType") -> None:
+        """Update tuple_type and tuple_alias as needed."""
+        self.tuple_type = typ
+        alias = TypeAlias.from_tuple_type(self)
+        if not self.tuple_alias:
+            self.tuple_alias = alias
+        else:
+            self.tuple_alias.target = alias.target
 
     def __str__(self) -> str:
         """Return a string representation of the type.
@@ -3257,6 +3271,17 @@ class TypeAlias(SymbolNode):
         self._is_recursive: Optional[bool] = None
         self.eager = eager
         super().__init__(line, column)
+
+    @classmethod
+    def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the tuple type described by a given TypeInfo."""
+        assert info.tuple_type
+        return TypeAlias(
+            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.fullname,
+            info.line,
+            info.column,
+        )
 
     @property
     def name(self) -> str:

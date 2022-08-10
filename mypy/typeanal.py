@@ -394,6 +394,8 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         #       need access to MessageBuilder here. Also move the similar
         #       message generation logic in semanal.py.
         self.api.fail(f'Cannot resolve name "{t.name}" (possible cyclic definition)', t)
+        if self.options.enable_recursive_aliases and self.api.is_func_scope():
+            self.note("Recursive types are not allowed at function scope", t)
 
     def apply_concatenate_operator(self, t: UnboundType) -> Type:
         if len(t.args) == 0:
@@ -611,6 +613,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if args:
                 self.fail("Generic tuple types not supported", ctx)
                 return AnyType(TypeOfAny.from_error)
+            if info.tuple_alias:
+                # We don't support generic tuple types yet.
+                return TypeAliasType(info.tuple_alias, [])
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:
