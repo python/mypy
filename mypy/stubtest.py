@@ -840,6 +840,18 @@ def verify_funcitem(
         if not callable(runtime):
             return
 
+    if isinstance(stub, nodes.FuncDef):
+        stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
+        runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
+        # The opposite can exist: some implementations omit `@abstractmethod` decorators
+        if runtime_abstract and not stub_abstract:
+            yield Error(
+                object_path,
+                "is inconsistent, runtime method is abstract but stub is not",
+                stub,
+                runtime,
+            )
+
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
