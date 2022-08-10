@@ -610,5 +610,3 @@ def foo() -> None:
     b: B
     reveal_type(b)  # N: Revealed type is "Tuple[Any, builtins.int, fallback=__main__.B@4]"
 [builtins fixtures/tuple.pyi]
-
--- TODO: Add more fine-grained tests for various kinds of recursive types

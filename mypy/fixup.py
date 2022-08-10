@@ -75,6 +75,7 @@ class NodeFixer(NodeVisitor[None]):
                     p.accept(self.type_fixer)
             if info.tuple_type:
                 info.tuple_type.accept(self.type_fixer)
+                info.update_tuple_type(info.tuple_type)
             if info.typeddict_type:
                 info.typeddict_type.accept(self.type_fixer)
             if info.declared_metaclass:

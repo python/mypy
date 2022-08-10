@@ -349,6 +349,9 @@ class NodeReplaceVisitor(TraverserVisitor):
             # old MRO.
             new = cast(TypeInfo, self.replacements[node])
             TypeState.reset_all_subtype_caches_for(new)
+            # Special case: tuple_alias is not exposed in symbol tables, but may appear
+            # in external types (e.g. named tuples), so we need to update it manually.
+            replace_object_state(new.tuple_alias, node.tuple_alias)
         return self.fixup(node)
 
     def fixup_type(self, typ: Optional[Type]) -> None:
