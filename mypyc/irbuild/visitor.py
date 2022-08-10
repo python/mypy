@@ -3,7 +3,7 @@
 mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
-from typing_extensions import NoReturn
+from typing import NoReturn
 
 from mypy.nodes import (
     AssertStmt,

@@ -45,7 +45,6 @@ from mypyc.ir.rtypes import RType
 # is only used for primitives. We translate it away during IR building.
 ERR_NEG_INT: Final = 10
 
-
 CFunctionDescription = NamedTuple(
     "CFunctionDescription",
     [

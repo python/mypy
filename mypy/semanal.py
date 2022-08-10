@@ -1799,7 +1799,6 @@ class SemanticAnalyzer(
         base_types: List[Instance] = []
         info = defn.info
 
-        info.tuple_type = None
         for base, base_expr in bases:
             if isinstance(base, TupleType):
                 actual_base = self.configure_tuple_base_class(defn, base)
@@ -1850,14 +1849,14 @@ class SemanticAnalyzer(
 
         # There may be an existing valid tuple type from previous semanal iterations.
         # Use equality to check if it is the case.
-        if info.tuple_type and info.tuple_type != base:
+        if info.tuple_type and info.tuple_type != base and not has_placeholder(info.tuple_type):
             self.fail("Class has two incompatible bases derived from tuple", defn)
             defn.has_incompatible_baseclass = True
         if info.special_alias and has_placeholder(info.special_alias.target):
             self.defer(force_progress=True)
         info.update_tuple_type(base)
 
-        if base.partial_fallback.type.fullname == "builtins.tuple":
+        if base.partial_fallback.type.fullname == "builtins.tuple" and not has_placeholder(base):
             # Fallback can only be safely calculated after semantic analysis, since base
             # classes may be incomplete. Postpone the calculation.
             self.schedule_patch(PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(base))

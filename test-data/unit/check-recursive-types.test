@@ -470,7 +470,7 @@ T = TypeVar("T")
 def f(a: T, b: T) -> T: ...
 tnt: Tuple[NT]
 
-# Should these be tuple[object] instead?
+# TODO: these should be tuple[object] instead.
 reveal_type(f(nt, tnt))  # N: Revealed type is "builtins.tuple[Any, ...]"
 reveal_type(f(tnt, nt))  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]
@@ -663,5 +663,3 @@ td: TD
 reveal_type(td)  # N: Revealed type is "TypedDict('__main__.TD', {'xb': builtins.int, 'yb': ..., 'xa': builtins.int, 'ya': ..., 'a': TypedDict('__main__.TDA', {'xa': builtins.int, 'ya': ...}), 'b': TypedDict('__main__.TDB', {'xb': builtins.int, 'yb': ...})})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
-
--- TODO: Add more fine-grained tests for various kinds of recursive types
