@@ -832,11 +832,9 @@ def verify_funcitem(
         if runtime_abstract and not stub_abstract:
             yield Error(
                 object_path,
-                "runtime method is abstract, but stub is not",
+                "is inconsistent, runtime method is abstract but stub is not",
                 stub,
                 runtime,
-                stub_desc="A concrete method",
-                runtime_desc="An abstract method",
             )
 
     for message in _verify_static_class_methods(stub, runtime, object_path):
