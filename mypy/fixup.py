@@ -349,6 +349,7 @@ def lookup_fully_qualified_alias(
         else:
             assert allow_missing
             return missing_alias()
+        node.special_alias = alias
         return alias
     else:
         # Looks like a missing TypeAlias during an initial daemon load, put something there

@@ -172,8 +172,8 @@ def replacement_map_from_symbol_table(
                         node.node.names, new_node.node.names, prefix
                     )
                     replacements.update(type_repl)
-                    if node.node.tuple_alias and new_node.node.tuple_alias:
-                        replacements[new_node.node.tuple_alias] = node.node.tuple_alias
+                    if node.node.special_alias and new_node.node.special_alias:
+                        replacements[new_node.node.special_alias] = node.node.special_alias
     return replacements
 
 
@@ -338,10 +338,10 @@ class NodeReplaceVisitor(TraverserVisitor):
             new = self.replacements[node]
             skip_slots: Tuple[str, ...] = ()
             if isinstance(node, TypeInfo) and isinstance(new, TypeInfo):
-                # Special case: tuple_alias is not exposed in symbol tables, but may appear
+                # Special case: special_alias is not exposed in symbol tables, but may appear
                 # in external types (e.g. named tuples), so we need to update it manually.
-                skip_slots = ("tuple_alias",)
-                replace_object_state(new.tuple_alias, node.tuple_alias)
+                skip_slots = ("special_alias",)
+                replace_object_state(new.special_alias, node.special_alias)
             replace_object_state(new, node, skip_slots=skip_slots)
             return cast(SN, new)
         return node
@@ -547,7 +547,7 @@ def replace_nodes_in_symbol_table(
                 new = replacements[node.node]
                 old = node.node
                 # Needed for TypeInfo, see comment in fixup() above.
-                replace_object_state(new, old, skip_slots=("tuple_alias",))
+                replace_object_state(new, old, skip_slots=("special_alias",))
                 node.node = new
             if isinstance(node.node, (Var, TypeAlias)):
                 # Handle them here just in case these aren't exposed through the AST.
