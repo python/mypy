@@ -369,7 +369,7 @@ def generate_object_struct(cl: ClassIR, emitter: Emitter) -> None:
         if not base.is_trait:
             for attr, rtype in base.attributes.items():
                 if (attr, rtype) not in seen_attrs:
-                    lines.append("{}{};".format(emitter.ctype_spaced(rtype), emitter.attr(attr)))
+                    lines.append(f"{emitter.ctype_spaced(rtype)}{emitter.attr(attr)};")
                     seen_attrs.add((attr, rtype))
 
                     if isinstance(rtype, RTuple):
@@ -435,7 +435,7 @@ def generate_vtables(
     for trait, vtable in base.trait_vtables.items():
         # Trait methods entry (vtable index -> method implementation).
         emitter.emit_line(
-            "static CPyVTableItem {}[{}];".format(trait_vtable_name(trait), max(1, len(vtable)))
+            f"static CPyVTableItem {trait_vtable_name(trait)}[{max(1, len(vtable))}];"
         )
         # Trait attributes entry (attribute number in trait -> offset in actual struct).
         emitter.emit_line(
@@ -474,9 +474,7 @@ def generate_offset_table(
     """Generate attribute offset row of a trait vtable."""
     emitter.emit_line(f"size_t {trait_offset_table_name}_scratch[] = {{")
     for attr in trait.attributes:
-        emitter.emit_line(
-            "offsetof({}, {}),".format(cl.struct_name(emitter.names), emitter.attr(attr))
-        )
+        emitter.emit_line(f"offsetof({cl.struct_name(emitter.names)}, {emitter.attr(attr)}),")
     if not trait.attributes:
         # This is for msvc.
         emitter.emit_line("0")
@@ -534,9 +532,7 @@ def generate_setup_for_class(
     emitter.emit_line(f"{func_name}(PyTypeObject *type)")
     emitter.emit_line("{")
     emitter.emit_line(f"{cl.struct_name(emitter.names)} *self;")
-    emitter.emit_line(
-        "self = ({struct} *)type->tp_alloc(type, 0);".format(struct=cl.struct_name(emitter.names))
-    )
+    emitter.emit_line(f"self = ({cl.struct_name(emitter.names)} *)type->tp_alloc(type, 0);")
     emitter.emit_line("if (self == NULL)")
     emitter.emit_line("    return NULL;")
 
@@ -555,9 +551,7 @@ def generate_setup_for_class(
 
     for base in reversed(cl.base_mro):
         for attr, rtype in base.attributes.items():
-            emitter.emit_line(
-                r"self->{} = {};".format(emitter.attr(attr), emitter.c_undefined_value(rtype))
-            )
+            emitter.emit_line(rf"self->{emitter.attr(attr)} = {emitter.c_undefined_value(rtype)};")
 
     # Initialize attributes to default values, if necessary
     if defaults_fn is not None:
@@ -605,7 +599,7 @@ def generate_constructor_for_class(
 
     # If there is a nontrivial ctor that we didn't define, invoke it via tp_init
     elif len(fn.sig.args) > 1:
-        emitter.emit_line("int res = {}->tp_init({});".format(emitter.type_struct_name(cl), args))
+        emitter.emit_line(f"int res = {emitter.type_struct_name(cl)}->tp_init({args});")
 
         emitter.emit_line("if (res < 0) {")
         emitter.emit_line("Py_DECREF(self);")
@@ -698,7 +692,7 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
     """Emit function that performs cycle GC traversal of an instance."""
     emitter.emit_line("static int")
     emitter.emit_line(
-        "{}({} *self, visitproc visit, void *arg)".format(func_name, cl.struct_name(emitter.names))
+        f"{func_name}({cl.struct_name(emitter.names)} *self, visitproc visit, void *arg)"
     )
     emitter.emit_line("{")
     for base in reversed(cl.base_mro):
@@ -708,10 +702,10 @@ def generate_traverse_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_visit(
-            "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
         )
         emitter.emit_gc_visit(
-            "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
     emitter.emit_line("return 0;")
@@ -729,10 +723,10 @@ def generate_clear_for_class(cl: ClassIR, func_name: str, emitter: Emitter) -> N
         struct_name = cl.struct_name(emitter.names)
         # __dict__ lives right after the struct and __weakref__ lives right after that
         emitter.emit_gc_clear(
-            "*((PyObject **)((char *)self + sizeof({})))".format(struct_name), object_rprimitive
+            f"*((PyObject **)((char *)self + sizeof({struct_name})))", object_rprimitive
         )
         emitter.emit_gc_clear(
-            "*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({})))".format(struct_name),
+            f"*((PyObject **)((char *)self + sizeof(PyObject *) + sizeof({struct_name})))",
             object_rprimitive,
         )
     emitter.emit_line("return 0;")
@@ -893,7 +887,7 @@ def generate_getter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     if not always_defined:
         emitter.emit_undefined_attr_check(rtype, attr_expr, "==", unlikely=True)
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
-        emitter.emit_line('    "attribute {} of {} undefined");'.format(repr(attr), repr(cl.name)))
+        emitter.emit_line(f'    "attribute {repr(attr)} of {repr(cl.name)} undefined");')
         emitter.emit_line("return NULL;")
         emitter.emit_line("}")
     emitter.emit_inc_ref(f"self->{attr_field}", rtype)
@@ -917,7 +911,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         emitter.emit_line("if (value == NULL) {")
         emitter.emit_line("PyErr_SetString(PyExc_AttributeError,")
         emitter.emit_line(
-            '    "{} object attribute {} cannot be deleted");'.format(repr(cl.name), repr(attr))
+            f'    "{repr(cl.name)} object attribute {repr(attr)} cannot be deleted");'
         )
         emitter.emit_line("return -1;")
         emitter.emit_line("}")
@@ -931,7 +925,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
         attr_expr = f"self->{attr_field}"
         if not always_defined:
             emitter.emit_undefined_attr_check(rtype, attr_expr, "!=")
-        emitter.emit_dec_ref("self->{}".format(attr_field), rtype)
+        emitter.emit_dec_ref(f"self->{attr_field}", rtype)
         if not always_defined:
             emitter.emit_line("}")
 
@@ -949,9 +943,7 @@ def generate_setter(cl: ClassIR, attr: str, rtype: RType, emitter: Emitter) -> N
     emitter.emit_line(f"self->{attr_field} = tmp;")
     if deletable:
         emitter.emit_line("} else")
-        emitter.emit_line(
-            "    self->{} = {};".format(attr_field, emitter.c_undefined_value(rtype))
-        )
+        emitter.emit_line(f"    self->{attr_field} = {emitter.c_undefined_value(rtype)};")
     emitter.emit_line("return 0;")
     emitter.emit_line("}")
 
@@ -976,7 +968,7 @@ def generate_readonly_getter(
         emitter.emit_line("return retbox;")
     else:
         emitter.emit_line(
-            "return {}{}((PyObject *) self);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"return {NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self);"
         )
     emitter.emit_line("}")
 
@@ -995,11 +987,11 @@ def generate_property_setter(
     if arg_type.is_unboxed:
         emitter.emit_unbox("value", "tmp", arg_type, error=ReturnHandler("-1"), declare_dest=True)
         emitter.emit_line(
-            "{}{}((PyObject *) self, tmp);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"{NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, tmp);"
         )
     else:
         emitter.emit_line(
-            "{}{}((PyObject *) self, value);".format(NATIVE_PREFIX, func_ir.cname(emitter.names))
+            f"{NATIVE_PREFIX}{func_ir.cname(emitter.names)}((PyObject *) self, value);"
         )
     emitter.emit_line("return 0;")
     emitter.emit_line("}")

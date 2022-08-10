@@ -4,8 +4,7 @@ Model how these behave differently in different contexts.
 """
 
 from abc import abstractmethod
-from typing import Optional, Union
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from mypyc.ir.ops import (
     NO_TRACEBACK_LINE_NO,

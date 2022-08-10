@@ -10,8 +10,19 @@ value has a type (RType). A value can hold various things, such as:
 """
 
 from abc import abstractmethod
-from typing import Dict, Generic, List, NamedTuple, Optional, Sequence, Tuple, TypeVar, Union
-from typing_extensions import TYPE_CHECKING, Final
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generic,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+)
+from typing_extensions import Final
 
 from mypy_extensions import trait
 
