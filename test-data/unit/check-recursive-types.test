@@ -470,7 +470,7 @@ T = TypeVar("T")
 def f(a: T, b: T) -> T: ...
 tnt: Tuple[NT]
 
-# Should these be tuple[object] instead?
+# TODO: these should be tuple[object] instead.
 reveal_type(f(nt, tnt))  # N: Revealed type is "builtins.tuple[Any, ...]"
 reveal_type(f(tnt, nt))  # N: Revealed type is "builtins.tuple[Any, ...]"
 [builtins fixtures/tuple.pyi]

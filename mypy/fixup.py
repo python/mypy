@@ -339,6 +339,8 @@ def lookup_fully_qualified_alias(
     if isinstance(node, TypeAlias):
         return node
     elif isinstance(node, TypeInfo):
+        if node.tuple_alias:
+            return node.tuple_alias
         alias = TypeAlias.from_tuple_type(node)
         node.tuple_alias = alias
         return alias

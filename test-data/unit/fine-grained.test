@@ -3481,6 +3481,7 @@ from typing import NamedTuple, Optional
 class N(NamedTuple):
     r: Optional[M]
     x: int
+n: N
 [file b.py]
 from a import N
 from typing import NamedTuple
@@ -3504,12 +3505,15 @@ def f(x: a.N) -> None:
     if x.r is not None and x.r.r is not None and x.r.r.r is not None:
         reveal_type(x)
         s: int = x.r.r.r.r
+f(a.n)
+reveal_type(a.n)
 [builtins fixtures/tuple.pyi]
 [out]
 ==
 ==
 c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+c.py:7: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 
 [case testTupleTypeUpdateNonRecursiveToRecursiveFine]
 # flags: --enable-recursive-aliases
@@ -3541,7 +3545,7 @@ def f(x: a.N) -> None:
 [out]
 ==
 ==
-c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
+c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int, fallback=b.M], None], builtins.int, fallback=a.N]"
 c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
 
 [case testTypeAliasUpdateNonRecursiveToRecursiveFine]
