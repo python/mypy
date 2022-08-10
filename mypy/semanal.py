@@ -2675,9 +2675,8 @@ class SemanticAnalyzer(
             if s.rvalue.analyzed.info.typeddict_type and not has_placeholder(
                 s.rvalue.analyzed.info.typeddict_type
             ):
-                return (
-                    True  # This is a valid and analyzed typed dict definition, nothing to do here.
-                )
+                # This is a valid and analyzed typed dict definition, nothing to do here.
+                return True
         if len(s.lvalues) != 1 or not isinstance(s.lvalues[0], (NameExpr, MemberExpr)):
             return False
         lvalue = s.lvalues[0]

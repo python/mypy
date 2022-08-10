@@ -79,7 +79,7 @@ class NewTypeAnalyzer:
 
         old_type, should_defer = self.check_newtype_args(var_name, call, s)
         old_type = get_proper_type(old_type)
-        if not call.analyzed:
+        if not isinstance(call.analyzed, NewTypeExpr):
             call.analyzed = NewTypeExpr(var_name, old_type, line=call.line, column=call.column)
         else:
             call.analyzed.old_type = old_type
