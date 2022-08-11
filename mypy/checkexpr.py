@@ -319,11 +319,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         elif isinstance(node, TypeInfo):
             # Reference to a type object.
             if node.typeddict_type:
-                # Use alias target to get the correct fallback (not just typing.TypedDict).
-                assert node.special_alias is not None
-                target = node.special_alias.target
-                assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-                result = self.typeddict_callable(target)
+                # We special-case TypedDict, because they don't define any constructor.
+                result = self.typeddict_callable(node)
             else:
                 result = type_object_type(node, self.named_type)
             if isinstance(result, CallableType) and isinstance(  # type: ignore
@@ -402,7 +399,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             typeddict_type = e.callee.node.typeddict_type.copy_modified(
                 fallback=Instance(e.callee.node, [])
             )
-            return self.check_typeddict_call(typeddict_type, e.arg_kinds, e.arg_names, e.args, e)
+            return self.check_typeddict_call(
+                typeddict_type, e.arg_kinds, e.arg_names, e.args, e, self.accept(e.callee)
+            )
         if (
             isinstance(e.callee, IndexExpr)
             and isinstance(e.callee.base, RefExpr)
@@ -415,7 +414,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 typeddict_applied = get_proper_type(typeddict_callable.ret_type)
                 assert isinstance(typeddict_applied, TypedDictType)
                 return self.check_typeddict_call(
-                    typeddict_applied, e.arg_kinds, e.arg_names, e.args, e
+                    typeddict_applied, e.arg_kinds, e.arg_names, e.args, e, self.accept(e.callee)
                 )
         if (
             isinstance(e.callee, NameExpr)
@@ -648,6 +647,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_names: Sequence[Optional[str]],
         args: List[Expression],
         context: Context,
+        orig_callee: Optional[Type],
     ) -> Type:
         if len(args) >= 1 and all([ak == ARG_NAMED for ak in arg_kinds]):
             # ex: Point(x=42, y=1337)
@@ -655,21 +655,25 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item_names = cast(List[str], arg_names)
             item_args = args
             return self.check_typeddict_call_with_kwargs(
-                callee, dict(zip(item_names, item_args)), context
+                callee, dict(zip(item_names, item_args)), context, orig_callee
             )
 
         if len(args) == 1 and arg_kinds[0] == ARG_POS:
             unique_arg = args[0]
             if isinstance(unique_arg, DictExpr):
                 # ex: Point({'x': 42, 'y': 1337})
-                return self.check_typeddict_call_with_dict(callee, unique_arg, context)
+                return self.check_typeddict_call_with_dict(
+                    callee, unique_arg, context, orig_callee
+                )
             if isinstance(unique_arg, CallExpr) and isinstance(unique_arg.analyzed, DictExpr):
                 # ex: Point(dict(x=42, y=1337))
-                return self.check_typeddict_call_with_dict(callee, unique_arg.analyzed, context)
+                return self.check_typeddict_call_with_dict(
+                    callee, unique_arg.analyzed, context, orig_callee
+                )
 
         if len(args) == 0:
             # ex: EmptyDict()
-            return self.check_typeddict_call_with_kwargs(callee, {}, context)
+            return self.check_typeddict_call_with_kwargs(callee, {}, context, orig_callee)
 
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
@@ -703,36 +707,47 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return False
 
     def check_typeddict_call_with_dict(
-        self, callee: TypedDictType, kwargs: DictExpr, context: Context
+        self,
+        callee: TypedDictType,
+        kwargs: DictExpr,
+        context: Context,
+        orig_callee: Optional[Type],
     ) -> Type:
         validated_kwargs = self.validate_typeddict_kwargs(kwargs=kwargs)
         if validated_kwargs is not None:
             return self.check_typeddict_call_with_kwargs(
-                callee, kwargs=validated_kwargs, context=context
+                callee, kwargs=validated_kwargs, context=context, orig_callee=orig_callee
             )
         else:
             return AnyType(TypeOfAny.from_error)
 
-    def typeddict_callable(self, typed_dict: TypedDictType) -> CallableType:
-        """Contsruct a reasonable type for a TypedDict type in runtime context.
+    def typeddict_callable(self, info: TypeInfo) -> CallableType:
+        """Construct a reasonable type for a TypedDict type in runtime context.
 
         If it appears as a callee, it will be special-cased anyway, e.g. it is
         also allowed to accept a single positional argument if it is a dict literal.
         """
-        expected_types = list(typed_dict.items.values())
+        assert info.special_alias is not None
+        target = info.special_alias.target
+        assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
+        expected_types = list(target.items.values())
         kinds = [ArgKind.ARG_NAMED] * len(expected_types)
-        names = list(typed_dict.items.keys())
+        names = list(target.items.keys())
         return CallableType(
             expected_types,
             kinds,
             names,
-            typed_dict,
+            target,
             self.named_type("builtins.type"),
-            variables=typed_dict.fallback.type.defn.type_vars,
+            variables=info.defn.type_vars,
         )
 
     def check_typeddict_call_with_kwargs(
-        self, callee: TypedDictType, kwargs: Dict[str, Expression], context: Context
+        self,
+        callee: TypedDictType,
+        kwargs: Dict[str, Expression],
+        context: Context,
+        orig_callee: Optional[Type],
     ) -> Type:
         if not (callee.required_keys <= set(kwargs.keys()) <= set(callee.items.keys())):
             expected_keys = [
@@ -746,11 +761,27 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             )
             return AnyType(TypeOfAny.from_error)
 
+        orig_callee = get_proper_type(orig_callee)
+        if isinstance(orig_callee, CallableType):
+            infer_callee = orig_callee
+        else:
+            # Try reconstructing from type context.
+            if callee.fallback.type.special_alias is not None:
+                infer_callee = self.typeddict_callable(callee.fallback.type)
+            else:
+                infer_callee = CallableType(
+                    list(callee.items.values()),
+                    [ArgKind.ARG_NAMED] * len(callee.items),
+                    list(callee.items.keys()),
+                    callee,
+                    self.named_type("builtins.type"),
+                )
+
         # We don't show any errors, just infer types in a generic TypedDict type,
         # a custom error message will be given below, if there are errors.
         with self.msg.filter_errors(), self.chk.local_type_map():
             orig_ret_type, _ = self.check_callable_call(
-                self.typeddict_callable(callee),
+                infer_callee,
                 list(kwargs.values()),
                 [ArgKind.ARG_NAMED] * len(kwargs),
                 context,
@@ -3991,7 +4022,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # to avoid the second error, we always return TypedDict type that was requested
         typeddict_context = self.find_typeddict_context(self.type_context[-1], e)
         if typeddict_context:
-            self.check_typeddict_call_with_dict(callee=typeddict_context, kwargs=e, context=e)
+            orig_ret_type = self.check_typeddict_call_with_dict(
+                callee=typeddict_context, kwargs=e, context=e, orig_callee=None
+            )
+            ret_type = get_proper_type(orig_ret_type)
+            if isinstance(ret_type, TypedDictType):
+                return ret_type.copy_modified()
             return typeddict_context.copy_modified()
 
         # fast path attempt
