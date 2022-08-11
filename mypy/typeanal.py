@@ -621,12 +621,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
         if td is not None:
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
-            if args:
-                self.fail("Generic TypedDict types not supported", ctx)
-                return AnyType(TypeOfAny.from_error)
             if info.special_alias:
                 # We don't support generic TypedDict types yet.
-                return TypeAliasType(info.special_alias, [])
+                return TypeAliasType(info.special_alias, self.anal_array(args))
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance

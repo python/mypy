@@ -1379,6 +1379,12 @@ class SemanticAnalyzer(
             return
 
         if self.analyze_typeddict_classdef(defn):
+            if defn.info:
+                defn.type_vars = tvar_defs
+                defn.info.type_vars = []
+                defn.info.add_type_vars()
+                assert defn.info.special_alias is not None
+                defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
             return
 
         if self.analyze_namedtuple_classdef(defn):

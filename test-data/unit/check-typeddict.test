@@ -789,7 +789,7 @@ from mypy_extensions import TypedDict
 D = TypedDict('D', {'x': int})
 d: object
 if isinstance(d, D):   # E: Cannot use isinstance() with TypedDict type
-    reveal_type(d)     # N: Revealed type is "__main__.D"
+    reveal_type(d)     # N: Revealed type is "TypedDict('__main__.D', {'x': builtins.int})"
 issubclass(object, D)  # E: Cannot use issubclass() with TypedDict type
 [builtins fixtures/isinstancelist.pyi]
 
@@ -1517,7 +1517,7 @@ from b import tp
 x: tp
 reveal_type(x['x'])  # N: Revealed type is "builtins.int"
 
-reveal_type(tp)  # N: Revealed type is "def () -> b.tp"
+reveal_type(tp)  # N: Revealed type is "def (*, x: builtins.int) -> TypedDict('b.tp', {'x': builtins.int})"
 tp(x='no')  # E: Incompatible types (expression has type "str", TypedDict item "x" has type "int")
 
 [file b.py]
@@ -2393,5 +2393,23 @@ def func(foo: Union[F1, F2]):
     foo[1] = "m"  # E: TypedDict key must be a string literal; expected one of ("z", "a") \
                   # E: TypedDict key must be a string literal; expected one of ("z", "b") \
                   # E: Argument 1 to "__setitem__" has incompatible type "int"; expected "str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDict]
+from typing import TypedDict, Generic, TypeVar
+
+T = TypeVar("T")
+
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+tds: TD[str]
+reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"
+
+tdi = TD(key=0, value=0)
+reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
+TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
