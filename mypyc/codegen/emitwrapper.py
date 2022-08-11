@@ -447,9 +447,7 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
         )
     )
     emitter.emit_line("instance = instance ? instance : Py_None;")
-    emitter.emit_line(
-        "return {}{}(self, instance, owner);".format(NATIVE_PREFIX, fn.cname(emitter.names))
-    )
+    emitter.emit_line(f"return {NATIVE_PREFIX}{fn.cname(emitter.names)}(self, instance, owner);")
     emitter.emit_line("}")
 
     return name
@@ -458,7 +456,7 @@ def generate_get_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __hash__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
-    emitter.emit_line("static Py_ssize_t {name}(PyObject *self) {{".format(name=name))
+    emitter.emit_line(f"static Py_ssize_t {name}(PyObject *self) {{")
     emitter.emit_line(
         "{}retval = {}{}{}(self);".format(
             emitter.ctype_spaced(fn.ret_type),
@@ -485,7 +483,7 @@ def generate_hash_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __len__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
-    emitter.emit_line("static Py_ssize_t {name}(PyObject *self) {{".format(name=name))
+    emitter.emit_line(f"static Py_ssize_t {name}(PyObject *self) {{")
     emitter.emit_line(
         "{}retval = {}{}{}(self);".format(
             emitter.ctype_spaced(fn.ret_type),
@@ -510,7 +508,7 @@ def generate_len_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 def generate_bool_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for native __bool__ methods."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
-    emitter.emit_line("static int {name}(PyObject *self) {{".format(name=name))
+    emitter.emit_line(f"static int {name}(PyObject *self) {{")
     emitter.emit_line(
         "{}val = {}{}(self);".format(
             emitter.ctype_spaced(fn.ret_type), NATIVE_PREFIX, fn.cname(emitter.names)
@@ -534,9 +532,7 @@ def generate_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """
     name = "{}{}{}".format(DUNDER_PREFIX, "__delitem__", cl.name_prefix(emitter.names))
     input_args = ", ".join(f"PyObject *obj_{arg.name}" for arg in fn.args)
-    emitter.emit_line(
-        "static int {name}({input_args}) {{".format(name=name, input_args=input_args)
-    )
+    emitter.emit_line(f"static int {name}({input_args}) {{")
     generate_set_del_item_wrapper_inner(fn, emitter, fn.args)
     return name
 
@@ -564,17 +560,13 @@ def generate_set_del_item_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> 
 
     name = "{}{}{}".format(DUNDER_PREFIX, "__setitem__", cl.name_prefix(emitter.names))
     input_args = ", ".join(f"PyObject *obj_{arg.name}" for arg in args)
-    emitter.emit_line(
-        "static int {name}({input_args}) {{".format(name=name, input_args=input_args)
-    )
+    emitter.emit_line(f"static int {name}({input_args}) {{")
 
     # First check if this is __delitem__
     emitter.emit_line(f"if (obj_{args[2].name} == NULL) {{")
     if del_name is not None:
         # We have a native implementation, so call it
-        emitter.emit_line(
-            "return {}(obj_{}, obj_{});".format(del_name, args[0].name, args[1].name)
-        )
+        emitter.emit_line(f"return {del_name}(obj_{args[0].name}, obj_{args[1].name});")
     else:
         # Try to call superclass method instead
         emitter.emit_line(f"PyObject *super = CPy_Super(CPyModule_builtins, obj_{args[0].name});")
@@ -637,7 +629,7 @@ def generate_set_del_item_wrapper_inner(
 def generate_contains_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
     """Generates a wrapper for a native __contains__ method."""
     name = f"{DUNDER_PREFIX}{fn.name}{cl.name_prefix(emitter.names)}"
-    emitter.emit_line("static int {name}(PyObject *self, PyObject *obj_item) {{".format(name=name))
+    emitter.emit_line(f"static int {name}(PyObject *self, PyObject *obj_item) {{")
     generate_arg_check("item", fn.args[1].type, emitter, ReturnHandler("-1"))
     emitter.emit_line(
         "{}val = {}{}(self, arg_item);".format(
@@ -835,9 +827,7 @@ class WrapperGenerator:
                     "return retbox;",
                 )
             else:
-                emitter.emit_line(
-                    "return {}{}({});".format(NATIVE_PREFIX, self.target_cname, native_args)
-                )
+                emitter.emit_line(f"return {NATIVE_PREFIX}{self.target_cname}({native_args});")
             # TODO: Tracebacks?
 
     def error(self) -> ErrorHandler:

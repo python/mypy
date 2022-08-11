@@ -1,5 +1,4 @@
 from typing import Optional
-
 from typing_extensions import Final
 
 """Shared logic between our three mypy parser files."""

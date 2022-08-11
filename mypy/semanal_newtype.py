@@ -28,7 +28,7 @@ from mypy.nodes import (
     Var,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import (
     AnyType,
@@ -79,8 +79,10 @@ class NewTypeAnalyzer:
 
         old_type, should_defer = self.check_newtype_args(var_name, call, s)
         old_type = get_proper_type(old_type)
-        if not call.analyzed:
+        if not isinstance(call.analyzed, NewTypeExpr):
             call.analyzed = NewTypeExpr(var_name, old_type, line=call.line, column=call.column)
+        else:
+            call.analyzed.old_type = old_type
         if old_type is None:
             if should_defer:
                 # Base type is not ready.
@@ -88,15 +90,18 @@ class NewTypeAnalyzer:
                 return True
 
         # Create the corresponding class definition if the aliased type is subtypeable
+        assert isinstance(call.analyzed, NewTypeExpr)
         if isinstance(old_type, TupleType):
             newtype_class_info = self.build_newtype_typeinfo(
-                name, old_type, old_type.partial_fallback, s.line
+                name, old_type, old_type.partial_fallback, s.line, call.analyzed.info
             )
-            newtype_class_info.tuple_type = old_type
+            newtype_class_info.update_tuple_type(old_type)
         elif isinstance(old_type, Instance):
             if old_type.type.is_protocol:
                 self.fail("NewType cannot be used with protocol classes", s)
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, old_type, s.line)
+            newtype_class_info = self.build_newtype_typeinfo(
+                name, old_type, old_type, s.line, call.analyzed.info
+            )
         else:
             if old_type is not None:
                 message = "Argument 2 to NewType(...) must be subclassable (got {})"
@@ -104,7 +109,9 @@ class NewTypeAnalyzer:
             # Otherwise the error was already reported.
             old_type = AnyType(TypeOfAny.from_error)
             object_type = self.api.named_type("builtins.object")
-            newtype_class_info = self.build_newtype_typeinfo(name, old_type, object_type, s.line)
+            newtype_class_info = self.build_newtype_typeinfo(
+                name, old_type, object_type, s.line, call.analyzed.info
+            )
             newtype_class_info.fallback_to_any = True
 
         check_for_explicit_any(
@@ -194,9 +201,18 @@ class NewTypeAnalyzer:
 
         # We want to use our custom error message (see above), so we suppress
         # the default error message for invalid types here.
-        old_type = get_proper_type(self.api.anal_type(unanalyzed_type, report_invalid_types=False))
+        old_type = get_proper_type(
+            self.api.anal_type(
+                unanalyzed_type,
+                report_invalid_types=False,
+                allow_placeholder=self.options.enable_recursive_aliases
+                and not self.api.is_func_scope(),
+            )
+        )
         should_defer = False
-        if old_type is None or isinstance(old_type, PlaceholderType):
+        if isinstance(old_type, PlaceholderType):
+            old_type = None
+        if old_type is None:
             should_defer = True
 
         # The caller of this function assumes that if we return a Type, it's always
@@ -208,9 +224,15 @@ class NewTypeAnalyzer:
         return None if has_failed else old_type, should_defer
 
     def build_newtype_typeinfo(
-        self, name: str, old_type: Type, base_type: Instance, line: int
+        self,
+        name: str,
+        old_type: Type,
+        base_type: Instance,
+        line: int,
+        existing_info: Optional[TypeInfo],
     ) -> TypeInfo:
-        info = self.api.basic_new_typeinfo(name, base_type, line)
+        info = existing_info or self.api.basic_new_typeinfo(name, base_type, line)
+        info.bases = [base_type]  # Update in case there were nested placeholders.
         info.is_newtype = True
 
         # Add __init__ method
@@ -231,6 +253,8 @@ class NewTypeAnalyzer:
         init_func._fullname = info.fullname + ".__init__"
         info.names["__init__"] = SymbolTableNode(MDEF, init_func)
 
+        if has_placeholder(old_type) or info.tuple_type and has_placeholder(info.tuple_type):
+            self.api.defer(force_progress=True)
         return info
 
     # Helpers

@@ -140,6 +140,7 @@ class NodeStripVisitor(TraverserVisitor):
         TypeState.reset_subtype_caches_for(node.info)
         # Kill the TypeInfo, since there is none before semantic analysis.
         node.info = CLASSDEF_NO_INFO
+        node.analyzed = None
 
     def save_implicit_attributes(self, node: ClassDef) -> None:
         """Produce callbacks that re-add attributes defined on self."""

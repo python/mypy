@@ -2,7 +2,6 @@
 
 from collections import defaultdict
 from typing import Any, Dict, List, Sequence, Tuple, Union
-
 from typing_extensions import Final
 
 from mypyc.common import short_name

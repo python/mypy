@@ -9,9 +9,9 @@ import sys
 import tempfile
 from abc import abstractmethod
 from typing import Any, Dict, Iterator, List, NamedTuple, Optional, Pattern, Set, Tuple, Union
+from typing_extensions import Final
 
 import pytest
-from typing_extensions import Final
 
 from mypy.test.config import PREFIX, test_data_prefix, test_temp_dir
 

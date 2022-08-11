@@ -5,8 +5,10 @@ from abc import abstractmethod
 from collections import defaultdict
 from enum import Enum, unique
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
+    DefaultDict,
     Dict,
     Iterator,
     List,
@@ -18,9 +20,9 @@ from typing import (
     Union,
     cast,
 )
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy_extensions import trait
-from typing_extensions import TYPE_CHECKING, DefaultDict, Final, TypeAlias as _TypeAlias
 
 import mypy.strconv
 from mypy.bogus_type import Bogus
@@ -1236,6 +1238,7 @@ class AssignmentStmt(Statement):
         "new_syntax",
         "is_alias_def",
         "is_final_def",
+        "invalid_recursive_alias",
     )
 
     lvalues: List[Lvalue]
@@ -1256,6 +1259,9 @@ class AssignmentStmt(Statement):
     # a final declaration overrides another final declaration (this is checked
     # during type checking when MROs are known).
     is_final_def: bool
+    # Stop further processing of this assignment, to prevent flipping back and forth
+    # during semantic analysis passes.
+    invalid_recursive_alias: bool
 
     def __init__(
         self,
@@ -1272,6 +1278,7 @@ class AssignmentStmt(Statement):
         self.new_syntax = new_syntax
         self.is_alias_def = False
         self.is_final_def = False
+        self.invalid_recursive_alias = False
 
     def accept(self, visitor: StatementVisitor[T]) -> T:
         return visitor.visit_assignment_stmt(self)
@@ -2649,6 +2656,7 @@ class TypeInfo(SymbolNode):
         "bases",
         "_promote",
         "tuple_type",
+        "special_alias",
         "is_named_tuple",
         "typeddict_type",
         "is_newtype",
@@ -2787,6 +2795,17 @@ class TypeInfo(SymbolNode):
     # It is useful for plugins to add their data to save in the cache.
     metadata: Dict[str, JsonDict]
 
+    # Store type alias representing this type (for named tuples and TypedDicts).
+    # Although definitions of these types are stored in symbol tables as TypeInfo,
+    # when a type analyzer will find them, it should construct a TupleType, or
+    # a TypedDict type. However, we can't use the plain types, since if the definition
+    # is recursive, this will create an actual recursive structure of types (i.e. as
+    # internal Python objects) causing infinite recursions everywhere during type checking.
+    # To overcome this, we create a TypeAlias node, that will point to these types.
+    # We store this node in the `special_alias` attribute, because it must be the same node
+    # in case we are doing multiple semantic analysis passes.
+    special_alias: Optional["TypeAlias"]
+
     FLAGS: Final = [
         "is_abstract",
         "is_enum",
@@ -2833,6 +2852,7 @@ class TypeInfo(SymbolNode):
         self._promote = []
         self.alt_promote = None
         self.tuple_type = None
+        self.special_alias = None
         self.is_named_tuple = False
         self.typeddict_type = None
         self.is_newtype = False
@@ -2962,6 +2982,24 @@ class TypeInfo(SymbolNode):
         Omit base classes of other base classes.
         """
         return [base.type for base in self.bases]
+
+    def update_tuple_type(self, typ: "mypy.types.TupleType") -> None:
+        """Update tuple_type and special_alias as needed."""
+        self.tuple_type = typ
+        alias = TypeAlias.from_tuple_type(self)
+        if not self.special_alias:
+            self.special_alias = alias
+        else:
+            self.special_alias.target = alias.target
+
+    def update_typeddict_type(self, typ: "mypy.types.TypedDictType") -> None:
+        """Update typeddict_type and special_alias as needed."""
+        self.typeddict_type = typ
+        alias = TypeAlias.from_typeddict_type(self)
+        if not self.special_alias:
+            self.special_alias = alias
+        else:
+            self.special_alias.target = alias.target
 
     def __str__(self) -> str:
         """Return a string representation of the type.
@@ -3250,6 +3288,28 @@ class TypeAlias(SymbolNode):
         self._is_recursive: Optional[bool] = None
         self.eager = eager
         super().__init__(line, column)
+
+    @classmethod
+    def from_tuple_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the tuple type described by a given TypeInfo."""
+        assert info.tuple_type
+        return TypeAlias(
+            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.fullname,
+            info.line,
+            info.column,
+        )
+
+    @classmethod
+    def from_typeddict_type(cls, info: TypeInfo) -> "TypeAlias":
+        """Generate an alias to the TypedDict type described by a given TypeInfo."""
+        assert info.typeddict_type
+        return TypeAlias(
+            info.typeddict_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.fullname,
+            info.line,
+            info.column,
+        )
 
     @property
     def name(self) -> str:

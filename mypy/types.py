@@ -3,7 +3,9 @@
 import sys
 from abc import abstractmethod
 from typing import (
+    TYPE_CHECKING,
     Any,
+    ClassVar,
     Dict,
     Iterable,
     List,
@@ -16,8 +18,7 @@ from typing import (
     Union,
     cast,
 )
-
-from typing_extensions import TYPE_CHECKING, ClassVar, Final, TypeAlias as _TypeAlias, overload
+from typing_extensions import Final, TypeAlias as _TypeAlias, overload
 
 import mypy.nodes
 from mypy.bogus_type import Bogus
@@ -2574,7 +2575,7 @@ class UnionType(ProperType):
         if state.strict_optional:
             return self.items
         else:
-            return [i for i in get_proper_types(self.items) if not isinstance(i, NoneType)]
+            return [i for i in self.items if not isinstance(get_proper_type(i), NoneType)]
 
     def serialize(self) -> JsonDict:
         return {".class": "UnionType", "items": [t.serialize() for t in self.items]}
@@ -2809,6 +2810,7 @@ from mypy.type_visitor import (  # noqa
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -3176,6 +3178,18 @@ class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
         return typ
 
 
+class LocationSetter(TypeTraverserVisitor):
+    # TODO: Should we update locations of other Type subclasses?
+    def __init__(self, line: int, column: int) -> None:
+        self.line = line
+        self.column = column
+
+    def visit_instance(self, typ: Instance) -> None:
+        typ.line = self.line
+        typ.column = self.column
+        super().visit_instance(typ)
+
+
 def replace_alias_tvars(
     tp: Type, vars: List[str], subs: List[Type], newline: int, newcolumn: int
 ) -> Type:
@@ -3184,6 +3198,7 @@ def replace_alias_tvars(
     """
     replacer = InstantiateAliasVisitor(vars, subs)
     new_tp = tp.accept(replacer)
+    new_tp.accept(LocationSetter(newline, newcolumn))
     new_tp.line = newline
     new_tp.column = newcolumn
     return new_tp
@@ -3240,21 +3255,6 @@ def flatten_nested_unions(
             # Must preserve original aliases when possible.
             flat_items.append(t)
     return flat_items
-
-
-def union_items(typ: Type) -> List[ProperType]:
-    """Return the flattened items of a union type.
-
-    For non-union types, return a list containing just the argument.
-    """
-    typ = get_proper_type(typ)
-    if isinstance(typ, UnionType):
-        items = []
-        for item in typ.items:
-            items.extend(union_items(item))
-        return items
-    else:
-        return [typ]
 
 
 def invalid_recursive_alias(seen_nodes: Set[mypy.nodes.TypeAlias], target: Type) -> bool:

@@ -19,7 +19,6 @@ octal digits.
 """
 
 import string
-
 from typing_extensions import Final
 
 CHAR_MAP: Final = [f"\\{i:03o}" for i in range(256)]

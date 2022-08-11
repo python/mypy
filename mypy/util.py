@@ -20,11 +20,11 @@ from typing import (
     Sequence,
     Sized,
     Tuple,
+    Type,
     TypeVar,
     Union,
 )
-
-from typing_extensions import Final, Literal, Type
+from typing_extensions import Final, Literal
 
 try:
     import curses
@@ -359,7 +359,9 @@ def get_class_descriptors(cls: "Type[object]") -> Sequence[str]:
     return fields_cache[cls]
 
 
-def replace_object_state(new: object, old: object, copy_dict: bool = False) -> None:
+def replace_object_state(
+    new: object, old: object, copy_dict: bool = False, skip_slots: Tuple[str, ...] = ()
+) -> None:
     """Copy state of old node to the new node.
 
     This handles cases where there is __dict__ and/or attribute descriptors
@@ -374,6 +376,8 @@ def replace_object_state(new: object, old: object, copy_dict: bool = False) -> N
             new.__dict__ = old.__dict__
 
     for attr in get_class_descriptors(old.__class__):
+        if attr in skip_slots:
+            continue
         try:
             if hasattr(old, attr):
                 setattr(new, attr, getattr(old, attr))
@@ -426,10 +430,10 @@ def get_unique_redefinition_name(name: str, existing: Container[str]) -> str:
 def check_python_version(program: str) -> None:
     """Report issues with the Python used to run mypy, dmypy, or stubgen"""
     # Check for known bad Python versions.
-    if sys.version_info[:2] < (3, 6):
+    if sys.version_info[:2] < (3, 7):
         sys.exit(
-            "Running {name} with Python 3.5 or lower is not supported; "
-            "please upgrade to 3.6 or newer".format(name=program)
+            "Running {name} with Python 3.6 or lower is not supported; "
+            "please upgrade to 3.7 or newer".format(name=program)
         )
 
 

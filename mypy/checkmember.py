@@ -1,8 +1,6 @@
 """Type checking of attribute access"""
 
-from typing import Callable, Optional, Sequence, Union, cast
-
-from typing_extensions import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional, Sequence, Union, cast
 
 from mypy.erasetype import erase_typevars
 from mypy.expandtype import expand_type_by_instance, freshen_function_type_vars
@@ -566,6 +564,7 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
         The return type of the appropriate ``__get__`` overload for the descriptor.
     """
     instance_type = get_proper_type(mx.original_type)
+    orig_descriptor_type = descriptor_type
     descriptor_type = get_proper_type(descriptor_type)
 
     if isinstance(descriptor_type, UnionType):
@@ -576,10 +575,10 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
     elif isinstance(descriptor_type, SelfType):
         return instance_type
     elif not isinstance(descriptor_type, Instance):
-        return descriptor_type
+        return orig_descriptor_type
 
     if not descriptor_type.type.has_readable_member("__get__"):
-        return descriptor_type
+        return orig_descriptor_type
 
     dunder_get = descriptor_type.type.get_method("__get__")
     if dunder_get is None:
@@ -839,7 +838,7 @@ def analyze_class_attribute_access(
     if override_info:
         info = override_info
 
-    fullname = "{}.{}".format(info.fullname, name)
+    fullname = f"{info.fullname}.{name}"
     hook = mx.chk.plugin.get_class_attribute_hook(fullname)
 
     node = info.get(name)

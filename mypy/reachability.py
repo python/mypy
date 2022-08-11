@@ -1,7 +1,6 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
 
 from typing import Optional, Tuple, TypeVar, Union
-
 from typing_extensions import Final
 
 from mypy.literals import literal

@@ -17,14 +17,26 @@ import sys
 import traceback
 import types
 import typing
+import typing_extensions
 import warnings
 from contextlib import redirect_stderr, redirect_stdout
 from functools import singledispatch
 from pathlib import Path
-from typing import Any, Dict, Generic, Iterator, List, Optional, Set, Tuple, TypeVar, Union, cast
-
-import typing_extensions
-from typing_extensions import Type, get_origin
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
+from typing_extensions import get_origin
 
 import mypy.build
 import mypy.modulefinder
@@ -828,6 +840,18 @@ def verify_funcitem(
         if not callable(runtime):
             return
 
+    if isinstance(stub, nodes.FuncDef):
+        stub_abstract = stub.abstract_status == nodes.IS_ABSTRACT
+        runtime_abstract = getattr(runtime, "__isabstractmethod__", False)
+        # The opposite can exist: some implementations omit `@abstractmethod` decorators
+        if runtime_abstract and not stub_abstract:
+            yield Error(
+                object_path,
+                "is inconsistent, runtime method is abstract but stub is not",
+                stub,
+                runtime,
+            )
+
     for message in _verify_static_class_methods(stub, runtime, object_path):
         yield Error(object_path, "is inconsistent, " + message, stub, runtime)
 
@@ -985,7 +1009,7 @@ def verify_paramspecexpr(
         getattr(typing, "ParamSpec", None),
         getattr(typing_extensions, "ParamSpec", None),
     )
-    paramspec_types = tuple([t for t in maybe_paramspec_types if t is not None])
+    paramspec_types = tuple(t for t in maybe_paramspec_types if t is not None)
     if not paramspec_types or not isinstance(runtime, paramspec_types):
         yield Error(object_path, "is not a ParamSpec", stub, runtime)
         return

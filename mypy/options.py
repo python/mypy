@@ -1,9 +1,8 @@
 import pprint
 import re
 import sys
-from typing import Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
-
-from typing_extensions import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional, Pattern, Set, Tuple
+from typing_extensions import Final
 
 from mypy import defaults
 from mypy.util import get_class_descriptors, replace_object_state
