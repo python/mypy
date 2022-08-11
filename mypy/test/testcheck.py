@@ -205,7 +205,8 @@ class TypeCheckSuite(DataSuite):
 
         if testcase.output_files:
             check_test_output_files(testcase, incremental_step, strip_prefix="tmp/")
-
+        print(options.python_version)
+        raise Exception(f"{options.python_version=}")
     def verify_cache(
         self,
         module_data: List[Tuple[str, str, str]],
