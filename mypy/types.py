@@ -116,10 +116,7 @@ LITERAL_TYPE_NAMES: Final = ("typing.Literal", "typing_extensions.Literal")
 ANNOTATED_TYPE_NAMES: Final = ("typing.Annotated", "typing_extensions.Annotated")
 
 # Supported Self type names.
-SELF_TYPE_NAMES: Final = (
-    'typing.Self',
-    'typing_extensions.Self'
-)
+SELF_TYPE_NAMES: Final = ("typing.Self", "typing_extensions.Self")
 
 # We use this constant in various places when checking `tuple` subtyping:
 TUPLE_LIKE_INSTANCE_NAMES: Final = (
@@ -579,9 +576,11 @@ SELF_ID = TypeVarId(0.5)  # type: ignore
 
 class SelfType(TypeVarType):
     __slots__ = ()
-    upper_bound: 'Instance'
+    upper_bound: "Instance"
 
-    def __init__(self, fullname: str, upper_bound: 'Instance', line: int = -1, column: int = -1) -> None:
+    def __init__(
+        self, fullname: str, upper_bound: "Instance", line: int = -1, column: int = -1
+    ) -> None:
         super().__init__(
             "Self",
             fullname,
@@ -601,18 +600,16 @@ class SelfType(TypeVarType):
         return self.upper_bound == other.upper_bound
 
     def serialize(self) -> JsonDict:
-        return {'.class': 'SelfType',
-                'fullname': self.fullname,
-                'upper_bound': self.upper_bound.serialize(),
-                }
+        return {
+            ".class": "SelfType",
+            "fullname": self.fullname,
+            "upper_bound": self.upper_bound.serialize(),
+        }
 
     @classmethod
-    def deserialize(cls, data: JsonDict) -> 'SelfType':
-        assert data['.class'] == 'SelfType'
-        return SelfType(
-            data['fullname'],
-            deserialize_type(data['upper_bound']),
-        )
+    def deserialize(cls, data: JsonDict) -> "SelfType":
+        assert data[".class"] == "SelfType"
+        return SelfType(data["fullname"], deserialize_type(data["upper_bound"]))
 
 
 class ParamSpecFlavor:

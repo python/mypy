@@ -569,9 +569,9 @@ def analyze_descriptor_access(descriptor_type: Type, mx: MemberContext) -> Type:
 
     if isinstance(descriptor_type, UnionType):
         # Map the access over union types
-        return make_simplified_union([
-            analyze_descriptor_access(typ, mx) for typ in descriptor_type.items
-        ])
+        return make_simplified_union(
+            [analyze_descriptor_access(typ, mx) for typ in descriptor_type.items]
+        )
     elif isinstance(descriptor_type, SelfType):
         return instance_type
     elif not isinstance(descriptor_type, Instance):

@@ -412,6 +412,10 @@ class MessageBuilder:
                 extra = " (not async iterable)"
             if not self.are_type_names_disabled():
                 failed = False
+                if isinstance(original_type, TypeVarType) and isinstance(
+                    original_type.upper_bound, Instance
+                ):
+                    original_type = original_type.upper_bound
                 if isinstance(original_type, Instance) and original_type.type.names:
                     alternatives = set(original_type.type.names.keys())
 

@@ -894,7 +894,10 @@ class SemanticAnalyzer(
                 self.fail("Method must have at least one argument", func)
             elif isinstance(func.type, CallableType):
                 self_type = get_proper_type(func.type.arg_types[0])
-                if isinstance(self_type, AnyType) and not self_type.type_of_any == TypeOfAny.explicit:
+                if (
+                    isinstance(self_type, AnyType)
+                    and not self_type.type_of_any == TypeOfAny.explicit
+                ):
                     leading_type: Type = fill_typevars(info)
                     if func.is_class or func.name == "__new__":
                         leading_type = self.class_type(leading_type)
@@ -905,14 +908,16 @@ class SemanticAnalyzer(
                 if isinstance(proper_leading_type, Instance):  # method[[Instance, ...], Any] case
                     proper_leading_type = self_type_type = SelfType("Self", proper_leading_type)
                     func.type.variables = [self_type_type, *func.type.variables]
-                elif (
-                    isinstance(proper_leading_type, TypeType) and isinstance(proper_leading_type.item, Instance)
+                elif isinstance(proper_leading_type, TypeType) and isinstance(
+                    proper_leading_type.item, Instance
                 ):  # classmethod[[type[Instance], ...], Any] case
                     self_type_type = SelfType("Self", proper_leading_type.item)
                     proper_leading_type = self.class_type(self_type_type)
                     func.type.variables = [self_type_type, *func.type.variables]
                 elif self.is_self_type(proper_leading_type):  # method[[Self, ...], Self] case
-                    proper_leading_type = self_type_type = SelfType("Self", self.named_type(info.fullname))
+                    proper_leading_type = self_type_type = SelfType(
+                        "Self", self.named_type(info.fullname)
+                    )
                 elif isinstance(proper_leading_type, UnboundType):
                     # classmethod[[type[Self], ...], Self] case
                     node = self.lookup(proper_leading_type.name, func)
