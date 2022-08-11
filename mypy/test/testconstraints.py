@@ -27,7 +27,7 @@ class ConstraintsSuite(Suite):
         fx = self.fx
         assert infer_constraints(
             Instance(fx.gvi, [UnpackType(fx.ts)]), Instance(fx.gvi, [fx.a, fx.b]), SUBTYPE_OF
-        ) == [Constraint(type_var=fx.ts.id, op=SUPERTYPE_OF, target=TypeList([fx.a, fx.b]))]
+        ) == [Constraint(type_var=fx.ts.id, op=SUBTYPE_OF, target=TypeList([fx.a, fx.b]))]
 
     def test_basic_type_var_tuple(self) -> None:
         fx = self.fx
