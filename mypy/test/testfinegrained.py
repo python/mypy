@@ -12,6 +12,7 @@ can test interactions with the lib_path that is built implicitly based
 on specified sources.
 """
 
+from __future__ import annotations
 import os
 import re
 import sys

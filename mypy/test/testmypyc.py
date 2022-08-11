@@ -1,5 +1,6 @@
 """A basic check to make sure that we are using a mypyc-compiled version when expected."""
 
+from __future__ import annotations
 import os
 from unittest import TestCase
 

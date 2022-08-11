@@ -1,5 +1,6 @@
 """Plugin that provides support for dataclasses."""
 
+from __future__ import annotations
 from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 

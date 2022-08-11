@@ -1,4 +1,5 @@
 """Tests for mypy incremental error output."""
+from __future__ import annotations
 from typing import List
 
 from mypy import build

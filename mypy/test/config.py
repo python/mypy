@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os.path
 
 provided_prefix = os.getenv("MYPY_TEST_PREFIX", None)

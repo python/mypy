@@ -1,5 +1,6 @@
 """Tests for the mypy parser."""
 
+from __future__ import annotations
 import sys
 
 from pytest import skip

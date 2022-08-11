@@ -1,3 +1,4 @@
+from __future__ import annotations
 from mypy.nodes import CONTRAVARIANT, COVARIANT, INVARIANT
 from mypy.subtypes import is_subtype
 from mypy.test.helpers import Suite, skip

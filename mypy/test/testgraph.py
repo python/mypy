@@ -1,5 +1,6 @@
 """Test cases for graph processing code in build.py."""
 
+from __future__ import annotations
 import sys
 from typing import AbstractSet, Dict, List, Set
 
