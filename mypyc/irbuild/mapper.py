@@ -1,5 +1,7 @@
 """Maintain a mapping from mypy concepts to IR/compiled concepts."""
 
+from __future__ import annotations
+
 from typing import Dict, Optional
 
 from mypy.nodes import ARG_STAR, ARG_STAR2, GDEF, ArgKind, FuncDef, RefExpr, SymbolNode, TypeInfo

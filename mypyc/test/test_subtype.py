@@ -1,5 +1,7 @@
 """Test cases for is_subtype and is_runtime_subtype."""
 
+from __future__ import annotations
+
 import unittest
 
 from mypyc.ir.rtypes import (

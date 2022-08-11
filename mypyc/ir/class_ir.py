@@ -1,5 +1,7 @@
 """Intermediate representation of classes."""
 
+from __future__ import annotations
+
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 from mypyc.common import PROPSET_PREFIX, JsonDict

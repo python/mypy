@@ -15,6 +15,8 @@ non-locals is via an instance of an environment class. Example:
         return g()
 """
 
+from __future__ import annotations
+
 from typing import Dict, Optional, Union
 
 from mypy.nodes import FuncDef, SymbolNode

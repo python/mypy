@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import List, Set, Tuple
 
 from mypyc.analysis.dataflow import CFG, MAYBE_ANALYSIS, AnalysisResult, run_analysis

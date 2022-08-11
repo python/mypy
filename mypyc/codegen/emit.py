@@ -1,5 +1,7 @@
 """Utilities for emitting C code."""
 
+from __future__ import annotations
+
 import sys
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 from typing_extensions import Final

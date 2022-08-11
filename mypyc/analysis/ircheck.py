@@ -1,4 +1,6 @@
 """Utilities for checking that internal ir is valid and consistent."""
+from __future__ import annotations
+
 from typing import List, Set, Tuple, Union
 
 from mypyc.ir.func_ir import FUNC_STATICMETHOD, FuncIR

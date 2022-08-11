@@ -1,5 +1,7 @@
 """Helpers for writing tests"""
 
+from __future__ import annotations
+
 import contextlib
 import os
 import os.path

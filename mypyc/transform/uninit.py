@@ -1,5 +1,7 @@
 """Insert checks for uninitialized values."""
 
+from __future__ import annotations
+
 from typing import List
 
 from mypyc.analysis.dataflow import AnalysisDict, analyze_must_defined_regs, cleanup_cfg, get_cfg

@@ -1,5 +1,7 @@
 """Test that C functions used in primitives are declared in a header such as CPy.h."""
 
+from __future__ import annotations
+
 import glob
 import os
 import re

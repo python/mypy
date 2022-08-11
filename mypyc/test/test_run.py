@@ -1,5 +1,7 @@
 """Test cases for building an C extension and running it."""
 
+from __future__ import annotations
+
 import ast
 import contextlib
 import glob
