@@ -5,6 +5,7 @@ rather than having to read it back from disk on each run.
 """
 
 from __future__ import annotations
+
 import argparse
 import base64
 import json

@@ -5,6 +5,7 @@ defaults, and that argparse doesn't assign any new members to the Options
 object it creates.
 """
 from __future__ import annotations
+
 import argparse
 import sys
 

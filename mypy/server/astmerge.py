@@ -46,6 +46,7 @@ See the main entry point merge_asts for more details.
 """
 
 from __future__ import annotations
+
 from typing import Dict, List, Optional, Tuple, TypeVar, cast
 
 from mypy.nodes import (

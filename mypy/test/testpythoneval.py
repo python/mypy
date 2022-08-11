@@ -11,6 +11,7 @@ Note: These test cases are *not* included in the main test suite, as including
 """
 
 from __future__ import annotations
+
 import os
 import os.path
 import re

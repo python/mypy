@@ -51,6 +51,7 @@ Summary of how this works for certain kinds of differences:
 """
 
 from __future__ import annotations
+
 from typing import Dict, Optional, Sequence, Set, Tuple, Union
 
 from mypy.nodes import (

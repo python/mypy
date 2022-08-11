@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import os
 
 from mypy.modulefinder import FindModuleCache, ModuleNotFoundReason, SearchPaths
