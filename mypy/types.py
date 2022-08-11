@@ -891,7 +891,7 @@ class TypeList(ProperType):
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.items = tuple(items)
+        self.items = items
 
     def accept(self, visitor: "TypeVisitor[T]") -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
@@ -901,7 +901,7 @@ class TypeList(ProperType):
         assert False, "Synthetic types don't serialize"
 
     def __hash__(self) -> int:
-        return hash(self.items)
+        return hash(tuple(self.items))
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, TypeList):
