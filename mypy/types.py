@@ -2760,6 +2760,7 @@ from mypy.type_visitor import (  # noqa
     TypeTranslator as TypeTranslator,
     TypeVisitor as TypeVisitor,
 )
+from mypy.typetraverser import TypeTraverserVisitor
 
 
 class TypeStrVisitor(SyntheticTypeVisitor[str]):
@@ -3122,6 +3123,18 @@ class InstantiateAliasVisitor(TrivialSyntheticTypeTranslator):
         return typ
 
 
+class LocationSetter(TypeTraverserVisitor):
+    # TODO: Should we update locations of other Type subclasses?
+    def __init__(self, line: int, column: int) -> None:
+        self.line = line
+        self.column = column
+
+    def visit_instance(self, typ: Instance) -> None:
+        typ.line = self.line
+        typ.column = self.column
+        super().visit_instance(typ)
+
+
 def replace_alias_tvars(
     tp: Type, vars: List[str], subs: List[Type], newline: int, newcolumn: int
 ) -> Type:
@@ -3130,6 +3143,7 @@ def replace_alias_tvars(
     """
     replacer = InstantiateAliasVisitor(vars, subs)
     new_tp = tp.accept(replacer)
+    new_tp.accept(LocationSetter(newline, newcolumn))
     new_tp.line = newline
     new_tp.column = newcolumn
     return new_tp
