@@ -3636,13 +3636,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             item = expand_type_alias(
                 tapp.expr.node, tapp.types, self.chk.fail, tapp.expr.node.no_args, tapp
             )
-            item = get_proper_type(item)
-            if isinstance(item, Instance):
-                tp = type_object_type(item.type, self.named_type)
-                return self.apply_type_arguments_to_callable(tp, item.args, tapp)
-            else:
-                self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
-                return AnyType(TypeOfAny.from_error)
+            _, tp = self.apply_type_arguments_to_type_alias(item, tapp)
+            return tp
+
         # Type application of a normal generic class in runtime context.
         # This is typically used as `x = G[int]()`.
         tp = get_proper_type(self.accept(tapp.expr))
@@ -3653,6 +3649,29 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if isinstance(tp, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=tp)
         return AnyType(TypeOfAny.special_form)
+
+    def apply_type_arguments_to_type_alias(
+        self, item: Type, tapp: TypeApplication
+    ) -> Tuple[bool, Type]:
+        item = get_proper_type(item)
+
+        if isinstance(item, Instance):  # TODO: what about other types?
+            tp = type_object_type(item.type, self.named_type)
+            return False, self.apply_type_arguments_to_callable(tp, item.args, tapp)
+        elif isinstance(item, (NoneType, TupleType, CallableType)):
+            return False, item  # We don't do anything for these types, they are ready
+        elif isinstance(item, UnionType):
+            res = []
+            for union_item in item.items:
+                should_stop, t = self.apply_type_arguments_to_type_alias(union_item, tapp)
+                if should_stop:
+                    return True, t
+                res.append(t)
+            return False, UnionType.make_union(res)
+
+        # All other types are reported as errors:
+        self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
+        return True, AnyType(TypeOfAny.from_error)
 
     def visit_type_alias_expr(self, alias: TypeAliasExpr) -> Type:
         """Right hand side of a type alias definition.
