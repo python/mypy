@@ -3637,6 +3637,35 @@ def foo(x: Point) -> int:
 ==
 b.py:3: error: Unsupported operand types for + ("int" and "str")
 
+[case testTypedDictUpdate3]
+# flags: --enable-recursive-aliases
+import b
+[file a.py]
+from mypy_extensions import TypedDict
+from typing import Optional
+class Point(TypedDict):
+    x: Optional[Point]
+    y: int
+    z: int
+p = Point(dict(x=None, y=1337, z=0))
+[file a.py.2]
+from mypy_extensions import TypedDict
+from typing import Optional
+class Point(TypedDict):
+    x: Optional[Point]
+    y: str
+    z: int
+p = Point(dict(x=None, y='lurr', z=0))
+[file b.py]
+from a import Point
+def foo(x: Point) -> int:
+    assert x['x'] is not None
+    return x['x']['z'] + x['x']['y']
+[builtins fixtures/dict.pyi]
+[out]
+==
+b.py:4: error: Unsupported operand types for + ("int" and "str")
+
 [case testBasicAliasUpdate]
 import b
 [file a.py]

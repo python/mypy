@@ -5849,3 +5849,47 @@ def f(x: a.N) -> None:
 [out3]
 tmp/c.py:4: note: Revealed type is "Tuple[Union[Tuple[Union[..., None], builtins.int], None], builtins.int]"
 tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+
+[case testTypedDictUpdateNonRecursiveToRecursiveCoarse]
+# flags: --enable-recursive-aliases
+import c
+[file a.py]
+from b import M
+from typing import TypedDict, Optional
+class N(TypedDict):
+    r: Optional[M]
+    x: int
+n: N
+[file b.py]
+from a import N
+from typing import TypedDict
+class M(TypedDict):
+    r: None
+    x: int
+[file b.py.2]
+from a import N
+from typing import TypedDict, Optional
+class M(TypedDict):
+    r: Optional[N]
+    x: int
+[file c.py]
+import a
+def f(x: a.N) -> None:
+    if x["r"] is not None:
+        s: int = x["r"]["x"]
+[file c.py.3]
+import a
+def f(x: a.N) -> None:
+    if x["r"] is not None and x["r"]["r"] is not None and x["r"]["r"]["r"] is not None:
+        reveal_type(x)
+        s: int = x["r"]["r"]["r"]["r"]
+f(a.n)
+reveal_type(a.n)
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+[out]
+[out2]
+[out3]
+tmp/c.py:4: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"
+tmp/c.py:5: error: Incompatible types in assignment (expression has type "Optional[N]", variable has type "int")
+tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M', {'r': Union[..., None], 'x': builtins.int}), None], 'x': builtins.int})"

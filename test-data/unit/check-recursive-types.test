@@ -610,3 +610,145 @@ def foo() -> None:
     b: B
     reveal_type(b)  # N: Revealed type is "Tuple[Any, builtins.int, fallback=__main__.B@4]"
 [builtins fixtures/tuple.pyi]
+
+[case testBasicRecursiveTypedDictClass]
+# flags: --enable-recursive-aliases
+from typing import TypedDict
+
+class TD(TypedDict):
+    x: int
+    y: TD
+
+td: TD
+reveal_type(td)  # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': ...})"
+s: str = td["y"]  # E: Incompatible types in assignment (expression has type "TD", variable has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testBasicRecursiveTypedDictCall]
+# flags: --enable-recursive-aliases
+from typing import TypedDict
+
+TD = TypedDict("TD", {"x": int, "y": TD})
+td: TD
+reveal_type(td)  # N: Revealed type is "TypedDict('__main__.TD', {'x': builtins.int, 'y': ...})"
+
+TD2 = TypedDict("TD2", {"x": int, "y": TD2})
+td2: TD2
+TD3 = TypedDict("TD3", {"x": str, "y": TD3})
+td3: TD3
+
+td = td2
+td = td3  # E: Incompatible types in assignment (expression has type "TD3", variable has type "TD")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testBasicRecursiveTypedDictExtending]
+# flags: --enable-recursive-aliases
+from typing import TypedDict
+
+class TDA(TypedDict):
+    xa: int
+    ya: TD
+
+class TDB(TypedDict):
+    xb: int
+    yb: TD
+
+class TD(TDA, TDB):
+    a: TDA
+    b: TDB
+
+td: TD
+reveal_type(td)  # N: Revealed type is "TypedDict('__main__.TD', {'xb': builtins.int, 'yb': ..., 'xa': builtins.int, 'ya': ..., 'a': TypedDict('__main__.TDA', {'xa': builtins.int, 'ya': ...}), 'b': TypedDict('__main__.TDB', {'xb': builtins.int, 'yb': ...})})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveTypedDictCreation]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, Optional
+
+class TD(TypedDict):
+    x: int
+    y: Optional[TD]
+
+td: TD = {"x": 0, "y": None}
+td2: TD = {"x": 0, "y": {"x": 1, "y": {"x": 2, "y": None}}}
+
+itd = TD(x=0, y=None)
+itd2 = TD(x=0, y=TD(x=0, y=TD(x=0, y=None)))
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveTypedDictMethods]
+# flags: --enable-recursive-aliases
+from typing import TypedDict
+
+class TD(TypedDict, total=False):
+    x: int
+    y: TD
+
+td: TD
+td["y"] = {"x": 0, "y": {}}
+td["y"] = {"x": 0, "y": {"x": 0, "y": 42}}  # E: Incompatible types (expression has type "int", TypedDict item "y" has type "TD")
+
+reveal_type(td.get("y"))  # N: Revealed type is "Union[TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: TypedDict('__main__.TD', {'x'?: builtins.int, 'y'?: ...})}), None]"
+s: str = td.get("y")  # E: Incompatible types in assignment (expression has type "Optional[TD]", variable has type "str")
+
+td.update({"x": 0, "y": {"x": 1, "y": {}}})
+td.update({"x": 0, "y": {"x": 1, "y": {"x": 2, "y": 42}}})  # E: Incompatible types (expression has type "int", TypedDict item "y" has type "TD")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveTypedDictSubtyping]
+# flags: --enable-recursive-aliases
+from typing import TypedDict
+
+class TDA1(TypedDict):
+    x: int
+    y: TDA1
+class TDA2(TypedDict):
+    x: int
+    y: TDA2
+class TDB(TypedDict):
+    x: str
+    y: TDB
+
+tda1: TDA1
+tda2: TDA2
+tdb: TDB
+def fa1(arg: TDA1) -> None: ...
+def fa2(arg: TDA2) -> None: ...
+def fb(arg: TDB) -> None: ...
+
+fa1(tda2)
+fa2(tda1)
+fb(tda1)  # E: Argument 1 to "fb" has incompatible type "TDA1"; expected "TDB"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testRecursiveTypedDictJoin]
+# flags: --enable-recursive-aliases
+from typing import TypedDict, TypeVar
+
+class TDA1(TypedDict):
+    x: int
+    y: TDA1
+class TDA2(TypedDict):
+    x: int
+    y: TDA2
+class TDB(TypedDict):
+    x: str
+    y: TDB
+
+tda1: TDA1
+tda2: TDA2
+tdb: TDB
+
+T = TypeVar("T")
+def f(x: T, y: T) -> T: ...
+# Join for recursive types is very basic, but just add tests that we don't crash.
+reveal_type(f(tda1, tda2))  # N: Revealed type is "TypedDict({'x': builtins.int, 'y': TypedDict('__main__.TDA1', {'x': builtins.int, 'y': ...})})"
+reveal_type(f(tda1, tdb))  # N: Revealed type is "TypedDict({})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]

@@ -613,9 +613,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if args:
                 self.fail("Generic tuple types not supported", ctx)
                 return AnyType(TypeOfAny.from_error)
-            if info.tuple_alias:
+            if info.special_alias:
                 # We don't support generic tuple types yet.
-                return TypeAliasType(info.tuple_alias, [])
+                return TypeAliasType(info.special_alias, [])
             return tup.copy_modified(items=self.anal_array(tup.items), fallback=instance)
         td = info.typeddict_type
         if td is not None:
@@ -624,6 +624,9 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             if args:
                 self.fail("Generic TypedDict types not supported", ctx)
                 return AnyType(TypeOfAny.from_error)
+            if info.special_alias:
+                # We don't support generic TypedDict types yet.
+                return TypeAliasType(info.special_alias, [])
             # Create a named TypedDictType
             return td.copy_modified(
                 item_types=self.anal_array(list(td.items.values())), fallback=instance

@@ -27,7 +27,7 @@ from mypy.nodes import (
     TypeInfo,
 )
 from mypy.options import Options
-from mypy.semanal_shared import SemanticAnalyzerInterface
+from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
 from mypy.types import TPDICT_NAMES, AnyType, RequiredType, Type, TypedDictType, TypeOfAny
 
@@ -66,6 +66,9 @@ class TypedDictAnalyzer:
                 if base_expr.fullname in TPDICT_NAMES or self.is_typeddict(base_expr):
                     possible = True
         if possible:
+            existing_info = None
+            if isinstance(defn.analyzed, TypedDictExpr):
+                existing_info = defn.analyzed.info
             if (
                 len(defn.base_type_exprs) == 1
                 and isinstance(defn.base_type_exprs[0], RefExpr)
@@ -76,7 +79,7 @@ class TypedDictAnalyzer:
                 if fields is None:
                     return True, None  # Defer
                 info = self.build_typeddict_typeinfo(
-                    defn.name, fields, types, required_keys, defn.line
+                    defn.name, fields, types, required_keys, defn.line, existing_info
                 )
                 defn.analyzed = TypedDictExpr(info)
                 defn.analyzed.line = defn.line
@@ -128,7 +131,9 @@ class TypedDictAnalyzer:
             keys.extend(new_keys)
             types.extend(new_types)
             required_keys.update(new_required_keys)
-            info = self.build_typeddict_typeinfo(defn.name, keys, types, required_keys, defn.line)
+            info = self.build_typeddict_typeinfo(
+                defn.name, keys, types, required_keys, defn.line, existing_info
+            )
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
@@ -173,7 +178,12 @@ class TypedDictAnalyzer:
                 if stmt.type is None:
                     types.append(AnyType(TypeOfAny.unannotated))
                 else:
-                    analyzed = self.api.anal_type(stmt.type, allow_required=True)
+                    analyzed = self.api.anal_type(
+                        stmt.type,
+                        allow_required=True,
+                        allow_placeholder=self.options.enable_recursive_aliases
+                        and not self.api.is_func_scope(),
+                    )
                     if analyzed is None:
                         return None, [], set()  # Need to defer
                     types.append(analyzed)
@@ -232,7 +242,7 @@ class TypedDictAnalyzer:
         name, items, types, total, ok = res
         if not ok:
             # Error. Construct dummy return value.
-            info = self.build_typeddict_typeinfo("TypedDict", [], [], set(), call.line)
+            info = self.build_typeddict_typeinfo("TypedDict", [], [], set(), call.line, None)
         else:
             if var_name is not None and name != var_name:
                 self.fail(
@@ -254,7 +264,12 @@ class TypedDictAnalyzer:
             types = [  # unwrap Required[T] to just T
                 t.item if isinstance(t, RequiredType) else t for t in types  # type: ignore[misc]
             ]
-            info = self.build_typeddict_typeinfo(name, items, types, required_keys, call.line)
+            existing_info = None
+            if isinstance(node.analyzed, TypedDictExpr):
+                existing_info = node.analyzed.info
+            info = self.build_typeddict_typeinfo(
+                name, items, types, required_keys, call.line, existing_info
+            )
             info.line = node.line
             # Store generated TypeInfo under both names, see semanal_namedtuple for more details.
             if name != var_name or is_func_scope:
@@ -357,7 +372,12 @@ class TypedDictAnalyzer:
                 else:
                     self.fail_typeddict_arg("Invalid field type", field_type_expr)
                 return [], [], False
-            analyzed = self.api.anal_type(type, allow_required=True)
+            analyzed = self.api.anal_type(
+                type,
+                allow_required=True,
+                allow_placeholder=self.options.enable_recursive_aliases
+                and not self.api.is_func_scope(),
+            )
             if analyzed is None:
                 return None
             types.append(analyzed)
@@ -370,7 +390,13 @@ class TypedDictAnalyzer:
         return "", [], [], True, False
 
     def build_typeddict_typeinfo(
-        self, name: str, items: List[str], types: List[Type], required_keys: Set[str], line: int
+        self,
+        name: str,
+        items: List[str],
+        types: List[Type],
+        required_keys: Set[str],
+        line: int,
+        existing_info: Optional[TypeInfo],
     ) -> TypeInfo:
         # Prefer typing then typing_extensions if available.
         fallback = (
@@ -379,8 +405,11 @@ class TypedDictAnalyzer:
             or self.api.named_type_or_none("mypy_extensions._TypedDict", [])
         )
         assert fallback is not None
-        info = self.api.basic_new_typeinfo(name, fallback, line)
-        info.typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
+        info = existing_info or self.api.basic_new_typeinfo(name, fallback, line)
+        typeddict_type = TypedDictType(dict(zip(items, types)), required_keys, fallback)
+        if info.special_alias and has_placeholder(info.special_alias.target):
+            self.api.defer(force_progress=True)
+        info.update_typeddict_type(typeddict_type)
         return info
 
     # Helpers

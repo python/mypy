@@ -339,10 +339,17 @@ def lookup_fully_qualified_alias(
     if isinstance(node, TypeAlias):
         return node
     elif isinstance(node, TypeInfo):
-        if node.tuple_alias:
-            return node.tuple_alias
-        alias = TypeAlias.from_tuple_type(node)
-        node.tuple_alias = alias
+        if node.special_alias:
+            # Already fixed up.
+            return node.special_alias
+        if node.tuple_type:
+            alias = TypeAlias.from_tuple_type(node)
+        elif node.typeddict_type:
+            alias = TypeAlias.from_typeddict_type(node)
+        else:
+            assert allow_missing
+            return missing_alias()
+        node.special_alias = alias
         return alias
     else:
         # Looks like a missing TypeAlias during an initial daemon load, put something there
