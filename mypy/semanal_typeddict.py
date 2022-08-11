@@ -1,6 +1,6 @@
 """Semantic analysis of TypedDict definitions."""
 
-from typing import List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from typing_extensions import Final
 
 from mypy import errorcodes as codes
@@ -18,18 +18,28 @@ from mypy.nodes import (
     EllipsisExpr,
     Expression,
     ExpressionStmt,
+    IndexExpr,
     NameExpr,
     PassStmt,
     RefExpr,
     StrExpr,
     TempNode,
+    TupleExpr,
     TypedDictExpr,
     TypeInfo,
 )
 from mypy.options import Options
 from mypy.semanal_shared import SemanticAnalyzerInterface, has_placeholder
 from mypy.typeanal import check_for_explicit_any, has_any_from_unimported_type
-from mypy.types import TPDICT_NAMES, AnyType, RequiredType, Type, TypedDictType, TypeOfAny
+from mypy.types import (
+    TPDICT_NAMES,
+    AnyType,
+    RequiredType,
+    Type,
+    TypedDictType,
+    TypeOfAny,
+    replace_alias_tvars,
+)
 
 TPDICT_CLASS_ERROR: Final = (
     "Invalid statement in TypedDict definition; " 'expected "field_name: field_type"'
@@ -61,84 +71,177 @@ class TypedDictAnalyzer:
         """
         possible = False
         for base_expr in defn.base_type_exprs:
+            if isinstance(base_expr, IndexExpr):
+                base_expr = base_expr.base
             if isinstance(base_expr, RefExpr):
                 self.api.accept(base_expr)
                 if base_expr.fullname in TPDICT_NAMES or self.is_typeddict(base_expr):
                     possible = True
-        if possible:
-            existing_info = None
-            if isinstance(defn.analyzed, TypedDictExpr):
-                existing_info = defn.analyzed.info
-            if (
-                len(defn.base_type_exprs) == 1
-                and isinstance(defn.base_type_exprs[0], RefExpr)
-                and defn.base_type_exprs[0].fullname in TPDICT_NAMES
-            ):
-                # Building a new TypedDict
-                fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
-                if fields is None:
-                    return True, None  # Defer
-                info = self.build_typeddict_typeinfo(
-                    defn.name, fields, types, required_keys, defn.line, existing_info
-                )
-                defn.analyzed = TypedDictExpr(info)
-                defn.analyzed.line = defn.line
-                defn.analyzed.column = defn.column
-                return True, info
-
-            # Extending/merging existing TypedDicts
-            typeddict_bases = []
-            typeddict_bases_set = set()
-            for expr in defn.base_type_exprs:
-                if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
-                    if "TypedDict" not in typeddict_bases_set:
-                        typeddict_bases_set.add("TypedDict")
-                    else:
-                        self.fail('Duplicate base class "TypedDict"', defn)
-                elif isinstance(expr, RefExpr) and self.is_typeddict(expr):
-                    assert expr.fullname
-                    if expr.fullname not in typeddict_bases_set:
-                        typeddict_bases_set.add(expr.fullname)
-                        typeddict_bases.append(expr)
-                    else:
-                        assert isinstance(expr.node, TypeInfo)
-                        self.fail(f'Duplicate base class "{expr.node.name}"', defn)
-                else:
-                    self.fail("All bases of a new TypedDict must be TypedDict types", defn)
-
-            keys: List[str] = []
-            types = []
-            required_keys = set()
-            # Iterate over bases in reverse order so that leftmost base class' keys take precedence
-            for base in reversed(typeddict_bases):
-                assert isinstance(base, RefExpr)
-                assert isinstance(base.node, TypeInfo)
-                assert isinstance(base.node.typeddict_type, TypedDictType)
-                base_typed_dict = base.node.typeddict_type
-                base_items = base_typed_dict.items
-                valid_items = base_items.copy()
-                for key in base_items:
-                    if key in keys:
-                        self.fail(f'Overwriting TypedDict field "{key}" while merging', defn)
-                keys.extend(valid_items.keys())
-                types.extend(valid_items.values())
-                required_keys.update(base_typed_dict.required_keys)
-            new_keys, new_types, new_required_keys = self.analyze_typeddict_classdef_fields(
-                defn, keys
-            )
-            if new_keys is None:
+        if not possible:
+            return False, None
+        existing_info = None
+        if isinstance(defn.analyzed, TypedDictExpr):
+            existing_info = defn.analyzed.info
+        if (
+            len(defn.base_type_exprs) == 1
+            and isinstance(defn.base_type_exprs[0], RefExpr)
+            and defn.base_type_exprs[0].fullname in TPDICT_NAMES
+        ):
+            # Building a new TypedDict
+            fields, types, required_keys = self.analyze_typeddict_classdef_fields(defn)
+            if fields is None:
                 return True, None  # Defer
-            keys.extend(new_keys)
-            types.extend(new_types)
-            required_keys.update(new_required_keys)
             info = self.build_typeddict_typeinfo(
-                defn.name, keys, types, required_keys, defn.line, existing_info
+                defn.name, fields, types, required_keys, defn.line, existing_info
             )
             defn.analyzed = TypedDictExpr(info)
             defn.analyzed.line = defn.line
             defn.analyzed.column = defn.column
             return True, info
-        return False, None
+
+        # Extending/merging existing TypedDicts
+        typeddict_bases: List[Expression] = []
+        typeddict_bases_set = set()
+        for expr in defn.base_type_exprs:
+            if isinstance(expr, RefExpr) and expr.fullname in TPDICT_NAMES:
+                if "TypedDict" not in typeddict_bases_set:
+                    typeddict_bases_set.add("TypedDict")
+                else:
+                    self.fail('Duplicate base class "TypedDict"', defn)
+            elif isinstance(expr, RefExpr) and self.is_typeddict(expr):
+                assert expr.fullname
+                if expr.fullname not in typeddict_bases_set:
+                    typeddict_bases_set.add(expr.fullname)
+                    typeddict_bases.append(expr)
+                else:
+                    assert isinstance(expr.node, TypeInfo)
+                    self.fail(f'Duplicate base class "{expr.node.name}"', defn)
+            elif isinstance(expr, IndexExpr) and self.is_typeddict(expr.base):
+                assert isinstance(expr.base, RefExpr)
+                assert expr.base.fullname
+                if expr.base.fullname not in typeddict_bases_set:
+                    typeddict_bases_set.add(expr.base.fullname)
+                    typeddict_bases.append(expr)
+                else:
+                    assert isinstance(expr.base.node, TypeInfo)
+                    self.fail(f'Duplicate base class "{expr.base.node.name}"', defn)
+            else:
+                self.fail("All bases of a new TypedDict must be TypedDict types", defn)
+
+        keys: List[str] = []
+        types = []
+        required_keys = set()
+        # Iterate over bases in reverse order so that leftmost base class' keys take precedence
+        for base in reversed(typeddict_bases):
+            self.add_keys_and_types_from_base(base, keys, types, required_keys, defn)
+        new_keys, new_types, new_required_keys = self.analyze_typeddict_classdef_fields(defn, keys)
+        if new_keys is None:
+            return True, None  # Defer
+        keys.extend(new_keys)
+        types.extend(new_types)
+        required_keys.update(new_required_keys)
+        info = self.build_typeddict_typeinfo(
+            defn.name, keys, types, required_keys, defn.line, existing_info
+        )
+        defn.analyzed = TypedDictExpr(info)
+        defn.analyzed.line = defn.line
+        defn.analyzed.column = defn.column
+        return True, info
+
+    def add_keys_and_types_from_base(
+        self,
+        base: Expression,
+        keys: List[str],
+        types: List[Type],
+        required_keys: Set[str],
+        ctx: Context,
+    ) -> None:
+        if isinstance(base, RefExpr):
+            assert isinstance(base.node, TypeInfo)
+            info = base.node
+            base_args: List[Type] = []
+        else:
+            assert isinstance(base, IndexExpr)
+            assert isinstance(base.base, RefExpr)
+            assert isinstance(base.base.node, TypeInfo)
+            info = base.base.node
+            args = self.analyze_base_args(base, ctx)
+            if args is None:
+                return
+            base_args = args
+
+        assert info.typeddict_type is not None
+        base_typed_dict = info.typeddict_type
+        base_items = base_typed_dict.items
+        valid_items = base_items.copy()
+
+        # Always fix invalid bases to avoid crashes.
+        tvars = info.type_vars
+        if len(base_args) != len(tvars):
+            any_kind = TypeOfAny.from_omitted_generics
+            if base_args:
+                self.fail(f'Invalid number of type arguments for "{info.name}"', ctx)
+                any_kind = TypeOfAny.from_error
+            base_args = [AnyType(any_kind) for _ in tvars]
+
+        valid_items = self.map_items_to_base(valid_items, tvars, base_args)
+        for key in base_items:
+            if key in keys:
+                self.fail(f'Overwriting TypedDict field "{key}" while merging', ctx)
+        keys.extend(valid_items.keys())
+        types.extend(valid_items.values())
+        required_keys.update(base_typed_dict.required_keys)
+
+    def analyze_base_args(self, base: IndexExpr, ctx: Context) -> Optional[List[Type]]:
+        """Analyze arguments of base type expressions as types.
+
+        We need to do this, because normal base class processing happens after
+        the TypedDict special-casing (plus we get a custom error message).
+        """
+        base_args = []
+        if isinstance(base.index, TupleExpr):
+            args = base.index.items
+        else:
+            args = [base.index]
+
+        for arg_expr in args:
+            try:
+                type = expr_to_unanalyzed_type(arg_expr, self.options, self.api.is_stub_file)
+            except TypeTranslationError:
+                self.fail("Invalid TypedDict type argument", ctx)
+                return None
+            analyzed = self.api.anal_type(
+                type,
+                allow_required=True,
+                allow_placeholder=self.options.enable_recursive_aliases
+                and not self.api.is_func_scope(),
+            )
+            if analyzed is None:
+                return None
+            base_args.append(analyzed)
+        return base_args
+
+    def map_items_to_base(
+        self, valid_items: Dict[str, Type], tvars: List[str], base_args: List[Type]
+    ) -> Dict[str, Type]:
+        """Map item types to how they would look in their base with type arguments applied.
+
+        We would normally use expand_type() for such task, but we can't use it during
+        semantic analysis, because it can (indirectly) call is_subtype() etc., and it
+        will crash on placeholder types. So we hijack replace_alias_tvars() that was initially
+        intended to deal with eager expansion of generic type aliases during semantic analysis.
+        """
+        mapped_items = {}
+        for key in valid_items:
+            type_in_base = valid_items[key]
+            if not tvars:
+                mapped_items[key] = type_in_base
+                continue
+            mapped_type = replace_alias_tvars(
+                type_in_base, tvars, base_args, type_in_base.line, type_in_base.column
+            )
+            mapped_items[key] = mapped_type
+        return mapped_items
 
     def analyze_typeddict_classdef_fields(
         self, defn: ClassDef, oldfields: Optional[List[str]] = None

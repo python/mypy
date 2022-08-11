@@ -2436,9 +2436,21 @@ reveal_type(foo(dict(key=1, value=2)))  # N: Revealed type is "builtins.list[bui
 from typing import TypedDict, Generic, TypeVar, List
 
 T = TypeVar("T")
-
 class TD(TypedDict, Generic[T]):
     key: int
     value: T
+
+S = TypeVar("S")
+class STD(TD[List[S]]):
+    other: S
+
+std: STD[str]
+reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'key': builtins.int, 'value': builtins.list[builtins.str], 'other': builtins.str})"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictErrors]
+from typing import TypedDict, Generic, TypeVar, List
+
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]

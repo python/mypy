@@ -268,6 +268,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeAliasType,
+    TypedDictType,
     TypeOfAny,
     TypeType,
     TypeVarLikeType,
@@ -1821,6 +1822,8 @@ class SemanticAnalyzer(
                         msg = 'Class cannot subclass value of type "Any"'
                     self.fail(msg, base_expr)
                 info.fallback_to_any = True
+            elif isinstance(base, TypedDictType):
+                base_types.append(base.fallback)
             else:
                 msg = "Invalid base class"
                 name = self.get_name_repr_of_expr(base_expr)
