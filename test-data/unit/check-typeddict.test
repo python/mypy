@@ -2449,8 +2449,28 @@ reveal_type(std)  # N: Revealed type is "TypedDict('__main__.STD', {'key': built
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
-[case testGenericTypedDictErrors]
-from typing import TypedDict, Generic, TypeVar, List
+[case testGenericTypedDictExtendingErrors]
+from typing import TypedDict, Generic, TypeVar
 
+T = TypeVar("T")
+class Base(TypedDict, Generic[T]):
+    x: T
+class Sub(Base[{}]):  # E: Invalid TypedDict type argument \
+                      # E: Type expected within [...] \
+                      # E: Invalid base class "Base"
+    y: int
+s: Sub
+reveal_type(s)  # N: Revealed type is "TypedDict('__main__.Sub', {'y': builtins.int})"
+
+class Sub2(Base[int, str]):  # E: Invalid number of type arguments for "Base" \
+                             # E: "Base" expects 1 type argument, but 2 given
+    y: int
+s2: Sub2
+reveal_type(s2)  # N: Revealed type is "TypedDict('__main__.Sub2', {'x': Any, 'y': builtins.int})"
+
+class Sub3(Base):  # OK
+    y: int
+s3: Sub3
+reveal_type(s3)  # N: Revealed type is "TypedDict('__main__.Sub3', {'x': Any, 'y': builtins.int})"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
