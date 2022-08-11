@@ -891,7 +891,7 @@ class TypeList(ProperType):
 
     def __init__(self, items: List[Type], line: int = -1, column: int = -1) -> None:
         super().__init__(line, column)
-        self.items = items
+        self.items = tuple(items)
 
     def accept(self, visitor: "TypeVisitor[T]") -> T:
         assert isinstance(visitor, SyntheticTypeVisitor)
@@ -899,6 +899,14 @@ class TypeList(ProperType):
 
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
+
+    def __hash__(self) -> int:
+        return hash(self.items)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeList):
+            return False
+        return self.items == other.items
 
 
 class UnpackType(ProperType):
