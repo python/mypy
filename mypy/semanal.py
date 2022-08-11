@@ -226,6 +226,7 @@ from mypy.semanal_shared import (
 )
 from mypy.semanal_typeddict import TypedDictAnalyzer
 from mypy.tvar_scope import TypeVarLikeScope
+from mypy.type_visitor import TypeQuery
 from mypy.typeanal import (
     TypeAnalyser,
     TypeVarLikeList,
