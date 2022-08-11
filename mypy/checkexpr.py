@@ -410,10 +410,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         ):
             typeddict_callable = get_proper_type(self.accept(e.callee))
             if isinstance(typeddict_callable, CallableType):
-                typeddict_type = get_proper_type(typeddict_callable.ret_type)
-                assert isinstance(typeddict_type, TypedDictType)
+                typeddict_ret_type = get_proper_type(typeddict_callable.ret_type)
+                assert isinstance(typeddict_ret_type, TypedDictType)
                 return self.check_typeddict_call(
-                    typeddict_type, e.arg_kinds, e.arg_names, e.args, e, typeddict_callable
+                    typeddict_ret_type, e.arg_kinds, e.arg_names, e.args, e, typeddict_callable
                 )
         if (
             isinstance(e.callee, NameExpr)
