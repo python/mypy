@@ -305,11 +305,11 @@ class TypedDictAnalyzer:
         required_keys = {
             field
             for (field, t) in zip(fields, types)
-            if (total or (isinstance(t, RequiredType) and t.required))  # type: ignore[misc]
-            and not (isinstance(t, RequiredType) and not t.required)  # type: ignore[misc]
+            if (total or (isinstance(t, RequiredType) and t.required))
+            and not (isinstance(t, RequiredType) and not t.required)
         }
         types = [  # unwrap Required[T] to just T
-            t.item if isinstance(t, RequiredType) else t for t in types  # type: ignore[misc]
+            t.item if isinstance(t, RequiredType) else t for t in types
         ]
 
         return fields, types, required_keys
@@ -361,11 +361,11 @@ class TypedDictAnalyzer:
             required_keys = {
                 field
                 for (field, t) in zip(items, types)
-                if (total or (isinstance(t, RequiredType) and t.required))  # type: ignore[misc]
-                and not (isinstance(t, RequiredType) and not t.required)  # type: ignore[misc]
+                if (total or (isinstance(t, RequiredType) and t.required))
+                and not (isinstance(t, RequiredType) and not t.required)
             }
             types = [  # unwrap Required[T] to just T
-                t.item if isinstance(t, RequiredType) else t for t in types  # type: ignore[misc]
+                t.item if isinstance(t, RequiredType) else t for t in types
             ]
             existing_info = None
             if isinstance(node.analyzed, TypedDictExpr):

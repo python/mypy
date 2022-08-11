@@ -408,13 +408,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and isinstance(e.callee.base.node, TypeInfo)
             and e.callee.base.node.typeddict_type is not None
         ):
-            # Apply type argument form type application.
             typeddict_callable = get_proper_type(self.accept(e.callee))
             if isinstance(typeddict_callable, CallableType):
-                typeddict_applied = get_proper_type(typeddict_callable.ret_type)
-                assert isinstance(typeddict_applied, TypedDictType)
+                typeddict_type = get_proper_type(typeddict_callable.ret_type)
+                assert isinstance(typeddict_type, TypedDictType)
                 return self.check_typeddict_call(
-                    typeddict_applied, e.arg_kinds, e.arg_names, e.args, e, self.accept(e.callee)
+                    typeddict_type, e.arg_kinds, e.arg_names, e.args, e, typeddict_callable
                 )
         if (
             isinstance(e.callee, NameExpr)
