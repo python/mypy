@@ -765,14 +765,14 @@ def process_options(
         "--warn-return-any",
         default=False,
         strict_flag=True,
-        help="Warn about returning values of type Any" " from non-Any typed functions",
+        help="Warn about returning values of type Any from non-Any typed functions",
         group=lint_group,
     )
     add_invertible_flag(
         "--warn-unreachable",
         default=False,
         strict_flag=False,
-        help="Warn about statements or expressions inferred to be" " unreachable",
+        help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
 
@@ -814,7 +814,7 @@ def process_options(
         "--strict-equality",
         default=False,
         strict_flag=True,
-        help="Prohibit equality, identity, and container checks for" " non-overlapping types",
+        help="Prohibit equality, identity, and container checks for non-overlapping types",
         group=strictness_group,
     )
 

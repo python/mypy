@@ -435,7 +435,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.explicit)
         elif fullname in FINAL_TYPE_NAMES:
             self.fail(
-                "Final can be only used as an outermost qualifier" " in a variable annotation", t
+                "Final can be only used as an outermost qualifier in a variable annotation", t
             )
             return AnyType(TypeOfAny.from_error)
         elif fullname == "typing.Tuple" or (
