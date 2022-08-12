@@ -410,7 +410,7 @@ main:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missin
 
 -- TODO: Fix this bug. It is a real bug that was been papered over
 -- by the test harness.
-[case testDeletionOfSubmoduleTriggersImportFrom1-only_when_cache-skip]
+[case testDeletionOfSubmoduleTriggersImportFrom1_2-only_when_cache-skip]
 -- Different cache/no-cache tests because:
 -- missing module error message mismatch
 from p import q
@@ -1509,11 +1509,12 @@ class C: pass
 main:3: error: Name "f" is not defined
 main:4: error: Name "C" is not defined
 ==
-main:3: error: Missing positional argument "x" in call to "f"
+main:2: error: Unsupported class scoped import
 main:4: error: Name "C" is not defined
 ==
-main:3: error: Missing positional argument "x" in call to "f"
+main:2: error: Unsupported class scoped import
 ==
+main:2: error: Unsupported class scoped import
 
 [case testImportStarAddMissingDependencyInsidePackage1]
 from p.b import f
@@ -1752,7 +1753,7 @@ class Foo:
 ==
 a.py:3: error: Argument 1 to "foo" of "Foo" has incompatible type "int"; expected "str"
 
-[case testAddAndUseClass4]
+[case testAddAndUseClass4_2]
 [file a.py]
 [file a.py.2]
 from p.b import *
@@ -2158,7 +2159,7 @@ main.py:2: error: Incompatible types in assignment (expression has type "int", v
 ==
 
 [case testMissingStubAdded2]
-# flags: --follow-imports=skip --py2
+# flags: --follow-imports=skip
 # cmd: mypy main.py
 
 [file main.py]
@@ -2197,11 +2198,11 @@ import waitress
 [file a.py.3]
 import requests
 [out]
-a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.6)
+a.py:1: error: Library stubs not installed for "waitress" (or incompatible with Python 3.7)
 a.py:1: note: Hint: "python3 -m pip install types-waitress"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
 ==
 ==
-a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.6)
+a.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.7)
 a.py:1: note: Hint: "python3 -m pip install types-requests"
 a.py:1: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports

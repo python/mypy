@@ -87,7 +87,7 @@ from typing import Tuple
 from typing_extensions import Annotated
 Alias = Annotated[Tuple[int, ...], ...]
 x: Alias
-reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int]"
+reveal_type(x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 [builtins fixtures/tuple.pyi]
 
 [case testAnnotatedAliasTypeVar]

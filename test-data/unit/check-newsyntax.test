@@ -41,7 +41,7 @@ def tst_local(dct: Dict[int, T]) -> Dict[T, int]:
     ret: Dict[T, int] = {}
     return ret
 
-reveal_type(tst_local({1: 'a'}))  # N: Revealed type is "builtins.dict[builtins.str*, builtins.int]"
+reveal_type(tst_local({1: 'a'}))  # N: Revealed type is "builtins.dict[builtins.str, builtins.int]"
 [builtins fixtures/dict.pyi]
 [out]
 
@@ -151,3 +151,9 @@ v = 1
 reveal_type(f'{v}') # N: Revealed type is "builtins.str"
 reveal_type(f'{1}') # N: Revealed type is "builtins.str"
 [builtins fixtures/f_string.pyi]
+
+[case testFeatureVersionSuggestion]
+# flags: --python-version 3.99
+x *** x this is what future python looks like public static void main String[] args await goto exit
+[out]
+main:2: error: invalid syntax; you likely need to run mypy using Python 3.99 or newer

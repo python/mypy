@@ -1,7 +1,7 @@
 from typing import Dict, Iterable, List, Optional, Set, Union
 
-from mypy.types import TypeVisitor
 import mypy.types as types
+from mypy.types import TypeVisitor
 from mypy.util import split_module_names
 
 
@@ -66,6 +66,15 @@ class TypeIndirectionVisitor(TypeVisitor[Set[str]]):
 
     def visit_param_spec(self, t: types.ParamSpecType) -> Set[str]:
         return set()
+
+    def visit_type_var_tuple(self, t: types.TypeVarTupleType) -> Set[str]:
+        return self._visit(t.upper_bound)
+
+    def visit_unpack_type(self, t: types.UnpackType) -> Set[str]:
+        return t.type.accept(self)
+
+    def visit_parameters(self, t: types.Parameters) -> Set[str]:
+        return self._visit(t.arg_types)
 
     def visit_instance(self, t: types.Instance) -> Set[str]:
         out = self._visit(t.args)

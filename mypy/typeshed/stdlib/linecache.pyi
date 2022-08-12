@@ -1,7 +1,14 @@
-from typing import Any, Dict, List, Protocol, Tuple
+import sys
+from typing import Any, Protocol
+from typing_extensions import TypeAlias
 
-_ModuleGlobals = Dict[str, Any]
-_ModuleMetadata = Tuple[int, float, List[str], str]
+if sys.version_info >= (3, 9):
+    __all__ = ["getline", "clearcache", "checkcache", "lazycache"]
+else:
+    __all__ = ["getline", "clearcache", "checkcache"]
+
+_ModuleGlobals: TypeAlias = dict[str, Any]
+_ModuleMetadata: TypeAlias = tuple[int, float | None, list[str], str]
 
 class _SourceLoader(Protocol):
     def __call__(self) -> str | None: ...

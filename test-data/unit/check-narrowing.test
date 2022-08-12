@@ -434,7 +434,10 @@ else:
     reveal_type(impossible_mixture)     # N: Revealed type is "Union[__main__.KeyedObject, TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]})]"
 
 weird_mixture: Union[KeyedTypedDict, KeyedNamedTuple]
-if weird_mixture["key"] is Key.B:       # E: Invalid tuple index type (actual type "str", expected type "Union[int, slice]")
+if weird_mixture["key"] is Key.B:       # E: No overload variant of "__getitem__" of "tuple" matches argument type "str" \
+                                        # N: Possible overload variants: \
+                                        # N:     def __getitem__(self, int) -> Literal[Key.C] \
+                                        # N:     def __getitem__(self, slice) -> Tuple[Literal[Key.C], ...]
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
@@ -443,7 +446,8 @@ if weird_mixture[0] is Key.B:           # E: TypedDict key must be a string lite
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
 else:
     reveal_type(weird_mixture)          # N: Revealed type is "Union[TypedDict('__main__.KeyedTypedDict', {'key': Literal[__main__.Key.B]}), Tuple[Literal[__main__.Key.C], fallback=__main__.KeyedNamedTuple]]"
-[builtins fixtures/slice.pyi]
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-full.pyi]
 
 [case testNarrowingParentWithProperties]
 from enum import Enum
@@ -894,7 +898,7 @@ else:
     reveal_type(y)   # N: Revealed type is "__main__.Custom"
 
 # No contamination here
-if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Union[Literal[1], Literal[2], None]", right operand type: "Default")
+if 1 == x == z:      # E: Non-overlapping equality check (left operand type: "Optional[Literal[1, 2]]", right operand type: "Default")
     reveal_type(x)   # E: Statement is unreachable
     reveal_type(z)
 else:
@@ -1227,7 +1231,7 @@ def unreachable(x: Union[str, List[str]]) -> None:
     elif isinstance(x, list):
         reveal_type(x)  # N: Revealed type is "builtins.list[builtins.str]"
     else:
-        reveal_type(x)  # N: Revealed type is "<nothing>"
+        reveal_type(x)  # No output: this branch is unreachable
 
 def all_parts_covered(x: Union[str, List[str], List[int], int]) -> None:
     if isinstance(x, str):

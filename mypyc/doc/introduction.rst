@@ -139,7 +139,7 @@ Mypyc uses several techniques to produce fast code:
 * Mypyc treats compiled functions, classes, and attributes declared
   ``Final`` as immutable.
 
-* Mypyc has memory-efficient, unboxed representions for integers and
+* Mypyc has memory-efficient, unboxed representations for integers and
   booleans.
 
 Development status

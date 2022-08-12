@@ -444,7 +444,7 @@ class P(C, Protocol): # E: All bases of a protocol must be protocols
 class P2(P, D, Protocol): # E: All bases of a protocol must be protocols
     pass
 
-P2() # E: Cannot instantiate abstract class "P2" with abstract attribute "attr"
+P2() # E: Cannot instantiate protocol class "P2"
 p: P2
 reveal_type(p.attr) # N: Revealed type is "builtins.int"
 
@@ -625,10 +625,10 @@ def close_all(args: Sequence[Closeable[T]]) -> T:
 
 arg: Closeable[int]
 
-reveal_type(close(F())) # N: Revealed type is "builtins.int*"
-reveal_type(close(arg)) # N: Revealed type is "builtins.int*"
-reveal_type(close_all([F()])) # N: Revealed type is "builtins.int*"
-reveal_type(close_all([arg])) # N: Revealed type is "builtins.int*"
+reveal_type(close(F())) # N: Revealed type is "builtins.int"
+reveal_type(close(arg)) # N: Revealed type is "builtins.int"
+reveal_type(close_all([F()])) # N: Revealed type is "builtins.int"
+reveal_type(close_all([arg])) # N: Revealed type is "builtins.int"
 [builtins fixtures/isinstancelist.pyi]
 [typing fixtures/typing-medium.pyi]
 
@@ -647,7 +647,7 @@ class C:
 
 def fun3(x: P[T, T]) -> T:
     pass
-reveal_type(fun3(C())) # N: Revealed type is "builtins.int*"
+reveal_type(fun3(C())) # N: Revealed type is "builtins.int"
 
 [case testProtocolGenericInferenceCovariant]
 from typing import Generic, TypeVar, Protocol
@@ -665,7 +665,7 @@ class C:
 
 def fun4(x: U, y: P[U, U]) -> U:
     pass
-reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object*"
+reveal_type(fun4('a', C())) # N: Revealed type is "builtins.object"
 
 [case testUnrealtedGenericProtolsEquivalent]
 from typing import TypeVar, Protocol
@@ -912,7 +912,7 @@ class L:
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L())) # N: Revealed type is "builtins.int*"
+reveal_type(last(L())) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testRecursiveProtocolSubtleMismatch]
@@ -1050,7 +1050,7 @@ class C(Generic[T]):
 
 x: C[int]
 def f(arg: P[T]) -> T: pass
-reveal_type(f(x)) #E: Revealed type is "builtins.int*"
+reveal_type(f(x)) #E: Revealed type is "builtins.int"
 
 -- @property, @classmethod and @staticmethod in protocol types
 -- -----------------------------------------------------------
@@ -1353,9 +1353,9 @@ y: P2
 l0 = [x, x]
 l1 = [y, y]
 l = [x, y]
-reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P*]"
-reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2*]"
-reveal_type(l) # N: Revealed type is "builtins.list[__main__.P*]"
+reveal_type(l0) # N: Revealed type is "builtins.list[__main__.P]"
+reveal_type(l1) # N: Revealed type is "builtins.list[__main__.P2]"
+reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
 [builtins fixtures/list.pyi]
 
 [case testJoinOfIncompatibleProtocols]
@@ -1368,7 +1368,7 @@ class P2(Protocol):
 
 x: P
 y: P2
-reveal_type([x, y]) # N: Revealed type is "builtins.list[builtins.object*]"
+reveal_type([x, y]) # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/list.pyi]
 
 [case testJoinProtocolWithNormal]
@@ -1385,7 +1385,7 @@ y: C
 
 l = [x, y]
 
-reveal_type(l) # N: Revealed type is "builtins.list[__main__.P*]"
+reveal_type(l) # N: Revealed type is "builtins.list[__main__.P]"
 [builtins fixtures/list.pyi]
 
 [case testMeetProtocolWithProtocol]
@@ -1400,7 +1400,7 @@ class P2(Protocol):
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: P2) -> None: pass
-reveal_type(f(g)) # N: Revealed type is "__main__.P2*"
+reveal_type(f(g)) # N: Revealed type is "__main__.P2"
 
 [case testMeetOfIncompatibleProtocols]
 from typing import Protocol, Callable, TypeVar
@@ -1426,7 +1426,7 @@ class C:
 T = TypeVar('T')
 def f(x: Callable[[T, T], None]) -> T: pass
 def g(x: P, y: C) -> None: pass
-reveal_type(f(g)) # N: Revealed type is "__main__.C*"
+reveal_type(f(g)) # N: Revealed type is "__main__.C"
 
 [case testInferProtocolFromProtocol]
 from typing import Protocol, Sequence, TypeVar, Generic
@@ -1445,8 +1445,8 @@ class L(Generic[T]):
 def last(seq: Linked[T]) -> T:
     pass
 
-reveal_type(last(L[int]())) # N: Revealed type is "__main__.Box*[builtins.int*]"
-reveal_type(last(L[str]()).content) # N: Revealed type is "builtins.str*"
+reveal_type(last(L[int]())) # N: Revealed type is "__main__.Box[builtins.int]"
+reveal_type(last(L[str]()).content) # N: Revealed type is "builtins.str"
 
 [case testOverloadOnProtocol]
 from typing import overload, Protocol, runtime_checkable
@@ -1553,7 +1553,7 @@ f2(z) # E: Argument 1 to "f2" has incompatible type "Union[C, D1]"; expected "P2
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class P1(Protocol):
     def m(self) -> None: pass
 class Pbad(Protocol):
@@ -1599,7 +1599,7 @@ f(GoodAlias)
 from typing import Type, Protocol
 
 class P(Protocol):
-    def m(self) -> None: pass
+    def m(self) -> None: return None
 class B(P): pass
 class C:
     def m(self) -> None:
@@ -1828,9 +1828,9 @@ fun(N2(1)) # E: Argument 1 to "fun" has incompatible type "N2"; expected "P[int,
            # N: "N2" is missing following "P" protocol member: \
            # N:     y
 
-reveal_type(fun3(z)) # N: Revealed type is "builtins.object*"
+reveal_type(fun3(z)) # N: Revealed type is "builtins.object"
 
-reveal_type(fun3(z3)) # N: Revealed type is "builtins.int*"
+reveal_type(fun3(z3)) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testBasicCallableStructuralSubtyping]
@@ -1849,7 +1849,7 @@ T = TypeVar('T')
 def apply_gen(f: Callable[[T], T]) -> T:
     pass
 
-reveal_type(apply_gen(Add5())) # N: Revealed type is "builtins.int*"
+reveal_type(apply_gen(Add5())) # N: Revealed type is "builtins.int"
 def apply_str(f: Callable[[str], int], x: str) -> int:
     return f(x)
 apply_str(Add5(), 'a') # E: Argument 1 to "apply_str" has incompatible type "Add5"; expected "Callable[[str], int]" \
@@ -1890,7 +1890,7 @@ def inc(a: int, temp: str) -> int:
 def foo(f: Callable[[int], T]) -> T:
     return f(1)
 
-reveal_type(foo(partial(inc, 'temp'))) # N: Revealed type is "builtins.int*"
+reveal_type(foo(partial(inc, 'temp'))) # N: Revealed type is "builtins.int"
 [builtins fixtures/list.pyi]
 
 [case testStructuralInferenceForCallable]
@@ -1903,7 +1903,7 @@ class Actual:
     def __call__(self, arg: int) -> str: pass
 
 def fun(cb: Callable[[T], S]) -> Tuple[T, S]: pass
-reveal_type(fun(Actual())) # N: Revealed type is "Tuple[builtins.int*, builtins.str*]"
+reveal_type(fun(Actual())) # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 
 -- Standard protocol types (SupportsInt, Sized, etc.)
@@ -2028,8 +2028,8 @@ class A:
 
 class B(A): pass
 
-reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[__main__.B*]"
-reveal_type(list(B()))  # N: Revealed type is "builtins.list[__main__.B*]"
+reveal_type(list(b for b in B()))  # N: Revealed type is "builtins.list[__main__.B]"
+reveal_type(list(B()))  # N: Revealed type is "builtins.list[__main__.B]"
 [builtins fixtures/list.pyi]
 
 [case testIterableProtocolOnMetaclass]
@@ -2045,8 +2045,8 @@ class E(metaclass=EMeta):
 class C(E):
     pass
 
-reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[__main__.C*]"
-reveal_type(list(C))  # N: Revealed type is "builtins.list[__main__.C*]"
+reveal_type(list(c for c in C))  # N: Revealed type is "builtins.list[__main__.C]"
+reveal_type(list(C))  # N: Revealed type is "builtins.list[__main__.C]"
 [builtins fixtures/list.pyi]
 
 [case testClassesGetattrWithProtocols]
@@ -2382,7 +2382,7 @@ y: PBad = None  # E: Incompatible types in assignment (expression has type "None
 [out]
 
 [case testOnlyMethodProtocolUsableWithIsSubclass]
-from typing import Protocol, runtime_checkable, Union, Type
+from typing import Protocol, runtime_checkable, Union, Type, Sequence, overload
 @runtime_checkable
 class P(Protocol):
     def meth(self) -> int:
@@ -2404,6 +2404,17 @@ if issubclass(cls, P):
     reveal_type(cls)  # N: Revealed type is "Type[__main__.C]"
 else:
     reveal_type(cls)  # N: Revealed type is "Type[__main__.E]"
+
+@runtime_checkable
+class POverload(Protocol):
+    @overload
+    def meth(self, a: int) -> float: ...
+    @overload
+    def meth(self, a: str) -> Sequence[float]: ...
+    def meth(self, a):
+        pass
+
+reveal_type(issubclass(int, POverload))  # N: Revealed type is "builtins.bool"
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
@@ -2441,7 +2452,7 @@ def call(x: int, y: str) -> Tuple[int, str]: ...
 def func(caller: Caller[T, S]) -> Tuple[T, S]:
     pass
 
-reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int*, builtins.str*]"
+reveal_type(func(call))  # N: Revealed type is "Tuple[builtins.int, builtins.str]"
 [builtins fixtures/tuple.pyi]
 [out]
 
@@ -2619,6 +2630,7 @@ class P(Protocol): ...
 class C(P): ...
 
 reveal_type(C.register(int))  # N: Revealed type is "def () -> builtins.int"
+[builtins fixtures/tuple.pyi]
 [typing fixtures/typing-full.pyi]
 [out]
 
@@ -2678,10 +2690,10 @@ foo(ONE)
 foo(TWO)
 foo(3)
 
-reveal_type(abs(ONE))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(TWO))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(3))  # N: Revealed type is "builtins.int*"
-reveal_type(abs(ALL))  # N: Revealed type is "builtins.int*"
+reveal_type(abs(ONE))  # N: Revealed type is "builtins.int"
+reveal_type(abs(TWO))  # N: Revealed type is "builtins.int"
+reveal_type(abs(3))  # N: Revealed type is "builtins.int"
+reveal_type(abs(ALL))  # N: Revealed type is "builtins.int"
 [builtins fixtures/float.pyi]
 [typing fixtures/typing-full.pyi]
 
@@ -2720,6 +2732,20 @@ class EmptyProto(Protocol): ...
 
 def hh(h: EmptyProto) -> None: pass
 hh(None)
+
+# See https://github.com/python/mypy/issues/13081
+class SupportsStr(Protocol):
+    def __str__(self) -> str: ...
+
+def ss(s: SupportsStr) -> None: pass
+ss(None)
+
+class HashableStr(Protocol):
+    def __str__(self) -> str: ...
+    def __hash__(self) -> int: ...
+
+def hs(n: HashableStr) -> None: pass
+hs(None)
 [builtins fixtures/tuple.pyi]
 
 
@@ -2733,13 +2759,13 @@ class Blooper:
     flap = None
 
     def bloop(self, x: Flapper) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 
 class Gleemer:
     flap = []  # E: Need type annotation for "flap" (hint: "flap: List[<type>] = ...")
 
     def gleem(self, x: Flapper) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 
@@ -2757,7 +2783,7 @@ class DataArray(ObjectHashable):
     __hash__ = None
 
     def f(self, x: Hashable) -> None:
-        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object*]"
+        reveal_type([self, x])  # N: Revealed type is "builtins.list[builtins.object]"
 [builtins fixtures/tuple.pyi]
 
 
@@ -2795,3 +2821,300 @@ class MyClass:
         assert isinstance(self, MyProtocol)
 [builtins fixtures/isinstance.pyi]
 [typing fixtures/typing-full.pyi]
+
+[case testProtocolAndTypeVariableSpecialCase]
+from typing import TypeVar, Iterable, Optional, Callable, Protocol
+
+T_co = TypeVar('T_co', covariant=True)
+
+class SupportsNext(Protocol[T_co]):
+    def __next__(self) -> T_co: ...
+
+N = TypeVar("N", bound=SupportsNext, covariant=True)
+
+class SupportsIter(Protocol[T_co]):
+    def __iter__(self) -> T_co: ...
+
+def f(i: SupportsIter[N]) -> N: ...
+
+I = TypeVar('I', bound=Iterable)
+
+def g(x: I, y: Iterable) -> None:
+    f(x)
+    f(y)
+
+[case testMatchProtocolAgainstOverloadWithAmbiguity]
+from typing import TypeVar, Protocol, Union, Generic, overload
+
+T = TypeVar("T", covariant=True)
+
+class slice: pass
+
+class GetItem(Protocol[T]):
+    def __getitem__(self, k: int) -> T: ...
+
+class Str:  # Resembles 'str'
+    def __getitem__(self, k: Union[int, slice]) -> Str: ...
+
+class Lst(Generic[T]):  # Resembles 'list'
+    def __init__(self, x: T): ...
+    @overload
+    def __getitem__(self, k: int) -> T: ...
+    @overload
+    def __getitem__(self, k: slice) -> Lst[T]: ...
+    def __getitem__(self, k): pass
+
+def f(x: GetItem[GetItem[Str]]) -> None: ...
+
+a: Lst[Str]
+f(Lst(a))
+
+class Lst2(Generic[T]):
+    def __init__(self, x: T): ...
+    # The overload items are tweaked but still compatible
+    @overload
+    def __getitem__(self, k: Str) -> None: ...
+    @overload
+    def __getitem__(self, k: slice) -> Lst2[T]: ...
+    @overload
+    def __getitem__(self, k: Union[int, str]) -> T: ...
+    def __getitem__(self, k): pass
+
+b: Lst2[Str]
+f(Lst2(b))
+
+class Lst3(Generic[T]):  # Resembles 'list'
+    def __init__(self, x: T): ...
+    # The overload items are no longer compatible (too narrow argument type)
+    @overload
+    def __getitem__(self, k: slice) -> Lst3[T]: ...
+    @overload
+    def __getitem__(self, k: bool) -> T: ...
+    def __getitem__(self, k): pass
+
+c: Lst3[Str]
+f(Lst3(c))  # E: Argument 1 to "f" has incompatible type "Lst3[Lst3[Str]]"; expected "GetItem[GetItem[Str]]" \
+# N: Following member(s) of "Lst3[Lst3[Str]]" have conflicts: \
+# N:     Expected:                  \
+# N:         def __getitem__(self, int) -> GetItem[Str] \
+# N:     Got:                       \
+# N:         @overload              \
+# N:         def __getitem__(self, slice) -> Lst3[Lst3[Str]] \
+# N:         @overload              \
+# N:         def __getitem__(self, bool) -> Lst3[Str]
+
+[builtins fixtures/list.pyi]
+[typing fixtures/typing-full.pyi]
+
+[case testMatchProtocolAgainstOverloadWithMultipleMatchingItems]
+from typing import Protocol, overload, TypeVar, Any
+
+_T_co = TypeVar("_T_co", covariant=True)
+_T = TypeVar("_T")
+
+class SupportsRound(Protocol[_T_co]):
+    @overload
+    def __round__(self) -> int: ...
+    @overload
+    def __round__(self, __ndigits: int) -> _T_co: ...
+
+class C:
+    # This matches both overload items of SupportsRound
+    def __round__(self, __ndigits: int = ...) -> int: ...
+
+def round(number: SupportsRound[_T], ndigits: int) -> _T: ...
+
+round(C(), 1)
+
+[case testEmptyBodyImplicitlyAbstractProtocol]
+# flags: --strict-optional
+from typing import Protocol, overload, Union
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    def meth(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class "B1" with abstract attribute "meth"
+C1()
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+class B2(P2): ...
+class C2(P2):
+    @classmethod
+    def meth(cls) -> int:
+        return 0
+B2()  # E: Cannot instantiate abstract class "B2" with abstract attribute "meth"
+C2()
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    @overload
+    def not_abstract(self, x: int) -> int: ...
+    @overload
+    def not_abstract(self, x: str) -> str: ...
+    def not_abstract(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+class B3(P3): ...
+class C3(P3):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+    def meth(self, x: Union[int, str]) -> Union[int, str]:
+        return 0
+B3()  # E: Cannot instantiate abstract class "B3" with abstract attribute "meth"
+C3()
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolProperty]
+# flags: --strict-optional
+from typing import Protocol
+
+class P1(Protocol):
+    @property
+    def attr(self) -> int: ...
+class B1(P1): ...
+class C1(P1):
+    @property
+    def attr(self) -> int:
+        return 0
+B1()  # E: Cannot instantiate abstract class "B1" with abstract attribute "attr"
+C1()
+
+class P2(Protocol):
+    @property
+    def attr(self) -> int: ...
+    @attr.setter
+    def attr(self, value: int) -> None: ...
+class B2(P2): ...
+class C2(P2):
+    @property
+    def attr(self) -> int: return 0
+    @attr.setter
+    def attr(self, value: int) -> None: pass
+B2()  # E: Cannot instantiate abstract class "B2" with abstract attribute "attr"
+C2()
+[builtins fixtures/property.pyi]
+
+[case testEmptyBodyImplicitlyAbstractProtocolStub]
+from stub import P1, P2, P3, P4
+
+class B1(P1): ...
+class B2(P2): ...
+class B3(P3): ...
+class B4(P4): ...
+
+B1()
+B2()
+B3()
+B4()  # E: Cannot instantiate abstract class "B4" with abstract attribute "meth"
+
+[file stub.pyi]
+from typing import Protocol, overload, Union
+from abc import abstractmethod
+
+class P1(Protocol):
+    def meth(self) -> int: ...
+
+class P2(Protocol):
+    @classmethod
+    def meth(cls) -> int: ...
+
+class P3(Protocol):
+    @overload
+    def meth(self, x: int) -> int: ...
+    @overload
+    def meth(self, x: str) -> str: ...
+
+class P4(Protocol):
+    @abstractmethod
+    def meth(self) -> int: ...
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyVariationsImplicitlyAbstractProtocol]
+from typing import Protocol
+
+class WithPass(Protocol):
+    def meth(self) -> int:
+        pass
+class A(WithPass): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "meth"
+
+class WithEllipses(Protocol):
+    def meth(self) -> int: ...
+class B(WithEllipses): ...
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "meth"
+
+class WithDocstring(Protocol):
+    def meth(self) -> int:
+        """Docstring for meth.
+
+	This is meth."""
+class C(WithDocstring): ...
+C() # E: Cannot instantiate abstract class "C" with abstract attribute "meth"
+
+class WithRaise(Protocol):
+    def meth(self) -> int:
+        """Docstring for meth."""
+        raise NotImplementedError
+class D(WithRaise): ...
+D() # E: Cannot instantiate abstract class "D" with abstract attribute "meth"
+[builtins fixtures/exception.pyi]
+
+[case testEmptyBodyNoneCompatibleProtocol]
+# flags: --strict-optional
+from abc import abstractmethod
+from typing import Any, Optional, Protocol, Union, overload
+from typing_extensions import TypeAlias
+
+NoneAlias: TypeAlias = None
+
+class NoneCompatible(Protocol):
+    def f(self) -> None: ...
+    def g(self) -> Any: ...
+    def h(self) -> Optional[int]: ...
+    def i(self) -> NoneAlias: ...
+    @classmethod
+    def j(cls) -> None: ...
+
+class A(NoneCompatible): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attributes "f", "g", "h", "i" and "j" \
+    # N: The following methods were marked implicitly abstract because they have empty function bodies: "f", "g", "h", "i" and "j". If they are not meant to be abstract, explicitly return None.
+
+class NoneCompatible2(Protocol):
+    def f(self, x: int): ...
+
+class B(NoneCompatible2): ...
+B() # E: Cannot instantiate abstract class "B" with abstract attribute "f" \
+    # N: The following method was marked implicitly abstract because it has an empty function body: "f". If it is not meant to be abstract, explicitly return None.
+
+class NoneCompatible3(Protocol):
+    @abstractmethod
+    def f(self) -> None: ...
+    @overload
+    def g(self, x: int) -> int: ...
+    @overload
+    def g(self, x: str) -> None: ...
+    def h(self, x): ...
+
+class C(NoneCompatible3): ...
+C() # E: Cannot instantiate abstract class "C" with abstract attributes "f", "g" and "h"
+[builtins fixtures/tuple.pyi]
+[builtins fixtures/classmethod.pyi]
+
+[case testEmptyBodyWithFinal]
+from typing import Protocol, final
+
+class P(Protocol):
+    @final          # E: Protocol member cannot be final
+    def f(self, x: int) -> str: ...
+
+class A(P): ...
+A() # E: Cannot instantiate abstract class "A" with abstract attribute "f"

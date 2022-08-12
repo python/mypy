@@ -10,10 +10,11 @@ in places where efficient access to properties is not important.
 For those cases some other technique should be used.
 """
 
-from mypy_extensions import FlexibleAlias
-from typing import TypeVar, Any
+from typing import Any, TypeVar
 
-T = TypeVar('T')
+from mypy_extensions import FlexibleAlias
+
+T = TypeVar("T")
 
 # This won't ever be true at runtime, but we consider it true during
 # mypyc compilations.

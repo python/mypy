@@ -1,9 +1,82 @@
-from lib2to3.pgen2.token import *  # noqa
-from typing import Callable, Iterable, Iterator, Tuple
+from collections.abc import Callable, Iterable, Iterator
+from lib2to3.pgen2.token import *
+from typing_extensions import TypeAlias
 
-_Coord = Tuple[int, int]
-_TokenEater = Callable[[int, str, _Coord, _Coord, str], None]
-_TokenInfo = Tuple[int, str, _Coord, _Coord, str]
+__all__ = [
+    "AMPER",
+    "AMPEREQUAL",
+    "ASYNC",
+    "AT",
+    "ATEQUAL",
+    "AWAIT",
+    "BACKQUOTE",
+    "CIRCUMFLEX",
+    "CIRCUMFLEXEQUAL",
+    "COLON",
+    "COMMA",
+    "COMMENT",
+    "DEDENT",
+    "DOT",
+    "DOUBLESLASH",
+    "DOUBLESLASHEQUAL",
+    "DOUBLESTAR",
+    "DOUBLESTAREQUAL",
+    "ENDMARKER",
+    "EQEQUAL",
+    "EQUAL",
+    "ERRORTOKEN",
+    "GREATER",
+    "GREATEREQUAL",
+    "INDENT",
+    "ISEOF",
+    "ISNONTERMINAL",
+    "ISTERMINAL",
+    "LBRACE",
+    "LEFTSHIFT",
+    "LEFTSHIFTEQUAL",
+    "LESS",
+    "LESSEQUAL",
+    "LPAR",
+    "LSQB",
+    "MINEQUAL",
+    "MINUS",
+    "NAME",
+    "NEWLINE",
+    "NL",
+    "NOTEQUAL",
+    "NT_OFFSET",
+    "NUMBER",
+    "N_TOKENS",
+    "OP",
+    "PERCENT",
+    "PERCENTEQUAL",
+    "PLUS",
+    "PLUSEQUAL",
+    "RARROW",
+    "RBRACE",
+    "RIGHTSHIFT",
+    "RIGHTSHIFTEQUAL",
+    "RPAR",
+    "RSQB",
+    "SEMI",
+    "SLASH",
+    "SLASHEQUAL",
+    "STAR",
+    "STAREQUAL",
+    "STRING",
+    "TILDE",
+    "VBAR",
+    "VBAREQUAL",
+    "tok_name",
+    "tokenize",
+    "generate_tokens",
+    "untokenize",
+    "COLONEQUAL",
+]
+
+_Coord: TypeAlias = tuple[int, int]
+_TokenEater: TypeAlias = Callable[[int, str, _Coord, _Coord, str], object]
+_TokenInfo: TypeAlias = tuple[int, str, _Coord, _Coord, str]
 
 class TokenError(Exception): ...
 class StopTokenizing(Exception): ...

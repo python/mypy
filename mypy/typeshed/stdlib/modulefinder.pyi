@@ -1,13 +1,15 @@
 import sys
+from collections.abc import Container, Iterable, Iterator, Sequence
 from types import CodeType
-from typing import IO, Any, Container, Iterable, Iterator, Sequence, Tuple
+from typing import IO, Any
 
-LOAD_CONST: int  # undocumented
-IMPORT_NAME: int  # undocumented
-STORE_NAME: int  # undocumented
-STORE_GLOBAL: int  # undocumented
-STORE_OPS: tuple[int, int]  # undocumented
-EXTENDED_ARG: int  # undocumented
+if sys.version_info < (3, 11):
+    LOAD_CONST: int  # undocumented
+    IMPORT_NAME: int  # undocumented
+    STORE_NAME: int  # undocumented
+    STORE_GLOBAL: int  # undocumented
+    STORE_OPS: tuple[int, int]  # undocumented
+    EXTENDED_ARG: int  # undocumented
 
 packagePathMap: dict[str, list[str]]  # undocumented
 
@@ -19,7 +21,6 @@ def ReplacePackage(oldname: str, newname: str) -> None: ...
 
 class Module:  # undocumented
     def __init__(self, name: str, file: str | None = ..., path: str | None = ...) -> None: ...
-    def __repr__(self) -> str: ...
 
 class ModuleFinder:
 
@@ -47,6 +48,7 @@ class ModuleFinder:
             excludes: Container[str] = ...,
             replace_paths: Sequence[tuple[str, str]] = ...,
         ) -> None: ...
+
     def msg(self, level: int, str: str, *args: Any) -> None: ...  # undocumented
     def msgin(self, *args: Any) -> None: ...  # undocumented
     def msgout(self, *args: Any) -> None: ...  # undocumented
@@ -62,7 +64,7 @@ class ModuleFinder:
     def find_all_submodules(self, m: Module) -> Iterable[str]: ...  # undocumented
     def import_module(self, partname: str, fqname: str, parent: Module) -> Module | None: ...  # undocumented
     def load_module(self, fqname: str, fp: IO[str], pathname: str, file_info: tuple[str, str, str]) -> Module: ...  # undocumented
-    def scan_opcodes(self, co: CodeType) -> Iterator[tuple[str, Tuple[Any, ...]]]: ...  # undocumented
+    def scan_opcodes(self, co: CodeType) -> Iterator[tuple[str, tuple[Any, ...]]]: ...  # undocumented
     def scan_code(self, co: CodeType, m: Module) -> None: ...  # undocumented
     def load_package(self, fqname: str, pathname: str) -> Module: ...  # undocumented
     def add_module(self, fqname: str) -> Module: ...  # undocumented

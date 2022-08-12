@@ -1,12 +1,24 @@
 from typing import Optional
 
 from mypy.nodes import (
-    Var, FuncItem, ClassDef, AssignmentStmt, ForStmt, WithStmt,
-    CastExpr, TypeApplication, TypeAliasExpr, TypeVarExpr, TypedDictExpr, NamedTupleExpr,
-    PromoteExpr, NewTypeExpr
+    AssertTypeExpr,
+    AssignmentStmt,
+    CastExpr,
+    ClassDef,
+    ForStmt,
+    FuncItem,
+    NamedTupleExpr,
+    NewTypeExpr,
+    PromoteExpr,
+    TypeAliasExpr,
+    TypeApplication,
+    TypedDictExpr,
+    TypeVarExpr,
+    Var,
+    WithStmt,
 )
-from mypy.types import Type
 from mypy.traverser import TraverserVisitor
+from mypy.types import Type
 from mypy.typetraverser import TypeTraverserVisitor
 
 
@@ -77,6 +89,10 @@ class MixedTraverserVisitor(TraverserVisitor, TypeTraverserVisitor):
 
     def visit_cast_expr(self, o: CastExpr) -> None:
         super().visit_cast_expr(o)
+        o.type.accept(self)
+
+    def visit_assert_type_expr(self, o: AssertTypeExpr) -> None:
+        super().visit_assert_type_expr(o)
         o.type.accept(self)
 
     def visit_type_application(self, o: TypeApplication) -> None:

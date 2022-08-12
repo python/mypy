@@ -1,42 +1,48 @@
 """Test cases for IR generation."""
 
+from __future__ import annotations
+
 import os.path
 
+from mypy.errors import CompileError
 from mypy.test.config import test_temp_dir
 from mypy.test.data import DataDrivenTestCase
-from mypy.errors import CompileError
-
 from mypyc.common import TOP_LEVEL_NAME
 from mypyc.ir.pprint import format_func
 from mypyc.test.testutil import (
-    ICODE_GEN_BUILTINS, use_custom_builtins, MypycDataSuite, build_ir_for_single_file,
-    assert_test_output, remove_comment_lines, replace_word_size,
-    infer_ir_build_options_from_test_name
+    ICODE_GEN_BUILTINS,
+    MypycDataSuite,
+    assert_test_output,
+    build_ir_for_single_file,
+    infer_ir_build_options_from_test_name,
+    remove_comment_lines,
+    replace_word_size,
+    use_custom_builtins,
 )
 
 files = [
-    'irbuild-basic.test',
-    'irbuild-int.test',
-    'irbuild-lists.test',
-    'irbuild-tuple.test',
-    'irbuild-dict.test',
-    'irbuild-set.test',
-    'irbuild-str.test',
-    'irbuild-bytes.test',
-    'irbuild-statements.test',
-    'irbuild-nested.test',
-    'irbuild-classes.test',
-    'irbuild-optional.test',
-    'irbuild-any.test',
-    'irbuild-generics.test',
-    'irbuild-try.test',
-    'irbuild-strip-asserts.test',
-    'irbuild-vectorcall.test',
-    'irbuild-unreachable.test',
-    'irbuild-isinstance.test',
-    'irbuild-dunders.test',
-    'irbuild-singledispatch.test',
-    'irbuild-constant-fold.test',
+    "irbuild-basic.test",
+    "irbuild-int.test",
+    "irbuild-lists.test",
+    "irbuild-tuple.test",
+    "irbuild-dict.test",
+    "irbuild-set.test",
+    "irbuild-str.test",
+    "irbuild-bytes.test",
+    "irbuild-statements.test",
+    "irbuild-nested.test",
+    "irbuild-classes.test",
+    "irbuild-optional.test",
+    "irbuild-any.test",
+    "irbuild-generics.test",
+    "irbuild-try.test",
+    "irbuild-strip-asserts.test",
+    "irbuild-vectorcall.test",
+    "irbuild-unreachable.test",
+    "irbuild-isinstance.test",
+    "irbuild-dunders.test",
+    "irbuild-singledispatch.test",
+    "irbuild-constant-fold.test",
 ]
 
 
@@ -62,10 +68,8 @@ class TestGenOps(MypycDataSuite):
             else:
                 actual = []
                 for fn in ir:
-                    if (fn.name == TOP_LEVEL_NAME
-                            and not name.endswith('_toplevel')):
+                    if fn.name == TOP_LEVEL_NAME and not name.endswith("_toplevel"):
                         continue
                     actual.extend(format_func(fn))
 
-            assert_test_output(testcase, actual, 'Invalid source code output',
-                               expected_output)
+            assert_test_output(testcase, actual, "Invalid source code output", expected_output)

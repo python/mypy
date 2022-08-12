@@ -1,10 +1,29 @@
 import datetime
 import sys
+from email import _ParamType
 from email.charset import Charset
-from typing import Optional, Tuple, Union, overload
+from typing import overload
+from typing_extensions import TypeAlias
 
-_ParamType = Union[str, Tuple[Optional[str], Optional[str], str]]
-_PDTZ = Tuple[int, int, int, int, int, int, int, int, int, Optional[int]]
+__all__ = [
+    "collapse_rfc2231_value",
+    "decode_params",
+    "decode_rfc2231",
+    "encode_rfc2231",
+    "formataddr",
+    "formatdate",
+    "format_datetime",
+    "getaddresses",
+    "make_msgid",
+    "mktime_tz",
+    "parseaddr",
+    "parsedate",
+    "parsedate_tz",
+    "parsedate_to_datetime",
+    "unquote",
+]
+
+_PDTZ: TypeAlias = tuple[int, int, int, int, int, int, int, int, int, int | None]
 
 def quote(str: str) -> str: ...
 def unquote(str: str) -> str: ...

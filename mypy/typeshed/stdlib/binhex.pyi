@@ -1,10 +1,13 @@
-from typing import IO, Any, Tuple, Union
+from typing import IO, Any
+from typing_extensions import Literal, TypeAlias
+
+__all__ = ["binhex", "hexbin", "Error"]
 
 class Error(Exception): ...
 
-REASONABLY_LARGE: int
-LINELEN: int
-RUNCHAR: bytes
+REASONABLY_LARGE: Literal[32768]
+LINELEN: Literal[64]
+RUNCHAR: Literal[b"\x90"]
 
 class FInfo:
     def __init__(self) -> None: ...
@@ -12,8 +15,8 @@ class FInfo:
     Creator: str
     Flags: int
 
-_FileInfoTuple = Tuple[str, FInfo, int, int]
-_FileHandleUnion = Union[str, IO[bytes]]
+_FileInfoTuple: TypeAlias = tuple[str, FInfo, int, int]
+_FileHandleUnion: TypeAlias = str | IO[bytes]
 
 def getfileinfo(name: str) -> _FileInfoTuple: ...
 

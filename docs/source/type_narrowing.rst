@@ -100,7 +100,7 @@ for better type inference when working with types and metaclasses:
        t = type(o)  # We must use a variable here
        reveal_type(t)  # Revealed type is "builtins.type"
 
-       if issubtype(t, MyCalcMeta):  # `issubtype(type(o), MyCalcMeta)` won't work
+       if issubclass(t, MyCalcMeta):  # `issubclass(type(o), MyCalcMeta)` won't work
            reveal_type(t)  # Revealed type is "Type[MyCalcMeta]"
            t.calc()  # Okay
 

@@ -30,5 +30,5 @@ def console_entry() -> None:
         sys.exit(2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     console_entry()

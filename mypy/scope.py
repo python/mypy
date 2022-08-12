@@ -3,13 +3,11 @@
 TODO: Use everywhere where we track targets, including in mypy.errors.
 """
 
-from contextlib import contextmanager
-from typing import List, Optional, Iterator, Tuple
+from contextlib import contextmanager, nullcontext
+from typing import Iterator, List, Optional, Tuple
 from typing_extensions import TypeAlias as _TypeAlias
 
-from mypy.backports import nullcontext
-from mypy.nodes import TypeInfo, FuncBase
-
+from mypy.nodes import FuncBase, TypeInfo
 
 SavedScope: _TypeAlias = Tuple[str, Optional[TypeInfo], Optional[FuncBase]]
 
@@ -33,7 +31,7 @@ class Scope:
         assert self.module
         if self.function:
             fullname = self.function.fullname
-            return fullname or ''
+            return fullname or ""
         return self.module
 
     def current_full_target(self) -> str:

@@ -44,23 +44,6 @@ type:
 
    x: Union[int, str] = 1.1  # Error!
 
-The variable annotation syntax is available starting from Python 3.6.
-In earlier Python versions, you can use a special comment after an
-assignment statement to declare the type of a variable:
-
-.. code-block:: python
-
-   x = 1  # type: Union[int, str]
-
-We'll use both syntax variants in examples. The syntax variants are
-mostly interchangeable, but the variable annotation syntax allows
-defining the type of a variable without initialization, which is not
-possible with the comment syntax:
-
-.. code-block:: python
-
-   x: str  # Declare type of 'x' without initialization
-
 .. note::
 
    The best way to think about this is that the type annotation sets the
@@ -95,10 +78,11 @@ Similarly, you can also give an explicit type when creating an empty set:
 
 .. note::
 
-   Using type annotations (e.g. `list[int]`) on builtin collections like
+   Using type arguments (e.g. ``list[int]``) on builtin collections like
    :py:class:`list`,  :py:class:`dict`, :py:class:`tuple`, and  :py:class:`set`
    only works in Python 3.9 and later. For Python 3.8 and earlier, you must use
-   :py:class:`~typing.List`, :py:class:`~typing.Dict`, etc.
+   :py:class:`~typing.List` (e.g. ``List[int]``), :py:class:`~typing.Dict`, and
+   so on.
 
 
 Compatibility of container types
@@ -181,27 +165,6 @@ Working around the issue is easy by adding a type annotation:
     a: list[int] = []  # OK
     foo(a)
 
-Declaring multiple variable types at a time
-*******************************************
-
-You can declare more than a single variable at a time, but only with
-a type comment. In order to nicely work with multiple assignment, you
-must give each variable a type separately:
-
-.. code-block:: python
-
-   i, found = 0, False  # type: int, bool
-
-You can optionally use parentheses around the types, assignment targets
-and assigned expression:
-
-.. code-block:: python
-
-   i, found = 0, False  # type: (int, bool)      # OK
-   (i, found) = 0, False  # type: int, bool      # OK
-   i, found = (0, False)  # type: int, bool      # OK
-   (i, found) = (0, False)  # type: (int, bool)  # OK
-
 Starred expressions
 *******************
 
@@ -267,19 +230,20 @@ short explanation of the bug. To do that, use this format:
     app.run(8000)  # type: ignore  # `run()` now accepts an `int`, as a port
 
 
-If your error displays an error code, like so:
+Mypy displays an error code for each error if you use
+:option:`--show-error-codes <mypy --show-error-codes>`:
 
 .. code-block:: text
 
    error: "str" has no attribute "trim"  [attr-defined]
 
 
-It is possible to add a specific error-code in your ignore comment, like
-``# type: ignore[attr-defined]``, to clarify what's being silenced. You can
-find more information about error codes here: :ref:`silence-error-codes`.
+It is possible to add a specific error-code in your ignore comment (e.g.
+``# type: ignore[attr-defined]``) to clarify what's being silenced. You can
+find more information about error codes :ref:`here <silence-error-codes>`.
 
 Similarly, you can also ignore all mypy checks in a file, by adding a
-``# type: ignore`` on the top of the file:
+``# type: ignore`` at the top of the file:
 
 .. code-block:: python
 
@@ -287,3 +251,12 @@ Similarly, you can also ignore all mypy checks in a file, by adding a
     # This is a test file, skipping type checking in it.
     import unittest
     ...
+
+Finally, adding a ``@typing.no_type_check`` decorator to a class, method or
+function has the effect of ignoring that class, method or function.
+
+.. code-block:: python
+
+    @typing.no_type_check
+    def foo() -> str:
+       return 12345  # No error!

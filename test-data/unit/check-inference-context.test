@@ -913,7 +913,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is "Union[builtins.int*, builtins.list[builtins.int]]"
+reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
 reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(f(None)) # N: Revealed type is "builtins.list[builtins.int]"
 [builtins fixtures/list.pyi]
@@ -925,7 +925,7 @@ from typing import TypeVar, Union, List
 T = TypeVar('T')
 
 def f(x: Union[T, List[int]]) -> Union[T, List[int]]: pass
-reveal_type(f(1)) # N: Revealed type is "Union[builtins.int*, builtins.list[builtins.int]]"
+reveal_type(f(1)) # N: Revealed type is "Union[builtins.int, builtins.list[builtins.int]]"
 reveal_type(f([])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(f(None)) # N: Revealed type is "Union[None, builtins.list[builtins.int]]"
 [builtins fixtures/list.pyi]
@@ -940,7 +940,7 @@ class C(Generic[T]):
     def f(self, x: Union[T, S]) -> Union[T, S]: pass
 
 c = C[List[int]]()
-reveal_type(c.f('')) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str*]"
+reveal_type(c.f('')) # N: Revealed type is "Union[builtins.list[builtins.int], builtins.str]"
 reveal_type(c.f([1])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f([])) # N: Revealed type is "builtins.list[builtins.int]"
 reveal_type(c.f(None)) # N: Revealed type is "builtins.list[builtins.int]"
@@ -991,7 +991,7 @@ class D(C): ...
 
 def f(x: Sequence[T], y: Sequence[T]) -> List[T]: ...
 
-reveal_type(f([C()], [D()])) # N: Revealed type is "builtins.list[__main__.C*]"
+reveal_type(f([C()], [D()])) # N: Revealed type is "builtins.list[__main__.C]"
 [builtins fixtures/list.pyi]
 
 [case testInferTypeVariableFromTwoGenericTypes2]
@@ -1023,7 +1023,7 @@ def f(x: A[T], y: A[T]) -> B[T]: ...
 
 c: B[C]
 d: B[D]
-reveal_type(f(c, d)) # N: Revealed type is "__main__.B[__main__.D*]"
+reveal_type(f(c, d)) # N: Revealed type is "__main__.B[__main__.D]"
 
 [case testInferTypeVariableFromTwoGenericTypes4]
 from typing import Generic, TypeVar, Callable, List
@@ -1043,7 +1043,7 @@ def f(x: Callable[[B[T]], None],
 def gc(x: A[C]) -> None: pass  # B[C]
 def gd(x: A[D]) -> None: pass  # B[C]
 
-reveal_type(f(gc, gd)) # N: Revealed type is "builtins.list[__main__.C*]"
+reveal_type(f(gc, gd)) # N: Revealed type is "builtins.list[__main__.C]"
 [builtins fixtures/list.pyi]
 
 [case testWideOuterContextSubClassBound]

@@ -1,9 +1,9 @@
-from typing import Tuple
+from typing_extensions import TypeAlias
 
 # Actually Tuple[(int,) * 625]
-_State = Tuple[int, ...]
+_State: TypeAlias = tuple[int, ...]
 
-class Random(object):
+class Random:
     def __init__(self, seed: object = ...) -> None: ...
     def seed(self, __n: object = ...) -> None: ...
     def getstate(self) -> _State: ...

@@ -57,6 +57,7 @@ ATEQUAL: int
 AWAIT: int
 ASYNC: int
 ERRORTOKEN: int
+COLONEQUAL: int
 N_TOKENS: int
 NT_OFFSET: int
 tok_name: dict[int, str]

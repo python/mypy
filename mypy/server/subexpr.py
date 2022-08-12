@@ -1,13 +1,38 @@
 """Find all subexpressions of an AST node."""
 
+from __future__ import annotations
+
 from typing import List
 
 from mypy.nodes import (
-    Expression, Node, MemberExpr, YieldFromExpr, YieldExpr, CallExpr, OpExpr, ComparisonExpr,
-    SliceExpr, CastExpr, RevealExpr, UnaryExpr, ListExpr, TupleExpr, DictExpr, SetExpr,
-    IndexExpr, GeneratorExpr, ListComprehension, SetComprehension, DictionaryComprehension,
-    ConditionalExpr, TypeApplication, LambdaExpr, StarExpr, BackquoteExpr, AwaitExpr,
+    AssertTypeExpr,
     AssignmentExpr,
+    AwaitExpr,
+    CallExpr,
+    CastExpr,
+    ComparisonExpr,
+    ConditionalExpr,
+    DictExpr,
+    DictionaryComprehension,
+    Expression,
+    GeneratorExpr,
+    IndexExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MemberExpr,
+    Node,
+    OpExpr,
+    RevealExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    TupleExpr,
+    TypeApplication,
+    UnaryExpr,
+    YieldExpr,
+    YieldFromExpr,
 )
 from mypy.traverser import TraverserVisitor
 
@@ -99,6 +124,10 @@ class SubexpressionFinder(TraverserVisitor):
         self.add(e)
         super().visit_cast_expr(e)
 
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
+        self.add(e)
+        super().visit_assert_type_expr(e)
+
     def visit_reveal_expr(self, e: RevealExpr) -> None:
         self.add(e)
         super().visit_reveal_expr(e)
@@ -162,10 +191,6 @@ class SubexpressionFinder(TraverserVisitor):
     def visit_star_expr(self, e: StarExpr) -> None:
         self.add(e)
         super().visit_star_expr(e)
-
-    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
-        self.add(e)
-        super().visit_backquote_expr(e)
 
     def visit_await_expr(self, e: AwaitExpr) -> None:
         self.add(e)

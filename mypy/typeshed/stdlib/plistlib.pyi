@@ -1,7 +1,43 @@
 import sys
+from _typeshed import Self
+from collections.abc import Mapping, MutableMapping
 from datetime import datetime
 from enum import Enum
-from typing import IO, Any, Dict as _Dict, Mapping, MutableMapping, Tuple, Type
+from typing import IO, Any
+
+if sys.version_info >= (3, 9):
+    __all__ = ["InvalidFileException", "FMT_XML", "FMT_BINARY", "load", "dump", "loads", "dumps", "UID"]
+elif sys.version_info >= (3, 8):
+    __all__ = [
+        "readPlist",
+        "writePlist",
+        "readPlistFromBytes",
+        "writePlistToBytes",
+        "Data",
+        "InvalidFileException",
+        "FMT_XML",
+        "FMT_BINARY",
+        "load",
+        "dump",
+        "loads",
+        "dumps",
+        "UID",
+    ]
+else:
+    __all__ = [
+        "readPlist",
+        "writePlist",
+        "readPlistFromBytes",
+        "writePlistToBytes",
+        "Data",
+        "InvalidFileException",
+        "FMT_XML",
+        "FMT_BINARY",
+        "load",
+        "dump",
+        "loads",
+        "dumps",
+    ]
 
 class PlistFormat(Enum):
     FMT_XML: int
@@ -11,8 +47,8 @@ FMT_XML = PlistFormat.FMT_XML
 FMT_BINARY = PlistFormat.FMT_BINARY
 
 if sys.version_info >= (3, 9):
-    def load(fp: IO[bytes], *, fmt: PlistFormat | None = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
-    def loads(value: bytes, *, fmt: PlistFormat | None = ..., dict_type: Type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def load(fp: IO[bytes], *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
+    def loads(value: bytes, *, fmt: PlistFormat | None = ..., dict_type: type[MutableMapping[str, Any]] = ...) -> Any: ...
 
 else:
     def load(
@@ -20,18 +56,18 @@ else:
         *,
         fmt: PlistFormat | None = ...,
         use_builtin_types: bool = ...,
-        dict_type: Type[MutableMapping[str, Any]] = ...,
+        dict_type: type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
     def loads(
         value: bytes,
         *,
         fmt: PlistFormat | None = ...,
         use_builtin_types: bool = ...,
-        dict_type: Type[MutableMapping[str, Any]] = ...,
+        dict_type: type[MutableMapping[str, Any]] = ...,
     ) -> Any: ...
 
 def dump(
-    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | datetime,
     fp: IO[bytes],
     *,
     fmt: PlistFormat = ...,
@@ -39,7 +75,7 @@ def dump(
     skipkeys: bool = ...,
 ) -> None: ...
 def dumps(
-    value: Mapping[str, Any] | list[Any] | Tuple[Any, ...] | str | bool | float | bytes | datetime,
+    value: Mapping[str, Any] | list[Any] | tuple[Any, ...] | str | bool | float | bytes | datetime,
     *,
     fmt: PlistFormat = ...,
     skipkeys: bool = ...,
@@ -52,12 +88,6 @@ if sys.version_info < (3, 9):
     def readPlistFromBytes(data: bytes) -> Any: ...
     def writePlistToBytes(value: Mapping[str, Any]) -> bytes: ...
 
-if sys.version_info < (3, 7):
-    class Dict(_Dict[str, Any]):
-        def __getattr__(self, attr: str) -> Any: ...
-        def __setattr__(self, attr: str, value: Any) -> None: ...
-        def __delattr__(self, attr: str) -> None: ...
-
 if sys.version_info < (3, 9):
     class Data:
         data: bytes
@@ -68,8 +98,9 @@ if sys.version_info >= (3, 8):
         data: int
         def __init__(self, data: int) -> None: ...
         def __index__(self) -> int: ...
-        def __reduce__(self) -> Any: ...
+        def __reduce__(self: Self) -> tuple[type[Self], tuple[int]]: ...
         def __hash__(self) -> int: ...
+        def __eq__(self, other: object) -> bool: ...
 
 class InvalidFileException(ValueError):
     def __init__(self, message: str = ...) -> None: ...

@@ -1,17 +1,46 @@
 import datetime
 import sys
+from collections.abc import Iterable, Sequence
 from time import struct_time
-from typing import Any, Iterable, Optional, Sequence, Tuple
+from typing_extensions import Literal, TypeAlias
 
-_LocaleType = Tuple[Optional[str], Optional[str]]
+__all__ = [
+    "IllegalMonthError",
+    "IllegalWeekdayError",
+    "setfirstweekday",
+    "firstweekday",
+    "isleap",
+    "leapdays",
+    "weekday",
+    "monthrange",
+    "monthcalendar",
+    "prmonth",
+    "month",
+    "prcal",
+    "calendar",
+    "timegm",
+    "month_name",
+    "month_abbr",
+    "day_name",
+    "day_abbr",
+    "Calendar",
+    "TextCalendar",
+    "HTMLCalendar",
+    "LocaleTextCalendar",
+    "LocaleHTMLCalendar",
+    "weekheader",
+]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["FRIDAY", "MONDAY", "SATURDAY", "SUNDAY", "THURSDAY", "TUESDAY", "WEDNESDAY"]
+
+_LocaleType: TypeAlias = tuple[str | None, str | None]
 
 class IllegalMonthError(ValueError):
     def __init__(self, month: int) -> None: ...
-    def __str__(self) -> str: ...
 
 class IllegalWeekdayError(ValueError):
     def __init__(self, weekday: int) -> None: ...
-    def __str__(self) -> str: ...
 
 def isleap(year: int) -> bool: ...
 def leapdays(y1: int, y2: int) -> int: ...
@@ -33,9 +62,8 @@ class Calendar:
     def yeardatescalendar(self, year: int, width: int = ...) -> list[list[int]]: ...
     def yeardays2calendar(self, year: int, width: int = ...) -> list[list[tuple[int, int]]]: ...
     def yeardayscalendar(self, year: int, width: int = ...) -> list[list[int]]: ...
-    if sys.version_info >= (3, 7):
-        def itermonthdays3(self, year: int, month: int) -> Iterable[tuple[int, int, int]]: ...
-        def itermonthdays4(self, year: int, month: int) -> Iterable[tuple[int, int, int, int]]: ...
+    def itermonthdays3(self, year: int, month: int) -> Iterable[tuple[int, int, int]]: ...
+    def itermonthdays4(self, year: int, month: int) -> Iterable[tuple[int, int, int, int]]: ...
 
 class TextCalendar(Calendar):
     def prweek(self, theweek: int, width: int) -> None: ...
@@ -68,19 +96,18 @@ class HTMLCalendar(Calendar):
     def formatmonth(self, theyear: int, themonth: int, withyear: bool = ...) -> str: ...
     def formatyear(self, theyear: int, width: int = ...) -> str: ...
     def formatyearpage(self, theyear: int, width: int = ..., css: str | None = ..., encoding: str | None = ...) -> str: ...
-    if sys.version_info >= (3, 7):
-        cssclasses: list[str]
-        cssclass_noday: str
-        cssclasses_weekday_head: list[str]
-        cssclass_month_head: str
-        cssclass_month: str
-        cssclass_year: str
-        cssclass_year_head: str
+    cssclasses: list[str]
+    cssclass_noday: str
+    cssclasses_weekday_head: list[str]
+    cssclass_month_head: str
+    cssclass_month: str
+    cssclass_year: str
+    cssclass_year_head: str
 
 class different_locale:
     def __init__(self, locale: _LocaleType) -> None: ...
-    def __enter__(self) -> _LocaleType: ...
-    def __exit__(self, *args: Any) -> None: ...
+    def __enter__(self) -> None: ...
+    def __exit__(self, *args: object) -> None: ...
 
 class LocaleTextCalendar(TextCalendar):
     def __init__(self, firstweekday: int = ..., locale: _LocaleType | None = ...) -> None: ...
@@ -97,7 +124,7 @@ c: TextCalendar
 def setfirstweekday(firstweekday: int) -> None: ...
 def format(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
 def formatstring(cols: int, colwidth: int = ..., spacing: int = ...) -> str: ...
-def timegm(tuple: Tuple[int, ...] | struct_time) -> int: ...
+def timegm(tuple: tuple[int, ...] | struct_time) -> int: ...
 
 # Data attributes
 day_name: Sequence[str]
@@ -105,13 +132,12 @@ day_abbr: Sequence[str]
 month_name: Sequence[str]
 month_abbr: Sequence[str]
 
-# Below constants are not in docs or __all__, but enough people have used them
-# they are now effectively public.
+MONDAY: Literal[0]
+TUESDAY: Literal[1]
+WEDNESDAY: Literal[2]
+THURSDAY: Literal[3]
+FRIDAY: Literal[4]
+SATURDAY: Literal[5]
+SUNDAY: Literal[6]
 
-MONDAY: int
-TUESDAY: int
-WEDNESDAY: int
-THURSDAY: int
-FRIDAY: int
-SATURDAY: int
-SUNDAY: int
+EPOCH: Literal[1970]

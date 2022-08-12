@@ -3,13 +3,12 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
-from typing import Dict, Set, Tuple, Optional, List
-from typing_extensions import ClassVar, Final, TypeAlias as _TypeAlias
+from typing import ClassVar, Dict, List, Optional, Set, Tuple
+from typing_extensions import Final, TypeAlias as _TypeAlias
 
 from mypy.nodes import TypeInfo
-from mypy.types import Instance, TypeAliasType, get_proper_type, Type
 from mypy.server.trigger import make_trigger
-from mypy import state
+from mypy.types import Instance, Type, get_proper_type
 
 # Represents that the 'left' instance is a subtype of the 'right' instance
 SubtypeRelationship: _TypeAlias = Tuple[Instance, Instance]
@@ -33,6 +32,7 @@ class TypeState:
     The protocol dependencies however are only stored here, and shouldn't be deleted unless
     not needed any more (e.g. during daemon shutdown).
     """
+
     # '_subtype_caches' keeps track of (subtype, supertype) pairs where supertypes are
     # instances of the given TypeInfo. The cache also keeps track of whether the check
     # was done in strict optional mode and of the specific *kind* of subtyping relationship,
@@ -79,10 +79,12 @@ class TypeState:
     # recursive type aliases. Normally, one would pass type assumptions as an additional
     # arguments to is_subtype(), but this would mean updating dozens of related functions
     # threading this through all callsites (see also comment for TypeInfo.assuming).
-    _assuming: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
-    _assuming_proper: Final[List[Tuple[TypeAliasType, TypeAliasType]]] = []
+    _assuming: Final[List[Tuple[Type, Type]]] = []
+    _assuming_proper: Final[List[Tuple[Type, Type]]] = []
     # Ditto for inference of generic constraints against recursive type aliases.
-    _inferring: Final[List[TypeAliasType]] = []
+    inferring: Final[List[Tuple[Type, Type]]] = []
+    # Whether to use joins or unions when solving constraints, see checkexpr.py for details.
+    infer_unions: ClassVar = False
 
     # N.B: We do all of the accesses to these properties through
     # TypeState, instead of making these classmethods and accessing
@@ -92,18 +94,26 @@ class TypeState:
     @staticmethod
     def is_assumed_subtype(left: Type, right: Type) -> bool:
         for (l, r) in reversed(TypeState._assuming):
-            if (get_proper_type(l) == get_proper_type(left)
-                    and get_proper_type(r) == get_proper_type(right)):
+            if get_proper_type(l) == get_proper_type(left) and get_proper_type(
+                r
+            ) == get_proper_type(right):
                 return True
         return False
 
     @staticmethod
     def is_assumed_proper_subtype(left: Type, right: Type) -> bool:
         for (l, r) in reversed(TypeState._assuming_proper):
-            if (get_proper_type(l) == get_proper_type(left)
-                    and get_proper_type(r) == get_proper_type(right)):
+            if get_proper_type(l) == get_proper_type(left) and get_proper_type(
+                r
+            ) == get_proper_type(right):
                 return True
         return False
+
+    @staticmethod
+    def get_assumptions(is_proper: bool) -> List[Tuple[Type, Type]]:
+        if is_proper:
+            return TypeState._assuming_proper
+        return TypeState._assuming
 
     @staticmethod
     def reset_all_subtype_caches() -> None:
@@ -124,20 +134,28 @@ class TypeState:
 
     @staticmethod
     def is_cached_subtype_check(kind: SubtypeKind, left: Instance, right: Instance) -> bool:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # If there is a literal last known value, give up. There
+            # will be an unbounded number of potential types to cache,
+            # making caching less effective.
+            return False
         info = right.type
-        if info not in TypeState._subtype_caches:
+        cache = TypeState._subtype_caches.get(info)
+        if cache is None:
             return False
-        cache = TypeState._subtype_caches[info]
-        key = (state.strict_optional,) + kind
-        if key not in cache:
+        subcache = cache.get(kind)
+        if subcache is None:
             return False
-        return (left, right) in cache[key]
+        return (left, right) in subcache
 
     @staticmethod
-    def record_subtype_cache_entry(kind: SubtypeKind,
-                                   left: Instance, right: Instance) -> None:
+    def record_subtype_cache_entry(kind: SubtypeKind, left: Instance, right: Instance) -> None:
+        if left.last_known_value is not None or right.last_known_value is not None:
+            # These are unlikely to match, due to the large space of
+            # possible values.  Avoid uselessly increasing cache sizes.
+            return
         cache = TypeState._subtype_caches.setdefault(right.type, dict())
-        cache.setdefault((state.strict_optional,) + kind, set()).add((left, right))
+        cache.setdefault(kind, set()).add((left, right))
 
     @staticmethod
     def reset_protocol_deps() -> None:
@@ -151,11 +169,12 @@ class TypeState:
     def record_protocol_subtype_check(left_type: TypeInfo, right_type: TypeInfo) -> None:
         assert right_type.is_protocol
         TypeState._rechecked_types.add(left_type)
-        TypeState._attempted_protocols.setdefault(
-            left_type.fullname, set()).add(right_type.fullname)
-        TypeState._checked_against_members.setdefault(
-            left_type.fullname,
-            set()).update(right_type.protocol_members)
+        TypeState._attempted_protocols.setdefault(left_type.fullname, set()).add(
+            right_type.fullname
+        )
+        TypeState._checked_against_members.setdefault(left_type.fullname, set()).update(
+            right_type.protocol_members
+        )
 
     @staticmethod
     def _snapshot_protocol_deps() -> Dict[str, Set[str]]:
@@ -194,14 +213,14 @@ class TypeState:
                 # a concrete class may not be reprocessed, so not all <B.x> -> <C.x> deps
                 # are added.
                 for base_info in info.mro[:-1]:
-                    trigger = make_trigger('%s.%s' % (base_info.fullname, attr))
-                    if 'typing' in trigger or 'builtins' in trigger:
+                    trigger = make_trigger(f"{base_info.fullname}.{attr}")
+                    if "typing" in trigger or "builtins" in trigger:
                         # TODO: avoid everything from typeshed
                         continue
                     deps.setdefault(trigger, set()).add(make_trigger(info.fullname))
             for proto in TypeState._attempted_protocols[info.fullname]:
                 trigger = make_trigger(info.fullname)
-                if 'typing' in trigger or 'builtins' in trigger:
+                if "typing" in trigger or "builtins" in trigger:
                     continue
                 # If any class that was checked against a protocol changes,
                 # we need to reset the subtype cache for the protocol.
@@ -220,8 +239,9 @@ class TypeState:
         type checked types. If second_map is given, update it as well. This is currently used
         by FineGrainedBuildManager that maintains normal (non-protocol) dependencies.
         """
-        assert TypeState.proto_deps is not None, (
-            "This should not be called after failed cache load")
+        assert (
+            TypeState.proto_deps is not None
+        ), "This should not be called after failed cache load"
         new_deps = TypeState._snapshot_protocol_deps()
         for trigger, targets in new_deps.items():
             TypeState.proto_deps.setdefault(trigger, set()).update(targets)

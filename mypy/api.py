@@ -3,7 +3,7 @@
 Since mypy still changes, the API was kept utterly simple and non-intrusive.
 It just mimics command line activation without starting a new interpreter.
 So the normal docs about the mypy command line apply.
-Changes in the command line version of mypy will be immediately useable.
+Changes in the command line version of mypy will be immediately usable.
 
 Just import this module and then call the 'run' function with a parameter of
 type List[str], containing what normally would have been the command line
@@ -44,9 +44,8 @@ print('\nExit status:', result[2])
 """
 
 import sys
-
 from io import StringIO
-from typing import List, Tuple, TextIO, Callable
+from typing import Callable, List, TextIO, Tuple
 
 
 def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]:
@@ -66,8 +65,10 @@ def _run(main_wrapper: Callable[[TextIO, TextIO], None]) -> Tuple[str, str, int]
 def run(args: List[str]) -> Tuple[str, str, int]:
     # Lazy import to avoid needing to import all of mypy to call run_dmypy
     from mypy.main import main
-    return _run(lambda stdout, stderr: main(None, args=args,
-                                            stdout=stdout, stderr=stderr, clean_exit=True))
+
+    return _run(
+        lambda stdout, stderr: main(None, args=args, stdout=stdout, stderr=stderr, clean_exit=True)
+    )
 
 
 def run_dmypy(args: List[str]) -> Tuple[str, str, int]:

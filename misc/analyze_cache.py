@@ -1,19 +1,25 @@
 #!/usr/bin/env python
 
-from typing import Any, Dict, Iterable, List, Optional
-from collections import Counter
-
+import json
 import os
 import os.path
-import json
+from collections import Counter
+from typing import Any, Dict, Iterable, List, Optional
 
 ROOT = ".mypy_cache/3.5"
 
 JsonDict = Dict[str, Any]
 
+
 class CacheData:
-    def __init__(self, filename: str, data_json: JsonDict, meta_json: JsonDict,
-                 data_size: int, meta_size: int) -> None:
+    def __init__(
+        self,
+        filename: str,
+        data_json: JsonDict,
+        meta_json: JsonDict,
+        data_size: int,
+        meta_size: int,
+    ) -> None:
         self.filename = filename
         self.data = data_json
         self.meta = meta_json
@@ -33,21 +39,23 @@ def extract_classes(chunks: Iterable[CacheData]) -> Iterable[JsonDict]:
                 yield from extract(chunk.values())
             elif isinstance(chunk, list):
                 yield from extract(chunk)
+
     yield from extract([chunk.data for chunk in chunks])
 
 
 def load_json(data_path: str, meta_path: str) -> CacheData:
-    with open(data_path, 'r') as ds:
+    with open(data_path) as ds:
         data_json = json.load(ds)
 
-    with open(meta_path, 'r') as ms:
+    with open(meta_path) as ms:
         meta_json = json.load(ms)
 
     data_size = os.path.getsize(data_path)
     meta_size = os.path.getsize(meta_path)
 
-    return CacheData(data_path.replace(".data.json", ".*.json"),
-                     data_json, meta_json, data_size, meta_size)
+    return CacheData(
+        data_path.replace(".data.json", ".*.json"), data_json, meta_json, data_size, meta_size
+    )
 
 
 def get_files(root: str) -> Iterable[CacheData]:
@@ -56,17 +64,17 @@ def get_files(root: str) -> Iterable[CacheData]:
             if filename.endswith(".data.json"):
                 meta_filename = filename.replace(".data.json", ".meta.json")
                 yield load_json(
-                        os.path.join(dirpath, filename),
-                        os.path.join(dirpath, meta_filename))
+                    os.path.join(dirpath, filename), os.path.join(dirpath, meta_filename)
+                )
 
 
 def pluck(name: str, chunks: Iterable[JsonDict]) -> Iterable[JsonDict]:
-    return (chunk for chunk in chunks if chunk['.class'] == name)
+    return (chunk for chunk in chunks if chunk[".class"] == name)
 
 
 def report_counter(counter: Counter, amount: Optional[int] = None) -> None:
     for name, count in counter.most_common(amount):
-        print('    {: <8} {}'.format(count, name))
+        print(f"    {count: <8} {name}")
     print()
 
 
@@ -77,6 +85,7 @@ def report_most_common(chunks: List[JsonDict], amount: Optional[int] = None) -> 
 def compress(chunk: JsonDict) -> JsonDict:
     cache = {}  # type: Dict[int, JsonDict]
     counter = 0
+
     def helper(chunk: Any) -> Any:
         nonlocal counter
         if not isinstance(chunk, dict):
@@ -89,8 +98,8 @@ def compress(chunk: JsonDict) -> JsonDict:
         if id in cache:
             return cache[id]
         else:
-            cache[id] = {'.id': counter}
-            chunk['.cache_id'] = counter
+            cache[id] = {".id": counter}
+            chunk[".cache_id"] = counter
             counter += 1
 
         for name in sorted(chunk.keys()):
@@ -101,21 +110,24 @@ def compress(chunk: JsonDict) -> JsonDict:
                 chunk[name] = helper(value)
 
         return chunk
+
     out = helper(chunk)
     return out
 
+
 def decompress(chunk: JsonDict) -> JsonDict:
     cache = {}  # type: Dict[int, JsonDict]
+
     def helper(chunk: Any) -> Any:
         if not isinstance(chunk, dict):
             return chunk
-        if '.id' in chunk:
-            return cache[chunk['.id']]
+        if ".id" in chunk:
+            return cache[chunk[".id"]]
 
         counter = None
-        if '.cache_id' in chunk:
-            counter = chunk['.cache_id']
-            del chunk['.cache_id']
+        if ".cache_id" in chunk:
+            counter = chunk[".cache_id"]
+            del chunk[".cache_id"]
 
         for name in sorted(chunk.keys()):
             value = chunk[name]
@@ -128,9 +140,8 @@ def decompress(chunk: JsonDict) -> JsonDict:
             cache[counter] = chunk
 
         return chunk
+
     return helper(chunk)
-
-
 
 
 def main() -> None:
@@ -138,7 +149,7 @@ def main() -> None:
     class_chunks = list(extract_classes(json_chunks))
 
     total_size = sum(chunk.total_size for chunk in json_chunks)
-    print("Total cache size: {:.3f} megabytes".format(total_size / (1024 * 1024)))
+    print(f"Total cache size: {total_size / (1024 * 1024):.3f} megabytes")
     print()
 
     class_name_counter = Counter(chunk[".class"] for chunk in class_chunks)
@@ -150,24 +161,23 @@ def main() -> None:
 
     build = None
     for chunk in json_chunks:
-        if 'build.*.json' in chunk.filename:
+        if "build.*.json" in chunk.filename:
             build = chunk
             break
     original = json.dumps(build.data, sort_keys=True)
-    print("Size of build.data.json, in kilobytes: {:.3f}".format(len(original) / 1024))
+    print(f"Size of build.data.json, in kilobytes: {len(original) / 1024:.3f}")
 
     build.data = compress(build.data)
     compressed = json.dumps(build.data, sort_keys=True)
-    print("Size of compressed build.data.json, in kilobytes: {:.3f}".format(len(compressed) / 1024))
+    print(f"Size of compressed build.data.json, in kilobytes: {len(compressed) / 1024:.3f}")
 
     build.data = decompress(build.data)
     decompressed = json.dumps(build.data, sort_keys=True)
-    print("Size of decompressed build.data.json, in kilobytes: {:.3f}".format(len(decompressed) / 1024))
+    print(f"Size of decompressed build.data.json, in kilobytes: {len(decompressed) / 1024:.3f}")
 
     print("Lossless conversion back", original == decompressed)
 
-
-    '''var_chunks = list(pluck("Var", class_chunks))
+    """var_chunks = list(pluck("Var", class_chunks))
     report_most_common(var_chunks, 20)
     print()
 
@@ -182,8 +192,8 @@ def main() -> None:
     print()
     print("Most common")
     report_most_common(class_chunks, 20)
-    print()'''
+    print()"""
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
