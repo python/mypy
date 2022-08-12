@@ -1914,6 +1914,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             and (caller_type.type_object().is_abstract or caller_type.type_object().is_protocol)
             and isinstance(callee_type.item, Instance)
             and (callee_type.item.type.is_abstract or callee_type.item.type.is_protocol)
+            and not self.chk.allow_abstract_call
         ):
             self.msg.concrete_only_call(callee_type, context)
         elif not is_subtype(caller_type, callee_type, options=self.chk.options):
