@@ -1320,6 +1320,7 @@ y: str = a.y(0) # E: Incompatible types in assignment (expression has type "int"
 reveal_type(a.x)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 reveal_type(a.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
 reveal_type(A.y)  # N: Revealed type is "def (builtins.int) -> builtins.int"
+[builtins fixtures/dataclasses.pyi]
 
 [case testDataclassCallableFieldAssignment]
 # flags: --python-version 3.7
