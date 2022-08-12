@@ -7,18 +7,30 @@ operations, including subtype checks.
 
 from typing import List, Optional, Set
 
-from mypy.nodes import TypeInfo, Context, MypyFile, FuncItem, ClassDef, Block, FakeInfo
-from mypy.types import (
-    Type, Instance, TypeVarType, AnyType, get_proper_types, TypeAliasType, get_proper_type
-)
-from mypy.mixedtraverser import MixedTraverserVisitor
-from mypy.subtypes import is_subtype
-from mypy.sametypes import is_same_type
-from mypy.errors import Errors
-from mypy.scope import Scope
-from mypy.options import Options
+from mypy import errorcodes as codes, message_registry
 from mypy.errorcodes import ErrorCode
-from mypy import message_registry, errorcodes as codes
+from mypy.errors import Errors
+from mypy.messages import format_type
+from mypy.mixedtraverser import MixedTraverserVisitor
+from mypy.nodes import Block, ClassDef, Context, FakeInfo, FuncItem, MypyFile, TypeInfo
+from mypy.options import Options
+from mypy.scope import Scope
+from mypy.subtypes import is_same_type, is_subtype
+from mypy.types import (
+    AnyType,
+    Instance,
+    ParamSpecType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypeOfAny,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 class TypeArgumentAnalyzer(MixedTraverserVisitor):
@@ -56,10 +68,15 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         super().visit_type_alias_type(t)
         if t in self.seen_aliases:
             # Avoid infinite recursion on recursive type aliases.
-            # Note: it is fine to skip the aliases we have already seen in non-recursive types,
-            # since errors there have already already reported.
+            # Note: it is fine to skip the aliases we have already seen in non-recursive
+            # types, since errors there have already been reported.
             return
         self.seen_aliases.add(t)
+        # Some recursive aliases may produce spurious args. In principle this is not very
+        # important, as we would simply ignore them when expanding, but it is better to keep
+        # correct aliases.
+        if t.alias and len(t.args) != len(t.alias.alias_tvars):
+            t.args = [AnyType(TypeOfAny.from_error) for _ in t.alias.alias_tvars]
         get_proper_type(t).accept(self)
 
     def visit_instance(self, t: Instance) -> None:
@@ -69,40 +86,82 @@ class TypeArgumentAnalyzer(MixedTraverserVisitor):
         if isinstance(info, FakeInfo):
             return  # https://github.com/python/mypy/issues/11079
         for (i, arg), tvar in zip(enumerate(t.args), info.defn.type_vars):
-            if tvar.values:
-                if isinstance(arg, TypeVarType):
-                    arg_values = arg.values
-                    if not arg_values:
-                        self.fail('Type variable "{}" not valid as type '
-                                  'argument value for "{}"'.format(
-                                      arg.name, info.name), t, code=codes.TYPE_VAR)
-                        continue
-                else:
-                    arg_values = [arg]
-                self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
-            if not is_subtype(arg, tvar.upper_bound):
-                self.fail('Type argument "{}" of "{}" must be '
-                          'a subtype of "{}"'.format(
-                              arg, info.name, tvar.upper_bound), t, code=codes.TYPE_VAR)
+            if isinstance(tvar, TypeVarType):
+                if isinstance(arg, ParamSpecType):
+                    # TODO: Better message
+                    self.fail(f'Invalid location for ParamSpec "{arg.name}"', t)
+                    continue
+                if tvar.values:
+                    if isinstance(arg, TypeVarType):
+                        arg_values = arg.values
+                        if not arg_values:
+                            self.fail(
+                                message_registry.INVALID_TYPEVAR_AS_TYPEARG.format(
+                                    arg.name, info.name
+                                ),
+                                t,
+                                code=codes.TYPE_VAR,
+                            )
+                            continue
+                    else:
+                        arg_values = [arg]
+                    self.check_type_var_values(info, arg_values, tvar.name, tvar.values, i + 1, t)
+                if not is_subtype(arg, tvar.upper_bound):
+                    self.fail(
+                        message_registry.INVALID_TYPEVAR_ARG_BOUND.format(
+                            format_type(arg), info.name, format_type(tvar.upper_bound)
+                        ),
+                        t,
+                        code=codes.TYPE_VAR,
+                    )
         super().visit_instance(t)
 
-    def check_type_var_values(self, type: TypeInfo, actuals: List[Type], arg_name: str,
-                              valids: List[Type], arg_number: int, context: Context) -> None:
+    def visit_unpack_type(self, typ: UnpackType) -> None:
+        proper_type = get_proper_type(typ.type)
+        if isinstance(proper_type, TupleType):
+            return
+        if isinstance(proper_type, TypeVarTupleType):
+            return
+        if isinstance(proper_type, Instance) and proper_type.type.fullname == "builtins.tuple":
+            return
+        if isinstance(proper_type, AnyType) and proper_type.type_of_any == TypeOfAny.from_error:
+            return
+
+        # TODO: Infer something when it can't be unpacked to allow rest of
+        # typechecking to work.
+        self.fail(message_registry.INVALID_UNPACK.format(proper_type), typ)
+
+    def check_type_var_values(
+        self,
+        type: TypeInfo,
+        actuals: List[Type],
+        arg_name: str,
+        valids: List[Type],
+        arg_number: int,
+        context: Context,
+    ) -> None:
         for actual in get_proper_types(actuals):
-            if (not isinstance(actual, AnyType) and
-                    not any(is_same_type(actual, value)
-                            for value in valids)):
+            # TODO: bind type variables in class bases/alias targets
+            # so we can safely check this, currently we miss some errors.
+            if not isinstance(actual, (AnyType, UnboundType)) and not any(
+                is_same_type(actual, value) for value in valids
+            ):
                 if len(actuals) > 1 or not isinstance(actual, Instance):
-                    self.fail('Invalid type argument value for "{}"'.format(
-                        type.name), context, code=codes.TYPE_VAR)
+                    self.fail(
+                        message_registry.INVALID_TYPEVAR_ARG_VALUE.format(type.name),
+                        context,
+                        code=codes.TYPE_VAR,
+                    )
                 else:
-                    class_name = '"{}"'.format(type.name)
-                    actual_type_name = '"{}"'.format(actual.type.name)
+                    class_name = f'"{type.name}"'
+                    actual_type_name = f'"{actual.type.name}"'
                     self.fail(
                         message_registry.INCOMPATIBLE_TYPEVAR_VALUE.format(
-                            arg_name, class_name, actual_type_name),
+                            arg_name, class_name, actual_type_name
+                        ),
                         context,
-                        code=codes.TYPE_VAR)
+                        code=codes.TYPE_VAR,
+                    )
 
     def fail(self, msg: str, context: Context, *, code: Optional[ErrorCode] = None) -> None:
         self.errors.report(context.get_line(), context.get_column(), msg, code=code)

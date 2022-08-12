@@ -1,8 +1,12 @@
 import importlib.abc
+import sys
 import types
-from typing import Any, Callable, Sequence, Tuple
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
 
-# TODO: the loaders seem a bit backwards, attribute is protocol but __init__ arg isn't?
+if sys.version_info >= (3, 8):
+    from importlib.metadata import DistributionFinder, PathDistribution
+
 class ModuleSpec:
     def __init__(
         self,
@@ -14,13 +18,15 @@ class ModuleSpec:
         is_package: bool | None = ...,
     ) -> None: ...
     name: str
-    loader: importlib.abc._LoaderProtocol | None
+    loader: importlib.abc.Loader | None
     origin: str | None
     submodule_search_locations: list[str] | None
     loader_state: Any
     cached: str | None
-    parent: str | None
+    @property
+    def parent(self) -> str | None: ...
     has_location: bool
+    def __eq__(self, other: object) -> bool: ...
 
 class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
@@ -42,10 +48,16 @@ class BuiltinImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader)
     # Loader
     @staticmethod
     def module_repr(module: types.ModuleType) -> str: ...
-    @classmethod
-    def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
-    @classmethod
-    def exec_module(cls, module: types.ModuleType) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
+        @staticmethod
+        def exec_module(module: types.ModuleType) -> None: ...
+    else:
+        @classmethod
+        def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
+        @classmethod
+        def exec_module(cls, module: types.ModuleType) -> None: ...
 
 class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # MetaPathFinder
@@ -67,8 +79,13 @@ class FrozenImporter(importlib.abc.MetaPathFinder, importlib.abc.InspectLoader):
     # Loader
     @staticmethod
     def module_repr(m: types.ModuleType) -> str: ...
-    @classmethod
-    def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def create_module(spec: ModuleSpec) -> types.ModuleType | None: ...
+    else:
+        @classmethod
+        def create_module(cls, spec: ModuleSpec) -> types.ModuleType | None: ...
+
     @staticmethod
     def exec_module(module: types.ModuleType) -> None: ...
 
@@ -81,8 +98,19 @@ class WindowsRegistryFinder(importlib.abc.MetaPathFinder):
     ) -> ModuleSpec | None: ...
 
 class PathFinder:
-    @classmethod
-    def invalidate_caches(cls) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def invalidate_caches() -> None: ...
+    else:
+        @classmethod
+        def invalidate_caches(cls) -> None: ...
+    if sys.version_info >= (3, 10):
+        @staticmethod
+        def find_distributions(context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
+    elif sys.version_info >= (3, 8):
+        @classmethod
+        def find_distributions(cls, context: DistributionFinder.Context = ...) -> Iterable[PathDistribution]: ...
+
     @classmethod
     def find_spec(
         cls, fullname: str, path: Sequence[bytes | str] | None = ..., target: types.ModuleType | None = ...
@@ -100,10 +128,10 @@ def all_suffixes() -> list[str]: ...
 
 class FileFinder(importlib.abc.PathEntryFinder):
     path: str
-    def __init__(self, path: str, *loader_details: Tuple[importlib.abc.Loader, list[str]]) -> None: ...
+    def __init__(self, path: str, *loader_details: tuple[type[importlib.abc.Loader], list[str]]) -> None: ...
     @classmethod
     def path_hook(
-        cls, *loader_details: Tuple[importlib.abc.Loader, list[str]]
+        cls, *loader_details: tuple[type[importlib.abc.Loader], list[str]]
     ) -> Callable[[str], importlib.abc.PathEntryFinder]: ...
 
 class SourceFileLoader(importlib.abc.FileLoader, importlib.abc.SourceLoader):
@@ -115,3 +143,8 @@ class ExtensionFileLoader(importlib.abc.ExecutionLoader):
     def __init__(self, name: str, path: importlib.abc._Path) -> None: ...
     def get_filename(self, name: str | None = ...) -> importlib.abc._Path: ...
     def get_source(self, fullname: str) -> None: ...
+    def create_module(self, spec: ModuleSpec) -> types.ModuleType: ...
+    def exec_module(self, module: types.ModuleType) -> None: ...
+    def is_package(self, fullname: str) -> bool: ...
+    def get_code(self, fullname: str) -> None: ...
+    def __eq__(self, other: object) -> bool: ...

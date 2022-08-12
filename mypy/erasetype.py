@@ -1,12 +1,37 @@
-from typing import Optional, Container, Callable
+from typing import Callable, Container, Dict, List, Optional, cast
 
-from mypy.types import (
-    Type, TypeVisitor, UnboundType, AnyType, NoneType, TypeVarId, Instance, TypeVarType,
-    CallableType, TupleType, TypedDictType, UnionType, Overloaded, ErasedType, PartialType,
-    DeletedType, TypeTranslator, UninhabitedType, TypeType, TypeOfAny, LiteralType, ProperType,
-    get_proper_type, TypeAliasType
-)
 from mypy.nodes import ARG_STAR, ARG_STAR2
+from mypy.types import (
+    AnyType,
+    CallableType,
+    DeletedType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    ProperType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeOfAny,
+    TypeTranslator,
+    TypeType,
+    TypeVarId,
+    TypeVarTupleType,
+    TypeVarType,
+    TypeVisitor,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
+    get_proper_types,
+)
 
 
 def erase_type(typ: Type) -> ProperType:
@@ -26,7 +51,6 @@ def erase_type(typ: Type) -> ProperType:
 
 
 class EraseTypeVisitor(TypeVisitor[ProperType]):
-
     def visit_unbound_type(self, t: UnboundType) -> ProperType:
         # TODO: replace with an assert after UnboundType can't leak from semantic analysis.
         return AnyType(TypeOfAny.from_error)
@@ -41,8 +65,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return t
 
     def visit_erased_type(self, t: ErasedType) -> ProperType:
-        # Should not get here.
-        raise RuntimeError()
+        return t
 
     def visit_partial_type(self, t: PartialType) -> ProperType:
         # Should not get here.
@@ -55,6 +78,18 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
         return Instance(t.type, [AnyType(TypeOfAny.special_form)] * len(t.args), t.line)
 
     def visit_type_var(self, t: TypeVarType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_param_spec(self, t: ParamSpecType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_parameters(self, t: Parameters) -> ProperType:
+        raise RuntimeError("Parameters should have been bound to a class")
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> ProperType:
+        return AnyType(TypeOfAny.special_form)
+
+    def visit_unpack_type(self, t: UnpackType) -> ProperType:
         return AnyType(TypeOfAny.special_form)
 
     def visit_callable_type(self, t: CallableType) -> ProperType:
@@ -88,6 +123,7 @@ class EraseTypeVisitor(TypeVisitor[ProperType]):
     def visit_union_type(self, t: UnionType) -> ProperType:
         erased_items = [erase_type(item) for item in t.items]
         from mypy.typeops import make_simplified_union
+
         return make_simplified_union(erased_items)
 
     def visit_type_type(self, t: TypeType) -> ProperType:
@@ -101,10 +137,12 @@ def erase_typevars(t: Type, ids_to_erase: Optional[Container[TypeVarId]] = None)
     """Replace all type variables in a type with any,
     or just the ones in the provided collection.
     """
+
     def erase_id(id: TypeVarId) -> bool:
         if ids_to_erase is None:
             return True
         return id in ids_to_erase
+
     return t.accept(TypeVarEraser(erase_id, AnyType(TypeOfAny.special_form)))
 
 
@@ -121,6 +159,16 @@ class TypeVarEraser(TypeTranslator):
         self.replacement = replacement
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        if self.erase_id(t.id):
+            return self.replacement
+        return t
+
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
         if self.erase_id(t.id):
             return self.replacement
         return t
@@ -142,15 +190,42 @@ class LastKnownValueEraser(TypeTranslator):
     def visit_instance(self, t: Instance) -> Type:
         if not t.last_known_value and not t.args:
             return t
-        new_t = t.copy_modified(
-            args=[a.accept(self) for a in t.args],
-            last_known_value=None,
-        )
-        new_t.can_be_true = t.can_be_true
-        new_t.can_be_false = t.can_be_false
-        return new_t
+        return t.copy_modified(args=[a.accept(self) for a in t.args], last_known_value=None)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> Type:
         # Type aliases can't contain literal values, because they are
         # always constructed as explicit types.
         return t
+
+    def visit_union_type(self, t: UnionType) -> Type:
+        new = cast(UnionType, super().visit_union_type(t))
+        # Erasure can result in many duplicate items; merge them.
+        # Call make_simplified_union only on lists of instance types
+        # that all have the same fullname, to avoid simplifying too
+        # much.
+        instances = [item for item in new.items if isinstance(get_proper_type(item), Instance)]
+        # Avoid merge in simple cases such as optional types.
+        if len(instances) > 1:
+            instances_by_name: Dict[str, List[Instance]] = {}
+            p_new_items = get_proper_types(new.items)
+            for p_item in p_new_items:
+                if isinstance(p_item, Instance) and not p_item.args:
+                    instances_by_name.setdefault(p_item.type.fullname, []).append(p_item)
+            merged: List[Type] = []
+            for item in new.items:
+                orig_item = item
+                item = get_proper_type(item)
+                if isinstance(item, Instance) and not item.args:
+                    types = instances_by_name.get(item.type.fullname)
+                    if types is not None:
+                        if len(types) == 1:
+                            merged.append(item)
+                        else:
+                            from mypy.typeops import make_simplified_union
+
+                            merged.append(make_simplified_union(types))
+                            del instances_by_name[item.type.fullname]
+                else:
+                    merged.append(orig_item)
+            return UnionType.make_union(merged)
+        return new

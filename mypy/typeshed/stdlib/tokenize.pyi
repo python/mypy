@@ -1,18 +1,97 @@
 import sys
 from _typeshed import StrOrBytesPath
-from builtins import open as _builtin_open
-from token import *  # noqa: F403
-from typing import Any, Callable, Generator, Iterable, NamedTuple, Pattern, Sequence, Set, TextIO, Tuple, Union
+from collections.abc import Callable, Generator, Iterable, Sequence
+from re import Pattern
+from token import *
+from typing import Any, NamedTuple, TextIO
+from typing_extensions import TypeAlias
 
-if sys.version_info < (3, 7):
-    COMMENT: int
-    NL: int
-    ENCODING: int
+__all__ = [
+    "AMPER",
+    "AMPEREQUAL",
+    "AT",
+    "ATEQUAL",
+    "CIRCUMFLEX",
+    "CIRCUMFLEXEQUAL",
+    "COLON",
+    "COMMA",
+    "COMMENT",
+    "DEDENT",
+    "DOT",
+    "DOUBLESLASH",
+    "DOUBLESLASHEQUAL",
+    "DOUBLESTAR",
+    "DOUBLESTAREQUAL",
+    "ELLIPSIS",
+    "ENCODING",
+    "ENDMARKER",
+    "EQEQUAL",
+    "EQUAL",
+    "ERRORTOKEN",
+    "GREATER",
+    "GREATEREQUAL",
+    "INDENT",
+    "ISEOF",
+    "ISNONTERMINAL",
+    "ISTERMINAL",
+    "LBRACE",
+    "LEFTSHIFT",
+    "LEFTSHIFTEQUAL",
+    "LESS",
+    "LESSEQUAL",
+    "LPAR",
+    "LSQB",
+    "MINEQUAL",
+    "MINUS",
+    "NAME",
+    "NEWLINE",
+    "NL",
+    "NOTEQUAL",
+    "NT_OFFSET",
+    "NUMBER",
+    "N_TOKENS",
+    "OP",
+    "PERCENT",
+    "PERCENTEQUAL",
+    "PLUS",
+    "PLUSEQUAL",
+    "RARROW",
+    "RBRACE",
+    "RIGHTSHIFT",
+    "RIGHTSHIFTEQUAL",
+    "RPAR",
+    "RSQB",
+    "SEMI",
+    "SLASH",
+    "SLASHEQUAL",
+    "STAR",
+    "STAREQUAL",
+    "STRING",
+    "TILDE",
+    "TokenInfo",
+    "VBAR",
+    "VBAREQUAL",
+    "detect_encoding",
+    "tok_name",
+    "tokenize",
+    "untokenize",
+]
+
+if sys.version_info >= (3, 8):
+    __all__ += ["ASYNC", "AWAIT", "COLONEQUAL", "generate_tokens", "TYPE_COMMENT", "TYPE_IGNORE"]
+
+if sys.version_info >= (3, 10):
+    __all__ += ["SOFT_KEYWORD"]
+
+if sys.version_info >= (3, 8):
+    from token import EXACT_TOKEN_TYPES as EXACT_TOKEN_TYPES
+else:
+    EXACT_TOKEN_TYPES: dict[str, int]
 
 cookie_re: Pattern[str]
 blank_re: Pattern[bytes]
 
-_Position = Tuple[int, int]
+_Position: TypeAlias = tuple[int, int]
 
 class _TokenInfo(NamedTuple):
     type: int
@@ -26,7 +105,7 @@ class TokenInfo(_TokenInfo):
     def exact_type(self) -> int: ...
 
 # Backwards compatible tokens can be sequences of a shorter length too
-_Token = Union[TokenInfo, Sequence[Union[int, str, _Position]]]
+_Token: TypeAlias = TokenInfo | Sequence[int | str | _Position]
 
 class TokenError(Exception): ...
 class StopTokenizing(Exception): ...  # undocumented
@@ -44,7 +123,7 @@ class Untokenizer:
 # the docstring says "returns bytes" but is incorrect --
 # if the ENCODING token is missing, it skips the encode
 def untokenize(iterable: Iterable[_Token]) -> Any: ...
-def detect_encoding(readline: Callable[[], bytes]) -> Tuple[str, Sequence[bytes]]: ...
+def detect_encoding(readline: Callable[[], bytes]) -> tuple[str, Sequence[bytes]]: ...
 def tokenize(readline: Callable[[], bytes]) -> Generator[TokenInfo, None, None]: ...
 def generate_tokens(readline: Callable[[], str]) -> Generator[TokenInfo, None, None]: ...  # undocumented
 def open(filename: StrOrBytesPath | int) -> TextIO: ...
@@ -69,7 +148,7 @@ Floatnumber: str  # undocumented
 Imagnumber: str  # undocumented
 Number: str  # undocumented
 
-def _all_string_prefixes() -> Set[str]: ...  # undocumented
+def _all_string_prefixes() -> set[str]: ...  # undocumented
 
 StringPrefix: str  # undocumented
 
@@ -79,10 +158,6 @@ Single3: str  # undocumented
 Double3: str  # undocumented
 Triple: str  # undocumented
 String: str  # undocumented
-
-if sys.version_info < (3, 7):
-    Operator: str  # undocumented
-    Bracket: str  # undocumented
 
 Special: str  # undocumented
 Funny: str  # undocumented
@@ -95,7 +170,7 @@ PseudoExtras: str  # undocumented
 PseudoToken: str  # undocumented
 
 endpats: dict[str, str]  # undocumented
-single_quoted: Set[str]  # undocumented
-triple_quoted: Set[str]  # undocumented
+single_quoted: set[str]  # undocumented
+triple_quoted: set[str]  # undocumented
 
 tabsize: int  # undocumented

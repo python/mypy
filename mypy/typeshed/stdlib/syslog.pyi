@@ -1,43 +1,47 @@
+import sys
 from typing import overload
+from typing_extensions import Literal
 
-LOG_ALERT: int
-LOG_AUTH: int
-LOG_CONS: int
-LOG_CRIT: int
-LOG_CRON: int
-LOG_DAEMON: int
-LOG_DEBUG: int
-LOG_EMERG: int
-LOG_ERR: int
-LOG_INFO: int
-LOG_KERN: int
-LOG_LOCAL0: int
-LOG_LOCAL1: int
-LOG_LOCAL2: int
-LOG_LOCAL3: int
-LOG_LOCAL4: int
-LOG_LOCAL5: int
-LOG_LOCAL6: int
-LOG_LOCAL7: int
-LOG_LPR: int
-LOG_MAIL: int
-LOG_NDELAY: int
-LOG_NEWS: int
-LOG_NOTICE: int
-LOG_NOWAIT: int
-LOG_PERROR: int
-LOG_PID: int
-LOG_SYSLOG: int
-LOG_USER: int
-LOG_UUCP: int
-LOG_WARNING: int
-
-def LOG_MASK(a: int) -> int: ...
-def LOG_UPTO(a: int) -> int: ...
-def closelog() -> None: ...
-def openlog(ident: str = ..., logoption: int = ..., facility: int = ...) -> None: ...
-def setlogmask(x: int) -> int: ...
-@overload
-def syslog(priority: int, message: str) -> None: ...
-@overload
-def syslog(message: str) -> None: ...
+if sys.platform != "win32":
+    LOG_ALERT: Literal[1]
+    LOG_AUTH: Literal[32]
+    LOG_AUTHPRIV: Literal[80]
+    LOG_CONS: Literal[2]
+    LOG_CRIT: Literal[2]
+    LOG_CRON: Literal[72]
+    LOG_DAEMON: Literal[24]
+    LOG_DEBUG: Literal[7]
+    LOG_EMERG: Literal[0]
+    LOG_ERR: Literal[3]
+    LOG_INFO: Literal[6]
+    LOG_KERN: Literal[0]
+    LOG_LOCAL0: Literal[128]
+    LOG_LOCAL1: Literal[136]
+    LOG_LOCAL2: Literal[144]
+    LOG_LOCAL3: Literal[152]
+    LOG_LOCAL4: Literal[160]
+    LOG_LOCAL5: Literal[168]
+    LOG_LOCAL6: Literal[176]
+    LOG_LOCAL7: Literal[184]
+    LOG_LPR: Literal[48]
+    LOG_MAIL: Literal[16]
+    LOG_NDELAY: Literal[8]
+    LOG_NEWS: Literal[56]
+    LOG_NOTICE: Literal[5]
+    LOG_NOWAIT: Literal[16]
+    LOG_ODELAY: Literal[4]
+    LOG_PERROR: Literal[32]
+    LOG_PID: Literal[1]
+    LOG_SYSLOG: Literal[40]
+    LOG_USER: Literal[8]
+    LOG_UUCP: Literal[64]
+    LOG_WARNING: Literal[4]
+    def LOG_MASK(a: int) -> int: ...
+    def LOG_UPTO(a: int) -> int: ...
+    def closelog() -> None: ...
+    def openlog(ident: str = ..., logoption: int = ..., facility: int = ...) -> None: ...
+    def setlogmask(x: int) -> int: ...
+    @overload
+    def syslog(priority: int, message: str) -> None: ...
+    @overload
+    def syslog(message: str) -> None: ...

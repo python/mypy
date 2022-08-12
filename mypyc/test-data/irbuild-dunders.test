@@ -175,16 +175,13 @@ L0:
 def f(c):
     c :: __main__.C
     r0, r1 :: int
-    r2, r3, r4 :: object
-    r5 :: str
-    r6, r7 :: object
+    r2, r3, r4, r5 :: object
 L0:
     r0 = c.__neg__()
     r1 = c.__invert__()
     r2 = load_address PyLong_Type
     r3 = PyObject_CallFunctionObjArgs(r2, c, 0)
-    r4 = builtins :: module
-    r5 = 'float'
-    r6 = CPyObject_GetAttr(r4, r5)
-    r7 = PyObject_CallFunctionObjArgs(r6, c, 0)
+    r4 = load_address PyFloat_Type
+    r5 = PyObject_CallFunctionObjArgs(r4, c, 0)
     return 1
+

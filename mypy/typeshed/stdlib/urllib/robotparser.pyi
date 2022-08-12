@@ -1,7 +1,10 @@
 import sys
-from typing import Iterable, NamedTuple
+from collections.abc import Iterable
+from typing import NamedTuple
 
-class _RequestRate(NamedTuple):
+__all__ = ["RobotFileParser"]
+
+class RequestRate(NamedTuple):
     requests: int
     seconds: int
 
@@ -14,6 +17,6 @@ class RobotFileParser:
     def mtime(self) -> int: ...
     def modified(self) -> None: ...
     def crawl_delay(self, useragent: str) -> str | None: ...
-    def request_rate(self, useragent: str) -> _RequestRate | None: ...
+    def request_rate(self, useragent: str) -> RequestRate | None: ...
     if sys.version_info >= (3, 8):
         def site_maps(self) -> list[str] | None: ...

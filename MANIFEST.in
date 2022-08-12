@@ -41,7 +41,8 @@ include runtests.py
 include pytest.ini
 
 include LICENSE mypyc/README.md
-exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md tox.ini
+exclude .gitmodules CONTRIBUTING.md CREDITS ROADMAP.md tox.ini action.yml .editorconfig
+exclude .git-blame-ignore-revs .pre-commit-config.yaml
 
 global-exclude *.py[cod]
 global-exclude .DS_Store

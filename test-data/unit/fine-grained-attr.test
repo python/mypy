@@ -1,0 +1,23 @@
+[case updateMagicField]
+from attr import Attribute
+import m
+
+def g() -> Attribute[int]:
+    return m.A.__attrs_attrs__[0]
+
+[file m.py]
+from attr import define
+
+@define
+class A:
+    a: int
+[file m.py.2]
+from attr import define
+
+@define
+class A:
+    a: float
+[builtins fixtures/attr.pyi]
+[out]
+==
+main:5: error: Incompatible return value type (got "Attribute[float]", expected "Attribute[int]")

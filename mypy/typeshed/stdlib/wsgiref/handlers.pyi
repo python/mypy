@@ -1,18 +1,19 @@
+from _typeshed import OptExcInfo
+from _typeshed.wsgi import ErrorStream, InputStream, StartResponse, WSGIApplication, WSGIEnvironment
 from abc import abstractmethod
-from types import TracebackType
-from typing import IO, Callable, MutableMapping, Optional, Tuple, Type
+from collections.abc import Callable, MutableMapping
+from typing import IO
 
 from .headers import Headers
-from .types import ErrorStream, InputStream, StartResponse, WSGIApplication, WSGIEnvironment
 from .util import FileWrapper
 
-_exc_info = Tuple[Optional[Type[BaseException]], Optional[BaseException], Optional[TracebackType]]
+__all__ = ["BaseHandler", "SimpleHandler", "BaseCGIHandler", "CGIHandler", "IISCGIHandler", "read_environ"]
 
 def format_date_time(timestamp: float | None) -> str: ...  # undocumented
 def read_environ() -> dict[str, str]: ...
 
 class BaseHandler:
-    wsgi_version: Tuple[int, int]  # undocumented
+    wsgi_version: tuple[int, int]  # undocumented
     wsgi_multithread: bool
     wsgi_multiprocess: bool
     wsgi_run_once: bool
@@ -23,12 +24,12 @@ class BaseHandler:
 
     os_environ: MutableMapping[str, str]
 
-    wsgi_file_wrapper: Type[FileWrapper] | None
-    headers_class: Type[Headers]  # undocumented
+    wsgi_file_wrapper: type[FileWrapper] | None
+    headers_class: type[Headers]  # undocumented
 
     traceback_limit: int | None
     error_status: str
-    error_headers: list[Tuple[str, str]]
+    error_headers: list[tuple[str, str]]
     error_body: bytes
     def run(self, application: WSGIApplication) -> None: ...
     def setup_environ(self) -> None: ...
@@ -37,7 +38,7 @@ class BaseHandler:
     def set_content_length(self) -> None: ...
     def cleanup_headers(self) -> None: ...
     def start_response(
-        self, status: str, headers: list[Tuple[str, str]], exc_info: _exc_info | None = ...
+        self, status: str, headers: list[tuple[str, str]], exc_info: OptExcInfo | None = ...
     ) -> Callable[[bytes], None]: ...
     def send_preamble(self) -> None: ...
     def write(self, data: bytes) -> None: ...
@@ -47,7 +48,7 @@ class BaseHandler:
     def send_headers(self) -> None: ...
     def result_is_file(self) -> bool: ...
     def client_is_modern(self) -> bool: ...
-    def log_exception(self, exc_info: _exc_info) -> None: ...
+    def log_exception(self, exc_info: OptExcInfo) -> None: ...
     def handle_error(self) -> None: ...
     def error_output(self, environ: WSGIEnvironment, start_response: StartResponse) -> list[bytes]: ...
     @abstractmethod

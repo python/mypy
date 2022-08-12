@@ -1,14 +1,55 @@
-from typing import Optional, Union, Any, Tuple, Iterable
+from typing import Any, Iterable, Optional, Tuple, Union
 from typing_extensions import Final
 
 from mypy.nodes import (
-    Expression, ComparisonExpr, OpExpr, MemberExpr, UnaryExpr, StarExpr, IndexExpr, LITERAL_YES,
-    LITERAL_NO, NameExpr, LITERAL_TYPE, IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr,
-    UnicodeExpr, ListExpr, TupleExpr, SetExpr, DictExpr, CallExpr, SliceExpr, CastExpr,
-    ConditionalExpr, EllipsisExpr, YieldFromExpr, YieldExpr, RevealExpr, SuperExpr,
-    TypeApplication, LambdaExpr, ListComprehension, SetComprehension, DictionaryComprehension,
-    GeneratorExpr, BackquoteExpr, TypeVarExpr, TypeAliasExpr, NamedTupleExpr, EnumCallExpr,
-    TypedDictExpr, NewTypeExpr, PromoteExpr, AwaitExpr, TempNode, AssignmentExpr, ParamSpecExpr
+    LITERAL_NO,
+    LITERAL_TYPE,
+    LITERAL_YES,
+    AssertTypeExpr,
+    AssignmentExpr,
+    AwaitExpr,
+    BytesExpr,
+    CallExpr,
+    CastExpr,
+    ComparisonExpr,
+    ComplexExpr,
+    ConditionalExpr,
+    DictExpr,
+    DictionaryComprehension,
+    EllipsisExpr,
+    EnumCallExpr,
+    Expression,
+    FloatExpr,
+    GeneratorExpr,
+    IndexExpr,
+    IntExpr,
+    LambdaExpr,
+    ListComprehension,
+    ListExpr,
+    MemberExpr,
+    NamedTupleExpr,
+    NameExpr,
+    NewTypeExpr,
+    OpExpr,
+    ParamSpecExpr,
+    PromoteExpr,
+    RevealExpr,
+    SetComprehension,
+    SetExpr,
+    SliceExpr,
+    StarExpr,
+    StrExpr,
+    SuperExpr,
+    TempNode,
+    TupleExpr,
+    TypeAliasExpr,
+    TypeApplication,
+    TypedDictExpr,
+    TypeVarExpr,
+    TypeVarTupleExpr,
+    UnaryExpr,
+    YieldExpr,
+    YieldFromExpr,
 )
 from mypy.visitor import ExpressionVisitor
 
@@ -61,6 +102,9 @@ def literal(e: Expression) -> int:
     elif isinstance(e, (MemberExpr, UnaryExpr, StarExpr)):
         return literal(e.expr)
 
+    elif isinstance(e, AssignmentExpr):
+        return literal(e.target)
+
     elif isinstance(e, IndexExpr):
         if literal(e.index) == LITERAL_YES:
             return literal(e.base)
@@ -70,7 +114,7 @@ def literal(e: Expression) -> int:
     elif isinstance(e, NameExpr):
         return LITERAL_TYPE
 
-    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr, UnicodeExpr)):
+    if isinstance(e, (IntExpr, FloatExpr, ComplexExpr, StrExpr, BytesExpr)):
         return LITERAL_YES
 
     if literal_hash(e):
@@ -92,45 +136,42 @@ def literal_hash(e: Expression) -> Optional[Key]:
 
 class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_int_expr(self, e: IntExpr) -> Key:
-        return ('Literal', e.value)
+        return ("Literal", e.value)
 
     def visit_str_expr(self, e: StrExpr) -> Key:
-        return ('Literal', e.value, e.from_python_3)
+        return ("Literal", e.value)
 
     def visit_bytes_expr(self, e: BytesExpr) -> Key:
-        return ('Literal', e.value)
-
-    def visit_unicode_expr(self, e: UnicodeExpr) -> Key:
-        return ('Literal', e.value)
+        return ("Literal", e.value)
 
     def visit_float_expr(self, e: FloatExpr) -> Key:
-        return ('Literal', e.value)
+        return ("Literal", e.value)
 
     def visit_complex_expr(self, e: ComplexExpr) -> Key:
-        return ('Literal', e.value)
+        return ("Literal", e.value)
 
     def visit_star_expr(self, e: StarExpr) -> Key:
-        return ('Star', literal_hash(e.expr))
+        return ("Star", literal_hash(e.expr))
 
     def visit_name_expr(self, e: NameExpr) -> Key:
         # N.B: We use the node itself as the key, and not the name,
         # because using the name causes issues when there is shadowing
         # (for example, in list comprehensions).
-        return ('Var', e.node)
+        return ("Var", e.node)
 
     def visit_member_expr(self, e: MemberExpr) -> Key:
-        return ('Member', literal_hash(e.expr), e.name)
+        return ("Member", literal_hash(e.expr), e.name)
 
     def visit_op_expr(self, e: OpExpr) -> Key:
-        return ('Binary', e.op, literal_hash(e.left), literal_hash(e.right))
+        return ("Binary", e.op, literal_hash(e.left), literal_hash(e.right))
 
     def visit_comparison_expr(self, e: ComparisonExpr) -> Key:
         rest: Any = tuple(e.operators)
         rest += tuple(literal_hash(o) for o in e.operands)
-        return ('Comparison',) + rest
+        return ("Comparison",) + rest
 
     def visit_unary_expr(self, e: UnaryExpr) -> Key:
-        return ('Unary', e.op, literal_hash(e.expr))
+        return ("Unary", e.op, literal_hash(e.expr))
 
     def seq_expr(self, e: Union[ListExpr, TupleExpr, SetExpr], name: str) -> Optional[Key]:
         if all(literal(x) == LITERAL_YES for x in e.items):
@@ -139,7 +180,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_list_expr(self, e: ListExpr) -> Optional[Key]:
-        return self.seq_expr(e, 'List')
+        return self.seq_expr(e, "List")
 
     def visit_dict_expr(self, e: DictExpr) -> Optional[Key]:
         if all(a and literal(a) == literal(b) == LITERAL_YES for a, b in e.items):
@@ -150,18 +191,18 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_tuple_expr(self, e: TupleExpr) -> Optional[Key]:
-        return self.seq_expr(e, 'Tuple')
+        return self.seq_expr(e, "Tuple")
 
     def visit_set_expr(self, e: SetExpr) -> Optional[Key]:
-        return self.seq_expr(e, 'Set')
+        return self.seq_expr(e, "Set")
 
     def visit_index_expr(self, e: IndexExpr) -> Optional[Key]:
         if literal(e.index) == LITERAL_YES:
-            return ('Index', literal_hash(e.base), literal_hash(e.index))
+            return ("Index", literal_hash(e.base), literal_hash(e.index))
         return None
 
-    def visit_assignment_expr(self, e: AssignmentExpr) -> None:
-        return None
+    def visit_assignment_expr(self, e: AssignmentExpr) -> Optional[Key]:
+        return literal_hash(e.target)
 
     def visit_call_expr(self, e: CallExpr) -> None:
         return None
@@ -170,6 +211,9 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return None
 
     def visit_cast_expr(self, e: CastExpr) -> None:
+        return None
+
+    def visit_assert_type_expr(self, e: AssertTypeExpr) -> None:
         return None
 
     def visit_conditional_expr(self, e: ConditionalExpr) -> None:
@@ -208,13 +252,13 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_generator_expr(self, e: GeneratorExpr) -> None:
         return None
 
-    def visit_backquote_expr(self, e: BackquoteExpr) -> None:
-        return None
-
     def visit_type_var_expr(self, e: TypeVarExpr) -> None:
         return None
 
     def visit_paramspec_expr(self, e: ParamSpecExpr) -> None:
+        return None
+
+    def visit_type_var_tuple_expr(self, e: TypeVarTupleExpr) -> None:
         return None
 
     def visit_type_alias_expr(self, e: TypeAliasExpr) -> None:

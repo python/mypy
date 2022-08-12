@@ -1,15 +1,19 @@
+import sys
 from _typeshed import Self, SupportsRead, SupportsReadline
+from collections.abc import Callable, Iterable, Iterator
 from socket import socket
 from ssl import SSLContext
 from types import TracebackType
-from typing import Any, Callable, Iterable, Iterator, TextIO, Tuple, Type
+from typing import Any, TextIO
 from typing_extensions import Literal
 
-MSG_OOB: int
-FTP_PORT: int
-MAXLINE: int
-CRLF: str
-B_CRLF: bytes
+__all__ = ["FTP", "error_reply", "error_temp", "error_perm", "error_proto", "all_errors", "FTP_TLS"]
+
+MSG_OOB: Literal[1]
+FTP_PORT: Literal[21]
+MAXLINE: Literal[8192]
+CRLF: Literal["\r\n"]
+B_CRLF: Literal[b"\r\n"]
 
 class Error(Exception): ...
 class error_reply(Error): ...
@@ -17,7 +21,7 @@ class error_temp(Error): ...
 class error_perm(Error): ...
 class error_proto(Error): ...
 
-all_errors: Tuple[Type[Exception], ...]
+all_errors: tuple[type[Exception], ...]
 
 class FTP:
     debugging: int
@@ -34,25 +38,39 @@ class FTP:
     encoding: str
     def __enter__(self: Self) -> Self: ...
     def __exit__(
-        self, exc_type: Type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
+        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, exc_tb: TracebackType | None
     ) -> None: ...
-    source_address: Tuple[str, int] | None
-    def __init__(
-        self,
-        host: str = ...,
-        user: str = ...,
-        passwd: str = ...,
-        acct: str = ...,
-        timeout: float = ...,
-        source_address: Tuple[str, int] | None = ...,
-    ) -> None: ...
+    source_address: tuple[str, int] | None
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+            *,
+            encoding: str = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+        ) -> None: ...
+
     def connect(
-        self, host: str = ..., port: int = ..., timeout: float = ..., source_address: Tuple[str, int] | None = ...
+        self, host: str = ..., port: int = ..., timeout: float = ..., source_address: tuple[str, int] | None = ...
     ) -> str: ...
     def getwelcome(self) -> str: ...
     def set_debuglevel(self, level: int) -> None: ...
     def debug(self, level: int) -> None: ...
-    def set_pasv(self, val: bool | int) -> None: ...
+    def set_pasv(self, val: bool | Literal[0, 1]) -> None: ...
     def sanitize(self, s: str) -> str: ...
     def putline(self, line: str) -> None: ...
     def putcmd(self, line: str) -> None: ...
@@ -66,29 +84,29 @@ class FTP:
     def sendport(self, host: str, port: int) -> str: ...
     def sendeprt(self, host: str, port: int) -> str: ...
     def makeport(self) -> socket: ...
-    def makepasv(self) -> Tuple[str, int]: ...
+    def makepasv(self) -> tuple[str, int]: ...
     def login(self, user: str = ..., passwd: str = ..., acct: str = ...) -> str: ...
     # In practice, `rest` rest can actually be anything whose str() is an integer sequence, so to make it simple we allow integers.
-    def ntransfercmd(self, cmd: str, rest: int | str | None = ...) -> Tuple[socket, int]: ...
+    def ntransfercmd(self, cmd: str, rest: int | str | None = ...) -> tuple[socket, int]: ...
     def transfercmd(self, cmd: str, rest: int | str | None = ...) -> socket: ...
     def retrbinary(
-        self, cmd: str, callback: Callable[[bytes], Any], blocksize: int = ..., rest: int | str | None = ...
+        self, cmd: str, callback: Callable[[bytes], object], blocksize: int = ..., rest: int | str | None = ...
     ) -> str: ...
     def storbinary(
         self,
         cmd: str,
         fp: SupportsRead[bytes],
         blocksize: int = ...,
-        callback: Callable[[bytes], Any] | None = ...,
+        callback: Callable[[bytes], object] | None = ...,
         rest: int | str | None = ...,
     ) -> str: ...
-    def retrlines(self, cmd: str, callback: Callable[[str], Any] | None = ...) -> str: ...
-    def storlines(self, cmd: str, fp: SupportsReadline[bytes], callback: Callable[[bytes], Any] | None = ...) -> str: ...
+    def retrlines(self, cmd: str, callback: Callable[[str], object] | None = ...) -> str: ...
+    def storlines(self, cmd: str, fp: SupportsReadline[bytes], callback: Callable[[bytes], object] | None = ...) -> str: ...
     def acct(self, password: str) -> str: ...
     def nlst(self, *args: str) -> list[str]: ...
     # Technically only the last arg can be a Callable but ...
-    def dir(self, *args: str | Callable[[str], None]) -> None: ...
-    def mlsd(self, path: str = ..., facts: Iterable[str] = ...) -> Iterator[Tuple[str, dict[str, str]]]: ...
+    def dir(self, *args: str | Callable[[str], object]) -> None: ...
+    def mlsd(self, path: str = ..., facts: Iterable[str] = ...) -> Iterator[tuple[str, dict[str, str]]]: ...
     def rename(self, fromname: str, toname: str) -> str: ...
     def delete(self, filename: str) -> str: ...
     def cwd(self, dirname: str) -> str: ...
@@ -100,18 +118,34 @@ class FTP:
     def close(self) -> None: ...
 
 class FTP_TLS(FTP):
-    def __init__(
-        self,
-        host: str = ...,
-        user: str = ...,
-        passwd: str = ...,
-        acct: str = ...,
-        keyfile: str | None = ...,
-        certfile: str | None = ...,
-        context: SSLContext | None = ...,
-        timeout: float = ...,
-        source_address: Tuple[str, int] | None = ...,
-    ) -> None: ...
+    if sys.version_info >= (3, 9):
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            keyfile: str | None = ...,
+            certfile: str | None = ...,
+            context: SSLContext | None = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+            *,
+            encoding: str = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            host: str = ...,
+            user: str = ...,
+            passwd: str = ...,
+            acct: str = ...,
+            keyfile: str | None = ...,
+            certfile: str | None = ...,
+            context: SSLContext | None = ...,
+            timeout: float = ...,
+            source_address: tuple[str, int] | None = ...,
+        ) -> None: ...
     ssl_version: int
     keyfile: str | None
     certfile: str | None
@@ -123,8 +157,8 @@ class FTP_TLS(FTP):
     def ccc(self) -> str: ...
 
 def parse150(resp: str) -> int | None: ...  # undocumented
-def parse227(resp: str) -> Tuple[str, int]: ...  # undocumented
-def parse229(resp: str, peer: Any) -> Tuple[str, int]: ...  # undocumented
+def parse227(resp: str) -> tuple[str, int]: ...  # undocumented
+def parse229(resp: str, peer: Any) -> tuple[str, int]: ...  # undocumented
 def parse257(resp: str) -> str: ...  # undocumented
 def ftpcp(
     source: FTP, sourcename: str, target: FTP, targetname: str = ..., type: Literal["A", "I"] = ...

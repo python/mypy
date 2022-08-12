@@ -3,7 +3,7 @@
 
 from typing import (
     TypeVar, Generic, List, Iterator, Iterable, Dict, Optional, Tuple, Any, Set,
-    overload, Mapping, Union, Callable, Sequence,
+    overload, Mapping, Union, Callable, Sequence, FrozenSet
 )
 
 T = TypeVar('T')
@@ -36,6 +36,7 @@ class int:
     def __mul__(self, n: int) -> int: pass
     def __pow__(self, n: int, modulo: Optional[int] = None) -> int: pass
     def __floordiv__(self, x: int) -> int: pass
+    def __truediv__(self, x: float) -> float: pass
     def __mod__(self, x: int) -> int: pass
     def __neg__(self) -> int: pass
     def __pos__(self) -> int: pass
@@ -210,7 +211,13 @@ class set(Generic[T]):
     def clear(self) -> None: pass
     def pop(self) -> T: pass
     def update(self, x: Iterable[S]) -> None: pass
-    def __or__(self, s: Set[S]) -> Set[Union[T, S]]: ...
+    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> Set[Union[T, S]]: ...
+
+class frozenset(Generic[T]):
+    def __init__(self, i: Optional[Iterable[T]] = None) -> None: pass
+    def __iter__(self) -> Iterator[T]: pass
+    def __len__(self) -> int: pass
+    def __or__(self, s: Union[Set[S], FrozenSet[S]]) -> FrozenSet[Union[T, S]]: ...
 
 class slice: pass
 
@@ -271,8 +278,15 @@ class NotImplementedError(RuntimeError): pass
 class StopIteration(Exception):
     value: Any
 
+class ArithmeticError(Exception): pass
+
+class ZeroDivisionError(Exception): pass
+
+class GeneratorExit(BaseException): pass
+
 def any(i: Iterable[T]) -> bool: pass
 def all(i: Iterable[T]) -> bool: pass
+def sum(i: Iterable[T]) -> int: pass
 def reversed(object: Sequence[T]) -> Iterator[T]: ...
 def id(o: object) -> int: pass
 # This type is obviously wrong but the test stubs don't have Sized anymore
@@ -286,7 +300,7 @@ def next(i: Iterator[T]) -> T: pass
 def next(i: Iterator[T], default: T) -> T: pass
 def hash(o: object) -> int: ...
 def globals() -> Dict[str, Any]: ...
-def getattr(obj: object, name: str) -> Any: ...
+def getattr(obj: object, name: str, default: Any = None) -> Any: ...
 def setattr(obj: object, name: str, value: Any) -> None: ...
 def enumerate(x: Iterable[T]) -> Iterator[Tuple[int, T]]: ...
 @overload
@@ -296,6 +310,8 @@ def zip(x: Iterable[T], y: Iterable[S], z: Iterable[V]) -> Iterator[Tuple[T, S, 
 def eval(e: str) -> Any: ...
 def abs(x: float) -> float: ...
 def exit() -> None: ...
+def min(x: T, y: T) -> T: ...
+def max(x: T, y: T) -> T: ...
 def repr(o: object) -> str: ...
 def ascii(o: object) -> str: ...
 def ord(o: object) -> int: ...

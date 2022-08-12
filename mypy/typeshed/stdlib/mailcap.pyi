@@ -1,8 +1,11 @@
-from typing import Dict, Mapping, Sequence, Tuple, Union
+from collections.abc import Mapping, Sequence
+from typing_extensions import TypeAlias
 
-_Cap = Dict[str, Union[str, int]]
+_Cap: TypeAlias = dict[str, str | int]
+
+__all__ = ["getcaps", "findmatch"]
 
 def findmatch(
     caps: Mapping[str, list[_Cap]], MIMEtype: str, key: str = ..., filename: str = ..., plist: Sequence[str] = ...
-) -> Tuple[str | None, _Cap | None]: ...
+) -> tuple[str | None, _Cap | None]: ...
 def getcaps() -> dict[str, list[_Cap]]: ...

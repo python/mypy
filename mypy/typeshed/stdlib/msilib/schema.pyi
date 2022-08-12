@@ -1,5 +1,4 @@
 import sys
-from typing import Tuple
 
 if sys.platform == "win32":
     from . import Table
@@ -92,4 +91,4 @@ if sys.platform == "win32":
 
     tables: list[Table]
 
-    _Validation_records: list[Tuple[str, str, str, int | None, int | None, str | None, int | None, str | None, str | None, str]]
+    _Validation_records: list[tuple[str, str, str, int | None, int | None, str | None, int | None, str | None, str | None, str]]

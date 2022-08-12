@@ -1,21 +1,21 @@
-from typing import Any, Tuple, Type, overload
+from typing import Any, overload
 
 _defaultaction: str
 _onceregistry: dict[Any, Any]
-filters: list[tuple[str, str | None, Type[Warning], str | None, int]]
+filters: list[tuple[str, str | None, type[Warning], str | None, int]]
 
 @overload
-def warn(message: str, category: Type[Warning] | None = ..., stacklevel: int = ..., source: Any | None = ...) -> None: ...
+def warn(message: str, category: type[Warning] | None = ..., stacklevel: int = ..., source: Any | None = ...) -> None: ...
 @overload
 def warn(message: Warning, category: Any = ..., stacklevel: int = ..., source: Any | None = ...) -> None: ...
 @overload
 def warn_explicit(
     message: str,
-    category: Type[Warning],
+    category: type[Warning],
     filename: str,
     lineno: int,
     module: str | None = ...,
-    registry: dict[str | Tuple[str, Type[Warning], int], int] | None = ...,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
     module_globals: dict[str, Any] | None = ...,
     source: Any | None = ...,
 ) -> None: ...
@@ -26,7 +26,7 @@ def warn_explicit(
     filename: str,
     lineno: int,
     module: str | None = ...,
-    registry: dict[str | Tuple[str, Type[Warning], int], int] | None = ...,
+    registry: dict[str | tuple[str, type[Warning], int], int] | None = ...,
     module_globals: dict[str, Any] | None = ...,
     source: Any | None = ...,
 ) -> None: ...

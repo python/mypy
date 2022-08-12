@@ -12,19 +12,44 @@ other modules refer to them.
 """
 
 from abc import abstractmethod
-from mypy.backports import OrderedDict
-from typing import Generic, TypeVar, cast, Any, List, Callable, Iterable, Optional, Set, Sequence
-from mypy_extensions import trait, mypyc_attr
+from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, Set, TypeVar, cast
 
-T = TypeVar('T')
+from mypy_extensions import mypyc_attr, trait
 
 from mypy.types import (
-    Type, AnyType, CallableType, Overloaded, TupleType, TypedDictType, LiteralType,
-    RawExpressionType, Instance, NoneType, TypeType,
-    UnionType, TypeVarType, PartialType, DeletedType, UninhabitedType, TypeVarLikeType,
-    UnboundType, ErasedType, StarType, EllipsisType, TypeList, CallableArgument,
-    PlaceholderType, TypeAliasType, get_proper_type
+    AnyType,
+    CallableArgument,
+    CallableType,
+    DeletedType,
+    EllipsisType,
+    ErasedType,
+    Instance,
+    LiteralType,
+    NoneType,
+    Overloaded,
+    Parameters,
+    ParamSpecType,
+    PartialType,
+    PlaceholderType,
+    RawExpressionType,
+    StarType,
+    TupleType,
+    Type,
+    TypeAliasType,
+    TypedDictType,
+    TypeList,
+    TypeType,
+    TypeVarLikeType,
+    TypeVarTupleType,
+    TypeVarType,
+    UnboundType,
+    UninhabitedType,
+    UnionType,
+    UnpackType,
+    get_proper_type,
 )
+
+T = TypeVar("T")
 
 
 @trait
@@ -61,6 +86,18 @@ class TypeVisitor(Generic[T]):
 
     @abstractmethod
     def visit_type_var(self, t: TypeVarType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        pass
+
+    @abstractmethod
+    def visit_parameters(self, t: Parameters) -> T:
+        pass
+
+    @abstractmethod
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
         pass
 
     @abstractmethod
@@ -103,13 +140,17 @@ class TypeVisitor(Generic[T]):
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
         pass
 
+    @abstractmethod
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        pass
+
 
 @trait
 @mypyc_attr(allow_interpreted_subclasses=True)
 class SyntheticTypeVisitor(TypeVisitor[T]):
     """A TypeVisitor that also knows how to visit synthetic AST constructs.
 
-       Not just real types."""
+    Not just real types."""
 
     @abstractmethod
     def visit_star_type(self, t: StarType) -> T:
@@ -179,40 +220,52 @@ class TypeTranslator(TypeVisitor[Type]):
     def visit_type_var(self, t: TypeVarType) -> Type:
         return t
 
+    def visit_param_spec(self, t: ParamSpecType) -> Type:
+        return t
+
+    def visit_parameters(self, t: Parameters) -> Type:
+        return t.copy_modified(arg_types=self.translate_types(t.arg_types))
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> Type:
+        return t
+
     def visit_partial_type(self, t: PartialType) -> Type:
         return t
 
+    def visit_unpack_type(self, t: UnpackType) -> Type:
+        return UnpackType(t.type.accept(self))
+
     def visit_callable_type(self, t: CallableType) -> Type:
-        return t.copy_modified(arg_types=self.translate_types(t.arg_types),
-                               ret_type=t.ret_type.accept(self),
-                               variables=self.translate_variables(t.variables))
+        return t.copy_modified(
+            arg_types=self.translate_types(t.arg_types),
+            ret_type=t.ret_type.accept(self),
+            variables=self.translate_variables(t.variables),
+        )
 
     def visit_tuple_type(self, t: TupleType) -> Type:
-        return TupleType(self.translate_types(t.items),
-                         # TODO: This appears to be unsafe.
-                         cast(Any, t.partial_fallback.accept(self)),
-                         t.line, t.column)
+        return TupleType(
+            self.translate_types(t.items),
+            # TODO: This appears to be unsafe.
+            cast(Any, t.partial_fallback.accept(self)),
+            t.line,
+            t.column,
+        )
 
     def visit_typeddict_type(self, t: TypedDictType) -> Type:
-        items = OrderedDict([
-            (item_name, item_type.accept(self))
-            for (item_name, item_type) in t.items.items()
-        ])
-        return TypedDictType(items,
-                             t.required_keys,
-                             # TODO: This appears to be unsafe.
-                             cast(Any, t.fallback.accept(self)),
-                             t.line, t.column)
+        items = {item_name: item_type.accept(self) for (item_name, item_type) in t.items.items()}
+        return TypedDictType(
+            items,
+            t.required_keys,
+            # TODO: This appears to be unsafe.
+            cast(Any, t.fallback.accept(self)),
+            t.line,
+            t.column,
+        )
 
     def visit_literal_type(self, t: LiteralType) -> Type:
         fallback = t.fallback.accept(self)
         assert isinstance(fallback, Instance)  # type: ignore
-        return LiteralType(
-            value=t.value,
-            fallback=fallback,
-            line=t.line,
-            column=t.column,
-        )
+        return LiteralType(value=t.value, fallback=fallback, line=t.line, column=t.column)
 
     def visit_union_type(self, t: UnionType) -> Type:
         return UnionType(self.translate_types(t.items), t.line, t.column)
@@ -220,8 +273,9 @@ class TypeTranslator(TypeVisitor[Type]):
     def translate_types(self, types: Iterable[Type]) -> List[Type]:
         return [t.accept(self) for t in types]
 
-    def translate_variables(self,
-                            variables: Sequence[TypeVarLikeType]) -> Sequence[TypeVarLikeType]:
+    def translate_variables(
+        self, variables: Sequence[TypeVarLikeType]
+    ) -> Sequence[TypeVarLikeType]:
         return variables
 
     def visit_overloaded(self, t: Overloaded) -> Type:
@@ -263,6 +317,10 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         # Keep track of the type aliases already visited. This is needed to avoid
         # infinite recursion on types like A = Union[int, List[A]].
         self.seen_aliases: Set[TypeAliasType] = set()
+        # By default, we eagerly expand type aliases, and query also types in the
+        # alias target. In most cases this is a desired behavior, but we may want
+        # to skip targets in some cases (e.g. when collecting type variables).
+        self.skip_alias_target = False
 
     def visit_unbound_type(self, t: UnboundType) -> T:
         return self.query_types(t.args)
@@ -290,6 +348,18 @@ class TypeQuery(SyntheticTypeVisitor[T]):
 
     def visit_type_var(self, t: TypeVarType) -> T:
         return self.query_types([t.upper_bound] + t.values)
+
+    def visit_param_spec(self, t: ParamSpecType) -> T:
+        return self.strategy([])
+
+    def visit_type_var_tuple(self, t: TypeVarTupleType) -> T:
+        return self.strategy([])
+
+    def visit_unpack_type(self, t: UnpackType) -> T:
+        return self.query_types([t.type])
+
+    def visit_parameters(self, t: Parameters) -> T:
+        return self.query_types(t.arg_types)
 
     def visit_partial_type(self, t: PartialType) -> T:
         return self.strategy([])
@@ -332,6 +402,8 @@ class TypeQuery(SyntheticTypeVisitor[T]):
         return self.query_types(t.args)
 
     def visit_type_alias_type(self, t: TypeAliasType) -> T:
+        if self.skip_alias_target:
+            return self.query_types(t.args)
         return get_proper_type(t).accept(self)
 
     def query_types(self, types: Iterable[Type]) -> T:

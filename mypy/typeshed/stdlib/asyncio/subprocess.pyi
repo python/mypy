@@ -2,13 +2,16 @@ import subprocess
 import sys
 from _typeshed import StrOrBytesPath
 from asyncio import events, protocols, streams, transports
-from typing import IO, Any, Callable, Tuple, Union
-from typing_extensions import Literal
+from collections.abc import Callable
+from typing import IO, Any
+from typing_extensions import Literal, TypeAlias
+
+__all__ = ("create_subprocess_exec", "create_subprocess_shell")
 
 if sys.version_info >= (3, 8):
-    _ExecArg = StrOrBytesPath
+    _ExecArg: TypeAlias = StrOrBytesPath
 else:
-    _ExecArg = Union[str, bytes]
+    _ExecArg: TypeAlias = str | bytes
 
 PIPE: int
 STDOUT: int
@@ -38,7 +41,7 @@ class Process:
     def send_signal(self, signal: int) -> None: ...
     def terminate(self) -> None: ...
     def kill(self) -> None: ...
-    async def communicate(self, input: bytes | None = ...) -> Tuple[bytes, bytes]: ...
+    async def communicate(self, input: bytes | None = ...) -> tuple[bytes, bytes]: ...
 
 if sys.version_info >= (3, 10):
     async def create_subprocess_shell(

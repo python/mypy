@@ -42,17 +42,61 @@ from posixpath import (
     splitext as splitext,
     supports_unicode_filenames as supports_unicode_filenames,
 )
-from typing import AnyStr, Tuple, overload
+from typing import AnyStr, overload
+from typing_extensions import LiteralString
 
-altsep: str
-if sys.version_info < (3, 7) and sys.platform == "win32":
-    def splitunc(p: AnyStr) -> Tuple[AnyStr, AnyStr]: ...  # deprecated
+__all__ = [
+    "normcase",
+    "isabs",
+    "join",
+    "splitdrive",
+    "split",
+    "splitext",
+    "basename",
+    "dirname",
+    "commonprefix",
+    "getsize",
+    "getmtime",
+    "getatime",
+    "getctime",
+    "islink",
+    "exists",
+    "lexists",
+    "isdir",
+    "isfile",
+    "ismount",
+    "expanduser",
+    "expandvars",
+    "normpath",
+    "abspath",
+    "curdir",
+    "pardir",
+    "sep",
+    "pathsep",
+    "defpath",
+    "altsep",
+    "extsep",
+    "devnull",
+    "realpath",
+    "supports_unicode_filenames",
+    "relpath",
+    "samefile",
+    "sameopenfile",
+    "samestat",
+    "commonpath",
+]
 
-# Similar to posixpath, but have slightly different argument names
+altsep: LiteralString
+
+# First parameter is not actually pos-only,
+# but must be defined as pos-only in the stub or cross-platform code doesn't type-check,
+# as the parameter name is different in posixpath.join()
 @overload
-def join(path: StrPath, *paths: StrPath) -> str: ...
+def join(__path: LiteralString, *paths: LiteralString) -> LiteralString: ...
 @overload
-def join(path: BytesPath, *paths: BytesPath) -> bytes: ...
+def join(__path: StrPath, *paths: StrPath) -> str: ...
+@overload
+def join(__path: BytesPath, *paths: BytesPath) -> bytes: ...
 
 if sys.platform == "win32":
     if sys.version_info >= (3, 10):

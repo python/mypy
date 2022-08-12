@@ -1,4 +1,7 @@
-from typing import Any, Callable, Tuple
+from collections.abc import Callable
+from typing import Any
+
+__all__ = ["JSONDecoder", "JSONDecodeError"]
 
 class JSONDecodeError(ValueError):
     msg: str
@@ -14,7 +17,7 @@ class JSONDecoder:
     parse_int: Callable[[str], Any]
     parse_constant: Callable[[str], Any]
     strict: bool
-    object_pairs_hook: Callable[[list[Tuple[str, Any]]], Any]
+    object_pairs_hook: Callable[[list[tuple[str, Any]]], Any]
     def __init__(
         self,
         *,
@@ -23,7 +26,7 @@ class JSONDecoder:
         parse_int: Callable[[str], Any] | None = ...,
         parse_constant: Callable[[str], Any] | None = ...,
         strict: bool = ...,
-        object_pairs_hook: Callable[[list[Tuple[str, Any]]], Any] | None = ...,
+        object_pairs_hook: Callable[[list[tuple[str, Any]]], Any] | None = ...,
     ) -> None: ...
     def decode(self, s: str, _w: Callable[..., Any] = ...) -> Any: ...  # _w is undocumented
-    def raw_decode(self, s: str, idx: int = ...) -> Tuple[Any, int]: ...
+    def raw_decode(self, s: str, idx: int = ...) -> tuple[Any, int]: ...

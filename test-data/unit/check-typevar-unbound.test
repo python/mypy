@@ -1,0 +1,60 @@
+
+[case testUnboundTypeVar]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f() -> T: # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+    ...
+
+f()
+
+
+[case testInnerFunctionTypeVar]
+
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def g(a: T) -> T:
+    def f() -> T:
+        ...
+    return f()
+
+
+[case testUnboundIterableOfTypeVars]
+from typing import Iterable, TypeVar
+
+T = TypeVar('T')
+
+def f() -> Iterable[T]:
+    ...
+
+f()
+
+[case testBoundTypeVar]
+from typing import TypeVar
+
+T = TypeVar('T')
+
+def f(a: T, b: T, c: int) -> T:
+    ...
+
+
+[case testNestedBoundTypeVar]
+from typing import Callable, List, Union, Tuple, TypeVar
+
+T = TypeVar('T')
+
+def f(a: Union[int, T], b: str) -> T:
+    ...
+
+def g(a: Callable[..., T], b: str) -> T:
+    ...
+
+def h(a: List[Union[Callable[..., T]]]) -> T:
+    ...
+
+def j(a: List[Union[Callable[..., Tuple[T, T]], int]]) -> T:
+    ...
+[builtins fixtures/tuple.pyi]

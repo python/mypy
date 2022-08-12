@@ -17,7 +17,7 @@ There is no runtime enforcement by the Python runtime.
 
     The examples in this page import ``Final`` and ``final`` from the
     ``typing`` module. These types were added to ``typing`` in Python 3.8,
-    but are also available for use in Python 2.7 and 3.4 - 3.7 via the
+    but are also available for use in Python 3.4 - 3.7 via the
     ``typing_extensions`` package.
 
 Final names
@@ -33,7 +33,7 @@ further assignments to final names in type-checked code:
 
    from typing import Final
 
-   RATE: Final = 3000
+   RATE: Final = 3_000
 
    class Base:
        DEFAULT_ID: Final = 0
@@ -119,9 +119,9 @@ annotations. Using it in any other position is an error. In particular,
 
 .. code-block:: python
 
-   x: List[Final[int]] = []  # Error!
+   x: list[Final[int]] = []  # Error!
 
-   def fun(x: Final[List[int]]) ->  None:  # Error!
+   def fun(x: Final[list[int]]) ->  None:  # Error!
        ...
 
 ``Final`` and :py:data:`~typing.ClassVar` should not be used together. Mypy will infer

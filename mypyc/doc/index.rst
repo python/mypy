@@ -47,6 +47,12 @@ generate fast code.
 
    performance_tips_and_tricks
 
+.. toctree::
+   :hidden:
+   :caption: Project Links
+
+   GitHub <https://github.com/python/mypy>
+
 Indices and tables
 ==================
 

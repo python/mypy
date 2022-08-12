@@ -1,7 +1,11 @@
-from typing import IO, Any, Callable, Sequence, Tuple, Union
+from collections.abc import Callable, Sequence
+from typing import IO, Any
+from typing_extensions import TypeAlias
 
-_Timer = Callable[[], float]
-_Stmt = Union[str, Callable[[], Any]]
+__all__ = ["Timer", "timeit", "repeat", "default_timer"]
+
+_Timer: TypeAlias = Callable[[], float]
+_Stmt: TypeAlias = str | Callable[[], object]
 
 default_timer: _Timer
 
@@ -12,7 +16,7 @@ class Timer:
     def print_exc(self, file: IO[str] | None = ...) -> None: ...
     def timeit(self, number: int = ...) -> float: ...
     def repeat(self, repeat: int = ..., number: int = ...) -> list[float]: ...
-    def autorange(self, callback: Callable[[int, float], Any] | None = ...) -> Tuple[int, float]: ...
+    def autorange(self, callback: Callable[[int, float], object] | None = ...) -> tuple[int, float]: ...
 
 def timeit(
     stmt: _Stmt = ..., setup: _Stmt = ..., timer: _Timer = ..., number: int = ..., globals: dict[str, Any] | None = ...
@@ -25,7 +29,4 @@ def repeat(
     number: int = ...,
     globals: dict[str, Any] | None = ...,
 ) -> list[float]: ...
-
-_timerFunc = Callable[[], float]
-
-def main(args: Sequence[str] | None = ..., *, _wrap_timer: Callable[[_timerFunc], _timerFunc] | None = ...) -> None: ...
+def main(args: Sequence[str] | None = ..., *, _wrap_timer: Callable[[_Timer], _Timer] | None = ...) -> None: ...

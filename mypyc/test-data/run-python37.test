@@ -1,8 +1,9 @@
 -- Test cases for Python 3.7 features
 
 [case testRunDataclass]
+import dataclasses
 from dataclasses import dataclass, field
-from typing import Set, List, Callable, Any
+from typing import Set, FrozenSet, List, Callable, Any
 
 @dataclass
 class Person1:
@@ -26,6 +27,11 @@ class Person1b(Person1):
 class Person2:
     age : int
     name : str = field(default='robot')
+
+@dataclasses.dataclass
+class Person2b:
+    age : int
+    name : str = dataclasses.field(default='robot')
 
 @dataclass(order = True)
 class Person3:
@@ -62,8 +68,14 @@ class Person4:
     def name(self) -> str:
         return self._name
 
+@dataclass
+class Person5:
+    weight: float
+    friends: Set[str] = field(default_factory=set)
+    parents: FrozenSet[str] = frozenset()
+
 [file other.py]
-from native import Person1, Person1b, Person2, Person3, Person4, testBool
+from native import Person1, Person1b, Person2, Person3, Person4, Person5, testBool
 i1 = Person1(age = 5, name = 'robot')
 assert i1.age == 5
 assert i1.name == 'robot'
@@ -109,6 +121,10 @@ assert i8 == i9
 i8.age = 2
 assert i8 > i9
 
+assert Person1.__annotations__ == {'age': int, 'name': str}
+assert Person2.__annotations__ == {'age': int, 'name': str}
+assert Person5.__annotations__ == {'weight': float, 'friends': set,
+                                       'parents': frozenset}
 
 [file driver.py]
 import sys

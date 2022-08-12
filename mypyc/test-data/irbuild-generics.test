@@ -60,11 +60,12 @@ def f():
 L0:
     r0 = C()
     c = r0
-    r1 = box(short_int, 2)
+    r1 = object 1
     c.x = r1; r2 = is_error
-    r3 = c.x
+    r3 = borrow c.x
     r4 = unbox(int, r3)
     r5 = CPyTagged_Add(4, r4)
+    keep_alive c
     return 1
 
 [case testGenericMethod]
@@ -118,7 +119,33 @@ L0:
     r2 = CPyTagged_Add(y, 2)
     r3 = box(int, r2)
     r4 = x.set(r3)
-    r5 = box(short_int, 4)
+    r5 = object 2
     r6 = C(r5)
     x = r6
     return 1
+
+[case testMax]
+from typing import TypeVar
+T = TypeVar('T')
+def f(x: T, y: T) -> T:
+    return max(x, y)
+[out]
+def f(x, y):
+    x, y, r0 :: object
+    r1 :: int32
+    r2 :: bit
+    r3 :: bool
+    r4 :: object
+L0:
+    r0 = PyObject_RichCompare(y, x, 4)
+    r1 = PyObject_IsTrue(r0)
+    r2 = r1 >= 0 :: signed
+    r3 = truncate r1: int32 to builtins.bool
+    if r3 goto L1 else goto L2 :: bool
+L1:
+    r4 = y
+    goto L3
+L2:
+    r4 = x
+L3:
+    return r4

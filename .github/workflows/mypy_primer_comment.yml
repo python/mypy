@@ -17,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download diffs
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           script: |
             const fs = require('fs');
-            const artifacts = await github.actions.listWorkflowRunArtifacts({
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
                owner: context.repo.owner,
                repo: context.repo.repo,
                run_id: ${{ github.event.workflow_run.id }},
@@ -29,7 +29,7 @@ jobs:
             const [matchArtifact] = artifacts.data.artifacts.filter((artifact) =>
               artifact.name == "mypy_primer_diffs");
 
-            const download = await github.actions.downloadArtifact({
+            const download = await github.rest.actions.downloadArtifact({
                owner: context.repo.owner,
                repo: context.repo.repo,
                artifact_id: matchArtifact.id,
@@ -38,62 +38,46 @@ jobs:
             fs.writeFileSync("diff.zip", Buffer.from(download.data));
 
       - run: unzip diff.zip
-
-      # Based on https://github.com/kanga333/comment-hider
-      - name: Hide old comments
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
-          script: |
-            const fs = require('fs')
-
-            const response = await github.issues.listComments({
-              issue_number: fs.readFileSync("pr_number.txt", { encoding: "utf8" }),
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-            })
-            const botCommentIds = response.data
-              .filter(comment => comment.user.login === 'github-actions[bot]')
-              .map(comment => comment.node_id)
-
-            for (const id of botCommentIds) {
-              const resp = await github.graphql(`
-                mutation {
-                  minimizeComment(input: {classifier: OUTDATED, subjectId: "${id}"}) {
-                    minimizedComment {
-                      isMinimized
-                    }
-                  }
-                }
-              `)
-              if (resp.errors) {
-                throw new Error(resp.errors)
-              }
-            }
+      - run: |
+          cat diff_*.txt | tee fulldiff.txt
 
       - name: Post comment
-        uses: actions/github-script@v3
+        id: post-comment
+        uses: actions/github-script@v6
         with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
-            // Keep in sync with shards produced by mypy_primer workflow
-            const data = (
-              ['diff_0.txt', 'diff_1.txt', 'diff_2.txt']
-              .map(fileName => fs.readFileSync(fileName, { encoding: 'utf8' }))
-              .join('')
-              .substr(0, 30000)  // About 300 lines
-            )
+            let data = fs.readFileSync('fulldiff.txt', { encoding: 'utf8' })
+            // posting comment fails if too long, so truncate
+            if (data.length > 30000) {
+              let truncated_data = data.substring(0, 30000)
+              let lines_truncated = data.split('\n').length - truncated_data.split('\n').length
+              data = truncated_data + `\n\n... (truncated ${lines_truncated} lines) ...\n`
+            }
 
             console.log("Diff from mypy_primer:")
             console.log(data)
 
+            let body
             if (data.trim()) {
-              const body = 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
-              await github.issues.createComment({
-                issue_number: fs.readFileSync("pr_number.txt", { encoding: "utf8" }),
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body
-              })
+              body = 'Diff from [mypy_primer](https://github.com/hauntsaninja/mypy_primer), showing the effect of this PR on open source code:\n```diff\n' + data + '```'
+            } else {
+              body = 'According to [mypy_primer](https://github.com/hauntsaninja/mypy_primer), this change has no effect on the checked open source code. 🤖🎉'
             }
+            const prNumber = parseInt(fs.readFileSync("pr_number.txt", { encoding: "utf8" }))
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            })
+            return prNumber
+
+      - name: Hide old comments
+        # v0.3.0
+        uses: kanga333/comment-hider@bbdf5b562fbec24e6f60572d8f712017428b92e0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          leave_visible: 1
+          issue_number: ${{ steps.post-comment.outputs.result }}

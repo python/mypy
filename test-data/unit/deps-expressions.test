@@ -191,7 +191,7 @@ def g(a: A) -> int:
 <m.f1> -> m.g
 <m.f2> -> m.g
 
-[case testIndexExpr]
+[case testIndexExpr2]
 class A:
     def __getitem__(self, x: int) -> int: pass
 
@@ -374,36 +374,6 @@ def f(a: Union[A, B]) -> int:
 <m.A> -> <m.f>, m.A, m.f
 <m.B.__add__> -> m.f
 <m.B> -> <m.f>, m.B, m.f
-
-[case testBackquoteExpr_python2]
-def g(): # type: () -> int
-    pass
-def f(): # type: () -> str
-    return `g()`
-[out]
-<m.g> -> m.f
-
-[case testComparison_python2]
-class A:
-    def __cmp__(self, other): # type: (B) -> int
-        pass
-class B:
-    pass
-
-def f(a, b): # type: (A, B) -> None
-    x = a == b
-
-def g(a, b): # type: (A, B) -> None
-    x = a < b
-[out]
-<m.A.__cmp__> -> m.f, m.g
-<m.A.__eq__> -> m.f
-<m.A.__lt__> -> m.g
-<m.A> -> <m.f>, <m.g>, m.A, m.f, m.g
-<m.B.__cmp__> -> m.f, m.g
-<m.B.__eq__> -> m.f
-<m.B.__gt__> -> m.g
-<m.B> -> <m.A.__cmp__>, <m.f>, <m.g>, m.A.__cmp__, m.B, m.f, m.g
 
 [case testSliceExpr]
 class A:

@@ -10,6 +10,8 @@ class type:
 
 class tuple(Generic[T]): pass
 
+class classmethod: pass
+class staticmethod: pass
 class function: pass
 
 def isinstance(x: object, t: Union[type, Tuple[type, ...]]) -> bool: pass

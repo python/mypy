@@ -1,43 +1,30 @@
-import sys
-from typing import Any, Tuple
+from enum import Enum
+from typing_extensions import TypeAlias
 
 # Because UUID has properties called int and bytes we need to rename these temporarily.
-_Int = int
-_Bytes = bytes
-_FieldsType = Tuple[int, int, int, int, int, int]
+_Int: TypeAlias = int
+_Bytes: TypeAlias = bytes
+_FieldsType: TypeAlias = tuple[int, int, int, int, int, int]
 
-if sys.version_info >= (3, 7):
-    from enum import Enum
-    class SafeUUID(Enum):
-        safe: int
-        unsafe: int
-        unknown: None
+class SafeUUID(Enum):
+    safe: int
+    unsafe: int
+    unknown: None
 
 class UUID:
-    if sys.version_info >= (3, 7):
-        def __init__(
-            self,
-            hex: str | None = ...,
-            bytes: _Bytes | None = ...,
-            bytes_le: _Bytes | None = ...,
-            fields: _FieldsType | None = ...,
-            int: _Int | None = ...,
-            version: _Int | None = ...,
-            *,
-            is_safe: SafeUUID = ...,
-        ) -> None: ...
-        @property
-        def is_safe(self) -> SafeUUID: ...
-    else:
-        def __init__(
-            self,
-            hex: str | None = ...,
-            bytes: _Bytes | None = ...,
-            bytes_le: _Bytes | None = ...,
-            fields: _FieldsType | None = ...,
-            int: _Int | None = ...,
-            version: _Int | None = ...,
-        ) -> None: ...
+    def __init__(
+        self,
+        hex: str | None = ...,
+        bytes: _Bytes | None = ...,
+        bytes_le: _Bytes | None = ...,
+        fields: _FieldsType | None = ...,
+        int: _Int | None = ...,
+        version: _Int | None = ...,
+        *,
+        is_safe: SafeUUID = ...,
+    ) -> None: ...
+    @property
+    def is_safe(self) -> SafeUUID: ...
     @property
     def bytes(self) -> _Bytes: ...
     @property
@@ -71,11 +58,11 @@ class UUID:
     @property
     def version(self) -> _Int | None: ...
     def __int__(self) -> _Int: ...
-    def __eq__(self, other: Any) -> bool: ...
-    def __lt__(self, other: Any) -> bool: ...
-    def __le__(self, other: Any) -> bool: ...
-    def __gt__(self, other: Any) -> bool: ...
-    def __ge__(self, other: Any) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __lt__(self, other: UUID) -> bool: ...
+    def __le__(self, other: UUID) -> bool: ...
+    def __gt__(self, other: UUID) -> bool: ...
+    def __ge__(self, other: UUID) -> bool: ...
 
 def getnode() -> int: ...
 def uuid1(node: _Int | None = ..., clock_seq: _Int | None = ...) -> UUID: ...

@@ -4,7 +4,7 @@
 -- These are mostly regression tests -- no attempt is made to make these
 -- complete.
 --
--- This test file check Asyncio and yield from interaction
+-- This test file checks Asyncio and await interaction
 
 [case testImportAsyncio]
 import asyncio
@@ -17,12 +17,11 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def greet_every_two_seconds() -> 'Generator[Any, None, None]':
+async def greet_every_two_seconds() -> None:
     n = 0
     while n < 5:
         print('Prev', n)
-        yield from asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
         print('After', n)
         n += 1
 
@@ -44,19 +43,17 @@ Prev 4
 After 4
 
 [case testCoroutineCallingOtherCoroutine]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def compute(x: int, y: int) -> 'Generator[Any, None, int]':
+async def compute(x: int, y: int) -> int:
     print("Compute %s + %s ..." % (x, y))
-    yield from asyncio.sleep(0.1)
+    await asyncio.sleep(0.01)
     return x + y   # Here the int is wrapped in Future[int]
 
-@asyncio.coroutine
-def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
-    result = yield from compute(x, y)  # The type of result will be int (is extracted from Future[int]
+async def print_sum(x: int, y: int) -> None:
+    result = await compute(x, y)  # The type of result will be int (is extracted from Future[int]
     print("%s + %s = %s" % (x, y, result))
 
 loop = asyncio.get_event_loop()
@@ -67,13 +64,12 @@ Compute 1 + 2 ...
 1 + 2 = 3
 
 [case testCoroutineChangingFuture]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(0.1)
+async def slow_operation(future: 'Future[str]') -> None:
+    await asyncio.sleep(0.01)
     future.set_result('Future is done!')
 
 loop = asyncio.get_event_loop()
@@ -87,13 +83,12 @@ Future is done!
 
 [case testFunctionAssignedAsCallback]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(1)
+async def slow_operation(future: 'Future[str]') -> None:
+    await asyncio.sleep(1)
     future.set_result('Callback works!')
 
 def got_result(future: 'Future[str]') -> None:
@@ -113,15 +108,14 @@ Callback works!
 
 [case testMultipleTasks]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Task, Future
-@asyncio.coroutine
-def factorial(name, number) -> 'Generator[Any, None, None]':
+async def factorial(name, number) -> None:
     f = 1
     for i in range(2, number+1):
         print("Task %s: Compute factorial(%s)..." % (name, i))
-        yield from asyncio.sleep(0.1)
+        await asyncio.sleep(0.01)
         f *= i
     print("Task %s: factorial(%s) = %s" % (name, number, f))
 
@@ -146,30 +140,26 @@ Task C: factorial(4) = 24
 
 [case testConcatenatedCoroutines]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, int]':
-    x = yield from future
+async def h4() -> int:
+    x = await future
     return x
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, int]':
-    x = yield from h4()
+async def h3() -> int:
+    x = await h4()
     print("h3: %s" % x)
     return x
 
-@asyncio.coroutine
-def h2() -> 'Generator[Any, None, int]':
-    x = yield from h3()
+async def h2() -> int:
+    x = await h3()
     print("h2: %s" % x)
     return x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
-    x = yield from h2()
+async def h() -> None:
+    x = await h2()
     print("h: %s" % x)
 
 loop = asyncio.get_event_loop()
@@ -186,30 +176,27 @@ Outside 42
 
 [case testConcatenatedCoroutinesReturningFutures]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
-    yield from asyncio.sleep(0.1)
+async def h4() -> "Future[int]":
+    await asyncio.sleep(0.01)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[Future[int]]]':
-    x = yield from h4()
+async def h3() -> "Future[Future[int]]":
+    x = await h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> None:
     print("Before")
-    x = yield from h3()
-    y = yield from x
-    z = yield from y
+    x = await h3()
+    y = await x
+    z = await y
     print(z)
     def normalize(future):
         # The str conversion seems inconsistent; not sure exactly why. Normalize
@@ -230,7 +217,7 @@ Future<result=Future<result=42>>
 
 [case testCoroutineWithOwnClass]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -238,9 +225,8 @@ class A:
     def __init__(self, x: int) -> None:
         self.x = x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
-    x = yield from future
+async def h() -> None:
+    x = await future
     print("h: %s" % x.x)
 
 loop = asyncio.get_event_loop()
@@ -257,19 +243,17 @@ Outside 42
 -- Errors
 
 [case testErrorAssigningCoroutineThatDontReturn]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def greet() -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(0.2)
+async def greet() -> None:
+    await asyncio.sleep(0.2)
     print('Hello World')
 
-@asyncio.coroutine
-def test() -> 'Generator[Any, None, None]':
-    yield from greet()
-    x = yield from greet()  # Error
+async def test() -> None:
+    await greet()
+    x = await greet()  # Error
 
 loop = asyncio.get_event_loop()
 try:
@@ -277,22 +261,20 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:13: error: Function does not return a value
+_program.py:11: error: Function does not return a value
 
 [case testErrorReturnIsNotTheSameType]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def compute(x: int, y: int) -> 'Generator[Any, None, int]':
+async def compute(x: int, y: int) -> int:
     print("Compute %s + %s ..." % (x, y))
-    yield from asyncio.sleep(0.1)
+    await asyncio.sleep(0.01)
     return str(x + y)   # Error
 
-@asyncio.coroutine
-def print_sum(x: int, y: int) -> 'Generator[Any, None, None]':
-    result = yield from compute(x, y)
+async def print_sum(x: int, y: int) -> None:
+    result = await compute(x, y)
     print("%s + %s = %s" % (x, y, result))
 
 loop = asyncio.get_event_loop()
@@ -300,16 +282,15 @@ loop.run_until_complete(print_sum(1, 2))
 loop.close()
 
 [out]
-_program.py:9: error: Incompatible return value type (got "str", expected "int")
+_program.py:8: error: Incompatible return value type (got "str", expected "int")
 
 [case testErrorSetFutureDifferentInternalType]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(1)
+async def slow_operation(future: 'Future[str]') -> None:
+    await asyncio.sleep(1)
     future.set_result(42)  # Error
 
 loop = asyncio.get_event_loop()
@@ -319,17 +300,16 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
+_program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "int"; expected "str"
 
 
 [case testErrorUsingDifferentFutureType]
-from typing import Any, Generator
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(1)
+async def slow_operation(future: 'Future[int]') -> None:
+    await asyncio.sleep(1)
     future.set_result(42)
 
 loop = asyncio.get_event_loop()
@@ -339,16 +319,15 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
+_program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
 [case testErrorUsingDifferentFutureTypeAndSetFutureDifferentInternalType]
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
-asyncio.coroutine
-def slow_operation(future: 'Future[int]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(1)
+async def slow_operation(future: 'Future[int]') -> None:
+    await asyncio.sleep(1)
     future.set_result('42')  #Try to set an str as result to a Future[int]
 
 loop = asyncio.get_event_loop()
@@ -358,18 +337,17 @@ loop.run_until_complete(future)
 print(future.result())
 loop.close()
 [out]
-_program.py:8: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
-_program.py:12: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
+_program.py:7: error: Argument 1 to "set_result" of "Future" has incompatible type "str"; expected "int"
+_program.py:11: error: Argument 1 to "slow_operation" has incompatible type "Future[str]"; expected "Future[int]"
 
 [case testErrorSettingCallbackWithDifferentFutureType]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future, AbstractEventLoop
 
-@asyncio.coroutine
-def slow_operation(future: 'Future[str]') -> 'Generator[Any, None, None]':
-    yield from asyncio.sleep(1)
+async def slow_operation(future: 'Future[str]') -> None:
+    await asyncio.sleep(1)
     future.set_result('Future is done!')
 
 def got_result(future: 'Future[int]') -> None:
@@ -386,7 +364,7 @@ try:
 finally:
     loop.close()
 [out]
-_program.py:18: error: Argument 1 to "add_done_callback" of "Future" has incompatible type "Callable[[Future[int]], None]"; expected "Callable[[Future[str]], Any]"
+_program.py:17: error: Argument 1 to "add_done_callback" of "Future" has incompatible type "Callable[[Future[int]], None]"; expected "Callable[[Future[str]], object]"
 
 [case testErrorOneMoreFutureInReturnType]
 import typing
@@ -394,26 +372,23 @@ from typing import Any, Generator
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
-    yield from asyncio.sleep(1)
+async def h4() -> Future[int]:
+    await asyncio.sleep(1)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[Future[Future[int]]]]':
-    x = yield from h4()
+async def h3() -> Future[Future[Future[int]]]:
+    x = await h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> None:
     print("Before")
-    x = yield from h3()
-    y = yield from x
-    z = yield from y
+    x = await h3()
+    y = await x
+    z = await y
     print(z)
     print(y)
     print(x)
@@ -422,33 +397,30 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py:18: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[Future[Future[int]]]")
+_program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[Future[Future[int]]]")
 
 [case testErrorOneLessFutureInReturnType]
 import typing
-from typing import Any, Generator
+from typing import Any
 import asyncio
 from asyncio import Future
 
-@asyncio.coroutine
-def h4() -> 'Generator[Any, None, Future[int]]':
-    yield from asyncio.sleep(1)
+async def h4() -> Future[int]:
+    await asyncio.sleep(1)
     f = asyncio.Future() #type: Future[int]
     return f
 
-@asyncio.coroutine
-def h3() -> 'Generator[Any, None, Future[int]]':
-    x = yield from h4()
+async def h3() -> Future[int]:
+    x = await h4()
     x.set_result(42)
     f = asyncio.Future() #type: Future[Future[int]]
     f.set_result(x)
     return f
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
+async def h() -> None:
     print("Before")
-    x = yield from h3()
-    y = yield from x
+    x = await h3()
+    y = await x
     print(y)
     print(x)
 
@@ -456,11 +428,12 @@ loop = asyncio.get_event_loop()
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py:18: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
+_program.py:16: error: Incompatible return value type (got "Future[Future[int]]", expected "Future[int]")
+_program.py:16: note: Maybe you forgot to use "await"?
 
 [case testErrorAssignmentDifferentType]
 import typing
-from typing import Generator, Any
+from typing import Any
 import asyncio
 from asyncio import Future
 
@@ -472,9 +445,8 @@ class B:
     def __init__(self, x: int) -> None:
         self.x = x
 
-@asyncio.coroutine
-def h() -> 'Generator[Any, None, None]':
-    x = yield from future # type: B # Error
+async def h() -> None:
+    x = await future # type: B # Error
     print("h: %s" % x.x)
 
 loop = asyncio.get_event_loop()
@@ -483,7 +455,7 @@ future.set_result(A(42))
 loop.run_until_complete(h())
 loop.close()
 [out]
-_program.py:16: error: Incompatible types in assignment (expression has type "A", variable has type "B")
+_program.py:15: error: Incompatible types in assignment (expression has type "A", variable has type "B")
 
 [case testForwardRefToBadAsyncShouldNotCrash_newsemanal]
 from typing import TypeVar
@@ -496,10 +468,11 @@ def test() -> None:
     reveal_type(bad)
     bad(0)
 
-@asyncio.coroutine
-def bad(arg: P) -> T:
+async def bad(arg: P) -> T:
     pass
 [out]
-_program.py:8: note: Revealed type is "def [T] (arg: P?) -> T`-1"
-_program.py:12: error: Variable "_testForwardRefToBadAsyncShouldNotCrash_newsemanal.P" is not valid as a type
-_program.py:12: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+_program.py:8: note: Revealed type is "def [T] (arg: P?) -> typing.Coroutine[Any, Any, T`-1]"
+_program.py:9: error: Value of type "Coroutine[Any, Any, <nothing>]" must be used
+_program.py:9: note: Are you missing an await?
+_program.py:11: error: Variable "_testForwardRefToBadAsyncShouldNotCrash_newsemanal.P" is not valid as a type
+_program.py:11: note: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases

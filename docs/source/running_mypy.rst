@@ -81,7 +81,7 @@ Note that if you use namespace packages (in particular, packages without
         $ mypy -c 'x = [1, 2]; print(x())'
 
     ...will type check the above string as a mini-program (and in this case,
-    will report that ``List[int]`` is not callable).
+    will report that ``list[int]`` is not callable).
 
 
 Reading a list of files from a file
@@ -133,14 +133,12 @@ Missing imports
 ***************
 
 When you import a module, mypy may report that it is unable to follow
-the import.
-
-This can cause errors that look like the following:
+the import. This can cause errors that look like the following:
 
 .. code-block:: text
 
-    main.py:1: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
-    main.py:2: error: Skipping analyzing 'django': found module but no type hints or library stubs
+    main.py:1: error: Skipping analyzing 'django': module is installed, but missing library stubs or py.typed marker
+    main.py:2: error: Library stubs not installed for "requests" (or incompatible with Python 3.8)
     main.py:3: error: Cannot find implementation or library stub for module named "this_module_does_not_exist"
 
 If you get any of these errors on an import, mypy will assume the type of that
@@ -155,55 +153,14 @@ attribute of the module will automatically succeed:
     # But this type checks, and x will have type 'Any'
     x = does_not_exist.foobar()
 
-The next sections describe what each error means and recommended next steps.
+The next sections describe what each of these errors means and recommended next steps; scroll to
+the section that matches your error.
 
-Library stubs not installed
----------------------------
 
-If mypy can't find stubs for a third-party library, and it knows that stubs exist for
-the library, you will get a message like this:
+Missing library stubs or py.typed marker
+----------------------------------------
 
-.. code-block:: text
-
-    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
-    main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
-    main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
-
-You can resolve the issue by running the suggested pip command or
-commands. Alternatively, you can use :option:`--install-types <mypy
---install-types>` to install all known missing stubs:
-
-.. code-block:: text
-
-    mypy --install-types
-
-This installs any stub packages that were suggested in the previous
-mypy run. You can also use your normal mypy command line with the
-extra :option:`--install-types <mypy --install-types>` option to
-install missing stubs at the end of the run (if any were found).
-
-Use :option:`--install-types <mypy --install-types>` with
-:option:`--non-interactive <mypy --non-interactive>`  to install all suggested
-stub packages without asking for confirmation, *and* type check your
-code, in a single command:
-
-.. code-block:: text
-
-   mypy --install-types --non-interactive src/
-
-This can be useful in Continuous Integration jobs if you'd prefer not
-to manage stub packages manually. This is somewhat slower than
-explicitly installing stubs before running mypy, since it may type
-check your code twice -- the first time to find the missing stubs, and
-the second time to type check your code properly after mypy has
-installed the stubs.
-
-.. _missing-type-hints-for-third-party-library:
-
-Missing type hints for third party library
-------------------------------------------
-
-If you are getting a "Skipping analyzing X: found module but no type hints or library stubs",
+If you are getting a ``Skipping analyzing X: module is installed, but missing library stubs or py.typed marker``,
 error, this means mypy was able to find the module you were importing, but no
 corresponding type hints.
 
@@ -248,7 +205,7 @@ will continue to be of type ``Any``.
 1.  To suppress a *single* missing import error, add a ``# type: ignore`` at the end of the
     line containing the import.
 
-2.  To suppress *all* missing import imports errors from a single library, add
+2.  To suppress *all* missing import errors from a single library, add
     a section to your :ref:`mypy config file <config-file>` for that library setting
     :confval:`ignore_missing_imports` to True. For example, suppose your codebase
     makes heavy use of an (untyped) library named ``foobar``. You can silence
@@ -277,10 +234,54 @@ will continue to be of type ``Any``.
     We recommend using this approach only as a last resort: it's equivalent
     to adding a ``# type: ignore`` to all unresolved imports in your codebase.
 
-Unable to find module
----------------------
 
-If you are getting a "Cannot find implementation or library stub for module"
+Library stubs not installed
+---------------------------
+
+If mypy can't find stubs for a third-party library, and it knows that stubs exist for
+the library, you will get a message like this:
+
+.. code-block:: text
+
+    main.py:1: error: Library stubs not installed for "yaml" (or incompatible with Python 3.8)
+    main.py:1: note: Hint: "python3 -m pip install types-PyYAML"
+    main.py:1: note: (or run "mypy --install-types" to install all missing stub packages)
+
+You can resolve the issue by running the suggested pip command or
+commands. Alternatively, you can use :option:`--install-types <mypy
+--install-types>` to install all known missing stubs:
+
+.. code-block:: text
+
+    mypy --install-types
+
+This installs any stub packages that were suggested in the previous
+mypy run. You can also use your normal mypy command line with the
+extra :option:`--install-types <mypy --install-types>` option to
+install missing stubs at the end of the run (if any were found).
+
+Use :option:`--install-types <mypy --install-types>` with
+:option:`--non-interactive <mypy --non-interactive>`  to install all suggested
+stub packages without asking for confirmation, *and* type check your
+code, in a single command:
+
+.. code-block:: text
+
+   mypy --install-types --non-interactive src/
+
+This can be useful in Continuous Integration jobs if you'd prefer not
+to manage stub packages manually. This is somewhat slower than
+explicitly installing stubs before running mypy, since it may type
+check your code twice -- the first time to find the missing stubs, and
+the second time to type check your code properly after mypy has
+installed the stubs.
+
+.. _missing-type-hints-for-third-party-library:
+
+Cannot find implementation or library stub
+------------------------------------------
+
+If you are getting a ``Cannot find implementation or library stub for module``
 error, this means mypy was not able to find the module you are trying to
 import, whether it comes bundled with type hints or not. If you are getting
 this error, try:
@@ -321,7 +322,7 @@ this error, try:
 In some rare cases, you may get the "Cannot find implementation or library
 stub for module" error even when the module is installed in your system.
 This can happen when the module is both missing type hints and is installed
-on your system in a unconventional way.
+on your system in an unconventional way.
 
 In this case, follow the steps above on how to handle
 :ref:`missing type hints in third party libraries <missing-type-hints-for-third-party-library>`.
@@ -490,7 +491,7 @@ This is computed from the following items:
 
 .. note::
 
-    You cannot point to a :pep:`561` package via the ``MYPYPATH``, it must be
+    You cannot point to a stub-only package (:pep:`561`) via the ``MYPYPATH``, it must be
     installed (see :ref:`PEP 561 support <installed-packages>`)
 
 Second, mypy searches for stub files in addition to regular Python files
@@ -515,6 +516,7 @@ same directory on the search path, only the stub file is used.
 (However, if the files are in different directories, the one found
 in the earlier directory is used.)
 
+
 Other advice and best practices
 *******************************
 
@@ -535,17 +537,3 @@ For example, if you have multiple projects that happen to be
 using the same set of work-in-progress stubs, it could be
 convenient to just have your ``MYPYPATH`` point to a single
 directory containing the stubs.
-
-Directories specific to Python 2 (@python2)
-*******************************************
-
-When type checking in Python 2 mode, mypy also looks for files under
-the ``@python2`` subdirectory of each ``MYPYPATH`` and ``mypy_path``
-entry, if the subdirectory exists. Files under the subdirectory take
-precedence over the parent directory. This can be used to provide
-separate Python 2 versions of stubs.
-
-.. note::
-
-    This does not need to be used (and cannot be used) with
-    :ref:`PEP 561 compliant stub packages <installed-packages>`.

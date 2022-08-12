@@ -223,6 +223,56 @@ else:
 
 [builtins fixtures/callable.pyi]
 
+[case testDecoratedCallMethods]
+from typing import Any, Callable, Union, TypeVar
+
+F = TypeVar('F', bound=Callable)
+
+def decorator(f: F) -> F:
+    pass
+def change(f: Callable) -> Callable[[Any], str]:
+    pass
+def untyped(f):
+    pass
+
+class Some1:
+    @decorator
+    def __call__(self) -> int:
+        pass
+class Some2:
+    @change
+    def __call__(self) -> int:
+        pass
+class Some3:
+    @untyped
+    def __call__(self) -> int:
+        pass
+class Some4:
+    __call__: Any
+
+s1: Some1
+s2: Some2
+s3: Some3
+s4: Some4
+
+if callable(s1):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'
+if callable(s2):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'
+if callable(s3):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'  # E: Unsupported operand types for + ("int" and "str")
+if callable(s4):
+    1 + 'a'  # E: Unsupported operand types for + ("int" and "str")
+else:
+    2 + 'b'  # E: Unsupported operand types for + ("int" and "str")
+[builtins fixtures/callable.pyi]
+
 [case testCallableNestedUnions]
 from typing import Callable, Union
 
@@ -260,7 +310,7 @@ def f(t: T) -> None:
             # N: Revealed type is "builtins.int"  \
             # N: Revealed type is "builtins.str"
     else:
-        reveal_type(t)  # N: Revealed type is "builtins.int*"  # N: Revealed type is "builtins.str"
+        reveal_type(t)  # N: Revealed type is "builtins.int"  # N: Revealed type is "builtins.str"
 
 [builtins fixtures/callable.pyi]
 
@@ -484,3 +534,56 @@ reveal_type(_TYPE)  # N: Revealed type is "def (x: Any) -> builtins.type"
 _TYPE('bar')
 
 [builtins fixtures/callable.pyi]
+
+[case testErrorMessageAboutSelf]
+# https://github.com/python/mypy/issues/11309
+class Some:
+    def method(self, a) -> None: pass
+    @classmethod
+    def cls_method(cls, a) -> None: pass
+    @staticmethod
+    def st_method(a) -> None: pass
+
+    def bad_method(a) -> None: pass
+    @classmethod
+    def bad_cls_method(a) -> None: pass
+    @staticmethod
+    def bad_st_method() -> None: pass
+
+s: Some
+
+s.method(1)
+s.cls_method(1)
+Some.cls_method(1)
+s.st_method(1)
+Some.st_method(1)
+
+s.method(1, 2)  # E: Too many arguments for "method" of "Some"
+s.cls_method(1, 2)  # E: Too many arguments for "cls_method" of "Some"
+Some.cls_method(1, 2)  # E: Too many arguments for "cls_method" of "Some"
+s.st_method(1, 2)  # E: Too many arguments for "st_method" of "Some"
+Some.st_method(1, 2)  # E: Too many arguments for "st_method" of "Some"
+
+s.bad_method(1)  # E: Too many arguments for "bad_method" of "Some" \
+                 # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+s.bad_cls_method(1)  # E: Too many arguments for "bad_cls_method" of "Some" \
+                     # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+Some.bad_cls_method(1)  # E: Too many arguments for "bad_cls_method" of "Some" \
+                        # N: Looks like the first special argument in a method is not named "self", "cls", or "mcs", maybe it is missing?
+s.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
+Some.bad_st_method(1)  # E: Too many arguments for "bad_st_method" of "Some"
+[builtins fixtures/callable.pyi]
+
+[case testClassMethodAliasStub]
+from a import f
+f("no")  # E: Argument 1 has incompatible type "str"; expected "int"
+[file a.pyi]
+from b import C
+f = C.f
+[file b.pyi]
+import a
+class C(B):
+    @classmethod
+    def f(self, x: int) -> C: ...
+class B: ...
+[builtins fixtures/classmethod.pyi]

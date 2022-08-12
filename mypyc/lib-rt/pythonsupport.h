@@ -8,6 +8,7 @@
 
 #include <stdbool.h>
 #include <Python.h>
+#include "pythoncapi_compat.h"
 #include <frameobject.h>
 #include <assert.h>
 #include "mypyc_util.h"
@@ -220,7 +221,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
     */
     if (allocated >= newsize && newsize >= (allocated >> 1)) {
         assert(self->ob_item != NULL || newsize == 0);
-        Py_SIZE(self) = newsize;
+        Py_SET_SIZE(self, newsize);
         return 0;
     }
 
@@ -248,7 +249,7 @@ list_resize(PyListObject *self, Py_ssize_t newsize)
         return -1;
     }
     self->ob_item = items;
-    Py_SIZE(self) = newsize;
+    Py_SET_SIZE(self, newsize);
     self->allocated = new_allocated;
     return 0;
 }
@@ -349,7 +350,7 @@ CPyGen_SetStopIterationValue(PyObject *value)
         return 0;
     }
     /* Construct an exception instance manually with
-     * PyObject_CallFunctionObjArgs and pass it to PyErr_SetObject.
+     * PyObject_CallOneArg and pass it to PyErr_SetObject.
      *
      * We do this to handle a situation when "value" is a tuple, in which
      * case PyErr_SetObject would set the value of StopIteration to
@@ -357,7 +358,7 @@ CPyGen_SetStopIterationValue(PyObject *value)
      *
      * (See PyErr_SetObject/_PyErr_CreateException code for details.)
      */
-    e = PyObject_CallFunctionObjArgs(PyExc_StopIteration, value, NULL);
+    e = PyObject_CallOneArg(PyExc_StopIteration, value);
     if (e == NULL) {
         return -1;
     }
@@ -409,10 +410,6 @@ _CPyObject_HasAttrId(PyObject *v, _Py_Identifier *name) {
     _PyObject_CallMethodIdObjArgs((self), (name), NULL)
 #define _PyObject_CallMethodIdOneArg(self, name, arg) \
     _PyObject_CallMethodIdObjArgs((self), (name), (arg), NULL)
-#define PyObject_CallNoArgs(callable) \
-    PyObject_CallFunctionObjArgs((callable), NULL)
-#define PyObject_CallOneArg(callable, arg) \
-    PyObject_CallFunctionObjArgs((callable), (arg), NULL)
 #endif
 
 #endif

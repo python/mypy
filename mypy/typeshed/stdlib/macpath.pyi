@@ -32,7 +32,42 @@ from posixpath import (
     splitext as splitext,
     supports_unicode_filenames as supports_unicode_filenames,
 )
-from typing import AnyStr, Tuple, overload
+from typing import AnyStr, overload
+
+__all__ = [
+    "normcase",
+    "isabs",
+    "join",
+    "splitdrive",
+    "split",
+    "splitext",
+    "basename",
+    "dirname",
+    "commonprefix",
+    "getsize",
+    "getmtime",
+    "getatime",
+    "getctime",
+    "islink",
+    "exists",
+    "lexists",
+    "isdir",
+    "isfile",
+    "expanduser",
+    "expandvars",
+    "normpath",
+    "abspath",
+    "curdir",
+    "pardir",
+    "sep",
+    "pathsep",
+    "defpath",
+    "altsep",
+    "extsep",
+    "devnull",
+    "realpath",
+    "supports_unicode_filenames",
+]
 
 altsep: str | None
 
@@ -64,6 +99,6 @@ def join(s: StrPath, *paths: StrPath) -> str: ...
 @overload
 def join(s: BytesPath, *paths: BytesPath) -> bytes: ...
 @overload
-def split(s: PathLike[AnyStr]) -> Tuple[AnyStr, AnyStr]: ...
+def split(s: PathLike[AnyStr]) -> tuple[AnyStr, AnyStr]: ...
 @overload
-def split(s: AnyStr) -> Tuple[AnyStr, AnyStr]: ...
+def split(s: AnyStr) -> tuple[AnyStr, AnyStr]: ...

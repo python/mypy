@@ -15,7 +15,6 @@ def dataclass(*, init: bool = ..., repr: bool = ..., eq: bool = ..., order: bool
     unsafe_hash: bool = ..., frozen: bool = ..., match_args: bool = ...,
     kw_only: bool = ..., slots: bool = ...) -> Callable[[Type[_T]], Type[_T]]: ...
 
-
 @overload
 def field(*, default: _T,
     init: bool = ..., repr: bool = ..., hash: Optional[bool] = ..., compare: bool = ...,

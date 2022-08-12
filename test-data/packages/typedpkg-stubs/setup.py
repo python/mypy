@@ -2,7 +2,7 @@
 This setup file installs packages to test mypy's PEP 561 implementation
 """
 
-from distutils.core import setup
+from setuptools import setup
 
 setup(
     name='typedpkg-stubs',
