@@ -389,31 +389,28 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.accept(e.analyzed, self.type_context[-1])
         return self.visit_call_expr_inner(e, allow_none_return=allow_none_return)
 
+    def refers_to_typeddict(self, base: Expression) -> bool:
+        if not isinstance(base, RefExpr):
+            return False
+        if isinstance(base.node, TypeInfo) and base.node.typeddict_type is not None:
+            # Direct reference.
+            return True
+        return isinstance(base.node, TypeAlias) and isinstance(
+            get_proper_type(base.node.target), TypedDictType
+        )
+
     def visit_call_expr_inner(self, e: CallExpr, allow_none_return: bool = False) -> Type:
         if (
-            isinstance(e.callee, RefExpr)
-            and isinstance(e.callee.node, TypeInfo)
-            and e.callee.node.typeddict_type is not None
-        ):
-            # Use named fallback for better error messages.
-            typeddict_type = e.callee.node.typeddict_type.copy_modified(
-                fallback=Instance(e.callee.node, [])
-            )
-            return self.check_typeddict_call(
-                typeddict_type, e.arg_kinds, e.arg_names, e.args, e, self.accept(e.callee)
-            )
-        if (
-            isinstance(e.callee, IndexExpr)
-            and isinstance(e.callee.base, RefExpr)
-            and isinstance(e.callee.base.node, TypeInfo)
-            and e.callee.base.node.typeddict_type is not None
+            self.refers_to_typeddict(e.callee)
+            or isinstance(e.callee, IndexExpr)
+            and self.refers_to_typeddict(e.callee.base)
         ):
             typeddict_callable = get_proper_type(self.accept(e.callee))
             if isinstance(typeddict_callable, CallableType):
-                typeddict_ret_type = get_proper_type(typeddict_callable.ret_type)
-                assert isinstance(typeddict_ret_type, TypedDictType)
+                typeddict_type = get_proper_type(typeddict_callable.ret_type)
+                assert isinstance(typeddict_type, TypedDictType)
                 return self.check_typeddict_call(
-                    typeddict_ret_type, e.arg_kinds, e.arg_names, e.args, e, typeddict_callable
+                    typeddict_type, e.arg_kinds, e.arg_names, e.args, e, typeddict_callable
                 )
         if (
             isinstance(e.callee, NameExpr)
@@ -741,6 +738,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             variables=info.defn.type_vars,
         )
 
+    def typeddict_callable_from_context(self, callee: TypedDictType) -> CallableType:
+        return CallableType(
+            list(callee.items.values()),
+            [ArgKind.ARG_NAMED] * len(callee.items),
+            list(callee.items.keys()),
+            callee,
+            self.named_type("builtins.type"),
+        )
+
     def check_typeddict_call_with_kwargs(
         self,
         callee: TypedDictType,
@@ -768,13 +774,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if callee.fallback.type.special_alias is not None:
                 infer_callee = self.typeddict_callable(callee.fallback.type)
             else:
-                infer_callee = CallableType(
-                    list(callee.items.values()),
-                    [ArgKind.ARG_NAMED] * len(callee.items),
-                    list(callee.items.keys()),
-                    callee,
-                    self.named_type("builtins.type"),
-                )
+                infer_callee = self.typeddict_callable_from_context(callee)
 
         # We don't show any errors, just infer types in a generic TypedDict type,
         # a custom error message will be given below, if there are errors.
@@ -3729,6 +3729,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(item, Instance):
                 tp = type_object_type(item.type, self.named_type)
                 return self.apply_type_arguments_to_callable(tp, item.args, tapp)
+            elif isinstance(item, TypedDictType):
+                return self.typeddict_callable_from_context(item)
             else:
                 self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
                 return AnyType(TypeOfAny.from_error)
@@ -3782,7 +3784,15 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
-        item = get_proper_type(set_any_tvars(alias, ctx.line, ctx.column))
+        item = get_proper_type(
+            set_any_tvars(
+                alias,
+                ctx.line,
+                ctx.column,
+                disallow_any=self.chk.options.disallow_any_generics and not alias_definition,
+                fail=self.msg.fail,
+            )
+        )
         if isinstance(item, Instance):
             # Normally we get a callable type (or overloaded) with .is_type_obj() true
             # representing the class's constructor
@@ -3797,6 +3807,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             tuple_fallback(item).type.fullname != "builtins.tuple"
         ):
             return type_object_type(tuple_fallback(item).type, self.named_type)
+        elif isinstance(item, TypedDictType):
+            return self.typeddict_callable_from_context(item)
         elif isinstance(item, AnyType):
             return AnyType(TypeOfAny.from_another_any, source_any=item)
         else:

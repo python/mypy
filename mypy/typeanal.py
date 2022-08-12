@@ -1574,8 +1574,14 @@ def set_any_tvars(
         type_of_any = TypeOfAny.from_omitted_generics
     if disallow_any:
         assert fail is not None
-        otype = unexpanded_type or node.target
-        type_str = otype.name if isinstance(otype, UnboundType) else format_type_bare(otype)
+        if unexpanded_type:
+            type_str = (
+                unexpanded_type.name
+                if isinstance(unexpanded_type, UnboundType)
+                else format_type_bare(unexpanded_type)
+            )
+        else:
+            type_str = node.name
 
         fail(
             message_registry.BARE_GENERIC.format(quote_type_string(type_str)),

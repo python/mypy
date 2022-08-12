@@ -2486,3 +2486,24 @@ reveal_type(TD.__iter__)  # N: Revealed type is "def (typing._TypedDict) -> typi
 reveal_type(TD.__annotations__)  # N: Revealed type is "typing.Mapping[builtins.str, builtins.object]"
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictAlias]
+# flags: --disallow-any-generics
+from typing import TypedDict, Generic, TypeVar, List
+
+T = TypeVar("T")
+class TD(TypedDict, Generic[T]):
+    key: int
+    value: T
+
+Alias = TD[List[T]]
+
+ad: Alias[str]
+reveal_type(ad)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.list[builtins.str]})"
+Alias[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[str]")
+
+# Generic aliases are *always* filled with Any, so this is different from TD(...) call.
+Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
+                       # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[Any]")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
