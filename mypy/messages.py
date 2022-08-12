@@ -1741,7 +1741,7 @@ class MessageBuilder:
         self, tp: TypeInfo, members: List[str], context: Context
     ) -> None:
         self.fail(
-            "Only protocols that don't have non-method members can be" " used with issubclass()",
+            "Only protocols that don't have non-method members can be used with issubclass()",
             context,
         )
         if len(members) < 3:

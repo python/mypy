@@ -1958,7 +1958,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
             if op_method_wider_note:
                 self.note(
-                    "Overloaded operator methods can't have wider argument types" " in overrides",
+                    "Overloaded operator methods can't have wider argument types in overrides",
                     node,
                     code=codes.OVERRIDE,
                 )

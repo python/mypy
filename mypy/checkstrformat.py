@@ -272,7 +272,7 @@ def find_non_escaped_targets(
                     pos += 1
                 else:
                     msg.fail(
-                        "Invalid conversion specifier in format string:" " unexpected }",
+                        "Invalid conversion specifier in format string: unexpected }",
                         ctx,
                         code=codes.STRING_FORMATTING,
                     )
@@ -291,7 +291,7 @@ def find_non_escaped_targets(
         pos += 1
     if nesting:
         msg.fail(
-            "Invalid conversion specifier in format string:" " unmatched {",
+            "Invalid conversion specifier in format string: unmatched {",
             ctx,
             code=codes.STRING_FORMATTING,
         )
@@ -567,7 +567,7 @@ class StringFormatterChecker:
         all_defined = all(bool(s.key) for s in all_specs)
         if some_defined and not all_defined:
             self.msg.fail(
-                "Cannot combine automatic field numbering and" " manual field specification",
+                "Cannot combine automatic field numbering and manual field specification",
                 ctx,
                 code=codes.STRING_FORMATTING,
             )
@@ -805,7 +805,7 @@ class StringFormatterChecker:
                     # Special case: for bytes formatting keys must be bytes.
                     if not isinstance(k, BytesExpr):
                         self.msg.fail(
-                            "Dictionary keys in bytes formatting must be bytes," " not strings",
+                            "Dictionary keys in bytes formatting must be bytes, not strings",
                             expr,
                             code=codes.STRING_FORMATTING,
                         )
