@@ -663,19 +663,23 @@ def is_instance_var(var: Var, info: TypeInfo) -> bool:
     """Return if var is an instance variable according to PEP 526."""
     return (
         # check the type_info node is the var (not a decorated function, etc.)
-        var.name in info.names and info.names[var.name].node is var
+        var.name in info.names
+        and info.names[var.name].node is var
         and not var.is_classvar
         # variables without annotations are treated as classvar
         and not var.is_inferred
     )
 
 
-def analyze_var(name: str,
-                var: Var,
-                itype: Instance,
-                info: TypeInfo,
-                mx: MemberContext, *,
-                implicit: bool = False) -> Type:
+def analyze_var(
+    name: str,
+    var: Var,
+    itype: Instance,
+    info: TypeInfo,
+    mx: MemberContext,
+    *,
+    implicit: bool = False,
+) -> Type:
     """Analyze access to an attribute via a Var node.
 
     This is conceptually part of analyze_member_access and the arguments are similar.
