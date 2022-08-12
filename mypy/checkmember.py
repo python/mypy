@@ -704,7 +704,7 @@ def analyze_var(
         typ = get_proper_type(typ)
         if (
             var.is_initialized_in_class
-            and not is_instance_var(var, info)
+            and (not is_instance_var(var, info) or mx.is_operator)
             and isinstance(typ, FunctionLike)
             and not typ.is_type_obj()
         ):
