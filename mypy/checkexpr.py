@@ -282,6 +282,12 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         self.resolved_type = {}
 
+        # Callee in a call expression is in some sense both runtime context and
+        # type context, because we support things like C[int](...). Store information
+        # on whether current expression is a callee, to give better error messages
+        # related to type context.
+        self.is_callee = False
+
     def reset(self) -> None:
         self.resolved_type = {}
 
@@ -405,7 +411,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             or isinstance(e.callee, IndexExpr)
             and self.refers_to_typeddict(e.callee.base)
         ):
-            typeddict_callable = get_proper_type(self.accept(e.callee))
+            typeddict_callable = get_proper_type(self.accept(e.callee, is_callee=True))
             if isinstance(typeddict_callable, CallableType):
                 typeddict_type = get_proper_type(typeddict_callable.ret_type)
                 assert isinstance(typeddict_type, TypedDictType)
@@ -472,7 +478,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 ret_type=self.object_type(),
                 fallback=self.named_type("builtins.function"),
             )
-        callee_type = get_proper_type(self.accept(e.callee, type_context, always_allow_any=True))
+        callee_type = get_proper_type(
+            self.accept(e.callee, type_context, always_allow_any=True, is_callee=True)
+        )
         if (
             self.chk.options.disallow_untyped_calls
             and self.chk.in_checked_function()
@@ -2609,7 +2617,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             return self.analyze_ref_expr(e)
         else:
             # This is a reference to a non-module attribute.
-            original_type = self.accept(e.expr)
+            original_type = self.accept(e.expr, is_callee=self.is_callee)
             base = e.expr
             module_symbol_table = None
 
@@ -3784,13 +3792,10 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         # For example:
         #     A = List[Tuple[T, T]]
         #     x = A() <- same as List[Tuple[Any, Any]], see PEP 484.
+        disallow_any = self.chk.options.disallow_any_generics and self.is_callee
         item = get_proper_type(
             set_any_tvars(
-                alias,
-                ctx.line,
-                ctx.column,
-                disallow_any=self.chk.options.disallow_any_generics and not alias_definition,
-                fail=self.msg.fail,
+                alias, ctx.line, ctx.column, disallow_any=disallow_any, fail=self.msg.fail
             )
         )
         if isinstance(item, Instance):
@@ -4570,6 +4575,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         type_context: Optional[Type] = None,
         allow_none_return: bool = False,
         always_allow_any: bool = False,
+        is_callee: bool = False,
     ) -> Type:
         """Type check a node in the given type context.  If allow_none_return
         is True and this expression is a call, allow it to return None.  This
@@ -4578,6 +4584,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         if node in self.type_overrides:
             return self.type_overrides[node]
         self.type_context.append(type_context)
+        old_is_callee = self.is_callee
+        self.is_callee = is_callee
         try:
             if allow_none_return and isinstance(node, CallExpr):
                 typ = self.visit_call_expr(node, allow_none_return=True)
@@ -4593,7 +4601,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             report_internal_error(
                 err, self.chk.errors.file, node.line, self.chk.errors, self.chk.options
             )
-
+        self.is_callee = old_is_callee
         self.type_context.pop()
         assert typ is not None
         self.chk.store_type(node, typ)
