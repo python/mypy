@@ -1572,7 +1572,7 @@ def set_any_tvars(
         type_of_any = TypeOfAny.from_error
     else:
         type_of_any = TypeOfAny.from_omitted_generics
-    if disallow_any:
+    if disallow_any and node.alias_tvars:
         assert fail is not None
         if unexpanded_type:
             type_str = (
