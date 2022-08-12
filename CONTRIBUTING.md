@@ -72,7 +72,7 @@ pytest mypy/test/testcheck.py::TypeCheckSuite::check-dataclasses.test
 # Run the linter
 flake8
 
-# Run the formatter
+# Run formatters
 black . && isort .
 ```
 
