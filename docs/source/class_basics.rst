@@ -147,6 +147,22 @@ a :py:data:`~typing.ClassVar` annotation, but this might not do what you'd expec
 In this case the type of the attribute will be implicitly ``Any``.
 This behavior will change in the future, since it's surprising.
 
+An explicit :py:data:`~typing.ClassVar` may be particularly handy to distinguish
+between class and instance variables with callable types. For example:
+
+.. code-block:: python
+
+   from typing import Callable, ClassVar
+
+   class A:
+       foo: Callable[[int], None]
+       bar: ClassVar[Callable[[A, int], None]]
+       bad: Callable[[A], None]
+
+   A().foo(42)  # OK
+   A().bar(42)  # OK
+   A().bad()  # Error: Too few arguments
+
 .. note::
    A :py:data:`~typing.ClassVar` type parameter cannot include type variables:
    ``ClassVar[T]`` and ``ClassVar[list[T]]``

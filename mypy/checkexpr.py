@@ -1854,7 +1854,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             _, var_name = callable_name.rsplit(".", maxsplit=1)
             node = object_type.type.get(var_name)
             if node is not None and isinstance(node.node, Var):
-                if not node.node.is_inferred:
+                if not node.node.is_inferred and not node.node.is_classvar:
                     self.msg.note(
                         f'"{var_name}" is considered instance variable,'
                         " to make it class variable use ClassVar[...]",
