@@ -58,6 +58,7 @@ from mypy.types import (
     TypeType,
     TypeVarType,
     UnboundType,
+    has_type_vars,
 )
 from mypy.util import get_unique_redefinition_name
 
@@ -487,7 +488,7 @@ class NamedTupleAnalyzer:
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
         # callback function that patches the fallback.
-        if not has_placeholder(tuple_base):
+        if not has_placeholder(tuple_base) and not has_type_vars(tuple_base):
             self.api.schedule_patch(
                 PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(tuple_base)
             )

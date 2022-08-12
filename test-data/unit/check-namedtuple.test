@@ -1186,23 +1186,79 @@ NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "in
 [case testGenericNamedTupleMethods]
 from typing import Generic, NamedTuple, TypeVar
 
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+x: int
+
+nti: NT[int]
+reveal_type(nti * x)  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+
+nts: NT[str]
+reveal_type(nts * x)  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
 [case testGenericNamedTupleCustomMethods]
 from typing import Generic, NamedTuple, TypeVar
 
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+    def foo(self) -> T: ...
+    @classmethod
+    def from_value(cls, value: T) -> NT[T]: ...
+
+nts: NT[str]
+reveal_type(nts.foo())  # N: Revealed type is "builtins.str"
+
+nti = NT.from_value(1)
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+NT[str].from_value(1)  # E: Argument 1 to "from_value" of "NT" has incompatible type "int"; expected "str"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
 [case testGenericNamedTupleSubtyping]
-from typing import Generic, NamedTuple, TypeVar
+from typing import Generic, NamedTuple, TypeVar, Tuple
 
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+nti: NT[int]
+
+def foo(x: Tuple[int, ...]) -> None: ...
+foo(nti)
+foo(nts)  # E: Argument 1 to "foo" has incompatible type "NT[str]"; expected "Tuple[int, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
 [case testGenericNamedTupleJoin]
-from typing import Generic, NamedTuple, TypeVar
+from typing import Generic, NamedTuple, TypeVar, Tuple
 
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+nti: NT[int]
+x: Tuple[int, ...]
+
+def foo(x: T, y: T) -> T: ...
+reveal_type(foo(nti, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+
+# Here fallbacks are object because named tuples are invariant.
+reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=builtins.object]"
+reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=builtins.object]"
+
+reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
+reveal_type(foo(x, nti))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
+reveal_type(foo(x, nts))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
