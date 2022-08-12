@@ -1240,7 +1240,7 @@ foo(nts)  # E: Argument 1 to "foo" has incompatible type "NT[str]"; expected "Tu
 [case testGenericNamedTupleJoin]
 from typing import Generic, NamedTuple, TypeVar, Tuple
 
-T = TypeVar("T")
+T = TypeVar("T", covariant=True)
 class NT(NamedTuple, Generic[T]):
     key: int
     value: T
@@ -1249,12 +1249,12 @@ nts: NT[str]
 nti: NT[int]
 x: Tuple[int, ...]
 
-def foo(x: T, y: T) -> T: ...
+S = TypeVar("S")
+def foo(x: S, y: S) -> S: ...
 reveal_type(foo(nti, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
 
-# Here fallbacks are object because named tuples are invariant.
-reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=builtins.object]"
-reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=builtins.object]"
+reveal_type(foo(nti, nts))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
+reveal_type(foo(nts, nti))  # N: Revealed type is "Tuple[builtins.int, builtins.object, fallback=__main__.NT[builtins.object]]"
 
 reveal_type(foo(nti, x))  # N: Revealed type is "builtins.tuple[builtins.int, ...]"
 reveal_type(foo(nts, x))  # N: Revealed type is "builtins.tuple[builtins.object, ...]"

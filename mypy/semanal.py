@@ -1381,10 +1381,7 @@ class SemanticAnalyzer(
         if self.analyze_typeddict_classdef(defn):
             return
 
-        if self.analyze_namedtuple_classdef(defn):
-            if defn.info:
-                self.setup_type_vars(defn, tvar_defs)
-                self.setup_alias_type_vars(defn)
+        if self.analyze_namedtuple_classdef(defn, tvar_defs):
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
@@ -1447,7 +1444,9 @@ class SemanticAnalyzer(
             return True
         return False
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+    def analyze_namedtuple_classdef(
+        self, defn: ClassDef, tvar_defs: List[TypeVarLikeType]
+    ) -> bool:
         """Check if this class can define a named tuple."""
         if (
             defn.info
@@ -1467,6 +1466,8 @@ class SemanticAnalyzer(
                 self.mark_incomplete(defn.name, defn)
             else:
                 self.prepare_class_def(defn, info, custom_names=True)
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
