@@ -577,7 +577,7 @@ Since ``my_decorator`` is not type-annotated, the following won't get type-check
    reveal_type(a)  # revealed type: Any
    add_forty_two('foo')  # no type-checker error :(
 
-Before parameter specifications, here's how one might've annotated the decorator:
+Before parameter specifications, here's how one might have annotated the decorator:
 
 .. code-block:: python
 
@@ -600,7 +600,7 @@ and that would enable the following type checks:
    add_forty_two('x')    # Type check error: incompatible type "str"; expected "int"
 
 
-However, note that the ``wrapper()`` function is not type-checked. Wrapper
+Note that the ``wrapper()`` function is not type-checked. Wrapper
 functions are typically small enough that this is not a big
 problem. This is also the reason for the :py:func:`~typing.cast` call in the
 ``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.  However,
@@ -620,7 +620,7 @@ have a more faithful type annotation:
            return func(*args, **kwds)
        return wrapper
 
-Decorators that alter the signature is where parameter specifications truly show their potential:
+When the decorator alters the signature, parameter specifications truly show their potential:
 
 .. code-block:: python
 
