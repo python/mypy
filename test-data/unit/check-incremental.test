@@ -5659,6 +5659,23 @@ class D(C):
 [out2]
 tmp/a.py:9: error: Trying to assign name "z" that is not in "__slots__" of type "a.D"
 
+[case testMethodAliasIncremental]
+import b
+[file a.py]
+class A:
+    def f(self) -> None: pass
+    g = f
+
+[file b.py]
+from a import A
+A().g()
+[file b.py.2]
+# trivial change
+from a import A
+A().g()
+[out]
+[out2]
+
 [case testIncrementalWithDifferentKindsOfNestedTypesWithinMethod]
 # flags: --python-version 3.7
 

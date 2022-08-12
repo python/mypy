@@ -939,6 +939,7 @@ VAR_FLAGS: Final = [
     "final_set_in_init",
     "explicit_self_type",
     "is_ready",
+    "is_inferred",
     "from_module_getattr",
     "has_explicit_value",
     "allow_incompatible_override",
