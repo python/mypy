@@ -900,6 +900,14 @@ class TypeList(ProperType):
     def serialize(self) -> JsonDict:
         assert False, "Synthetic types don't serialize"
 
+    def __hash__(self) -> int:
+        return hash(tuple(self.items))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, TypeList):
+            return False
+        return self.items == other.items
+
 
 class UnpackType(ProperType):
     """Type operator Unpack from PEP646. Can be either with Unpack[]
