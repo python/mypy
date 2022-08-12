@@ -143,7 +143,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
         return ("Literal", e.value)
 
     def visit_str_expr(self, e: StrExpr) -> Key:
-        return ('Literal', e.value)
+        return ("Literal", e.value)
 
     def visit_bytes_expr(self, e: BytesExpr) -> Key:
         return ("Literal", e.value)
@@ -160,7 +160,7 @@ class _Hasher(ExpressionVisitor[Optional[Key]]):
     def visit_name_expr(self, e: NameExpr) -> Key:
         if (isinstance(e.node, Var) and
                 e.node.is_final and e.node.final_value is not None):
-            return ('Literal', e.node.final_value)
+            return ("Literal", e.node.final_value)
         # N.B: We use the node itself as the key, and not the name,
         # because using the name causes issues when there is shadowing
         # (for example, in list comprehensions).
