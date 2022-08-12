@@ -548,7 +548,64 @@ Note that class decorators are handled differently than function decorators in
 mypy: decorating a class does not erase its type, even if the decorator has
 incomplete type annotations.
 
-Here's a complete example of a function decorator:
+Suppose we have the following decorator, not type annotated yet, 
+that preserves the original function's signature and merely prints the decorated function's name:
+
+.. code-block:: python
+
+   def my_decorator(func):
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return wrapper
+
+and we use it to decorate function ``add_forty_two``:
+
+.. code-block:: python
+
+   # A decorated function.
+   @my_decorator
+   def add_forty_two(value: int) -> int:
+       return value + 42
+
+   a = add_forty_two(3)
+
+Since ``my_decorator`` is not type-annotated, the following won't get type-checked:
+
+.. code-block:: python
+
+   reveal_type(a)  # revealed type: Any
+   add_forty_two('foo')  # no type-checker error :(
+
+Before parameter specifications, here's how one might've annotated the decorator:
+
+.. code-block:: python
+
+   from typing import Callable, TypeVar
+
+   F = TypeVar('F', bound=Callable[..., Any])
+
+   # A decorator that preserves the signature.
+   def my_decorator(func: F) -> F:
+       def wrapper(*args, **kwds):
+           print("Calling", func)
+           return func(*args, **kwds)
+       return cast(F, wrapper)
+
+and that would enable the following type checks:
+
+.. code-block:: python
+
+   reveal_type(a)  # str
+   add_forty_two('x')    # Type check error: incompatible type "str"; expected "int"
+
+
+However, note that the ``wrapper()`` function is not type-checked. Wrapper
+functions are typically small enough that this is not a big
+problem. This is also the reason for the :py:func:`~typing.cast` call in the
+``return`` statement in ``my_decorator()``. See :ref:`casts <casts>`.  However,
+with the introduction of parameter specifications in mypy 0.940, we can now
+have a more faithful type annotation:
 
 .. code-block:: python
 
@@ -557,25 +614,35 @@ Here's a complete example of a function decorator:
    P = ParamSpec('P')
    T = TypeVar('T')
 
-   # A decorator that preserves the signature.
    def my_decorator(func: Callable[P, T]) -> Callable[P, T]:
        def wrapper(*args: P.args, **kwds: P.kwargs) -> T:
            print("Calling", func)
            return func(*args, **kwds)
        return wrapper
 
-   # A decorated function.
-   @my_decorator
-   def foo(a: int) -> str:
-       return str(a)
+Decorators that alter the signature is where parameter specifications truly show their potential:
 
-   a = foo(12)
-   reveal_type(a)  # str
-   foo('x')    # Type check error: incompatible type "str"; expected "int"
+.. code-block:: python
 
-From the final block we see that the signatures of the decorated
-functions ``foo()`` and ``bar()`` are the same as those of the original
-functions (before the decorator is applied).
+   from typing import Callable, ParamSpec, TypeVar
+
+   P = ParamSpec('P')
+   T = TypeVar('T')
+
+    # Note: We reuse 'P' in the return type, but replace 'T' with 'str'
+   def stringify(func: Callable[P, T]) -> Callable[P, str]:
+       def wrapper(*args: P.args, **kwds: P.kwargs) -> str:
+           return str(func(*args, **kwds))
+       return wrapper
+
+    @stringify
+    def add_forty_two(value: int) -> int:
+        return value + 42
+
+    a = add_forty_two(3)
+    reveal_type(a)  # str
+    foo('x')    # Type check error: incompatible type "str"; expected "int"
+
 
 .. _decorator-factories:
 
