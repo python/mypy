@@ -1,5 +1,7 @@
 """Test runner for data-flow analysis test cases."""
 
+from __future__ import annotations
+
 import os.path
 from typing import Set
 

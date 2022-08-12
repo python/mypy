@@ -3,6 +3,8 @@
 These are slow -- do not add test cases unless you have a very good reason to do so.
 """
 
+from __future__ import annotations
+
 import glob
 import os
 import os.path

@@ -1,5 +1,7 @@
 """Test cases for AST diff (used for fine-grained incremental checking)"""
 
+from __future__ import annotations
+
 import os
 from typing import Dict, List, Optional, Tuple
 

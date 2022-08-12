@@ -10,6 +10,8 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 from typing_extensions import Final, overload

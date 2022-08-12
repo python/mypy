@@ -1,5 +1,7 @@
 """Code generation for native classes and related wrappers."""
 
+from __future__ import annotations
+
 from typing import Callable, Dict, List, Mapping, Optional, Set, Tuple
 
 from mypyc.codegen.emit import Emitter, HeaderDeclaration, ReturnHandler

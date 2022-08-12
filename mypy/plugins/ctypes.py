@@ -1,5 +1,7 @@
 """Plugin to provide accurate types for some parts of the ctypes module."""
 
+from __future__ import annotations
+
 from typing import List, Optional
 
 # Fully qualified instead of "from mypy.plugin import ..." to avoid circular import problems.

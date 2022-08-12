@@ -1,5 +1,7 @@
 """Tokenizers for three string formatting methods"""
 
+from __future__ import annotations
+
 from enum import Enum, unique
 from typing import List, Optional, Tuple
 from typing_extensions import Final

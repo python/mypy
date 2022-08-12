@@ -3,6 +3,8 @@
 mypyc.irbuild.builder and mypyc.irbuild.main are closely related.
 """
 
+from __future__ import annotations
+
 from typing import NoReturn
 
 from mypy.nodes import (

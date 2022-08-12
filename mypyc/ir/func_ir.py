@@ -1,5 +1,7 @@
 """Intermediate representation of functions."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Sequence
 from typing_extensions import Final
 

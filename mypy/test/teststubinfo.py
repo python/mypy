@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import unittest
 
 from mypy.stubinfo import is_legacy_bundled_package

@@ -1,5 +1,7 @@
 """Find all objects reachable from a root object."""
 
+from __future__ import annotations
+
 import types
 import weakref
 from collections.abc import Iterable

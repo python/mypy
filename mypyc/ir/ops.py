@@ -9,6 +9,8 @@ value has a type (RType). A value can hold various things, such as:
 - literals (integer literals, True, False, etc.)
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import (
     TYPE_CHECKING,

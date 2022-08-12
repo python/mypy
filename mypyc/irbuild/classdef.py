@@ -1,5 +1,7 @@
 """Transform class definitions from the mypy AST form to IR."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Callable, List, Optional, Set, Tuple
 from typing_extensions import Final

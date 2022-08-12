@@ -20,6 +20,8 @@ mypyc.irbuild.mapper.Mapper.type_to_rtype converts mypy Types to mypyc
 RTypes.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import TYPE_CHECKING, ClassVar, Dict, Generic, List, Optional, Tuple, TypeVar, Union
 from typing_extensions import Final

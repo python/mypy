@@ -31,6 +31,8 @@ Notes:
   even though some identities are preserved.
 """
 
+from __future__ import annotations
+
 from contextlib import contextmanager, nullcontext
 from typing import Dict, Iterator, Optional, Tuple, Union
 

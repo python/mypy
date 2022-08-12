@@ -5,6 +5,8 @@ for better efficiency.  Each for loop generator class below deals one
 such special case.
 """
 
+from __future__ import annotations
+
 from typing import Callable, ClassVar, List, Optional, Tuple, Type, Union
 
 from mypy.nodes import (

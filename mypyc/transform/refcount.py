@@ -16,6 +16,8 @@ decremented before returning. An assignment to a borrowed value turns it
 into a regular, owned reference that needs to freed before return.
 """
 
+from __future__ import annotations
+
 from typing import Dict, Iterable, List, Set, Tuple
 
 from mypyc.analysis.dataflow import (

@@ -12,6 +12,8 @@ generator comprehensions as the argument.
 See comment below for more documentation.
 """
 
+from __future__ import annotations
+
 from typing import Callable, Dict, List, Optional, Tuple
 
 from mypy.nodes import (
