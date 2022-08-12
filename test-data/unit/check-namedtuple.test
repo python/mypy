@@ -1162,3 +1162,47 @@ NT5 = NamedTuple(b'NT5', [('x', int), ('y', int)])  # E: "NamedTuple()" expects 
 
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleCreation]
+from typing import Generic, NamedTuple, TypeVar
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+nts: NT[str]
+reveal_type(nts)  # N: Revealed type is "Tuple[builtins.int, builtins.str, fallback=__main__.NT[builtins.str]]"
+reveal_type(nts.value)  # N: Revealed type is "builtins.str"
+
+nti = NT(key=0, value=0)
+reveal_type(nti)  # N: Revealed type is "Tuple[builtins.int, builtins.int, fallback=__main__.NT[builtins.int]]"
+reveal_type(nti.value)  # N: Revealed type is "builtins.int"
+
+NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "str"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleMethods]
+from typing import Generic, NamedTuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleCustomMethods]
+from typing import Generic, NamedTuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleSubtyping]
+from typing import Generic, NamedTuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
+[case testGenericNamedTupleJoin]
+from typing import Generic, NamedTuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]

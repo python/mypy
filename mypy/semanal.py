@@ -1382,15 +1382,14 @@ class SemanticAnalyzer(
             return
 
         if self.analyze_namedtuple_classdef(defn):
+            if defn.info:
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
-
-        defn.type_vars = tvar_defs
-        defn.info.type_vars = []
-        # we want to make sure any additional logic in add_type_vars gets run
-        defn.info.add_type_vars()
+        self.setup_type_vars(defn, tvar_defs)
         if base_error:
             defn.info.fallback_to_any = True
 
@@ -1402,6 +1401,19 @@ class SemanticAnalyzer(
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
+
+    def setup_type_vars(self, defn: ClassDef, tvar_defs: List[TypeVarLikeType]) -> None:
+        defn.type_vars = tvar_defs
+        defn.info.type_vars = []
+        # we want to make sure any additional logic in add_type_vars gets run
+        defn.info.add_type_vars()
+
+    def setup_alias_type_vars(self, defn: ClassDef) -> None:
+        assert defn.info.special_alias is not None
+        defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
+        target = defn.info.special_alias.target
+        assert isinstance(target, ProperType) and isinstance(target, TupleType)
+        target.partial_fallback.args = tuple(defn.type_vars)
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
@@ -1454,7 +1466,7 @@ class SemanticAnalyzer(
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info)
+                self.prepare_class_def(defn, info, custom_names=True)
                 with self.scope.class_scope(defn.info):
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
@@ -1679,7 +1691,9 @@ class SemanticAnalyzer(
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
-    def prepare_class_def(self, defn: ClassDef, info: Optional[TypeInfo] = None) -> None:
+    def prepare_class_def(
+        self, defn: ClassDef, info: Optional[TypeInfo] = None, custom_names: bool = False
+    ) -> None:
         """Prepare for the analysis of a class definition.
 
         Create an empty TypeInfo and store it in a symbol table, or if the 'info'
@@ -1691,10 +1705,13 @@ class SemanticAnalyzer(
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
-            if not self.is_func_scope():
-                info._fullname = self.qualified_name(defn.name)
-            else:
-                info._fullname = info.name
+            if not custom_names:
+                # Some special classes (in particular NamedTuples) use custom fullname logic.
+                # Don't override it here (also see comment below, this needs cleanup).
+                if not self.is_func_scope():
+                    info._fullname = self.qualified_name(defn.name)
+                else:
+                    info._fullname = info.name
         local_name = defn.name
         if "@" in local_name:
             local_name = local_name.split("@")[0]
@@ -1855,6 +1872,7 @@ class SemanticAnalyzer(
         if info.special_alias and has_placeholder(info.special_alias.target):
             self.defer(force_progress=True)
         info.update_tuple_type(base)
+        self.setup_alias_type_vars(defn)
 
         if base.partial_fallback.type.fullname == "builtins.tuple" and not has_placeholder(base):
             # Fallback can only be safely calculated after semantic analysis, since base

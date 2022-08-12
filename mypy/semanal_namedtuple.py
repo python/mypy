@@ -116,7 +116,6 @@ class NamedTupleAnalyzer:
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line, existing_info
                     )
-                    defn.info = info
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column

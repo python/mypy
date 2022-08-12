@@ -7329,3 +7329,13 @@ a: int = child.foo(1)
 b: str = child.bar("abc")
 c: float = child.baz(3.4)
 d: bool = child.foobar()
+
+[case testGenericTupleTypeCreation]
+from typing import Generic, Tuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
+
+[case testGenericTupleTypeSubclassing]
+from typing import Generic, Tuple, TypeVar
+
+[builtins fixtures/tuple.pyi]
