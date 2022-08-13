@@ -5897,8 +5897,9 @@ tmp/c.py:7: note: Revealed type is "TypedDict('a.N', {'r': Union[TypedDict('b.M'
 [case testGenericTypedDictSerialization]
 import b
 [file a.py]
-from typing import TypedDict, Generic, TypedDict
+from typing import TypedDict, Generic, TypeVar
 
+T = TypeVar("T")
 class TD(TypedDict, Generic[T]):
     key: int
     value: T
