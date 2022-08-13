@@ -2085,9 +2085,9 @@ class State:
         return self.manager.load_fine_grained_deps(self.id)
 
     def load_tree(self, temporary: bool = False) -> None:
-        assert self.meta is not None, (
-            "Internal error: this method must be called only" " for cached modules"
-        )
+        assert (
+            self.meta is not None
+        ), "Internal error: this method must be called only for cached modules"
 
         data = _load_json_file(
             self.meta.data_json, self.manager, "Load tree ", "Could not load tree: "

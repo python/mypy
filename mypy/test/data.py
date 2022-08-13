@@ -1,5 +1,7 @@
 """Utilities for processing .test files containing test case descriptions."""
 
+from __future__ import annotations
+
 import os
 import os.path
 import posixpath
@@ -554,7 +556,7 @@ def pytest_addoption(parser: Any) -> None:
         "--update-data",
         action="store_true",
         default=False,
-        help="Update test data to reflect actual output" " (supported only for certain tests)",
+        help="Update test data to reflect actual output (supported only for certain tests)",
     )
     group.addoption(
         "--save-failures-to",

@@ -1,5 +1,7 @@
 """Helpers that store information about functions and the related classes."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Tuple
 
 from mypy.nodes import FuncItem

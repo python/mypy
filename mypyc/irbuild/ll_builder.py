@@ -8,6 +8,8 @@ of its facilities operate solely on the IR level and not the AST
 level---it has *no knowledge* of mypy types or expressions.
 """
 
+from __future__ import annotations
+
 from typing import Callable, List, Optional, Sequence, Tuple
 from typing_extensions import Final
 

@@ -5,6 +5,8 @@ These are special because they run multiple shell commands.
 This also includes some unit tests.
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys

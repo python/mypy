@@ -35,6 +35,8 @@ to rely on them for infrequently used ops. It's impractical to have
 optimized implementations of all ops.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, NamedTuple, Optional, Tuple
 from typing_extensions import Final
 

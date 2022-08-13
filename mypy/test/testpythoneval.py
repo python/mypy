@@ -10,6 +10,8 @@ Note: These test cases are *not* included in the main test suite, as including
       this suite would slow down the main suite too much.
 """
 
+from __future__ import annotations
+
 import os
 import os.path
 import re

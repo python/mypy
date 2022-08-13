@@ -20,6 +20,8 @@ For the core of the IR transform implementation, look at build_ir()
 below, mypyc.irbuild.builder, and mypyc.irbuild.visitor.
 """
 
+from __future__ import annotations
+
 from typing import Any, Callable, Dict, List, TypeVar, cast
 
 from mypy.build import Graph

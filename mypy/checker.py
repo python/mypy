@@ -410,6 +410,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
         self.checking_missing_await = False
 
+        # While this is True, allow passing an abstract class where Type[T] is expected.
+        # although this is technically unsafe, this is desirable in some context, for
+        # example when type-checking class decorators.
+        self.allow_abstract_call = False
+
     @property
     def type_context(self) -> List[Optional[Type]]:
         return self.expr_checker.type_context
@@ -1961,7 +1966,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
             if op_method_wider_note:
                 self.note(
-                    "Overloaded operator methods can't have wider argument types" " in overrides",
+                    "Overloaded operator methods can't have wider argument types in overrides",
                     node,
                     code=codes.OVERRIDE,
                 )
@@ -2030,9 +2035,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     # TODO: Figure out how to have clearer error messages.
                     # (e.g. "class decorator must be a function that accepts a type."
+                    old_allow_abstract_call = self.allow_abstract_call
+                    self.allow_abstract_call = True
                     sig, _ = self.expr_checker.check_call(
                         dec, [temp], [nodes.ARG_POS], defn, callable_name=fullname
                     )
+                    self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:

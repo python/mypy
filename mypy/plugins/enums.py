@@ -10,6 +10,8 @@ Note that this file does *not* contain all special-cased logic related to enums:
 we actually bake some of it directly in to the semantic analysis layer (see
 semanal_enum.py).
 """
+from __future__ import annotations
+
 from typing import Iterable, Optional, Sequence, TypeVar, cast
 from typing_extensions import Final
 

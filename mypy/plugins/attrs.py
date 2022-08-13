@@ -1,5 +1,7 @@
 """Plugin for supporting the attrs library (http://www.attrs.org)"""
 
+from __future__ import annotations
+
 from typing import Dict, Iterable, List, Optional, Tuple, cast
 from typing_extensions import Final
 

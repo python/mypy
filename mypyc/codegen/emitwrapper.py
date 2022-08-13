@@ -10,6 +10,8 @@ The wrappers aren't used for most calls between two native functions
 or methods in a single compilation unit.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Sequence
 
 from mypy.nodes import ARG_NAMED, ARG_NAMED_OPT, ARG_OPT, ARG_POS, ARG_STAR, ARG_STAR2, ArgKind

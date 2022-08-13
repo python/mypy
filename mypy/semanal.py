@@ -3908,7 +3908,10 @@ class SemanticAnalyzer(
             if isinstance(node, Var):
                 node.is_classvar = True
             analyzed = self.anal_type(s.type)
-            if analyzed is not None and get_type_vars(analyzed):
+            assert self.type is not None
+            if analyzed is not None and set(get_type_vars(analyzed)) & set(
+                self.type.defn.type_vars
+            ):
                 # This means that we have a type var defined inside of a ClassVar.
                 # This is not allowed by PEP526. (Unless it's a SelfType, which is fine)
                 # See https://github.com/python/mypy/issues/11538

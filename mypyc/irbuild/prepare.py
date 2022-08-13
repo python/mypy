@@ -11,6 +11,8 @@ the missing bits, such as function bodies (basic blocks).
 Also build a mapping from mypy TypeInfos to ClassIR objects.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import DefaultDict, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
 

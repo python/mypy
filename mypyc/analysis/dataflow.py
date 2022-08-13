@@ -1,5 +1,7 @@
 """Data-flow analyses."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Dict, Generic, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar, Union
 

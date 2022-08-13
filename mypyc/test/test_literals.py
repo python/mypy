@@ -1,5 +1,7 @@
 """Test code geneneration for literals."""
 
+from __future__ import annotations
+
 import unittest
 
 from mypyc.codegen.literals import (

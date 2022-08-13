@@ -1,5 +1,7 @@
 """Unit tests for file system cache."""
 
+from __future__ import annotations
+
 import os
 import shutil
 import sys
