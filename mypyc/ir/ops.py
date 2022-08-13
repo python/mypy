@@ -51,8 +51,8 @@ from mypyc.ir.rtypes import (
 )
 
 if TYPE_CHECKING:
-    from mypyc.ir.class_ir import ClassIR  # noqa
-    from mypyc.ir.func_ir import FuncDecl, FuncIR  # noqa
+    from mypyc.ir.class_ir import ClassIR
+    from mypyc.ir.func_ir import FuncDecl, FuncIR
 
 T = TypeVar("T")
 
