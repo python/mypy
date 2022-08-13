@@ -3849,7 +3849,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 t
                 for t in get_proper_types(type_context.items)
                 if (isinstance(t, TupleType) and len(t.items) == len(e.items))
-                or is_named_instance(t, "builtins.tuple")
+                or is_named_instance(t, TUPLE_LIKE_INSTANCE_NAMES)
             ]
             if len(tuples_in_context) == 1:
                 type_context = tuples_in_context[0]
