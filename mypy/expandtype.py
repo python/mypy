@@ -143,6 +143,9 @@ class ExpandTypeVisitor(TypeVisitor[Type]):
             return args
 
     def visit_type_var(self, t: TypeVarType) -> Type:
+        if isinstance(t, SelfType):
+            return expand_type(t.upper_bound, self.variables)
+
         repl = self.variables.get(t.id, t)
         if isinstance(repl, ProperType) and isinstance(repl, Instance):
             # TODO: do we really need to do this?
