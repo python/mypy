@@ -6,6 +6,7 @@ filelock>=3.3.0,<3.4.2; python_version<'3.7'
 filelock>=3.3.0; python_version>='3.7'
 flake8==3.9.2
 flake8-bugbear==22.7.1
+flake8-noqa==1.2.8
 flake8-pyi==22.8.1
 isort[colors]==5.10.1  # must match version in .pre-commit-config.yaml
 lxml>=4.4.0; python_version<'3.11'
