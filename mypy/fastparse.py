@@ -997,7 +997,7 @@ class ASTConverter:
         return retval
 
     def set_type_optional(self, type: Optional[Type], initializer: Optional[Expression]) -> None:
-        if self.options.no_implicit_optional:
+        if not self.options.implicit_optional:
             return
         # Indicate that type should be wrapped in an Optional if arg is initialized to None.
         optional = isinstance(initializer, NameExpr) and initializer.name == "None"

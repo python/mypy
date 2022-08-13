@@ -24,6 +24,7 @@ class A: pass
 class B: pass
 
 [case testOneOfSeveralOptionalKeywordArguments]
+# flags: --implicit-optional
 import typing
 def f(a: 'A' = None, b: 'B' = None, c: 'C' = None) -> None: pass
 f(a=A())

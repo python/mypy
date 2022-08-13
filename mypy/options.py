@@ -35,19 +35,19 @@ PER_MODULE_OPTIONS: Final = {
     "disallow_untyped_calls",
     "disallow_untyped_decorators",
     "disallow_untyped_defs",
-    "follow_imports",
     "follow_imports_for_stubs",
+    "follow_imports",
     "ignore_errors",
     "ignore_missing_imports",
+    "implicit_optional",
     "implicit_reexport",
     "local_partial_types",
     "mypyc",
-    "no_implicit_optional",
     "show_none_errors",
     "strict_concatenate",
     "strict_equality",
-    "strict_optional",
     "strict_optional_whitelist",
+    "strict_optional",
     "warn_no_return",
     "warn_return_any",
     "warn_unreachable",
@@ -165,8 +165,8 @@ class Options:
         # Alternate way to show/hide strict-None-checking related errors
         self.show_none_errors = True
 
-        # Don't assume arguments with default values of None are Optional
-        self.no_implicit_optional = False
+        # Assume arguments with default values of None are Optional
+        self.implicit_optional = False
 
         # Don't re-export names unless they are imported with `from ... as ...`
         self.implicit_reexport = True

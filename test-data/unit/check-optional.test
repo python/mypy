@@ -127,6 +127,7 @@ def f(x: None) -> None: pass
 f(None)
 
 [case testInferOptionalFromDefaultNone]
+# flags: --implicit-optional
 def f(x: int = None) -> None:
   x + 1  # E: Unsupported left operand type for + ("None") \
          # N: Left operand is of type "Optional[int]"
@@ -140,6 +141,7 @@ def f(x: int = None) -> None:  # E: Incompatible default for argument "x" (defau
 [out]
 
 [case testInferOptionalFromDefaultNoneComment]
+# flags: --implicit-optional
 def f(x=None):
   # type: (int) -> None
   x + 1  # E: Unsupported left operand type for + ("None") \
