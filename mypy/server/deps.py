@@ -220,7 +220,7 @@ class DependencyVisitor(TraverserVisitor):
         self,
         type_map: Dict[Expression, Type],
         python_version: Tuple[int, int],
-        alias_deps: "DefaultDict[str, Set[str]]",
+        alias_deps: DefaultDict[str, Set[str]],
         options: Optional[Options] = None,
     ) -> None:
         self.scope = Scope()

@@ -92,7 +92,7 @@ def is_maybe_undefined(post_must_defined: Set[Value], src: Value) -> bool:
 
 
 def maybe_append_dec_ref(
-    ops: List[Op], dest: Value, defined: "AnalysisDict[Value]", key: Tuple[BasicBlock, int]
+    ops: List[Op], dest: Value, defined: AnalysisDict[Value], key: Tuple[BasicBlock, int]
 ) -> None:
     if dest.type.is_refcounted and not isinstance(dest, Integer):
         ops.append(DecRef(dest, is_xdec=is_maybe_undefined(defined[key], dest)))
@@ -105,10 +105,10 @@ def maybe_append_inc_ref(ops: List[Op], dest: Value) -> None:
 
 def transform_block(
     block: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
-    post_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
-    post_must_defined: "AnalysisDict[Value]",
+    pre_live: AnalysisDict[Value],
+    post_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
+    post_must_defined: AnalysisDict[Value],
 ) -> None:
     old_ops = block.ops
     ops: List[Op] = []
@@ -158,10 +158,10 @@ def insert_branch_inc_and_decrefs(
     block: BasicBlock,
     cache: BlockCache,
     blocks: List[BasicBlock],
-    pre_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
-    post_borrow: "AnalysisDict[Value]",
-    post_must_defined: "AnalysisDict[Value]",
+    pre_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
+    post_borrow: AnalysisDict[Value],
+    post_must_defined: AnalysisDict[Value],
     ordering: Dict[Value, int],
 ) -> None:
     """Insert inc_refs and/or dec_refs after a branch/goto.
@@ -206,7 +206,7 @@ def insert_branch_inc_and_decrefs(
 
 def after_branch_decrefs(
     label: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
+    pre_live: AnalysisDict[Value],
     source_defined: Set[Value],
     source_borrowed: Set[Value],
     source_live_regs: Set[Value],
@@ -226,8 +226,8 @@ def after_branch_decrefs(
 
 def after_branch_increfs(
     label: BasicBlock,
-    pre_live: "AnalysisDict[Value]",
-    pre_borrow: "AnalysisDict[Value]",
+    pre_live: AnalysisDict[Value],
+    pre_borrow: AnalysisDict[Value],
     source_borrowed: Set[Value],
     ordering: Dict[Value, int],
 ) -> Tuple[Value, ...]:

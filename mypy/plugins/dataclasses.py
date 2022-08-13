@@ -115,7 +115,7 @@ class DataclassAttribute:
     @classmethod
     def deserialize(
         cls, info: TypeInfo, data: JsonDict, api: SemanticAnalyzerPluginInterface
-    ) -> "DataclassAttribute":
+    ) -> DataclassAttribute:
         data = data.copy()
         if data.get("kw_only") is None:
             data["kw_only"] = False

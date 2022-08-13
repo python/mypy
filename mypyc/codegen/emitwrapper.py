@@ -313,7 +313,7 @@ def generate_bin_op_wrapper(cl: ClassIR, fn: FuncIR, emitter: Emitter) -> str:
 
 
 def generate_bin_op_forward_only_wrapper(
-    fn: FuncIR, emitter: Emitter, gen: "WrapperGenerator"
+    fn: FuncIR, emitter: Emitter, gen: WrapperGenerator
 ) -> None:
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
     gen.emit_call(not_implemented_handler="goto typefail;")
@@ -344,7 +344,7 @@ def generate_bin_op_forward_only_wrapper(
     gen.finish()
 
 
-def generate_bin_op_reverse_only_wrapper(emitter: Emitter, gen: "WrapperGenerator") -> None:
+def generate_bin_op_reverse_only_wrapper(emitter: Emitter, gen: WrapperGenerator) -> None:
     gen.arg_names = ["right", "left"]
     gen.emit_arg_processing(error=GotoHandler("typefail"), raise_exception=False)
     gen.emit_call()
@@ -356,7 +356,7 @@ def generate_bin_op_reverse_only_wrapper(emitter: Emitter, gen: "WrapperGenerato
 
 
 def generate_bin_op_both_wrappers(
-    cl: ClassIR, fn: FuncIR, fn_rev: FuncIR, emitter: Emitter, gen: "WrapperGenerator"
+    cl: ClassIR, fn: FuncIR, fn_rev: FuncIR, emitter: Emitter, gen: WrapperGenerator
 ) -> None:
     # There's both a forward and a reverse operator method. First
     # check if we should try calling the forward one. If the

@@ -1115,7 +1115,7 @@ class IRBuilder:
     def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]
 
-    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> "Register":
+    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> Register:
         """Add register that represents a symbol to the symbol table.
 
         Args:

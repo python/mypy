@@ -38,7 +38,7 @@ class ModuleIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> "ModuleIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ModuleIR:
         return ModuleIR(
             data["fullname"],
             data["imports"],

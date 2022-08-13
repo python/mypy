@@ -34,7 +34,7 @@ def insert_uninit_checks(ir: FuncIR) -> None:
 
 
 def split_blocks_at_uninits(
-    blocks: List[BasicBlock], pre_must_defined: "AnalysisDict[Value]"
+    blocks: List[BasicBlock], pre_must_defined: AnalysisDict[Value]
 ) -> List[BasicBlock]:
     new_blocks: List[BasicBlock] = []
 
