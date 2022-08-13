@@ -1183,6 +1183,22 @@ NT[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "in
 [builtins fixtures/tuple.pyi]
 [typing fixtures/typing-namedtuple.pyi]
 
+[case testGenericNamedTupleAlias]
+from typing import NamedTuple, Generic, TypeVar, List
+
+T = TypeVar("T")
+class NT(NamedTuple, Generic[T]):
+    key: int
+    value: T
+
+Alias = NT[List[T]]
+
+an: Alias[str]
+reveal_type(an)  # N: Revealed type is "Tuple[builtins.int, builtins.list[builtins.str], fallback=__main__.NT[builtins.list[builtins.str]]]"
+Alias[str](key=0, value=0)  # E: Argument "value" to "NT" has incompatible type "int"; expected "List[str]"
+[builtins fixtures/tuple.pyi]
+[typing fixtures/typing-namedtuple.pyi]
+
 [case testGenericNamedTupleMethods]
 from typing import Generic, NamedTuple, TypeVar
 
