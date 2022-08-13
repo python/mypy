@@ -2663,9 +2663,9 @@ T = TypeVar("T")
 def dec(f: Callable[[T], int]) -> Callable[[T, int], int]: ...
 
 class A:
-    @property  # E: Too many arguments for @property
+    @property  # E: Too many arguments for property
     def f(self, x) -> int: pass
-    @property  # E: Too many arguments for @property
+    @property  # E: Too many arguments for property
     @dec
     def e(self) -> int: pass
     @property
