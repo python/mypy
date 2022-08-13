@@ -25,7 +25,7 @@ Ord() >= 1  # E: Unsupported operand types for >= ("Ord" and "int")
 
 [case testTotalOrderingLambda]
 from functools import total_ordering
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 @total_ordering
 class Ord:

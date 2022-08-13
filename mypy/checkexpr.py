@@ -1318,7 +1318,14 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         arg_types = self.infer_arg_types_in_context(callee, args, arg_kinds, formal_to_actual)
 
         self.check_argument_count(
-            callee, arg_types, arg_kinds, arg_names, formal_to_actual, context
+            callee,
+            arg_types,
+            arg_kinds,
+            arg_names,
+            formal_to_actual,
+            context,
+            object_type,
+            callable_name,
         )
 
         self.check_argument_types(
@@ -1723,6 +1730,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         actual_names: Optional[Sequence[Optional[str]]],
         formal_to_actual: List[List[int]],
         context: Optional[Context],
+        object_type: Optional[Type] = None,
+        callable_name: Optional[str] = None,
     ) -> bool:
         """Check that there is a value for all required arguments to a function.
 
@@ -1753,6 +1762,8 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # No actual for a mandatory formal
                 if kind.is_positional():
                     self.msg.too_few_arguments(callee, context, actual_names)
+                    if object_type and callable_name and "." in callable_name:
+                        self.missing_classvar_callable_note(object_type, callable_name, context)
                 else:
                     argname = callee.arg_names[i] or "?"
                     self.msg.missing_named_argument(callee, context, argname)
@@ -1835,6 +1846,20 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 # number of positional arguments. This may succeed at runtime.
 
         return ok, is_unexpected_arg_error
+
+    def missing_classvar_callable_note(
+        self, object_type: Type, callable_name: str, context: Context
+    ) -> None:
+        if isinstance(object_type, ProperType) and isinstance(object_type, Instance):
+            _, var_name = callable_name.rsplit(".", maxsplit=1)
+            node = object_type.type.get(var_name)
+            if node is not None and isinstance(node.node, Var):
+                if not node.node.is_inferred and not node.node.is_classvar:
+                    self.msg.note(
+                        f'"{var_name}" is considered instance variable,'
+                        " to make it class variable use ClassVar[...]",
+                        context,
+                    )
 
     def check_argument_types(
         self,
