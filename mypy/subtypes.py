@@ -12,6 +12,8 @@ from mypy.maptype import map_instance_to_supertype
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy.nodes import (
+    ARG_STAR,
+    ARG_STAR2,
     CONTRAVARIANT,
     COVARIANT,
     Decorator,
@@ -1290,6 +1292,16 @@ def are_parameters_compatible(
     left_star2 = left.kw_arg()
     right_star = right.var_arg()
     right_star2 = right.kw_arg()
+
+    # Treat "def _(*a: Any, **kw: Any) -> X" similarly to "Callable[..., X]"
+    if (
+        right.arg_kinds == [ARG_STAR, ARG_STAR2]
+        and right_star
+        and isinstance(get_proper_type(right_star.typ), AnyType)
+        and right_star2
+        and isinstance(get_proper_type(right_star2.typ), AnyType)
+    ):
+        return True
 
     # Match up corresponding arguments and check them for compatibility. In
     # every pair (argL, argR) of corresponding arguments from L and R, argL must

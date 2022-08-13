@@ -7136,6 +7136,16 @@ class B(A):  # E: Final class __main__.B has abstract attributes "foo"
 class C:
     class C1(XX): pass  # E: Name "XX" is not defined
 
+[case testArgsKwargsInheritance]
+from typing import Any
+
+class A(object):
+    def f(self, *args: Any, **kwargs: Any) -> int: ...
+
+class B(A):
+    def f(self, x: int) -> int: ...
+[builtins fixtures/dict.pyi]
+
 [case testClassScopeImports]
 class Foo:
     from mod import plain_function  # E: Unsupported class scoped import

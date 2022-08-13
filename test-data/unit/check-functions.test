@@ -188,9 +188,9 @@ if int():
     ee_var = everywhere
 
 if int():
-    ee_var = specific_1 # The difference between Callable[..., blah] and one with a *args: Any, **kwargs: Any is that the ... goes loosely both ways.
+    ee_var = specific_1
 if int():
-    ee_def = specific_1 # E: Incompatible types in assignment (expression has type "Callable[[int, str], None]", variable has type "Callable[[VarArg(Any), KwArg(Any)], None]")
+    ee_def = specific_1
 
 [builtins fixtures/dict.pyi]
 
@@ -1787,7 +1787,7 @@ def f2(*args, **kwargs) -> int: pass
 d(f1)
 e(f2)
 d(f2)
-e(f1)  # E: Argument 1 to "e" has incompatible type "Callable[[VarArg(Any)], int]"; expected "Callable[[VarArg(Any), KwArg(Any)], int]"
+e(f1)
 
 [builtins fixtures/dict.pyi]
 
