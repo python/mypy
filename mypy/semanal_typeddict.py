@@ -38,6 +38,7 @@ from mypy.types import (
     Type,
     TypedDictType,
     TypeOfAny,
+    TypeVarLikeType,
     replace_alias_tvars,
 )
 
@@ -316,7 +317,7 @@ class TypedDictAnalyzer:
 
     def check_typeddict(
         self, node: Expression, var_name: Optional[str], is_func_scope: bool
-    ) -> Tuple[bool, Optional[TypeInfo]]:
+    ) -> Tuple[bool, Optional[TypeInfo], List[TypeVarLikeType]]:
         """Check if a call defines a TypedDict.
 
         The optional var_name argument is the name of the variable to
@@ -329,20 +330,20 @@ class TypedDictAnalyzer:
         return (True, None).
         """
         if not isinstance(node, CallExpr):
-            return False, None
+            return False, None, []
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
-            return False, None
+            return False, None, []
         fullname = callee.fullname
         if fullname not in TPDICT_NAMES:
-            return False, None
+            return False, None, []
         res = self.parse_typeddict_args(call)
         if res is None:
             # This is a valid typed dict, but some type is not ready.
             # The caller should defer this until next iteration.
-            return True, None
-        name, items, types, total, ok = res
+            return True, None, []
+        name, items, types, total, tvar_defs, ok = res
         if not ok:
             # Error. Construct dummy return value.
             info = self.build_typeddict_typeinfo("TypedDict", [], [], set(), call.line, None)
@@ -381,11 +382,11 @@ class TypedDictAnalyzer:
             self.api.add_symbol(var_name, info, node)
         call.analyzed = TypedDictExpr(info)
         call.analyzed.set_line(call)
-        return True, info
+        return True, info, tvar_defs
 
     def parse_typeddict_args(
         self, call: CallExpr
-    ) -> Optional[Tuple[str, List[str], List[Type], bool, bool]]:
+    ) -> Optional[Tuple[str, List[str], List[Type], bool, List[TypeVarLikeType], bool]]:
         """Parse typed dict call expression.
 
         Return names, types, totality, was there an error during parsing.
@@ -420,6 +421,7 @@ class TypedDictAnalyzer:
                     'TypedDict() "total" argument must be True or False', call
                 )
         dictexpr = args[1]
+        tvar_defs = self.api.get_and_bind_all_tvars([t for k, t in dictexpr.items])
         res = self.parse_typeddict_fields_with_types(dictexpr.items, call)
         if res is None:
             # One of the types is not ready, defer.
@@ -435,7 +437,7 @@ class TypedDictAnalyzer:
                 if has_any_from_unimported_type(t):
                     self.msg.unimported_type_becomes_any("Type of a TypedDict key", t, dictexpr)
         assert total is not None
-        return args[0].value, items, types, total, ok
+        return args[0].value, items, types, total, tvar_defs, ok
 
     def parse_typeddict_fields_with_types(
         self, dict_items: List[Tuple[Optional[Expression], Expression]], context: Context
@@ -488,9 +490,9 @@ class TypedDictAnalyzer:
 
     def fail_typeddict_arg(
         self, message: str, context: Context
-    ) -> Tuple[str, List[str], List[Type], bool, bool]:
+    ) -> Tuple[str, List[str], List[Type], bool, List[TypeVarLikeType], bool]:
         self.fail(message, context)
-        return "", [], [], True, False
+        return "", [], [], True, [], False
 
     def build_typeddict_typeinfo(
         self,

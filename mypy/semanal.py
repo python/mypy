@@ -1381,14 +1381,8 @@ class SemanticAnalyzer(
 
         if self.analyze_typeddict_classdef(defn):
             if defn.info:
-                defn.type_vars = tvar_defs
-                defn.info.type_vars = []
-                defn.info.add_type_vars()
-                assert defn.info.special_alias is not None
-                defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
-                target = defn.info.special_alias.target
-                assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
-                target.fallback.args = tuple(defn.type_vars)
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
             return
 
         if self.analyze_namedtuple_classdef(defn):
@@ -1412,6 +1406,19 @@ class SemanticAnalyzer(
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
+
+    def setup_type_vars(self, defn: ClassDef, tvar_defs: List[TypeVarLikeType]) -> None:
+        defn.type_vars = tvar_defs
+        defn.info.type_vars = []
+        # we want to make sure any additional logic in add_type_vars gets run
+        defn.info.add_type_vars()
+
+    def setup_alias_type_vars(self, defn: ClassDef) -> None:
+        assert defn.info.special_alias is not None
+        defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
+        target = defn.info.special_alias.target
+        assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
+        target.fallback.args = tuple(defn.type_vars)
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
@@ -1688,6 +1695,29 @@ class SemanticAnalyzer(
                 base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
+
+    def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
+        """Return all type variable references in item type expressions.
+
+        This is a helper for generic TypedDicts and NamedTuples. Essentially it is
+        a simplified version of the logic we use for ClassDef bases. We duplicate
+        some amount of code, because it is hard to refactor common pieces.
+        """
+        tvars = []
+        for base_expr in type_exprs:
+            try:
+                base = self.expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                # This error will be caught later.
+                continue
+            base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+            tvars.extend(base_tvars)
+        tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
+        tvar_defs = []
+        for name, tvar_expr in tvars:
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_defs.append(tvar_def)
+        return tvar_defs
 
     def prepare_class_def(self, defn: ClassDef, info: Optional[TypeInfo] = None) -> None:
         """Prepare for the analysis of a class definition.
@@ -2693,7 +2723,7 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        is_typed_dict, info = self.typed_dict_analyzer.check_typeddict(
+        is_typed_dict, info, tvar_defs = self.typed_dict_analyzer.check_typeddict(
             s.rvalue, name, self.is_func_scope()
         )
         if not is_typed_dict:
@@ -2704,6 +2734,10 @@ class SemanticAnalyzer(
         # Yes, it's a valid typed dict, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            defn = info.defn
+            self.setup_type_vars(defn, tvar_defs)
+            self.setup_alias_type_vars(defn)
         return True
 
     def analyze_lvalues(self, s: AssignmentStmt) -> None:

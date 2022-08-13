@@ -32,6 +32,7 @@ from mypy.types import (
     TupleType,
     Type,
     TypeVarId,
+    TypeVarLikeType,
     get_proper_type,
 )
 
@@ -156,6 +157,10 @@ class SemanticAnalyzerInterface(SemanticAnalyzerCoreInterface):
         allow_placeholder: bool = False,
         report_invalid_types: bool = True,
     ) -> Optional[Type]:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
         raise NotImplementedError
 
     @abstractmethod

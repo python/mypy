@@ -2507,3 +2507,20 @@ Alias(key=0, value=0)  # E: Missing type parameters for generic type "Alias" \
                        # E: Incompatible types (expression has type "int", TypedDict item "value" has type "List[Any]")
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
+
+[case testGenericTypedDictCallSyntax]
+from typing import TypedDict, TypeVar
+
+T = TypeVar("T")
+TD = TypedDict("TD", {"key": int, "value": T})
+reveal_type(TD)  # N: Revealed type is "def [T] (*, key: builtins.int, value: T`-1) -> TypedDict('__main__.TD', {'key': builtins.int, 'value': T`-1})"
+
+tds: TD[str]
+reveal_type(tds)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.str})"
+
+tdi = TD(key=0, value=0)
+reveal_type(tdi)  # N: Revealed type is "TypedDict('__main__.TD', {'key': builtins.int, 'value': builtins.int})"
+TD[str](key=0, value=0)  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+TD[str]({"key": 0, "value": 0})  # E: Incompatible types (expression has type "int", TypedDict item "value" has type "str")
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
