@@ -320,7 +320,7 @@ def make_for_loop_generator(
     loop_exit: BasicBlock,
     line: int,
     nested: bool = False,
-) -> "ForGenerator":
+) -> ForGenerator:
     """Return helper object for generating a for loop over an iterable.
 
     If "nested" is True, this is a nested iterator such as "e" in "enumerate(e)".

@@ -111,7 +111,7 @@ def is_from_module(node: SymbolNode, module: MypyFile) -> bool:
     return node.fullname == module.fullname + "." + node.name
 
 
-def load_type_map(mapper: "Mapper", modules: List[MypyFile], deser_ctx: DeserMaps) -> None:
+def load_type_map(mapper: Mapper, modules: List[MypyFile], deser_ctx: DeserMaps) -> None:
     """Populate a Mapper with deserialized IR from a list of modules."""
     for module in modules:
         for name, node in module.names.items():

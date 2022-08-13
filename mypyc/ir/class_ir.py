@@ -197,7 +197,7 @@ class ClassIR:
     def fullname(self) -> str:
         return f"{self.module_name}.{self.name}"
 
-    def real_base(self) -> Optional["ClassIR"]:
+    def real_base(self) -> Optional[ClassIR]:
         """Return the actual concrete base class, if there is one."""
         if len(self.mro) > 1 and not self.mro[1].is_trait:
             return self.mro[1]
@@ -208,7 +208,7 @@ class ClassIR:
         assert name in self.vtable, f"{self.name!r} has no attribute {name!r}"
         return self.vtable[name]
 
-    def attr_details(self, name: str) -> Tuple[RType, "ClassIR"]:
+    def attr_details(self, name: str) -> Tuple[RType, ClassIR]:
         for ir in self.mro:
             if name in ir.attributes:
                 return ir.attributes[name], ir
@@ -274,7 +274,7 @@ class ClassIR:
     def struct_name(self, names: NameGenerator) -> str:
         return f"{exported_name(self.fullname)}Object"
 
-    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, "ClassIR"]]:
+    def get_method_and_class(self, name: str) -> Optional[Tuple[FuncIR, ClassIR]]:
         for ir in self.mro:
             if name in ir.methods:
                 return ir.methods[name], ir
@@ -285,7 +285,7 @@ class ClassIR:
         res = self.get_method_and_class(name)
         return res[0] if res else None
 
-    def subclasses(self) -> Optional[Set["ClassIR"]]:
+    def subclasses(self) -> Optional[Set[ClassIR]]:
         """Return all subclasses of this class, both direct and indirect.
 
         Return None if it is impossible to identify all subclasses, for example
@@ -302,7 +302,7 @@ class ClassIR:
                 result.update(child_subs)
         return result
 
-    def concrete_subclasses(self) -> Optional[List["ClassIR"]]:
+    def concrete_subclasses(self) -> Optional[List[ClassIR]]:
         """Return all concrete (i.e. non-trait and non-abstract) subclasses.
 
         Include both direct and indirect subclasses. Place classes with no children first.
@@ -373,7 +373,7 @@ class ClassIR:
         }
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "ClassIR":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> ClassIR:
         fullname = data["module_name"] + "." + data["name"]
         assert fullname in ctx.classes, "Class %s not in deser class map" % fullname
         ir = ctx.classes[fullname]
@@ -453,7 +453,7 @@ def serialize_vtable(vtable: VTableEntries) -> List[JsonDict]:
     return [serialize_vtable_entry(v) for v in vtable]
 
 
-def deserialize_vtable_entry(data: JsonDict, ctx: "DeserMaps") -> VTableMethod:
+def deserialize_vtable_entry(data: JsonDict, ctx: DeserMaps) -> VTableMethod:
     if data[".class"] == "VTableMethod":
         return VTableMethod(
             ctx.classes[data["cls"]],
@@ -464,7 +464,7 @@ def deserialize_vtable_entry(data: JsonDict, ctx: "DeserMaps") -> VTableMethod:
     assert False, "Bogus vtable .class: %s" % data[".class"]
 
 
-def deserialize_vtable(data: List[JsonDict], ctx: "DeserMaps") -> VTableEntries:
+def deserialize_vtable(data: List[JsonDict], ctx: DeserMaps) -> VTableEntries:
     return [deserialize_vtable_entry(x, ctx) for x in data]
 
 

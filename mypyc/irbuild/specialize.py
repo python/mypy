@@ -84,7 +84,7 @@ specializers: Dict[Tuple[str, Optional[RType]], List[Specializer]] = {}
 
 
 def _apply_specialization(
-    builder: "IRBuilder",
+    builder: IRBuilder,
     expr: CallExpr,
     callee: RefExpr,
     name: Optional[str],
@@ -104,14 +104,14 @@ def _apply_specialization(
 
 
 def apply_function_specialization(
-    builder: "IRBuilder", expr: CallExpr, callee: RefExpr
+    builder: IRBuilder, expr: CallExpr, callee: RefExpr
 ) -> Optional[Value]:
     """Invoke the Specializer callback for a function if one has been registered"""
     return _apply_specialization(builder, expr, callee, callee.fullname)
 
 
 def apply_method_specialization(
-    builder: "IRBuilder", expr: CallExpr, callee: MemberExpr, typ: Optional[RType] = None
+    builder: IRBuilder, expr: CallExpr, callee: MemberExpr, typ: Optional[RType] = None
 ) -> Optional[Value]:
     """Invoke the Specializer callback for a method if one has been registered"""
     name = callee.fullname if typ is None else callee.name

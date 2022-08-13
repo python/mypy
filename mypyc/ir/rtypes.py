@@ -63,7 +63,7 @@ class RType:
     error_overlap = False
 
     @abstractmethod
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         raise NotImplementedError
 
     def short_name(self) -> str:
@@ -79,7 +79,7 @@ class RType:
         raise NotImplementedError(f"Cannot serialize {self.__class__.__name__} instance")
 
 
-def deserialize_type(data: Union[JsonDict, str], ctx: "DeserMaps") -> "RType":
+def deserialize_type(data: Union[JsonDict, str], ctx: DeserMaps) -> RType:
     """Deserialize a JSON-serialized RType.
 
     Arguments:
@@ -109,31 +109,31 @@ class RTypeVisitor(Generic[T]):
     """Generic visitor over RTypes (uses the visitor design pattern)."""
 
     @abstractmethod
-    def visit_rprimitive(self, typ: "RPrimitive") -> T:
+    def visit_rprimitive(self, typ: RPrimitive) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rinstance(self, typ: "RInstance") -> T:
+    def visit_rinstance(self, typ: RInstance) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_runion(self, typ: "RUnion") -> T:
+    def visit_runion(self, typ: RUnion) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rtuple(self, typ: "RTuple") -> T:
+    def visit_rtuple(self, typ: RTuple) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rstruct(self, typ: "RStruct") -> T:
+    def visit_rstruct(self, typ: RStruct) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rarray(self, typ: "RArray") -> T:
+    def visit_rarray(self, typ: RArray) -> T:
         raise NotImplementedError
 
     @abstractmethod
-    def visit_rvoid(self, typ: "RVoid") -> T:
+    def visit_rvoid(self, typ: RVoid) -> T:
         raise NotImplementedError
 
 
@@ -148,7 +148,7 @@ class RVoid(RType):
     name = "void"
     ctype = "void"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rvoid(self)
 
     def serialize(self) -> str:
@@ -180,7 +180,7 @@ class RPrimitive(RType):
     """
 
     # Map from primitive names to primitive types and is used by deserialization
-    primitive_map: ClassVar[Dict[str, "RPrimitive"]] = {}
+    primitive_map: ClassVar[Dict[str, RPrimitive]] = {}
 
     def __init__(
         self,
@@ -224,7 +224,7 @@ class RPrimitive(RType):
         else:
             assert False, "Unrecognized ctype: %r" % ctype
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rprimitive(self)
 
     def serialize(self) -> str:
@@ -509,13 +509,13 @@ def is_sequence_rprimitive(rtype: RType) -> bool:
 class TupleNameVisitor(RTypeVisitor[str]):
     """Produce a tuple name based on the concrete representations of types."""
 
-    def visit_rinstance(self, t: "RInstance") -> str:
+    def visit_rinstance(self, t: RInstance) -> str:
         return "O"
 
-    def visit_runion(self, t: "RUnion") -> str:
+    def visit_runion(self, t: RUnion) -> str:
         return "O"
 
-    def visit_rprimitive(self, t: "RPrimitive") -> str:
+    def visit_rprimitive(self, t: RPrimitive) -> str:
         if t._ctype == "CPyTagged":
             return "I"
         elif t._ctype == "char":
@@ -527,17 +527,17 @@ class TupleNameVisitor(RTypeVisitor[str]):
         assert not t.is_unboxed, f"{t} unexpected unboxed type"
         return "O"
 
-    def visit_rtuple(self, t: "RTuple") -> str:
+    def visit_rtuple(self, t: RTuple) -> str:
         parts = [elem.accept(self) for elem in t.types]
         return "T{}{}".format(len(parts), "".join(parts))
 
-    def visit_rstruct(self, t: "RStruct") -> str:
+    def visit_rstruct(self, t: RStruct) -> str:
         assert False, "RStruct not supported in tuple"
 
-    def visit_rarray(self, t: "RArray") -> str:
+    def visit_rarray(self, t: RArray) -> str:
         assert False, "RArray not supported in tuple"
 
-    def visit_rvoid(self, t: "RVoid") -> str:
+    def visit_rvoid(self, t: RVoid) -> str:
         assert False, "rvoid in tuple?"
 
 
@@ -570,7 +570,7 @@ class RTuple(RType):
         self.struct_name = f"tuple_{self.unique_id}"
         self._ctype = f"{self.struct_name}"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rtuple(self)
 
     def __str__(self) -> str:
@@ -590,7 +590,7 @@ class RTuple(RType):
         return {".class": "RTuple", "types": types}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RTuple":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RTuple:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RTuple(types)
 
@@ -691,7 +691,7 @@ class RStruct(RType):
         self.offsets, self.size = compute_aligned_offsets_and_size(types)
         self._ctype = name
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rstruct(self)
 
     def __str__(self) -> str:
@@ -722,7 +722,7 @@ class RStruct(RType):
         assert False
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RStruct":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RStruct:
         assert False
 
 
@@ -744,14 +744,14 @@ class RInstance(RType):
 
     is_unboxed = False
 
-    def __init__(self, class_ir: "ClassIR") -> None:
+    def __init__(self, class_ir: ClassIR) -> None:
         # name is used for formatting the name in messages and debug output
         # so we want the fullname for precision.
         self.name = class_ir.fullname
         self.class_ir = class_ir
         self._ctype = "PyObject *"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rinstance(self)
 
     def struct_name(self, names: NameGenerator) -> str:
@@ -793,7 +793,7 @@ class RUnion(RType):
         self.items_set = frozenset(items)
         self._ctype = "PyObject *"
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_runion(self)
 
     def __repr__(self) -> str:
@@ -814,7 +814,7 @@ class RUnion(RType):
         return {".class": "RUnion", "types": types}
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RUnion":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RUnion:
         types = [deserialize_type(t, ctx) for t in data["types"]]
         return RUnion(types)
 
@@ -850,7 +850,7 @@ class RArray(RType):
         self.length = length
         self.is_refcounted = False
 
-    def accept(self, visitor: "RTypeVisitor[T]") -> T:
+    def accept(self, visitor: RTypeVisitor[T]) -> T:
         return visitor.visit_rarray(self)
 
     def __str__(self) -> str:
@@ -873,7 +873,7 @@ class RArray(RType):
         assert False
 
     @classmethod
-    def deserialize(cls, data: JsonDict, ctx: "DeserMaps") -> "RArray":
+    def deserialize(cls, data: JsonDict, ctx: DeserMaps) -> RArray:
         assert False
 
 
