@@ -1219,8 +1219,13 @@ def process_options(
 
     # Paths listed in the config file will be ignored if any paths, modules or packages
     # are passed on the command line.
-    if options.files and not (special_opts.files or special_opts.packages or special_opts.modules):
-        special_opts.files = options.files
+    if not (special_opts.files or special_opts.packages or special_opts.modules):
+        if options.files:
+            special_opts.files = options.files
+        if options.package:
+            special_opts.packages = options.package
+        if options.module:
+            special_opts.modules = options.module
 
     # Check for invalid argument combinations.
     if require_targets:

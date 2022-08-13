@@ -191,6 +191,22 @@ section of the command line docs.
 
     This option may only be set in the global section (``[mypy]``).
 
+.. confval:: package
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line. This option may only be set in the global section (``[mypy]``).  This option may be used
+    interchangeably with the ``module`` option.
+
+.. confval:: module
+
+    :type: comma-separated list of strings
+
+    A comma-separated list of packages which should be checked by mypy if none are given on the command
+    line. This option may only be set in the global section (``[mypy]``).  This option may be used
+    interchangeably with the ``package`` option.
+
 .. confval:: exclude
 
     :type: regular expression

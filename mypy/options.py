@@ -218,6 +218,13 @@ class Options:
         # supports globbing
         self.files: Optional[List[str]] = None
 
+        # A comma-separated list packages for mypy to type check
+        self.package: Optional[List[str]] = None
+
+        # A comma-separated list modules for mypy to type check;
+        # This option can be used interchangably with package
+        self.module: Optional[List[str]] = None
+
         # Write junit.xml to given file
         self.junit_xml: Optional[str] = None
 
