@@ -1049,6 +1049,8 @@ class SemanticAnalyzer(
                 else:
                     item.func.is_overload = True
                     types.append(callable)
+                    if item.var.is_property:
+                        self.fail("An overload can not be a property", item)
             elif isinstance(item, FuncDef):
                 if i == len(defn.items) - 1 and not self.is_stub_file:
                     impl = item
@@ -1168,7 +1170,7 @@ class SemanticAnalyzer(
         deleted_items = []
         for i, item in enumerate(items[1:]):
             if isinstance(item, Decorator):
-                if len(item.decorators) == 1:
+                if len(item.decorators) >= 1:
                     node = item.decorators[0]
                     if isinstance(node, MemberExpr):
                         if node.name == "setter":
@@ -1176,8 +1178,10 @@ class SemanticAnalyzer(
                             first_item.var.is_settable_property = True
                             # Get abstractness from the original definition.
                             item.func.abstract_status = first_item.func.abstract_status
-                else:
-                    self.fail("Decorated property not supported", item)
+                    else:
+                        self.fail(
+                            f"Only supported top decorator is @{first_item.func.name}.setter", item
+                        )
                 item.func.accept(self)
             else:
                 self.fail(f'Unexpected definition for property "{first_item.func.name}"', item)
@@ -1258,6 +1262,7 @@ class SemanticAnalyzer(
             d.accept(self)
         removed: List[int] = []
         no_type_check = False
+        could_be_decorated_property = False
         for i, d in enumerate(dec.decorators):
             # A bunch of decorators are special cased here.
             if refers_to_fullname(d, "abc.abstractmethod"):
@@ -1288,8 +1293,6 @@ class SemanticAnalyzer(
                 elif refers_to_fullname(d, "functools.cached_property"):
                     dec.var.is_settable_property = True
                 self.check_decorated_function_is_method("property", dec)
-                if len(dec.func.arguments) > 1:
-                    self.fail("Too many arguments", dec.func)
             elif refers_to_fullname(d, "typing.no_type_check"):
                 dec.var.type = AnyType(TypeOfAny.special_form)
                 no_type_check = True
@@ -1304,6 +1307,10 @@ class SemanticAnalyzer(
                     removed.append(i)
                 else:
                     self.fail("@final cannot be used with non-method functions", d)
+            elif not dec.var.is_property:
+                # We have seen a "non-trivial" decorator before seeing @property, if
+                # we will see a @property later, give an error, as we don't support this.
+                could_be_decorated_property = True
         for i in reversed(removed):
             del dec.decorators[i]
         if (not dec.is_overload or dec.var.is_property) and self.type:
@@ -1311,8 +1318,10 @@ class SemanticAnalyzer(
             dec.var.is_initialized_in_class = True
         if not no_type_check and self.recurse_into_functions:
             dec.func.accept(self)
-        if dec.decorators and dec.var.is_property:
-            self.fail("Decorated property not supported", dec)
+        if could_be_decorated_property and dec.decorators and dec.var.is_property:
+            self.fail("Decorators on top of @property are not supported", dec)
+        if (dec.func.is_static or dec.func.is_class) and dec.var.is_property:
+            self.fail("Only instance methods can be decorated with @property", dec)
         if dec.func.abstract_status == IS_ABSTRACT and dec.func.is_final:
             self.fail(f"Method {dec.func.name} is both abstract and final", dec)
 
