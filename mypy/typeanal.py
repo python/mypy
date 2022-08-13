@@ -622,7 +622,6 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             # The class has a TypedDict[...] base class so it will be
             # represented as a typeddict type.
             if info.special_alias:
-                # We don't support generic TypedDict types yet.
                 return TypeAliasType(info.special_alias, self.anal_array(args))
             # Create a named TypedDictType
             return td.copy_modified(

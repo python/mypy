@@ -1386,6 +1386,9 @@ class SemanticAnalyzer(
                 defn.info.add_type_vars()
                 assert defn.info.special_alias is not None
                 defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
+                target = defn.info.special_alias.target
+                assert isinstance(target, ProperType) and isinstance(target, TypedDictType)
+                target.fallback.args = tuple(defn.type_vars)
             return
 
         if self.analyze_namedtuple_classdef(defn):
