@@ -3472,6 +3472,36 @@ f(a.x)
 [out]
 ==
 
+[case testNamedTupleUpdateGeneric]
+import b
+[file a.py]
+from typing import NamedTuple
+class Point(NamedTuple):
+    x: int
+    y: int
+[file a.py.2]
+from typing import Generic, TypeVar, NamedTuple
+
+T = TypeVar("T")
+class Point(NamedTuple, Generic[T]):
+    x: int
+    y: T
+[file b.py]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y=1)
+    i: int = p.y
+[file b.py.3]
+from a import Point
+def foo() -> None:
+    p = Point(x=0, y="no")
+    i: int = p.y
+[builtins fixtures/tuple.pyi]
+[out]
+==
+==
+b.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")
+
 [case testNamedTupleUpdateNonRecursiveToRecursiveFine]
 # flags: --enable-recursive-aliases
 import c
