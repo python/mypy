@@ -263,6 +263,7 @@ from mypy.types import (
     TypeVarLikeType,
     TypeVarType,
     UnboundType,
+    UnpackType,
     get_proper_type,
     get_proper_types,
     invalid_recursive_alias,
@@ -830,6 +831,8 @@ class SemanticAnalyzer(
                     self.defer(defn)
                     return
                 assert isinstance(result, ProperType)
+                if isinstance(result, CallableType):
+                    result = self.unpack_callable_kwargs(defn, result)
                 defn.type = result
                 self.add_type_alias_deps(analyzer.aliases_used)
                 self.check_function_signature(defn)
@@ -871,6 +874,40 @@ class SemanticAnalyzer(
                 assert ret_type is not None, "Internal error: typing.Coroutine not found"
                 defn.type = defn.type.copy_modified(ret_type=ret_type)
                 self.wrapped_coro_return_types[defn] = defn.type
+
+    def unpack_callable_kwargs(self, defn: FuncDef, typ: CallableType) -> CallableType:
+        if not typ.arg_kinds or typ.arg_kinds[-1] is not ArgKind.ARG_STAR2:
+            return typ
+        last_type = get_proper_type(typ.arg_types[-1])
+        if not isinstance(last_type, UnpackType):
+            return typ
+        last_type = get_proper_type(last_type.type)
+        if not isinstance(last_type, TypedDictType):
+            self.fail("Unpack item in ** argument must be a TypedDict", defn)
+            new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
+            return typ.copy_modified(new_arg_types=new_arg_types)
+        overlap = set(typ.arg_names) & set(last_type.items)
+        # It is OK for TypedDict to have a key named 'kwargs'.
+        overlap.discard(typ.arg_names[-1])
+        if overlap:
+            overlapped = ", ".join([f'"{name}"' for name in overlap])
+            self.fail(f"Overlap between argument names and ** TypedDict items: {overlapped}", defn)
+            new_arg_types = typ.arg_types[:-1] + [AnyType(TypeOfAny.from_error)]
+            return typ.copy_modified(new_arg_types=new_arg_types)
+        # OK, everything looks right now, unpack the new arguments.
+        extra_kinds = [
+            ArgKind.ARG_NAMED if name in last_type.required_keys else ArgKind.ARG_NAMED_OPT
+            for name in last_type.items
+        ]
+        new_arg_kinds = typ.arg_kinds[:-1] + extra_kinds
+        new_arg_names = typ.arg_names[:-1] + list(last_type.items)
+        new_arg_types = typ.arg_types[:-1] + list(last_type.items.values())
+        if last_type.fallback.type.special_alias is not None:
+            # This is a named TypedDict, need to add fine-grained dependency.
+            self.add_type_alias_deps({last_type.fallback.type.special_alias.fullname})
+        return typ.copy_modified(
+            arg_kinds=new_arg_kinds, arg_names=new_arg_names, arg_types=new_arg_types
+        )
 
     def prepare_method_signature(self, func: FuncDef, info: TypeInfo) -> None:
         """Check basic signature validity and tweak annotation of self/cls argument."""
