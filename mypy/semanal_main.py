@@ -110,10 +110,7 @@ def cleanup_builtin_scc(state: State) -> None:
 
 
 def semantic_analysis_for_targets(
-    state: State,
-    nodes: List[FineGrainedDeferredNode],
-    graph: Graph,
-    saved_attrs: SavedAttributes,
+    state: State, nodes: List[FineGrainedDeferredNode], graph: Graph, saved_attrs: SavedAttributes
 ) -> None:
     """Semantically analyze only selected nodes in a given module.
 

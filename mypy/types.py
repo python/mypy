@@ -2120,9 +2120,7 @@ class TupleType(ProperType):
             items = self.items
         return TupleType(items, fallback, self.line, self.column)
 
-    def slice(
-        self, begin: Optional[int], end: Optional[int], stride: Optional[int]
-    ) -> TupleType:
+    def slice(self, begin: Optional[int], end: Optional[int], stride: Optional[int]) -> TupleType:
         return TupleType(
             self.items[begin:end:stride],
             self.partial_fallback,
@@ -2247,9 +2245,7 @@ class TypedDictType(ProperType):
             if right_item_type is not None:
                 yield (item_name, left_item_type, right_item_type)
 
-    def zipall(
-        self, right: TypedDictType
-    ) -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
+    def zipall(self, right: TypedDictType) -> Iterable[Tuple[str, Optional[Type], Optional[Type]]]:
         left = self
         for (item_name, left_item_type) in left.items.items():
             right_item_type = right.items.get(item_name)

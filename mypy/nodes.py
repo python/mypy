@@ -2039,10 +2039,7 @@ class RevealExpr(Expression):
     local_nodes: Optional[List[Var]]
 
     def __init__(
-        self,
-        kind: int,
-        expr: Optional[Expression] = None,
-        local_nodes: Optional[List[Var]] = None,
+        self, kind: int, expr: Optional[Expression] = None, local_nodes: Optional[List[Var]] = None
     ) -> None:
         super().__init__()
         self.expr = expr

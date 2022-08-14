@@ -266,9 +266,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     strfrm_checker: StringFormatterChecker
     plugin: Plugin
 
-    def __init__(
-        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin
-    ) -> None:
+    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
         """Construct an expression type checker."""
         self.chk = chk
         self.msg = msg

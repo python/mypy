@@ -103,9 +103,7 @@ class PatternChecker(PatternVisitor[PatternType]):
     # non_sequence_match_type_names
     non_sequence_match_types: List[Type]
 
-    def __init__(
-        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin
-    ) -> None:
+    def __init__(self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin) -> None:
         self.chk = chk
         self.msg = msg
         self.plugin = plugin
