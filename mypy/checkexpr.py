@@ -132,6 +132,7 @@ from mypy.typeops import (
 )
 from mypy.types import (
     LITERAL_TYPE_NAMES,
+    TUPLE_LIKE_INSTANCE_NAMES,
     AnyType,
     CallableType,
     DeletedType,
@@ -3848,7 +3849,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
                 t
                 for t in get_proper_types(type_context.items)
                 if (isinstance(t, TupleType) and len(t.items) == len(e.items))
-                or is_named_instance(t, "builtins.tuple")
+                or is_named_instance(t, TUPLE_LIKE_INSTANCE_NAMES)
             ]
             if len(tuples_in_context) == 1:
                 type_context = tuples_in_context[0]
@@ -3859,7 +3860,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
 
         if isinstance(type_context, TupleType):
             type_context_items = type_context.items
-        elif type_context and is_named_instance(type_context, "builtins.tuple"):
+        elif type_context and is_named_instance(type_context, TUPLE_LIKE_INSTANCE_NAMES):
             assert isinstance(type_context, Instance)
             if type_context.args:
                 type_context_items = [type_context.args[0]] * len(e.items)
