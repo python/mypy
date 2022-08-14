@@ -1,5 +1,7 @@
 """Classes for producing HTML reports about imprecision."""
 
+from __future__ import annotations
+
 import collections
 import itertools
 import json

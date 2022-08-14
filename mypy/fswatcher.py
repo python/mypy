@@ -1,5 +1,7 @@
 """Watch parts of the file system for changes."""
 
+from __future__ import annotations
+
 from typing import AbstractSet, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 from mypy.fscache import FileSystemCache

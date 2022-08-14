@@ -3,6 +3,8 @@
 This is conceptually part of mypy.semanal (semantic analyzer pass 2).
 """
 
+from __future__ import annotations
+
 from typing import Optional, Tuple
 
 from mypy import errorcodes as codes

@@ -1,5 +1,7 @@
 """Utilities related to determining the reachability of code (in semantic analysis)."""
 
+from __future__ import annotations
+
 from typing import Optional, Tuple, TypeVar, Union
 from typing_extensions import Final
 

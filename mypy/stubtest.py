@@ -4,6 +4,8 @@ Verify that various things in stubs are consistent with how things behave at run
 
 """
 
+from __future__ import annotations
+
 import argparse
 import collections.abc
 import copy

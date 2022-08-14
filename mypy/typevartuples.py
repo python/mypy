@@ -1,5 +1,7 @@
 """Helpers for interacting with type var tuples."""
 
+from __future__ import annotations
+
 from typing import Optional, Sequence, Tuple, TypeVar
 
 from mypy.types import Instance, ProperType, Type, UnpackType, get_proper_type

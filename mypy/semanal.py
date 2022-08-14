@@ -48,6 +48,8 @@ Some important properties:
   reduce memory use).
 """
 
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import (
     Any,

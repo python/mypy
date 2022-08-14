@@ -8,6 +8,8 @@ We provide two implementations.
    on OS X.
 """
 
+from __future__ import annotations
+
 import binascii
 import os
 import time

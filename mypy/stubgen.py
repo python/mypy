@@ -39,6 +39,8 @@ TODO:
  - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
 import os

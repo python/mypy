@@ -1,5 +1,7 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
+from __future__ import annotations
+
 import os
 from abc import abstractmethod
 from collections import defaultdict

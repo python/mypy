@@ -1,5 +1,7 @@
 """Pattern checker. This file is conceptually part of TypeChecker."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple, Union
 from typing_extensions import Final

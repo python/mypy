@@ -1,5 +1,7 @@
 """Type inference constraints."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Iterable, List, Optional, Sequence
 from typing_extensions import Final
 

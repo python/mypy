@@ -1,4 +1,7 @@
 """Mypy type checker command line tool."""
+
+from __future__ import annotations
+
 import os
 import sys
 import traceback

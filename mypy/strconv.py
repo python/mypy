@@ -1,5 +1,7 @@
 """Conversion of parse tree nodes to strings."""
 
+from __future__ import annotations
+
 import os
 import re
 from typing import TYPE_CHECKING, Any, List, Optional, Sequence, Tuple, Union

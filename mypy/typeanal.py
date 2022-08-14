@@ -1,5 +1,7 @@
 """Semantic analysis of types"""
 
+from __future__ import annotations
+
 import itertools
 from contextlib import contextmanager
 from itertools import chain

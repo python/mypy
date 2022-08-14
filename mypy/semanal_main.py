@@ -24,6 +24,8 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
+from __future__ import annotations
+
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias

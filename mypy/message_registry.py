@@ -6,6 +6,8 @@ ultimately consumed by messages.MessageBuilder.fail(). For more non-trivial mess
 add a method to MessageBuilder and call this instead.
 """
 
+from __future__ import annotations
+
 from typing import NamedTuple, Optional
 from typing_extensions import Final
 

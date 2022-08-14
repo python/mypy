@@ -10,6 +10,8 @@ The function build() is the main interface to this module.
 """
 # TODO: More consistent terminology, e.g. path/fnam, module/id, state/file
 
+from __future__ import annotations
+
 import contextlib
 import errno
 import gc

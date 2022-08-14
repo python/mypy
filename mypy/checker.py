@@ -1,5 +1,7 @@
 """Mypy type checker."""
 
+from __future__ import annotations
+
 import fnmatch
 import itertools
 from collections import defaultdict

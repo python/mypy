@@ -1,5 +1,7 @@
 """Utilities for mapping between actual and formal arguments (and their types)."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Callable, List, Optional, Sequence, Set
 
 from mypy import nodes

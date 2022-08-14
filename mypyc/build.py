@@ -18,6 +18,8 @@ to know at import-time whether it is using distutils or setuputils. We
 hackily decide based on whether setuptools has been imported already.
 """
 
+from __future__ import annotations
+
 import hashlib
 import os.path
 import re

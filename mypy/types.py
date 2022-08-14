@@ -1,5 +1,7 @@
 """Classes for representing mypy types."""
 
+from __future__ import annotations
+
 import sys
 from abc import abstractmethod
 from typing import (

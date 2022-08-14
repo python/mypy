@@ -1,5 +1,7 @@
 """Expression type checker. This file is conceptually part of TypeChecker."""
 
+from __future__ import annotations
+
 import itertools
 from contextlib import contextmanager
 from typing import (

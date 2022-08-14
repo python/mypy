@@ -10,6 +10,8 @@ here we use a regexp-based approach. This way we 99% match runtime behaviour whi
 implementation simple.
 """
 
+from __future__ import annotations
+
 import re
 from typing import (
     TYPE_CHECKING,

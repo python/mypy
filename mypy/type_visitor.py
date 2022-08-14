@@ -11,6 +11,8 @@ The visitors are all re-exported from mypy.types and that is how
 other modules refer to them.
 """
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Any, Callable, Generic, Iterable, List, Optional, Sequence, Set, TypeVar, cast
 

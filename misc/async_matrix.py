@@ -5,6 +5,8 @@ This was used to cross-check the errors in the test case
 testFullCoroutineMatrix in test-data/unit/check-async-await.test.
 """
 
+from __future__ import annotations
+
 import sys
 from types import coroutine
 from typing import Any, Awaitable, Generator, Iterator

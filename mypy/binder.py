@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from contextlib import contextmanager
 from typing import DefaultDict, Dict, Iterator, List, Optional, Set, Tuple, Union, cast

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Callable, Optional, Type as typing_Type
 
 from mypy.nodes import TypeInfo
