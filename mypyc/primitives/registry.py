@@ -304,13 +304,13 @@ def load_address_op(name: str, type: RType, src: str) -> LoadAddressDescription:
     return LoadAddressDescription(name, type, src)
 
 
-import mypyc.primitives.bytes_ops  # noqa
-import mypyc.primitives.dict_ops  # noqa
-import mypyc.primitives.float_ops  # noqa
+import mypyc.primitives.bytes_ops
+import mypyc.primitives.dict_ops
+import mypyc.primitives.float_ops
 
 # Import various modules that set up global state.
-import mypyc.primitives.int_ops  # noqa
-import mypyc.primitives.list_ops  # noqa
-import mypyc.primitives.misc_ops  # noqa
-import mypyc.primitives.str_ops  # noqa
-import mypyc.primitives.tuple_ops  # noqa
+import mypyc.primitives.int_ops
+import mypyc.primitives.list_ops
+import mypyc.primitives.misc_ops
+import mypyc.primitives.str_ops
+import mypyc.primitives.tuple_ops  # noqa: F401

@@ -346,7 +346,7 @@ def generate_c_type_stub(
     """
     # typeshed gives obj.__dict__ the not quite correct type Dict[str, Any]
     # (it could be a mappingproxy!), which makes mypyc mad, so obfuscate it.
-    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa
+    obj_dict: Mapping[str, Any] = getattr(obj, "__dict__")  # noqa: B009
     items = sorted(obj_dict.items(), key=lambda x: method_name_sort_key(x[0]))
     methods: List[str] = []
     types: List[str] = []

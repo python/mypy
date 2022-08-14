@@ -86,7 +86,7 @@ class TestFunctionEmitterVisitor(unittest.TestCase):
         self.n = add_local("n", int_rprimitive)
         self.m = add_local("m", int_rprimitive)
         self.k = add_local("k", int_rprimitive)
-        self.l = add_local("l", list_rprimitive)  # noqa
+        self.l = add_local("l", list_rprimitive)
         self.ll = add_local("ll", list_rprimitive)
         self.o = add_local("o", object_rprimitive)
         self.o2 = add_local("o2", object_rprimitive)

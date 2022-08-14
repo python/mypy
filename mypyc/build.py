@@ -52,11 +52,11 @@ from mypyc.namegen import exported_name
 from mypyc.options import CompilerOptions
 
 if TYPE_CHECKING:
-    from distutils.core import Extension  # noqa
+    from distutils.core import Extension
 
 try:
     # Import setuptools so that it monkey-patch overrides distutils
-    import setuptools  # noqa
+    import setuptools  # noqa: F401
 except ImportError:
     if sys.version_info >= (3, 12):
         # Raise on Python 3.12, since distutils will go away forever
@@ -72,7 +72,7 @@ def get_extension() -> Type["Extension"]:
     if not use_setuptools:
         from distutils.core import Extension
     else:
-        from setuptools import Extension  # noqa
+        from setuptools import Extension
 
     return Extension
 

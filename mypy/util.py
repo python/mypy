@@ -29,7 +29,7 @@ from typing_extensions import Final, Literal
 try:
     import curses
 
-    import _curses  # noqa
+    import _curses  # noqa: F401
 
     CURSES_ENABLED = True
 except ImportError:

@@ -224,7 +224,7 @@ def _build(
     reports = None
     if options.report_dirs:
         # Import lazily to avoid slowing down startup.
-        from mypy.report import Reports  # noqa
+        from mypy.report import Reports
 
         reports = Reports(data_dir, options.report_dirs)
 

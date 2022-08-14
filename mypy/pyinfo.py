@@ -18,7 +18,7 @@ if __name__ == "__main__":
     #       This workaround fixes it.
     old_sys_path = sys.path
     sys.path = sys.path[1:]
-    import types  # noqa
+    import types  # noqa: F401
 
     sys.path = old_sys_path
 
