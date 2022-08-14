@@ -2705,3 +2705,28 @@ def f():
     return 0
 [out]
 def f(): ...
+
+[case testAddUnionImportForArgument]
+def foo(a: str | None):
+    pass
+[out]
+from typing import Union
+
+def foo(a: Union[str, None]): ...
+
+[case testAddUnionImportForReturn]
+def foo() -> str | None:
+    pass
+[out]
+from typing import Union
+
+def foo() -> Union[str, None]: ...
+
+[case testAddUnionImportForClassAttribute]
+class A:
+    a: int | str
+[out]
+from typing import Union
+
+class A:
+    a: Union[int, str]

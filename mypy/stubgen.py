@@ -125,6 +125,7 @@ from mypy.types import (
     TypeList,
     TypeStrVisitor,
     UnboundType,
+    UnionType,
     get_proper_type,
 )
 from mypy.visitor import NodeVisitor
@@ -461,6 +462,17 @@ class ImportTracker:
         module_map: Mapping[str, List[str]] = defaultdict(list)
 
         for name in sorted(self.required_names):
+            # We don't want to ignore Union even if it's not listed in the import statement because for PEP 604 style of
+            # Union we're still generating explicit Union e.g.
+            #
+            # def foo(a: int | str):
+            #     print(a)
+            # ==>
+            # def foo(a: Union[int | str]): ...
+
+            if name == "Union":
+                self.module_for[name] = "typing"
+
             # If we haven't seen this name in an import statement, ignore it
             if name not in self.module_for:
                 continue
@@ -693,6 +705,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # Luckily, an argument explicitly annotated with "Any" has
                 # type "UnboundType" and will not match.
                 if not isinstance(get_proper_type(annotated_type), AnyType):
+                    if isinstance(get_proper_type(annotated_type), UnionType):
+                        self.add_typing_import("Union")
                     annotation = f": {self.print_annotation(annotated_type)}"
 
             if kind.is_named() and not any(arg.startswith("*") for arg in args):
@@ -722,6 +736,8 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
                 # type "UnboundType" and will enter the else branch.
                 retname = None  # implicit Any
             else:
+                if isinstance(get_proper_type(o.unanalyzed_type.ret_type), UnionType):
+                    self.add_typing_import("Union")
                 retname = self.print_annotation(o.unanalyzed_type.ret_type)
         elif isinstance(o, FuncDef) and (
             o.abstract_status == IS_ABSTRACT or o.name in METHODS_WITH_RETURN_VALUE
@@ -1200,6 +1216,9 @@ class StubGenerator(mypy.traverser.TraverserVisitor):
             return None
         self._vars[-1].append(lvalue)
         if annotation is not None:
+            if isinstance(get_proper_type(annotation), UnionType):
+                self.add_typing_import("Union")
+
             typename = self.print_annotation(annotation)
             if (
                 isinstance(annotation, UnboundType)
