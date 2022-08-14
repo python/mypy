@@ -160,7 +160,7 @@ class ArgTypeExpander:
     needs a separate instance since instances have per-call state.
     """
 
-    def __init__(self, context: "ArgumentInferContext") -> None:
+    def __init__(self, context: ArgumentInferContext) -> None:
         # Next tuple *args index to use.
         self.tuple_index = 0
         # Keyword arguments in TypedDict **kwargs used.

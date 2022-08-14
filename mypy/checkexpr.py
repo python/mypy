@@ -254,7 +254,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: "mypy.checker.TypeChecker"
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Type context for type inference
@@ -267,7 +267,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
     plugin: Plugin
 
     def __init__(
-        self, chk: "mypy.checker.TypeChecker", msg: MessageBuilder, plugin: Plugin
+        self, chk: mypy.checker.TypeChecker, msg: MessageBuilder, plugin: Plugin
     ) -> None:
         """Construct an expression type checker."""
         self.chk = chk
@@ -655,7 +655,7 @@ class ExpressionChecker(ExpressionVisitor[Type]):
         self.chk.fail(message_registry.INVALID_TYPEDDICT_ARGS, context)
         return AnyType(TypeOfAny.from_error)
 
-    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> "Optional[Dict[str, Expression]]":
+    def validate_typeddict_kwargs(self, kwargs: DictExpr) -> Optional[Dict[str, Expression]]:
         item_args = [item[1] for item in kwargs.items]
 
         item_names = []  # List[str]

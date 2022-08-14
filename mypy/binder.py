@@ -236,7 +236,7 @@ class ConditionalTypeBinder:
         return result
 
     @contextmanager
-    def accumulate_type_assignments(self) -> "Iterator[Assigns]":
+    def accumulate_type_assignments(self) -> Iterator[Assigns]:
         """Push a new map to collect assigned types in multiassign from union.
 
         If this map is not None, actual binding is deferred until all items in

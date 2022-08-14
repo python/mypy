@@ -37,7 +37,7 @@ async def decorated_coroutine() -> int:
 class It(Iterator[str]):
     stop = False
 
-    def __iter__(self) -> "It":
+    def __iter__(self) -> It:
         return self
 
     def __next__(self) -> str:

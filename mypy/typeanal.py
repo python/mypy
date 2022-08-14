@@ -1612,7 +1612,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def __init__(
         self,
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
         *,
         include_callables: bool = True,
         include_bound_tvars: bool = False,
@@ -1679,7 +1679,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         self,
         seen_nodes: Set[TypeAlias],
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
     ) -> None:
         self.seen_nodes = seen_nodes
         self.lookup = lookup
@@ -1722,7 +1722,7 @@ def detect_diverging_alias(
     node: TypeAlias,
     target: Type,
     lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-    scope: "TypeVarLikeScope",
+    scope: TypeVarLikeScope,
 ) -> bool:
     """This detects type aliases that will diverge during type checking.
 

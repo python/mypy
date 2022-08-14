@@ -281,7 +281,7 @@ class AnnotationPrinter(TypeStrVisitor):
 
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
-    def __init__(self, stubgen: "StubGenerator") -> None:
+    def __init__(self, stubgen: StubGenerator) -> None:
         super().__init__()
         self.stubgen = stubgen
 
@@ -326,7 +326,7 @@ class AliasPrinter(NodeVisitor[str]):
     Visit r.h.s of the definition to get the string representation of type alias.
     """
 
-    def __init__(self, stubgen: "StubGenerator") -> None:
+    def __init__(self, stubgen: StubGenerator) -> None:
         self.stubgen = stubgen
         super().__init__()
 

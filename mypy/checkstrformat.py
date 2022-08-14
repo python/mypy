@@ -308,16 +308,16 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: "mypy.checker.TypeChecker"
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Some services are provided by a ExpressionChecker instance.
-    exprchk: "mypy.checkexpr.ExpressionChecker"
+    exprchk: mypy.checkexpr.ExpressionChecker
 
     def __init__(
         self,
-        exprchk: "mypy.checkexpr.ExpressionChecker",
-        chk: "mypy.checker.TypeChecker",
+        exprchk: mypy.checkexpr.ExpressionChecker,
+        chk: mypy.checker.TypeChecker,
         msg: MessageBuilder,
     ) -> None:
         """Construct an expression type checker."""

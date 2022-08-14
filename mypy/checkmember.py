@@ -87,7 +87,7 @@ class MemberContext:
         original_type: Type,
         context: Context,
         msg: MessageBuilder,
-        chk: "mypy.checker.TypeChecker",
+        chk: mypy.checker.TypeChecker,
         self_type: Optional[Type],
         module_symbol_table: Optional[SymbolTable] = None,
     ) -> None:
@@ -113,7 +113,7 @@ class MemberContext:
         messages: Optional[MessageBuilder] = None,
         self_type: Optional[Type] = None,
         is_lvalue: Optional[bool] = None,
-    ) -> "MemberContext":
+    ) -> MemberContext:
         mx = MemberContext(
             self.is_lvalue,
             self.is_super,
@@ -144,7 +144,7 @@ def analyze_member_access(
     msg: MessageBuilder,
     *,
     original_type: Type,
-    chk: "mypy.checker.TypeChecker",
+    chk: mypy.checker.TypeChecker,
     override_info: Optional[TypeInfo] = None,
     in_literal_context: bool = False,
     self_type: Optional[Type] = None,

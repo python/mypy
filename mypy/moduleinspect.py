@@ -88,7 +88,7 @@ def get_package_properties(package_id: str) -> ModuleProperties:
 
 
 def worker(
-    tasks: "Queue[str]", results: "Queue[Union[str, ModuleProperties]]", sys_path: List[str]
+    tasks: Queue[str], results: Queue[Union[str, ModuleProperties]], sys_path: List[str]
 ) -> None:
     """The main loop of a worker introspection process."""
     sys.path = sys_path
@@ -172,7 +172,7 @@ class ModuleInspect:
                     return None
             n += 1
 
-    def __enter__(self) -> "ModuleInspect":
+    def __enter__(self) -> ModuleInspect:
         return self
 
     def __exit__(self, *args: object) -> None:
