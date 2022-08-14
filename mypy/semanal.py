@@ -3591,10 +3591,10 @@ class SemanticAnalyzer(
             call.analyzed = type_var
         else:
             assert isinstance(call.analyzed, TypeVarExpr)
-            if call.analyzed.values != values or call.analyzed.upper_bound != upper_bound:
-                self.progress = True
             call.analyzed.upper_bound = upper_bound
             call.analyzed.values = values
+        if any(has_placeholder(v) for v in values) or has_placeholder(upper_bound):
+            self.defer(force_progress=True)
 
         self.add_symbol(name, call.analyzed, s)
         return True
