@@ -2589,3 +2589,88 @@ def a(b: any): pass # E: Function "builtins.any" is not valid as a type \
 def a(b: callable): pass # E: Function "builtins.callable" is not valid as a type \
                          # N: Perhaps you meant "typing.Callable" instead of "callable"?
 [builtins fixtures/callable.pyi]
+
+[case testDecoratedProperty]
+from typing import TypeVar, Callable, final
+
+T = TypeVar("T")
+
+def dec(f: Callable[[T], int]) -> Callable[[T], str]: ...
+def dec2(f: T) -> T: ...
+
+class A:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @property
+    @dec2
+    def g(self) -> int: pass
+reveal_type(A().f)  # N: Revealed type is "builtins.str"
+reveal_type(A().g)  # N: Revealed type is "builtins.int"
+
+class B:
+    @final
+    @property
+    @dec
+    def f(self) -> int: pass
+reveal_type(B().f)  # N: Revealed type is "builtins.str"
+
+class C:
+    @property  # E: Only instance methods can be decorated with @property
+    @classmethod
+    def f(cls) -> int: pass
+reveal_type(C().f)  # N: Revealed type is "builtins.int"
+[builtins fixtures/property.pyi]
+[out]
+
+[case testDecoratedPropertySetter]
+from typing import TypeVar, Callable, final
+
+T = TypeVar("T")
+def dec(f: T) -> T: ...
+
+class A:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @f.setter
+    @dec
+    def f(self, v: int) -> None: pass
+reveal_type(A().f)  # N: Revealed type is "builtins.int"
+
+class B:
+    @property
+    @dec
+    def f(self) -> int: pass
+    @dec # E: Only supported top decorator is @f.setter
+    @f.setter
+    def f(self, v: int) -> None: pass
+
+class C:
+    @dec  # E: Decorators on top of @property are not supported
+    @property
+    def f(self) -> int: pass
+    @f.setter
+    @dec
+    def f(self, v: int) -> None: pass
+[builtins fixtures/property.pyi]
+[out]
+
+[case testInvalidArgCountForProperty]
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+def dec(f: Callable[[T], int]) -> Callable[[T, int], int]: ...
+
+class A:
+    @property  # E: Too many arguments for property
+    def f(self, x) -> int: pass
+    @property  # E: Too many arguments for property
+    @dec
+    def e(self) -> int: pass
+    @property
+    def g() -> int: pass   # E: Method must have at least one argument
+    @property
+    def h(self, *args, **kwargs) -> int: pass   # OK
+[builtins fixtures/property.pyi]
+[out]

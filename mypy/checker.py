@@ -4310,6 +4310,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         e.var.type = sig
         e.var.is_ready = True
         if e.func.is_property:
+            if isinstance(sig, CallableType):
+                if len([k for k in sig.arg_kinds if k.is_required()]) > 1:
+                    self.msg.fail("Too many arguments for property", e)
             self.check_incompatible_property_override(e)
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)

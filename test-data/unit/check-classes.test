@@ -7006,8 +7006,8 @@ class A:
     def y(self) -> int: ...
     @y.setter
     def y(self, value: int) -> None: ...
-    @dec
-    def y(self) -> None: ...  # TODO: This should generate an error
+    @dec  # E: Only supported top decorator is @y.setter
+    def y(self) -> None: ...
 
 reveal_type(A().y)  # N: Revealed type is "builtins.int"
 [builtins fixtures/property.pyi]
@@ -7044,7 +7044,7 @@ reveal_type(D1() + 0.5)  # N: Revealed type is "__main__.D1"
 [builtins fixtures/primitives.pyi]
 
 [case testRefMethodWithDecorator]
-from typing import Type
+from typing import Type, final
 
 class A:
     pass
@@ -7058,7 +7058,7 @@ class B:
         return A
 
 class C:
-    @property
+    @final
     @staticmethod
     def A() -> Type[A]:
         return A
