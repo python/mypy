@@ -39,16 +39,15 @@ def stat_proxy(path: str) -> os.stat_result:
 
 
 def main(
-    script_path: Optional[str],
-    stdout: TextIO,
-    stderr: TextIO,
+    *,
     args: Optional[List[str]] = None,
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
     clean_exit: bool = False,
 ) -> None:
     """Main entry point to the type checker.
 
     Args:
-        script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
             be used.
         clean_exit: Don't hard kill the process on exit. This allows catching

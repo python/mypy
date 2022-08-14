@@ -67,7 +67,7 @@ def run(args: List[str]) -> Tuple[str, str, int]:
     from mypy.main import main
 
     return _run(
-        lambda stdout, stderr: main(None, args=args, stdout=stdout, stderr=stderr, clean_exit=True)
+        lambda stdout, stderr: main(args=args, stdout=stdout, stderr=stderr, clean_exit=True)
     )
 
 
