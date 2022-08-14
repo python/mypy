@@ -856,7 +856,7 @@ def verify_funcitem(
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
         runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
-        stub_desc = f"def {stub_sig!r}"
+        stub_desc = str(stub_sig)
     else:
         runtime_sig_desc, stub_desc = None, None
 
