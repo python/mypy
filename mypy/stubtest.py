@@ -500,9 +500,8 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        'stub argument "{}" differs from runtime argument "{}"'.format(
-            stub_arg.variable.name, runtime_arg.name
-        )
+        f'stub argument "{stub_arg.variable.name}" '
+        f'differs from runtime argument "{runtime_arg.name}"'
     )
 
 
@@ -513,9 +512,8 @@ def _verify_arg_default_value(
     if runtime_arg.default != inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
-                'runtime argument "{}" has a default value but stub argument does not'.format(
-                    runtime_arg.name
-                )
+                f'runtime argument "{runtime_arg.name}" '
+                "has a default value but stub argument does not"
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
@@ -536,17 +534,15 @@ def _verify_arg_default_value(
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    'runtime argument "{}" has a default value of type {}, '
-                    "which is incompatible with stub argument type {}".format(
-                        runtime_arg.name, runtime_type, stub_type
-                    )
+                    f'runtime argument "{runtime_arg.name}" '
+                    f"has a default value of type {runtime_type}, "
+                    f"which is incompatible with stub argument type {stub_type}"
                 )
     else:
         if stub_arg.kind.is_optional():
             yield (
-                'stub argument "{}" has a default value but runtime argument does not'.format(
-                    stub_arg.variable.name
-                )
+                f'stub argument "{stub_arg.variable.name}" has a default value '
+                f"but runtime argument does not"
             )
 
 
@@ -738,10 +734,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional-only '
-                '(rename with a leading double underscore, i.e. "__{}")'.format(
-                    stub_arg.variable.name, runtime_arg.name
-                )
+                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -749,8 +743,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional or keyword '
-                "(remove leading double underscore)".format(stub_arg.variable.name)
+                f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
+                "(remove leading double underscore)"
             )
 
     # Check unmatched positional args
