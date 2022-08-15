@@ -15,7 +15,6 @@ from mypy.nodes import (
     Expression,
     FuncDef,
     JsonDict,
-    NameExpr,
     PassStmt,
     RefExpr,
     SymbolTableNode,
@@ -27,11 +26,9 @@ from mypy.typeops import (  # noqa: F401  # Part of public API
     try_getting_str_literals as try_getting_str_literals,
 )
 from mypy.types import (
-    AnyType,
     CallableType,
     Overloaded,
     Type,
-    TypeOfAny,
     TypeVarType,
     deserialize_type,
     get_proper_type,
@@ -141,6 +138,11 @@ def add_method_to_class(
     is_staticmethod: bool = False,
 ) -> None:
     """Adds a new method to a class definition."""
+
+    assert not (
+        is_classmethod is True and is_staticmethod is True
+    ), "Can't add a new method that's both staticmethod and classmethod."
+
     info = cls.info
 
     # First remove any previously generated methods with the same name
@@ -157,12 +159,12 @@ def add_method_to_class(
 
     if is_classmethod:
         self_type = self_type or TypeType(fill_typevars(info))
-        first = [Argument(Var('_cls'), self_type, None, ARG_POS, True)]
+        first = [Argument(Var("_cls"), self_type, None, ARG_POS, True)]
     elif is_staticmethod:
         first = []
     else:
         self_type = self_type or fill_typevars(info)
-        first = [Argument(Var('self'), self_type, None, ARG_POS)]
+        first = [Argument(Var("self"), self_type, None, ARG_POS)]
     args = first + args
 
     arg_types, arg_names, arg_kinds = [], [], []
