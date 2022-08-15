@@ -2,9 +2,20 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+import mypy.typeops
 from mypy.expandtype import expand_type
 from mypy.nodes import TypeInfo
-from mypy.types import AnyType, Instance, ProperType, Type, TypeOfAny, TypeVarId
+from mypy.types import (
+    AnyType,
+    Instance,
+    ProperType,
+    TupleType,
+    Type,
+    TypeOfAny,
+    TypeVarId,
+    get_proper_type,
+    has_type_vars,
+)
 
 
 def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Instance:
@@ -17,6 +28,20 @@ def map_instance_to_supertype(instance: Instance, superclass: TypeInfo) -> Insta
     if instance.type == superclass:
         # Fast path: `instance` already belongs to `superclass`.
         return instance
+
+    if superclass.fullname == "builtins.tuple" and instance.type.tuple_type:
+        if has_type_vars(instance.type.tuple_type):
+            # We special case mapping generic tuple types to tuple base, because for
+            # such tuples fallback can't be calculated before applying type arguments.
+            alias = instance.type.special_alias
+            assert alias is not None
+            if not alias._is_recursive:
+                # Unfortunately we can't support this for generic recursive tuples.
+                # If we skip this special casing we will fall back to tuple[Any, ...].
+                env = instance_to_type_environment(instance)
+                tuple_type = get_proper_type(expand_type(instance.type.tuple_type, env))
+                if isinstance(tuple_type, TupleType):
+                    return mypy.typeops.tuple_fallback(tuple_type)
 
     if not superclass.type_vars:
         # Fast path: `superclass` has no type variables to map to.

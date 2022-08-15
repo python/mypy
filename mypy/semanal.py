@@ -1392,16 +1392,12 @@ class SemanticAnalyzer(
         if self.analyze_typeddict_classdef(defn):
             return
 
-        if self.analyze_namedtuple_classdef(defn):
+        if self.analyze_namedtuple_classdef(defn, tvar_defs):
             return
 
         # Create TypeInfo for class now that base classes and the MRO can be calculated.
         self.prepare_class_def(defn)
-
-        defn.type_vars = tvar_defs
-        defn.info.type_vars = []
-        # we want to make sure any additional logic in add_type_vars gets run
-        defn.info.add_type_vars()
+        self.setup_type_vars(defn, tvar_defs)
         if base_error:
             defn.info.fallback_to_any = True
 
@@ -1413,6 +1409,19 @@ class SemanticAnalyzer(
             for decorator in defn.decorators:
                 self.analyze_class_decorator(defn, decorator)
             self.analyze_class_body_common(defn)
+
+    def setup_type_vars(self, defn: ClassDef, tvar_defs: List[TypeVarLikeType]) -> None:
+        defn.type_vars = tvar_defs
+        defn.info.type_vars = []
+        # we want to make sure any additional logic in add_type_vars gets run
+        defn.info.add_type_vars()
+
+    def setup_alias_type_vars(self, defn: ClassDef) -> None:
+        assert defn.info.special_alias is not None
+        defn.info.special_alias.alias_tvars = list(defn.info.type_vars)
+        target = defn.info.special_alias.target
+        assert isinstance(target, ProperType) and isinstance(target, TupleType)
+        target.partial_fallback.args = tuple(defn.type_vars)
 
     def is_core_builtin_class(self, defn: ClassDef) -> bool:
         return self.cur_mod_id == "builtins" and defn.name in CORE_BUILTIN_CLASSES
@@ -1446,7 +1455,9 @@ class SemanticAnalyzer(
             return True
         return False
 
-    def analyze_namedtuple_classdef(self, defn: ClassDef) -> bool:
+    def analyze_namedtuple_classdef(
+        self, defn: ClassDef, tvar_defs: List[TypeVarLikeType]
+    ) -> bool:
         """Check if this class can define a named tuple."""
         if (
             defn.info
@@ -1465,7 +1476,9 @@ class SemanticAnalyzer(
             if info is None:
                 self.mark_incomplete(defn.name, defn)
             else:
-                self.prepare_class_def(defn, info)
+                self.prepare_class_def(defn, info, custom_names=True)
+                self.setup_type_vars(defn, tvar_defs)
+                self.setup_alias_type_vars(defn)
                 with self.scope.class_scope(defn.info):
                     with self.named_tuple_analyzer.save_namedtuple_body(info):
                         self.analyze_class_body_common(defn)
@@ -1690,7 +1703,31 @@ class SemanticAnalyzer(
                 tvars.extend(base_tvars)
         return remove_dups(tvars)
 
-    def prepare_class_def(self, defn: ClassDef, info: Optional[TypeInfo] = None) -> None:
+    def get_and_bind_all_tvars(self, type_exprs: List[Expression]) -> List[TypeVarLikeType]:
+        """Return all type variable references in item type expressions.
+        This is a helper for generic TypedDicts and NamedTuples. Essentially it is
+        a simplified version of the logic we use for ClassDef bases. We duplicate
+        some amount of code, because it is hard to refactor common pieces.
+        """
+        tvars = []
+        for base_expr in type_exprs:
+            try:
+                base = self.expr_to_unanalyzed_type(base_expr)
+            except TypeTranslationError:
+                # This error will be caught later.
+                continue
+            base_tvars = base.accept(TypeVarLikeQuery(self.lookup_qualified, self.tvar_scope))
+            tvars.extend(base_tvars)
+        tvars = remove_dups(tvars)  # Variables are defined in order of textual appearance.
+        tvar_defs = []
+        for name, tvar_expr in tvars:
+            tvar_def = self.tvar_scope.bind_new(name, tvar_expr)
+            tvar_defs.append(tvar_def)
+        return tvar_defs
+
+    def prepare_class_def(
+        self, defn: ClassDef, info: Optional[TypeInfo] = None, custom_names: bool = False
+    ) -> None:
         """Prepare for the analysis of a class definition.
 
         Create an empty TypeInfo and store it in a symbol table, or if the 'info'
@@ -1702,10 +1739,13 @@ class SemanticAnalyzer(
             info = info or self.make_empty_type_info(defn)
             defn.info = info
             info.defn = defn
-            if not self.is_func_scope():
-                info._fullname = self.qualified_name(defn.name)
-            else:
-                info._fullname = info.name
+            if not custom_names:
+                # Some special classes (in particular NamedTuples) use custom fullname logic.
+                # Don't override it here (also see comment below, this needs cleanup).
+                if not self.is_func_scope():
+                    info._fullname = self.qualified_name(defn.name)
+                else:
+                    info._fullname = info.name
         local_name = defn.name
         if "@" in local_name:
             local_name = local_name.split("@")[0]
@@ -1866,6 +1906,7 @@ class SemanticAnalyzer(
         if info.special_alias and has_placeholder(info.special_alias.target):
             self.defer(force_progress=True)
         info.update_tuple_type(base)
+        self.setup_alias_type_vars(defn)
 
         if base.partial_fallback.type.fullname == "builtins.tuple" and not has_placeholder(base):
             # Fallback can only be safely calculated after semantic analysis, since base
@@ -2658,7 +2699,7 @@ class SemanticAnalyzer(
             return False
         lvalue = s.lvalues[0]
         name = lvalue.name
-        internal_name, info = self.named_tuple_analyzer.check_namedtuple(
+        internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
             s.rvalue, name, self.is_func_scope()
         )
         if internal_name is None:
@@ -2678,6 +2719,9 @@ class SemanticAnalyzer(
         # Yes, it's a valid namedtuple, but defer if it is not ready.
         if not info:
             self.mark_incomplete(name, lvalue, becomes_typeinfo=True)
+        else:
+            self.setup_type_vars(info.defn, tvar_defs)
+            self.setup_alias_type_vars(info.defn)
         return True
 
     def analyze_typeddict_assign(self, s: AssignmentStmt) -> bool:
@@ -5864,10 +5908,16 @@ class SemanticAnalyzer(
         self, expr: Expression, report_invalid_types: bool = True, allow_placeholder: bool = False
     ) -> Optional[Type]:
         if isinstance(expr, CallExpr):
+            # This is a legacy syntax intended mostly for Python 2, we keep it for
+            # backwards compatibility, but new features like generic named tuples
+            # and recursive named tuples will be not supported.
             expr.accept(self)
-            internal_name, info = self.named_tuple_analyzer.check_namedtuple(
+            internal_name, info, tvar_defs = self.named_tuple_analyzer.check_namedtuple(
                 expr, None, self.is_func_scope()
             )
+            if tvar_defs:
+                self.fail("Generic named tuples are not supported for legacy class syntax", expr)
+                self.note("Use either Python 3 class syntax, or the assignment syntax", expr)
             if internal_name is None:
                 # Some form of namedtuple is the only valid type that looks like a call
                 # expression. This isn't a valid type.

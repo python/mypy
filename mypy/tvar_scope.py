@@ -75,6 +75,11 @@ class TypeVarLikeScope:
         """A new scope frame for binding a class. Prohibits *this* class's tvars"""
         return TypeVarLikeScope(self.get_function_scope(), True, self, namespace=namespace)
 
+    def new_unique_func_id(self) -> int:
+        """Used by plugin-like code that needs to make synthetic generic functions."""
+        self.func_id -= 1
+        return self.func_id
+
     def bind_new(self, name: str, tvar_expr: TypeVarLikeExpr) -> TypeVarLikeType:
         if self.is_class_scope:
             self.class_id += 1

@@ -58,8 +58,10 @@ from mypy.types import (
     Type,
     TypeOfAny,
     TypeType,
+    TypeVarLikeType,
     TypeVarType,
     UnboundType,
+    has_type_vars,
 )
 from mypy.util import get_unique_redefinition_name
 
@@ -118,7 +120,6 @@ class NamedTupleAnalyzer:
                     info = self.build_namedtuple_typeinfo(
                         defn.name, items, types, default_items, defn.line, existing_info
                     )
-                    defn.info = info
                     defn.analyzed = NamedTupleExpr(info, is_typed=True)
                     defn.analyzed.line = defn.line
                     defn.analyzed.column = defn.column
@@ -201,7 +202,7 @@ class NamedTupleAnalyzer:
 
     def check_namedtuple(
         self, node: Expression, var_name: Optional[str], is_func_scope: bool
-    ) -> Tuple[Optional[str], Optional[TypeInfo]]:
+    ) -> Tuple[Optional[str], Optional[TypeInfo], List[TypeVarLikeType]]:
         """Check if a call defines a namedtuple.
 
         The optional var_name argument is the name of the variable to
@@ -216,21 +217,21 @@ class NamedTupleAnalyzer:
         report errors but return (some) TypeInfo.
         """
         if not isinstance(node, CallExpr):
-            return None, None
+            return None, None, []
         call = node
         callee = call.callee
         if not isinstance(callee, RefExpr):
-            return None, None
+            return None, None, []
         fullname = callee.fullname
         if fullname == "collections.namedtuple":
             is_typed = False
         elif fullname in TYPED_NAMEDTUPLE_NAMES:
             is_typed = True
         else:
-            return None, None
+            return None, None, []
         result = self.parse_namedtuple_args(call, fullname)
         if result:
-            items, types, defaults, typename, ok = result
+            items, types, defaults, typename, tvar_defs, ok = result
         else:
             # Error. Construct dummy return value.
             if var_name:
@@ -244,10 +245,10 @@ class NamedTupleAnalyzer:
             if name != var_name or is_func_scope:
                 # NOTE: we skip local namespaces since they are not serialized.
                 self.api.add_symbol_skip_local(name, info)
-            return var_name, info
+            return var_name, info, []
         if not ok:
             # This is a valid named tuple but some types are not ready.
-            return typename, None
+            return typename, None, []
 
         # We use the variable name as the class name if it exists. If
         # it doesn't, we use the name passed as an argument. We prefer
@@ -306,7 +307,7 @@ class NamedTupleAnalyzer:
         if name != var_name or is_func_scope:
             # NOTE: we skip local namespaces since they are not serialized.
             self.api.add_symbol_skip_local(name, info)
-        return typename, info
+        return typename, info, tvar_defs
 
     def store_namedtuple_info(
         self, info: TypeInfo, name: str, call: CallExpr, is_typed: bool
@@ -317,7 +318,9 @@ class NamedTupleAnalyzer:
 
     def parse_namedtuple_args(
         self, call: CallExpr, fullname: str
-    ) -> Optional[Tuple[List[str], List[Type], List[Expression], str, bool]]:
+    ) -> Optional[
+        Tuple[List[str], List[Type], List[Expression], str, List[TypeVarLikeType], bool]
+    ]:
         """Parse a namedtuple() call into data needed to construct a type.
 
         Returns a 5-tuple:
@@ -363,6 +366,7 @@ class NamedTupleAnalyzer:
             return None
         typename = cast(StrExpr, call.args[0]).value
         types: List[Type] = []
+        tvar_defs = []
         if not isinstance(args[1], (ListExpr, TupleExpr)):
             if fullname == "collections.namedtuple" and isinstance(args[1], StrExpr):
                 str_expr = args[1]
@@ -384,6 +388,12 @@ class NamedTupleAnalyzer:
                     return None
                 items = [cast(StrExpr, item).value for item in listexpr.items]
             else:
+                type_exprs = [
+                    t.items[1]
+                    for t in listexpr.items
+                    if isinstance(t, TupleExpr) and len(t.items) == 2
+                ]
+                tvar_defs = self.api.get_and_bind_all_tvars(type_exprs)
                 # The fields argument contains (name, type) tuples.
                 result = self.parse_namedtuple_fields_with_types(listexpr.items, call)
                 if result is None:
@@ -391,7 +401,7 @@ class NamedTupleAnalyzer:
                     return None
                 items, types, _, ok = result
                 if not ok:
-                    return [], [], [], typename, False
+                    return [], [], [], typename, [], False
         if not types:
             types = [AnyType(TypeOfAny.unannotated) for _ in items]
         underscore = [item for item in items if item.startswith("_")]
@@ -404,7 +414,7 @@ class NamedTupleAnalyzer:
         if len(defaults) > len(items):
             self.fail(f'Too many defaults given in call to "{type_name}()"', call)
             defaults = defaults[: len(items)]
-        return items, types, defaults, typename, True
+        return items, types, defaults, typename, tvar_defs, True
 
     def parse_namedtuple_fields_with_types(
         self, nodes: List[Expression], context: Context
@@ -490,7 +500,7 @@ class NamedTupleAnalyzer:
         # We can't calculate the complete fallback type until after semantic
         # analysis, since otherwise base classes might be incomplete. Postpone a
         # callback function that patches the fallback.
-        if not has_placeholder(tuple_base):
+        if not has_placeholder(tuple_base) and not has_type_vars(tuple_base):
             self.api.schedule_patch(
                 PRIORITY_FALLBACKS, lambda: calculate_tuple_fallback(tuple_base)
             )
@@ -525,7 +535,11 @@ class NamedTupleAnalyzer:
 
         assert info.tuple_type is not None  # Set by update_tuple_type() above.
         tvd = TypeVarType(
-            SELF_TVAR_NAME, info.fullname + "." + SELF_TVAR_NAME, -1, [], info.tuple_type
+            SELF_TVAR_NAME,
+            info.fullname + "." + SELF_TVAR_NAME,
+            self.api.tvar_scope.new_unique_func_id(),
+            [],
+            info.tuple_type,
         )
         selftype = tvd
 

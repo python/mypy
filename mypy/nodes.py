@@ -3294,7 +3294,7 @@ class TypeAlias(SymbolNode):
         """Generate an alias to the tuple type described by a given TypeInfo."""
         assert info.tuple_type
         return TypeAlias(
-            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, [])),
+            info.tuple_type.copy_modified(fallback=mypy.types.Instance(info, info.defn.type_vars)),
             info.fullname,
             info.line,
             info.column,

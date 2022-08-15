@@ -3667,6 +3667,9 @@ class ExpressionChecker(ExpressionVisitor[Type]):
             if isinstance(item, Instance):
                 tp = type_object_type(item.type, self.named_type)
                 return self.apply_type_arguments_to_callable(tp, item.args, tapp)
+            elif isinstance(item, TupleType) and item.partial_fallback.type.is_named_tuple:
+                tp = type_object_type(item.partial_fallback.type, self.named_type)
+                return self.apply_type_arguments_to_callable(tp, item.partial_fallback.args, tapp)
             else:
                 self.chk.fail(message_registry.ONLY_CLASS_APPLICATION, tapp)
                 return AnyType(TypeOfAny.from_error)
