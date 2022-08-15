@@ -1206,6 +1206,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__hash__",
         "__getattr__",  # resulting behaviour might be typed explicitly
         "__setattr__",  # defining this on a class can cause worse type checking
+        "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",
