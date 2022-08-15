@@ -255,7 +255,6 @@ from mypy.types import (
     TYPED_NAMEDTUPLE_NAMES,
     AnyType,
     CallableType,
-    FunctionLike,
     Instance,
     LiteralType,
     LiteralValue,
@@ -6094,19 +6093,6 @@ class SemanticAnalyzer(
 
     def is_future_flag_set(self, flag: str) -> bool:
         return self.modules[self.cur_mod_id].is_future_flag_set(flag)
-
-
-class HasPlaceholders(TypeQuery[bool]):
-    def __init__(self) -> None:
-        super().__init__(any)
-
-    def visit_placeholder_type(self, t: PlaceholderType) -> bool:
-        return True
-
-
-def has_placeholder(typ: Type) -> bool:
-    """Check if a type contains any placeholder types (recursively)."""
-    return typ.accept(HasPlaceholders())
 
 
 FunctionLikeT = TypeVar("FunctionLikeT", CallableType, Overloaded)

@@ -9,7 +9,6 @@ from mypy.types import (
     Parameters,
     ParamSpecType,
     PartialType,
-    ProperType,
     SelfType,
     Type,
     TypeVarId,

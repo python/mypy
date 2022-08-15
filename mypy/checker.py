@@ -183,7 +183,6 @@ from mypy.types import (
     ParamSpecType,
     PartialType,
     ProperType,
-    SelfType,
     StarType,
     TupleType,
     Type,

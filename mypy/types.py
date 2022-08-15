@@ -1192,7 +1192,6 @@ class DeletedType(ProperType):
 
 # Fake TypeInfo to be used as a placeholder during Instance de-serialization.
 NOT_READY: Final = mypy.nodes.FakeInfo("De-serialization failure: TypeInfo not fixed")
-import inspect
 
 
 class Instance(ProperType):
