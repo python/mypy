@@ -39,6 +39,8 @@ TODO:
  - we don't seem to always detect properties ('closed' in 'io', for example)
 """
 
+from __future__ import annotations
+
 import argparse
 import glob
 import os
@@ -279,7 +281,7 @@ class AnnotationPrinter(TypeStrVisitor):
 
     # TODO: Generate valid string representation for callable types.
     # TODO: Use short names for Instances.
-    def __init__(self, stubgen: "StubGenerator") -> None:
+    def __init__(self, stubgen: StubGenerator) -> None:
         super().__init__()
         self.stubgen = stubgen
 
@@ -324,7 +326,7 @@ class AliasPrinter(NodeVisitor[str]):
     Visit r.h.s of the definition to get the string representation of type alias.
     """
 
-    def __init__(self, stubgen: "StubGenerator") -> None:
+    def __init__(self, stubgen: StubGenerator) -> None:
         self.stubgen = stubgen
         super().__init__()
 

@@ -7,6 +7,8 @@ regular namespace.
 # In its own file largely because mypyc doesn't support its use of
 # __getattr__/__setattr__ and has some issues with __dict__
 
+from __future__ import annotations
+
 import argparse
 from typing import Any, Tuple
 

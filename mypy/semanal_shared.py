@@ -1,5 +1,7 @@
 """Shared definitions used by different parts of semantic analysis."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Callable, List, Optional, Union
 from typing_extensions import Final, Protocol

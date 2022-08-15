@@ -1,5 +1,7 @@
 """Utilities for calculating and reporting statistics about types."""
 
+from __future__ import annotations
+
 import os
 import typing
 from collections import Counter

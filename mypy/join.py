@@ -1,5 +1,7 @@
 """Calculation of the least upper bound types (joins)."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Tuple
 
 import mypy.typeops

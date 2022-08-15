@@ -4,6 +4,8 @@ Verify that various things in stubs are consistent with how things behave at run
 
 """
 
+from __future__ import annotations
+
 import argparse
 import collections.abc
 import copy
@@ -500,9 +502,8 @@ def _verify_arg_name(
     if stub_arg.variable.name == "_self":
         return
     yield (
-        'stub argument "{}" differs from runtime argument "{}"'.format(
-            stub_arg.variable.name, runtime_arg.name
-        )
+        f'stub argument "{stub_arg.variable.name}" '
+        f'differs from runtime argument "{runtime_arg.name}"'
     )
 
 
@@ -513,9 +514,8 @@ def _verify_arg_default_value(
     if runtime_arg.default != inspect.Parameter.empty:
         if stub_arg.kind.is_required():
             yield (
-                'runtime argument "{}" has a default value but stub argument does not'.format(
-                    runtime_arg.name
-                )
+                f'runtime argument "{runtime_arg.name}" '
+                "has a default value but stub argument does not"
             )
         else:
             runtime_type = get_mypy_type_of_runtime_value(runtime_arg.default)
@@ -536,17 +536,15 @@ def _verify_arg_default_value(
                 and not is_subtype_helper(runtime_type, stub_type)
             ):
                 yield (
-                    'runtime argument "{}" has a default value of type {}, '
-                    "which is incompatible with stub argument type {}".format(
-                        runtime_arg.name, runtime_type, stub_type
-                    )
+                    f'runtime argument "{runtime_arg.name}" '
+                    f"has a default value of type {runtime_type}, "
+                    f"which is incompatible with stub argument type {stub_type}"
                 )
     else:
         if stub_arg.kind.is_optional():
             yield (
-                'stub argument "{}" has a default value but runtime argument does not'.format(
-                    stub_arg.variable.name
-                )
+                f'stub argument "{stub_arg.variable.name}" has a default value '
+                f"but runtime argument does not"
             )
 
 
@@ -608,7 +606,7 @@ class Signature(Generic[T]):
         return ret
 
     @staticmethod
-    def from_funcitem(stub: nodes.FuncItem) -> "Signature[nodes.Argument]":
+    def from_funcitem(stub: nodes.FuncItem) -> Signature[nodes.Argument]:
         stub_sig: Signature[nodes.Argument] = Signature()
         stub_args = maybe_strip_cls(stub.name, stub.arguments)
         for stub_arg in stub_args:
@@ -625,7 +623,7 @@ class Signature(Generic[T]):
         return stub_sig
 
     @staticmethod
-    def from_inspect_signature(signature: inspect.Signature) -> "Signature[inspect.Parameter]":
+    def from_inspect_signature(signature: inspect.Signature) -> Signature[inspect.Parameter]:
         runtime_sig: Signature[inspect.Parameter] = Signature()
         for runtime_arg in signature.parameters.values():
             if runtime_arg.kind in (
@@ -644,7 +642,7 @@ class Signature(Generic[T]):
         return runtime_sig
 
     @staticmethod
-    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef) -> "Signature[nodes.Argument]":
+    def from_overloadedfuncdef(stub: nodes.OverloadedFuncDef) -> Signature[nodes.Argument]:
         """Returns a Signature from an OverloadedFuncDef.
 
         If life were simple, to verify_overloadedfuncdef, we'd just verify_funcitem for each of its
@@ -738,10 +736,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional-only '
-                '(rename with a leading double underscore, i.e. "__{}")'.format(
-                    stub_arg.variable.name, runtime_arg.name
-                )
+                f'stub argument "{stub_arg.variable.name}" should be positional-only '
+                f'(rename with a leading double underscore, i.e. "__{runtime_arg.name}")'
             )
         if (
             runtime_arg.kind != inspect.Parameter.POSITIONAL_ONLY
@@ -749,8 +745,8 @@ def _verify_signature(
             and not is_dunder(function_name, exclude_special=True)  # noisy for dunder methods
         ):
             yield (
-                'stub argument "{}" should be positional or keyword '
-                "(remove leading double underscore)".format(stub_arg.variable.name)
+                f'stub argument "{stub_arg.variable.name}" should be positional or keyword '
+                "(remove leading double underscore)"
             )
 
     # Check unmatched positional args
@@ -862,7 +858,7 @@ def verify_funcitem(
         stub_sig = Signature.from_funcitem(stub)
         runtime_sig = Signature.from_inspect_signature(signature)
         runtime_sig_desc = f'{"async " if runtime_is_coroutine else ""}def {signature}'
-        stub_desc = f"def {stub_sig!r}"
+        stub_desc = str(stub_sig)
     else:
         runtime_sig_desc, stub_desc = None, None
 
@@ -1210,6 +1206,7 @@ IGNORABLE_CLASS_DUNDERS = frozenset(
         "__hash__",
         "__getattr__",  # resulting behaviour might be typed explicitly
         "__setattr__",  # defining this on a class can cause worse type checking
+        "__vectorcalloffset__",  # undocumented implementation detail of the vectorcall protocol
         # isinstance/issubclass hooks that type-checkers don't usually care about
         "__instancecheck__",
         "__subclasshook__",

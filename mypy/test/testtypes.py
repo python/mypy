@@ -1,5 +1,7 @@
 """Test cases for mypy types and type operations."""
 
+from __future__ import annotations
+
 from typing import List, Tuple
 
 from mypy.erasetype import erase_type, remove_instance_last_known_values

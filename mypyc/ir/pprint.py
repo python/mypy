@@ -1,5 +1,7 @@
 """Utilities for pretty-printing IR in a human-readable form."""
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import Any, Dict, List, Sequence, Tuple, Union
 from typing_extensions import Final

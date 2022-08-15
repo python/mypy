@@ -45,6 +45,8 @@ Discussion of some notable special cases:
 See the main entry point merge_asts for more details.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Tuple, TypeVar, cast
 
 from mypy.nodes import (
@@ -160,7 +162,7 @@ def replacement_map_from_symbol_table(
         ):
             new_node = new[name]
             if (
-                type(new_node.node) == type(node.node)  # noqa
+                type(new_node.node) == type(node.node)  # noqa: E721
                 and new_node.node
                 and node.node
                 and new_node.node.fullname == node.node.fullname

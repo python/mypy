@@ -6,6 +6,8 @@ and mypyc.irbuild.builder.
 A few statements are transformed in mypyc.irbuild.function (yield, for example).
 """
 
+from __future__ import annotations
+
 import importlib.util
 from typing import Callable, List, Optional, Sequence, Tuple
 

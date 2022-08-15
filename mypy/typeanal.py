@@ -1,5 +1,7 @@
 """Semantic analysis of types"""
 
+from __future__ import annotations
+
 import itertools
 from contextlib import contextmanager
 from itertools import chain
@@ -435,7 +437,7 @@ class TypeAnalyser(SyntheticTypeVisitor[Type], TypeAnalyzerPluginInterface):
             return AnyType(TypeOfAny.explicit)
         elif fullname in FINAL_TYPE_NAMES:
             self.fail(
-                "Final can be only used as an outermost qualifier" " in a variable annotation", t
+                "Final can be only used as an outermost qualifier in a variable annotation", t
             )
             return AnyType(TypeOfAny.from_error)
         elif fullname == "typing.Tuple" or (
@@ -1612,7 +1614,7 @@ class TypeVarLikeQuery(TypeQuery[TypeVarLikeList]):
     def __init__(
         self,
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
         *,
         include_callables: bool = True,
         include_bound_tvars: bool = False,
@@ -1679,7 +1681,7 @@ class DivergingAliasDetector(TrivialSyntheticTypeTranslator):
         self,
         seen_nodes: Set[TypeAlias],
         lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-        scope: "TypeVarLikeScope",
+        scope: TypeVarLikeScope,
     ) -> None:
         self.seen_nodes = seen_nodes
         self.lookup = lookup
@@ -1722,7 +1724,7 @@ def detect_diverging_alias(
     node: TypeAlias,
     target: Type,
     lookup: Callable[[str, Context], Optional[SymbolTableNode]],
-    scope: "TypeVarLikeScope",
+    scope: TypeVarLikeScope,
 ) -> bool:
     """This detects type aliases that will diverge during type checking.
 

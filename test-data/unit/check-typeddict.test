@@ -2025,6 +2025,23 @@ class DummyTypedDict(TypedDict):
 [builtins fixtures/dict.pyi]
 [typing fixtures/typing-typeddict.pyi]
 
+[case testTypedDictTypeNarrowingWithFinalKey]
+from typing import Final, Optional, TypedDict
+
+KEY_NAME: Final = "bar"
+class Foo(TypedDict):
+    bar: Optional[str]
+
+foo = Foo(bar="hello")
+if foo["bar"] is not None:
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
+if foo[KEY_NAME] is not None:
+    reveal_type(foo["bar"])     # N: Revealed type is "builtins.str"
+    reveal_type(foo[KEY_NAME])  # N: Revealed type is "builtins.str"
+[builtins fixtures/dict.pyi]
+[typing fixtures/typing-typeddict.pyi]
+
 [case testTypedDictDoubleForwardClass]
 from mypy_extensions import TypedDict
 from typing import Any, List

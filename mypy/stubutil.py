@@ -1,5 +1,7 @@
 """Utilities for mypy.stubgen, mypy.stubgenc, and mypy.stubdoc modules."""
 
+from __future__ import annotations
+
 import os.path
 import re
 import sys

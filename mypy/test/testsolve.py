@@ -1,5 +1,7 @@
 """Test cases for the constraint solver used in type inference."""
 
+from __future__ import annotations
+
 from typing import List, Optional, Tuple, Union
 
 from mypy.constraints import SUBTYPE_OF, SUPERTYPE_OF, Constraint

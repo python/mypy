@@ -1,5 +1,7 @@
 """Utilities for emitting C code."""
 
+from __future__ import annotations
+
 import sys
 from typing import Callable, Dict, List, Optional, Set, Tuple, Union
 from typing_extensions import Final
@@ -207,7 +209,7 @@ class Emitter:
         # Extra semicolon prevents an error when the next line declares a tempvar
         self.fragments.append(f"{text}: ;\n")
 
-    def emit_from_emitter(self, emitter: "Emitter") -> None:
+    def emit_from_emitter(self, emitter: Emitter) -> None:
         self.fragments.extend(emitter.fragments)
 
     def emit_printf(self, fmt: str, *args: str) -> None:

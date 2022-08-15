@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, TypeVar, Union, cast
 
 from mypy.types import (

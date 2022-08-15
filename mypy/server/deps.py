@@ -79,6 +79,8 @@ dependency map significantly without significant benefit.
 Test cases for this module live in 'test-data/unit/deps*.test'.
 """
 
+from __future__ import annotations
+
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple
 
 from mypy.nodes import (
@@ -218,7 +220,7 @@ class DependencyVisitor(TraverserVisitor):
         self,
         type_map: Dict[Expression, Type],
         python_version: Tuple[int, int],
-        alias_deps: "DefaultDict[str, Set[str]]",
+        alias_deps: DefaultDict[str, Set[str]],
         options: Optional[Options] = None,
     ) -> None:
         self.scope = Scope()

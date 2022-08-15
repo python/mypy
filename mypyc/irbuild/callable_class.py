@@ -4,6 +4,8 @@ The class defines __call__ for calling the function and allows access to
 non-local variables defined in outer scopes.
 """
 
+from __future__ import annotations
+
 from typing import List
 
 from mypyc.common import ENV_ATTR_NAME, SELF_NAME

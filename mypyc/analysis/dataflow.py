@@ -1,5 +1,7 @@
 """Data-flow analyses."""
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Dict, Generic, Iterable, Iterator, List, Optional, Set, Tuple, TypeVar, Union
 
@@ -155,7 +157,7 @@ AnalysisDict = Dict[Tuple[BasicBlock, int], Set[T]]
 
 
 class AnalysisResult(Generic[T]):
-    def __init__(self, before: "AnalysisDict[T]", after: "AnalysisDict[T]") -> None:
+    def __init__(self, before: AnalysisDict[T], after: AnalysisDict[T]) -> None:
         self.before = before
         self.after = after
 

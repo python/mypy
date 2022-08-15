@@ -1,5 +1,7 @@
 """Mypy type checker."""
 
+from __future__ import annotations
+
 import fnmatch
 import itertools
 from collections import defaultdict
@@ -301,7 +303,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     pattern_checker: PatternChecker
 
     tscope: Scope
-    scope: "CheckerScope"
+    scope: CheckerScope
     # Stack of function return types
     return_types: List[Type]
     # Flags; true for dynamically typed functions
@@ -408,6 +410,11 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         # This flag is set when we run type-check or attribute access check for the purpose
         # of giving a note on possibly missing "await". It is used to avoid infinite recursion.
         self.checking_missing_await = False
+
+        # While this is True, allow passing an abstract class where Type[T] is expected.
+        # although this is technically unsafe, this is desirable in some context, for
+        # example when type-checking class decorators.
+        self.allow_abstract_call = False
 
     @property
     def type_context(self) -> List[Optional[Type]]:
@@ -1958,7 +1965,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
                 )
             if op_method_wider_note:
                 self.note(
-                    "Overloaded operator methods can't have wider argument types" " in overrides",
+                    "Overloaded operator methods can't have wider argument types in overrides",
                     node,
                     code=codes.OVERRIDE,
                 )
@@ -2027,9 +2034,12 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
 
                     # TODO: Figure out how to have clearer error messages.
                     # (e.g. "class decorator must be a function that accepts a type."
+                    old_allow_abstract_call = self.allow_abstract_call
+                    self.allow_abstract_call = True
                     sig, _ = self.expr_checker.check_call(
                         dec, [temp], [nodes.ARG_POS], defn, callable_name=fullname
                     )
+                    self.allow_abstract_call = old_allow_abstract_call
                 # TODO: Apply the sig to the actual TypeInfo so we can handle decorators
                 # that completely swap out the type.  (e.g. Callable[[Type[A]], Type[B]])
         if typ.is_protocol and typ.defn.type_vars:
@@ -4302,6 +4312,9 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
         e.var.type = sig
         e.var.is_ready = True
         if e.func.is_property:
+            if isinstance(sig, CallableType):
+                if len([k for k in sig.arg_kinds if k.is_required()]) > 1:
+                    self.msg.fail("Too many arguments for property", e)
             self.check_incompatible_property_override(e)
         if e.func.info and not e.func.is_dynamic():
             self.check_method_override(e)
@@ -5955,7 +5968,7 @@ class TypeChecker(NodeVisitor[None], CheckerPluginInterface):
     def function_type(self, func: FuncBase) -> FunctionLike:
         return function_type(func, self.named_type("builtins.function"))
 
-    def push_type_map(self, type_map: "TypeMap") -> None:
+    def push_type_map(self, type_map: TypeMap) -> None:
         if type_map is None:
             self.binder.unreachable()
         else:

@@ -1,4 +1,6 @@
 """Plugin for supporting the functools standard library module."""
+from __future__ import annotations
+
 from typing import Dict, NamedTuple, Optional
 from typing_extensions import Final
 

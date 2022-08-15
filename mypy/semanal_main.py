@@ -24,6 +24,8 @@ deferral if they can't be satisfied. Initially every module in the SCC
 will be incomplete.
 """
 
+from __future__ import annotations
+
 from contextlib import nullcontext
 from typing import TYPE_CHECKING, Callable, List, Optional, Tuple, Union
 from typing_extensions import Final, TypeAlias as _TypeAlias
@@ -67,7 +69,7 @@ CORE_WARMUP: Final = 2
 core_modules: Final = ["typing", "builtins", "abc", "collections"]
 
 
-def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def semantic_analysis_for_scc(graph: Graph, scc: List[str], errors: Errors) -> None:
     """Perform semantic analysis for all modules in a SCC (import cycle).
 
     Assume that reachability analysis has already been performed.
@@ -95,7 +97,7 @@ def semantic_analysis_for_scc(graph: "Graph", scc: List[str], errors: Errors) ->
         cleanup_builtin_scc(graph["builtins"])
 
 
-def cleanup_builtin_scc(state: "State") -> None:
+def cleanup_builtin_scc(state: State) -> None:
     """Remove imported names from builtins namespace.
 
     This way names imported from typing in builtins.pyi aren't available
@@ -108,10 +110,7 @@ def cleanup_builtin_scc(state: "State") -> None:
 
 
 def semantic_analysis_for_targets(
-    state: "State",
-    nodes: List[FineGrainedDeferredNode],
-    graph: "Graph",
-    saved_attrs: SavedAttributes,
+    state: State, nodes: List[FineGrainedDeferredNode], graph: Graph, saved_attrs: SavedAttributes
 ) -> None:
     """Semantically analyze only selected nodes in a given module.
 
@@ -166,7 +165,7 @@ def restore_saved_attrs(saved_attrs: SavedAttributes) -> None:
             info.names[name] = sym
 
 
-def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_top_levels(graph: Graph, scc: List[str], patches: Patches) -> None:
     # Process top levels until everything has been bound.
 
     # Reverse order of the scc so the first modules in the original list will be
@@ -224,7 +223,7 @@ def process_top_levels(graph: "Graph", scc: List[str], patches: Patches) -> None
         final_iteration = not any_progress
 
 
-def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
+def process_functions(graph: Graph, scc: List[str], patches: Patches) -> None:
     # Process functions.
     for module in scc:
         tree = graph[module].tree
@@ -247,8 +246,8 @@ def process_functions(graph: "Graph", scc: List[str], patches: Patches) -> None:
 
 
 def process_top_level_function(
-    analyzer: "SemanticAnalyzer",
-    state: "State",
+    analyzer: SemanticAnalyzer,
+    state: State,
     module: str,
     target: str,
     node: Union[FuncDef, OverloadedFuncDef, Decorator],
@@ -308,7 +307,7 @@ def get_all_leaf_targets(file: MypyFile) -> List[TargetInfo]:
 
 def semantic_analyze_target(
     target: str,
-    state: "State",
+    state: State,
     node: Union[MypyFile, FuncDef, OverloadedFuncDef, Decorator],
     active_type: Optional[TypeInfo],
     final_iteration: bool,
@@ -362,7 +361,7 @@ def semantic_analyze_target(
         return [], analyzer.incomplete, analyzer.progress
 
 
-def check_type_arguments(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def check_type_arguments(graph: Graph, scc: List[str], errors: Errors) -> None:
     for module in scc:
         state = graph[module]
         assert state.tree
@@ -373,7 +372,7 @@ def check_type_arguments(graph: "Graph", scc: List[str], errors: Errors) -> None
 
 
 def check_type_arguments_in_targets(
-    targets: List[FineGrainedDeferredNode], state: "State", errors: Errors
+    targets: List[FineGrainedDeferredNode], state: State, errors: Errors
 ) -> None:
     """Check type arguments against type variable bounds and restrictions.
 
@@ -393,7 +392,7 @@ def check_type_arguments_in_targets(
                     target.node.accept(analyzer)
 
 
-def apply_class_plugin_hooks(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def apply_class_plugin_hooks(graph: Graph, scc: List[str], errors: Errors) -> None:
     """Apply class plugin hooks within a SCC.
 
     We run these after to the main semantic analysis so that the hooks
@@ -449,7 +448,7 @@ def apply_hooks_to_class(
     return ok
 
 
-def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -> None:
+def calculate_class_properties(graph: Graph, scc: List[str], errors: Errors) -> None:
     builtins = graph["builtins"].tree
     assert builtins
     for module in scc:
@@ -467,6 +466,6 @@ def calculate_class_properties(graph: "Graph", scc: List[str], errors: Errors) -
                     )
 
 
-def check_blockers(graph: "Graph", scc: List[str]) -> None:
+def check_blockers(graph: Graph, scc: List[str]) -> None:
     for module in scc:
         graph[module].check_blockers()

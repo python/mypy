@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pprint
 import re
 import sys
@@ -335,7 +337,7 @@ class Options:
     def __repr__(self) -> str:
         return f"Options({pprint.pformat(self.snapshot())})"
 
-    def apply_changes(self, changes: Dict[str, object]) -> "Options":
+    def apply_changes(self, changes: Dict[str, object]) -> Options:
         new_options = Options()
         # Under mypyc, we don't have a __dict__, so we need to do worse things.
         replace_object_state(new_options, self, copy_dict=True)
@@ -390,7 +392,7 @@ class Options:
         # they only count as used if actually used by a real module.
         self.unused_configs.update(structured_keys)
 
-    def clone_for_module(self, module: str) -> "Options":
+    def clone_for_module(self, module: str) -> Options:
         """Create an Options object that incorporates per-module options.
 
         NOTE: Once this method is called all Options objects should be

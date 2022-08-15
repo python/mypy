@@ -1,5 +1,7 @@
 """Test cases for generating node-level dependencies (for fine-grained incremental checking)"""
 
+from __future__ import annotations
+
 import os
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, Optional, Set, Tuple

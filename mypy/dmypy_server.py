@@ -4,6 +4,8 @@ This implements a daemon process which keeps useful state in memory
 to enable fine-grained incremental reprocessing of changes.
 """
 
+from __future__ import annotations
+
 import argparse
 import base64
 import io

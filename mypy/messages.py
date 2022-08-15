@@ -8,6 +8,9 @@ with format args, should be defined as constants in mypy.message_registry.
 Historically we tried to avoid all message string literals in the type
 checker but we are moving away from this convention.
 """
+
+from __future__ import annotations
+
 import difflib
 import re
 from contextlib import contextmanager
@@ -1741,7 +1744,7 @@ class MessageBuilder:
         self, tp: TypeInfo, members: List[str], context: Context
     ) -> None:
         self.fail(
-            "Only protocols that don't have non-method members can be" " used with issubclass()",
+            "Only protocols that don't have non-method members can be used with issubclass()",
             context,
         )
         if len(members) < 3:

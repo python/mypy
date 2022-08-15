@@ -1,5 +1,7 @@
 """Identity AST transform test cases"""
 
+from __future__ import annotations
+
 import os.path
 
 from mypy import build

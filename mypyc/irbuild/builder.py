@@ -10,6 +10,8 @@ AST node type to code that actually does the bulk of the work. For
 example, expressions are transformed in mypyc.irbuild.expression and
 functions are transformed in mypyc.irbuild.function.
 """
+from __future__ import annotations
+
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 from typing_extensions import Final, overload
@@ -1113,7 +1115,7 @@ class IRBuilder:
     def lookup(self, symbol: SymbolNode) -> SymbolTarget:
         return self.symtables[-1][symbol]
 
-    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> "Register":
+    def add_local(self, symbol: SymbolNode, typ: RType, is_arg: bool = False) -> Register:
         """Add register that represents a symbol to the symbol table.
 
         Args:

@@ -78,9 +78,9 @@ def test_delete() -> None:
     del c.x
     del c.y
     assert c.z == 3
-    with assertRaises(AttributeError):
+    with assertRaises(AttributeError, "attribute 'x' of 'C' undefined"):
         c.x
-    with assertRaises(AttributeError):
+    with assertRaises(AttributeError, "attribute 'y' of 'C' undefined"):
         c.y
 
 def test_delete_any() -> None:

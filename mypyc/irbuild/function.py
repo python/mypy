@@ -10,6 +10,8 @@ as an environment containing non-local variables, is stored in the
 instance of the callable class.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from typing import DefaultDict, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 

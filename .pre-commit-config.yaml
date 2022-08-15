@@ -7,3 +7,10 @@ repos:
     rev: 5.10.1  # must match test-requirements.txt
     hooks:
       - id: isort
+  - repo: https://github.com/pycqa/flake8
+    rev: 3.9.2  # must match test-requirements.txt
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear==22.7.1  # must match test-requirements.txt
+          - flake8-noqa==1.2.8      # must match test-requirements.txt

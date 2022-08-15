@@ -1,5 +1,7 @@
 """Mypy type checker command line tool."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import subprocess
@@ -39,16 +41,15 @@ def stat_proxy(path: str) -> os.stat_result:
 
 
 def main(
-    script_path: Optional[str],
-    stdout: TextIO,
-    stderr: TextIO,
+    *,
     args: Optional[List[str]] = None,
+    stdout: TextIO = sys.stdout,
+    stderr: TextIO = sys.stderr,
     clean_exit: bool = False,
 ) -> None:
     """Main entry point to the type checker.
 
     Args:
-        script_path: Path to the 'mypy' script (used for finding data files).
         args: Custom command-line arguments.  If not given, sys.argv[1:] will
             be used.
         clean_exit: Don't hard kill the process on exit. This allows catching
@@ -765,14 +766,14 @@ def process_options(
         "--warn-return-any",
         default=False,
         strict_flag=True,
-        help="Warn about returning values of type Any" " from non-Any typed functions",
+        help="Warn about returning values of type Any from non-Any typed functions",
         group=lint_group,
     )
     add_invertible_flag(
         "--warn-unreachable",
         default=False,
         strict_flag=False,
-        help="Warn about statements or expressions inferred to be" " unreachable",
+        help="Warn about statements or expressions inferred to be unreachable",
         group=lint_group,
     )
 
@@ -814,7 +815,7 @@ def process_options(
         "--strict-equality",
         default=False,
         strict_flag=True,
-        help="Prohibit equality, identity, and container checks for" " non-overlapping types",
+        help="Prohibit equality, identity, and container checks for non-overlapping types",
         group=strictness_group,
     )
 
@@ -1188,7 +1189,7 @@ def process_options(
 
     # Set strict flags before parsing (if strict mode enabled), so other command
     # line options can override.
-    if getattr(dummy, "special-opts:strict"):  # noqa
+    if getattr(dummy, "special-opts:strict"):
         set_strict_flags()
 
     # Override cache_dir if provided in the environment

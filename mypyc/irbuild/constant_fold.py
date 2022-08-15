@@ -3,6 +3,8 @@
 For example, 3 + 5 can be constant folded into 8.
 """
 
+from __future__ import annotations
+
 from typing import Optional, Union
 from typing_extensions import Final
 

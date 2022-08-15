@@ -1,5 +1,7 @@
 """Insert checks for uninitialized values."""
 
+from __future__ import annotations
+
 from typing import List
 
 from mypyc.analysis.dataflow import AnalysisDict, analyze_must_defined_regs, cleanup_cfg, get_cfg
@@ -32,7 +34,7 @@ def insert_uninit_checks(ir: FuncIR) -> None:
 
 
 def split_blocks_at_uninits(
-    blocks: List[BasicBlock], pre_must_defined: "AnalysisDict[Value]"
+    blocks: List[BasicBlock], pre_must_defined: AnalysisDict[Value]
 ) -> List[BasicBlock]:
     new_blocks: List[BasicBlock] = []
 

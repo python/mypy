@@ -3,6 +3,8 @@ A shared state for all TypeInfos that holds global cache and dependency informat
 and potentially other mutable TypeInfo state. This module contains mutable global state.
 """
 
+from __future__ import annotations
+
 from typing import ClassVar, Dict, List, Optional, Set, Tuple
 from typing_extensions import Final, TypeAlias as _TypeAlias
 

@@ -3248,3 +3248,19 @@ reveal_type(x)  # N: Revealed type is "builtins.bytes"
 if x:
     reveal_type(x)  # N: Revealed type is "builtins.bytes"
 [builtins fixtures/dict.pyi]
+
+[case testTupleContextFromIterable]
+from typing import TypeVar, Iterable, List, Union
+
+T = TypeVar("T")
+
+def foo(x: List[T]) -> List[T]: ...
+x: Iterable[List[Union[int, str]]] = (foo([1]), foo(["a"]))
+[builtins fixtures/tuple.pyi]
+
+[case testTupleContextFromIterable2]
+from typing import Dict, Iterable, Tuple, Union
+
+def foo(x: Union[Tuple[str, Dict[str, int], str], Iterable[object]]) -> None: ...
+foo(("a", {"a": "b"}, "b"))
+[builtins fixtures/dict.pyi]

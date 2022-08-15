@@ -3,6 +3,8 @@
 # This file is named test_serialization.py even though it doesn't
 # contain its own tests so that pytest will rewrite the asserts...
 
+from __future__ import annotations
+
 from collections.abc import Iterable
 from typing import Any, Dict, Tuple
 

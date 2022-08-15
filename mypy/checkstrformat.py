@@ -10,6 +10,8 @@ here we use a regexp-based approach. This way we 99% match runtime behaviour whi
 implementation simple.
 """
 
+from __future__ import annotations
+
 import re
 from typing import (
     TYPE_CHECKING,
@@ -272,7 +274,7 @@ def find_non_escaped_targets(
                     pos += 1
                 else:
                     msg.fail(
-                        "Invalid conversion specifier in format string:" " unexpected }",
+                        "Invalid conversion specifier in format string: unexpected }",
                         ctx,
                         code=codes.STRING_FORMATTING,
                     )
@@ -291,7 +293,7 @@ def find_non_escaped_targets(
         pos += 1
     if nesting:
         msg.fail(
-            "Invalid conversion specifier in format string:" " unmatched {",
+            "Invalid conversion specifier in format string: unmatched {",
             ctx,
             code=codes.STRING_FORMATTING,
         )
@@ -306,16 +308,16 @@ class StringFormatterChecker:
     """
 
     # Some services are provided by a TypeChecker instance.
-    chk: "mypy.checker.TypeChecker"
+    chk: mypy.checker.TypeChecker
     # This is shared with TypeChecker, but stored also here for convenience.
     msg: MessageBuilder
     # Some services are provided by a ExpressionChecker instance.
-    exprchk: "mypy.checkexpr.ExpressionChecker"
+    exprchk: mypy.checkexpr.ExpressionChecker
 
     def __init__(
         self,
-        exprchk: "mypy.checkexpr.ExpressionChecker",
-        chk: "mypy.checker.TypeChecker",
+        exprchk: mypy.checkexpr.ExpressionChecker,
+        chk: mypy.checker.TypeChecker,
         msg: MessageBuilder,
     ) -> None:
         """Construct an expression type checker."""
@@ -567,7 +569,7 @@ class StringFormatterChecker:
         all_defined = all(bool(s.key) for s in all_specs)
         if some_defined and not all_defined:
             self.msg.fail(
-                "Cannot combine automatic field numbering and" " manual field specification",
+                "Cannot combine automatic field numbering and manual field specification",
                 ctx,
                 code=codes.STRING_FORMATTING,
             )
@@ -805,7 +807,7 @@ class StringFormatterChecker:
                     # Special case: for bytes formatting keys must be bytes.
                     if not isinstance(k, BytesExpr):
                         self.msg.fail(
-                            "Dictionary keys in bytes formatting must be bytes," " not strings",
+                            "Dictionary keys in bytes formatting must be bytes, not strings",
                             expr,
                             code=codes.STRING_FORMATTING,
                         )
